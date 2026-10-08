@@ -5,6 +5,8 @@
 //   /post                          echoes a form POST (payment-style flow)
 //   /slow?ms=<n>                   delays the response
 //   /status/<code>                 empty response with that status
+//   /harness/run?platform=<ios|android>&suite=<name>  queues a harness suite; the example app polls /harness/next and posts results to
+//                                  /harness/log, which this server prints
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -30,10 +32,25 @@ function serveFile(res, pathname) {
   fs.createReadStream(file).pipe(res);
 }
 
+const queued = new Map(); // platform (ios | android) -> suite name
+
 function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const q = url.searchParams;
-  if (url.pathname === '/redirect') {
+  if (url.pathname === '/harness/run') {
+    queued.set(q.get('platform') ?? '', q.get('suite') ?? '');
+    res.end('queued');
+  } else if (url.pathname === '/harness/next') {
+    res.end(queued.get(q.get('platform') ?? '') ?? '');
+    queued.delete(q.get('platform') ?? '');
+  } else if (url.pathname === '/harness/log') {
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', () => {
+      console.log(body);
+      res.end();
+    });
+  } else if (url.pathname === '/redirect') {
     res.writeHead(Number(q.get('code') ?? 302), { location: q.get('to') ?? '/' }).end();
   } else if (url.pathname === '/download') {
     const name = q.get('name') ?? 'report.txt';

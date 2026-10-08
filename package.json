@@ -67,5 +67,6 @@
     "expo": "*",
     "react": "*",
     "react-native": "*"
-  }
+  },
+  "react-native": "src/index.ts"
 }
