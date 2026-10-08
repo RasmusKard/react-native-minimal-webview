@@ -1,9 +1,14 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
+import android.util.Log
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -18,25 +23,13 @@ import expo.modules.kotlin.views.ExpoView
 
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
+  private val onNavigationRequest by EventDispatcher<Map<String, Any?>>()
 
   val webView = WebView(context)
 
   // Props, applied together in applyProps()
   var source: Map<String, Any?>? = null
   var navigationRules: List<Map<String, Any?>>? = null
-  var bridgeScript: String? = null
-  var bridgeOrigins: List<String>? = null
-  var extensions: List<Map<String, Any?>>? = null
-  var injectedScripts: List<Map<String, Any?>>? = null
-  var userAgent: String? = null
-  var applicationNameForUserAgent: String? = null
-  var thirdPartyCookiesEnabled = false
-  var mediaPlaybackRequiresUserAction = true
-  var showsScrollIndicators = true
-  var javaScriptCanOpenWindowsAutomatically = false
-  var webviewDebuggingEnabled = false
-  /** JS handles `external` navigations (onOpenExternal); native only reports them. */
-  var openExternalInJS = false
   private var loadedSource: Map<String, Any?>? = null
 
   // Navigation state. Native owns the committed URL; JS is told.
@@ -47,6 +40,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var progress = 0.0
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
+  // `ask` decisions waiting for JS, by request id. Unanswered ones expire after ASK_TIMEOUT_MS (= block).
+  private val pendingRequests = mutableMapOf<Int, String>()
+  private var nextRequestId = 0
   private val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
 
   init {
@@ -81,117 +77,65 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
   }
 
-  /** Settings that may change at any time; they apply from the next navigation. */
-  private fun applySettings() {
-    val settings = webView.settings
-    settings.userAgentString = userAgent
-      ?: applicationNameForUserAgent?.let { "${WebSettings.getDefaultUserAgent(context)} $it" }
-    settings.mediaPlaybackRequiresUserGesture = mediaPlaybackRequiresUserAction
-    settings.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
-    webView.isVerticalScrollBarEnabled = showsScrollIndicators
-    webView.isHorizontalScrollBarEnabled = showsScrollIndicators
-    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, thirdPartyCookiesEnabled)
-    // Process-wide on Android: the last WebView to set it wins.
-    WebView.setWebContentsDebuggingEnabled(webviewDebuggingEnabled)
-  }
-
-  private fun installExtensions() {
-    activeExtensions = extensions.orEmpty().mapNotNull { spec ->
-      val name = spec["name"] as? String ?: return@mapNotNull null
-      val extension = WebViewExtensions.create(name)
-      if (extension == null) Log.w(TAG, "no WebView extension registered as $name")
-      @Suppress("UNCHECKED_CAST") // because config comes from JS as a plain object
-      val handles = (spec["handles"] as? List<*>).orEmpty().map { it.toString() }.toSet()
-      extension?.onAttach(hostFor(name, handles), spec["config"] as? Map<String, Any?> ?: emptyMap())
-      extension?.let { name to it }
-    }.toMap()
-    mount()
-  }
-
-  /** Puts the WebView inside the extensions' containers, in list order: the first extension wraps the WebView. */
-  private fun mount() {
-    removeAllViews()
-    (webView.parent as? ViewGroup)?.removeView(webView)
-    // A wrapper's addView(view) would give the view WRAP_CONTENT, and for the WebView Chromium then resolves CSS vh to 0.
-    val content = activeExtensions.orEmpty().values.fold(webView as View) { view, extension ->
-      view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-      extension.wrap(view)
-    }
-    addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-  }
-
-  private fun hostFor(name: String, handles: Set<String>) = object : ExtensionHost {
-    override val webView get() = this@MinimalWebView.webView
-    override val activity get() = appContext.currentActivity
-    override fun handles(event: String) = event in handles
-
-    override fun evaluate(script: String, onResult: (Result<String>) -> Unit) = this@MinimalWebView.evaluate(script, onResult)
-
-    override fun emit(event: String, payload: Map<String, Any?>) =
-      onExtension(mapOf("name" to name, "event" to event, "payload" to payload))
-
-    override fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
-      onExtension(mapOf("name" to name, "event" to event, "payload" to payload, "askId" to register(onAnswer)))
+  /** JS answered an `ask`. Android cannot pause a navigation, so `allow` reissues it with loadUrl. */
+  fun resolveNavigationRequest(id: Int, action: String) {
+    val url = pendingRequests.remove(id) ?: return
+    when (action) {
+      "allow" -> webView.loadUrl(url)
+      "external" -> openExternal(url)
     }
   }
 
-  private fun register(onAnswer: (Any?) -> Unit): Int {
-    val id = ++nextAskId
-    pendingAsks[id] = onAnswer
-    return id
-  }
-
-  /** JS's answer to an `ask` (navigation or extension). */
-  fun answer(askId: Int, value: Any?) {
-    pendingAsks.remove(askId)?.invoke(value)
-  }
-
-  /** A new main-frame document: asks and evaluations for the old one are over, and the bridge waits for `ready`. */
-  internal fun newDocument() {
-    navigation.newDocument()
-    scripts.newDocument()
-  }
-
-  /** The active extensions' hooks, for the clients. */
-  internal val hooks get() = activeExtensions.orEmpty().values
-
-  internal fun pageFinished(url: String) {
-    activeExtensions?.values?.forEach { it.onPageFinished(url) }
-  }
-
-  /** Answers every pending ask with null (block, cancel) and forgets the bridge's reply proxy. */
-  private fun failPending() {
-    val waiting = pendingAsks.values.toList()
-    pendingAsks.clear()
-    waiting.forEach { it(null) }
-    scripts.failPending()
-  }
-
-  fun bridgePost(message: String) = scripts.post(message)
-
-  fun evaluate(script: String, onResult: (Result<String>) -> Unit) = scripts.evaluate(script, onResult)
-
-  /** The render process died: a WebView cannot be reused after that, so build a new one and reload. */
-  internal fun recover(didCrash: Boolean) {
-    val now = SystemClock.elapsedRealtime()
-    crashTimes.addLast(now)
-    while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
-    val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW
-    val lastUrl = url.takeIf { it.isNotEmpty() }
-    failPending()
-    val old = webView
-    webView = createWebView()
-    applySettings()
-    scripts.reinstall()
-    mount()
-    old.destroy()
-    if (recovered) {
-      if (lastUrl != null) webView.loadUrl(lastUrl) else source?.let(::load)
+  private fun decide(request: NavigationRules.Request): Boolean {
+    val decision = NavigationRules.decide(navigationRules, request)
+    when (decision.action) {
+      "allow" -> return false
+      "external" -> openExternal(request.url)
+      "ask" -> ask(request)
     }
-    onProcessGone(mapOf("didCrash" to didCrash, "recovered" to recovered))
+    return true
+  }
+
+  // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the referrer and gesture flag.
+  private fun ask(request: NavigationRules.Request) {
+    if (!request.mainFrame) {
+      Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
+      return
+    }
+    val id = ++nextRequestId
+    pendingRequests[id] = request.url
+    onNavigationRequest(
+      mapOf(
+        "id" to id,
+        "url" to request.url,
+        "mainFrame" to request.mainFrame,
+        "newWindow" to request.newWindow,
+        "userInitiated" to request.userInitiated
+      )
+    )
+    postDelayed({ pendingRequests.remove(id) }, ASK_TIMEOUT_MS)
+  }
+
+  private fun openExternal(url: String) {
+    val intent = if (url.startsWith("intent:", ignoreCase = true)) {
+      // Only what a browser would allow: no explicit component or selector.
+      Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
+        addCategory(Intent.CATEGORY_BROWSABLE)
+        component = null
+        selector = null
+      }
+    } else {
+      Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    }
+    try {
+      context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (e: ActivityNotFoundException) {
+      Log.w(TAG, "no app opens $url", e)
+    }
   }
 
   fun destroy() {
+    pendingRequests.clear()
     webView.stopLoading()
     webView.destroy()
   }
@@ -247,6 +191,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private inner class Client : WebViewClient() {
+    // Not called for POST, the initial loadUrl, or reissued loads; called again for their redirects.
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) =
+      decide(NavigationRules.Request(request.url.toString(), request.isForMainFrame, false, request.hasGesture()))
+
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
       if (hasNavigationListener) return
       loading = true
@@ -279,3 +227,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
   }
 }
+
+private const val TAG = "MinimalWebView"
+private const val ASK_TIMEOUT_MS = 1000L
