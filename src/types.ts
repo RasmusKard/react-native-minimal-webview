@@ -1,0 +1,166 @@
+import type { ReactNode } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
+
+export type WebViewSource = { uri: string } | { html: string; baseUrl?: string };
+
+export type NavigationAction = 'allow' | 'block' | 'external';
+
+/**
+ * One navigation rule. Every field that is set must match; the first matching rule wins.
+ * With no rules, http(s) loads in place and other schemes open externally. With rules and no match, the result is `block`.
+ */
+export type NavigationRule = {
+  /** Exact, case-insensitive: `['tel', 'mailto']`. */
+  scheme?: string | string[];
+  /** Exact, or a `*.` suffix wildcard that matches subdomains only: `'*.example.com'` does not match `example.com`. */
+  host?: string | string[];
+  /** Plain prefix of the URL path: `'/checkout'` also matches `/checkouts`. */
+  path?: string | string[];
+  mainFrame?: boolean;
+  newWindow?: boolean;
+  /** A user gesture started it (Android `hasGesture()`, iOS `.linkActivated`). */
+  userInitiated?: boolean;
+  /** `ask` calls `onNavigationRequest`. On Android it only works for the main frame; elsewhere it falls back to `block`. */
+  action: NavigationAction | 'ask';
+};
+
+export type NavigationRequest = {
+  url: string;
+  mainFrame: boolean;
+  newWindow: boolean;
+  userInitiated: boolean;
+};
+
+export type NavigationEvent = NavigationRequest & {
+  action: NavigationAction;
+  /** Index of the matching rule in `navigationRules`, or null when the default or an extension decided. */
+  rule: number | null;
+};
+
+export type NavigationState = {
+  /** The committed URL. Changes on commit and same-document navigation (pushState, hash); iframes never change it. */
+  url: string;
+  /** A main-frame navigation that has started but not committed. */
+  pendingUrl: string | null;
+  title: string;
+  loading: boolean;
+  /** 0..1 */
+  progress: number;
+  canGoBack: boolean;
+  canGoForward: boolean;
+};
+
+export type WebViewErrorEvent = {
+  kind: 'network' | 'http' | 'ssl';
+  url: string;
+  /** Platform error code, or the HTTP status for `http`. */
+  code: number;
+  description: string;
+  isMainFrame: boolean;
+};
+
+export type ProcessGoneEvent = {
+  didCrash: boolean;
+  /** The core reloaded the page in a new process. */
+  recovered: boolean;
+};
+
+export type InjectedScript = {
+  code: string;
+  /** Document start runs before any page script; end runs after the DOM is parsed. */
+  when: 'start' | 'end';
+  mainFrameOnly?: boolean;
+};
+
+export type BridgeHandler = (params: unknown) => unknown;
+
+/** A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. */
+export type Bridge = {
+  /** Answers `nativeBridge.call(method, params)` from the page. Returns an unsubscribe function. */
+  handle(method: string, handler: BridgeHandler): () => void;
+  /** Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown. */
+  call(method: string, params?: unknown): Promise<unknown>;
+  /** Fires an event the page listens to with `nativeBridge.on`. */
+  emit(event: string, payload?: unknown): void;
+  /** Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function. */
+  on(event: string, listener: (payload: unknown) => void): () => void;
+};
+
+export type BridgeOptions = {
+  /** Origin rules the page must match (Android origin-rule format): `['https://example.com', 'https://*.example.com']`. */
+  allowedOrigins: string[];
+  /** Per-call timeout. Default 10 000 ms. */
+  timeoutMs?: number;
+};
+
+/** What an extension helper such as `pullToRefresh()` returns. */
+export type WebViewExtension = {
+  /** Props merged in list order; explicit props on `<WebView>` win. */
+  props?: Partial<WebViewProps>;
+  /** The native extension to enable for this instance, by its registered name. */
+  native: { name: string; config?: Record<string, unknown> };
+  scripts?: InjectedScript[];
+  bridgeHandlers?: Record<string, BridgeHandler>;
+  /** Events the native side emits on the generic extension channel. */
+  onEvent?: (event: string, payload: Record<string, unknown>) => unknown;
+};
+
+export type WebViewProps = {
+  source: WebViewSource;
+  /** Replaces the whole user agent. */
+  userAgent?: string;
+  /** Appended to the default user agent. */
+  applicationNameForUserAgent?: string;
+  injectedScripts?: InjectedScript[];
+  navigationRules?: NavigationRule[];
+  /** Called only for `ask` rules. Times out after 1 s, then `block`. */
+  onNavigationRequest?: (
+    request: NavigationRequest
+  ) => NavigationAction | Promise<NavigationAction>;
+  /** Opens `external` navigations. Default: the system browser or app for the URL. */
+  onOpenExternal?: (url: string) => void;
+  bridge?: Bridge;
+  /** Android only; WebKit blocks third-party cookies on iOS. */
+  thirdPartyCookies?: boolean;
+  mediaPlaybackRequiresUserAction?: boolean;
+  allowsInlineMediaPlayback?: boolean;
+  scrollEnabled?: boolean;
+  bounces?: boolean;
+  showsScrollIndicators?: boolean;
+  /** Default `__DEV__`. */
+  webviewDebuggingEnabled?: boolean;
+  extensions?: WebViewExtension[];
+  renderLoading?: () => ReactNode;
+  renderError?: (error: WebViewErrorEvent) => ReactNode;
+  style?: StyleProp<ViewStyle>;
+
+  onNavigation?: (event: NavigationEvent) => void;
+  /** Changes within one frame are combined into one call. */
+  onNavigationStateChange?: (state: NavigationState) => void;
+  onError?: (event: WebViewErrorEvent) => void;
+  onProcessGone?: (event: ProcessGoneEvent) => void;
+  /** JS-only aliases derived from `loading`. */
+  onLoadStart?: (state: NavigationState) => void;
+  onLoad?: (state: NavigationState) => void;
+  onLoadEnd?: (state: NavigationState) => void;
+};
+
+export type WebViewRef = {
+  goBack(): void;
+  goForward(): void;
+  reload(): void;
+  stopLoading(): void;
+  /** iOS waits for a returned Promise; Android returns the immediate value only (use the bridge for async results). */
+  evaluate(script: string): Promise<unknown>;
+  /** Reads the native URL property directly. */
+  getUrl(): Promise<string>;
+};
+
+export type AndroidWebViewInfo = {
+  version: string;
+  provider: string;
+  /** False when the WebView provider is missing or disabled. */
+  available: boolean;
+  /** `WebViewFeature` name to support, for the features this package uses. */
+  features: Record<string, boolean>;
+};

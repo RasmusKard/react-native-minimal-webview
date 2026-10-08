@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dialogs</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>Dialogs</h1>
+<button id="alert" onclick="alert('hello'); log('alert closed')">alert</button>
+<button id="confirm" onclick="log('confirm', confirm('ok?'))">confirm</button>
+<button id="prompt" onclick="log('prompt', prompt('name?', 'default'))">prompt</button>
+<button id="beforeunload" onclick="onbeforeunload = () => 'leave?'; log('beforeunload armed')">arm beforeunload</button>

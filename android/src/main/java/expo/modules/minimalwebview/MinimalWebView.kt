@@ -1,32 +1,157 @@
 package expo.modules.minimalwebview
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
-import android.view.Gravity
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.graphics.Bitmap
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.webkit.Navigation
+import androidx.webkit.NavigationListener
+import androidx.webkit.Page
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
-  private val onTap by EventDispatcher<Unit>()
+  private val onNavigationState by EventDispatcher<Map<String, Any?>>()
+
+  val webView = WebView(context)
+
+  // Props, applied together in applyProps()
+  var source: Map<String, Any?>? = null
+  private var loadedSource: Map<String, Any?>? = null
+
+  // Navigation state. Native owns the committed URL; JS is told.
+  private var url = ""
+  private var pendingUrl: String? = null
+  private var title = ""
+  private var loading = false
+  private var progress = 0.0
+  private var lastEmitted: Map<String, Any?>? = null
+  private var emitScheduled = false
+  private val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
 
   init {
-    val container = LinearLayout(context).apply {
-      layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-      orientation = LinearLayout.VERTICAL
-      gravity = Gravity.CENTER
-      setBackgroundColor(Color.parseColor("#aabbcc"))
+    configure(webView.settings)
+    webView.webViewClient = Client()
+    webView.webChromeClient = ChromeClient()
+    if (hasNavigationListener) {
+      WebViewCompat.addNavigationListener(webView, context.mainExecutor, Listener())
     }
-    val label = TextView(context).apply {
-      text = "MinimalWebView - native view\nTap the view to emit a view event"
-      gravity = Gravity.CENTER
+    addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+  }
+
+  @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used
+  private fun configure(settings: WebSettings) {
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = true
+    settings.allowFileAccess = false
+    settings.allowContentAccess = false
+    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+  }
+
+  /** Called once per prop batch. `source` loads last so everything else is ready first. */
+  fun applyProps() {
+    val next = source ?: return
+    if (next == loadedSource) return
+    loadedSource = next
+    val uri = next["uri"] as? String
+    if (uri != null) {
+      webView.loadUrl(uri)
+    } else {
+      webView.loadDataWithBaseURL(next["baseUrl"] as? String, next["html"] as? String ?: "", "text/html", "utf-8", null)
     }
-    container.addView(label)
-    addView(container)
-    setOnClickListener {
-      onTap(Unit)
+  }
+
+  fun destroy() {
+    webView.stopLoading()
+    webView.destroy()
+  }
+
+  private fun stateChanged() {
+    if (emitScheduled) return
+    emitScheduled = true
+    // Changes within one frame are combined into one event.
+    postOnAnimation {
+      emitScheduled = false
+      val state = mapOf(
+        "url" to url,
+        "pendingUrl" to pendingUrl,
+        "title" to title,
+        "loading" to loading,
+        "progress" to progress,
+        "canGoBack" to webView.canGoBack(),
+        "canGoForward" to webView.canGoForward()
+      )
+      if (state != lastEmitted) {
+        lastEmitted = state
+        onNavigationState(state)
+      }
+    }
+  }
+
+  private inner class Listener : NavigationListener {
+    override fun onNavigationStarted(navigation: Navigation) {
+      if (navigation.isSameDocument) return
+      pendingUrl = navigation.url
+      loading = true
+      stateChanged()
+    }
+
+    override fun onNavigationRedirected(navigation: Navigation) {
+      pendingUrl = navigation.url
+      stateChanged()
+    }
+
+    override fun onNavigationCompleted(navigation: Navigation) {
+      if (navigation.didCommit()) url = navigation.url
+      if (!navigation.isSameDocument) {
+        pendingUrl = null
+        if (!navigation.didCommit()) loading = false
+      }
+      stateChanged()
+    }
+
+    override fun onPageLoadEvent(page: Page) {
+      loading = false
+      stateChanged()
+    }
+  }
+
+  private inner class Client : WebViewClient() {
+    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+      if (hasNavigationListener) return
+      loading = true
+      stateChanged()
+    }
+
+    override fun onPageFinished(view: WebView, url: String?) {
+      if (hasNavigationListener) return
+      loading = false
+      stateChanged()
+    }
+
+    // Best-effort URL tracking when WebView updates are disabled and NAVIGATION_LISTENER is missing.
+    override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+      if (hasNavigationListener) return
+      this@MinimalWebView.url = url ?: return
+      stateChanged()
+    }
+  }
+
+  private inner class ChromeClient : WebChromeClient() {
+    override fun onReceivedTitle(view: WebView, title: String?) {
+      this@MinimalWebView.title = title ?: ""
+      stateChanged()
+    }
+
+    override fun onProgressChanged(view: WebView, newProgress: Int) {
+      progress = newProgress / 100.0
+      stateChanged()
     }
   }
 }

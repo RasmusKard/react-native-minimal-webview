@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Media, uploads, downloads</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>Media, uploads, downloads</h1>
+<video id="video" controls playsinline width="100%" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
+<label>any file <input id="file" type="file" onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
+<label>images, multiple <input id="images" type="file" accept="image/*" multiple onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
+<label>camera capture <input id="capture" type="file" accept="image/*" capture="environment" onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
+<a id="attachment" href="/download?name=report.txt">attachment download</a>
+<a id="blob" href="#" onclick="event.preventDefault(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['blob body'], { type: 'text/plain' })); a.download = 'blob.txt'; a.click()">blob: download</a>
+<a id="data" href="data:text/plain,data%20body" download="data.txt">data: download</a>
