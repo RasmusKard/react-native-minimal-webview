@@ -3,3 +3,4 @@
 export { default } from './MinimalWebViewModule';
 export { default as MinimalWebView } from './MinimalWebView';
 export * from './MinimalWebView.types';
+export * from './types';
