@@ -7,9 +7,11 @@ public class MinimalWebViewModule: Module {
 
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState")
+      Events("onNavigationState", "onBridge")
 
       Prop("source") { (view: MinimalWebView, source: [String: Any]?) in view.source = source }
+      Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
+      Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
@@ -17,6 +19,7 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("goForward") { (view: MinimalWebView) in view.webView?.goForward() }
       AsyncFunction("reload") { (view: MinimalWebView) in view.webView?.reload() }
       AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
+      AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
       AsyncFunction("getUrl") { (view: MinimalWebView) in view.webView?.url?.absoluteString }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in

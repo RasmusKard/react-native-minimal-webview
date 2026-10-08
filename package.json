@@ -12,7 +12,8 @@
     "open:ios": "node internal/module_scripts/open-ios.js",
     "open:android": "node internal/module_scripts/open-android.js",
     "lint:ci": "eslint -c eslint.ci.config.mjs --quiet --suppressions-location .claude/baseline/eslint-suppressions.json src",
-    "mutation": "stryker run"
+    "mutation": "stryker run",
+    "build:page-client": "node internal/build-page-client.mjs"
   },
   "keywords": [
     "react-native",
@@ -32,6 +33,7 @@
     "@stryker-mutator/core": "10.0.0",
     "@stryker-mutator/jest-runner": "10.0.0",
     "@types/jest": "^30.0.0",
+    "@types/node": "22.20.5",
     "@types/react": "~19.3.0",
     "babel-preset-expo": "~58.0.11",
     "dependency-cruiser": "18.5.0",

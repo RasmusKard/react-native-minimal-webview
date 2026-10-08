@@ -12,6 +12,8 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.JavaScriptExecutionWorld
+import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.Navigation
 import androidx.webkit.NavigationListener
 import androidx.webkit.Page
@@ -24,12 +26,15 @@ import expo.modules.kotlin.views.ExpoView
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onNavigationRequest by EventDispatcher<Map<String, Any?>>()
+  private val onBridge by EventDispatcher<Map<String, Any?>>()
 
   val webView = WebView(context)
 
   // Props, applied together in applyProps()
   var source: Map<String, Any?>? = null
   var navigationRules: List<Map<String, Any?>>? = null
+  var bridgeScript: String? = null
+  var bridgeOrigins: List<String>? = null
   private var loadedSource: Map<String, Any?>? = null
 
   // Navigation state. Native owns the committed URL; JS is told.
@@ -40,6 +45,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var progress = 0.0
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
+  // Bridge: the page posts through `window.nativeBridgeTransport`; replies go to the main frame's latest proxy.
+  private var bridgeInstalled = false
+  private var replyProxy: JavaScriptReplyProxy? = null
+
   // `ask` decisions waiting for JS, by request id. Unanswered ones expire after ASK_TIMEOUT_MS (= block).
   private val pendingRequests = mutableMapOf<Int, String>()
   private var nextRequestId = 0
@@ -66,6 +75,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
   fun applyProps() {
+    installBridge()
     val next = source ?: return
     if (next == loadedSource) return
     loadedSource = next
@@ -75,6 +85,32 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     } else {
       webView.loadDataWithBaseURL(next["baseUrl"] as? String, next["html"] as? String ?: "", "text/html", "utf-8", null)
     }
+  }
+
+  // ponytail: installed once per view; changing the bridge or its origins needs a new WebView
+  private fun installBridge() {
+    val script = bridgeScript ?: return
+    if (bridgeInstalled) return
+    bridgeInstalled = true
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) ||
+      !WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
+    ) {
+      onBridge(mapOf("unavailable" to true))
+      return
+    }
+    val origins = bridgeOrigins.orEmpty().toSet()
+    WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, _, isMainFrame, proxy ->
+      // Main frame only, like iOS. The origin rules already filtered the sender.
+      if (!isMainFrame) return@addWebMessageListener
+      replyProxy = proxy
+      onBridge(mapOf("message" to message.data))
+    }
+    val pageWorld = WebViewCompat.getExecutionWorld(webView, JavaScriptExecutionWorld.PAGE_WORLD_NAME)
+    WebViewCompat.addJavaScriptOnEvent(webView, script, WebViewCompat.INJECTION_EVENT_DOCUMENT_START, origins, pageWorld)
+  }
+
+  fun bridgePost(message: String) {
+    replyProxy?.postMessage(message)
   }
 
   /** JS answered an `ask`. Android cannot pause a navigation, so `allow` reissues it with loadUrl. */

@@ -1,7 +1,15 @@
 import { requireNativeView } from 'expo';
-import { type Ref, type RefObject, useImperativeHandle, useRef, useSyncExternalStore } from 'react';
+import {
+  type Ref,
+  type RefObject,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 
-import type { NavigationRequest, NavigationState, WebViewProps, WebViewRef } from './types';
+import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
+import type { Bridge, NavigationRequest, NavigationState, WebViewProps, WebViewRef } from './types';
 
 type NativeEvent<T> = { nativeEvent: T };
 
@@ -10,8 +18,11 @@ type NativeProps = {
   source: WebViewProps['source'];
   style: WebViewProps['style'];
   navigationRules: WebViewProps['navigationRules'];
+  bridgeScript: string | undefined;
+  bridgeOrigins: string[] | undefined;
   onNavigationState: (event: NativeEvent<NavigationState>) => void;
   onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
+  onBridge: (event: NativeEvent<{ message?: string; unavailable?: boolean }>) => void;
 };
 
 type NativeMethods = {
@@ -20,6 +31,7 @@ type NativeMethods = {
   reload(): Promise<void>;
   stopLoading(): Promise<void>;
   resolveNavigationRequest(id: number, action: string): Promise<void>;
+  bridgePost(message: string): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
@@ -94,6 +106,18 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     }
   };
 
+  const connection = props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+  useEffect(() => {
+    if (!connection) return undefined;
+    connection.attach((message) => void native.current?.bridgePost(message));
+    return () => connection.detach();
+  }, [connection]);
+
+  const onBridge = ({ nativeEvent }: NativeEvent<{ message?: string; unavailable?: boolean }>) => {
+    if (nativeEvent.message !== undefined) connection?.receive(nativeEvent.message);
+    else if (__DEV__) console.warn('[react-native-minimal-webview] bridge unavailable: this WebView lacks the needed features');
+  };
+
   // Native blocks unanswered requests after 1 s and ignores late answers.
   const onNavigationRequest = async ({
     nativeEvent: { id, ...request },
@@ -108,8 +132,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       source={props.source}
       style={props.style}
       navigationRules={props.navigationRules}
+      bridgeScript={connection?.script}
+      bridgeOrigins={connection?.allowedOrigins}
       onNavigationState={onNavigationState}
       onNavigationRequest={onNavigationRequest}
+      onBridge={onBridge}
     />
   );
 }

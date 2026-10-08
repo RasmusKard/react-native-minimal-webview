@@ -1,6 +1,12 @@
 // Scripted spike checks. Results go to the JS console as `[harness] PASS|FAIL|INFO ...` lines, readable from
 // logcat (ReactNativeJS) or the Metro log, so no screenshots are needed.
-import type { NavigationRule, NavigationState, WebViewProps, WebViewRef } from 'react-native-minimal-webview';
+import type {
+  Bridge,
+  NavigationRule,
+  NavigationState,
+  WebViewProps,
+  WebViewRef,
+} from 'react-native-minimal-webview';
 import type { RefObject } from 'react';
 import { Platform } from 'react-native';
 
@@ -12,6 +18,9 @@ export type Harness = {
   load: (uri: string) => void;
   setRules: (rules: NavigationRule[] | undefined) => void;
   setAsk: (ask: WebViewProps['onNavigationRequest']) => void;
+  bridge: Bridge;
+  /** Payloads of `pageEvent` events the page emitted. */
+  pageEvents: unknown[];
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -220,33 +229,57 @@ async function reissue(h: Harness) {
   const startDepth = await h.ref.current?.evaluate('history.length');
 
   await click(h, 'checkout');
-  r.check('allow reissues the navigation', await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 5000), h.state());
+  r.check(
+    'allow reissues the navigation',
+    await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 5000),
+    h.state()
+  );
   r.check('asked once', asked.length === 1, asked);
   r.info('request', asked[0]);
   const depth = await h.ref.current?.evaluate('history.length');
   r.check('one history entry added', depth === (startDepth as number) + 1, { startDepth, depth });
   h.ref.current?.goBack();
-  r.check('goBack returns to the start page', await waitFor(h, (s) => s.url === start && idle(s), 5000), h.state());
+  r.check(
+    'goBack returns to the start page',
+    await waitFor(h, (s) => s.url === start && idle(s), 5000),
+    h.state()
+  );
 
   answer = 'block';
   await click(h, 'checkout');
   await sleep(1500);
-  r.check('block stays on the page', h.state().url === start && asked.length === 2, { url: h.state().url, asked });
+  r.check('block stays on the page', h.state().url === start && asked.length === 2, {
+    url: h.state().url,
+    asked,
+  });
 
   answer = 'late';
   await click(h, 'checkout');
   await sleep(2500);
-  r.check('a late answer is ignored (timeout blocks)', h.state().url === start && asked.length === 3, { url: h.state().url, asked });
+  r.check(
+    'a late answer is ignored (timeout blocks)',
+    h.state().url === start && asked.length === 3,
+    { url: h.state().url, asked }
+  );
 
   answer = 'allow';
   await h.ref.current?.evaluate(`location.href = '/redirect?to=/checkout/pay%3Ffrom%3Dredirect'`);
   const redirected = await waitFor(h, (s) => s.url.includes('from=redirect') && idle(s), 5000);
-  r.check('a redirect into an ask rule is asked and reissued', redirected && asked.length === 4, { url: h.state().url, asked });
+  r.check('a redirect into an ask rule is asked and reissued', redirected && asked.length === 4, {
+    url: h.state().url,
+    asked,
+  });
 
   const beforeFrame = asked.length;
-  await h.ref.current?.evaluate(`(() => { const f = document.createElement('iframe'); f.src = '/checkout/frame'; document.body.append(f); f.onload = () => f.contentWindow.location.href = '/checkout/frame2'; })()`);
+  await h.ref.current?.evaluate(
+    `(() => { const f = document.createElement('iframe'); f.src = '/checkout/frame'; document.body.append(f); f.onload = () => f.contentWindow.location.href = '/checkout/frame2'; })()`
+  );
   await sleep(1500);
-  r.check('iframe navigations into an ask rule are blocked without asking', asked.length === beforeFrame, asked);
+  r.check(
+    'iframe navigations into an ask rule are blocked without asking',
+    asked.length === beforeFrame,
+    asked
+  );
 
   h.load('https://www.delfi.ee/');
   await waitFor(h, (s) => s.url.includes('delfi.ee') && idle(s), 30000);
@@ -270,4 +303,88 @@ async function reissue(h: Harness) {
   r.done();
 }
 
-export const SUITES: Record<string, (h: Harness) => Promise<void>> = { urlTracking, realSite, reissue };
+const errorCode = (error: unknown) => (error as { code?: string }).code;
+
+/** Starts a page-side `nativeBridge.call` and waits for its outcome (Android's evaluate cannot await). */
+async function pageCall(h: Harness, method: string, params: unknown) {
+  await h.ref.current?.evaluate(`(() => {
+    window.__call = undefined;
+    nativeBridge.call(${JSON.stringify(method)}, ${JSON.stringify(params)}).then(
+      (result) => (window.__call = { result }),
+      (error) => (window.__call = { error: error.code })
+    );
+  })()`);
+  const end = Date.now() + 6000;
+  while (Date.now() < end) {
+    const outcome = await h.ref.current?.evaluate('window.__call');
+    if (outcome) return outcome as { result?: unknown; error?: string };
+    await sleep(100);
+  }
+  return { error: 'harness timeout' };
+}
+
+async function bridge(h: Harness) {
+  const r = reporter('bridge');
+  const page = `${h.pages}/bridge.html?t=${Date.now()}`;
+  h.load(page);
+  await waitFor(h, (s) => s.url === page && idle(s));
+  r.check(
+    'page sees window.nativeBridge',
+    (await h.ref.current?.evaluate('typeof window.nativeBridge')) === 'object'
+  );
+
+  r.check('RN -> page call', (await h.bridge.call('sum', { a: 2, b: 3 })) === 5);
+  r.check('RN -> page awaits a page Promise', (await h.bridge.call('pageSlow')) === 'late');
+  const missing = await h.bridge.call('nope').catch(errorCode);
+  r.check('RN -> page missing method rejects not_found', missing === 'not_found', missing);
+
+  const echo = await pageCall(h, 'echo', { x: 1, s: 'quote\' "' });
+  const echoed = echo.result as { x?: number; s?: string } | undefined;
+  r.check('page -> RN call', echoed?.x === 1 && echoed.s === 'quote\' "', echo);
+  const failed = await pageCall(h, 'fail', null);
+  r.check('page -> RN handler error', failed.error === 'handler_error', failed);
+  const notFound = await pageCall(h, 'nope', null);
+  r.check('page -> RN missing method', notFound.error === 'not_found', notFound);
+  const slow = await pageCall(h, 'slow', null);
+  r.check('page -> RN call times out', slow.error === 'timeout', slow);
+
+  h.bridge.emit('nativeEvent', { n: 1 });
+  await sleep(500);
+  const logged = await h.ref.current?.evaluate(
+    `window.testLog.some((line) => line.startsWith('nativeEvent'))`
+  );
+  r.check('RN -> page event', logged === true);
+  const before = h.pageEvents.length;
+  await h.ref.current?.evaluate(`nativeBridge.emit('pageEvent', { n: 2 })`);
+  await sleep(500);
+  r.check('page -> RN event', h.pageEvents.length === before + 1, h.pageEvents);
+
+  const inFlight = h.bridge.call('pageSlow').catch(errorCode);
+  await sleep(200);
+  h.load(`${page}&next=1`);
+  r.check('navigation rejects calls in flight', (await inFlight) === 'navigated');
+  await waitFor(h, (s) => s.url.includes('next=1') && idle(s));
+  await sleep(500);
+  r.check(
+    'the bridge works again after navigation',
+    (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
+  );
+
+  const other = `http://127.0.0.1:8090/bridge.html?t=${Date.now()}`;
+  h.load(other);
+  await waitFor(h, (s) => s.url === other && idle(s));
+  r.check(
+    'no bridge for an origin outside allowedOrigins',
+    (await h.ref.current?.evaluate('typeof window.nativeBridge')) === 'undefined'
+  );
+  const blocked = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
+  r.check('calls to a disallowed page time out', blocked === 'timeout', blocked);
+  r.done();
+}
+
+export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
+  urlTracking,
+  realSite,
+  reissue,
+  bridge,
+};
