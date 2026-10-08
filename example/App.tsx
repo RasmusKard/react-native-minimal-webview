@@ -4,9 +4,10 @@ import {
   type WebViewRef,
   type WebViewSource,
   WebView,
+  createBridge,
   useWebViewState,
 } from 'react-native-minimal-webview';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUITES, pollForSuites, type Harness } from './harness';
@@ -19,6 +20,17 @@ export default function App() {
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
+  const pageEvents = useRef<unknown[]>([]).current;
+  const bridge = useMemo(() => {
+    const b = createBridge({ allowedOrigins: [PAGES], timeoutMs: 3000 });
+    b.handle('echo', (params) => params);
+    b.handle('fail', () => {
+      throw new Error('handler failed on purpose');
+    });
+    b.handle('slow', () => new Promise((resolve) => setTimeout(() => resolve('too late'), 5000)));
+    b.on('pageEvent', (payload) => pageEvents.push(payload));
+    return b;
+  }, [pageEvents]);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -29,6 +41,8 @@ export default function App() {
     state: () => stateRef.current,
     load: (uri) => setSource({ uri }),
     setRules,
+    bridge,
+    pageEvents,
     setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
@@ -47,6 +61,7 @@ export default function App() {
         source={source}
         style={styles.webview}
         navigationRules={rules}
+        bridge={bridge}
         onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
       />
       <Text style={styles.state} numberOfLines={3}>
