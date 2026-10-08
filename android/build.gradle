@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.minimalwebview'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.minimalwebview"
+  defaultConfig {
+    minSdkVersion 29
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  implementation 'androidx.webkit:webkit:1.17.1'
+}
