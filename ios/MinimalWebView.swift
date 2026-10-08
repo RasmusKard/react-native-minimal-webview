@@ -4,11 +4,14 @@ import WebKit
 class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigationState = EventDispatcher()
   let onBridge = EventDispatcher()
+  let onExtension = EventDispatcher()
 
   // Props, applied together in applyProps()
   var source: [String: Any]?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
+  var extensions: [[String: Any]] = []
+  private var activeExtensions: [WebViewExtension] = []
   private var loadedSource: NSDictionary?
 
   // Created after the first prop batch: some WKWebViewConfiguration settings are fixed at creation.
@@ -53,6 +56,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     webView.navigationDelegate = self
     addSubview(webView)
+    // ponytail: extensions are fixed at creation, like the bridge
+    activeExtensions = extensions.compactMap { spec in
+      guard let name = spec["name"] as? String, let extensionInstance = WebViewExtensions.create(name) else { return nil }
+      extensionInstance.attach(host: Host(view: self, name: name), config: spec["config"] as? [String: Any] ?? [:])
+      return extensionInstance
+    }
+    activeExtensions.forEach { $0.didCreate(webView) }
     let changed = { [weak self] in self?.stateChanged() }
     observations = [
       webView.observe(\.url) { [weak self] webView, _ in self?.urlChanged(webView.url?.absoluteString) },
@@ -161,7 +171,23 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     pendingReplies.removeAll()
   }
 
+  private func pageFinished(_ webView: WKWebView) {
+    activeExtensions.forEach { $0.didFinish(url: webView.url) }
+  }
+
+  deinit {
+    activeExtensions.forEach { $0.detach() }
+  }
+
   // MARK: WKNavigationDelegate
+
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    pageFinished(webView)
+  }
+
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    pageFinished(webView)
+  }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     provisional = true
@@ -183,6 +209,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    pageFinished(webView)
     provisional = false
     pendingUrl = nil
     stateChanged()
@@ -204,5 +231,22 @@ private final class WeakBridgeHandler: NSObject, WKScriptMessageHandlerWithReply
   ) {
     guard let view else { return replyHandler(nil, "gone") }
     view.bridgeReceive(message, replyHandler: replyHandler)
+  }
+}
+
+/// One per extension, so its events carry its name.
+private final class Host: ExtensionHost {
+  private weak var view: MinimalWebView?
+  private let name: String
+
+  init(view: MinimalWebView, name: String) {
+    self.view = view
+    self.name = name
+  }
+
+  var webView: WKWebView? { view?.webView }
+
+  func emit(_ event: String, _ payload: [String: Any]) {
+    view?.onExtension(["name": name, "event": event, "payload": payload])
   }
 }

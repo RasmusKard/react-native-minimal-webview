@@ -9,7 +9,14 @@ import {
 } from 'react';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
-import type { Bridge, NavigationRequest, NavigationState, WebViewProps, WebViewRef } from './types';
+import type {
+  Bridge,
+  NavigationRequest,
+  NavigationState,
+  WebViewExtension,
+  WebViewProps,
+  WebViewRef,
+} from './types';
 
 type NativeEvent<T> = { nativeEvent: T };
 
@@ -20,10 +27,15 @@ type NativeProps = {
   navigationRules: WebViewProps['navigationRules'];
   bridgeScript: string | undefined;
   bridgeOrigins: string[] | undefined;
+  extensions: WebViewExtension['native'][] | undefined;
   onNavigationState: (event: NativeEvent<NavigationState>) => void;
   onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
   onBridge: (event: NativeEvent<{ message?: string; unavailable?: boolean }>) => void;
+  onExtension: (event: NativeEvent<ExtensionEvent>) => void;
 };
+
+/** `askId` is set when native waits for the answer (ExtensionHost.ask). */
+type ExtensionEvent = { name: string; event: string; payload: Record<string, unknown>; askId?: number };
 
 type NativeMethods = {
   goBack(): Promise<void>;
@@ -32,6 +44,7 @@ type NativeMethods = {
   stopLoading(): Promise<void>;
   resolveNavigationRequest(id: number, action: string): Promise<void>;
   bridgePost(message: string): Promise<void>;
+  extensionCall(name: string, method: string, args: Record<string, unknown>): Promise<unknown>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
@@ -118,6 +131,12 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     else if (__DEV__) console.warn('[minimal-rn-webview] bridge unavailable: this WebView lacks the needed features');
   };
 
+  const onExtension = async ({ nativeEvent: { name, event, payload, askId } }: NativeEvent<ExtensionEvent>) => {
+    const extension = props.extensions?.find((candidate) => candidate.native.name === name);
+    const value = await extension?.onEvent?.(event, payload);
+    if (askId !== undefined) await native.current?.extensionCall(name, '__answer', { askId, value: value ?? null });
+  };
+
   // Native blocks unanswered requests after 1 s and ignores late answers.
   const onNavigationRequest = async ({
     nativeEvent: { id, ...request },
@@ -134,9 +153,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       navigationRules={props.navigationRules}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
+      extensions={props.extensions?.map((extension) => extension.native)}
       onNavigationState={onNavigationState}
       onNavigationRequest={onNavigationRequest}
       onBridge={onBridge}
+      onExtension={onExtension}
     />
   );
 }

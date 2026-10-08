@@ -20,6 +20,7 @@ android {
 
 dependencies {
   implementation 'androidx.webkit:webkit:1.17.1'
+  implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0' // pullToRefresh
   testImplementation 'junit:junit:4.13.2'
   testImplementation 'org.json:json:20250517' // the real org.json; Android's is a stub in JVM tests
 }

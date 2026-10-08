@@ -7,6 +7,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import android.view.View
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -27,6 +29,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onNavigationRequest by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
+  private val onExtension by EventDispatcher<Map<String, Any?>>()
 
   val webView = WebView(context)
 
@@ -35,6 +38,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var navigationRules: List<Map<String, Any?>>? = null
   var bridgeScript: String? = null
   var bridgeOrigins: List<String>? = null
+  var extensions: List<Map<String, Any?>>? = null
+  private var activeExtensions: Map<String, WebViewExtension> = emptyMap()
+  private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
+  private var nextAskId = 0
+  private var extensionsInstalled = false
   private var loadedSource: Map<String, Any?>? = null
 
   // Navigation state. Native owns the committed URL; JS is told.
@@ -75,6 +83,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
   fun applyProps() {
+    installExtensions()
     installBridge()
     val next = source ?: return
     if (next == loadedSource) return
@@ -85,6 +94,49 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     } else {
       webView.loadDataWithBaseURL(next["baseUrl"] as? String, next["html"] as? String ?: "", "text/html", "utf-8", null)
     }
+  }
+
+  // ponytail: installed once per view, like the bridge
+  private fun installExtensions() {
+    if (extensionsInstalled) return
+    extensionsInstalled = true
+    activeExtensions = extensions.orEmpty().mapNotNull { spec ->
+      val name = spec["name"] as? String ?: return@mapNotNull null
+      val extension = WebViewExtensions.create(name)
+      if (extension == null) Log.w(TAG, "no WebView extension registered as $name")
+      @Suppress("UNCHECKED_CAST") // because config comes from JS as a plain object
+      extension?.onAttach(hostFor(name), spec["config"] as? Map<String, Any?> ?: emptyMap())
+      extension?.let { name to it }
+    }.toMap()
+    // Container hooks nest in list order: the first extension wraps the WebView, which must be detached first.
+    removeView(webView)
+    val content = activeExtensions.values.fold(webView as View) { view, extension -> extension.wrap(view) }
+    addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+  }
+
+  private fun hostFor(name: String) = object : ExtensionHost {
+    override val webView get() = this@MinimalWebView.webView
+    override fun emit(event: String, payload: Map<String, Any?>) =
+      onExtension(mapOf("name" to name, "event" to event, "payload" to payload))
+
+    override fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
+      val id = ++nextAskId
+      pendingAsks[id] = onAnswer
+      onExtension(mapOf("name" to name, "event" to event, "payload" to payload, "askId" to id))
+    }
+  }
+
+  /** The generic extension channel from JS: answers to `ask`, or calls routed to the extension by name. */
+  fun extensionCall(name: String, method: String, args: Map<String, Any?>): Any? {
+    if (method == "__answer") {
+      pendingAsks.remove((args["askId"] as? Number)?.toInt())?.invoke(args["value"])
+      return null
+    }
+    return activeExtensions[name]?.onCall(method, args)
+  }
+
+  private fun pageFinished(url: String) {
+    activeExtensions.values.forEach { it.onPageFinished(url) }
   }
 
   // ponytail: installed once per view; changing the bridge or its origins needs a new WebView
@@ -171,6 +223,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   fun destroy() {
+    activeExtensions.values.forEach { it.onDetach() }
+    pendingAsks.values.forEach { it(null) }
+    pendingAsks.clear()
     pendingRequests.clear()
     webView.stopLoading()
     webView.destroy()
@@ -215,13 +270,17 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       if (navigation.didCommit()) url = navigation.url
       if (!navigation.isSameDocument) {
         pendingUrl = null
-        if (!navigation.didCommit()) loading = false
+        if (!navigation.didCommit()) {
+          loading = false
+          pageFinished(navigation.url)
+        }
       }
       stateChanged()
     }
 
     override fun onPageLoadEvent(page: Page) {
       loading = false
+      pageFinished(page.url)
       stateChanged()
     }
   }
@@ -240,6 +299,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     override fun onPageFinished(view: WebView, url: String?) {
       if (hasNavigationListener) return
       loading = false
+      pageFinished(url ?: "")
       stateChanged()
     }
 
@@ -252,6 +312,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private inner class ChromeClient : WebChromeClient() {
+    // First extension that handles it wins; otherwise the WebView cancels the chooser.
+    override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams) =
+      activeExtensions.values.any { it.onShowFileChooser(callback, params) }
+
     override fun onReceivedTitle(view: WebView, title: String?) {
       this@MinimalWebView.title = title ?: ""
       stateChanged()

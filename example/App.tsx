@@ -5,6 +5,9 @@ import {
   type WebViewSource,
   WebView,
   createBridge,
+  fileUpload,
+  type FileRequest,
+  pullToRefresh,
   useWebViewState,
 } from 'minimal-rn-webview';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -34,6 +37,15 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(undefined);
+  const extensions = useMemo(
+    () => [
+      pullToRefresh(),
+      fileUpload({ onFileRequest: (request) => fileRequestRef.current?.(request) ?? null }),
+    ],
+    []
+  );
+
   const harness: Harness = {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
@@ -43,6 +55,7 @@ export default function App() {
     setRules,
     bridge,
     pageEvents,
+    setFileRequest: (handler) => (fileRequestRef.current = handler),
     setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
@@ -62,6 +75,7 @@ export default function App() {
         style={styles.webview}
         navigationRules={rules}
         bridge={bridge}
+        extensions={extensions}
         onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
       />
       <Text style={styles.state} numberOfLines={3}>

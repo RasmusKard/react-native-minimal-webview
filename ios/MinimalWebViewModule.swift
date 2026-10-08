@@ -5,13 +5,18 @@ public class MinimalWebViewModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebView")
 
+    OnCreate {
+      WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
+    }
+
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge")
+      Events("onNavigationState", "onBridge", "onExtension")
 
       Prop("source") { (view: MinimalWebView, source: [String: Any]?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
+      Prop("extensions") { (view: MinimalWebView, extensions: [[String: Any]]?) in view.extensions = extensions ?? [] }
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 

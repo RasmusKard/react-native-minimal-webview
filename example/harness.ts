@@ -1,7 +1,10 @@
 // Scripted spike checks. Results go to the JS console as `[harness] PASS|FAIL|INFO ...` lines, readable from
 // logcat (ReactNativeJS) or the Metro log, so no screenshots are needed.
+import { File, Paths } from 'expo-file-system';
+import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
   Bridge,
+  FileRequest,
   NavigationRule,
   NavigationState,
   WebViewProps,
@@ -21,6 +24,7 @@ export type Harness = {
   bridge: Bridge;
   /** Payloads of `pageEvent` events the page emitted. */
   pageEvents: unknown[];
+  setFileRequest: (handler: ((request: FileRequest) => Promise<string[] | null>) | undefined) => void;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -382,9 +386,109 @@ async function bridge(h: Harness) {
   r.done();
 }
 
+/**
+ * Pull-to-refresh through the extension hooks. The gesture comes from outside the app: the suite logs
+ * `INFO ptr: SWIPE "<kind>"` and the driver (adb input swipe / agent-device swipe) performs it.
+ */
+async function ptr(h: Harness) {
+  const r = reporter('ptr');
+  const loadedAt = async () => (await h.ref.current?.evaluate(`document.getElementById('loaded').textContent`)) as string;
+  const open = async (mode: string) => {
+    const uri = `${h.pages}/ptr.html?mode=${mode}&t=${Date.now()}`;
+    h.load(uri);
+    await waitFor(h, (s) => s.url === uri && idle(s));
+    await sleep(500);
+  };
+  const pull = async (kind: string) => {
+    const before = await loadedAt();
+    r.info('SWIPE', kind);
+    const end = Date.now() + 10000;
+    while (Date.now() < end) {
+      await sleep(250);
+      if (idle(h.state()) && (await loadedAt()) !== before) return true;
+    }
+    return false;
+  };
+
+  await open('long');
+  r.check('pull at the top of a long page reloads', await pull('full'));
+  await open('short');
+  r.check('pull on a short page reloads', await pull('full'));
+  await open('long');
+  await h.ref.current?.evaluate('window.scrollTo(0, 1500)');
+  r.check('a short pull while scrolled down does not reload', !(await pull('short')));
+  r.info('scrollY after the pull', await h.ref.current?.evaluate('window.scrollY'));
+  await open('inner');
+  await h.ref.current?.evaluate(`document.getElementById('scroller').scrollTop = 400`);
+  r.info('pull inside a scrolled inner scroller reloads (known Android limitation)', await pull('inner'));
+  r.done();
+}
+
+/**
+ * Android file chooser through the fileUpload extension: the app answers with URIs it got from an Expo API.
+ * The tap comes from outside (`INFO upload: TAP`), because WebView only opens choosers on a real gesture.
+ */
+async function upload(h: Harness) {
+  const r = reporter('upload');
+  const file = new File(Paths.cache, 'upload-test.txt');
+  file.create({ overwrite: true });
+  file.write('hello from the app cache');
+  const requests: FileRequest[] = [];
+  let answer: string[] | null = null;
+  h.setFileRequest(async (request) => {
+    requests.push(request);
+    return answer;
+  });
+  const uri = `${h.pages}/upload.html?t=${Date.now()}`;
+  h.load(uri);
+  await waitFor(h, (s) => s.url === uri && idle(s));
+  await sleep(500);
+  const tapAndRead = async (label: string) => {
+    const before = ((await h.ref.current?.evaluate('window.testLog.length')) as number) ?? 0;
+    r.info('TAP', label);
+    const end = Date.now() + 10000;
+    while (Date.now() < end) {
+      await sleep(300);
+      const lines = (await h.ref.current?.evaluate(`window.testLog.slice(${before})`)) as string[];
+      if (lines.length) return lines.join(' | ');
+    }
+    return null;
+  };
+
+  answer = [file.uri];
+  const fromFileUri = await tapAndRead('file uri');
+  r.info('file:// URI', file.uri);
+  r.check(
+    'a file:// URI from the app cache uploads (allowFileAccess off)',
+    fromFileUri?.includes('hello from the app cache') ?? false,
+    fromFileUri
+  );
+  r.check(
+    'the request carries accept, multiple and capture',
+    requests[0]?.accept.join() === 'text/plain,image/*' && requests[0].multiple === false && requests[0].capture === false,
+    requests[0]
+  );
+
+  answer = [await getContentUriAsync(file.uri)];
+  const fromContentUri = await tapAndRead('content uri');
+  r.info('content:// URI', answer[0]);
+  r.check('a content:// URI (FileProvider) uploads', fromContentUri?.includes('hello from the app cache') ?? false, fromContentUri);
+
+  answer = null;
+  const cancelled = await tapAndRead('cancel');
+  r.info('after cancel the page logged', cancelled);
+  answer = [file.uri];
+  const again = await tapAndRead('after cancel');
+  r.check('the chooser opens again after a cancel (callback called once)', again?.includes('hello') ?? false, again);
+  h.setFileRequest(undefined);
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
   reissue,
   bridge,
+  ptr,
+  upload,
 };
