@@ -1,4 +1,11 @@
-import { type WebViewRef, type WebViewSource, WebView, useWebViewState } from 'minimal-rn-webview';
+import {
+  type NavigationRule,
+  type WebViewProps,
+  type WebViewRef,
+  type WebViewSource,
+  WebView,
+  useWebViewState,
+} from 'minimal-rn-webview';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +17,8 @@ export default function App() {
   const ref = useRef<WebViewRef>(null);
   const state = useWebViewState(ref);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
+  const [rules, setRules] = useState<NavigationRule[] | undefined>();
+  const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -19,6 +28,8 @@ export default function App() {
     ref,
     state: () => stateRef.current,
     load: (uri) => setSource({ uri }),
+    setRules,
+    setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
   harnessRef.current = harness;
@@ -31,7 +42,13 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <WebView ref={ref} source={source} style={styles.webview} />
+      <WebView
+        ref={ref}
+        source={source}
+        style={styles.webview}
+        navigationRules={rules}
+        onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+      />
       <Text style={styles.state} numberOfLines={3}>
         {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}

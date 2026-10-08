@@ -1,7 +1,7 @@
 import { requireNativeView } from 'expo';
 import { type Ref, type RefObject, useImperativeHandle, useRef, useSyncExternalStore } from 'react';
 
-import type { NavigationState, WebViewProps, WebViewRef } from './types';
+import type { NavigationRequest, NavigationState, WebViewProps, WebViewRef } from './types';
 
 type NativeEvent<T> = { nativeEvent: T };
 
@@ -9,7 +9,9 @@ type NativeProps = {
   ref: Ref<NativeMethods>;
   source: WebViewProps['source'];
   style: WebViewProps['style'];
+  navigationRules: WebViewProps['navigationRules'];
   onNavigationState: (event: NativeEvent<NavigationState>) => void;
+  onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
 };
 
 type NativeMethods = {
@@ -17,6 +19,7 @@ type NativeMethods = {
   goForward(): Promise<void>;
   reload(): Promise<void>;
   stopLoading(): Promise<void>;
+  resolveNavigationRequest(id: number, action: string): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
@@ -69,12 +72,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   useImperativeHandle(ref, (): InternalRef => {
     // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
-    const call = <K extends keyof NativeMethods>(name: K) => native.current?.[name];
     return {
-      goBack: () => void call('goBack')?.(),
-      goForward: () => void call('goForward')?.(),
-      reload: () => void call('reload')?.(),
-      stopLoading: () => void call('stopLoading')?.(),
+      goBack: () => void native.current?.goBack(),
+      goForward: () => void native.current?.goForward(),
+      reload: () => void native.current?.reload(),
+      stopLoading: () => void native.current?.stopLoading(),
       evaluate: async (script) => parseResult((await native.current?.evaluate(script)) ?? null),
       getUrl: async () => (await native.current?.getUrl()) ?? '',
       [STORE]: store,
@@ -92,12 +94,22 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     }
   };
 
+  // Native blocks unanswered requests after 1 s and ignores late answers.
+  const onNavigationRequest = async ({
+    nativeEvent: { id, ...request },
+  }: NativeEvent<NavigationRequest & { id: number }>) => {
+    const action = (await props.onNavigationRequest?.(request)) ?? 'block';
+    await native.current?.resolveNavigationRequest(id, action);
+  };
+
   return (
     <NativeWebView
       ref={native}
       source={props.source}
       style={props.style}
+      navigationRules={props.navigationRules}
       onNavigationState={onNavigationState}
+      onNavigationRequest={onNavigationRequest}
     />
   );
 }

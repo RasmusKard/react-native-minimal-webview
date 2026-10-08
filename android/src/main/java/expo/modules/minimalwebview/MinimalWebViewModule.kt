@@ -10,9 +10,10 @@ class MinimalWebViewModule : Module() {
     Name("MinimalWebView")
 
     View(MinimalWebView::class) {
-      Events("onNavigationState")
+      Events("onNavigationState", "onNavigationRequest")
 
       Prop("source") { view: MinimalWebView, source: Map<String, Any?>? -> view.source = source }
+      Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
 
       OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
@@ -21,6 +22,9 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("goForward") { view: MinimalWebView -> view.webView.goForward() }.runOnQueue(Queues.MAIN)
       AsyncFunction("reload") { view: MinimalWebView -> view.webView.reload() }.runOnQueue(Queues.MAIN)
       AsyncFunction("stopLoading") { view: MinimalWebView -> view.webView.stopLoading() }.runOnQueue(Queues.MAIN)
+      AsyncFunction("resolveNavigationRequest") { view: MinimalWebView, id: Int, action: String ->
+        view.resolveNavigationRequest(id, action)
+      }.runOnQueue(Queues.MAIN)
       AsyncFunction("getUrl") { view: MinimalWebView -> view.webView.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->

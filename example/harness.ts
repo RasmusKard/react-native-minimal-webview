@@ -1,6 +1,6 @@
 // Scripted spike checks. Results go to the JS console as `[harness] PASS|FAIL|INFO ...` lines, readable from
 // logcat (ReactNativeJS) or the Metro log, so no screenshots are needed.
-import type { NavigationState, WebViewRef } from 'minimal-rn-webview';
+import type { NavigationRule, NavigationState, WebViewProps, WebViewRef } from 'minimal-rn-webview';
 import type { RefObject } from 'react';
 import { Platform } from 'react-native';
 
@@ -10,6 +10,8 @@ export type Harness = {
   ref: RefObject<WebViewRef | null>;
   state: () => NavigationState;
   load: (uri: string) => void;
+  setRules: (rules: NavigationRule[] | undefined) => void;
+  setAsk: (ask: WebViewProps['onNavigationRequest']) => void;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -197,4 +199,75 @@ async function realSite(h: Harness) {
   r.done();
 }
 
-export const SUITES: Record<string, (h: Harness) => Promise<void>> = { urlTracking, realSite };
+// Android cancel-and-reissue: `ask` rules cancel the navigation, JS answers, `allow` reloads the URL.
+async function reissue(h: Harness) {
+  const r = reporter('reissue');
+  const asked: string[] = [];
+  let answer: 'allow' | 'block' | 'late' = 'allow';
+  h.setAsk(async (request) => {
+    asked.push(request.url);
+    if (answer === 'late') await sleep(1500);
+    return answer === 'block' ? 'block' : 'allow';
+  });
+  h.setRules([
+    { host: ['localhost', 'www.delfi.ee'], path: ['/checkout', '/artikkel'], action: 'ask' },
+    { scheme: ['http', 'https'], action: 'allow' },
+  ]);
+  await sleep(300);
+  const start = `${h.pages}/nav.html?t=${Date.now()}`;
+  h.load(start);
+  await waitFor(h, (s) => s.url === start && idle(s));
+  const startDepth = await h.ref.current?.evaluate('history.length');
+
+  await click(h, 'checkout');
+  r.check('allow reissues the navigation', await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 5000), h.state());
+  r.check('asked once', asked.length === 1, asked);
+  r.info('request', asked[0]);
+  const depth = await h.ref.current?.evaluate('history.length');
+  r.check('one history entry added', depth === (startDepth as number) + 1, { startDepth, depth });
+  h.ref.current?.goBack();
+  r.check('goBack returns to the start page', await waitFor(h, (s) => s.url === start && idle(s), 5000), h.state());
+
+  answer = 'block';
+  await click(h, 'checkout');
+  await sleep(1500);
+  r.check('block stays on the page', h.state().url === start && asked.length === 2, { url: h.state().url, asked });
+
+  answer = 'late';
+  await click(h, 'checkout');
+  await sleep(2500);
+  r.check('a late answer is ignored (timeout blocks)', h.state().url === start && asked.length === 3, { url: h.state().url, asked });
+
+  answer = 'allow';
+  await h.ref.current?.evaluate(`location.href = '/redirect?to=/checkout/pay%3Ffrom%3Dredirect'`);
+  const redirected = await waitFor(h, (s) => s.url.includes('from=redirect') && idle(s), 5000);
+  r.check('a redirect into an ask rule is asked and reissued', redirected && asked.length === 4, { url: h.state().url, asked });
+
+  const beforeFrame = asked.length;
+  await h.ref.current?.evaluate(`(() => { const f = document.createElement('iframe'); f.src = '/checkout/frame'; document.body.append(f); f.onload = () => f.contentWindow.location.href = '/checkout/frame2'; })()`);
+  await sleep(1500);
+  r.check('iframe navigations into an ask rule are blocked without asking', asked.length === beforeFrame, asked);
+
+  h.load('https://www.delfi.ee/');
+  await waitFor(h, (s) => s.url.includes('delfi.ee') && idle(s), 30000);
+  const article = await h.ref.current?.evaluate(`(() => {
+    const a = [...document.querySelectorAll('a[href]')].find((a) => a.origin === location.origin && a.pathname.startsWith('/artikkel/') && !a.hash);
+    if (!a) return null;
+    a.click();
+    return a.href;
+  })()`);
+  r.info('delfi article', article);
+  r.check(
+    'real site: an asked article link is reissued',
+    await waitFor(h, (s) => s.url.includes('/artikkel/') && idle(s), 20000),
+    { url: h.state().url, asked: asked.slice(-1) }
+  );
+  await sleep(1500);
+  await agree(h, r, 'real site: url agrees after reissue');
+
+  h.setRules(undefined);
+  h.setAsk(undefined);
+  r.done();
+}
+
+export const SUITES: Record<string, (h: Harness) => Promise<void>> = { urlTracking, realSite, reissue };
