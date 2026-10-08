@@ -1,0 +1,6 @@
+# lefthook 2.1.17. setup.sh enables it (npx lefthook install; Python repos: uv run lefthook install).
+# The same repo checks agent-guard runs when the agent finishes, on the staged changes (.claude/check).
+pre-commit:
+  jobs:
+    - name: check
+      run: .claude/check

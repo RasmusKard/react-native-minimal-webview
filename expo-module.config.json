@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["MinimalWebViewModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.minimalwebview.MinimalWebViewModule"]
+  }
+}

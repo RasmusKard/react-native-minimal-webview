@@ -1,0 +1,26 @@
+# UNTESTED (no runner was available when this was written); the commands themselves were run locally.
+name: quality
+on: pull_request
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }  # .claude/check diffs against origin/main
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Install swiftlint and detekt
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSLo sl.zip https://github.com/realm/SwiftLint/releases/download/0.65.1/swiftlint_linux_amd64.zip
+          unzip -q sl.zip -d sl && install sl/swiftlint-static "$HOME/bin/swiftlint"
+          curl -fsSLo "$HOME/detekt.jar" https://github.com/detekt/detekt/releases/download/v1.23.8/detekt-cli-1.23.8-all.jar
+          printf '#!/bin/sh\nexec java -jar "$HOME/detekt.jar" "$@"\n' > "$HOME/bin/detekt" && chmod +x "$HOME/bin/detekt"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: repo checks on what this PR adds
+        run: .claude/check
+        env: { CHECK_DIFF: 'git diff -U0 -w --no-color origin/main...HEAD' }
+      - run: npx knip   # whole repo (no baseline): unused files, exports, dependencies
+      - run: npm run lint:ci
+      - run: npm run mutation

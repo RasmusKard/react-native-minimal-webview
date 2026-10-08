@@ -1,0 +1,19 @@
+{
+  "path": [
+    "src"
+  ],
+  "format": [
+    "typescript",
+    "tsx",
+    "javascript",
+    "jsx"
+  ],
+  "ignore": [
+    "**/__tests__/**",
+    "**/*.test.*",
+    "**/*.d.ts"
+  ],
+  "minTokens": 25,
+  "minLines": 3,
+  "ignoreIdentifiers": true
+}
