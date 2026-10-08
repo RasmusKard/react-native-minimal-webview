@@ -1,7 +1,7 @@
 import { requireNativeView } from 'expo';
 import { type Ref, type RefObject, useImperativeHandle, useRef, useSyncExternalStore } from 'react';
 
-import type { NavigationState, WebViewProps, WebViewRef } from './types';
+import type { NavigationRequest, NavigationState, WebViewProps, WebViewRef } from './types';
 
 type NativeEvent<T> = { nativeEvent: T };
 
@@ -9,76 +9,17 @@ type NativeProps = {
   ref: Ref<NativeMethods>;
   source: WebViewProps['source'];
   style: WebViewProps['style'];
+  navigationRules: WebViewProps['navigationRules'];
   onNavigationState: (event: NativeEvent<NavigationState>) => void;
+  onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
 };
 
-/** Props that pass straight through to the native view. */
-const PASSTHROUGH = [
-  'navigationRules',
-  'userAgent',
-  'applicationNameForUserAgent',
-  'thirdPartyCookiesEnabled',
-  'mediaPlaybackRequiresUserAction',
-  'allowsInlineMediaPlayback',
-  'scrollEnabled',
-  'bounces',
-  'showsScrollIndicators',
-  'javaScriptCanOpenWindowsAutomatically',
-] as const;
-type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
-
-/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
-const OWN = [
-  ...PASSTHROUGH,
-  ...([
-    'source',
-    'injectedScripts',
-    'webviewDebuggingEnabled',
-    'bridge',
-    'extensions',
-    'renderLoading',
-    'renderError',
-    'onNavigationRequest',
-    'onOpenExternal',
-    'onNavigation',
-    'onNavigationStateChange',
-    'onError',
-    'onProcessGone',
-    'onLoadStart',
-    'onLoad',
-    'onLoadEnd',
-    'children',
-  ] as const),
-] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
-type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OWN)[number]>;
-// A prop missing from OWN fails to compile here, by name.
-const OWN_SET: Set<string> &
-  ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
-
-type NativeProps = ViewProps &
-  Passthrough &
-  Pick<WebViewProps, 'source' | 'injectedScripts' | 'webviewDebuggingEnabled'> & {
-    ref: Ref<NativeMethods>;
-    bridgeScript: string | undefined;
-    bridgeOrigins: string[] | undefined;
-    extensions: ReturnType<typeof nativeSpecs>;
-    openExternalInJS: boolean;
-    onNavigation: (event: NativeEvent<NavigationEvent>) => void;
-    onNavigationState: (event: NativeEvent<NavigationState>) => void;
-    onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
-    onBridge: (event: NativeEvent<BridgeEvent>) => void;
-    onExtension: (event: NativeEvent<ExtensionEvent>) => void;
-    onError: (event: NativeEvent<WebViewErrorEvent>) => void;
-    onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
-  };
-
-type NativeMethods = Record<
-  'goBack' | 'goForward' | 'reload' | 'stopLoading',
-  () => Promise<void>
-> & {
-  bridgePost(message: string): Promise<void>;
-  /** Answers a native `ask` (navigation or extension). The value is wrapped: native arguments can't be of any type. */
-  answer(askId: number, answer: { value: unknown }): Promise<void>;
+type NativeMethods = {
+  goBack(): Promise<void>;
+  goForward(): Promise<void>;
+  reload(): Promise<void>;
+  stopLoading(): Promise<void>;
+  resolveNavigationRequest(id: number, action: string): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
@@ -131,12 +72,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   useImperativeHandle(ref, (): InternalRef => {
     // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
-    const call = <K extends keyof NativeMethods>(name: K) => native.current?.[name];
     return {
-      goBack: () => void call('goBack')?.(),
-      goForward: () => void call('goForward')?.(),
-      reload: () => void call('reload')?.(),
-      stopLoading: () => void call('stopLoading')?.(),
+      goBack: () => void native.current?.goBack(),
+      goForward: () => void native.current?.goForward(),
+      reload: () => void native.current?.reload(),
+      stopLoading: () => void native.current?.stopLoading(),
       evaluate: async (script) => parseResult((await native.current?.evaluate(script)) ?? null),
       getUrl: async () => (await native.current?.getUrl()) ?? '',
       [STORE]: store,
@@ -154,12 +94,22 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     }
   };
 
+  // Native blocks unanswered requests after 1 s and ignores late answers.
+  const onNavigationRequest = async ({
+    nativeEvent: { id, ...request },
+  }: NativeEvent<NavigationRequest & { id: number }>) => {
+    const action = (await props.onNavigationRequest?.(request)) ?? 'block';
+    await native.current?.resolveNavigationRequest(id, action);
+  };
+
   return (
     <NativeWebView
       ref={native}
       source={props.source}
       style={props.style}
+      navigationRules={props.navigationRules}
       onNavigationState={onNavigationState}
+      onNavigationRequest={onNavigationRequest}
     />
   );
 }

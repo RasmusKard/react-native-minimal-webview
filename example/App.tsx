@@ -1,4 +1,11 @@
-import { type WebViewRef, type WebViewSource, WebView, useWebViewState } from 'react-native-minimal-webview';
+import {
+  type NavigationRule,
+  type WebViewProps,
+  type WebViewRef,
+  type WebViewSource,
+  WebView,
+  useWebViewState,
+} from 'react-native-minimal-webview';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +17,8 @@ export default function App() {
   const ref = useRef<WebViewRef>(null);
   const state = useWebViewState(ref);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
+  const [rules, setRules] = useState<NavigationRule[] | undefined>();
+  const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -19,6 +28,8 @@ export default function App() {
     ref,
     state: () => stateRef.current,
     load: (uri) => setSource({ uri }),
+    setRules,
+    setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
   harnessRef.current = harness;
@@ -36,25 +47,8 @@ export default function App() {
         source={source}
         style={styles.webview}
         navigationRules={rules}
-        bridge={bridge}
-        extensions={extensions}
         onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
-        applicationNameForUserAgent="MinimalWebViewExample/1.0"
-        thirdPartyCookiesEnabled
-        onError={(event) => events.errors.push(event)}
-        onProcessGone={(event) => events.gone.push(event)}
-        onNavigation={(event) => events.navigations.push(event)}
-        onLoadStart={() => events.loads.push('start')}
-        onLoad={() => events.loads.push('load')}
-        onLoadEnd={() => events.loads.push('end')}
-        renderError={(error) => (
-          <ErrorScreen error={error} onRetry={() => ref.current?.reload()} mounted={events.overlay} />
-        )}
-        {...extraProps}
       />
-      <Text testID="harness-request" style={styles.state}>
-        {driverRequest}
-      </Text>
       <Text style={styles.state} numberOfLines={3}>
         {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
