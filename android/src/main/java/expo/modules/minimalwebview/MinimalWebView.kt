@@ -1,9 +1,14 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
+import android.util.Log
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -18,11 +23,13 @@ import expo.modules.kotlin.views.ExpoView
 
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
+  private val onNavigationRequest by EventDispatcher<Map<String, Any?>>()
 
   val webView = WebView(context)
 
   // Props, applied together in applyProps()
   var source: Map<String, Any?>? = null
+  var navigationRules: List<Map<String, Any?>>? = null
   private var loadedSource: Map<String, Any?>? = null
 
   // Navigation state. Native owns the committed URL; JS is told.
@@ -33,6 +40,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var progress = 0.0
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
+  // `ask` decisions waiting for JS, by request id. Unanswered ones expire after ASK_TIMEOUT_MS (= block).
+  private val pendingRequests = mutableMapOf<Int, String>()
+  private var nextRequestId = 0
   private val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
 
   init {
@@ -67,7 +77,65 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
   }
 
+  /** JS answered an `ask`. Android cannot pause a navigation, so `allow` reissues it with loadUrl. */
+  fun resolveNavigationRequest(id: Int, action: String) {
+    val url = pendingRequests.remove(id) ?: return
+    when (action) {
+      "allow" -> webView.loadUrl(url)
+      "external" -> openExternal(url)
+    }
+  }
+
+  private fun decide(request: NavigationRules.Request): Boolean {
+    val decision = NavigationRules.decide(navigationRules, request)
+    when (decision.action) {
+      "allow" -> return false
+      "external" -> openExternal(request.url)
+      "ask" -> ask(request)
+    }
+    return true
+  }
+
+  // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the referrer and gesture flag.
+  private fun ask(request: NavigationRules.Request) {
+    if (!request.mainFrame) {
+      Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
+      return
+    }
+    val id = ++nextRequestId
+    pendingRequests[id] = request.url
+    onNavigationRequest(
+      mapOf(
+        "id" to id,
+        "url" to request.url,
+        "mainFrame" to request.mainFrame,
+        "newWindow" to request.newWindow,
+        "userInitiated" to request.userInitiated
+      )
+    )
+    postDelayed({ pendingRequests.remove(id) }, ASK_TIMEOUT_MS)
+  }
+
+  private fun openExternal(url: String) {
+    val intent = if (url.startsWith("intent:", ignoreCase = true)) {
+      // Only what a browser would allow: no explicit component or selector.
+      Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
+        addCategory(Intent.CATEGORY_BROWSABLE)
+        component = null
+        selector = null
+      }
+    } else {
+      Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    }
+    try {
+      context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (e: ActivityNotFoundException) {
+      Log.w(TAG, "no app opens $url", e)
+    }
+  }
+
   fun destroy() {
+    pendingRequests.clear()
     webView.stopLoading()
     webView.destroy()
   }
@@ -123,6 +191,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private inner class Client : WebViewClient() {
+    // Not called for POST, the initial loadUrl, or reissued loads; called again for their redirects.
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) =
+      decide(NavigationRules.Request(request.url.toString(), request.isForMainFrame, false, request.hasGesture()))
+
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
       if (hasNavigationListener) return
       loading = true
@@ -155,3 +227,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
   }
 }
+
+private const val TAG = "MinimalWebView"
+private const val ASK_TIMEOUT_MS = 1000L
