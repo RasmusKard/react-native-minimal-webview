@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bridge</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>Bridge</h1>
+<p>window.nativeBridge: <b id="present"></b></p>
+<button id="call" onclick="nativeBridge.call('echo', { from: 'page', at: Date.now() }).then((r) => log('echo result', r), (e) => log('echo error', e.code || e.message))">call echo</button>
+<button id="missing" onclick="nativeBridge.call('nope').then((r) => log('nope result', r), (e) => log('nope error', e.code || e.message))">call a missing method</button>
+<button id="throw" onclick="nativeBridge.call('fail').then((r) => log('fail result', r), (e) => log('fail error', e.code || e.message))">call a throwing method</button>
+<button id="slow" onclick="nativeBridge.call('slow', { ms: 15000 }).then((r) => log('slow result', r), (e) => log('slow error', e.code || e.message))">call a slow method (times out)</button>
+<button id="emit" onclick="nativeBridge.emit('pageEvent', { n: 1 }); log('emitted')">emit an event</button>
+<iframe src="http://127.0.0.1:8090/bridge.html?frame=cross" width="100%" height="160"></iframe>
+<script>
+  addEventListener('DOMContentLoaded', () => {
+    document.getElementById('present').textContent = String(typeof window.nativeBridge === 'object');
+    if (!window.nativeBridge) return;
+    nativeBridge.handle('sum', ({ a, b }) => a + b);
+    nativeBridge.handle('pageSlow', () => new Promise((resolve) => setTimeout(() => resolve('late'), 2000)));
+    nativeBridge.on('nativeEvent', (payload) => log('nativeEvent', payload));
+  });
+</script>

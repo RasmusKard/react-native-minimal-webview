@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payment-style POST</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>Payment-style POST</h1>
+<form id="form" method="post" action="/post">
+  <input name="amount" value="9.99" />
+  <input name="card" value="4242 4242 4242 4242" />
+  <button id="pay">pay</button>
+</form>
+<form id="form-redirect" method="post" action="/redirect?to=/post">
+  <button id="pay-redirect">pay (POST then 302)</button>
+</form>
