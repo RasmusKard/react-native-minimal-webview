@@ -1,0 +1,64 @@
+{
+  "name": "minimal-rn-webview",
+  "version": "0.1.0",
+  "description": "A minimal, extensible WebView for React Native (Expo Modules)",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "build": "node internal/module_scripts/build.js",
+    "clean": "node internal/module_scripts/clean.js",
+    "test": "node internal/module_scripts/test.js",
+    "prepare": "node internal/module_scripts/prepare.js",
+    "open:ios": "node internal/module_scripts/open-ios.js",
+    "open:android": "node internal/module_scripts/open-android.js",
+    "lint:ci": "eslint -c eslint.ci.config.mjs --quiet --suppressions-location .claude/baseline/eslint-suppressions.json src",
+    "mutation": "stryker run"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "minimal-rn-webview",
+    "MinimalWebView"
+  ],
+  "repository": "https://github.com/RasmusKard/minimal-rn-webview",
+  "bugs": {
+    "url": "https://github.com/RasmusKard/minimal-rn-webview/issues"
+  },
+  "author": "Rasmus Kard <rasmus.kard@delfi.ee> (https://github.com/RasmusKard)",
+  "license": "MIT",
+  "homepage": "https://github.com/RasmusKard/minimal-rn-webview#readme",
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/jest-runner": "10.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/react": "~19.3.0",
+    "babel-preset-expo": "~58.0.11",
+    "dependency-cruiser": "18.5.0",
+    "eslint": "~9.39.4",
+    "eslint-config-universe": "^15.0.3",
+    "eslint-plugin-sonarjs": "4.2.2",
+    "eslint-plugin-testing-library": "7.16.2",
+    "expo": "~58.0.6",
+    "expo-modules-core": "58.0.14",
+    "jest": "^30.0.0",
+    "jest-expo": "~58.0.8",
+    "knip": "6.40.0",
+    "prettier": "^3.0.0",
+    "react": "19.3.0",
+    "react-native": "0.88.0-rc.3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "8.71.1"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "roots": [
+      "<rootDir>/src"
+    ]
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}
