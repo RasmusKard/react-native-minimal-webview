@@ -136,6 +136,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description, isMainFrame }`. Main-frame errors only. SSL errors are always cancelled |
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
+| `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
 
 **Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()`.
 
@@ -244,8 +245,8 @@ The interface is **experimental** until it has had more outside users.
 
 - File access is off, mixed content is never allowed, and SSL errors are always cancelled.
 - There is no `addJavascriptInterface`. Android pages see one extra global, `nativeEvaluateResult`, for `evaluate` results.
-- The bridge works only for allowed origins, main frame only.
 - A page can open a window only from a tap, unless `javaScriptCanOpenWindowsAutomatically` is set. The navigation rules decide every new window.
+- The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
 - Permissions are granted only to configured origins in the main frame, and are denied by default.
 - Download filenames are sanitised.
