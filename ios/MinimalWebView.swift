@@ -214,6 +214,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     observations.removeAll()
     webView?.configuration.userContentController.removeAllScriptMessageHandlers()
     webView?.stopLoading()
+    // Audio and video otherwise keep playing after unmount (react-native-webview #2449, PR #3234).
+    webView?.pauseAllMediaPlayback()
     webView?.removeFromSuperview()
     webView = nil
   }

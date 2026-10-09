@@ -15,9 +15,10 @@ import expo.modules.minimalwebview.WebViewExtension
 class PullToRefresh : WebViewExtension {
   private lateinit var host: ExtensionHost
   private var layout: SwipeRefreshLayout? = null
-  // The page's answer for the current touch. It is not reset at touch-down: SwipeRefreshLayout ignores a gesture
-  // whose down event saw "can scroll up", and the answer (a few ms) arrives before the finger passes the touch slop.
-  private var innerScrolled = false
+  // The page's answer for the current touch; null while it is pending, which holds the pull off. The down event itself
+  // must see false: SwipeRefreshLayout only tracks a gesture whose down event it accepted.
+  private var innerScrolled: Boolean? = false
+  private var touches = 0
 
   override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
     this.host = host
@@ -26,15 +27,18 @@ class PullToRefresh : WebViewExtension {
   override fun wrap(content: View): View = Layout(content.context).apply {
     addView(content)
     setOnRefreshListener { host.webView.reload() }
-    setOnChildScrollUpCallback { _, _ -> host.webView.canScrollVertically(-1) || innerScrolled }
+    setOnChildScrollUpCallback { _, _ -> host.webView.canScrollVertically(-1) || innerScrolled != false }
     layout = this
   }
 
   private fun checkInnerScroller(x: Float, y: Float) {
+    val touch = ++touches
     val density = host.webView.resources.displayMetrics.density
     host.webView.evaluateJavascript("($INNER_SCROLLED)(${x / density}, ${y / density})") { result ->
-      innerScrolled = result == "true"
+      if (touch == touches) innerScrolled = result == "true"
     }
+    // A busy page answers late: don't hold the pull off for longer than this.
+    host.webView.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
   }
 
   override fun onPageFinished(url: String) {
@@ -44,11 +48,17 @@ class PullToRefresh : WebViewExtension {
 
   private inner class Layout(context: Context) : SwipeRefreshLayout(context) {
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-      if (event.actionMasked == MotionEvent.ACTION_DOWN) checkInnerScroller(event.x, event.y)
-      return super.onInterceptTouchEvent(event)
+      if (event.actionMasked != MotionEvent.ACTION_DOWN) return super.onInterceptTouchEvent(event)
+      innerScrolled = false
+      return super.onInterceptTouchEvent(event).also {
+        innerScrolled = null
+        checkInnerScroller(event.x, event.y)
+      }
     }
   }
 }
+
+private const val ANSWER_TIMEOUT_MS = 150L
 
 /** True when the element at (x, y) has a scrolled ancestor that can scroll vertically (CSS pixels). */
 private const val INNER_SCROLLED = """(x, y) => {

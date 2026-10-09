@@ -626,8 +626,10 @@ async function crash(h: Harness) {
   r.check('the bridge works after recovery', (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4);
 
   for (const n of [2, 3]) {
+    const loads = h.events.loads.length;
     await kill(n);
-    await waitFor(h, (s) => s.url === page && idle(s), 15000);
+    // url and idle don't change across recovery: wait for the reload to finish, or the next kill finds no renderer.
+    await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s), 15000);
   }
   const fourth = await kill(4);
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
