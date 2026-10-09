@@ -37,44 +37,43 @@ type ExtensionEvent = {
   askId?: number;
 };
 
-type NativeProps = Pick<
-  WebViewProps,
-  | 'source'
-  | 'style'
-  | 'navigationRules'
-  | 'injectedScripts'
-  | 'userAgent'
-  | 'applicationNameForUserAgent'
-  | 'thirdPartyCookies'
-  | 'mediaPlaybackRequiresUserAction'
-  | 'allowsInlineMediaPlayback'
-  | 'scrollEnabled'
-  | 'bounces'
-  | 'showsScrollIndicators'
-  | 'webviewDebuggingEnabled'
-> & {
-  ref: Ref<NativeMethods>;
-  bridgeScript: string | undefined;
-  bridgeOrigins: string[] | undefined;
-  extensions: WebViewExtension['native'][] | undefined;
-  openExternalInJS: boolean;
-  onNavigation: (event: NativeEvent<NavigationEvent>) => void;
-  onNavigationState: (event: NativeEvent<NavigationState>) => void;
-  onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
-  onBridge: (event: NativeEvent<BridgeEvent>) => void;
-  onExtension: (event: NativeEvent<ExtensionEvent>) => void;
-  onError: (event: NativeEvent<WebViewErrorEvent>) => void;
-  onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
-};
+/** Props that pass straight through to the native view. */
+const PASSTHROUGH = [
+  'navigationRules',
+  'userAgent',
+  'applicationNameForUserAgent',
+  'thirdPartyCookies',
+  'mediaPlaybackRequiresUserAction',
+  'allowsInlineMediaPlayback',
+  'scrollEnabled',
+  'bounces',
+  'showsScrollIndicators',
+] as const;
+type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
-type NativeMethods = {
-  goBack(): Promise<void>;
-  goForward(): Promise<void>;
-  reload(): Promise<void>;
-  stopLoading(): Promise<void>;
+type NativeProps = Passthrough &
+  Pick<WebViewProps, 'source' | 'style' | 'injectedScripts' | 'webviewDebuggingEnabled'> & {
+    ref: Ref<NativeMethods>;
+    bridgeScript: string | undefined;
+    bridgeOrigins: string[] | undefined;
+    extensions: WebViewExtension['native'][] | undefined;
+    openExternalInJS: boolean;
+    onNavigation: (event: NativeEvent<NavigationEvent>) => void;
+    onNavigationState: (event: NativeEvent<NavigationState>) => void;
+    onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
+    onBridge: (event: NativeEvent<BridgeEvent>) => void;
+    onExtension: (event: NativeEvent<ExtensionEvent>) => void;
+    onError: (event: NativeEvent<WebViewErrorEvent>) => void;
+    onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
+  };
+
+type NativeMethods = Record<
+  'goBack' | 'goForward' | 'reload' | 'stopLoading',
+  () => Promise<void>
+> & {
   bridgePost(message: string): Promise<void>;
-  /** Also carries the answer to any native `ask` (navigation or extension): method `__answer`. */
-  extensionCall(name: string, method: string, args: Record<string, unknown>): Promise<unknown>;
+  /** Answers a native `ask` (navigation or extension). The value is wrapped: native arguments can't be of any type. */
+  answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
@@ -94,41 +93,36 @@ const INITIAL_STATE: NavigationState = {
 
 const STORE = Symbol('navigationStateStore');
 
-type Store = {
-  get(): NavigationState;
-  subscribe(listener: () => void): () => void;
-};
+type Store = ReturnType<typeof createStore>;
 
 type InternalRef = WebViewRef & { [STORE]: Store };
 
-function createStore(): Store & { set(state: NavigationState): void } {
+function createStore() {
   let state = INITIAL_STATE;
   const listeners = new Set<() => void>();
   return {
     get: () => state,
-    set(next) {
+    set(next: NavigationState) {
       state = next;
       listeners.forEach((listener) => listener());
     },
-    subscribe(listener) {
+    subscribe(listener: () => void) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
   };
 }
 
-function parseResult(json: string | null): unknown {
-  return json === null || json === '' ? undefined : (JSON.parse(json) as unknown);
-}
+/** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
+const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string) =>
+  Promise.resolve()
+    .then(handler)
+    .catch((error: unknown) => {
+      console.error(`[react-native-minimal-webview] ${failure}`, error);
+      return fallback;
+    });
 
-/** Props from extension helpers merge in list order; explicit props win. */
-function withExtensionProps(props: WebViewProps): WebViewProps {
-  const fromExtensions = props.extensions?.map((extension) => extension.props ?? {}) ?? [];
-  return Object.assign({}, ...fromExtensions, props) as WebViewProps;
-}
-
-export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebViewRef> }) {
-  const props = withExtensionProps(ownProps);
+export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
   const native = useRef<NativeMethods>(null);
   const store = useRef(createStore()).current;
   const { error, loading, onNavigationState, onError } = useLoadEvents(props, store);
@@ -140,7 +134,10 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
       goForward: () => void native.current?.goForward(),
       reload: () => void native.current?.reload(),
       stopLoading: () => void native.current?.stopLoading(),
-      evaluate: async (script) => parseResult((await native.current?.evaluate(script)) ?? null),
+      evaluate: async (script) => {
+        const json = await native.current?.evaluate(script);
+        return json ? (JSON.parse(json) as unknown) : undefined;
+      },
       getUrl: async () => (await native.current?.getUrl()) ?? '',
       [STORE]: store,
     };
@@ -160,21 +157,18 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
     else connection?.markUnavailable();
   };
 
-  const answer = (name: string, askId: number, value: unknown) =>
-    native.current?.extensionCall(name, '__answer', { askId, value: value ?? null });
+  const answer = (askId: number, value: unknown) => native.current?.answer(askId, { value: value ?? null });
 
   const onExtension = async ({
     nativeEvent: { name, event, payload, askId },
   }: NativeEvent<ExtensionEvent>) => {
     const extension = props.extensions?.find((candidate) => candidate.native.name === name);
-    // Native waits for every ask: a handler that throws still answers (null = the safe default).
-    const value = await Promise.resolve()
-      .then(() => extension?.onEvent?.(event, payload))
-      .catch((error: unknown) => {
-        console.error(`[react-native-minimal-webview] the ${name} extension's ${event} handler failed`, error);
-        return null;
-      });
-    if (askId !== undefined) await answer(name, askId, value);
+    const value = await settle(
+      () => extension?.onEvent?.(event, payload),
+      null,
+      `the ${name} extension's ${event} handler failed`
+    );
+    if (askId !== undefined) await answer(askId, value);
   };
 
   const onNavigation = ({ nativeEvent }: NativeEvent<NavigationEvent>) => {
@@ -186,13 +180,12 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
   const onNavigationRequest = async ({
     nativeEvent: { id, ...request },
   }: NativeEvent<NavigationRequest & { id: number }>) => {
-    const action = await Promise.resolve()
-      .then(() => props.onNavigationRequest?.(request))
-      .catch((error: unknown) => {
-        console.error('[react-native-minimal-webview] onNavigationRequest failed; blocking', error);
-        return 'block' as const;
-      });
-    await answer('', id, action ?? 'block');
+    const action = await settle(
+      () => props.onNavigationRequest?.(request),
+      'block',
+      'onNavigationRequest failed; blocking'
+    );
+    await answer(id, action ?? 'block');
   };
 
   const webView = (
@@ -217,22 +210,11 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
   return withOverlay(webView, props, error, loading);
 }
 
-/** Native props that pass straight through, with extension scripts first. */
+/** Native props that pass straight through. */
 function settingsOf(props: WebViewProps) {
   return {
-    navigationRules: props.navigationRules,
-    injectedScripts: [
-      ...(props.extensions?.flatMap((extension) => extension.scripts ?? []) ?? []),
-      ...(props.injectedScripts ?? []),
-    ],
-    userAgent: props.userAgent,
-    applicationNameForUserAgent: props.applicationNameForUserAgent,
-    thirdPartyCookies: props.thirdPartyCookies,
-    mediaPlaybackRequiresUserAction: props.mediaPlaybackRequiresUserAction,
-    allowsInlineMediaPlayback: props.allowsInlineMediaPlayback,
-    scrollEnabled: props.scrollEnabled,
-    bounces: props.bounces,
-    showsScrollIndicators: props.showsScrollIndicators,
+    ...(Object.fromEntries(PASSTHROUGH.map((key) => [key, props[key]])) as Passthrough),
+    injectedScripts: props.injectedScripts,
     webviewDebuggingEnabled: props.webviewDebuggingEnabled ?? __DEV__,
   };
 }
@@ -241,7 +223,7 @@ function settingsOf(props: WebViewProps) {
  * Load events and the overlay state. The current load's main-frame error: onLoad fires only without one, and
  * renderError shows it until the next load starts.
  */
-function useLoadEvents(props: WebViewProps, store: ReturnType<typeof createStore>) {
+function useLoadEvents(props: WebViewProps, store: Store) {
   const [error, setError] = useState<WebViewErrorEvent | null>(null);
   const errorRef = useRef<WebViewErrorEvent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -276,7 +258,12 @@ function useLoadEvents(props: WebViewProps, store: ReturnType<typeof createStore
 }
 
 /** The error screen wins over the loading screen; both cover the WebView until the next load starts or finishes. */
-function withOverlay(webView: ReactElement, props: WebViewProps, error: WebViewErrorEvent | null, loading: boolean) {
+function withOverlay(
+  webView: ReactElement,
+  props: WebViewProps,
+  error: WebViewErrorEvent | null,
+  loading: boolean
+) {
   if (!props.renderLoading && !props.renderError) return webView;
   const overlay = error ? props.renderError?.(error) : loading ? props.renderLoading?.() : null;
   return (

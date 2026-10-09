@@ -77,10 +77,7 @@ extension MinimalWebView {
       if action == "allow" { self.askedAndAllowed.insert(request.url) }
       self.finish(request, ["allow", "block", "external"].contains(action) ? action : "block", decision.rule, completion)
     }
-    onNavigationRequest([
-      "id": id, "url": request.url, "mainFrame": request.mainFrame, "newWindow": request.newWindow,
-      "userInitiated": request.userInitiated
-    ])
+    onNavigationRequest(request.payload.merging(["id": id]) { $1 })
     // Unanswered after the timeout: block.
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
       self?.pendingAsks.removeValue(forKey: id)?(nil)
@@ -96,25 +93,13 @@ extension MinimalWebView {
   }
 
   private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
-    onNavigation([
-      "url": request.url, "action": action, "mainFrame": request.mainFrame, "newWindow": request.newWindow,
-      "userInitiated": request.userInitiated, "rule": rule as Any? ?? NSNull()
-    ])
+    onNavigation(request.payload.merging(["action": action, "rule": rule as Any? ?? NSNull()]) { $1 })
   }
 
   func register(_ onAnswer: @escaping (Any?) -> Void) -> Int {
     nextAskId += 1
     pendingAsks[nextAskId] = onAnswer
     return nextAskId
-  }
-
-  /// The generic channel from JS: answers to any `ask`. (iOS extensions take no calls yet.)
-  func extensionCall(_ name: String, _ method: String, _ args: [String: Any]) -> Any? {
-    // JS numbers arrive as Double.
-    if method == "__answer", let id = (args["askId"] as? NSNumber)?.intValue {
-      pendingAsks.removeValue(forKey: id)?(args["value"] is NSNull ? nil : args["value"])
-    }
-    return nil
   }
 
   /// Answers every pending ask with nil (block): the WebView or its page is going away.

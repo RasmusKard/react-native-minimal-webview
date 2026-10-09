@@ -26,6 +26,8 @@ const hostMatches = (pattern: string, host: string) =>
  * What native decides for a navigation: the same matcher as Kotlin and Swift, checked against the shared cases in
  * test-vectors/navigation-rules.json. Useful for unit-testing an app's rules.
  */
+const FLAGS = ['mainFrame', 'newWindow', 'userInitiated'] as const;
+
 export function decideNavigation(
   rules: NavigationRule[] | undefined,
   request: NavigationRequest
@@ -48,9 +50,7 @@ export function decideNavigation(
       (!schemes || schemes.some((s) => s.toLowerCase() === scheme)) &&
       (!hosts || (host !== null && hosts.some((h) => hostMatches(h.toLowerCase(), host)))) &&
       (!paths || paths.some((p) => path.startsWith(p))) &&
-      (rule.mainFrame === undefined || rule.mainFrame === request.mainFrame) &&
-      (rule.newWindow === undefined || rule.newWindow === request.newWindow) &&
-      (rule.userInitiated === undefined || rule.userInitiated === request.userInitiated)
+      FLAGS.every((flag) => rule[flag] === undefined || rule[flag] === request[flag])
     );
   });
   return index < 0

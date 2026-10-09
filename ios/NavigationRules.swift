@@ -7,6 +7,11 @@ enum NavigationRules {
     let mainFrame: Bool
     let newWindow: Bool
     let userInitiated: Bool
+
+    /// The fields JS events carry.
+    var payload: [String: Any] {
+      ["url": url, "mainFrame": mainFrame, "newWindow": newWindow, "userInitiated": userInitiated]
+    }
   }
 
   /// `action` is allow, block, external or ask; `rule` is the matching rule's index, nil when a default decided.

@@ -45,7 +45,11 @@ class MinimalWebViewModule : Module() {
         "version" to (provider?.versionName ?: ""),
         "provider" to (provider?.packageName ?: ""),
         "available" to (provider != null),
-        "features" to USED_FEATURES.associateWith { WebViewFeature.isFeatureSupported(it) }
+        "features" to listOf(
+          WebViewFeature.NAVIGATION_LISTENER,
+          WebViewFeature.WEB_MESSAGE_LISTENER,
+          WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
+        ).associateWith { WebViewFeature.isFeatureSupported(it) }
       )
     }
 
@@ -76,8 +80,8 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("reload") { view: MinimalWebView -> view.webView.reload() }.runOnQueue(Queues.MAIN)
       AsyncFunction("stopLoading") { view: MinimalWebView -> view.webView.stopLoading() }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
-      AsyncFunction("extensionCall") { view: MinimalWebView, name: String, method: String, args: Map<String, Any?> ->
-        view.extensionCall(name, method, args)
+      AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
+        view.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("getUrl") { view: MinimalWebView -> view.webView.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
@@ -87,9 +91,3 @@ class MinimalWebViewModule : Module() {
     }
   }
 }
-
-private val USED_FEATURES = listOf(
-  WebViewFeature.NAVIGATION_LISTENER,
-  WebViewFeature.WEB_MESSAGE_LISTENER,
-  WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
-)
