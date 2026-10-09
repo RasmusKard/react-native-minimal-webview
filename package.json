@@ -6,7 +6,8 @@
   "types": "build/index.d.ts",
   "files": [
     "build",
-    "!build/bridge/pageClient.*",
+    "!build/bridge/pageClient.js*",
+    "!build/bridge/pageClient.d.ts*",
     "src",
     "!src/**/__tests__",
     "ios",
@@ -24,7 +25,8 @@
     "open:android": "open -a 'Android Studio' example/android",
     "lint:ci": "eslint -c eslint.ci.config.mjs --quiet --suppressions-location .claude/baseline/eslint-suppressions.json src",
     "mutation": "stryker run",
-    "build:page-client": "node internal/build-page-client.mjs"
+    "build:page-client": "node internal/build-page-client.mjs",
+    "check:pack": "npm run prepare && node internal/check-pack.mjs"
   },
   "keywords": [
     "react-native",
