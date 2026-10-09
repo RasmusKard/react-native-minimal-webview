@@ -122,14 +122,14 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. On iOS the app name is fixed at creation: changing it recreates the WebView |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. Android needs System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
-| `bridge` | `createBridge(...)` |
+| `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
 | `thirdPartyCookies` | Android only. WebKit always blocks third-party cookies (as Safari does) |
 | `mediaPlaybackRequiresUserAction` (default true), `allowsInlineMediaPlayback` (iOS, default false) | Fixed at creation on iOS |
 | `scrollEnabled`, `bounces` | iOS only |
 | `showsScrollIndicators` | |
 | `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
-| `extensions` | See below |
+| `extensions` | See below. Fixed at mount, like `bridge`; their handlers stay live |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description }`. Main-frame errors only. SSL errors are always cancelled |

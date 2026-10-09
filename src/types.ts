@@ -116,6 +116,7 @@ type OwnProps = {
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
+  /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
   thirdPartyCookies?: boolean;
@@ -136,6 +137,7 @@ type OwnProps = {
   javaScriptCanOpenWindowsAutomatically?: boolean;
   /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   webviewDebuggingEnabled?: boolean;
+  /** Fixed at mount: a change is ignored with a warning; remount with a new `key` to apply it. Handlers stay live. */
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;
   /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onError still fires). */

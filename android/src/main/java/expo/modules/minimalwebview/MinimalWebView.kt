@@ -56,9 +56,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var openExternalInJS = false
   private var loadedSource: Map<String, Any?>? = null
 
-  // Extensions live until the `extensions` prop changes. `wrap` runs again for each new WebView.
+  // Installed once, from the first props: JS fixes `extensions` at mount. `wrap` runs again for each new WebView.
   private var activeExtensions: Map<String, WebViewExtension>? = null
-  private var installedExtensions: List<Map<String, Any?>>? = null
 
   // Every `ask` (navigation and extensions) waits here for JS, by id, until answered through `answer`.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
@@ -111,7 +110,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
   fun applyProps() {
     applySettings()
-    if (extensions.orEmpty() != installedExtensions) installExtensions()
+    if (activeExtensions == null) installExtensions()
     scripts.apply()
     val next = source ?: return
     if (next == loadedSource) return
@@ -146,8 +145,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun installExtensions() {
-    activeExtensions?.values?.forEach { it.onDetach() }
-    installedExtensions = extensions.orEmpty()
     activeExtensions = extensions.orEmpty().mapNotNull { spec ->
       val name = spec["name"] as? String ?: return@mapNotNull null
       val extension = WebViewExtensions.create(name)

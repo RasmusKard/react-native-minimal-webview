@@ -36,3 +36,29 @@ describe('WebView', () => {
     expect(container).not.toHaveProperty('renderLoading');
   });
 });
+
+describe('extensions and bridge', () => {
+  it('are fixed at mount: a change warns once and native keeps the first specs', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = createRoot();
+    const show = (orientation: 'keep' | 'unlock') =>
+      act(async () =>
+        root.render(
+          <WebView
+            source={{ uri: 'https://example.com' }}
+            extensions={[{ native: { name: 'fullscreenVideo', config: { orientation } } }]}
+          />
+        )
+      );
+    await show('keep');
+    await show('keep');
+    expect(warn).not.toHaveBeenCalled();
+    await show('unlock');
+    await show('keep');
+    await show('unlock');
+    expect(warn).toHaveBeenCalledTimes(1);
+    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
+    expect(native?.extensions).toEqual([{ name: 'fullscreenVideo', config: { orientation: 'keep' } }]);
+    warn.mockRestore();
+  });
+});

@@ -13,40 +13,32 @@ import org.json.JSONArray
 internal class MinimalWebViewScripts(private val owner: MinimalWebView, private val onBridge: (Map<String, Any?>) -> Unit) {
   private val webView get() = owner.webView
 
-  // The bridge as installed (script and origins), so a changed bridge prop can replace it.
-  private var installedBridge: Pair<String?, List<String>?>? = null
-  private var bridgeScriptHandler: ScriptHandler? = null
   // Bridge: the page posts through `window.nativeBridgeTransport`; replies go to the main frame's latest proxy.
   private var replyProxy: JavaScriptReplyProxy? = null
   private var installedScripts: List<Map<String, Any?>>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
   private val evaluations = mutableMapOf<Int, Promise>()
   private var nextEvaluation = 0
-  private var evaluateInstalled = false
+  private var installed = false
 
+  /** The evaluate channel and the bridge go in once, from the first props: JS fixes `bridge` at mount. */
   fun apply() {
-    if (!evaluateInstalled) installEvaluate()
-    if (owner.bridgeScript to owner.bridgeOrigins != installedBridge) installBridge()
+    if (!installed) {
+      installed = true
+      installEvaluate()
+      installBridge()
+    }
     installScripts()
   }
 
   /** A new WebView (after a crash) has nothing installed yet. */
   fun reinstall() {
-    installedBridge = null
-    bridgeScriptHandler = null
     installEvaluate()
     installBridge()
     installScripts(force = true)
   }
 
   private fun installBridge() {
-    if (installedBridge != null) {
-      WebViewCompat.removeWebMessageListener(webView, "nativeBridgeTransport")
-      bridgeScriptHandler?.remove()
-      bridgeScriptHandler = null
-      replyProxy = null
-    }
-    installedBridge = owner.bridgeScript to owner.bridgeOrigins
     val script = owner.bridgeScript ?: return
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) ||
       !WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
@@ -74,7 +66,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
       onBridge(mapOf("message" to message.data))
     }
     val pageWorld = WebViewCompat.getExecutionWorld(webView, JavaScriptExecutionWorld.PAGE_WORLD_NAME)
-    bridgeScriptHandler = WebViewCompat.addJavaScriptOnEvent(
+    WebViewCompat.addJavaScriptOnEvent(
       webView, script, WebViewCompat.INJECTION_EVENT_DOCUMENT_START, origins, pageWorld
     )
   }
@@ -110,7 +102,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     failEvaluations()
     // A new document: the old reply proxy is gone; JS queues bridge messages until the page is ready again.
     replyProxy = null
-    if (installedBridge?.first != null) onBridge(mapOf("navigated" to true))
+    if (owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
   }
 
   fun failPending() {
@@ -121,7 +113,6 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   /** `evaluate` results come back through one global in every frame (`*`, before the first document); only the main
    * frame's replies count. A page can forge them, as it can already shape any value its own world returns. */
   private fun installEvaluate() {
-    evaluateInstalled = true
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
     WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
       val reply = if (isMainFrame) runCatching { JSONArray(message.data) }.getOrNull() else null

@@ -209,8 +209,9 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     };
   }, [store]);
 
+  const fixed = useFixedAtMount(props);
   const connection =
-    props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+    fixed.bridge && (fixed.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
     connection.attach((message) => void native.current?.bridgePost(message));
@@ -270,7 +271,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       {...settingsOf(props)}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      extensions={props.extensions?.map((extension) => extension.native)}
+      extensions={fixed.extensions}
       openExternalInJS={props.onOpenExternal !== undefined}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
@@ -282,6 +283,28 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     />
   );
   return withOverlay(webView, props, error, loading);
+}
+
+const nativeSpecs = (props: WebViewProps) => props.extensions?.map((extension) => extension.native);
+
+/**
+ * Native sets up the extensions and the bridge once, at mount; their JS handlers (`onEvent`, `bridge.handle`) stay
+ * live. A later change is ignored with a warning: remount with a new `key` to apply it.
+ */
+function useFixedAtMount(props: WebViewProps) {
+  const [fixed] = useState(() => ({ bridge: props.bridge, extensions: nativeSpecs(props) }));
+  const warned = useRef(false);
+  const changed =
+    props.bridge !== fixed.bridge ||
+    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions);
+  useEffect(() => {
+    if (!changed || warned.current) return;
+    warned.current = true;
+    console.warn(
+      '[minimal-rn-webview] `extensions` and `bridge` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
+    );
+  }, [changed]);
+  return fixed;
 }
 
 /** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */

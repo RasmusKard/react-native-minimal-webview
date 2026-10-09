@@ -31,7 +31,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var openExternalInJS = false
   private var loadedSource: NSDictionary?
 
-  // Some WKWebViewConfiguration settings are fixed at creation: changing one recreates the WebView.
+  // Some WKWebViewConfiguration settings are fixed at creation: changing one recreates the WebView. The bridge and the
+  // extensions are set up with each WKWebView too; JS fixes them at mount, so they never change.
   private(set) var webView: WKWebView?
   private var creationSettings: NSDictionary?
   private var observations: [NSKeyValueObservation] = []
@@ -78,9 +79,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let settings: NSDictionary = [
       "applicationName": applicationNameForUserAgent ?? NSNull(),
       "mediaRequiresAction": mediaPlaybackRequiresUserAction,
-      "inline": allowsInlineMediaPlayback,
-      "bridge": bridgeScript ?? NSNull(),
-      "extensions": extensions
+      "inline": allowsInlineMediaPlayback
     ]
     if settings != creationSettings {
       if webView != nil {
