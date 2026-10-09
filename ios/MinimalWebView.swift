@@ -22,6 +22,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var scrollEnabled = true
   var bounces = true
   var showsScrollIndicators = true
+  var javaScriptCanOpenWindowsAutomatically = false
   var webviewDebuggingEnabled = false
   var navigationRules: [[String: Any]]?
   var injectedScripts: [[String: Any]] = []
@@ -98,6 +99,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.scrollView.showsVerticalScrollIndicator = showsScrollIndicators
     webView.scrollView.showsHorizontalScrollIndicator = showsScrollIndicators
     webView.isInspectable = webviewDebuggingEnabled
+    // Shared with the live WebView (the configuration getter copies, but keeps the same preferences object).
+    webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
     guard let next = source, loadedSource != next as NSDictionary else { return }
     loadedSource = next as NSDictionary
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
@@ -161,8 +164,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     configuration.applicationNameForUserAgent = applicationNameForUserAgent
     configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
     configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback
-    // window.open reaches createWebViewWith (gesture or not), as on Android; the navigation rules decide.
-    configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+    // A tap's window.open and target=_blank reach createWebViewWith, as on Android; the navigation rules decide.
+    // Without a gesture only when the app opts in (javaScriptCanOpenWindowsAutomatically).
+    configuration.preferences.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
     if bridgeScript != nil {
       configuration.userContentController.addScriptMessageHandler(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }

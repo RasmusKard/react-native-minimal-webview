@@ -48,6 +48,7 @@ const PASSTHROUGH = [
   'scrollEnabled',
   'bounces',
   'showsScrollIndicators',
+  'javaScriptCanOpenWindowsAutomatically',
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 

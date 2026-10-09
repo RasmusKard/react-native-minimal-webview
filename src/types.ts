@@ -129,6 +129,12 @@ export type WebViewProps = {
   bounces?: boolean;
   showsScrollIndicators?: boolean;
   /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
+  /**
+   * Lets a script open a window (`window.open`) without a user gesture. Default false: only a tap opens one. The
+   * navigation rules still decide it (`newWindow: true`). Some flows need it, like an OAuth popup opened after an
+   * `await`.
+   */
+  javaScriptCanOpenWindowsAutomatically?: boolean;
   webviewDebuggingEnabled?: boolean;
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;
