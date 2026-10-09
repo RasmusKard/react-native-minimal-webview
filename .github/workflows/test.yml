@@ -36,5 +36,23 @@ jobs:
       - run: cd example && npx expo prebuild --platform android --no-install
       - run: cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest
 
+  # Compiles ios/*.swift (view, module, extensions) inside the prebuilt example app.
+  ios-build:
+    # Runner label and Xcode path are pinned together: RN 0.88 needs Xcode >= 16.1, Expo SDK 56/57 need >= 26.4.
+    # If SDK 58 ends up needing the iOS 27 SDK, switch to `runs-on: xcode-27` and drop the xcode-select step.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - run: npm ci && (cd example && npm ci)
+      - run: cd example && npx expo prebuild --platform ios --no-install
+      - run: cd example/ios && pod install
+      - run: >-
+          cd example/ios && xcodebuild -workspace minimalrnwebviewexample.xcworkspace -scheme minimalrnwebviewexample
+          -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
+
   # On-device suites (example/harness.ts) need an emulator and a simulator; they run locally for now:
   # see README "Development".
