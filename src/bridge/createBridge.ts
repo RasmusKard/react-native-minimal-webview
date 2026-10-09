@@ -44,7 +44,9 @@ const ORIGIN_RULE = /^(\*|[a-z][a-z0-9+.-]*:\/\/(\*\.)?[^/:*?#\s]+(:\d+)?)$/i;
 export function createBridge(options: BridgeOptions): Bridge {
   const invalid = options.allowedOrigins.filter((rule) => !ORIGIN_RULE.test(rule));
   if (invalid.length) {
-    throw new Error(`createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`);
+    throw new Error(
+      `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
+    );
   }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const handlers = new Map<string, BridgeHandler>();
@@ -76,7 +78,11 @@ export function createBridge(options: BridgeOptions): Bridge {
   };
 
   /** Rejects calls in flight (by default because their page is gone): all, or only those already posted to a page. */
-  const rejectAll = (message: string, code: BridgeError['code'] = 'navigated', onlySent = false) => {
+  const rejectAll = (
+    message: string,
+    code: BridgeError['code'] = 'navigated',
+    onlySent = false
+  ) => {
     for (const [id, call] of pending) {
       if (onlySent && !call.sent) continue;
       clearTimeout(call.timer);
@@ -84,23 +90,18 @@ export function createBridge(options: BridgeOptions): Bridge {
       pending.delete(id);
     }
   };
-  const unavailableMessage = 'this WebView lacks the features the bridge needs; update Android System WebView';
+  const unavailableMessage =
+    'this WebView lacks the features the bridge needs; update Android System WebView';
 
   const answer = async (id: string, method: string, params: unknown) => {
+    const fail = (code: BridgeError['code'], message: string) =>
+      send({ v: 1, id, kind: 'error', error: { code, message } });
     const handler = handlers.get(method);
-    if (!handler) {
-      send({
-        v: 1,
-        id,
-        kind: 'error',
-        error: { code: 'not_found', message: `no handler for ${method}` },
-      });
-      return;
-    }
+    if (!handler) return fail('not_found', `no handler for ${method}`);
     try {
       send({ v: 1, id, kind: 'result', params: await handler(params) });
     } catch (error) {
-      send({ v: 1, id, kind: 'error', error: { code: 'handler_error', message: String(error) } });
+      fail('handler_error', String(error));
     }
   };
 
@@ -178,7 +179,8 @@ export function createBridge(options: BridgeOptions): Bridge {
       return () => handlers.delete(method);
     },
     call(method, params) {
-      if (unavailable) return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
+      if (unavailable)
+        return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
       const id = `n${++nextId}`;
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {

@@ -43,8 +43,9 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("reload") { (view: MinimalWebView) in view.reload() }
       AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
-      AsyncFunction("extensionCall") { (view: MinimalWebView, name: String, method: String, args: [String: Any]) in
-        view.extensionCall(name, method, args)
+      // JS's answer to an `ask` (navigation or extension).
+      AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
+        view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
       }
       AsyncFunction("getUrl") { (view: MinimalWebView) in view.failedUrl ?? view.webView?.url?.absoluteString }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
