@@ -15,7 +15,7 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 - Android API 29+. Set `minSdkVersion 29`, for example with `expo-build-properties`.
 - Expo SDK 58 or a bare app with the new architecture.
 
-Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run, bridge calls and `evaluate` reject with `unavailable`, and `blob:` downloads fail. The library warns about it once per process, in every build. To gate on it, check what the device supports:
+Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run, bridge calls and `evaluate` reject with `unavailable`, and `blob:` downloads fail. For `injectedScripts` and the bridge, the library warns about it once per process, in every build. To gate on it, check what the device supports:
 
 ```ts
 const info = WebView.getAndroidWebViewInfo(); // null on iOS
@@ -232,7 +232,7 @@ export const pageCounter = (): WebViewExtension => ({
 ```
 
 **The hooks:**
-- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles`, `hasPermission` and `launchForResult`.
+- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles`, `evaluate`, `hasPermission` and `launchForResult`.
 - iOS: `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles` and `reload`.
 - **Decide hooks:** the first extension that handles one wins.
 - **`ask`:** sends an event to the helper's handler for it in `on` and passes its return value back to native. `handles(event)` says whether the helper has one, so native can fall back to a default without it.

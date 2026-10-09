@@ -91,8 +91,8 @@ class Downloads : WebViewExtension {
   }
 
   /**
-   * Writes a data: URL, which [dataUrl] produces, to the cache. Everything that touches the payload (a blob can be
-   * megabytes) runs off the main thread; the event goes back on it. [url] is the download's own URL, for the event.
+   * Writes a data: URL, which [dataUrl] produces, to the cache. Unquoting, decoding and writing the payload (a blob can
+   * be megabytes) run off the main thread; the event goes back on it. [url] is the download's own URL, for the event.
    */
   private fun saveData(name: String, url: String, dataUrl: () -> String) {
     val dir = File(host.webView.context.cacheDir, "downloads/${System.nanoTime()}")

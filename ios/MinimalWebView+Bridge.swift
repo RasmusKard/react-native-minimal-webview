@@ -7,7 +7,8 @@ extension MinimalWebView {
     guard message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin), let text = message.body as? String else {
       return replyHandler(nil, "origin not allowed")
     }
-    bridgeOrigin = origin
+    // `*` allows every document, opaque ones too (whose location.origin is "null"): nothing to compare.
+    bridgeOrigin = bridgeOrigins.contains("*") ? "*" : origin
     if let header = Self.header(text), header.kind == "call" {
       pendingReplies[header.id] = replyHandler
     } else {
@@ -26,7 +27,7 @@ extension MinimalWebView {
     // Only to the allowed document that last posted (its page client says `ready` first). The page checks its origin
     // again at delivery time: the document may have changed since the post was queued.
     guard let bridgeOrigin else { return }
-    let deliver = "return location.origin === origin ? await window.nativeBridge?.__receive(message) : null"
+    let deliver = "return origin === '*' || location.origin === origin ? await window.nativeBridge?.__receive(message) : null"
     webView?.callAsyncJavaScript(deliver, arguments: ["message": text, "origin": bridgeOrigin], in: nil, in: .page) { [weak self] result in
       if case .success(let reply) = result, let reply = reply as? String {
         self?.onBridge(["message": reply])
