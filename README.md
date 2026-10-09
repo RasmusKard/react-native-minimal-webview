@@ -114,14 +114,14 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 
 | Prop | Notes |
 |---|---|
-| `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only, as in react-native-webview |
+| `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only |
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. On iOS the app name is fixed at creation: changing it recreates the WebView |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
 | `bridge` | `createBridge(...)` |
 | `thirdPartyCookies` | Android only. WebKit always blocks third-party cookies (as Safari does) |
 | `mediaPlaybackRequiresUserAction` (default true), `allowsInlineMediaPlayback` (iOS, default false) | Fixed at creation on iOS |
-| `scrollEnabled`, `bounces` | iOS only, as in react-native-webview |
+| `scrollEnabled`, `bounces` | iOS only |
 | `showsScrollIndicators` | |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
 | `extensions` | See below |

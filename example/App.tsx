@@ -23,8 +23,6 @@ import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
-import { RnwView, type RnwDriver } from './parity';
-import { PerfView, type PerfRun } from './perf';
 
 const PAGES = 'http://localhost:8090';
 
@@ -38,9 +36,6 @@ export default function App() {
   useEffect(() => {
     onDriverRequest(setDriverRequest);
   }, []);
-  const [perfRun, setPerfRun] = useState<PerfRun | null>(null);
-  const [rnwSource, setRnwSource] = useState<{ uri: string } | null>(null);
-  const rnwRef = useRef<RnwDriver>(null);
   const events = useRef<Harness['events']>({
     errors: [],
     gone: [],
@@ -105,20 +100,6 @@ export default function App() {
     setPermission: (handler) => (permissionRef.current = handler),
     setProps,
     events,
-    measureLoad: (kind, uri) =>
-      new Promise((resolve) =>
-        setPerfRun({
-          kind,
-          uri,
-          key: Date.now(),
-          startedAt: performance.now(),
-          done: (ms, readyState) => resolve({ ms, readyState }),
-        })
-      ),
-    endPerf: () => setPerfRun(null),
-    rnw: () => rnwRef.current!,
-    showRnw: setRnwSource,
-    hideRnw: () => setRnwSource(null),
     setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
@@ -153,8 +134,6 @@ export default function App() {
         )}
         {...extraProps}
       />
-      <PerfView run={perfRun} />
-      <RnwView source={rnwSource} driver={rnwRef} />
       <Text testID="harness-request" style={styles.state}>
         {driverRequest}
       </Text>

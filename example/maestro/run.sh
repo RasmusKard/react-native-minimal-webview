@@ -6,8 +6,8 @@
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
-ANDROID_SUITES="urlTracking navigation reissue bridge injection errors crash recreate overlays upload downloads permissions fullscreen info ua dialogs sampleExtension ptr borrowed parity"
-IOS_SUITES="urlTracking navigation reissue bridge injection errors crash recreate overlays downloads permissions info ua dialogs sampleExtension ptr borrowed parity"
+ANDROID_SUITES="urlTracking navigation reissue bridge injection errors crash recreate overlays upload downloads permissions fullscreen info ua dialogs sampleExtension ptr network"
+IOS_SUITES="urlTracking navigation reissue bridge injection errors crash recreate overlays downloads permissions info ua dialogs sampleExtension ptr network"
 [ $# -eq 0 ] && { [ "$PLATFORM" = android ] && set -- $ANDROID_SUITES || set -- $IOS_SUITES; }
 failed=()
 for suite in "$@"; do

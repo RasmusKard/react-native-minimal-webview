@@ -21,8 +21,6 @@ import type { RefObject } from 'react';
 import { WebView } from 'minimal-rn-webview';
 import { Platform } from 'react-native';
 
-import type { RnwDriver } from './parity';
-
 export type Harness = {
   pages: string;
   platform: string;
@@ -38,13 +36,6 @@ export type Harness = {
   pageEvents: unknown[];
   setFileRequest: (handler: ((request: FileRequest) => Promise<string[] | null>) | undefined) => void;
   setPermission: (handler: ((request: PermissionRequestEvent) => Promise<boolean>) | undefined) => void;
-  /** Mounts a fresh WebView of that kind over the screen; resolves with ms from request to first onLoadEnd. */
-  measureLoad: (kind: 'minimal' | 'rnw', uri: string) => Promise<{ ms: number; readyState: string }>;
-  endPerf: () => void;
-  /** A react-native-webview instance for parity checks (example/parity.tsx). */
-  rnw: () => RnwDriver;
-  showRnw: (source: { uri: string }) => void;
-  hideRnw: () => void;
   /** Extra WebView props, replacing the previous extras. */
   setProps: (props: Partial<WebViewProps>) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
@@ -1047,41 +1038,9 @@ async function sampleExtension(h: Harness) {
   r.done();
 }
 
-/** Mount -> first onLoadEnd, minimal-rn-webview vs react-native-webview, alternating runs; medians in ms. */
-async function perf(h: Harness) {
-  const r = reporter('perf');
-  const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!;
-  for (const [label, uri] of [
-    ['local page', `${h.pages}/spa.html`],
-    ['delfi.ee', 'https://www.delfi.ee/'],
-  ] as const) {
-    const times: Record<'minimal' | 'rnw', number[]> = { minimal: [], rnw: [] };
-    const states: Record<'minimal' | 'rnw', string[]> = { minimal: [], rnw: [] };
-    for (let i = 0; i < 5; i++) {
-      for (const kind of ['minimal', 'rnw'] as const) {
-        const result = await Promise.race([
-          h.measureLoad(kind, `${uri}?perf=${Date.now()}`),
-          sleep(30000).then(() => null),
-        ]);
-        if (result) {
-          times[kind].push(Math.round(result.ms));
-          states[kind].push(result.readyState);
-        }
-        h.endPerf();
-        await sleep(800);
-      }
-    }
-    r.info(`${label} mount->onLoadEnd ms`, {
-      minimal: { median: median(times.minimal), runs: times.minimal, readyState: states.minimal },
-      rnw: { median: median(times.rnw), runs: times.rnw, readyState: states.rnw },
-    });
-  }
-  r.done();
-}
-
-/** Behaviour borrowed from react-native-webview: first-load headers, HTTP auth, shared cookies, download failures, HTTP error pages. */
-async function borrowed(h: Harness) {
-  const r = reporter('borrowed');
+/** First-load headers, HTTP auth, shared cookies, download failures, HTTP error pages. */
+async function network(h: Harness) {
+  const r = reporter('network');
   const text = async (id: string) =>
     (await h.ref.current?.evaluate(`document.getElementById('${id}')?.textContent ?? ''`)) as string;
 
@@ -1140,122 +1099,6 @@ async function borrowed(h: Harness) {
   r.done();
 }
 
-/**
- * Parity with react-native-webview: the same scenarios against both libraries, reported side by side as
- * `INFO parity: <scenario> {"minimal": …, "rnw": …}`. These are observations, not pass/fail.
- */
-async function parity(h: Harness) {
-  const r = reporter('parity');
-  const rnw = h.rnw();
-  const open = async (uri: string) => {
-    rnw.events.length = 0;
-    h.showRnw({ uri });
-    const end = Date.now() + 15000;
-    while (Date.now() < end && !rnw.events.some((e) => e.name === 'loadEnd')) await sleep(100);
-    await sleep(600);
-  };
-  const names = () => rnw.events.map((e) => e.name);
-  const lastUrl = () =>
-    rnw.events
-      .filter((e) => e.name === 'navigationState')
-      .map((e) => e.data['url'])
-      .at(-1);
-  const report = (scenario: string, minimal: unknown, other: unknown) => r.info(scenario, { minimal, rnw: other });
-
-  // 1. SPA URL tracking: pushState, replaceState and hash.
-  const spa = `${h.pages}/spa.html?t=${Date.now()}`;
-  await openPage(h, spa);
-  await open(spa);
-  for (const id of ['push', 'replace', 'hash']) {
-    await click(h, id);
-    await rnw.evaluate(`document.getElementById('${id}').click()`);
-    await sleep(1200);
-    const page = (await rnw.evaluate('location.href')) as string;
-    report(`SPA ${id}: reported url matches location.href`, h.state().url === (await h.ref.current?.evaluate('location.href')), lastUrl() === page);
-  }
-
-  // 2. Server redirect: the final URL is reported.
-  await openPage(h, `${h.pages}/spa.html?t=${Date.now()}`);
-  await click(h, 'redirect');
-  await waitFor(h, (s) => s.url.includes('from=redirect') && idle(s));
-  await rnw.evaluate(`document.getElementById('redirect').click()`);
-  await sleep(2000);
-  report('redirect: final url reported', h.state().url.includes('from=redirect'), String(lastUrl()).includes('from=redirect'));
-
-  // 3. A network failure: events fired.
-  clearEvents(h);
-  h.load('http://localhost:8099/nothing');
-  await waitFor(h, () => h.events.errors.length > 0, 10000);
-  await sleep(800);
-  rnw.events.length = 0;
-  h.showRnw({ uri: 'http://localhost:8099/nothing' });
-  await sleep(5000);
-  report('network failure: callbacks', { errors: h.events.errors.map((e) => e.kind), loads: h.events.loads }, names());
-
-  // 4. An HTTP 404: events fired.
-  clearEvents(h);
-  await openPage(h, `${h.pages}/status/404?t=${Date.now()}`);
-  await sleep(800);
-  await open(`${h.pages}/status/404?t=${Date.now()}`);
-  report('HTTP 404: callbacks', { errors: h.events.errors.map((e) => `${e.kind} ${e.code}`), loads: h.events.loads }, names());
-
-  // 5. window.open and target=_blank with no rules / defaults.
-  const nav = `${h.pages}/nav.html?t=${Date.now()}`;
-  await openPage(h, nav);
-  await open(nav);
-  clearEvents(h);
-  await click(h, 'blank');
-  await sleep(2500);
-  rnw.events.length = 0;
-  await rnw.evaluate(`document.getElementById('blank').click()`);
-  await sleep(2500);
-  report('target=_blank (defaults)', { url: h.state().url, decisions: h.events.navigations.map((n) => `${n.action}${n.newWindow ? ' new' : ''}`) }, { names: names(), url: lastUrl() });
-
-  // 6. Back after pushState: canGoBack and the URL after goBack.
-  await openPage(h, `${h.pages}/spa.html?t=${Date.now()}`);
-  await click(h, 'push');
-  await sleep(800);
-  const minimalCanGoBack = h.state().canGoBack;
-  h.ref.current?.goBack();
-  await sleep(1200);
-  await open(`${h.pages}/spa.html?t=${Date.now()}`);
-  await rnw.evaluate(`document.getElementById('push').click()`);
-  await sleep(1200);
-  const rnwCanGoBack = rnw.events
-    .filter((e) => e.name === 'navigationState')
-    .map((e) => e.data['canGoBack'])
-    .at(-1);
-  rnw.goBack();
-  await sleep(1500);
-  report('pushState then back: canGoBack, url after back', { canGoBack: minimalCanGoBack, url: h.state().url }, { canGoBack: rnwCanGoBack, url: lastUrl() });
-
-  // 7. evaluate/inject a value back: RNW needs postMessage; round-trip time of a page -> RN message.
-  const t0 = Date.now();
-  await h.ref.current?.evaluate('1 + 1');
-  const minimalEval = Date.now() - t0;
-  const t1 = Date.now();
-  await rnw.evaluate('1 + 1');
-  report('evaluate round trip (ms)', minimalEval, Date.now() - t1);
-
-  // 8. A cookie set by a native request: visible to the page without any option.
-  await fetch(`${h.pages}/setcookie?name=parity&value=${Date.now()}`);
-  await openPage(h, `${h.pages}/cookies?t=${Date.now()}`);
-  const minimalCookies = (await h.ref.current?.evaluate(`document.getElementById('cookies').textContent`)) as string;
-  await open(`${h.pages}/cookies?t=${Date.now()}`);
-  const rnwCookies = (await rnw.evaluate(`document.getElementById('cookies').textContent`)) as string;
-  report('native cookie visible to the page (minimal sharedCookies(), RNW sharedCookiesEnabled)', minimalCookies.includes('parity='), String(rnwCookies).includes('parity='));
-
-  // 9. The user agent.
-  await openPage(h, `${h.pages}/ua?t=${Date.now()}`);
-  const minimalUa = await h.ref.current?.evaluate('navigator.userAgent');
-  await open(`${h.pages}/ua?t=${Date.now()}`);
-  report('default user agent (minimal has applicationNameForUserAgent set)', minimalUa, await rnw.evaluate('navigator.userAgent'));
-
-  // 10. onLoad for a page whose load event is late (readyState when each library's onLoadEnd fires).
-  h.hideRnw();
-  r.done();
-}
-
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
@@ -1276,7 +1119,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   permissions: permissionsSuite,
   fullscreen,
   sampleExtension,
-  perf,
-  borrowed,
-  parity,
+  network,
 };
