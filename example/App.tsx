@@ -9,6 +9,7 @@ import {
   downloads,
   type Download,
   fullscreenVideo,
+  httpAuth,
   permissions,
   type PermissionRequestEvent,
   sharedCookies,
@@ -22,6 +23,7 @@ import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUITES, pollForSuites, type Harness } from './harness';
+import { RnwView, type RnwDriver } from './parity';
 import { PerfView, type PerfRun } from './perf';
 
 const PAGES = 'http://localhost:8090';
@@ -33,12 +35,15 @@ export default function App() {
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
   const [perfRun, setPerfRun] = useState<PerfRun | null>(null);
+  const [rnwSource, setRnwSource] = useState<{ uri: string } | null>(null);
+  const rnwRef = useRef<RnwDriver>(null);
   const events = useRef<Harness['events']>({
     errors: [],
     gone: [],
     loads: [],
     navigations: [],
     downloads: [],
+    downloadFailures: [],
     fullscreen: [],
     pageCounts: [],
     overlay: { error: false },
@@ -58,6 +63,7 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const authRef = useRef<((request: { host: string; realm: string }) => { username: string; password: string } | null) | undefined>(undefined);
   const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(undefined);
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(undefined);
   const extensions = useMemo(
@@ -65,7 +71,11 @@ export default function App() {
       pullToRefresh(),
       fileUpload({ onFileRequest: (request) => fileRequestRef.current?.(request) ?? null }),
       fullscreenVideo({ onChange: (active) => events.fullscreen.push(active) }),
-      downloads({ onDownload: (download) => events.downloads.push(download) }),
+      downloads({
+        onDownload: (download) => events.downloads.push(download),
+        onError: (failure) => events.downloadFailures.push(failure),
+      }),
+      httpAuth({ onAuthRequest: (request) => authRef.current?.(request) ?? null }),
       permissions({
         origins: [PAGES],
         onPermissionRequest: (request) => permissionRef.current?.(request) ?? false,
@@ -82,6 +92,8 @@ export default function App() {
     ref,
     state: () => stateRef.current,
     load: (uri) => setSource({ uri }),
+    loadSource: setSource,
+    setAuth: (handler) => (authRef.current = handler),
     setRules,
     bridge,
     pageEvents,
@@ -100,6 +112,9 @@ export default function App() {
         })
       ),
     endPerf: () => setPerfRun(null),
+    rnw: () => rnwRef.current!,
+    showRnw: setRnwSource,
+    hideRnw: () => setRnwSource(null),
     setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
@@ -135,6 +150,7 @@ export default function App() {
         {...extraProps}
       />
       <PerfView run={perfRun} />
+      <RnwView source={rnwSource} driver={rnwRef} />
       <Text style={styles.state} numberOfLines={3}>
         {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}

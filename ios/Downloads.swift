@@ -50,6 +50,10 @@ final class Downloads: NSObject, WebViewExtension, WKDownloadDelegate {
   }
 
   func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
-    files.removeValue(forKey: ObjectIdentifier(download))
+    let file = files.removeValue(forKey: ObjectIdentifier(download))
+    host?.emit("downloadFailed", [
+      "filename": file?.url.lastPathComponent ?? "", "url": String((file?.source ?? "").prefix(100)),
+      "reason": error.localizedDescription
+    ])
   }
 }

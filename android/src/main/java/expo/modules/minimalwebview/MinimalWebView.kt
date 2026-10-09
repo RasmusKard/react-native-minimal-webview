@@ -17,6 +17,7 @@ import android.view.ViewGroup
 import android.content.pm.PackageManager
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
+import android.webkit.HttpAuthHandler
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
@@ -37,6 +38,7 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 
@@ -126,6 +128,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     settings.allowFileAccess = false
     settings.allowContentAccess = false
     settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+    // Pinch-zoom (an accessibility basic; pages opt out with a viewport meta), without the legacy +/- buttons.
+    settings.builtInZoomControls = true
+    settings.displayZoomControls = false
   }
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
@@ -137,13 +142,16 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     val next = source ?: return
     if (next == loadedSource) return
     loadedSource = next
+    // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
+    crashTimes.clear()
     load(next)
   }
 
   private fun load(source: Map<String, Any?>) {
     val uri = source["uri"] as? String
     if (uri != null) {
-      webView.loadUrl(uri)
+      val headers = (source["headers"] as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value.toString() }
+      webView.loadUrl(uri, headers.orEmpty())
     } else {
       webView.loadDataWithBaseURL(source["baseUrl"] as? String, source["html"] as? String ?: "", "text/html", "utf-8", null)
     }
@@ -180,7 +188,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private fun mount() {
     removeAllViews()
     (webView.parent as? ViewGroup)?.removeView(webView)
-    val content = activeExtensions.orEmpty().values.fold(webView as View) { view, extension -> extension.wrap(view) }
+    // A wrapper's addView(view) would give the view WRAP_CONTENT, and for the WebView Chromium then resolves CSS vh to 0.
+    val content = activeExtensions.orEmpty().values.fold(webView as View) { view, extension ->
+      view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+      extension.wrap(view)
+    }
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 
@@ -415,6 +427,22 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     pendingAsks.clear()
     waiting.forEach { it(null) }
     replyProxy = null
+    failEvaluations()
+  }
+
+  private val evaluations = mutableSetOf<Promise>()
+
+  /** Runs a script in the page. WebView drops the callback when the document is replaced first, so a new document
+   * rejects what is still waiting (as iOS does) instead of leaving the promise pending forever. */
+  fun evaluate(script: String, promise: Promise) {
+    evaluations += promise
+    webView.evaluateJavascript(script) { if (evaluations.remove(promise)) promise.resolve(it) }
+  }
+
+  private fun failEvaluations() {
+    val waiting = evaluations.toList()
+    evaluations.clear()
+    waiting.forEach { it.reject("navigated", "the page navigated before the script finished", null) }
   }
 
   /** The render process died: a WebView cannot be reused after that, so build a new one and reload. */
@@ -496,6 +524,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       if (navigation.didCommit()) url = navigation.url
       if (navigation.didCommit() && !navigation.isSameDocument) {
         askedAndAllowed.clear()
+        failEvaluations()
         // A new document: the old reply proxy is gone; JS queues bridge messages until the page is ready again.
         replyProxy = null
         if (installedBridge?.first != null) onBridge(mapOf("navigated" to true))
@@ -561,6 +590,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       if (sslError.url == (pendingUrl ?: url)) {
         reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
       }
+    }
+
+    // Basic and digest auth: an extension answers (httpAuth); without one, cancel (the page shows its 401).
+    override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
+      if (activeExtensions.orEmpty().values.none { it.onHttpAuthRequest(handler, host, realm) }) handler.cancel()
     }
 
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {

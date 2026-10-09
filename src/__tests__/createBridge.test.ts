@@ -130,6 +130,47 @@ describe('createBridge', () => {
     expect(sent).toEqual([{ v: 1, id: '', kind: 'event', method: 'late', params: 1 }]);
   });
 
+  it('sends calls made before the first page to it, without rejecting them', async () => {
+    const { bridge, sent, fromPage } = setup();
+    const result = bridge.call('early');
+    fromPage({ id: '', kind: 'ready' });
+    expect(sent).toMatchObject([{ kind: 'call', method: 'early' }]);
+    fromPage({ id: sent[0]!.id, kind: 'result', params: 7 });
+    await expect(result).resolves.toBe(7);
+  });
+
+  it('rejects calls posted to a page when it navigates', async () => {
+    const { bridge, connection, fromPage } = setup();
+    fromPage({ id: '', kind: 'ready' });
+    const result = bridge.call('slow');
+    connection.navigated();
+    await expect(result).rejects.toMatchObject({ code: 'navigated' });
+  });
+
+  it('does not carry messages queued for a page that never became ready to the next one', async () => {
+    const { bridge, connection, sent, fromPage } = setup();
+    fromPage({ id: '', kind: 'ready' });
+    connection.navigated(); // to a page outside allowedOrigins
+    bridge.emit('stale', 1);
+    const call = bridge.call('stale');
+    connection.navigated(); // back to an allowed page
+    await expect(call).rejects.toMatchObject({ code: 'navigated' });
+    bridge.emit('fresh', 2);
+    fromPage({ id: '', kind: 'ready' });
+    expect(sent).toEqual([{ v: 1, id: '', kind: 'event', method: 'fresh', params: 2 }]);
+  });
+
+  it('does not send a queued call that already timed out', async () => {
+    jest.useFakeTimers();
+    const { bridge, sent, fromPage } = setup();
+    const result = bridge.call('early');
+    jest.runAllTimers();
+    await expect(result).rejects.toMatchObject({ code: 'timeout' });
+    fromPage({ id: '', kind: 'ready' });
+    expect(sent).toEqual([]);
+    jest.useRealTimers();
+  });
+
   it('drops malformed messages', () => {
     const { bridge, connection } = setup();
     const seen: unknown[] = [];

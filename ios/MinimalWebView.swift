@@ -39,22 +39,25 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   // Navigation state. Native owns the committed URL; JS is told.
   private var url = ""
-  private var pendingUrl: String?
+  var pendingUrl: String?
   private var provisional = false
   /// Set when a main-frame navigation is allowed and cleared when it starts, fails or commits: WebKit changes `url`
   /// before didStartProvisionalNavigation, so this tells a new load from a same-document change (pushState, hash).
   var navigationExpected = false
+  private var expectation = 0
   /// The URL this view loads itself (source, reload after an error, an allowed new window): it skips the rules.
   var programmaticUrl: URL?
   /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through extensionCall.
   var pendingAsks: [Int: (Any?) -> Void] = [:]
   var nextAskId = 0
   var askedAndAllowed: Set<String> = []
+  /// Extensions are preparing a new WKWebView (shared cookies): loads wait until they are done.
+  private var preparing = false
   /// After a failed main-frame load `url` is the failed URL (as on Android, which commits an error page);
   /// WKWebView itself keeps the previous page, so getUrl() and reload() use this.
   private(set) var failedUrl: String?
   /// What the WKWebView actually shows (it keeps the old page after a failure).
-  private var committedUrl: String?
+  private(set) var committedUrl: String?
   private var lastEmitted: NSDictionary?
   private var emitScheduled = false
   private var crashTimes: [Date] = []
@@ -85,7 +88,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       creationSettings = settings
       recreate()
     }
-    guard let webView else { return }
+    guard let webView, !preparing else { return }
     if installedScripts != injectedScripts as NSArray {
       installScripts(webView.configuration.userContentController)
     }
@@ -97,23 +100,52 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.isInspectable = webviewDebuggingEnabled
     guard let next = source, loadedSource != next as NSDictionary else { return }
     loadedSource = next as NSDictionary
-    load(next)
+    // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
+    crashTimes = []
+    prepareExtensions(webView) { [weak self] in self?.load(next) }
+  }
+
+  /// Runs every extension's `prepare` (shared cookies) and holds loads until all are done, then loads.
+  private func prepareExtensions(_ webView: WKWebView, then load: @escaping () -> Void) {
+    preparing = true
+    let group = DispatchGroup()
+    activeExtensions?.forEach { extensionInstance in
+      group.enter()
+      extensionInstance.prepare(webView) { group.leave() }
+    }
+    group.notify(queue: .main) { [weak self, weak webView] in
+      guard let self, let webView, webView === self.webView else { return }
+      self.preparing = false
+      load()
+      // Props that changed while preparing (a newer source) apply now.
+      self.applyProps()
+    }
   }
 
   private func load(_ source: [String: Any]) {
     if let uri = source["uri"] as? String, let target = URL(string: uri) {
-      programmaticUrl = target
-      webView?.load(URLRequest(url: target))
+      var request = URLRequest(url: target)
+      (source["headers"] as? [String: Any])?.forEach { request.setValue("\($0.value)", forHTTPHeaderField: $0.key) }
+      loadProgrammatic(request)
     } else {
       webView?.loadHTMLString(source["html"] as? String ?? "", baseURL: (source["baseUrl"] as? String).flatMap(URL.init))
     }
   }
 
+  /// Loads a request the app started, not the page. WebKit changes `url` as soon as `load` is called, before the policy
+  /// check marks the navigation: mark it first, or that URL is reported as the committed page (idle) until it starts.
+  func loadProgrammatic(_ request: URLRequest) {
+    programmaticUrl = request.url
+    navigationExpected = true
+    // Generous: on a cold start the policy check (which re-arms this with 1 s) can take a while to come.
+    expireExpectedNavigation(after: 10)
+    webView?.load(request)
+  }
+
   /// Retries the failed URL after an error; otherwise a plain reload.
   func reload() {
     if let failedUrl, let target = URL(string: failedUrl) {
-      programmaticUrl = target
-      webView?.load(URLRequest(url: target))
+      loadProgrammatic(URLRequest(url: target))
     } else {
       webView?.reload()
     }
@@ -123,7 +155,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// none or it was an html source (whose document cannot be refetched).
   private func recreate() {
     let previous = webView?.url.flatMap { $0.scheme == "http" || $0.scheme == "https" ? $0 : nil }
-    let reloadSource = webView != nil && (previous == nil || source?["html"] != nil)
+    let reloadSource = previous == nil || source?["html"] != nil
     activeExtensions?.forEach { $0.detach() }
     activeExtensions = nil
     tearDown()
@@ -160,11 +192,14 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       }
     }
     activeExtensions?.forEach { $0.didCreate(webView) }
-    if reloadSource {
-      loadedSource = nil
-    } else if let previous, source?["html"] == nil {
-      programmaticUrl = previous
-      webView.load(URLRequest(url: previous))
+    prepareExtensions(webView) { [weak self, weak webView] in
+      guard let self, let webView else { return }
+      if let previous, !reloadSource {
+        self.loadProgrammatic(URLRequest(url: previous))
+      } else {
+        self.loadedSource = self.source as NSDictionary?
+        self.source.map(self.load)
+      }
     }
   }
 
@@ -189,6 +224,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     observations.removeAll()
     webView?.configuration.userContentController.removeAllScriptMessageHandlers()
     webView?.stopLoading()
+    // Audio and video otherwise keep playing after unmount (react-native-webview #2449, PR #3234).
+    webView?.pauseAllMediaPlayback()
     webView?.removeFromSuperview()
     webView = nil
   }
@@ -200,9 +237,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// While a navigation is expected or provisional, `url` shows the in-flight URL; otherwise a change is same-document.
-  private func urlChanged(_ value: String?) {
+  func urlChanged(_ value: String?) {
     guard let value else { return }
     if provisional || navigationExpected {
+      // As a provisional load fails WebKit moves `url` back to the page it kept: that is not the URL being loaded.
+      if provisional && value == committedUrl { return }
       pendingUrl = value
     } else if value != committedUrl || failedUrl == nil {
       // After a failed load WebKit reverts `url` to the page it kept; `url` stays the failed URL.
@@ -213,10 +252,14 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     stateChanged()
   }
 
-  /// A same-document history step (back across pushState entries) passes the policy check but never starts loading.
-  func expireExpectedNavigation() {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-      guard let self, self.navigationExpected, !self.provisional else { return }
+  /// A same-document history step (back across pushState entries) passes the policy check but never starts loading,
+  /// and an app-started load can be dropped before it: give up on an expected navigation that has not started by then.
+  /// Only the latest call counts.
+  func expireExpectedNavigation(after delay: TimeInterval = 1) {
+    expectation += 1
+    let current = expectation
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+      guard let self, current == self.expectation, self.navigationExpected, !self.provisional else { return }
       self.navigationExpected = false
       self.pendingUrl = nil
       self.urlChanged(self.webView?.url?.absoluteString)
@@ -262,7 +305,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let cancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     let interrupted = nsError.domain == "WebKitErrorDomain" && nsError.code == 102
     guard !cancelled, !interrupted else { return }
-    let failing = nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
+    let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
+      ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
     let ssl = nsError.domain == NSURLErrorDomain && (NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed).contains(nsError.code)
     failedUrl = failing
     url = failing
@@ -306,6 +350,20 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     decisionHandler(.allow)
   }
 
+  func webView(
+    _ webView: WKWebView,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    let method = challenge.protectionSpace.authenticationMethod
+    let isHTTPAuth = method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest
+    // A declined login shows the site's 401 page. (.cancelAuthenticationChallenge would fail the navigation on iOS 17.)
+    let reply = { (credential: URLCredential?) in completionHandler(credential == nil ? .rejectProtectionSpace : .useCredential, credential) }
+    let handled = isHTTPAuth && activeExtensions?.contains { $0.authenticate(challenge, completion: reply) } == true
+    // Server trust and everything else: WebKit's default (an invalid certificate fails, as on Android).
+    if !handled { completionHandler(isHTTPAuth ? .rejectProtectionSpace : .performDefaultHandling, nil) }
+  }
+
   func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
     activeExtensions?.forEach { $0.didBecome(download) }
   }
@@ -342,8 +400,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     navigationExpected = false
     provisional = false
-    pendingUrl = nil
     failed(error)
+    pendingUrl = nil
     pageFinished(webView)
     stateChanged()
   }
@@ -356,9 +414,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let recovered = crashTimes.count <= maxCrashesPerWindow
     dismissDialog()
     failPendingReplies()
+    // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
+    // (or the failed or committed URL) rather than jumping back to the source.
     if recovered {
-      if webView.url != nil {
-        reload()
+      let page = failedUrl.flatMap(URL.init) ?? webView.backForwardList.currentItem?.url ?? URL(string: url)
+      if let page, page.scheme == "http" || page.scheme == "https" {
+        loadProgrammatic(URLRequest(url: page))
       } else if let source {
         load(source)
       }

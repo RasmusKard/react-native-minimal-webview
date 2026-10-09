@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.View
 import android.webkit.GeolocationPermissions
+import android.webkit.HttpAuthHandler
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient.CustomViewCallback
@@ -38,6 +39,9 @@ interface WebViewExtension {
   fun onHideCustomView(): Boolean = false
 
   fun onDownloadStart(download: DownloadInfo): Boolean = false
+
+  /** HTTP basic or digest auth: call `handler.proceed(user, password)` or `handler.cancel()` exactly once. */
+  fun onHttpAuthRequest(handler: HttpAuthHandler, host: String, realm: String): Boolean = false
 
   /** A call from the extension's JS helper. */
   fun onCall(method: String, args: Map<String, Any?>): Any? = null
