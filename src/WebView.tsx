@@ -262,9 +262,13 @@ function useLoadEvents(props: WebViewProps, store: ReturnType<typeof createStore
     }
   };
 
+  // An HTTP status (404, 503) still shows the site's own error page: only network and SSL failures count as a failed
+  // load (no onLoad, renderError shown).
   const onError = ({ nativeEvent }: NativeEvent<WebViewErrorEvent>) => {
-    errorRef.current = nativeEvent;
-    setError(nativeEvent);
+    if (nativeEvent.kind !== 'http') {
+      errorRef.current = nativeEvent;
+      setError(nativeEvent);
+    }
     props.onError?.(nativeEvent);
   };
 

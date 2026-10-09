@@ -29,7 +29,11 @@ type Pending = {
   resolve(value: unknown): void;
   reject(error: Error): void;
   timer: ReturnType<typeof setTimeout>;
+  /** Posted to a document (not just queued for the next one). */
+  sent: boolean;
 };
+
+const MAX_QUEUE = 1000;
 
 const bridgeError = ({ code, message }: BridgeError) => Object.assign(new Error(message), { code });
 
@@ -48,23 +52,37 @@ export function createBridge(options: BridgeOptions): Bridge {
   const pending = new Map<string, Pending>();
   let post: ((message: string) => void) | null = null;
   let ready = false;
-  let queue: string[] = [];
+  // Messages for the next document that says `ready`. Only the latest document's: see navigated().
+  let queue: { id: string; text: string; call: boolean }[] = [];
+  // A document committed and hasn't said `ready` yet.
+  let awaitingReady = false;
   let nextId = 0;
   let unavailable = false;
 
-  const send = (message: BridgeMessage) => {
-    const text = JSON.stringify(message);
-    if (post && ready) post(text);
-    else queue.push(text);
+  const deliver = (id: string, text: string) => {
+    post?.(text);
+    const call = pending.get(id);
+    if (call) call.sent = true;
   };
 
-  /** Rejects every call in flight, by default because their page is gone. */
-  const rejectAll = (message: string, code: BridgeError['code'] = 'navigated') => {
-    for (const call of pending.values()) {
+  const send = (message: BridgeMessage) => {
+    const text = JSON.stringify(message);
+    if (post && ready) deliver(message.id, text);
+    else {
+      queue.push({ id: message.id, text, call: message.kind === 'call' });
+      // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call still times out
+      if (queue.length > MAX_QUEUE) queue.shift();
+    }
+  };
+
+  /** Rejects calls in flight (by default because their page is gone): all, or only those already posted to a page. */
+  const rejectAll = (message: string, code: BridgeError['code'] = 'navigated', onlySent = false) => {
+    for (const [id, call] of pending) {
+      if (onlySent && !call.sent) continue;
       clearTimeout(call.timer);
       call.reject(bridgeError({ code, message }));
+      pending.delete(id);
     }
-    pending.clear();
   };
   const unavailableMessage = 'this WebView lacks the features the bridge needs; update Android System WebView';
 
@@ -94,13 +112,17 @@ export function createBridge(options: BridgeOptions): Bridge {
       return;
     }
     switch (message.kind) {
-      case 'ready':
-        // A new document: calls made to the previous one can no longer be answered.
-        rejectAll('the page navigated');
+      case 'ready': {
+        // A new document: calls posted to the previous one can no longer be answered. Queued ones are for this one.
+        rejectAll('the page navigated', 'navigated', true);
         ready = true;
-        queue.forEach((queued) => post?.(queued));
+        awaitingReady = false;
+        const flushing = queue;
         queue = [];
+        // A queued call that already timed out is not sent: nobody waits for its answer.
+        for (const { id, text, call } of flushing) if (!call || pending.has(id)) deliver(id, text);
         break;
+      }
       case 'call':
         void answer(message.id, message.method, message.params);
         break;
@@ -127,12 +149,21 @@ export function createBridge(options: BridgeOptions): Bridge {
     detach() {
       post = null;
       ready = false;
+      awaitingReady = false;
       queue = [];
       rejectAll('the WebView went away');
     },
     receive,
     navigated() {
+      rejectAll('the page navigated', 'navigated', true);
+      // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
+      // carry over to an unrelated next one.
+      if (awaitingReady) {
+        rejectAll('the page navigated before the bridge was ready');
+        queue = [];
+      }
       ready = false;
+      awaitingReady = true;
     },
     markUnavailable() {
       unavailable = true;
@@ -156,7 +187,7 @@ export function createBridge(options: BridgeOptions): Bridge {
             bridgeError({ code: 'timeout', message: `${method} timed out after ${timeoutMs} ms` })
           );
         }, timeoutMs);
-        pending.set(id, { resolve, reject, timer });
+        pending.set(id, { resolve, reject, timer, sent: false });
         send({ v: 1, id, kind: 'call', method, params });
       });
     },
