@@ -4,7 +4,6 @@
 // addWebMessageListener (`window.nativeBridgeTransport`). Messages follow ./protocol.ts.
 import type { BridgeMessage as Message } from './protocol';
 
-
 type Pending = {
   resolve: (value: unknown) => void;
   reject: (error: unknown) => void;
@@ -73,24 +72,18 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
     }
     if (message.kind !== 'call') return null;
     const handler = handlers.get(message.method);
-    let reply: Message;
-    if (!handler) {
-      reply = {
-        v: 1,
-        id: message.id,
-        kind: 'error',
-        error: { code: 'not_found', message: `no page handler for ${message.method}` },
-      };
-    } else {
+    const failure = (code: 'not_found' | 'handler_error', text: string): Message => ({
+      v: 1,
+      id: message.id,
+      kind: 'error',
+      error: { code, message: text },
+    });
+    let reply = failure('not_found', `no page handler for ${message.method}`);
+    if (handler) {
       try {
         reply = { v: 1, id: message.id, kind: 'result', params: await handler(message.params) };
       } catch (error) {
-        reply = {
-          v: 1,
-          id: message.id,
-          kind: 'error',
-          error: { code: 'handler_error', message: String(error) },
-        };
+        reply = failure('handler_error', String(error));
       }
     }
     if (ios) return JSON.stringify(reply);

@@ -226,7 +226,7 @@ export const pageCounter = (): WebViewExtension => ({
 ```
 
 **The hooks:**
-- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onCall` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `hasPermission` and `launchForResult`.
+- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `hasPermission` and `launchForResult`.
 - iOS: `didCreate`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture` and `detach`. The host gives `webView`, `emit` and `ask`.
 - **Decide hooks:** the first extension that handles one wins.
 - **`ask`:** sends an event to the helper's `onEvent` and passes its return value back to native.

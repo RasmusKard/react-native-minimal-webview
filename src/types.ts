@@ -96,12 +96,8 @@ export type BridgeOptions = {
 
 /** What an extension helper such as `pullToRefresh()` returns. */
 export type WebViewExtension = {
-  /** Props merged in list order; explicit props on `<WebView>` win. */
-  props?: Partial<WebViewProps>;
   /** The native extension to enable for this instance, by its registered name. */
   native: { name: string; config?: Record<string, unknown> };
-  scripts?: InjectedScript[];
-  bridgeHandlers?: Record<string, BridgeHandler>;
   /** Events the native side emits on the generic extension channel. */
   onEvent?: (event: string, payload: Record<string, unknown>) => unknown;
 };
