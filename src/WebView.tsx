@@ -122,6 +122,42 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
       return fallback;
     });
 
+const NEEDS = {
+  bridge: {
+    features: ['WEB_MESSAGE_LISTENER', 'JS_INJECTION_IN_FRAME_AND_WORLD'],
+    lost: 'bridge calls reject with `unavailable`',
+  },
+  injectedScripts: {
+    features: ['JS_INJECTION_IN_FRAME_AND_WORLD'],
+    lost: "injectedScripts don't run",
+  },
+};
+// Read once: a WebView update restarts the app process.
+let info: AndroidWebViewInfo | null | undefined;
+const warned = new Set<string>();
+
+/** Android: warns once per process for each used prop whose WebView features the device lacks. */
+export function warnUnsupported(used: Record<keyof typeof NEEDS, boolean>) {
+  if (Platform.OS !== 'android') return;
+  for (const [prop, { features, lost }] of Object.entries(NEEDS)) {
+    if (!used[prop as keyof typeof NEEDS] || warned.has(prop)) continue;
+    if (info === undefined) {
+      try {
+        info = WebView.getAndroidWebViewInfo();
+      } catch {
+        info = null;
+      }
+    }
+    const device = info;
+    const missing = features.filter((feature) => device && !device.features[feature]);
+    if (!device || !missing.length) continue;
+    warned.add(prop);
+    console.warn(
+      `[react-native-minimal-webview] ${prop} needs WebView features ${missing.join(', ')}, missing in ${device.provider} ${device.version}: ${lost}. Update Android System WebView to 146+.`
+    );
+  }
+}
+
 export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
   const native = useRef<NativeMethods>(null);
   const store = useRef(createStore()).current;
@@ -150,6 +186,12 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     connection.attach((message) => void native.current?.bridgePost(message));
     return () => connection.detach();
   }, [connection]);
+
+  const hasScripts = !!props.injectedScripts?.length;
+  useEffect(
+    () => warnUnsupported({ bridge: !!connection, injectedScripts: hasScripts }),
+    [connection, hasScripts]
+  );
 
   const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {
     if (nativeEvent.message !== undefined) connection?.receive(nativeEvent.message);
