@@ -9,6 +9,7 @@
 //   /flaky?key=<k>                 503 the first time for a key, then the normal page (reload-after-error tests)
 //   /harness/run?platform=<ios|android>&suite=<name>  queues a harness suite; the example app polls /harness/next and posts results to
 //                                  /harness/log, which this server prints
+const { execFile } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -35,6 +36,7 @@ function serveFile(res, pathname) {
 }
 
 const queued = new Map(); // platform (ios | android) -> suite name
+const dropping = new Set();
 const flakyKeys = new Set();
 
 function handle(req, res) {
@@ -43,6 +45,16 @@ function handle(req, res) {
   if (url.pathname === '/harness/run') {
     queued.set(q.get('platform') ?? '', q.get('suite') ?? '');
     res.end('queued');
+  } else if (url.pathname === '/driver/kill') {
+    // For the crash suite's UI-test driver (Maestro has no shell): kill the page's renderer process.
+    // Android needs `adb root`; on iOS this kills every simulator's WebContent process.
+    const device = q.get('device') ?? '';
+    if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
+    const [cmd, args] =
+      q.get('platform') === 'android'
+        ? ['adb', [...(device ? ['-s', device] : []), 'shell', 'pkill -9 -f sandboxed_process']]
+        : ['pkill', ['-9', '-f', 'CoreSimulator.*com.apple.WebKit.WebContent']];
+    execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
   } else if (url.pathname === '/harness/next') {
     res.end(queued.get(q.get('platform') ?? '') ?? '');
     queued.delete(q.get('platform') ?? '');
@@ -81,6 +93,15 @@ function handle(req, res) {
   } else if (url.pathname === '/ua') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(`<!doctype html><meta name="viewport" content="width=device-width"><pre id="ua">${(req.headers['user-agent'] ?? '').replace(/</g, '&lt;')}</pre>`);
+  } else if (url.pathname === '/drop') {
+    // The pull-to-refresh page, or a dropped connection while /drop/set turned failing on (a failed reload; browsers
+    // retry a dropped keep-alive request once, so a one-shot failure would not reach the page).
+    if (dropping.has(q.get('key') ?? '')) return req.socket.destroy();
+    return serveFile(res, '/ptr.html');
+  } else if (url.pathname === '/drop/set') {
+    if (q.get('fail') === '1') dropping.add(q.get('key') ?? '');
+    else dropping.delete(q.get('key') ?? '');
+    res.end('ok');
   } else if (url.pathname === '/flaky') {
     const key = q.get('key') ?? '';
     if (flakyKeys.has(key)) return serveFile(res, '/index.html');

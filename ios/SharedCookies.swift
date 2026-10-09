@@ -1,8 +1,8 @@
 import WebKit
 
 /// Shares login cookies between the WebView and native requests (URLSession, fetch). HTTPCookieStorage is copied into the
-/// WebView before each `source` load (as react-native-webview's sharedCookiesEnabled does), and the WebView's cookie
-/// changes (including ones set by XHR and fetch) are copied back as they happen. (Android needs no extension: CookieManager is already shared app-wide.)
+/// WebView before each `source` load, and the WebView's cookie changes (including ones set by XHR and fetch) are copied
+/// back as they happen. (Android needs no extension: CookieManager is already shared app-wide.)
 final class SharedCookies: NSObject, WebViewExtension, WKHTTPCookieStoreObserver {
   private weak var store: WKHTTPCookieStore?
 

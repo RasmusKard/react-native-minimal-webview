@@ -1,0 +1,15 @@
+appId: expo.modules.minimalwebview.example
+name: fullscreen
+env:
+  SUITE: fullscreen
+---
+# Android: tap the page's fullscreen button where the harness says, then back leaves fullscreen. (iOS skips itself.)
+- runFlow: subflows/launch.yaml
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - runFlow: { file: subflows/await.yaml, env: { N: 1 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 2 } }
+      - back
+- runFlow: subflows/finish.yaml

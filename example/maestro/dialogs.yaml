@@ -1,0 +1,14 @@
+appId: expo.modules.minimalwebview.example
+name: dialogs
+env:
+  SUITE: dialogs
+---
+# alert, confirm, prompt. A dialog hides the screen behind it from accessibility, so wait for its OK button rather
+# than the request marker.
+- runFlow: subflows/launch.yaml
+- repeat:
+    times: 3
+    commands:
+      - extendedWaitUntil: { visible: OK, timeout: 30000 }
+      - tapOn: { text: OK, retryTapIfNoChange: false }
+- runFlow: subflows/finish.yaml

@@ -1,0 +1,14 @@
+appId: expo.modules.minimalwebview.example
+name: crash
+env:
+  SUITE: crash
+---
+# Five renderer kills; the harness asks for each once the page answers an evaluate (a live renderer).
+- runFlow: subflows/launch.yaml
+- repeat:
+    times: 5
+    commands:
+      - evalScript: ${output.n = (output.n || 0) + 1}
+      - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+      - runScript: scripts/kill.js
+- runFlow: subflows/finish.yaml

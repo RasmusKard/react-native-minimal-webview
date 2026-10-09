@@ -1,0 +1,9 @@
+appId: expo.modules.minimalwebview.example
+name: permissions
+env:
+  SUITE: permissions
+---
+# launchApp grants the OS permissions (the harness's GRANT request needs nothing more); a location fix for geo.
+- runFlow: subflows/launch.yaml
+- setLocation: { latitude: 59.43, longitude: 24.75 }
+- runFlow: subflows/finish.yaml
