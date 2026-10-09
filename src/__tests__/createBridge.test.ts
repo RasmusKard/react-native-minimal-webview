@@ -104,6 +104,14 @@ describe('createBridge', () => {
     expect(seen).toEqual([1]);
   });
 
+  it('rejects calls immediately once native reports the bridge unavailable', async () => {
+    const { bridge, connection } = setup();
+    const inFlight = bridge.call('queued');
+    connection.markUnavailable();
+    await expect(inFlight).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(bridge.call('later')).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
   it('drops malformed messages', () => {
     const { bridge, connection } = setup();
     const seen: unknown[] = [];

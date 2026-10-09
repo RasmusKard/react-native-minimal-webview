@@ -109,7 +109,7 @@ export type WebViewProps = {
   source: WebViewSource;
   /** Replaces the whole user agent. */
   userAgent?: string;
-  /** Appended to the default user agent. */
+  /** Appended to the default user agent. On iOS it is fixed at creation: changing it recreates the WebView. */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
@@ -122,12 +122,16 @@ export type WebViewProps = {
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
   thirdPartyCookies?: boolean;
+  /** Default true. On iOS it is fixed at creation: changing it recreates the WebView. */
   mediaPlaybackRequiresUserAction?: boolean;
+  /** iOS only (Android always plays inline). Default false. Fixed at creation. */
   allowsInlineMediaPlayback?: boolean;
+  /** iOS only (react-native-webview ignores it on Android too). Default true. */
   scrollEnabled?: boolean;
+  /** iOS only. Default true. */
   bounces?: boolean;
   showsScrollIndicators?: boolean;
-  /** Default `__DEV__`. */
+  /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   webviewDebuggingEnabled?: boolean;
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;

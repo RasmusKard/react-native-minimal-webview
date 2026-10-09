@@ -1,5 +1,10 @@
 export { WebView, useWebViewState } from './WebView';
 export { createBridge } from './bridge/createBridge';
+export { decideNavigation, type NavigationDecision } from './navigationRules';
+export { downloads, type Download } from './extensions/downloads';
 export { fileUpload, type FileRequest } from './extensions/fileUpload';
+export { fullscreenVideo } from './extensions/fullscreenVideo';
+export { permissions, type PermissionRequestEvent, type PermissionResource } from './extensions/permissions';
 export { pullToRefresh } from './extensions/pullToRefresh';
+export { sharedCookies } from './extensions/sharedCookies';
 export * from './types';
