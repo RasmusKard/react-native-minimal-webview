@@ -4,6 +4,17 @@
   "description": "A minimal, extensible WebView for React Native (Expo Modules)",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "files": [
+    "build",
+    "!build/bridge/pageClient.*",
+    "src",
+    "!src/**/__tests__",
+    "ios",
+    "!ios/Tests",
+    "android/build.gradle",
+    "android/src/main",
+    "expo-module.config.json"
+  ],
   "scripts": {
     "build": "node internal/module_scripts/build.js",
     "clean": "node internal/module_scripts/clean.js",
