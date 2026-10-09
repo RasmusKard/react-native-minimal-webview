@@ -831,14 +831,42 @@ async function navigation(h: Harness) {
   await waitFor(h, () => external.length > 1, 3000);
   r.check('an outside main-frame link goes external', external[1] === 'https://example.com/', external);
 
-  await click(h, 'open');
-  await waitFor(h, () => external.length > 2, 5000);
-  r.check('window.open to another site goes external (newWindow)', external[2] === 'https://example.com/popup', external);
+  // Script-opened windows are off by default, so new windows come from a tap: a real one on Android (the harness asks
+  // the driver), a click from evaluate on iOS (WebKit counts evaluate as a user gesture).
+  const tap = async (id: string) => {
+    if (Platform.OS !== 'android') {
+      await click(h, id);
+      return;
+    }
+    const point = (await h.ref.current?.evaluate(`(() => {
+      const e = document.getElementById(${JSON.stringify(id)}); e.scrollIntoView({ block: 'center' });
+      const b = e.getBoundingClientRect(), d = devicePixelRatio;
+      return [Math.round((b.left + b.width / 2) * d), Math.round((50 + b.top + b.height / 2) * d)];
+    })()`)) as [number, number];
+    r.info('TAP', point.join(' '));
+  };
+  await tap('open');
+  await waitFor(h, () => external.length > 2, 15000);
+  r.check('a tapped window.open to another site goes external (newWindow)', external[2] === 'https://example.com/popup', external);
   r.check('onNavigation marks it as a new window', lastNavigation()?.newWindow === true, lastNavigation());
 
-  await click(h, 'blank');
-  const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 8000);
-  r.check('target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
+  await tap('blank');
+  const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000);
+  r.check('a tapped target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
+
+  // A window the page opens by itself (a timer, no gesture) opens only with javaScriptCanOpenWindowsAutomatically.
+  const selfOpening = (name: string) => ({
+    html: `<script>setTimeout(() => window.open('https://example.com/${name}'), 300)</script>`,
+    baseUrl: h.pages,
+  });
+  h.loadSource(selfOpening('blocked'));
+  await sleep(2500);
+  r.check('by default a script cannot open a window without a gesture', !external.includes('https://example.com/blocked'), external);
+  h.setProps({ onOpenExternal: (url) => external.push(url), javaScriptCanOpenWindowsAutomatically: true });
+  await sleep(500);
+  h.loadSource(selfOpening('opted-in'));
+  await waitFor(h, () => external.includes('https://example.com/opted-in'), 5000);
+  r.check('javaScriptCanOpenWindowsAutomatically lets it, through the newWindow rules', external.includes('https://example.com/opted-in'), external);
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
   // Android decides only navigations that start inside a frame with a user gesture, not the frame's initial src load:
   // a real tap on a link inside the iframe.
