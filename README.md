@@ -156,7 +156,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `fullscreenVideo({ onChange, orientation? })` | Built in (WebKit) | The page's fullscreen view covers the WebView's window (so it works inside a `Modal`) on black, system bars hide, and back exits. `orientation: 'unlock'` lets a portrait-locked app rotate while fullscreen |
 | `fileUpload({ onFileRequest? })` | Built in (WebKit's picker; needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`) | `onFileRequest({ accept, multiple, capture })` returns URIs, or `null` to cancel. Without it, the system chooser opens |
 | `downloads({ onDownload, onError? })` | `WKDownload` into the temporary directory | `DownloadManager` (the page's cookies and user agent, a notification, public Downloads); `data:` and `blob:` go to the cache. `onError({ filename, url, reason })` on both platforms |
-| `permissions({ origins, onPermissionRequest? })` | WebKit asks the OS. `true` skips WebKit's own prompt; other origins are denied | Grants only if the app says yes **and** the OS permission is granted. Never prompts by itself |
+| `permissions({ origins, onPermissionRequest? })` | WebKit asks the OS. `true` skips WebKit's own prompt; other origins are denied | Grants only if the app says yes **and** the OS permission is granted. Never prompts by itself. WebView keeps a location answer until the page changes |
 | `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
 | `httpAuth({ onAuthRequest })` | `onAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | The same. Without the extension, auth challenges are cancelled and the site's 401 page shows |
 
@@ -252,7 +252,14 @@ npm test                                   # TS unit tests (bridge protocol, cre
 xcrun swiftc ios/NavigationRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json
 cd example && npm run test-pages           # local test pages on :8090
 npx expo run:android | npx expo run:ios
-curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'   # scripted on-device suites (example/harness.ts)
+example/maestro/run.sh android emulator-5554          # on-device suites through Maestro (all, or name some)
+example/maestro/run.sh ios <simulator udid> ptr dialogs
 ```
+
+The on-device suites (`example/harness.ts`) run inside the example app and make every WebView assertion there.
+[Maestro](https://maestro.dev) only drives them: each flow in `example/maestro/` starts a suite, performs the
+gestures, taps, dialog presses and renderer kills the suite asks for (shown on screen as `<suite>#<n> <REQUEST>`),
+and fails unless the suite ends with `fail=0`. A suite can also be started by hand with
+`curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'`. Renderer kills on Android need `adb root`.
 
 The design and its decisions are in [`docs/WEBVIEW_PLAN.md`](docs/WEBVIEW_PLAN.md) and [`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md).

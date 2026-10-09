@@ -9,6 +9,7 @@
 //   /flaky?key=<k>                 503 the first time for a key, then the normal page (reload-after-error tests)
 //   /harness/run?platform=<ios|android>&suite=<name>  queues a harness suite; the example app polls /harness/next and posts results to
 //                                  /harness/log, which this server prints
+const { execFile } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -44,6 +45,16 @@ function handle(req, res) {
   if (url.pathname === '/harness/run') {
     queued.set(q.get('platform') ?? '', q.get('suite') ?? '');
     res.end('queued');
+  } else if (url.pathname === '/driver/kill') {
+    // For the crash suite's UI-test driver (Maestro has no shell): kill the page's renderer process.
+    // Android needs `adb root`; on iOS this kills every simulator's WebContent process.
+    const device = q.get('device') ?? '';
+    if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
+    const [cmd, args] =
+      q.get('platform') === 'android'
+        ? ['adb', [...(device ? ['-s', device] : []), 'shell', 'pkill -9 -f sandboxed_process']]
+        : ['pkill', ['-9', '-f', 'CoreSimulator.*com.apple.WebKit.WebContent']];
+    execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
   } else if (url.pathname === '/harness/next') {
     res.end(queued.get(q.get('platform') ?? '') ?? '');
     queued.delete(q.get('platform') ?? '');

@@ -22,7 +22,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { SUITES, pollForSuites, type Harness } from './harness';
+import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 import { RnwView, type RnwDriver } from './parity';
 import { PerfView, type PerfRun } from './perf';
 
@@ -34,6 +34,10 @@ export default function App() {
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
+  const [driverRequest, setDriverRequest] = useState('');
+  useEffect(() => {
+    onDriverRequest(setDriverRequest);
+  }, []);
   const [perfRun, setPerfRun] = useState<PerfRun | null>(null);
   const [rnwSource, setRnwSource] = useState<{ uri: string } | null>(null);
   const rnwRef = useRef<RnwDriver>(null);
@@ -151,6 +155,9 @@ export default function App() {
       />
       <PerfView run={perfRun} />
       <RnwView source={rnwSource} driver={rnwRef} />
+      <Text testID="harness-request" style={styles.state}>
+        {driverRequest}
+      </Text>
       <Text style={styles.state} numberOfLines={3}>
         {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}

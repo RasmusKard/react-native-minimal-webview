@@ -1,0 +1,14 @@
+appId: expo.modules.minimalwebview.example
+name: upload
+env:
+  SUITE: upload
+---
+# Android file chooser: four real taps on the page's file input (WebView opens choosers only on a gesture).
+- runFlow: subflows/launch.yaml
+- repeat:
+    times: 4
+    commands:
+      - evalScript: ${output.n = (output.n || 0) + 1}
+      - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+      - tapOn: { point: "50%, 49%" }
+- runFlow: subflows/finish.yaml

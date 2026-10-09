@@ -73,18 +73,28 @@ function emit(line: string) {
   void fetch(`${current?.pages}/harness/log`, { method: 'POST', body: text });
 }
 
+/**
+ * What the harness wants from an outside driver, shown on screen (testID `harness-request`) so a UI test tool can wait
+ * for it: `<suite>#<n> <REQUEST> <detail>` for each request (upper-case `info` names), `<suite>#done pass=… fail=…` last.
+ */
+let showRequest: (text: string) => void = () => {};
+export const onDriverRequest = (listener: (text: string) => void) => (showRequest = listener);
+
 function reporter(suite: string) {
   let pass = 0;
   let fail = 0;
+  let requests = 0;
   return {
     check(name: string, ok: boolean, detail: unknown = '') {
       ok ? pass++ : fail++;
       emit(`${ok ? 'PASS' : 'FAIL'} ${suite}: ${name} ${ok ? '' : JSON.stringify(detail)}`);
     },
     info(name: string, detail: unknown) {
+      if (/^[A-Z]+$/.test(name)) showRequest(`${suite}#${++requests} ${name} ${JSON.stringify(detail)}`);
       emit(`INFO ${suite}: ${name} ${JSON.stringify(detail)}`);
     },
     done() {
+      showRequest(`${suite}#done pass=${pass} fail=${fail}`);
       emit(`DONE ${suite} pass=${pass} fail=${fail}`);
     },
   };
@@ -106,9 +116,17 @@ export function pollForSuites(get: () => Harness) {
     busy = true;
     current = get();
     const suite = SUITES[name];
-    if (suite) await suite(current);
-    else emit(`FAIL unknown suite ${name}`);
-    busy = false;
+    try {
+      if (suite) await suite(current);
+      else emit(`FAIL unknown suite ${name}`);
+    } catch (error) {
+      // A thrown suite reports as a failure instead of leaving the harness busy forever.
+      showRequest(`${name}#done pass=? fail=1`);
+      emit(`FAIL ${name}: threw ${String(error)}`);
+      emit(`DONE ${name} pass=? fail=1`);
+    } finally {
+      busy = false;
+    }
   }, 1000);
   return () => clearInterval(timer);
 }
@@ -143,12 +161,19 @@ async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
 
 async function urlTracking(h: Harness) {
   const r = reporter('urlTracking');
-  h.load(`${h.pages}/spa.html?t=${Date.now()}`);
-  r.check(
-    'initial load',
-    await waitFor(h, (s) => s.url.includes('/spa.html') && idle(s)),
-    h.state()
-  );
+  // An app-started load is pending until it commits: never reported as the loaded, idle page before it starts. The
+  // gap is widest right after launch (the web process is still starting), which is when this suite's first load runs.
+  const first = `${h.pages}/spa.html?t=${Date.now()}`;
+  const loadsBefore = h.events.loads.length;
+  h.load(first);
+  let early: NavigationState | null = null;
+  for (const end = Date.now() + 10000; Date.now() < end && !h.events.loads.slice(loadsBefore).includes('start'); ) {
+    const s = h.state();
+    if (s.url === first && idle(s)) early = s;
+    await sleep(10);
+  }
+  r.check('a new source is not reported loaded before it starts', early === null, early);
+  r.check('initial load', await waitFor(h, (s) => s.url === first && idle(s)), h.state());
   await agree(h, r, 'initial load agrees');
 
   for (const [id, expected] of [
@@ -373,10 +398,8 @@ async function bridge(h: Harness) {
   const page = `${h.pages}/bridge.html?t=${Date.now()}`;
   h.load(page);
   await waitFor(h, (s) => s.url === page && idle(s));
-  r.check(
-    'page sees window.nativeBridge',
-    (await h.ref.current?.evaluate('typeof window.nativeBridge')) === 'object'
-  );
+  const bridgeType = await h.ref.current?.evaluate('[typeof window.nativeBridge, location.href, document.readyState]');
+  r.check('page sees window.nativeBridge', (bridgeType as string[])?.[0] === 'object', { bridgeType, state: h.state() });
 
   r.check('RN -> page call', (await h.bridge.call('sum', { a: 2, b: 3 })) === 5);
   r.check('RN -> page awaits a page Promise', (await h.bridge.call('pageSlow')) === 'late');
@@ -636,7 +659,10 @@ async function crash(h: Harness) {
     // The driver kills the page's renderer: `sandboxed_process` (adb root) on Android, WebContent on iOS.
     // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView does not report it.)
     // Kill only a live renderer: an evaluate round trip needs one (a kill during recovery would find none).
-    await Promise.race([h.ref.current?.evaluate('1'), sleep(10000)]);
+    // An evaluate that the recovery's navigation rejects also proves nothing yet: wait for one that answers.
+    const answers = () =>
+      Promise.race([h.ref.current?.evaluate('1').then(() => true, () => false), sleep(1000).then(() => false)]);
+    for (const end = Date.now() + 10000; Date.now() < end && !(await answers()); ) await sleep(300);
     r.info('KILL', n);
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
@@ -950,9 +976,11 @@ async function permissionsSuite(h: Harness) {
     const geo = await press('geo');
     // Granted means anything but PERMISSION_DENIED (1): the emulator may have no fix yet (3, timeout).
     r.check('location granted with app yes + OS permission', /geo ok|geo error [23]/.test(geo), geo);
+    // WebView keeps a location answer for the page's lifetime: a new page asks the app again.
+    await openPage(h, `${h.pages}/device.html?t=${Date.now()}`);
     answer = false;
     const geoDenied = await press('geo');
-    r.check('location denied when the app says no', geoDenied.includes('geo error'), geoDenied);
+    r.check('location denied when the app says no (PERMISSION_DENIED)', geoDenied.includes('geo error 1'), geoDenied);
   }
 
   const askedBefore = asked.length;
