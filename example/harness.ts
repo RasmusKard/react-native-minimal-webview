@@ -1142,7 +1142,7 @@ async function borrowed(h: Harness) {
 
 /**
  * Parity with react-native-webview: the same scenarios against both libraries, reported side by side as
- * `INFO parity: <scenario> {"minimal": …, "rnw": …}`. These are observations, not pass/fail: docs/PARITY.md reads them.
+ * `INFO parity: <scenario> {"minimal": …, "rnw": …}`. These are observations, not pass/fail.
  */
 async function parity(h: Harness) {
   const r = reporter('parity');

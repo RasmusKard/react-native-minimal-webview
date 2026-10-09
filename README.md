@@ -261,5 +261,3 @@ The on-device suites (`example/harness.ts`) run inside the example app and make 
 gestures, taps, dialog presses and renderer kills the suite asks for (shown on screen as `<suite>#<n> <REQUEST>`),
 and fails unless the suite ends with `fail=0`. A suite can also be started by hand with
 `curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'`. Renderer kills on Android need `adb root`.
-
-The design and its decisions are in [`docs/WEBVIEW_PLAN.md`](docs/WEBVIEW_PLAN.md) and [`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md).
