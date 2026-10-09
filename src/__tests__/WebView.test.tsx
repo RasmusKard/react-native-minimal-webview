@@ -16,7 +16,9 @@ async function render(props: Partial<WebViewProps>) {
     root.render(<WebView source={{ uri: 'https://example.com' }} onLoad={() => {}} {...props} />)
   );
   const native = root.container.queryAll((node) => node.type === 'MinimalWebView');
-  const container = root.container.queryAll((node) => node.type === 'View' && node.props.testID === 'web');
+  const container = root.container.queryAll(
+    (node) => node.type === 'View' && node.props.testID === 'web'
+  );
   return { native: native[0]?.props, container: container[0]?.props };
 }
 
@@ -30,7 +32,10 @@ describe('WebView', () => {
   });
 
   it('forwards them to the container instead when an overlay can cover the WebView', async () => {
-    const { native, container } = await render({ ...viewProps, renderLoading: () => <Text>Loading</Text> });
+    const { native, container } = await render({
+      ...viewProps,
+      renderLoading: () => <Text>Loading</Text>,
+    });
     expect(container).toMatchObject(viewProps);
     expect(native).not.toHaveProperty('testID');
     expect(container).not.toHaveProperty('renderLoading');
@@ -58,7 +63,9 @@ describe('extensions and bridge', () => {
     await show('unlock');
     expect(warn).toHaveBeenCalledTimes(1);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.extensions).toEqual([{ name: 'fullscreenVideo', config: { orientation: 'keep' } }]);
+    expect(native?.extensions).toEqual([
+      { name: 'fullscreenVideo', config: { orientation: 'keep' }, handles: [] },
+    ]);
     warn.mockRestore();
   });
 });

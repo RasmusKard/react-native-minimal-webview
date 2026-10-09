@@ -39,7 +39,9 @@ public extension WebViewExtension {
 public protocol ExtensionHost: AnyObject {
   var webView: WKWebView? { get }
   func emit(_ event: String, _ payload: [String: Any])
-  /// Async decide hook: emits `event` to the extension's JS `onEvent` and calls `onAnswer` with its result (nil if the view goes away).
+  /// Whether the extension's JS helper has a handler for `event` (its `on` map); without one, `ask` answers nil.
+  func handles(_ event: String) -> Bool
+  /// Async decide hook: emits `event` to its JS handler and calls `onAnswer` with the result (nil if the view goes away).
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void)
   /// The core's reload: retries the failed URL after an error.
   func reload()

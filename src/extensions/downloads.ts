@@ -11,11 +11,11 @@ export type DownloadFailure = { filename: string; url: string | null; reason: st
  * Android (public Downloads, with a system notification). The app shares or moves the file in `onDownload`.
  */
 export const downloads = (
-  options: { onDownload?: (download: Download) => void; onError?: (failure: DownloadFailure) => void } = {}
+  options: {
+    onDownload?: (download: Download) => void;
+    onError?: (failure: DownloadFailure) => void;
+  } = {}
 ): WebViewExtension => ({
   native: { name: 'downloads' },
-  onEvent: (event, payload) => {
-    if (event === 'download') options.onDownload?.(payload as Download);
-    if (event === 'downloadFailed') options.onError?.(payload as DownloadFailure);
-  },
+  on: { download: options.onDownload, downloadFailed: options.onError },
 });

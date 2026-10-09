@@ -60,7 +60,10 @@ interface ExtensionHost {
 
   fun emit(event: String, payload: Map<String, Any?>)
 
-  /** Async decide hook: emits [event] to the extension's JS `onEvent` and calls [onAnswer] with its result (null if the view goes away). */
+  /** Whether the extension's JS helper has a handler for [event] (its `on` map); without one, `ask` answers null. */
+  fun handles(event: String): Boolean
+
+  /** Async decide hook: emits [event] to its JS handler and calls [onAnswer] with the result (null if the view goes away). */
   fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
   /** Checks only; never prompts. */

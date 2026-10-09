@@ -150,7 +150,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       val extension = WebViewExtensions.create(name)
       if (extension == null) Log.w(TAG, "no WebView extension registered as $name")
       @Suppress("UNCHECKED_CAST") // because config comes from JS as a plain object
-      extension?.onAttach(hostFor(name), spec["config"] as? Map<String, Any?> ?: emptyMap())
+      val handles = (spec["handles"] as? List<*>).orEmpty().map { it.toString() }.toSet()
+      extension?.onAttach(hostFor(name, handles), spec["config"] as? Map<String, Any?> ?: emptyMap())
       extension?.let { name to it }
     }.toMap()
     mount()
@@ -168,7 +169,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 
-  private fun hostFor(name: String) = object : ExtensionHost {
+  private fun hostFor(name: String, handles: Set<String>) = object : ExtensionHost {
     override val webView get() = this@MinimalWebView.webView
     override val activity get() = appContext.currentActivity
     override fun hasPermission(permission: String) =
@@ -186,6 +187,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       }
       return true
     }
+    override fun handles(event: String) = event in handles
+
     override fun emit(event: String, payload: Map<String, Any?>) =
       onExtension(mapOf("name" to name, "event" to event, "payload" to payload))
 

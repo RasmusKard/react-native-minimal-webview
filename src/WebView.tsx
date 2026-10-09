@@ -20,7 +20,6 @@ import type {
   NavigationState,
   ProcessGoneEvent,
   WebViewErrorEvent,
-  WebViewExtension,
   WebViewProps,
   WebViewRef,
 } from './types';
@@ -86,7 +85,7 @@ type NativeProps = ViewProps &
     ref: Ref<NativeMethods>;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
-    extensions: WebViewExtension['native'][] | undefined;
+    extensions: ReturnType<typeof nativeSpecs>;
     openExternalInJS: boolean;
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
@@ -237,8 +236,9 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     nativeEvent: { name, event, payload, askId },
   }: NativeEvent<ExtensionEvent>) => {
     const extension = props.extensions?.find((candidate) => candidate.native.name === name);
+    const handler = extension?.on?.[event] as ((payload: unknown) => unknown) | undefined;
     const value = await settle(
-      () => extension?.onEvent?.(event, payload),
+      () => handler?.(payload),
       null,
       `the ${name} extension's ${event} handler failed`
     );
@@ -285,10 +285,15 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   return withOverlay(webView, props, error, loading);
 }
 
-const nativeSpecs = (props: WebViewProps) => props.extensions?.map((extension) => extension.native);
+/** What native gets per extension: its name and config, and which events have a JS handler. */
+const nativeSpecs = (props: WebViewProps) =>
+  props.extensions?.map(({ native, on = {} }) => ({
+    ...native,
+    handles: Object.keys(on).filter((event) => on[event]),
+  }));
 
 /**
- * Native sets up the extensions and the bridge once, at mount; their JS handlers (`onEvent`, `bridge.handle`) stay
+ * Native sets up the extensions and the bridge once, at mount; their JS handlers (`on`, `bridge.handle`) stay
  * live. A later change is ignored with a warning: remount with a new `key` to apply it.
  */
 function useFixedAtMount(props: WebViewProps) {

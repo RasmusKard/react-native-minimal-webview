@@ -184,7 +184,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     self.webView = webView
     activeExtensions = extensions.compactMap { spec in
       guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
-      instance.attach(host: Host(view: self, name: name), config: spec["config"] as? [String: Any] ?? [:])
+      let host = Host(view: self, name: name, handles: Set(spec["handles"] as? [String] ?? []))
+      instance.attach(host: host, config: spec["config"] as? [String: Any] ?? [:])
       return instance
     }
     activeExtensions?.forEach { $0.didCreate(webView) }
@@ -433,13 +434,19 @@ private let crashWindow: TimeInterval = 60
 private final class Host: ExtensionHost {
   private weak var view: MinimalWebView?
   private let name: String
+  private let handled: Set<String>
 
-  init(view: MinimalWebView, name: String) {
+  init(view: MinimalWebView, name: String, handles: Set<String>) {
     self.view = view
     self.name = name
+    handled = handles
   }
 
   var webView: WKWebView? { view?.webView }
+
+  func handles(_ event: String) -> Bool {
+    handled.contains(event)
+  }
 
   func emit(_ event: String, _ payload: [String: Any]) {
     view?.onExtension(["name": name, "event": event, "payload": payload])
