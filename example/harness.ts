@@ -366,7 +366,7 @@ async function reissue(h: Harness) {
 
 const errorCode = (error: unknown) => (error as { code?: string }).code;
 
-/** Starts a page-side `nativeBridge.call` and waits for its outcome (Android's evaluate cannot await). */
+/** Starts a page-side `nativeBridge.call` and waits for its outcome. */
 async function pageCall(h: Harness, method: string, params: unknown) {
   await h.ref.current?.evaluate(`(() => {
     window.__call = undefined;
@@ -391,6 +391,23 @@ async function bridge(h: Harness) {
   await waitFor(h, (s) => s.url === page && idle(s));
   const bridgeType = await h.ref.current?.evaluate('[typeof window.nativeBridge, location.href, document.readyState]');
   r.check('page sees window.nativeBridge', (bridgeType as string[])?.[0] === 'object', { bridgeType, state: h.state() });
+
+  // evaluate: one contract on both platforms.
+  const evaluate = (script: string) => h.ref.current?.evaluate(script);
+  const plain = await evaluate(`({ n: 1 + 1, s: 'x', a: [true, null] })`);
+  r.check('evaluate returns a plain value', JSON.stringify(plain) === '{"n":2,"s":"x","a":[true,null]}', plain);
+  const awaited = await evaluate(`new Promise((resolve) => setTimeout(() => resolve('late'), 300))`);
+  r.check('evaluate awaits a Promise', awaited === 'late', awaited);
+  const unencodable = await Promise.all(
+    ['() => 1', 'NaN', '(() => { const o = {}; o.o = o; return o; })()'].map(evaluate)
+  );
+  r.check('evaluate gives null for what JSON cannot encode', unencodable.every((v) => v === null), unencodable);
+  const thrown = await Promise.all(
+    [`(() => { throw new Error('boom'); })()`, `Promise.reject(new Error('no'))`, '1 +'].map((s) =>
+      evaluate(s)?.catch(errorCode)
+    )
+  );
+  r.check('evaluate rejects ERR_EVALUATE on a throw, a rejection or a syntax error', thrown.every((c) => c === 'ERR_EVALUATE'), thrown);
 
   r.check('RN -> page call', (await h.bridge.call('sum', { a: 2, b: 3 })) === 5);
   r.check('RN -> page awaits a page Promise', (await h.bridge.call('pageSlow')) === 'late');
@@ -419,9 +436,12 @@ async function bridge(h: Harness) {
   r.check('page -> RN event', h.pageEvents.length === before + 1, h.pageEvents);
 
   const inFlight = h.bridge.call('pageSlow').catch(errorCode);
+  const pending = evaluate('new Promise(() => {})')?.catch(errorCode);
   await sleep(200);
   h.load(`${page}&next=1`);
   r.check('navigation rejects calls in flight', (await inFlight) === 'navigated');
+  const gone = await pending;
+  r.check('navigation rejects an evaluate in flight', gone === (Platform.OS === 'android' ? 'navigated' : 'ERR_EVALUATE'), gone);
   await waitFor(h, (s) => s.url.includes('next=1') && idle(s));
   await sleep(500);
   r.check(
