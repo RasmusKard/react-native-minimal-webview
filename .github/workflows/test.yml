@@ -17,12 +17,14 @@ jobs:
       - run: npm test -- --watchAll=false
       - run: npm run check:pack   # clean build, then every relative import in the packed build/ must be packed too
 
-  # The rule matcher on every platform against the shared cases in test-vectors/navigation-rules.json.
+  # The rule matchers on every platform against the shared cases in test-vectors/ (navigation and origin rules).
   swift-rules:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: xcrun swiftc ios/NavigationRules.swift ios/Tests/main.swift -o rules && ./rules test-vectors/navigation-rules.json
+      - run: >-
+          xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o rules
+          && ./rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
 
   kotlin-rules:
     runs-on: ubuntu-latest
