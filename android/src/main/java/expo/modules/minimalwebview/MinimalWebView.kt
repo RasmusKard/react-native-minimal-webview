@@ -50,6 +50,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var thirdPartyCookies = false
   var mediaPlaybackRequiresUserAction = true
   var showsScrollIndicators = true
+  var javaScriptCanOpenWindowsAutomatically = false
   var webviewDebuggingEnabled = false
   /** JS handles `external` navigations (onOpenExternal); native only reports them. */
   var openExternalInJS = false
@@ -95,9 +96,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used
   private fun configure(settings: WebSettings) {
     settings.javaScriptEnabled = true
-    // window.open and target=_blank reach onCreateWindow; the navigation rules decide (newWindow: true).
+    // A tap's window.open and target=_blank reach onCreateWindow; the navigation rules decide (newWindow: true).
+    // Without a gesture only when the app opts in (javaScriptCanOpenWindowsAutomatically, in applySettings).
     settings.setSupportMultipleWindows(true)
-    settings.javaScriptCanOpenWindowsAutomatically = true
     settings.domStorageEnabled = true
     settings.allowFileAccess = false
     settings.allowContentAccess = false
@@ -136,6 +137,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     settings.userAgentString = userAgent
       ?: applicationNameForUserAgent?.let { "${WebSettings.getDefaultUserAgent(context)} $it" }
     settings.mediaPlaybackRequiresUserGesture = mediaPlaybackRequiresUserAction
+    settings.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
     webView.isVerticalScrollBarEnabled = showsScrollIndicators
     webView.isHorizontalScrollBarEnabled = showsScrollIndicators
     CookieManager.getInstance().setAcceptThirdPartyCookies(webView, thirdPartyCookies)

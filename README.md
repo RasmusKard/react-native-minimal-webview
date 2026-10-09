@@ -129,6 +129,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `mediaPlaybackRequiresUserAction` (default true), `allowsInlineMediaPlayback` (iOS, default false) | Fixed at creation on iOS |
 | `scrollEnabled`, `bounces` | iOS only |
 | `showsScrollIndicators` | |
+| `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
 | `extensions` | See below |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onError` |
@@ -244,6 +245,7 @@ The interface is **experimental** until it has had more outside users.
 - File access is off, mixed content is never allowed, and SSL errors are always cancelled.
 - There is no `addJavascriptInterface`. Android pages see one extra global, `nativeEvaluateResult`, for `evaluate` results.
 - The bridge works only for allowed origins, main frame only.
+- A page can open a window only from a tap, unless `javaScriptCanOpenWindowsAutomatically` is set. The navigation rules decide every new window.
 - `intent:` URLs are sanitised.
 - Permissions are granted only to configured origins in the main frame, and are denied by default.
 - Download filenames are sanitised.
