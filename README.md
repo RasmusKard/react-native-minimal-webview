@@ -248,6 +248,7 @@ The interface is **experimental** until it has had more outside users.
 ```sh
 npm install && (cd example && npm install)
 npm test                                   # TS unit tests (bridge protocol, createBridge, rule matcher)
+npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin rule matcher
 xcrun swiftc ios/NavigationRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json
 cd example && npm run test-pages           # local test pages on :8090

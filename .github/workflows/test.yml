@@ -15,6 +15,7 @@ jobs:
       - run: npx tsc --noEmit -p tsconfig.json
       - run: node internal/build-page-client.mjs --check
       - run: npm test -- --watchAll=false
+      - run: npm run check:pack   # clean build, then every relative import in the packed build/ must be packed too
 
   # The rule matcher on every platform against the shared cases in test-vectors/navigation-rules.json.
   swift-rules:

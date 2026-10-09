@@ -1,4 +1,3 @@
-# UNTESTED (no runner was available when this was written); the commands themselves were run locally.
 name: quality
 on: pull_request
 jobs:
