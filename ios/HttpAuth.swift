@@ -18,7 +18,8 @@ final class HttpAuth: WebViewExtension {
     host.ask("authRequest", ["host": space.host, "realm": space.realm ?? ""]) { answer in
       let credential = answer as? [String: Any]
       guard let user = credential?["username"] as? String, let password = credential?["password"] as? String else {
-        return completion(.cancelAuthenticationChallenge, nil)
+        // Not .cancelAuthenticationChallenge: that fails the navigation (iOS 17), while this shows the 401 page.
+        return completion(.rejectProtectionSpace, nil)
       }
       completion(.useCredential, URLCredential(user: user, password: password, persistence: .forSession))
     }

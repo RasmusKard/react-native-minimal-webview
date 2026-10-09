@@ -617,8 +617,11 @@ async function crash(h: Harness) {
     const before = h.events.gone.length;
     // The driver kills the page's renderer: `sandboxed_process` (adb root) on Android, WebContent on iOS.
     // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView does not report it.)
-    r.info('KILL', n);
-    await waitFor(h, () => h.events.gone.length > before, 15000);
+    // A kill can land before the recovering page has a renderer: ask again (bounded) when nothing died.
+    for (let attempt = 0; attempt < 3 && h.events.gone.length === before; attempt++) {
+      r.info('KILL', n);
+      await waitFor(h, () => h.events.gone.length > before, 5000);
+    }
     return h.events.gone[before];
   };
   await openPage(h, page);
