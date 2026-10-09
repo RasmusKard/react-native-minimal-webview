@@ -52,15 +52,32 @@ const PASSTHROUGH = [
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
-/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. Add new props here. */
-const OWN = new Set<string>([
-  ...PASSTHROUGH,
-  ...([
-    'source', 'injectedScripts', 'webviewDebuggingEnabled', 'bridge', 'extensions', 'renderLoading', 'renderError',
-    'onNavigationRequest', 'onOpenExternal', 'onNavigation', 'onNavigationStateChange', 'onError', 'onProcessGone',
-    'onLoadStart', 'onLoad', 'onLoadEnd', 'children',
-  ] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[]),
-]);
+/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. The type makes it complete. */
+const OWN = new Set(
+  Object.keys({
+    ...(Object.fromEntries(PASSTHROUGH.map((key) => [key, true])) as Record<
+      keyof Passthrough,
+      true
+    >),
+    source: true,
+    injectedScripts: true,
+    webviewDebuggingEnabled: true,
+    bridge: true,
+    extensions: true,
+    renderLoading: true,
+    renderError: true,
+    onNavigationRequest: true,
+    onOpenExternal: true,
+    onNavigation: true,
+    onNavigationStateChange: true,
+    onError: true,
+    onProcessGone: true,
+    onLoadStart: true,
+    onLoad: true,
+    onLoadEnd: true,
+    children: true,
+  } satisfies Record<Exclude<keyof WebViewProps, keyof ViewProps> | 'children', true>)
+);
 
 type NativeProps = ViewProps &
   Passthrough &
@@ -211,7 +228,8 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     else connection?.markUnavailable();
   };
 
-  const answer = (askId: number, value: unknown) => native.current?.answer(askId, { value: value ?? null });
+  const answer = (askId: number, value: unknown) =>
+    native.current?.answer(askId, { value: value ?? null });
 
   const onExtension = async ({
     nativeEvent: { name, event, payload, askId },

@@ -22,12 +22,12 @@ function hostOf(authority: string | undefined): string | null {
 const hostMatches = (pattern: string, host: string) =>
   pattern.startsWith('*.') ? host.endsWith(pattern.slice(1)) : host === pattern;
 
+const FLAGS = ['mainFrame', 'newWindow', 'userInitiated'] as const;
+
 /**
  * What native decides for a navigation: the same matcher as Kotlin and Swift, checked against the shared cases in
  * test-vectors/navigation-rules.json. Useful for unit-testing an app's rules.
  */
-const FLAGS = ['mainFrame', 'newWindow', 'userInitiated'] as const;
-
 export function decideNavigation(
   rules: NavigationRule[] | undefined,
   request: NavigationRequest
