@@ -42,6 +42,7 @@ export type Harness = {
     navigations: NavigationEvent[];
     downloads: Download[];
     fullscreen: boolean[];
+    pageCounts: { url: string; count: number }[];
     /** Whether the example's renderError screen is mounted. */
     overlay: { error: boolean };
   };
@@ -934,6 +935,20 @@ async function fullscreen(h: Harness) {
   r.done();
 }
 
+/** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
+async function sampleExtension(h: Harness) {
+  const r = reporter('sampleExtension');
+  const before = h.events.pageCounts.length;
+  const page = `${h.pages}/spa.html?t=${Date.now()}`;
+  await openPage(h, page);
+  await sleep(1000);
+  const event = h.events.pageCounts.at(-1);
+  r.check('its native side emits through the generic channel', h.events.pageCounts.length > before && event?.url === page, event);
+  const inPage = (await h.ref.current?.evaluate('window.__pageCount')) as number;
+  r.check('its native side reaches the page', inPage === event?.count, { inPage, event });
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
@@ -953,4 +968,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   downloads: downloadsSuite,
   permissions: permissionsSuite,
   fullscreen,
+  sampleExtension,
 };

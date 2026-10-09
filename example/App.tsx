@@ -18,6 +18,7 @@ import {
   useWebViewState,
 } from 'minimal-rn-webview';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUITES, pollForSuites, type Harness } from './harness';
@@ -37,6 +38,7 @@ export default function App() {
     navigations: [],
     downloads: [],
     fullscreen: [],
+    pageCounts: [],
     overlay: { error: false },
   }).current;
   const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
@@ -67,6 +69,7 @@ export default function App() {
         onPermissionRequest: (request) => permissionRef.current?.(request) ?? false,
       }),
       sharedCookies(),
+      pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) }),
     ],
     []
   );
