@@ -3,11 +3,16 @@ name: navigation
 env:
   SUITE: navigation
 ---
-# Android: a real tap on a link inside an iframe, where the harness says (iOS clicks it from script).
+# Android: real taps where the harness says (iOS clicks from script): the window.open button, the target=_blank link,
+# then a link inside an iframe.
 - runFlow: subflows/launch.yaml
 - runFlow:
     when: { platform: Android }
     commands:
       - runFlow: { file: subflows/await.yaml, env: { N: 1 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 2 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 3 } }
       - runFlow: subflows/tap-request-point.yaml
 - runFlow: subflows/finish.yaml

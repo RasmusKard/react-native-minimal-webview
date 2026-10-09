@@ -9,7 +9,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
 import type {
@@ -48,11 +48,23 @@ const PASSTHROUGH = [
   'scrollEnabled',
   'bounces',
   'showsScrollIndicators',
+  'javaScriptCanOpenWindowsAutomatically',
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
-type NativeProps = Passthrough &
-  Pick<WebViewProps, 'source' | 'style' | 'injectedScripts' | 'webviewDebuggingEnabled'> & {
+/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. Add new props here. */
+const OWN = new Set<string>([
+  ...PASSTHROUGH,
+  ...([
+    'source', 'injectedScripts', 'webviewDebuggingEnabled', 'bridge', 'extensions', 'renderLoading', 'renderError',
+    'onNavigationRequest', 'onOpenExternal', 'onNavigation', 'onNavigationStateChange', 'onError', 'onProcessGone',
+    'onLoadStart', 'onLoad', 'onLoadEnd', 'children',
+  ] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[]),
+]);
+
+type NativeProps = ViewProps &
+  Passthrough &
+  Pick<WebViewProps, 'source' | 'injectedScripts' | 'webviewDebuggingEnabled'> & {
     ref: Ref<NativeMethods>;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
@@ -232,6 +244,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   const webView = (
     <NativeWebView
+      {...(props.renderLoading || props.renderError ? {} : viewPropsOf(props))}
       ref={native}
       source={props.source}
       style={props.renderLoading || props.renderError ? styles.fill : props.style}
@@ -250,6 +263,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     />
   );
   return withOverlay(webView, props, error, loading);
+}
+
+/** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */
+function viewPropsOf(props: WebViewProps): ViewProps {
+  return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN.has(key)));
 }
 
 /** Native props that pass straight through. */
@@ -309,7 +327,7 @@ function withOverlay(
   if (!props.renderLoading && !props.renderError) return webView;
   const overlay = error ? props.renderError?.(error) : loading ? props.renderLoading?.() : null;
   return (
-    <View style={props.style}>
+    <View {...viewPropsOf(props)}>
       {webView}
       {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
     </View>
