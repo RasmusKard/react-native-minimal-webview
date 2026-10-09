@@ -32,6 +32,9 @@ export type Harness = {
   pageEvents: unknown[];
   setFileRequest: (handler: ((request: FileRequest) => Promise<string[] | null>) | undefined) => void;
   setPermission: (handler: ((request: PermissionRequestEvent) => Promise<boolean>) | undefined) => void;
+  /** Mounts a fresh WebView of that kind over the screen; resolves with ms from request to first onLoadEnd. */
+  measureLoad: (kind: 'minimal' | 'rnw', uri: string) => Promise<{ ms: number; readyState: string }>;
+  endPerf: () => void;
   /** Extra WebView props, replacing the previous extras. */
   setProps: (props: Partial<WebViewProps>) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
@@ -751,12 +754,22 @@ async function navigation(h: Harness) {
   const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 8000);
   r.check('target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
-  // Android decides only navigations that start inside a frame, not the frame's initial src load.
-  await h.ref.current?.evaluate(`document.getElementById('frame').contentDocument.getElementById('redirect').click()`);
-  await sleep(1500);
+  // Android decides only navigations that start inside a frame with a user gesture, not the frame's initial src load:
+  // a real tap on a link inside the iframe.
+  const inFrame = (await h.ref.current?.evaluate(`(() => {
+    const f = document.getElementById('frame'); f.scrollIntoView({ block: 'center' });
+    const a = f.contentDocument.getElementById('redirect');
+    const fr = f.getBoundingClientRect(), ar = a.getBoundingClientRect(), d = devicePixelRatio;
+    return [Math.round((fr.left + ar.left + 8) * d), Math.round((50 + fr.top + ar.top + ar.height / 2) * d)];
+  })()`)) as [number, number];
+  if (Platform.OS === 'android') r.info('TAP', inFrame.join(' '));
+  else await h.ref.current?.evaluate(`document.getElementById('frame').contentDocument.getElementById('redirect').click()`);
+  await sleep(2500);
 
   const frames = h.events.navigations.filter((n) => !n.mainFrame);
-  r.check('iframe navigations are decided as mainFrame false', frames.some((n) => n.action === 'allow'), frames.slice(0, 3));
+  // Android intercepts only non-http(s) iframe navigations (WebViewClient docs); iOS decides them all.
+  if (Platform.OS === 'android') r.info('iframe decisions (http(s) iframes are not intercepted on Android)', frames.length);
+  else r.check('iframe navigations are decided as mainFrame false', frames.some((n) => n.action === 'allow'), frames.slice(0, 3));
 
   asked.length = 0;
   await h.ref.current?.evaluate(`location.href = '/checkout/loopA'`);
@@ -949,6 +962,38 @@ async function sampleExtension(h: Harness) {
   r.done();
 }
 
+/** Mount -> first onLoadEnd, minimal-rn-webview vs react-native-webview, alternating runs; medians in ms. */
+async function perf(h: Harness) {
+  const r = reporter('perf');
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!;
+  for (const [label, uri] of [
+    ['local page', `${h.pages}/spa.html`],
+    ['delfi.ee', 'https://www.delfi.ee/'],
+  ] as const) {
+    const times: Record<'minimal' | 'rnw', number[]> = { minimal: [], rnw: [] };
+    const states: Record<'minimal' | 'rnw', string[]> = { minimal: [], rnw: [] };
+    for (let i = 0; i < 5; i++) {
+      for (const kind of ['minimal', 'rnw'] as const) {
+        const result = await Promise.race([
+          h.measureLoad(kind, `${uri}?perf=${Date.now()}`),
+          sleep(30000).then(() => null),
+        ]);
+        if (result) {
+          times[kind].push(Math.round(result.ms));
+          states[kind].push(result.readyState);
+        }
+        h.endPerf();
+        await sleep(800);
+      }
+    }
+    r.info(`${label} mount->onLoadEnd ms`, {
+      minimal: { median: median(times.minimal), runs: times.minimal, readyState: states.minimal },
+      rnw: { median: median(times.rnw), runs: times.rnw, readyState: states.rnw },
+    });
+  }
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
@@ -969,4 +1014,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   permissions: permissionsSuite,
   fullscreen,
   sampleExtension,
+  perf,
 };
