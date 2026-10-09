@@ -6,6 +6,8 @@ import WebKit
 public protocol WebViewExtension: AnyObject {
   func attach(host: ExtensionHost, config: [String: Any])
   func didCreate(_ webView: WKWebView)
+  /// Work that must finish before a `source` load or the first load in a new WKWebView (shared cookies): call `done` once.
+  func prepare(_ webView: WKWebView, done: @escaping () -> Void)
   func didFinish(url: URL?)
   /// Return `.download` (or another policy) to override the default `.allow` for a main-frame response.
   func decidePolicy(for response: WKNavigationResponse) -> WKNavigationResponsePolicy?
@@ -14,6 +16,11 @@ public protocol WebViewExtension: AnyObject {
   func didBecome(_ download: WKDownload)
   /// Return true to handle the request; `decide` must then be called once.
   func requestMediaCapture(origin: WKSecurityOrigin, type: WKMediaCaptureType, decide: @escaping (WKPermissionDecision) -> Void) -> Bool
+  /// HTTP basic or digest auth. Return true to handle it; `completion` must then be called once.
+  func authenticate(
+    _ challenge: URLAuthenticationChallenge,
+    completion: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) -> Bool
   func detach()
 }
 
@@ -21,11 +28,16 @@ public protocol WebViewExtension: AnyObject {
 public extension WebViewExtension {
   func attach(host: ExtensionHost, config: [String: Any]) { /* optional */ }
   func didCreate(_ webView: WKWebView) { /* optional */ }
+  func prepare(_ webView: WKWebView, done: @escaping () -> Void) { done() }
   func didFinish(url: URL?) { /* optional */ }
   func decidePolicy(for response: WKNavigationResponse) -> WKNavigationResponsePolicy? { nil }
   func wantsDownload(_ action: WKNavigationAction) -> Bool { false }
   func didBecome(_ download: WKDownload) { /* optional */ }
   func requestMediaCapture(origin: WKSecurityOrigin, type: WKMediaCaptureType, decide: @escaping (WKPermissionDecision) -> Void) -> Bool { false }
+  func authenticate(
+    _ challenge: URLAuthenticationChallenge,
+    completion: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) -> Bool { false }
   func detach() { /* optional */ }
 }
 

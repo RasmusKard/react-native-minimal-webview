@@ -17,6 +17,7 @@ import android.view.ViewGroup
 import android.content.pm.PackageManager
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
+import android.webkit.HttpAuthHandler
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
@@ -126,6 +127,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     settings.allowFileAccess = false
     settings.allowContentAccess = false
     settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+    // Pinch-zoom (an accessibility basic; pages opt out with a viewport meta), without the legacy +/- buttons.
+    settings.builtInZoomControls = true
+    settings.displayZoomControls = false
   }
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
@@ -143,7 +147,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private fun load(source: Map<String, Any?>) {
     val uri = source["uri"] as? String
     if (uri != null) {
-      webView.loadUrl(uri)
+      val headers = (source["headers"] as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value.toString() }
+      webView.loadUrl(uri, headers.orEmpty())
     } else {
       webView.loadDataWithBaseURL(source["baseUrl"] as? String, source["html"] as? String ?: "", "text/html", "utf-8", null)
     }
@@ -561,6 +566,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       if (sslError.url == (pendingUrl ?: url)) {
         reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
       }
+    }
+
+    // Basic and digest auth: an extension answers (httpAuth); without one, cancel (the page shows its 401).
+    override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
+      if (activeExtensions.orEmpty().values.none { it.onHttpAuthRequest(handler, host, realm) }) handler.cancel()
     }
 
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {

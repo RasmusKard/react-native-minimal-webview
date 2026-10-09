@@ -53,6 +53,24 @@ function handle(req, res) {
       console.log(body);
       res.end();
     });
+  } else if (url.pathname === '/headers') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><pre id="headers">${JSON.stringify(req.headers).replace(/</g, '&lt;')}</pre>`);
+  } else if (url.pathname === '/auth') {
+    // Basic auth: user "u", password "p".
+    if (req.headers.authorization === `Basic ${Buffer.from('u:p').toString('base64')}`) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end('<!doctype html><h1 id="auth">authorized</h1>');
+    } else {
+      res.writeHead(401, { 'www-authenticate': 'Basic realm="test realm"', 'content-type': 'text/html' });
+      res.end('<!doctype html><h1 id="auth">unauthorized</h1>');
+    }
+  } else if (url.pathname === '/setcookie') {
+    res.writeHead(200, { 'set-cookie': `${q.get('name') ?? 'native'}=${q.get('value') ?? '1'}; Path=/` });
+    res.end('set');
+  } else if (url.pathname === '/cookies') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><pre id="cookies">${(req.headers.cookie ?? '').replace(/</g, '&lt;')}</pre>`);
   } else if (url.pathname === '/ua') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(`<!doctype html><meta name="viewport" content="width=device-width"><pre id="ua">${(req.headers['user-agent'] ?? '').replace(/</g, '&lt;')}</pre>`);

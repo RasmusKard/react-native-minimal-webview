@@ -114,7 +114,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 
 | Prop | Notes |
 |---|---|
-| `source` | `{ uri }` or `{ html, baseUrl? }` |
+| `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only, as in react-native-webview |
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. On iOS the app name is fixed at creation: changing it recreates the WebView |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
@@ -125,7 +125,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `showsScrollIndicators` | |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
 | `extensions` | See below |
-| `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame error until the next load |
+| `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description, isMainFrame }`. Main-frame errors only. SSL errors are always cancelled |
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading |
@@ -145,18 +145,20 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
     downloads({ onDownload }),
     permissions({ origins: ['https://*.example.com'], onPermissionRequest }),
     sharedCookies(),
+    httpAuth({ onAuthRequest }),
   ]}
 />
 ```
 
 | Extension | iOS | Android |
 |---|---|---|
-| `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) still reloads |
-| `fullscreenVideo({ onChange })` | Built in (WebKit) | The page's fullscreen view covers the activity, system bars hide, and back exits |
+| `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
+| `fullscreenVideo({ onChange, orientation? })` | Built in (WebKit) | The page's fullscreen view covers the WebView's window (so it works inside a `Modal`) on black, system bars hide, and back exits. `orientation: 'unlock'` lets a portrait-locked app rotate while fullscreen |
 | `fileUpload({ onFileRequest? })` | Built in (WebKit's picker; needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`) | `onFileRequest({ accept, multiple, capture })` returns URIs, or `null` to cancel. Without it, the system chooser opens |
-| `downloads({ onDownload })` | `WKDownload` into the temporary directory | `DownloadManager` (the page's cookies and user agent, a notification, public Downloads); `data:` and `blob:` go to the cache |
+| `downloads({ onDownload, onError? })` | `WKDownload` into the temporary directory | `DownloadManager` (the page's cookies and user agent, a notification, public Downloads); `data:` and `blob:` go to the cache. `onError({ filename, url, reason })` on both platforms |
 | `permissions({ origins, onPermissionRequest? })` | WebKit asks the OS. `true` skips WebKit's own prompt; other origins are denied | Grants only if the app says yes **and** the OS permission is granted. Never prompts by itself |
-| `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView at creation, and back after each load | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
+| `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
+| `httpAuth({ onAuthRequest })` | `onAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | The same. Without the extension, auth challenges are cancelled and the site's 401 page shows |
 
 ### Recipes
 

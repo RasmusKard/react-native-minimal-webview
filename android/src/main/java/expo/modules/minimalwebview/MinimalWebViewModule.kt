@@ -11,6 +11,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.minimalwebview.extensions.Downloads
 import expo.modules.minimalwebview.extensions.FileUpload
 import expo.modules.minimalwebview.extensions.FullscreenVideo
+import expo.modules.minimalwebview.extensions.HttpAuth
 import expo.modules.minimalwebview.extensions.Permissions
 import expo.modules.minimalwebview.extensions.PullToRefresh
 
@@ -24,6 +25,7 @@ class MinimalWebViewModule : Module() {
       WebViewExtensions.register("fullscreenVideo") { FullscreenVideo() }
       WebViewExtensions.register("downloads") { Downloads() }
       WebViewExtensions.register("permissions") { Permissions() }
+      WebViewExtensions.register("httpAuth") { HttpAuth() }
       // Built in on Android: CookieManager is shared app-wide.
       WebViewExtensions.register("sharedCookies") { object : WebViewExtension {} }
     }

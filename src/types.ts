@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-export type WebViewSource = { uri: string } | { html: string; baseUrl?: string };
+/** `headers` go on the first request only (as in react-native-webview), not on later navigations. */
+export type WebViewSource = { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
 
 export type NavigationAction = 'allow' | 'block' | 'external';
 
@@ -135,6 +136,7 @@ export type WebViewProps = {
   webviewDebuggingEnabled?: boolean;
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;
+  /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onError still fires). */
   renderError?: (error: WebViewErrorEvent) => ReactNode;
   style?: StyleProp<ViewStyle>;
 
