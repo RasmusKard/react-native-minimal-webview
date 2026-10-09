@@ -141,6 +141,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     val next = source ?: return
     if (next == loadedSource) return
     loadedSource = next
+    // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
+    crashTimes.clear()
     load(next)
   }
 
@@ -185,7 +187,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private fun mount() {
     removeAllViews()
     (webView.parent as? ViewGroup)?.removeView(webView)
-    val content = activeExtensions.orEmpty().values.fold(webView as View) { view, extension -> extension.wrap(view) }
+    // A wrapper's addView(view) would give the view WRAP_CONTENT, and for the WebView Chromium then resolves CSS vh to 0.
+    val content = activeExtensions.orEmpty().values.fold(webView as View) { view, extension ->
+      view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+      extension.wrap(view)
+    }
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 

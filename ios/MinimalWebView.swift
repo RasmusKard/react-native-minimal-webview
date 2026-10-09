@@ -99,6 +99,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.isInspectable = webviewDebuggingEnabled
     guard let next = source, loadedSource != next as NSDictionary else { return }
     loadedSource = next as NSDictionary
+    // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
+    crashTimes = []
     prepareExtensions(webView) { [weak self] in self?.load(next) }
   }
 

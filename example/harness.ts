@@ -123,6 +123,11 @@ async function waitFor(h: Harness, predicate: (s: NavigationState) => boolean, m
 }
 
 const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+/** The height of a 100vh element: 0 when the WebView loaded the page before it had a size. */
+const viewportHeight = async (h: Harness) =>
+  (await h.ref.current?.evaluate(
+    `(() => { const d = document.createElement('div'); d.style.height = '100vh'; document.body.append(d); const v = d.offsetHeight; d.remove(); return v; })()`
+  )) as number;
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
 const click = (h: Harness, id: string) =>
   h.ref.current?.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
@@ -619,17 +624,26 @@ async function crash(h: Harness) {
   await openPage(h, page);
   clearEvents(h);
   const firstKillAt = Date.now();
+  const loadsBefore = h.events.loads.length;
   const first = await kill(1);
   r.check('processGone reported and recovered', first?.recovered === true, first);
-  r.check('the page reloads', await waitFor(h, (s) => s.url === page && idle(s), 15000), h.state());
+  r.check(
+    'the page reloads',
+    await waitFor(h, (s) => h.events.loads.slice(loadsBefore).includes('end') && s.url === page && idle(s), 15000),
+    h.state()
+  );
+  const recoveredVh = await viewportHeight(h);
+  r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
   await sleep(1000);
   r.check('the bridge works after recovery', (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4);
 
   for (const n of [2, 3]) {
     const loads = h.events.loads.length;
     await kill(n);
-    // url and idle don't change across recovery: wait for the reload to finish, or the next kill finds no renderer.
-    await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s), 15000);
+    // url and idle don't change across recovery: wait for the reload to start (a new renderer), or the next kill
+    // finds none. Waiting for the end would stretch four crashes past the 60 s window on iOS.
+    await waitFor(h, () => h.events.loads.slice(loads).includes('start'), 15000);
+    await sleep(1000);
   }
   const fourth = await kill(4);
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
@@ -637,6 +651,7 @@ async function crash(h: Harness) {
   if (elapsed < 55000) r.check('a crash loop stops reloading (4th crash in 60 s)', fourth?.recovered === false, fourth);
   else r.info('crash loop check skipped: the 4 crashes took', elapsed);
   r.check('loading a new source works after giving up', await openPage(h, `${h.pages}/?t=${Date.now()}`), h.state());
+  r.check('a new source resets the crash-loop guard', (await kill(5))?.recovered === true, h.events.gone.at(-1));
   r.done();
 }
 
@@ -689,6 +704,8 @@ async function recreate(h: Harness) {
   await sleep(1500);
   await waitFor(h, idle, 10000);
   r.check('the page is shown again', h.state().url === page, h.state());
+  const recreatedVh = await viewportHeight(h);
+  r.check('100vh has a height after recreation', recreatedVh > 0, recreatedVh);
   await openPage(h, `${h.pages}/ua?t=${Date.now()}`);
   const ua = (await h.ref.current?.evaluate(`document.getElementById('ua').textContent`)) as string;
   r.check('the new app name is in the UA', ua.endsWith(' Recreated/9'), ua);
