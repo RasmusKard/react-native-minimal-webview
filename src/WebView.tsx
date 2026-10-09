@@ -52,32 +52,33 @@ const PASSTHROUGH = [
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
-/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. The type makes it complete. */
-const OWN = new Set(
-  Object.keys({
-    ...(Object.fromEntries(PASSTHROUGH.map((key) => [key, true])) as Record<
-      keyof Passthrough,
-      true
-    >),
-    source: true,
-    injectedScripts: true,
-    webviewDebuggingEnabled: true,
-    bridge: true,
-    extensions: true,
-    renderLoading: true,
-    renderError: true,
-    onNavigationRequest: true,
-    onOpenExternal: true,
-    onNavigation: true,
-    onNavigationStateChange: true,
-    onError: true,
-    onProcessGone: true,
-    onLoadStart: true,
-    onLoad: true,
-    onLoadEnd: true,
-    children: true,
-  } satisfies Record<Exclude<keyof WebViewProps, keyof ViewProps> | 'children', true>)
-);
+/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
+const OWN = [
+  ...PASSTHROUGH,
+  ...([
+    'source',
+    'injectedScripts',
+    'webviewDebuggingEnabled',
+    'bridge',
+    'extensions',
+    'renderLoading',
+    'renderError',
+    'onNavigationRequest',
+    'onOpenExternal',
+    'onNavigation',
+    'onNavigationStateChange',
+    'onError',
+    'onProcessGone',
+    'onLoadStart',
+    'onLoad',
+    'onLoadEnd',
+    'children',
+  ] as const),
+] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
+type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OWN)[number]>;
+// A prop missing from OWN fails to compile here, by name.
+const OWN_SET: Set<string> &
+  ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
 
 type NativeProps = ViewProps &
   Passthrough &
@@ -285,7 +286,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
 /** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */
 function viewPropsOf(props: WebViewProps): ViewProps {
-  return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN.has(key)));
+  return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
 /** Native props that pass straight through. */
