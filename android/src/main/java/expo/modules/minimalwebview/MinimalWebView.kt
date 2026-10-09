@@ -84,7 +84,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var installedBridge: Pair<String?, List<String>?>? = null
   private var bridgeScriptHandler: ScriptHandler? = null
 
-  // Every `ask` (navigation and extensions) waits here for JS, by id, until answered through extensionCall.
+  // Every `ask` (navigation and extensions) waits here for JS, by id, until answered through `answer`.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextAskId = 0
 
@@ -228,13 +228,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     return id
   }
 
-  /** The generic channel from JS: answers to any `ask`, or calls routed to an extension by name. */
-  fun extensionCall(name: String, method: String, args: Map<String, Any?>): Any? {
-    if (method == "__answer") {
-      pendingAsks.remove((args["askId"] as? Number)?.toInt())?.invoke(args["value"])
-      return null
-    }
-    return activeExtensions?.get(name)?.onCall(method, args)
+  /** JS's answer to an `ask` (navigation or extension). */
+  fun answer(askId: Int, value: Any?) {
+    pendingAsks.remove(askId)?.invoke(value)
   }
 
   private fun pageFinished(url: String) {

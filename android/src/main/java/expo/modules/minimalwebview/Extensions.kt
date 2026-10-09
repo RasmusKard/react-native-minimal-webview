@@ -43,9 +43,6 @@ interface WebViewExtension {
   /** HTTP basic or digest auth: call `handler.proceed(user, password)` or `handler.cancel()` exactly once. */
   fun onHttpAuthRequest(handler: HttpAuthHandler, host: String, realm: String): Boolean = false
 
-  /** A call from the extension's JS helper. */
-  fun onCall(method: String, args: Map<String, Any?>): Any? = null
-
   fun onDetach() {}
 }
 

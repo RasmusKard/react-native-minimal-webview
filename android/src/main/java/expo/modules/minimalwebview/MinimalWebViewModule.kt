@@ -80,8 +80,8 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("reload") { view: MinimalWebView -> view.webView.reload() }.runOnQueue(Queues.MAIN)
       AsyncFunction("stopLoading") { view: MinimalWebView -> view.webView.stopLoading() }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
-      AsyncFunction("extensionCall") { view: MinimalWebView, name: String, method: String, args: Map<String, Any?> ->
-        view.extensionCall(name, method, args)
+      AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
+        view.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("getUrl") { view: MinimalWebView -> view.webView.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
