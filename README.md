@@ -138,7 +138,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 
 **Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()`.
 
-`evaluate` waits for a returned Promise on iOS; Android returns only the immediate value, so use the bridge for async results. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever.
+`evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
 
 ## Extensions
 
@@ -242,7 +242,7 @@ The interface is **experimental** until it has had more outside users.
 ## Security defaults
 
 - File access is off, mixed content is never allowed, and SSL errors are always cancelled.
-- There is no `addJavascriptInterface`.
+- There is no `addJavascriptInterface`. Android pages see one extra global, `nativeEvaluateResult`, for `evaluate` results.
 - The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
 - Permissions are granted only to configured origins in the main frame, and are denied by default.

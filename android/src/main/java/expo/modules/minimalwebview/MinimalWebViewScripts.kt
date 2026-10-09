@@ -7,6 +7,7 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.Promise
+import org.json.JSONArray
 
 /** Scripts in the page: the bridge transport, `injectedScripts` and `evaluate`. */
 internal class MinimalWebViewScripts(private val owner: MinimalWebView, private val onBridge: (Map<String, Any?>) -> Unit) {
@@ -19,9 +20,12 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private var replyProxy: JavaScriptReplyProxy? = null
   private var installedScripts: List<Map<String, Any?>>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
-  private val evaluations = mutableSetOf<Promise>()
+  private val evaluations = mutableMapOf<Int, Promise>()
+  private var nextEvaluation = 0
+  private var evaluateInstalled = false
 
   fun apply() {
+    if (!evaluateInstalled) installEvaluate()
     if (owner.bridgeScript to owner.bridgeOrigins != installedBridge) installBridge()
     installScripts()
   }
@@ -30,6 +34,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   fun reinstall() {
     installedBridge = null
     bridgeScriptHandler = null
+    installEvaluate()
     installBridge()
     installScripts(force = true)
   }
@@ -113,16 +118,47 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     failEvaluations()
   }
 
-  /** Runs a script in the page. WebView drops the callback when the document is replaced first, so a new document
-   * rejects what is still waiting (as iOS does) instead of leaving the promise pending forever. */
+  /** `evaluate` results come back through one global in every frame (`*`, before the first document); only the main
+   * frame's replies count. A page can forge them, as it can already shape any value its own world returns. */
+  private fun installEvaluate() {
+    evaluateInstalled = true
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
+    WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
+      val reply = if (isMainFrame) runCatching { JSONArray(message.data) }.getOrNull() else null
+      val promise = reply?.let { evaluations.remove(it.optInt(0, -1)) } ?: return@addWebMessageListener
+      if (reply.length() > 2) promise.reject("ERR_EVALUATE", reply.optString(2), null)
+      else promise.resolve(reply.optString(1, "null"))
+    }
+  }
+
+  /** Runs an expression in the page and awaits it, as iOS does; resolves with its JSON ("null" for what JSON can't
+   * encode). WebView drops the callback when the document is replaced first, so a new document rejects what is still
+   * waiting instead of leaving the promise pending forever. */
   fun evaluate(script: String, promise: Promise) {
-    evaluations += promise
-    webView.evaluateJavascript(script) { if (evaluations.remove(promise)) promise.resolve(it) }
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+      return promise.reject("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView", null)
+    }
+    val id = nextEvaluation++
+    evaluations[id] = promise
+    // The script sits in a scope of its own (no wrapper names shadow the page's); the sync value is 1 once it started.
+    val code = """typeof $EVALUATE === 'object' ? ((t, p) => (p.then(
+  (v) => { try { v = JSON.stringify(v) } catch { v = null } t.postMessage(JSON.stringify([$id, v ?? 'null'])) },
+  (e) => { try { e = String(e) } catch { e = 'Error' } t.postMessage(JSON.stringify([$id, null, e])) }
+), 1))($EVALUATE, (async () => (
+$script
+))()) : 0"""
+    webView.evaluateJavascript(code) {
+      // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
+      val why = if (it == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)"
+      if (it != "1") evaluations.remove(id)?.reject("ERR_EVALUATE", why, null)
+    }
   }
 
   private fun failEvaluations() {
-    val waiting = evaluations.toList()
+    val waiting = evaluations.values.toList()
     evaluations.clear()
     waiting.forEach { it.reject("navigated", "the page navigated before the script finished", null) }
   }
 }
+
+private const val EVALUATE = "nativeEvaluateResult"

@@ -51,13 +51,12 @@ public class MinimalWebViewModule: Module {
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         guard let webView = view.webView else { return promise.resolve(nil) }
-        webView.callAsyncJavaScript("return await (\n\(script)\n)", arguments: [:], in: nil, in: .page) { result in
+        let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
+        webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { result in
+      // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
           switch result {
           case .success(let value):
-            // NaN, Infinity and dates are not JSON: JSONSerialization would raise an uncatchable exception.
-            guard JSONSerialization.isValidJSONObject([value]) else { return promise.resolve(nil) }
-            let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)
-            promise.resolve(data.flatMap { String(data: $0, encoding: .utf8) })
+            promise.resolve(value as? String ?? "null")
           case .failure(let error):
             promise.reject("ERR_EVALUATE", error.localizedDescription)
           }
