@@ -15,7 +15,13 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 - Android API 29+. Set `minSdkVersion 29`, for example with `expo-build-properties`.
 - Expo SDK 58 or a bare app with the new architecture.
 
-Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. `WebView.getAndroidWebViewInfo()` reports what the device supports.
+Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run and bridge calls reject with `unavailable`. The library warns about it once per process, in every build. To gate on it, check what the device supports:
+
+```ts
+const info = WebView.getAndroidWebViewInfo(); // null on iOS
+const canInject = info?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
+const canBridge = canInject && info?.features.WEB_MESSAGE_LISTENER !== false;
+```
 
 ## Quick start
 
@@ -102,7 +108,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 ```
 
 **How it behaves:**
-- **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable`, `invalid` and `too_large`.
+- **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (Android System WebView older than 146; see Requirements), `invalid` and `too_large`.
 - **Timeouts:** calls time out after 10 s by default (`timeoutMs`).
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts.
 - **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. The `permissions` extension's `origins` match the same way. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
@@ -116,7 +122,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 |---|---|
 | `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only |
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. On iOS the app name is fixed at creation: changing it recreates the WebView |
-| `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation |
+| `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. Android needs System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
 | `bridge` | `createBridge(...)` |
 | `thirdPartyCookies` | Android only. WebKit always blocks third-party cookies (as Safari does) |
