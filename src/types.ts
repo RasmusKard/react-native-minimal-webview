@@ -57,7 +57,6 @@ export type WebViewErrorEvent = {
   /** Platform error code, or the HTTP status for `http`. */
   code: number;
   description: string;
-  isMainFrame: boolean;
 };
 
 export type ProcessGoneEvent = {
@@ -98,9 +97,15 @@ export type BridgeOptions = {
 export type WebViewExtension = {
   /** The native extension to enable for this instance, by its registered name. */
   native: { name: string; config?: Record<string, unknown> };
-  /** Events the native side emits on the generic extension channel. */
-  onEvent?: (event: string, payload: Record<string, unknown>) => unknown;
+  /**
+   * Handlers for the events the native extension emits, by event name. A handler's return value answers a native
+   * `ask`. Native can check which events have a handler (`host.handles`), to fall back to a default without one.
+   */
+  on?: Record<string, ExtensionHandler | undefined>;
 };
+
+/** Takes the event's payload; `never` lets each handler declare the payload type its native side sends. */
+export type ExtensionHandler = (payload: never) => unknown;
 
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
 type OwnProps = {
@@ -117,6 +122,7 @@ type OwnProps = {
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
+  /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
   thirdPartyCookies?: boolean;
@@ -137,6 +143,7 @@ type OwnProps = {
   javaScriptCanOpenWindowsAutomatically?: boolean;
   /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   webviewDebuggingEnabled?: boolean;
+  /** Fixed at mount: a change is ignored with a warning; remount with a new `key` to apply it. Handlers stay live. */
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;
   /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onError still fires). */

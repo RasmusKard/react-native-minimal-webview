@@ -602,7 +602,7 @@ async function errors(h: Harness) {
   await waitFor(h, idle, 5000);
   await sleep(500);
   const network = h.events.errors[0];
-  r.check('network error', gotNetwork && network?.kind === 'network' && network.isMainFrame, network);
+  r.check('network error', gotNetwork && network?.kind === 'network', network);
   r.check('url is the failed url', h.state().url === unreachable, h.state());
   r.check('getUrl is the failed url', (await h.ref.current?.getUrl()) === unreachable);
   r.check('onLoadEnd without onLoad after a failure', h.events.loads.includes('end') && !h.events.loads.includes('load'), h.events.loads);

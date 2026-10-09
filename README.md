@@ -15,7 +15,7 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 - Android API 29+. Set `minSdkVersion 29`, for example with `expo-build-properties`.
 - Expo SDK 58 or a bare app with the new architecture.
 
-Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run and bridge calls reject with `unavailable`. The library warns about it once per process, in every build. To gate on it, check what the device supports:
+Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run, bridge calls and `evaluate` reject with `unavailable`, and `blob:` downloads fail. For `injectedScripts` and the bridge, the library warns about it once per process, in every build. To gate on it, check what the device supports:
 
 ```ts
 const info = WebView.getAndroidWebViewInfo(); // null on iOS
@@ -73,8 +73,6 @@ Rules are an ordered list, and the first match wins. Every field a rule sets mus
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load.
 
-`decideNavigation(rules, request)` is the same matcher in JS, for unit-testing your rules. One file of test cases checks the Kotlin, Swift and TS matchers alike.
-
 `onNavigation` reports every decision: `{ url, action, mainFrame, newWindow, userInitiated, rule }`.
 
 **Platform differences:**
@@ -124,17 +122,17 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. On iOS the app name is fixed at creation: changing it recreates the WebView |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. Android needs System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
-| `bridge` | `createBridge(...)` |
+| `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
 | `thirdPartyCookies` | Android only. WebKit always blocks third-party cookies (as Safari does) |
 | `mediaPlaybackRequiresUserAction` (default true), `allowsInlineMediaPlayback` (iOS, default false) | Fixed at creation on iOS |
 | `scrollEnabled`, `bounces` | iOS only |
 | `showsScrollIndicators` | |
 | `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
-| `extensions` | See below |
+| `extensions` | See below. Fixed at mount, like `bridge`; their handlers stay live |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
-| `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description, isMainFrame }`. Main-frame errors only. SSL errors are always cancelled |
+| `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description }`. Main-frame errors only. SSL errors are always cancelled |
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
 
@@ -229,15 +227,15 @@ final class PageCounter: WebViewExtension {
 ```ts
 export const pageCounter = (): WebViewExtension => ({
   native: { name: 'pageCounter', config: {} },
-  onEvent: (event, payload) => console.log(event, payload),
+  on: { pageLoaded: ({ url }: { url: string }) => console.log('loaded', url) },
 });
 ```
 
 **The hooks:**
-- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `hasPermission` and `launchForResult`.
-- iOS: `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask` and `reload`.
+- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles`, `evaluate`, `hasPermission` and `launchForResult`.
+- iOS: `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles` and `reload`.
 - **Decide hooks:** the first extension that handles one wins.
-- **`ask`:** sends an event to the helper's `onEvent` and passes its return value back to native.
+- **`ask`:** sends an event to the helper's handler for it in `on` and passes its return value back to native. `handles(event)` says whether the helper has one, so native can fall back to a default without it.
 
 The interface is **experimental** until it has had more outside users.
 
@@ -256,7 +254,7 @@ The interface is **experimental** until it has had more outside users.
 
 ```sh
 npm install && (cd example && npm install)
-npm test                                   # TS unit tests (bridge protocol, createBridge, rule and origin matchers)
+npm test                                   # TS unit tests (bridge protocol, createBridge, origin matchers)
 npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
 (cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json test-vectors/origin-rules.json

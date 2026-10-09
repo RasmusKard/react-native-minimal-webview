@@ -37,11 +37,11 @@ const MAX_QUEUE = 1000;
 
 const bridgeError = ({ code, message }: BridgeError) => Object.assign(new Error(message), { code });
 
-/** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
 /** `*`, `http(s)://host[:port]` or `http(s)://*.host[:port]`: addWebMessageListener's rules minus custom schemes. */
 const ORIGIN_RULE =
   /^(\*|https?:\/\/(\*\.(?!\[))?([a-z0-9_-]+(\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(:\d{1,5})?)$/i;
 
+/** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
 export function createBridge(options: BridgeOptions): Bridge {
   const invalid = options.allowedOrigins.filter((rule) => !ORIGIN_RULE.test(rule));
   if (invalid.length) {

@@ -9,8 +9,11 @@ export type AuthRequest = { host: string; realm: string };
 export const httpAuth = (options: {
   onAuthRequest: (
     request: AuthRequest
-  ) => { username: string; password: string } | null | Promise<{ username: string; password: string } | null>;
+  ) =>
+    | { username: string; password: string }
+    | null
+    | Promise<{ username: string; password: string } | null>;
 }): WebViewExtension => ({
   native: { name: 'httpAuth' },
-  onEvent: (event, payload) => (event === 'authRequest' ? options.onAuthRequest(payload as AuthRequest) : undefined),
+  on: { authRequest: options.onAuthRequest },
 });

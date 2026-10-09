@@ -7,12 +7,10 @@ final class Permissions: WebViewExtension {
   // Strong: nothing else retains the host, and it holds the view weakly.
   private var host: ExtensionHost?
   private var origins: [String] = []
-  private var hasHandler = false
 
   func attach(host: ExtensionHost, config: [String: Any]) {
     self.host = host
     origins = config["origins"] as? [String] ?? []
-    hasHandler = config["hasHandler"] as? Bool ?? false
   }
 
   func requestMediaCapture(origin: WKSecurityOrigin, type: WKMediaCaptureType, decide: @escaping (WKPermissionDecision) -> Void) -> Bool {
@@ -21,7 +19,7 @@ final class Permissions: WebViewExtension {
       decide(.deny)
       return true
     }
-    guard hasHandler, let host else {
+    guard let host, host.handles("permissionRequest") else {
       decide(.prompt)
       return true
     }

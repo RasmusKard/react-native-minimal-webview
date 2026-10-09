@@ -14,10 +14,6 @@ export const permissions = (options: {
   origins: string[];
   onPermissionRequest?: (request: PermissionRequestEvent) => boolean | Promise<boolean>;
 }): WebViewExtension => ({
-  native: {
-    name: 'permissions',
-    config: { origins: options.origins, hasHandler: options.onPermissionRequest !== undefined },
-  },
-  onEvent: (event, payload) =>
-    event === 'permissionRequest' ? options.onPermissionRequest?.(payload as PermissionRequestEvent) : undefined,
+  native: { name: 'permissions', config: { origins: options.origins } },
+  on: { permissionRequest: options.onPermissionRequest },
 });
