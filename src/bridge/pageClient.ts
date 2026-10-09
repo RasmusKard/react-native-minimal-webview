@@ -23,12 +23,27 @@ type PageWindow = Window & {
 
 /** Installs only on an allowed origin (Android origin-rule format), matching what native accepts. */
 export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigins: string[]) {
-  const origin = w.location.origin;
+  // As OriginRules (Swift, Kotlin) and the iOS delivery script: test-vectors/origin-rules.json.
+  const parse = (text: string) => {
+    const m =
+      /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(
+        text.toLowerCase()
+      );
+    return (
+      m && {
+        scheme: m[1],
+        wildcard: !!m[2],
+        host: m[3]!,
+        port: +(m[4] ?? (m[1] === 'https' ? 443 : 80)),
+      }
+    );
+  };
+  const origin = parse(w.location.origin);
   const allowed = allowedOrigins.some((rule) => {
-    const [scheme, wildcardHost] = rule.split('://*.');
-    return wildcardHost === undefined
-      ? rule === '*' || rule === origin
-      : origin.startsWith(`${scheme}://`) && origin.endsWith(`.${wildcardHost}`);
+    const r = parse(rule);
+    if (!r || !origin || origin.wildcard) return rule === '*';
+    const host = r.wildcard ? origin.host.endsWith(`.${r.host}`) : origin.host === r.host;
+    return host && r.scheme === origin.scheme && r.port === origin.port;
   });
   // Main frame only (Android injects into allowed-origin iframes too, but only the main frame's messages are taken).
   if (w.nativeBridge || !allowed || w !== w.top) return;

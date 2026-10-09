@@ -66,19 +66,31 @@ class Permissions : WebViewExtension {
     return "${uri.scheme}://${uri.host}$port"
   }
 
-  // Origin rules in the bridge's format: exact origins, or a scheme plus "*." host suffix wildcard.
-  private fun allowed(origin: String): Boolean {
-    val value = origin.lowercase()
-    return origins.any { original ->
-      val rule = original.lowercase()
-      val wildcard = rule.indexOf("://*.")
-      if (wildcard < 0) rule == value else value.startsWith(rule.substring(0, wildcard + 3)) && value.endsWith(rule.substring(wildcard + 4))
-    }
-  }
-
+  private fun allowed(origin: String) = OriginRules.allows(origins, origin)
 
   private companion object {
     val RESOURCES = mapOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE to "camera", PermissionRequest.RESOURCE_AUDIO_CAPTURE to "microphone")
     val OS_PERMISSIONS = mapOf("camera" to Manifest.permission.CAMERA, "microphone" to Manifest.permission.RECORD_AUDIO)
+  }
+}
+
+// Origin rules in the bridge's format, as OriginRules.swift: `*`, an exact http(s) origin, or `https://*.example.com` for
+// subdomains. Case-insensitive, a missing port is the scheme's default, and a malformed rule matches nothing.
+internal object OriginRules {
+  private val FORMAT = Regex("""(https?)://(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?""")
+
+  private data class Parsed(val scheme: String, val wildcard: Boolean, val host: String, val port: Int)
+
+  private fun parse(text: String) = FORMAT.matchEntire(text.lowercase())?.groupValues?.let { (_, scheme, wildcard, host, port) ->
+    Parsed(scheme, wildcard.isNotEmpty(), host, port.toIntOrNull() ?: if (scheme == "https") 443 else 80)
+  }
+
+  fun allows(rules: List<String>, origin: String): Boolean {
+    val o = parse(origin)?.takeUnless { it.wildcard }
+    return rules.any { rule ->
+      val r = parse(rule)
+      if (r == null || o == null) rule == "*"
+      else (if (r.wildcard) o.host.endsWith(".${r.host}") else o.host == r.host) && r.scheme == o.scheme && r.port == o.port
+    }
   }
 }
