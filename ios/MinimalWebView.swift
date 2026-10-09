@@ -47,7 +47,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var expectation = 0
   /// The URL this view loads itself (source, reload after an error, an allowed new window): it skips the rules.
   var programmaticUrl: URL?
-  /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through extensionCall.
+  /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
   var pendingAsks: [Int: (Any?) -> Void] = [:]
   var nextAskId = 0
   var askedAndAllowed: Set<String> = []

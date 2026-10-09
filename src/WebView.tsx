@@ -72,8 +72,8 @@ type NativeMethods = Record<
   () => Promise<void>
 > & {
   bridgePost(message: string): Promise<void>;
-  /** Also carries the answer to any native `ask` (navigation or extension): method `__answer`. */
-  extensionCall(name: string, method: string, args: Record<string, unknown>): Promise<unknown>;
+  /** Answers a native `ask` (navigation or extension). The value is wrapped: native arguments can't be of any type. */
+  answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
@@ -122,14 +122,7 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
       return fallback;
     });
 
-/** Props from extension helpers merge in list order; explicit props win. */
-function withExtensionProps(props: WebViewProps): WebViewProps {
-  const fromExtensions = props.extensions?.map((extension) => extension.props ?? {}) ?? [];
-  return Object.assign({}, ...fromExtensions, props) as WebViewProps;
-}
-
-export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebViewRef> }) {
-  const props = withExtensionProps(ownProps);
+export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
   const native = useRef<NativeMethods>(null);
   const store = useRef(createStore()).current;
   const { error, loading, onNavigationState, onError } = useLoadEvents(props, store);
@@ -164,8 +157,7 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
     else connection?.markUnavailable();
   };
 
-  const answer = (name: string, askId: number, value: unknown) =>
-    native.current?.extensionCall(name, '__answer', { askId, value: value ?? null });
+  const answer = (askId: number, value: unknown) => native.current?.answer(askId, { value: value ?? null });
 
   const onExtension = async ({
     nativeEvent: { name, event, payload, askId },
@@ -176,7 +168,7 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
       null,
       `the ${name} extension's ${event} handler failed`
     );
-    if (askId !== undefined) await answer(name, askId, value);
+    if (askId !== undefined) await answer(askId, value);
   };
 
   const onNavigation = ({ nativeEvent }: NativeEvent<NavigationEvent>) => {
@@ -193,7 +185,7 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
       'block',
       'onNavigationRequest failed; blocking'
     );
-    await answer('', id, action ?? 'block');
+    await answer(id, action ?? 'block');
   };
 
   const webView = (
@@ -218,14 +210,11 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
   return withOverlay(webView, props, error, loading);
 }
 
-/** Native props that pass straight through, with extension scripts first. */
+/** Native props that pass straight through. */
 function settingsOf(props: WebViewProps) {
   return {
     ...(Object.fromEntries(PASSTHROUGH.map((key) => [key, props[key]])) as Passthrough),
-    injectedScripts: [
-      ...(props.extensions?.flatMap((extension) => extension.scripts ?? []) ?? []),
-      ...(props.injectedScripts ?? []),
-    ],
+    injectedScripts: props.injectedScripts,
     webviewDebuggingEnabled: props.webviewDebuggingEnabled ?? __DEV__,
   };
 }
