@@ -152,7 +152,10 @@ export type WebViewRef = {
   goForward(): void;
   reload(): void;
   stopLoading(): void;
-  /** iOS waits for a returned Promise; Android returns the immediate value only (use the bridge for async results). */
+  /**
+   * Runs an expression in the page's main frame and awaits it. Resolves with its value through JSON (`null` for what
+   * JSON can't encode); rejects with `ERR_EVALUATE` when it throws or rejects, or `navigated` (Android) on a new page.
+   */
   evaluate(script: string): Promise<unknown>;
   /** Reads the native URL property directly. */
   getUrl(): Promise<string>;
