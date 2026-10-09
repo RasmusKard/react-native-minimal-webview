@@ -6,7 +6,6 @@ import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
-import expo.modules.kotlin.Promise
 import org.json.JSONArray
 
 /** Scripts in the page: the bridge transport, `injectedScripts` and `evaluate`. */
@@ -17,7 +16,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private var replyProxy: JavaScriptReplyProxy? = null
   private var installedScripts: List<Map<String, Any?>>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
-  private val evaluations = mutableMapOf<Int, Promise>()
+  private val evaluations = mutableMapOf<Int, (Result<String>) -> Unit>()
   private var nextEvaluation = 0
   private var installed = false
 
@@ -116,21 +115,20 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
     WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
       val reply = if (isMainFrame) runCatching { JSONArray(message.data) }.getOrNull() else null
-      val promise = reply?.let { evaluations.remove(it.optInt(0, -1)) } ?: return@addWebMessageListener
-      if (reply.length() > 2) promise.reject("ERR_EVALUATE", reply.optString(2), null)
-      else promise.resolve(reply.optString(1, "null"))
+      val onResult = reply?.let { evaluations.remove(it.optInt(0, -1)) } ?: return@addWebMessageListener
+      onResult(if (reply.length() > 2) failure("ERR_EVALUATE", reply.optString(2)) else Result.success(reply.optString(1, "null")))
     }
   }
 
   /** Runs an expression in the page and awaits it, as iOS does; resolves with its JSON ("null" for what JSON can't
    * encode). WebView drops the callback when the document is replaced first, so a new document rejects what is still
-   * waiting instead of leaving the promise pending forever. */
-  fun evaluate(script: String, promise: Promise) {
+   * waiting instead of leaving it pending forever. A failure is an [EvaluateError]. */
+  fun evaluate(script: String, onResult: (Result<String>) -> Unit) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-      return promise.reject("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView", null)
+      return onResult(failure("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView"))
     }
     val id = nextEvaluation++
-    evaluations[id] = promise
+    evaluations[id] = onResult
     // The script sits in a scope of its own (no wrapper names shadow the page's); the sync value is 1 once it started.
     val code = """typeof $EVALUATE === 'object' ? ((t, p) => (p.then(
   (v) => { try { v = JSON.stringify(v) } catch { v = null } t.postMessage(JSON.stringify([$id, v ?? 'null'])) },
@@ -141,15 +139,20 @@ $script
     webView.evaluateJavascript(code) {
       // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
       val why = if (it == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)"
-      if (it != "1") evaluations.remove(id)?.reject("ERR_EVALUATE", why, null)
+      if (it != "1") evaluations.remove(id)?.invoke(failure("ERR_EVALUATE", why))
     }
   }
 
   private fun failEvaluations() {
     val waiting = evaluations.values.toList()
     evaluations.clear()
-    waiting.forEach { it.reject("navigated", "the page navigated before the script finished", null) }
+    waiting.forEach { it(failure("navigated", "the page navigated before the script finished")) }
   }
+
+  private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 }
+
+/** Why an `evaluate` failed; [code] is the JS error code (`ERR_EVALUATE`, `navigated`, `unavailable`). */
+class EvaluateError(val code: String, message: String) : Exception(message)
 
 private const val EVALUATE = "nativeEvaluateResult"

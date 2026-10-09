@@ -16,7 +16,6 @@ import android.webkit.WebView
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
-import expo.modules.kotlin.Promise
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 
@@ -189,6 +188,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
     override fun handles(event: String) = event in handles
 
+    override fun evaluate(script: String, onResult: (Result<String>) -> Unit) = this@MinimalWebView.evaluate(script, onResult)
+
     override fun emit(event: String, payload: Map<String, Any?>) =
       onExtension(mapOf("name" to name, "event" to event, "payload" to payload))
 
@@ -225,7 +226,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   fun bridgePost(message: String) = scripts.post(message)
 
-  fun evaluate(script: String, promise: Promise) = scripts.evaluate(script, promise)
+  fun evaluate(script: String, onResult: (Result<String>) -> Unit) = scripts.evaluate(script, onResult)
 
   /** The render process died: a WebView cannot be reused after that, so build a new one and reload. */
   internal fun recover(didCrash: Boolean) {

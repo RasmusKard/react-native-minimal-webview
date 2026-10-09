@@ -16,6 +16,9 @@ import expo.modules.minimalwebview.DownloadInfo
 import expo.modules.minimalwebview.ExtensionHost
 import expo.modules.minimalwebview.TAG
 import expo.modules.minimalwebview.WebViewExtension
+import org.json.JSONException
+import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executors
@@ -40,7 +43,7 @@ class Downloads : WebViewExtension {
     val name = URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType)
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
-      download.url.startsWith("data:") -> saveData(download.url, name)
+      download.url.startsWith("data:") -> saveData(name, download.url) { download.url }
       else -> enqueue(download, name)
     }
     return true
@@ -87,29 +90,35 @@ class Downloads : WebViewExtension {
     )
   }
 
-  private fun saveData(url: String, name: String) {
-    val header = url.substringBefore(',')
-    val body = url.substringAfter(',')
-    val mimeType = header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }
+  /**
+   * Writes a data: URL, which [dataUrl] produces, to the cache. Everything that touches the payload (a blob can be
+   * megabytes) runs off the main thread; the event goes back on it. [url] is the download's own URL, for the event.
+   */
+  private fun saveData(name: String, url: String, dataUrl: () -> String) {
     val dir = File(host.webView.context.cacheDir, "downloads/${System.nanoTime()}")
-    // Decoding and writing happen off the main thread; the event goes back on it.
     io.execute {
       val result = try {
+        val data = dataUrl()
+        val header = data.substringBefore(',')
         // The body may be percent-encoded even when base64 (encodeURIComponent of the base64 text).
-        val bytes = if (header.endsWith(";base64")) Base64.decode(Uri.decode(body), Base64.DEFAULT) else Uri.decode(body).toByteArray()
+        val body = data.substringAfter(',').let { if ('%' in it) Uri.decode(it) else it }
+        val bytes = if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else body.toByteArray()
         // One directory per download: the same guessed name must not overwrite a file already handed to the app.
         dir.mkdirs()
-        File(dir, name).apply { writeBytes(bytes) }
+        val mimeType = header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }
+        Saved(File(dir, name).apply { writeBytes(bytes) }, mimeType)
       } catch (e: IllegalArgumentException) {
         e // invalid base64
       } catch (e: IOException) {
         e
+      } catch (e: JSONException) {
+        e
       }
       host.webView.post {
         when (result) {
-          is File -> host.emit(
+          is Saved -> host.emit(
             "download",
-            mapOf("uri" to Uri.fromFile(result).toString(), "filename" to name, "mimeType" to mimeType, "url" to url.take(100))
+            mapOf("uri" to Uri.fromFile(result.file).toString(), "filename" to name, "mimeType" to result.mimeType, "url" to url.take(100))
           )
           is Exception -> failed(name, url, result)
         }
@@ -117,31 +126,20 @@ class Downloads : WebViewExtension {
     }
   }
 
-  /** WebView cannot hand blob: URLs to DownloadManager: the page reads the blob and posts it back as a data: URL. */
+  /** WebView cannot hand blob: URLs to DownloadManager: the page reads the blob and returns it as a data: URL. */
   private fun readBlob(url: String, name: String) {
-    val key = "__mwvBlob" + System.nanoTime()
-    host.webView.evaluateJavascript(
-      """
-      fetch(${quote(url)}).then((r) => r.blob()).then((b) => new Promise((ok) => {
-        const reader = new FileReader(); reader.onload = () => ok(reader.result); reader.readAsDataURL(b);
-      })).then((data) => { window.${key} = data; }, () => { window.${key} = ''; });
-      """.trimIndent(),
-      null
-    )
-    poll(key, url, name, attempts = 50)
-  }
-
-  private fun poll(key: String, url: String, name: String, attempts: Int) {
-    host.webView.postDelayed({
-      host.webView.evaluateJavascript("(() => { const v = window.$key; if (v !== undefined) delete window.$key; return v; })()") { json ->
-        val data = json?.takeIf { it != "null" }?.let { org.json.JSONTokener(it).nextValue() as? String }
-        when {
-          data == null && attempts > 0 -> poll(key, url, name, attempts - 1)
-          !data.isNullOrEmpty() -> saveData(data, name)
-          else -> failed(name, url, IOException("could not read the blob"))
-        }
-      }
-    }, BLOB_POLL_MS)
+    val script = """
+      fetch(${JSONObject.quote(url)}).then((r) => r.blob()).then((b) => new Promise((ok, fail) => {
+        const reader = new FileReader(); reader.onload = () => ok(reader.result); reader.onerror = () => fail(reader.error);
+        reader.readAsDataURL(b);
+      }))
+    """.trimIndent()
+    host.evaluate(script) { result ->
+      result.fold(
+        { json -> saveData(name, url) { JSONTokener(json).nextValue() as? String ?: throw IOException("could not read the blob") } },
+        { error -> failed(name, url, IOException("could not read the blob: ${error.message}")) }
+      )
+    }
   }
 
   private fun failed(name: String, url: String, error: Exception) {
@@ -149,13 +147,11 @@ class Downloads : WebViewExtension {
     host.emit("downloadFailed", mapOf("filename" to name, "url" to url.take(100), "reason" to (error.message ?: error.toString())))
   }
 
-  private fun quote(value: String) = org.json.JSONObject.quote(value)
-
   override fun onDetach() {
     receiver?.let { host.webView.context.unregisterReceiver(it) }
     receiver = null
     io.shutdown()
   }
-}
 
-private const val BLOB_POLL_MS = 100L
+  private class Saved(val file: File, val mimeType: String)
+}
