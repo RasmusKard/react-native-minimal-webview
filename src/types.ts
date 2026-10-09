@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { ViewProps } from 'react-native';
 
 /** `headers` go on the first request only, not on later navigations. */
 export type WebViewSource = { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
@@ -102,7 +102,8 @@ export type WebViewExtension = {
   onEvent?: (event: string, payload: Record<string, unknown>) => unknown;
 };
 
-export type WebViewProps = {
+/** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
+type OwnProps = {
   source: WebViewSource;
   /** Replaces the whole user agent. */
   userAgent?: string;
@@ -128,19 +129,18 @@ export type WebViewProps = {
   /** iOS only. Default true. */
   bounces?: boolean;
   showsScrollIndicators?: boolean;
-  /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   /**
    * Lets a script open a window (`window.open`) without a user gesture. Default false: only a tap opens one. The
    * navigation rules still decide it (`newWindow: true`). Some flows need it, like an OAuth popup opened after an
    * `await`.
    */
   javaScriptCanOpenWindowsAutomatically?: boolean;
+  /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   webviewDebuggingEnabled?: boolean;
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;
   /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onError still fires). */
   renderError?: (error: WebViewErrorEvent) => ReactNode;
-  style?: StyleProp<ViewStyle>;
 
   onNavigation?: (event: NavigationEvent) => void;
   /** Changes within one frame are combined into one call. */
@@ -152,6 +152,12 @@ export type WebViewProps = {
   onLoad?: (state: NavigationState) => void;
   onLoadEnd?: (state: NavigationState) => void;
 };
+
+/**
+ * Plus React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch events).
+ * They go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set.
+ */
+export type WebViewProps = OwnProps & Omit<ViewProps, keyof OwnProps | 'children'>;
 
 export type WebViewRef = {
   goBack(): void;
