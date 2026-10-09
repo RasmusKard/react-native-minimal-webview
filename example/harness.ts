@@ -5,6 +5,7 @@ import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
   Bridge,
   Download,
+  DownloadFailure,
   FileRequest,
   NavigationEvent,
   NavigationRule,
@@ -14,10 +15,13 @@ import type {
   NavigationState,
   WebViewProps,
   WebViewRef,
+  WebViewSource,
 } from 'minimal-rn-webview';
 import type { RefObject } from 'react';
 import { WebView } from 'minimal-rn-webview';
 import { Platform } from 'react-native';
+
+import type { RnwDriver } from './parity';
 
 export type Harness = {
   pages: string;
@@ -25,6 +29,8 @@ export type Harness = {
   ref: RefObject<WebViewRef | null>;
   state: () => NavigationState;
   load: (uri: string) => void;
+  loadSource: (source: WebViewSource) => void;
+  setAuth: (handler: ((request: { host: string; realm: string }) => { username: string; password: string } | null) | undefined) => void;
   setRules: (rules: NavigationRule[] | undefined) => void;
   setAsk: (ask: WebViewProps['onNavigationRequest']) => void;
   bridge: Bridge;
@@ -35,6 +41,10 @@ export type Harness = {
   /** Mounts a fresh WebView of that kind over the screen; resolves with ms from request to first onLoadEnd. */
   measureLoad: (kind: 'minimal' | 'rnw', uri: string) => Promise<{ ms: number; readyState: string }>;
   endPerf: () => void;
+  /** A react-native-webview instance for parity checks (example/parity.tsx). */
+  rnw: () => RnwDriver;
+  showRnw: (source: { uri: string }) => void;
+  hideRnw: () => void;
   /** Extra WebView props, replacing the previous extras. */
   setProps: (props: Partial<WebViewProps>) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
@@ -44,6 +54,7 @@ export type Harness = {
     loads: string[];
     navigations: NavigationEvent[];
     downloads: Download[];
+    downloadFailures: DownloadFailure[];
     fullscreen: boolean[];
     pageCounts: { url: string; count: number }[];
     /** Whether the example's renderError screen is mounted. */
@@ -112,6 +123,11 @@ async function waitFor(h: Harness, predicate: (s: NavigationState) => boolean, m
 }
 
 const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+/** The height of a 100vh element: 0 when the WebView loaded the page before it had a size. */
+const viewportHeight = async (h: Harness) =>
+  (await h.ref.current?.evaluate(
+    `(() => { const d = document.createElement('div'); d.style.height = '100vh'; document.body.append(d); const v = d.offsetHeight; d.remove(); return v; })()`
+  )) as number;
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
 const click = (h: Harness, id: string) =>
   h.ref.current?.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
@@ -417,7 +433,9 @@ async function bridge(h: Harness) {
  */
 async function ptr(h: Harness) {
   const r = reporter('ptr');
-  const loadedAt = async () => (await h.ref.current?.evaluate(`document.getElementById('loaded').textContent`)) as string;
+  // Rejects with `navigated` when the pull's reload replaces the page mid-call: read it again on the next poll.
+  const loadedAt = async () =>
+    (await h.ref.current?.evaluate(`document.getElementById('loaded').textContent`).catch(() => null)) as string | null;
   const open = async (mode: string) => {
     const uri = `${h.pages}/ptr.html?mode=${mode}&t=${Date.now()}`;
     h.load(uri);
@@ -445,7 +463,7 @@ async function ptr(h: Harness) {
   r.info('scrollY after the pull', await h.ref.current?.evaluate('window.scrollY'));
   await open('inner');
   await h.ref.current?.evaluate(`document.getElementById('scroller').scrollTop = 400`);
-  r.info('pull inside a scrolled inner scroller reloads (known Android limitation)', await pull('inner'));
+  r.check('a pull inside a scrolled inner scroller does not reload', !(await pull('inner')));
   r.done();
 }
 
@@ -601,6 +619,8 @@ async function crash(h: Harness) {
     const before = h.events.gone.length;
     // The driver kills the page's renderer: `sandboxed_process` (adb root) on Android, WebContent on iOS.
     // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView does not report it.)
+    // Kill only a live renderer: an evaluate round trip needs one (a kill during recovery would find none).
+    await Promise.race([h.ref.current?.evaluate('1'), sleep(10000)]);
     r.info('KILL', n);
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
@@ -608,15 +628,21 @@ async function crash(h: Harness) {
   await openPage(h, page);
   clearEvents(h);
   const firstKillAt = Date.now();
+  const loadsBefore = h.events.loads.length;
   const first = await kill(1);
   r.check('processGone reported and recovered', first?.recovered === true, first);
-  r.check('the page reloads', await waitFor(h, (s) => s.url === page && idle(s), 15000), h.state());
+  r.check(
+    'the page reloads',
+    await waitFor(h, (s) => h.events.loads.slice(loadsBefore).includes('end') && s.url === page && idle(s), 15000),
+    h.state()
+  );
+  const recoveredVh = await viewportHeight(h);
+  r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
   await sleep(1000);
   r.check('the bridge works after recovery', (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4);
 
   for (const n of [2, 3]) {
     await kill(n);
-    await waitFor(h, (s) => s.url === page && idle(s), 15000);
   }
   const fourth = await kill(4);
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
@@ -624,6 +650,7 @@ async function crash(h: Harness) {
   if (elapsed < 55000) r.check('a crash loop stops reloading (4th crash in 60 s)', fourth?.recovered === false, fourth);
   else r.info('crash loop check skipped: the 4 crashes took', elapsed);
   r.check('loading a new source works after giving up', await openPage(h, `${h.pages}/?t=${Date.now()}`), h.state());
+  r.check('a new source resets the crash-loop guard', (await kill(5))?.recovered === true, h.events.gone.at(-1));
   r.done();
 }
 
@@ -676,6 +703,8 @@ async function recreate(h: Harness) {
   await sleep(1500);
   await waitFor(h, idle, 10000);
   r.check('the page is shown again', h.state().url === page, h.state());
+  const recreatedVh = await viewportHeight(h);
+  r.check('100vh has a height after recreation', recreatedVh > 0, recreatedVh);
   await openPage(h, `${h.pages}/ua?t=${Date.now()}`);
   const ua = (await h.ref.current?.evaluate(`document.getElementById('ua').textContent`)) as string;
   r.check('the new app name is in the UA', ua.endsWith(' Recreated/9'), ua);
@@ -781,8 +810,16 @@ async function navigation(h: Harness) {
   r.check('an ask redirect loop asks at most once per URL', asked.length >= 1 && asked.length <= 2, asked);
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
 
+  // Without onOpenExternal native opens externals itself, and reports `block` when nothing can open the URL.
+  h.setProps({});
+  h.setRules([{ scheme: 'nosuchapp', action: 'external' }]);
+  await sleep(500);
+  await h.ref.current?.evaluate(`location.href = 'nosuchapp://x'`);
+  await waitFor(h, () => lastNavigation()?.url === 'nosuchapp://x', 5000);
+  r.check('an external URL nothing opens is reported as block', lastNavigation()?.action === 'block', lastNavigation());
+
   if (Platform.OS === 'android') {
-    // Native opens externals itself without onOpenExternal; an app that is not installed falls back to the web.
+    // An intent: whose app is not installed falls back to the web.
     h.setProps({});
     h.setRules([{ scheme: 'intent', action: 'external' }, { scheme: ['http', 'https'], action: 'allow' }]);
     await sleep(500);
@@ -998,6 +1035,183 @@ async function perf(h: Harness) {
   r.done();
 }
 
+/** Behaviour borrowed from react-native-webview: first-load headers, HTTP auth, shared cookies, download failures, HTTP error pages. */
+async function borrowed(h: Harness) {
+  const r = reporter('borrowed');
+  const text = async (id: string) =>
+    (await h.ref.current?.evaluate(`document.getElementById('${id}')?.textContent ?? ''`)) as string;
+
+  const headersPage = `${h.pages}/headers?t=${Date.now()}`;
+  h.loadSource({ uri: headersPage, headers: { 'X-Test-Header': 'hello' } });
+  await waitFor(h, (s) => s.url === headersPage && idle(s));
+  r.check('source.headers reach the first request', (await text('headers')).includes('"x-test-header":"hello"'));
+
+  h.setAuth(() => ({ username: 'u', password: 'p' }));
+  await openPage(h, `${h.pages}/auth?t=${Date.now()}`);
+  r.check('httpAuth credentials authorize the page', (await text('auth')) === 'authorized', await text('auth'));
+  h.setAuth(() => null);
+  // Another origin: the WebView caches the credentials it just used for localhost's realm, as browsers do.
+  await openPage(h, `http://127.0.0.1:8090/auth?t=${Date.now()}`);
+  r.check('httpAuth null cancels (the 401 page shows)', (await text('auth')) === 'unauthorized', await text('auth'));
+  let asks = 0;
+  h.setAuth(() => {
+    asks++;
+    return null;
+  });
+  await openPage(h, `${h.pages}/auth2?t=${Date.now()}`);
+  r.check('a decline asks once when the server offers Digest and Basic', asks === 1 && (await text('auth')) === 'unauthorized', asks);
+  h.setAuth(undefined);
+
+  clearEvents(h);
+  await openPage(h, `${h.pages}/status/404?t=${Date.now()}`);
+  await sleep(800);
+  r.check('an HTTP 404 still reports onError', h.events.errors.some((e) => e.kind === 'http' && e.code === 404), h.events.errors);
+  r.check('an HTTP 404 does not show renderError', !h.events.overlay.error);
+
+  // Native requests (RN fetch) and the WebView share cookies: both directions.
+  await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);
+  if (Platform.OS === 'ios') {
+    // iOS copies them when a WebView is created: force a new one (a creation-time setting).
+    h.setProps({ applicationNameForUserAgent: 'Cookies/1' });
+    await sleep(1500);
+  }
+  await openPage(h, `${h.pages}/cookies?t=${Date.now()}`);
+  r.check('a cookie set by a native request reaches the page', (await text('cookies')).includes('fromNative='), await text('cookies'));
+  await h.ref.current?.evaluate(`document.cookie = 'fromPage=${Date.now()}; path=/'`);
+  await sleep(1500);
+  const native = await fetch(`${h.pages}/cookies`).then((res) => res.text());
+  r.check('a cookie set by the page reaches native requests', native.includes('fromPage='), native.slice(0, 200));
+  h.setProps({});
+  await sleep(1000);
+
+  if (Platform.OS === 'android') {
+    await openPage(h, `${h.pages}/media.html?t=${Date.now()}`);
+    const before = h.events.downloadFailures.length;
+    await click(h, 'baddata');
+    // Chromium may reject a malformed data: URL before the download listener runs; either way the app survives.
+    await waitFor(h, () => h.events.downloadFailures.length > before, 5000);
+    r.info('invalid data: download failures reported', h.events.downloadFailures.slice(before));
+    r.check('the app survives an invalid data: download', (await h.ref.current?.evaluate('1 + 1')) === 2);
+  }
+  r.done();
+}
+
+/**
+ * Parity with react-native-webview: the same scenarios against both libraries, reported side by side as
+ * `INFO parity: <scenario> {"minimal": …, "rnw": …}`. These are observations, not pass/fail: docs/PARITY.md reads them.
+ */
+async function parity(h: Harness) {
+  const r = reporter('parity');
+  const rnw = h.rnw();
+  const open = async (uri: string) => {
+    rnw.events.length = 0;
+    h.showRnw({ uri });
+    const end = Date.now() + 15000;
+    while (Date.now() < end && !rnw.events.some((e) => e.name === 'loadEnd')) await sleep(100);
+    await sleep(600);
+  };
+  const names = () => rnw.events.map((e) => e.name);
+  const lastUrl = () =>
+    rnw.events
+      .filter((e) => e.name === 'navigationState')
+      .map((e) => e.data['url'])
+      .at(-1);
+  const report = (scenario: string, minimal: unknown, other: unknown) => r.info(scenario, { minimal, rnw: other });
+
+  // 1. SPA URL tracking: pushState, replaceState and hash.
+  const spa = `${h.pages}/spa.html?t=${Date.now()}`;
+  await openPage(h, spa);
+  await open(spa);
+  for (const id of ['push', 'replace', 'hash']) {
+    await click(h, id);
+    await rnw.evaluate(`document.getElementById('${id}').click()`);
+    await sleep(1200);
+    const page = (await rnw.evaluate('location.href')) as string;
+    report(`SPA ${id}: reported url matches location.href`, h.state().url === (await h.ref.current?.evaluate('location.href')), lastUrl() === page);
+  }
+
+  // 2. Server redirect: the final URL is reported.
+  await openPage(h, `${h.pages}/spa.html?t=${Date.now()}`);
+  await click(h, 'redirect');
+  await waitFor(h, (s) => s.url.includes('from=redirect') && idle(s));
+  await rnw.evaluate(`document.getElementById('redirect').click()`);
+  await sleep(2000);
+  report('redirect: final url reported', h.state().url.includes('from=redirect'), String(lastUrl()).includes('from=redirect'));
+
+  // 3. A network failure: events fired.
+  clearEvents(h);
+  h.load('http://localhost:8099/nothing');
+  await waitFor(h, () => h.events.errors.length > 0, 10000);
+  await sleep(800);
+  rnw.events.length = 0;
+  h.showRnw({ uri: 'http://localhost:8099/nothing' });
+  await sleep(5000);
+  report('network failure: callbacks', { errors: h.events.errors.map((e) => e.kind), loads: h.events.loads }, names());
+
+  // 4. An HTTP 404: events fired.
+  clearEvents(h);
+  await openPage(h, `${h.pages}/status/404?t=${Date.now()}`);
+  await sleep(800);
+  await open(`${h.pages}/status/404?t=${Date.now()}`);
+  report('HTTP 404: callbacks', { errors: h.events.errors.map((e) => `${e.kind} ${e.code}`), loads: h.events.loads }, names());
+
+  // 5. window.open and target=_blank with no rules / defaults.
+  const nav = `${h.pages}/nav.html?t=${Date.now()}`;
+  await openPage(h, nav);
+  await open(nav);
+  clearEvents(h);
+  await click(h, 'blank');
+  await sleep(2500);
+  rnw.events.length = 0;
+  await rnw.evaluate(`document.getElementById('blank').click()`);
+  await sleep(2500);
+  report('target=_blank (defaults)', { url: h.state().url, decisions: h.events.navigations.map((n) => `${n.action}${n.newWindow ? ' new' : ''}`) }, { names: names(), url: lastUrl() });
+
+  // 6. Back after pushState: canGoBack and the URL after goBack.
+  await openPage(h, `${h.pages}/spa.html?t=${Date.now()}`);
+  await click(h, 'push');
+  await sleep(800);
+  const minimalCanGoBack = h.state().canGoBack;
+  h.ref.current?.goBack();
+  await sleep(1200);
+  await open(`${h.pages}/spa.html?t=${Date.now()}`);
+  await rnw.evaluate(`document.getElementById('push').click()`);
+  await sleep(1200);
+  const rnwCanGoBack = rnw.events
+    .filter((e) => e.name === 'navigationState')
+    .map((e) => e.data['canGoBack'])
+    .at(-1);
+  rnw.goBack();
+  await sleep(1500);
+  report('pushState then back: canGoBack, url after back', { canGoBack: minimalCanGoBack, url: h.state().url }, { canGoBack: rnwCanGoBack, url: lastUrl() });
+
+  // 7. evaluate/inject a value back: RNW needs postMessage; round-trip time of a page -> RN message.
+  const t0 = Date.now();
+  await h.ref.current?.evaluate('1 + 1');
+  const minimalEval = Date.now() - t0;
+  const t1 = Date.now();
+  await rnw.evaluate('1 + 1');
+  report('evaluate round trip (ms)', minimalEval, Date.now() - t1);
+
+  // 8. A cookie set by a native request: visible to the page without any option.
+  await fetch(`${h.pages}/setcookie?name=parity&value=${Date.now()}`);
+  await openPage(h, `${h.pages}/cookies?t=${Date.now()}`);
+  const minimalCookies = (await h.ref.current?.evaluate(`document.getElementById('cookies').textContent`)) as string;
+  await open(`${h.pages}/cookies?t=${Date.now()}`);
+  const rnwCookies = (await rnw.evaluate(`document.getElementById('cookies').textContent`)) as string;
+  report('native cookie visible to the page (minimal sharedCookies(), RNW sharedCookiesEnabled)', minimalCookies.includes('parity='), String(rnwCookies).includes('parity='));
+
+  // 9. The user agent.
+  await openPage(h, `${h.pages}/ua?t=${Date.now()}`);
+  const minimalUa = await h.ref.current?.evaluate('navigator.userAgent');
+  await open(`${h.pages}/ua?t=${Date.now()}`);
+  report('default user agent (minimal has applicationNameForUserAgent set)', minimalUa, await rnw.evaluate('navigator.userAgent'));
+
+  // 10. onLoad for a page whose load event is late (readyState when each library's onLoadEnd fires).
+  h.hideRnw();
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
@@ -1019,4 +1233,6 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   fullscreen,
   sampleExtension,
   perf,
+  borrowed,
+  parity,
 };
