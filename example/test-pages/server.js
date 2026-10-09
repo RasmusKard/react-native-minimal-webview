@@ -35,6 +35,7 @@ function serveFile(res, pathname) {
 }
 
 const queued = new Map(); // platform (ios | android) -> suite name
+const dropping = new Set();
 const flakyKeys = new Set();
 
 function handle(req, res) {
@@ -81,6 +82,15 @@ function handle(req, res) {
   } else if (url.pathname === '/ua') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(`<!doctype html><meta name="viewport" content="width=device-width"><pre id="ua">${(req.headers['user-agent'] ?? '').replace(/</g, '&lt;')}</pre>`);
+  } else if (url.pathname === '/drop') {
+    // The pull-to-refresh page, or a dropped connection while /drop/set turned failing on (a failed reload; browsers
+    // retry a dropped keep-alive request once, so a one-shot failure would not reach the page).
+    if (dropping.has(q.get('key') ?? '')) return req.socket.destroy();
+    return serveFile(res, '/ptr.html');
+  } else if (url.pathname === '/drop/set') {
+    if (q.get('fail') === '1') dropping.add(q.get('key') ?? '');
+    else dropping.delete(q.get('key') ?? '');
+    res.end('ok');
   } else if (url.pathname === '/flaky') {
     const key = q.get('key') ?? '';
     if (flakyKeys.has(key)) return serveFile(res, '/index.html');

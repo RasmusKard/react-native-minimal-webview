@@ -464,6 +464,22 @@ async function ptr(h: Harness) {
   await open('inner');
   await h.ref.current?.evaluate(`document.getElementById('scroller').scrollTop = 400`);
   r.check('a pull inside a scrolled inner scroller does not reload', !(await pull('inner')));
+
+  // A reload that fails must end the refresh, or the control stays refreshing and ignores the next pull.
+  h.setProps({ renderError: undefined });
+  const key = Date.now();
+  const dropping = `${h.pages}/drop?key=${key}`;
+  h.load(dropping);
+  await waitFor(h, (s) => s.url === dropping && idle(s));
+  await sleep(500);
+  clearEvents(h);
+  await fetch(`${h.pages}/drop/set?key=${key}&fail=1`);
+  await pull('full');
+  r.check('a pull whose reload fails reports the error', await waitFor(h, () => h.events.errors.some((e) => e.kind === 'network'), 5000), h.events.errors);
+  await fetch(`${h.pages}/drop/set?key=${key}&fail=0`);
+  await sleep(1000);
+  r.check('the next pull after a failed reload works', await pull('full'));
+  h.setProps({});
   r.done();
 }
 
