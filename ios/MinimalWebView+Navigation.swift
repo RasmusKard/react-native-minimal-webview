@@ -27,9 +27,16 @@ extension MinimalWebView {
   }
 
   private func expectNavigation(_ action: WKNavigationAction, from webView: WKWebView) {
-    if action.targetFrame?.isMainFrame == true, !Self.isFragmentOnly(action.request.url, from: webView.url) {
+    guard action.targetFrame?.isMainFrame == true else { return }
+    // Against the committed page: for our own loads WebKit has already moved `url` to the target.
+    if !Self.isFragmentOnly(action.request.url, from: committedUrl.flatMap(URL.init)) {
       navigationExpected = true
       expireExpectedNavigation()
+    } else if navigationExpected {
+      // A fragment step stays in the document, so the load loadProgrammatic expected is not coming.
+      navigationExpected = false
+      pendingUrl = nil
+      urlChanged(webView.url?.absoluteString)
     }
   }
 
@@ -46,8 +53,7 @@ extension MinimalWebView {
     )
     run(request) { [weak self] allowed in
       guard allowed, let self else { return }
-      self.programmaticUrl = target
-      self.webView?.load(action.request)
+      self.loadProgrammatic(action.request)
     }
     return nil
   }
