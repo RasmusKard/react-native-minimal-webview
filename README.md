@@ -132,7 +132,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 
 **Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()`.
 
-`evaluate` waits for a returned Promise on iOS; Android returns only the immediate value, so use the bridge for async results.
+`evaluate` waits for a returned Promise on iOS; Android returns only the immediate value, so use the bridge for async results. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever.
 
 ## Extensions
 

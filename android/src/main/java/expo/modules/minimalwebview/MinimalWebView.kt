@@ -38,6 +38,7 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 
@@ -426,6 +427,22 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     pendingAsks.clear()
     waiting.forEach { it(null) }
     replyProxy = null
+    failEvaluations()
+  }
+
+  private val evaluations = mutableSetOf<Promise>()
+
+  /** Runs a script in the page. WebView drops the callback when the document is replaced first, so a new document
+   * rejects what is still waiting (as iOS does) instead of leaving the promise pending forever. */
+  fun evaluate(script: String, promise: Promise) {
+    evaluations += promise
+    webView.evaluateJavascript(script) { if (evaluations.remove(promise)) promise.resolve(it) }
+  }
+
+  private fun failEvaluations() {
+    val waiting = evaluations.toList()
+    evaluations.clear()
+    waiting.forEach { it.reject("navigated", "the page navigated before the script finished", null) }
   }
 
   /** The render process died: a WebView cannot be reused after that, so build a new one and reload. */
@@ -507,6 +524,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       if (navigation.didCommit()) url = navigation.url
       if (navigation.didCommit() && !navigation.isSameDocument) {
         askedAndAllowed.clear()
+        failEvaluations()
         // A new document: the old reply proxy is gone; JS queues bridge messages until the page is ready again.
         replyProxy = null
         if (installedBridge?.first != null) onBridge(mapOf("navigated" to true))

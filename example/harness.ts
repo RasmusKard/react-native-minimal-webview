@@ -433,7 +433,9 @@ async function bridge(h: Harness) {
  */
 async function ptr(h: Harness) {
   const r = reporter('ptr');
-  const loadedAt = async () => (await h.ref.current?.evaluate(`document.getElementById('loaded').textContent`)) as string;
+  // Rejects with `navigated` when the pull's reload replaces the page mid-call: read it again on the next poll.
+  const loadedAt = async () =>
+    (await h.ref.current?.evaluate(`document.getElementById('loaded').textContent`).catch(() => null)) as string | null;
   const open = async (mode: string) => {
     const uri = `${h.pages}/ptr.html?mode=${mode}&t=${Date.now()}`;
     h.load(uri);
