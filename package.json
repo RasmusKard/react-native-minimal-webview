@@ -16,12 +16,12 @@
     "expo-module.config.json"
   ],
   "scripts": {
-    "build": "node internal/module_scripts/build.js",
-    "clean": "node internal/module_scripts/clean.js",
-    "test": "node internal/module_scripts/test.js",
-    "prepare": "node internal/module_scripts/prepare.js",
-    "open:ios": "node internal/module_scripts/open-ios.js",
-    "open:android": "node internal/module_scripts/open-android.js",
+    "build": "tsc",
+    "clean": "rm -rf build",
+    "test": "jest",
+    "prepare": "rm -rf build && tsc",
+    "open:ios": "xed example/ios",
+    "open:android": "open -a 'Android Studio' example/android",
     "lint:ci": "eslint -c eslint.ci.config.mjs --quiet --suppressions-location .claude/baseline/eslint-suppressions.json src",
     "mutation": "stryker run",
     "build:page-client": "node internal/build-page-client.mjs"
@@ -51,7 +51,6 @@
     "eslint": "~9.39.4",
     "eslint-config-universe": "^15.0.3",
     "eslint-plugin-sonarjs": "4.2.2",
-    "eslint-plugin-testing-library": "7.16.2",
     "expo": "~58.0.6",
     "expo-modules-core": "58.0.14",
     "jest": "^30.0.0",
