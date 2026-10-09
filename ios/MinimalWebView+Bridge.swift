@@ -7,6 +7,7 @@ extension MinimalWebView {
     guard message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin), let text = message.body as? String else {
       return replyHandler(nil, "origin not allowed")
     }
+    bridgeOrigin = origin
     if let header = Self.header(text), header.kind == "call" {
       pendingReplies[header.id] = replyHandler
     } else {
@@ -22,8 +23,11 @@ extension MinimalWebView {
       pendingReplies.removeValue(forKey: header.id)?(text, nil)
       return
     }
-    // The origin check runs in the page at delivery time: the document may have changed since the post was queued.
-    webView?.callAsyncJavaScript(Self.deliver, arguments: ["message": text, "origins": bridgeOrigins], in: nil, in: .page) { [weak self] result in
+    // Only to the allowed document that last posted (its page client says `ready` first). The page checks its origin
+    // again at delivery time: the document may have changed since the post was queued.
+    guard let bridgeOrigin else { return }
+    let deliver = "return location.origin === origin ? await window.nativeBridge?.__receive(message) : null"
+    webView?.callAsyncJavaScript(deliver, arguments: ["message": text, "origin": bridgeOrigin], in: nil, in: .page) { [weak self] result in
       if case .success(let reply) = result, let reply = reply as? String {
         self?.onBridge(["message": reply])
       }
@@ -35,21 +39,6 @@ extension MinimalWebView {
     pendingReplies.removeAll()
     waiting.forEach { $0(nil, "navigated") }
   }
-
-  /// Same rule format as OriginRules and the page client.
-  private static let deliver = #"""
-    const parse = (text) => {
-      const m = /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(text.toLowerCase());
-      return m && { scheme: m[1], wildcard: !!m[2], host: m[3], port: +(m[4] ?? (m[1] === 'https' ? 443 : 80)) };
-    };
-    const o = parse(location.origin);
-    const ok = origins.some((rule) => {
-      const r = parse(rule);
-      if (!r || !o || o.wildcard) return rule === '*';
-      return (r.wildcard ? o.host.endsWith('.' + r.host) : o.host === r.host) && r.scheme === o.scheme && r.port === o.port;
-    });
-    return ok ? await window.nativeBridge?.__receive(message) : null;
-    """#
 
   private static func header(_ text: String) -> (kind: String, id: String)? {
     guard let data = text.data(using: .utf8),

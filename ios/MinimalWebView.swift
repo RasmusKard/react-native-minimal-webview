@@ -66,6 +66,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   // Bridge: page calls wait for RN's answer here, by message id. WebKit requires each reply handler be called once.
   var pendingReplies: [String: (Any?, String?) -> Void] = [:]
+  // The origin of the document whose page client last posted, as `location.origin` writes it. RN's messages are
+  // delivered only while the page still has it.
+  var bridgeOrigin: String?
   // The JS dialog on screen, and how to complete it if it has to go away. WebKit requires exactly one completion.
   var dialog: (controller: UIAlertController, cancel: () -> Void)?
 
@@ -372,6 +375,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     failPendingReplies()
+    bridgeOrigin = nil
     // A new document: JS queues bridge messages until the page is ready again.
     if bridgeScript != nil { onBridge(["navigated": true]) }
     askedAndAllowed.removeAll()
