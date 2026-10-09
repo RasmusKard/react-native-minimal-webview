@@ -82,17 +82,18 @@ extension MinimalWebView {
   }
 
   private func finish(_ request: NavigationRules.Request, _ action: String, _ rule: Int?, _ completion: (Bool) -> Void) {
-    if action == "external", let url = URL(string: request.url) { openExternal(url) }
+    completion(action == "allow")
+    guard action == "external", !openExternalInJS else { return report(request, action, rule) }
+    // As on Android: an external URL that nothing opens is reported as blocked.
+    guard let url = URL(string: request.url) else { return report(request, "block", rule) }
+    UIApplication.shared.open(url) { [weak self] opened in self?.report(request, opened ? "external" : "block", rule) }
+  }
+
+  private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
     onNavigation([
       "url": request.url, "action": action, "mainFrame": request.mainFrame, "newWindow": request.newWindow,
       "userInitiated": request.userInitiated, "rule": rule as Any? ?? NSNull()
     ])
-    completion(action == "allow")
-  }
-
-  private func openExternal(_ url: URL) {
-    guard !openExternalInJS else { return }
-    UIApplication.shared.open(url)
   }
 
   func register(_ onAnswer: @escaping (Any?) -> Void) -> Int {

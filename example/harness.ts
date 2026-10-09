@@ -814,8 +814,16 @@ async function navigation(h: Harness) {
   r.check('an ask redirect loop asks at most once per URL', asked.length >= 1 && asked.length <= 2, asked);
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
 
+  // Without onOpenExternal native opens externals itself, and reports `block` when nothing can open the URL.
+  h.setProps({});
+  h.setRules([{ scheme: 'nosuchapp', action: 'external' }]);
+  await sleep(500);
+  await h.ref.current?.evaluate(`location.href = 'nosuchapp://x'`);
+  await waitFor(h, () => lastNavigation()?.url === 'nosuchapp://x', 5000);
+  r.check('an external URL nothing opens is reported as block', lastNavigation()?.action === 'block', lastNavigation());
+
   if (Platform.OS === 'android') {
-    // Native opens externals itself without onOpenExternal; an app that is not installed falls back to the web.
+    // An intent: whose app is not installed falls back to the web.
     h.setProps({});
     h.setRules([{ scheme: 'intent', action: 'external' }, { scheme: ['http', 'https'], action: 'allow' }]);
     await sleep(500);
