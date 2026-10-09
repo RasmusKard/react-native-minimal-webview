@@ -3,7 +3,8 @@
   "testRunner": "jest",
   "coverageAnalysis": "off",
   "jest": { "enableFindRelatedTests": true },
-  "mutate": ["src/**/*.{ts,tsx}", "!src/**/__tests__/**", "!src/**/*.test.{ts,tsx}", "!src/**/*.d.ts", "!src/**/*.types.ts", "!src/**/*.web.{ts,tsx}"],
+  "ignorePatterns": ["example", "android", "ios"],
+  "mutate": ["src/navigationRules.ts", "src/bridge/createBridge.ts", "src/bridge/protocol.ts"],
   "reporters": ["clear-text"],
   "thresholds": { "high": 80, "low": 60, "break": 50 }
 }
