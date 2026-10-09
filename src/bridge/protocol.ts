@@ -3,14 +3,16 @@
 export const PROTOCOL_VERSION = 1;
 export const MAX_MESSAGE_BYTES = 1_000_000;
 
-export type BridgeErrorCode =
-  | 'timeout'
-  | 'not_found' // no handler for the method
-  | 'handler_error' // the handler threw or rejected
-  | 'invalid' // malformed message
-  | 'too_large'
-  | 'navigated' // the page navigated or the view went away while the call was pending
-  | 'unavailable'; // the platform lacks the needed WebView features
+const ERROR_CODES = [
+  'timeout',
+  'not_found', // no handler for the method
+  'handler_error', // the handler threw or rejected
+  'invalid', // malformed message
+  'too_large',
+  'navigated', // the page navigated or the view went away while the call was pending
+  'unavailable', // the platform lacks the needed WebView features
+] as const;
+export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 
 export type BridgeError = { code: BridgeErrorCode; message: string };
 
@@ -25,16 +27,6 @@ export type BridgeMessage =
   | { v: 1; id: string; kind: 'result'; params?: unknown }
   | { v: 1; id: string; kind: 'error'; error: BridgeError }
   | { v: 1; id: string; kind: 'event'; method: string; params?: unknown };
-
-const ERROR_CODES = new Set<string>([
-  'timeout',
-  'not_found',
-  'handler_error',
-  'invalid',
-  'too_large',
-  'navigated',
-  'unavailable',
-]);
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -71,7 +63,7 @@ function kindProblem(value: Record<string, unknown>): string | null {
       const error = value['error'];
       const ok =
         isObject(error) &&
-        ERROR_CODES.has(error['code'] as string) &&
+        (ERROR_CODES as readonly unknown[]).includes(error['code']) &&
         typeof error['message'] === 'string';
       return ok ? null : 'malformed error';
     }

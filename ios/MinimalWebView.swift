@@ -34,7 +34,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private(set) var webView: WKWebView?
   private var creationSettings: NSDictionary?
   private var observations: [NSKeyValueObservation] = []
-  // Extensions live as long as this view; `didCreate` runs again for each new WebView.
+  // Created with each WKWebView (see recreate), detached in tearDown.
   private(set) var activeExtensions: [WebViewExtension]?
 
   // Navigation state. Native owns the committed URL; JS is told.
@@ -156,8 +156,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func recreate() {
     let previous = webView?.url.flatMap { $0.scheme == "http" || $0.scheme == "https" ? $0 : nil }
     let reloadSource = previous == nil || source?["html"] != nil
-    activeExtensions?.forEach { $0.detach() }
-    activeExtensions = nil
     tearDown()
     let configuration = WKWebViewConfiguration()
     configuration.applicationNameForUserAgent = applicationNameForUserAgent
@@ -178,18 +176,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     observations = [
       webView.observe(\.url) { [weak self] webView, _ in self?.urlChanged(webView.url?.absoluteString) },
       webView.observe(\.title) { _, _ in changed() },
-      webView.observe(\.isLoading) { _, _ in changed() },
-      webView.observe(\.estimatedProgress) { _, _ in changed() },
-      webView.observe(\.canGoBack) { _, _ in changed() },
-      webView.observe(\.canGoForward) { _, _ in changed() }
-    ]
+      webView.observe(\.estimatedProgress) { _, _ in changed() }
+    ] + [\WKWebView.isLoading, \.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
     self.webView = webView
-    if activeExtensions == nil {
-      activeExtensions = extensions.compactMap { spec in
-        guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
-        instance.attach(host: Host(view: self, name: name), config: spec["config"] as? [String: Any] ?? [:])
-        return instance
-      }
+    activeExtensions = extensions.compactMap { spec in
+      guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
+      instance.attach(host: Host(view: self, name: name), config: spec["config"] as? [String: Any] ?? [:])
+      return instance
     }
     activeExtensions?.forEach { $0.didCreate(webView) }
     prepareExtensions(webView) { [weak self, weak webView] in
@@ -218,6 +211,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func tearDown() {
+    activeExtensions?.forEach { $0.detach() }
+    activeExtensions = nil
     failPendingAsks()
     dismissDialog()
     failPendingReplies()
@@ -231,7 +226,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   deinit {
-    activeExtensions?.forEach { $0.detach() }
     // deinit is nonisolated; the view is released on the main thread, as UIKit views are.
     MainActor.assumeIsolated { tearDown() }
   }

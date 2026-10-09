@@ -43,8 +43,11 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("reload") { (view: MinimalWebView) in view.reload() }
       AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
-      AsyncFunction("extensionCall") { (view: MinimalWebView, name: String, method: String, args: [String: Any]) in
-        view.extensionCall(name, method, args)
+      // The generic channel from JS: answers to any `ask` (iOS extensions take no calls yet). JS numbers arrive as Double.
+      AsyncFunction("extensionCall") { (view: MinimalWebView, _: String, method: String, args: [String: Any]) in
+        if method == "__answer", let id = (args["askId"] as? NSNumber)?.intValue {
+          view.pendingAsks.removeValue(forKey: id)?(args["value"] is NSNull ? nil : args["value"])
+        }
       }
       AsyncFunction("getUrl") { (view: MinimalWebView) in view.failedUrl ?? view.webView?.url?.absoluteString }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.

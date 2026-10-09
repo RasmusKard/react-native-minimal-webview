@@ -325,18 +325,15 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     return action != "allow"
   }
 
-  private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) {
-    onNavigation(
-      mapOf(
-        "url" to request.url,
-        "action" to action,
-        "mainFrame" to request.mainFrame,
-        "newWindow" to request.newWindow,
-        "userInitiated" to request.userInitiated,
-        "rule" to rule
-      )
-    )
-  }
+  private fun fields(request: NavigationRules.Request) = mapOf(
+    "url" to request.url,
+    "mainFrame" to request.mainFrame,
+    "newWindow" to request.newWindow,
+    "userInitiated" to request.userInitiated
+  )
+
+  private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) =
+    onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
 
   // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the referrer and gesture flag.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
@@ -347,24 +344,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
     val id = register { answer ->
       val action = answer as? String ?: "block"
-      when (action) {
-        "allow" -> {
-          askedAndAllowed += request.url
-          webView.loadUrl(request.url)
-        }
+      if (action == "allow") {
+        askedAndAllowed += request.url
+        webView.loadUrl(request.url)
       }
       val opened = action != "external" || openExternal(request.url)
       notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
     }
-    onNavigationRequest(
-      mapOf(
-        "id" to id,
-        "url" to request.url,
-        "mainFrame" to request.mainFrame,
-        "newWindow" to request.newWindow,
-        "userInitiated" to request.userInitiated
-      )
-    )
+    onNavigationRequest(fields(request) + ("id" to id))
     // Unanswered after the timeout: block (the answer callback runs with null).
     postDelayed({ pendingAsks.remove(id)?.invoke(null) }, ASK_TIMEOUT_MS)
   }

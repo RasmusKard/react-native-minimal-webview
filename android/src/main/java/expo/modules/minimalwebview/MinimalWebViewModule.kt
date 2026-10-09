@@ -45,7 +45,11 @@ class MinimalWebViewModule : Module() {
         "version" to (provider?.versionName ?: ""),
         "provider" to (provider?.packageName ?: ""),
         "available" to (provider != null),
-        "features" to USED_FEATURES.associateWith { WebViewFeature.isFeatureSupported(it) }
+        "features" to listOf(
+          WebViewFeature.NAVIGATION_LISTENER,
+          WebViewFeature.WEB_MESSAGE_LISTENER,
+          WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
+        ).associateWith { WebViewFeature.isFeatureSupported(it) }
       )
     }
 
@@ -87,9 +91,3 @@ class MinimalWebViewModule : Module() {
     }
   }
 }
-
-private val USED_FEATURES = listOf(
-  WebViewFeature.NAVIGATION_LISTENER,
-  WebViewFeature.WEB_MESSAGE_LISTENER,
-  WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
-)
