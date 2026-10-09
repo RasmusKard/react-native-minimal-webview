@@ -16,11 +16,9 @@ public protocol WebViewExtension: AnyObject {
   func didBecome(_ download: WKDownload)
   /// Return true to handle the request; `decide` must then be called once.
   func requestMediaCapture(origin: WKSecurityOrigin, type: WKMediaCaptureType, decide: @escaping (WKPermissionDecision) -> Void) -> Bool
-  /// HTTP basic or digest auth. Return true to handle it; `completion` must then be called once.
-  func authenticate(
-    _ challenge: URLAuthenticationChallenge,
-    completion: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-  ) -> Bool
+  /// HTTP basic or digest auth. Return true to handle it; `completion` must then be called once, with nil to decline
+  /// (the core then lets the site's 401 page show).
+  func authenticate(_ challenge: URLAuthenticationChallenge, completion: @escaping (URLCredential?) -> Void) -> Bool
   func detach()
 }
 
@@ -34,10 +32,7 @@ public extension WebViewExtension {
   func wantsDownload(_ action: WKNavigationAction) -> Bool { false }
   func didBecome(_ download: WKDownload) { /* optional */ }
   func requestMediaCapture(origin: WKSecurityOrigin, type: WKMediaCaptureType, decide: @escaping (WKPermissionDecision) -> Void) -> Bool { false }
-  func authenticate(
-    _ challenge: URLAuthenticationChallenge,
-    completion: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-  ) -> Bool { false }
+  func authenticate(_ challenge: URLAuthenticationChallenge, completion: @escaping (URLCredential?) -> Void) -> Bool { false }
   func detach() { /* optional */ }
 }
 

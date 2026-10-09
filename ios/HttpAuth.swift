@@ -4,25 +4,34 @@ import Foundation
 final class HttpAuth: WebViewExtension {
   // Strong: nothing else retains the host, and it holds the view weakly.
   private var host: ExtensionHost?
+  private var declined = Set<String>()
 
   func attach(host: ExtensionHost, config: [String: Any]) {
     self.host = host
   }
 
-  func authenticate(
-    _ challenge: URLAuthenticationChallenge,
-    completion: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-  ) -> Bool {
+  func authenticate(_ challenge: URLAuthenticationChallenge, completion: @escaping (URLCredential?) -> Void) -> Bool {
     guard let host, challenge.previousFailureCount < 3 else { return false }
     let space = challenge.protectionSpace
-    host.ask("authRequest", ["host": space.host, "realm": space.realm ?? ""]) { answer in
+    let key = "\(space.host):\(space.port)/\(space.realm ?? "")"
+    // One answer per host and realm until the next page finishes: a server that offers Digest and Basic challenges
+    // again with the other scheme after a decline.
+    guard !declined.contains(key) else {
+      completion(nil)
+      return true
+    }
+    host.ask("authRequest", ["host": space.host, "realm": space.realm ?? ""]) { [weak self] answer in
       let credential = answer as? [String: Any]
       guard let user = credential?["username"] as? String, let password = credential?["password"] as? String else {
-        // Not .cancelAuthenticationChallenge: that fails the navigation (iOS 17), while this shows the 401 page.
-        return completion(.rejectProtectionSpace, nil)
+        self?.declined.insert(key)
+        return completion(nil)
       }
-      completion(.useCredential, URLCredential(user: user, password: password, persistence: .forSession))
+      completion(URLCredential(user: user, password: password, persistence: .forSession))
     }
     return true
+  }
+
+  func didFinish(url: URL?) {
+    declined.removeAll()
   }
 }

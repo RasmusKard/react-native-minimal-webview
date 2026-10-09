@@ -65,6 +65,13 @@ function handle(req, res) {
       res.writeHead(401, { 'www-authenticate': 'Basic realm="test realm"', 'content-type': 'text/html' });
       res.end('<!doctype html><h1 id="auth">unauthorized</h1>');
     }
+  } else if (url.pathname === '/auth2') {
+    // Offers Digest and Basic: declining one must not ask again for the other.
+    res.writeHead(401, {
+      'www-authenticate': ['Digest realm="two", nonce="n", qop="auth"', 'Basic realm="two"'],
+      'content-type': 'text/html',
+    });
+    res.end('<!doctype html><h1 id="auth">unauthorized</h1>');
   } else if (url.pathname === '/setcookie') {
     res.writeHead(200, { 'set-cookie': `${q.get('name') ?? 'native'}=${q.get('value') ?? '1'}; Path=/` });
     res.end('set');

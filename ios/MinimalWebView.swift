@@ -342,7 +342,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   ) {
     let method = challenge.protectionSpace.authenticationMethod
     let isHTTPAuth = method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest
-    let handled = isHTTPAuth && activeExtensions?.contains { $0.authenticate(challenge, completion: completionHandler) } == true
+    // A declined login shows the site's 401 page. (.cancelAuthenticationChallenge would fail the navigation on iOS 17.)
+    let reply = { (credential: URLCredential?) in completionHandler(credential == nil ? .rejectProtectionSpace : .useCredential, credential) }
+    let handled = isHTTPAuth && activeExtensions?.contains { $0.authenticate(challenge, completion: reply) } == true
     // Server trust and everything else: WebKit's default (an invalid certificate fails, as on Android).
     if !handled { completionHandler(isHTTPAuth ? .rejectProtectionSpace : .performDefaultHandling, nil) }
   }

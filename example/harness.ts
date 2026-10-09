@@ -617,11 +617,10 @@ async function crash(h: Harness) {
     const before = h.events.gone.length;
     // The driver kills the page's renderer: `sandboxed_process` (adb root) on Android, WebContent on iOS.
     // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView does not report it.)
-    // A kill can land before the recovering page has a renderer: ask again (bounded) when nothing died.
-    for (let attempt = 0; attempt < 3 && h.events.gone.length === before; attempt++) {
-      r.info('KILL', n);
-      await waitFor(h, () => h.events.gone.length > before, 5000);
-    }
+    // Kill only a live renderer: an evaluate round trip needs one (a kill during recovery would find none).
+    await Promise.race([h.ref.current?.evaluate('1'), sleep(10000)]);
+    r.info('KILL', n);
+    await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
   };
   await openPage(h, page);
@@ -641,12 +640,7 @@ async function crash(h: Harness) {
   r.check('the bridge works after recovery', (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4);
 
   for (const n of [2, 3]) {
-    const loads = h.events.loads.length;
     await kill(n);
-    // url and idle don't change across recovery: wait for the reload to start (a new renderer), or the next kill
-    // finds none. Waiting for the end would stretch four crashes past the 60 s window on iOS.
-    await waitFor(h, () => h.events.loads.slice(loads).includes('start'), 15000);
-    await sleep(1000);
   }
   const fourth = await kill(4);
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
@@ -1057,6 +1051,13 @@ async function borrowed(h: Harness) {
   // Another origin: the WebView caches the credentials it just used for localhost's realm, as browsers do.
   await openPage(h, `http://127.0.0.1:8090/auth?t=${Date.now()}`);
   r.check('httpAuth null cancels (the 401 page shows)', (await text('auth')) === 'unauthorized', await text('auth'));
+  let asks = 0;
+  h.setAuth(() => {
+    asks++;
+    return null;
+  });
+  await openPage(h, `${h.pages}/auth2?t=${Date.now()}`);
+  r.check('a decline asks once when the server offers Digest and Basic', asks === 1 && (await text('auth')) === 'unauthorized', asks);
   h.setAuth(undefined);
 
   clearEvents(h);
