@@ -57,7 +57,6 @@ export type WebViewErrorEvent = {
   /** Platform error code, or the HTTP status for `http`. */
   code: number;
   description: string;
-  isMainFrame: boolean;
 };
 
 export type ProcessGoneEvent = {

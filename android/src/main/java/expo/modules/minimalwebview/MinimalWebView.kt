@@ -255,7 +255,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {
-    onError(mapOf("kind" to kind, "url" to url, "code" to code, "description" to description, "isMainFrame" to true))
+    onError(mapOf("kind" to kind, "url" to url, "code" to code, "description" to description))
   }
 
   // Changes within one frame are combined into one event, except `loading` flips: a load that starts and fails

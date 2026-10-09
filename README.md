@@ -73,8 +73,6 @@ Rules are an ordered list, and the first match wins. Every field a rule sets mus
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load.
 
-`decideNavigation(rules, request)` is the same matcher in JS, for unit-testing your rules. One file of test cases checks the Kotlin, Swift and TS matchers alike.
-
 `onNavigation` reports every decision: `{ url, action, mainFrame, newWindow, userInitiated, rule }`.
 
 **Platform differences:**
@@ -134,7 +132,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `extensions` | See below |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
-| `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description, isMainFrame }`. Main-frame errors only. SSL errors are always cancelled |
+| `onError` | `{ kind: 'network' \| 'http' \| 'ssl', url, code, description }`. Main-frame errors only. SSL errors are always cancelled |
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
 
@@ -256,7 +254,7 @@ The interface is **experimental** until it has had more outside users.
 
 ```sh
 npm install && (cd example && npm install)
-npm test                                   # TS unit tests (bridge protocol, createBridge, rule and origin matchers)
+npm test                                   # TS unit tests (bridge protocol, createBridge, origin matchers)
 npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
 (cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json test-vectors/origin-rules.json

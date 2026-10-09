@@ -308,7 +308,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let ssl = nsError.domain == NSURLErrorDomain && (NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed).contains(nsError.code)
     failedUrl = failing
     url = failing
-    onError(["kind": ssl ? "ssl" : "network", "url": failing, "code": nsError.code, "description": nsError.localizedDescription, "isMainFrame": true])
+    onError(["kind": ssl ? "ssl" : "network", "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
   }
 
   // MARK: WKNavigationDelegate
@@ -343,7 +343,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
     if navigationResponse.isForMainFrame, let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400 {
       let description = HTTPURLResponse.localizedString(forStatusCode: response.statusCode)
-      onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description, "isMainFrame": true])
+      onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description])
     }
     decisionHandler(.allow)
   }
