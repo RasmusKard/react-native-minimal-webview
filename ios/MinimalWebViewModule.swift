@@ -5,28 +5,55 @@ public class MinimalWebViewModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebView")
 
+    OnCreate {
+      WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
+      WebViewExtensions.register("downloads") { Downloads() }
+      WebViewExtensions.register("permissions") { Permissions() }
+      WebViewExtensions.register("sharedCookies") { SharedCookies() }
+      // Built in on iOS: WebKit's own fullscreen video and file picker.
+      WebViewExtensions.register("fullscreenVideo") { BuiltIn() }
+      WebViewExtensions.register("fileUpload") { BuiltIn() }
+    }
+
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge")
+      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation", "onNavigationRequest")
 
       Prop("source") { (view: MinimalWebView, source: [String: Any]?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
+      Prop("extensions") { (view: MinimalWebView, extensions: [[String: Any]]?) in view.extensions = extensions ?? [] }
+      Prop("userAgent") { (view: MinimalWebView, value: String?) in view.userAgent = value }
+      Prop("applicationNameForUserAgent") { (view: MinimalWebView, value: String?) in view.applicationNameForUserAgent = value }
+      Prop("mediaPlaybackRequiresUserAction") { (view: MinimalWebView, value: Bool?) in view.mediaPlaybackRequiresUserAction = value ?? true }
+      Prop("allowsInlineMediaPlayback") { (view: MinimalWebView, value: Bool?) in view.allowsInlineMediaPlayback = value ?? false }
+      Prop("scrollEnabled") { (view: MinimalWebView, value: Bool?) in view.scrollEnabled = value ?? true }
+      Prop("bounces") { (view: MinimalWebView, value: Bool?) in view.bounces = value ?? true }
+      Prop("showsScrollIndicators") { (view: MinimalWebView, value: Bool?) in view.showsScrollIndicators = value ?? true }
+      Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
+      Prop("injectedScripts") { (view: MinimalWebView, value: [[String: Any]]?) in view.injectedScripts = value ?? [] }
+      Prop("openExternalInJS") { (view: MinimalWebView, value: Bool?) in view.openExternalInJS = value ?? false }
+      Prop("webviewDebuggingEnabled") { (view: MinimalWebView, value: Bool?) in view.webviewDebuggingEnabled = value ?? false }
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
       AsyncFunction("goBack") { (view: MinimalWebView) in view.webView?.goBack() }
       AsyncFunction("goForward") { (view: MinimalWebView) in view.webView?.goForward() }
-      AsyncFunction("reload") { (view: MinimalWebView) in view.webView?.reload() }
+      AsyncFunction("reload") { (view: MinimalWebView) in view.reload() }
       AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
-      AsyncFunction("getUrl") { (view: MinimalWebView) in view.webView?.url?.absoluteString }
+      AsyncFunction("extensionCall") { (view: MinimalWebView, name: String, method: String, args: [String: Any]) in
+        view.extensionCall(name, method, args)
+      }
+      AsyncFunction("getUrl") { (view: MinimalWebView) in view.failedUrl ?? view.webView?.url?.absoluteString }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         guard let webView = view.webView else { return promise.resolve(nil) }
         webView.callAsyncJavaScript("return await (\n\(script)\n)", arguments: [:], in: nil, in: .page) { result in
           switch result {
           case .success(let value):
+            // NaN, Infinity and dates are not JSON: JSONSerialization would raise an uncatchable exception.
+            guard JSONSerialization.isValidJSONObject([value]) else { return promise.resolve(nil) }
             let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)
             promise.resolve(data.flatMap { String(data: $0, encoding: .utf8) })
           case .failure(let error):
@@ -37,3 +64,6 @@ public class MinimalWebViewModule: Module {
     }
   }
 }
+
+/// Registered for helpers whose feature WebKit already provides, so they need no native code on iOS.
+private final class BuiltIn: WebViewExtension {}

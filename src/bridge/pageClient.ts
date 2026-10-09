@@ -31,11 +31,14 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
       ? rule === '*' || rule === origin
       : origin.startsWith(`${scheme}://`) && origin.endsWith(`.${wildcardHost}`);
   });
-  if (w.nativeBridge || !allowed) return;
+  // Main frame only (Android injects into allowed-origin iframes too, but only the main frame's messages are taken).
+  if (w.nativeBridge || !allowed || w !== w.top) return;
   const handlers = new Map<string, (params: unknown) => unknown>();
   const listeners = new Map<string, Set<(payload: unknown) => void>>();
   const pending = new Map<string, Pending>();
   let nextId = 0;
+  // Per document: a late answer to a call of the previous page must not match a call of this one.
+  const idPrefix = `p${Math.random().toString(36).slice(2, 8)}-`;
 
   const ios = w.webkit?.messageHandlers?.nativeBridge;
   const android = w.nativeBridgeTransport;
@@ -99,7 +102,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
 
   w.nativeBridge = Object.freeze({
     call(method: string, params?: unknown): Promise<unknown> {
-      const id = `p${++nextId}`;
+      const id = `${idPrefix}${++nextId}`;
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);

@@ -1,16 +1,28 @@
 import {
   type NavigationRule,
   type WebViewProps,
+  type WebViewErrorEvent,
   type WebViewRef,
   type WebViewSource,
   WebView,
   createBridge,
+  downloads,
+  type Download,
+  fullscreenVideo,
+  permissions,
+  type PermissionRequestEvent,
+  sharedCookies,
+  fileUpload,
+  type FileRequest,
+  pullToRefresh,
   useWebViewState,
 } from 'minimal-rn-webview';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUITES, pollForSuites, type Harness } from './harness';
+import { PerfView, type PerfRun } from './perf';
 
 const PAGES = 'http://localhost:8090';
 
@@ -19,6 +31,18 @@ export default function App() {
   const state = useWebViewState(ref);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
+  const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
+  const [perfRun, setPerfRun] = useState<PerfRun | null>(null);
+  const events = useRef<Harness['events']>({
+    errors: [],
+    gone: [],
+    loads: [],
+    navigations: [],
+    downloads: [],
+    fullscreen: [],
+    pageCounts: [],
+    overlay: { error: false },
+  }).current;
   const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
   const pageEvents = useRef<unknown[]>([]).current;
   const bridge = useMemo(() => {
@@ -34,6 +58,24 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(undefined);
+  const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(undefined);
+  const extensions = useMemo(
+    () => [
+      pullToRefresh(),
+      fileUpload({ onFileRequest: (request) => fileRequestRef.current?.(request) ?? null }),
+      fullscreenVideo({ onChange: (active) => events.fullscreen.push(active) }),
+      downloads({ onDownload: (download) => events.downloads.push(download) }),
+      permissions({
+        origins: [PAGES],
+        onPermissionRequest: (request) => permissionRef.current?.(request) ?? false,
+      }),
+      sharedCookies(),
+      pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) }),
+    ],
+    []
+  );
+
   const harness: Harness = {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
@@ -43,6 +85,21 @@ export default function App() {
     setRules,
     bridge,
     pageEvents,
+    setFileRequest: (handler) => (fileRequestRef.current = handler),
+    setPermission: (handler) => (permissionRef.current = handler),
+    setProps,
+    events,
+    measureLoad: (kind, uri) =>
+      new Promise((resolve) =>
+        setPerfRun({
+          kind,
+          uri,
+          key: Date.now(),
+          startedAt: performance.now(),
+          done: (ms, readyState) => resolve({ ms, readyState }),
+        })
+      ),
+    endPerf: () => setPerfRun(null),
     setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
@@ -62,8 +119,22 @@ export default function App() {
         style={styles.webview}
         navigationRules={rules}
         bridge={bridge}
+        extensions={extensions}
         onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+        applicationNameForUserAgent="MinimalWebViewExample/1.0"
+        thirdPartyCookies
+        onError={(event) => events.errors.push(event)}
+        onProcessGone={(event) => events.gone.push(event)}
+        onNavigation={(event) => events.navigations.push(event)}
+        onLoadStart={() => events.loads.push('start')}
+        onLoad={() => events.loads.push('load')}
+        onLoadEnd={() => events.loads.push('end')}
+        renderError={(error) => (
+          <ErrorScreen error={error} onRetry={() => ref.current?.reload()} mounted={events.overlay} />
+        )}
+        {...extraProps}
       />
+      <PerfView run={perfRun} />
       <Text style={styles.state} numberOfLines={3}>
         {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
@@ -79,7 +150,26 @@ export default function App() {
   );
 }
 
+/** The example's error screen; records whether it is mounted so the harness can check renderError. */
+function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void; mounted: { error: boolean } }) {
+  useEffect(() => {
+    props.mounted.error = true;
+    return () => {
+      props.mounted.error = false;
+    };
+  }, [props.mounted]);
+  return (
+    <View style={styles.overlay}>
+      <Text>
+        {props.error.kind} error {props.error.code}: {props.error.description}
+      </Text>
+      <Button title="retry" onPress={props.onRetry} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fee' },
   container: { flex: 1, paddingTop: 50, backgroundColor: '#fff' },
   webview: { flex: 1 },
   state: { fontSize: 11, padding: 4 },
