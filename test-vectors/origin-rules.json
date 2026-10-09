@@ -1,0 +1,588 @@
+{
+  "description": "Shared origin rule cases for createBridge's allowedOrigins validation and for every origin matcher (the page client, the iOS delivery script, OriginRules.swift, Android OriginRules). Rules follow Android's addWebMessageListener origin rules, narrowed to what every platform can match: `*` (any origin, opaque ones included), `http(s)://host[:port]`, `http(s)://*.host[:port]` (subdomains only, not host itself) or an IP literal (`https://127.0.0.1`, `https://[::1]:99`). Hosts are ASCII (punycode for IDNs); no path, trailing slash, userinfo, query or custom scheme. Scheme and host compare case-insensitively; a missing port is 80 for http and 443 for https, on rules and origins alike. A rule createBridge rejects matches nothing (the permissions extension does not validate its origins). `validation`: whether createBridge accepts the rule. `cases`: whether a page with `origin` (location.origin form) matches any of `rules`.",
+  "validation": [
+    {
+      "rule": "*",
+      "valid": true
+    },
+    {
+      "rule": "https://example.com",
+      "valid": true
+    },
+    {
+      "rule": "http://localhost:8090",
+      "valid": true
+    },
+    {
+      "rule": "https://*.example.com",
+      "valid": true
+    },
+    {
+      "rule": "https://*.example.com:8443",
+      "valid": true
+    },
+    {
+      "rule": "HTTPS://Example.COM",
+      "valid": true
+    },
+    {
+      "rule": "http://example.com:80",
+      "valid": true
+    },
+    {
+      "rule": "https://127.0.0.1",
+      "valid": true
+    },
+    {
+      "rule": "https://[::1]",
+      "valid": true
+    },
+    {
+      "rule": "https://[::1]:99",
+      "valid": true
+    },
+    {
+      "rule": "https://xn--mnchen-3ya.de",
+      "valid": true
+    },
+    {
+      "rule": "",
+      "valid": false
+    },
+    {
+      "rule": "null",
+      "valid": false
+    },
+    {
+      "rule": "example.com",
+      "valid": false
+    },
+    {
+      "rule": "*.example.com",
+      "valid": false
+    },
+    {
+      "rule": "https://",
+      "valid": false
+    },
+    {
+      "rule": "https://*",
+      "valid": false
+    },
+    {
+      "rule": "https://*example.com",
+      "valid": false
+    },
+    {
+      "rule": "https://a.*.example.com",
+      "valid": false
+    },
+    {
+      "rule": "https://*.*.example.com",
+      "valid": false
+    },
+    {
+      "rule": "https://*.[::1]",
+      "valid": false
+    },
+    {
+      "rule": "https://example.com/",
+      "valid": false
+    },
+    {
+      "rule": "https://example.com/app",
+      "valid": false
+    },
+    {
+      "rule": "https://example.com:",
+      "valid": false
+    },
+    {
+      "rule": "https://example.com:https",
+      "valid": false
+    },
+    {
+      "rule": "https://user@example.com",
+      "valid": false
+    },
+    {
+      "rule": "https://example.com?q",
+      "valid": false
+    },
+    {
+      "rule": "https://example.com#top",
+      "valid": false
+    },
+    {
+      "rule": " https://example.com",
+      "valid": false
+    },
+    {
+      "rule": "https://exa mple.com",
+      "valid": false
+    },
+    {
+      "rule": "https://münchen.de",
+      "valid": false
+    },
+    {
+      "rule": "myapp://",
+      "valid": false
+    },
+    {
+      "rule": "myapp://host",
+      "valid": false
+    },
+    {
+      "rule": "ftp://example.com",
+      "valid": false
+    },
+    {
+      "rule": "file://",
+      "valid": false
+    },
+    {
+      "rule": "file:///",
+      "valid": false
+    },
+    {
+      "rule": "data:text/html,hi",
+      "valid": false
+    },
+    {
+      "rule": "about:blank",
+      "valid": false
+    }
+  ],
+  "cases": [
+    {
+      "name": "exact origin",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "https://example.com",
+      "allowed": true
+    },
+    {
+      "name": "exact: other host",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "https://example.org",
+      "allowed": false
+    },
+    {
+      "name": "exact: host suffix is not a match",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "https://example.com.evil.com",
+      "allowed": false
+    },
+    {
+      "name": "exact: subdomain is not a match",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "https://app.example.com",
+      "allowed": false
+    },
+    {
+      "name": "port given",
+      "rules": [
+        "https://example.com:8443"
+      ],
+      "origin": "https://example.com:8443",
+      "allowed": true
+    },
+    {
+      "name": "port given: default port origin",
+      "rules": [
+        "https://example.com:8443"
+      ],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "no port means the default port",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "https://example.com:8443",
+      "allowed": false
+    },
+    {
+      "name": "explicit default https port",
+      "rules": [
+        "https://example.com:443"
+      ],
+      "origin": "https://example.com",
+      "allowed": true
+    },
+    {
+      "name": "explicit default http port",
+      "rules": [
+        "http://example.com:80"
+      ],
+      "origin": "http://example.com",
+      "allowed": true
+    },
+    {
+      "name": "origin with explicit default port",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "https://example.com:443",
+      "allowed": true
+    },
+    {
+      "name": "443 is not http's default port",
+      "rules": [
+        "http://example.com:443"
+      ],
+      "origin": "http://example.com",
+      "allowed": false
+    },
+    {
+      "name": "wildcard: subdomain",
+      "rules": [
+        "https://*.example.com"
+      ],
+      "origin": "https://app.example.com",
+      "allowed": true
+    },
+    {
+      "name": "wildcard: nested subdomain",
+      "rules": [
+        "https://*.example.com"
+      ],
+      "origin": "https://a.b.example.com",
+      "allowed": true
+    },
+    {
+      "name": "wildcard: not the bare domain",
+      "rules": [
+        "https://*.example.com"
+      ],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "wildcard: label suffix is not a match",
+      "rules": [
+        "https://*.example.com"
+      ],
+      "origin": "https://evilexample.com",
+      "allowed": false
+    },
+    {
+      "name": "wildcard: scheme must match",
+      "rules": [
+        "https://*.example.com"
+      ],
+      "origin": "http://app.example.com",
+      "allowed": false
+    },
+    {
+      "name": "wildcard: no port means the default port",
+      "rules": [
+        "https://*.example.com"
+      ],
+      "origin": "https://app.example.com:8443",
+      "allowed": false
+    },
+    {
+      "name": "wildcard with port",
+      "rules": [
+        "https://*.example.com:8443"
+      ],
+      "origin": "https://app.example.com:8443",
+      "allowed": true
+    },
+    {
+      "name": "wildcard with explicit default port",
+      "rules": [
+        "https://*.example.com:443"
+      ],
+      "origin": "https://app.example.com",
+      "allowed": true
+    },
+    {
+      "name": "bare domain plus wildcard",
+      "rules": [
+        "https://example.com",
+        "https://*.example.com"
+      ],
+      "origin": "https://example.com",
+      "allowed": true
+    },
+    {
+      "name": "star",
+      "rules": [
+        "*"
+      ],
+      "origin": "https://anything.test",
+      "allowed": true
+    },
+    {
+      "name": "star among other rules",
+      "rules": [
+        "https://example.com",
+        "*"
+      ],
+      "origin": "http://localhost:8090",
+      "allowed": true
+    },
+    {
+      "name": "no rules",
+      "rules": [],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "rule case is ignored",
+      "rules": [
+        "HTTPS://Example.COM"
+      ],
+      "origin": "https://example.com",
+      "allowed": true
+    },
+    {
+      "name": "wildcard case is ignored",
+      "rules": [
+        "https://*.EXAMPLE.com"
+      ],
+      "origin": "https://app.example.com",
+      "allowed": true
+    },
+    {
+      "name": "origin case is ignored",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "HTTPS://EXAMPLE.COM",
+      "allowed": true
+    },
+    {
+      "name": "rule with trailing slash matches nothing",
+      "rules": [
+        "https://example.com/"
+      ],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "rule with path matches nothing",
+      "rules": [
+        "https://example.com/app"
+      ],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "wildcard with trailing slash matches nothing",
+      "rules": [
+        "https://*.example.com/"
+      ],
+      "origin": "https://app.example.com",
+      "allowed": false
+    },
+    {
+      "name": "rule with userinfo matches nothing",
+      "rules": [
+        "https://user@example.com"
+      ],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "https rule, http origin",
+      "rules": [
+        "https://example.com"
+      ],
+      "origin": "http://example.com",
+      "allowed": false
+    },
+    {
+      "name": "http rule, https origin",
+      "rules": [
+        "http://example.com"
+      ],
+      "origin": "https://example.com",
+      "allowed": false
+    },
+    {
+      "name": "IPv4",
+      "rules": [
+        "https://127.0.0.1"
+      ],
+      "origin": "https://127.0.0.1",
+      "allowed": true
+    },
+    {
+      "name": "IPv4: other address",
+      "rules": [
+        "https://127.0.0.1"
+      ],
+      "origin": "https://127.0.0.2",
+      "allowed": false
+    },
+    {
+      "name": "IPv6",
+      "rules": [
+        "https://[::1]"
+      ],
+      "origin": "https://[::1]",
+      "allowed": true
+    },
+    {
+      "name": "IPv6 with port",
+      "rules": [
+        "https://[::1]:99"
+      ],
+      "origin": "https://[::1]:99",
+      "allowed": true
+    },
+    {
+      "name": "IPv6 with port: default port origin",
+      "rules": [
+        "https://[::1]:99"
+      ],
+      "origin": "https://[::1]",
+      "allowed": false
+    },
+    {
+      "name": "localhost with port",
+      "rules": [
+        "http://localhost:8090"
+      ],
+      "origin": "http://localhost:8090",
+      "allowed": true
+    },
+    {
+      "name": "localhost: other port",
+      "rules": [
+        "http://localhost:8090"
+      ],
+      "origin": "http://localhost",
+      "allowed": false
+    },
+    {
+      "name": "localhost: https origin",
+      "rules": [
+        "http://localhost:8090"
+      ],
+      "origin": "https://localhost:8090",
+      "allowed": false
+    },
+    {
+      "name": "opaque origin",
+      "rules": [
+        "https://example.com",
+        "https://*.example.com"
+      ],
+      "origin": "null",
+      "allowed": false
+    },
+    {
+      "name": "star allows an opaque origin",
+      "rules": [
+        "*"
+      ],
+      "origin": "null",
+      "allowed": true
+    },
+    {
+      "name": "rule 'null' matches nothing",
+      "rules": [
+        "null"
+      ],
+      "origin": "null",
+      "allowed": false
+    },
+    {
+      "name": "empty origin",
+      "rules": [
+        "https://example.com",
+        "https://*.example.com"
+      ],
+      "origin": "",
+      "allowed": false
+    },
+    {
+      "name": "file origin",
+      "rules": [
+        "https://example.com",
+        "https://*.example.com"
+      ],
+      "origin": "file://",
+      "allowed": false
+    },
+    {
+      "name": "star allows a file origin",
+      "rules": [
+        "*"
+      ],
+      "origin": "file://",
+      "allowed": true
+    },
+    {
+      "name": "file rule matches nothing",
+      "rules": [
+        "file://"
+      ],
+      "origin": "file://",
+      "allowed": false
+    },
+    {
+      "name": "data URL as origin",
+      "rules": [
+        "https://example.com",
+        "https://*.example.com"
+      ],
+      "origin": "data:text/html,hi",
+      "allowed": false
+    },
+    {
+      "name": "data rule matches nothing",
+      "rules": [
+        "data:text/html,hi"
+      ],
+      "origin": "data:text/html,hi",
+      "allowed": false
+    },
+    {
+      "name": "about:blank as origin",
+      "rules": [
+        "https://example.com",
+        "https://*.example.com"
+      ],
+      "origin": "about:blank",
+      "allowed": false
+    },
+    {
+      "name": "about rule matches nothing",
+      "rules": [
+        "about:blank"
+      ],
+      "origin": "about:blank",
+      "allowed": false
+    },
+    {
+      "name": "custom scheme rule matches nothing",
+      "rules": [
+        "myapp://"
+      ],
+      "origin": "myapp://",
+      "allowed": false
+    },
+    {
+      "name": "custom scheme with host matches nothing",
+      "rules": [
+        "myapp://host"
+      ],
+      "origin": "myapp://host",
+      "allowed": false
+    }
+  ]
+}

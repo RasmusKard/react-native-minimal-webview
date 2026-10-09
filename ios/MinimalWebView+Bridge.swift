@@ -37,14 +37,19 @@ extension MinimalWebView {
   }
 
   /// Same rule format as OriginRules and the page client.
-  private static let deliver = """
-    const o = location.origin;
-    const ok = origins.some((r) => {
-      const [scheme, host] = r.split('://*.');
-      return host === undefined ? r === '*' || r === o : o.startsWith(scheme + '://') && o.endsWith('.' + host);
+  private static let deliver = #"""
+    const parse = (text) => {
+      const m = /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(text.toLowerCase());
+      return m && { scheme: m[1], wildcard: !!m[2], host: m[3], port: +(m[4] ?? (m[1] === 'https' ? 443 : 80)) };
+    };
+    const o = parse(location.origin);
+    const ok = origins.some((rule) => {
+      const r = parse(rule);
+      if (!r || !o || o.wildcard) return rule === '*';
+      return (r.wildcard ? o.host.endsWith('.' + r.host) : o.host === r.host) && r.scheme === o.scheme && r.port === o.port;
     });
     return ok ? await window.nativeBridge?.__receive(message) : null;
-    """
+    """#
 
   private static func header(_ text: String) -> (kind: String, id: String)? {
     guard let data = text.data(using: .utf8),

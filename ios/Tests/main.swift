@@ -1,5 +1,7 @@
-// Runs the shared navigation rule cases against NavigationRules.swift. Not part of the pod (see the podspec).
-//   xcrun swiftc ios/NavigationRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json
+// Runs the shared navigation and origin rule cases against NavigationRules.swift and OriginRules.swift. Not part of the
+// pod (see the podspec).
+//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules \
+//     && /tmp/rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
 import Foundation
 
 func fail(_ message: String) -> Never {
@@ -38,4 +40,21 @@ for testCase in cases {
   }
 }
 print("\(cases.count - failures)/\(cases.count) navigation rule cases pass")
-exit(failures == 0 ? 0 : 1)
+
+let originPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "test-vectors/origin-rules.json"
+guard let originData = FileManager.default.contents(atPath: originPath),
+  let originCases = ((try? JSONSerialization.jsonObject(with: originData)) as? [String: Any])?["cases"] as? [[String: Any]]
+else { fail("cannot read \(originPath)") }
+
+var originFailures = 0
+for testCase in originCases {
+  guard let name = testCase["name"] as? String, let rules = testCase["rules"] as? [String],
+    let origin = testCase["origin"] as? String, let allowed = testCase["allowed"] as? Bool
+  else { fail("malformed case \(testCase)") }
+  if OriginRules.allows(rules, origin) != allowed {
+    originFailures += 1
+    print("FAIL \(name): expected allowed \(allowed)")
+  }
+}
+print("\(originCases.count - originFailures)/\(originCases.count) origin rule cases pass")
+exit(failures + originFailures == 0 ? 0 : 1)

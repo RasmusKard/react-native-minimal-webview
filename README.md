@@ -105,7 +105,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 - **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable`, `invalid` and `too_large`.
 - **Timeouts:** calls time out after 10 s by default (`timeoutMs`).
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts.
-- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part.
+- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. The `permissions` extension's `origins` match the same way. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
 - **Transports:** iOS uses `WKScriptMessageHandlerWithReply` plus `callAsyncJavaScript`; Android uses `addWebMessageListener` with origin rules.
 
 Build your own page APIs on top of it, for example an injected `window.MyAppAPI` that calls the bridge.
@@ -226,8 +226,8 @@ export const pageCounter = (): WebViewExtension => ({
 ```
 
 **The hooks:**
-- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `hasPermission` and `launchForResult`.
-- iOS: `didCreate`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture` and `detach`. The host gives `webView`, `emit` and `ask`.
+- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `hasPermission` and `launchForResult`.
+- iOS: `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask` and `reload`.
 - **Decide hooks:** the first extension that handles one wins.
 - **`ask`:** sends an event to the helper's `onEvent` and passes its return value back to native.
 
@@ -247,10 +247,10 @@ The interface is **experimental** until it has had more outside users.
 
 ```sh
 npm install && (cd example && npm install)
-npm test                                   # TS unit tests (bridge protocol, createBridge, rule matcher)
+npm test                                   # TS unit tests (bridge protocol, createBridge, rule and origin matchers)
 npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
-(cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin rule matcher
-xcrun swiftc ios/NavigationRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json
+(cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
 cd example && npm run test-pages           # local test pages on :8090
 npx expo run:android | npx expo run:ios
 example/maestro/run.sh android emulator-5554          # on-device suites through Maestro (all, or name some)
