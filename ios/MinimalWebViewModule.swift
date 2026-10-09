@@ -31,6 +31,9 @@ public class MinimalWebViewModule: Module {
       Prop("scrollEnabled") { (view: MinimalWebView, value: Bool?) in view.scrollEnabled = value ?? true }
       Prop("bounces") { (view: MinimalWebView, value: Bool?) in view.bounces = value ?? true }
       Prop("showsScrollIndicators") { (view: MinimalWebView, value: Bool?) in view.showsScrollIndicators = value ?? true }
+      Prop("javaScriptCanOpenWindowsAutomatically") { (view: MinimalWebView, value: Bool?) in
+        view.javaScriptCanOpenWindowsAutomatically = value ?? false
+      }
       Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
       Prop("injectedScripts") { (view: MinimalWebView, value: [[String: Any]]?) in view.injectedScripts = value ?? [] }
       Prop("openExternalInJS") { (view: MinimalWebView, value: Bool?) in view.openExternalInJS = value ?? false }
@@ -49,11 +52,11 @@ public class MinimalWebViewModule: Module {
       }
       AsyncFunction("getUrl") { (view: MinimalWebView) in view.failedUrl ?? view.webView?.url?.absoluteString }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
+      // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         guard let webView = view.webView else { return promise.resolve(nil) }
         let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
         webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { result in
-      // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
           switch result {
           case .success(let value):
             promise.resolve(value as? String ?? "null")

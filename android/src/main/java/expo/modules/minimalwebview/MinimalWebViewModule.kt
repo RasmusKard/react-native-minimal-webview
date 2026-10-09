@@ -68,6 +68,9 @@ class MinimalWebViewModule : Module() {
         view.mediaPlaybackRequiresUserAction = value ?: true
       }
       Prop("showsScrollIndicators") { view: MinimalWebView, value: Boolean? -> view.showsScrollIndicators = value ?: true }
+      Prop("javaScriptCanOpenWindowsAutomatically") { view: MinimalWebView, value: Boolean? ->
+        view.javaScriptCanOpenWindowsAutomatically = value ?: false
+      }
       Prop("injectedScripts") { view: MinimalWebView, value: List<Map<String, Any?>>? -> view.injectedScripts = value }
       Prop("openExternalInJS") { view: MinimalWebView, value: Boolean? -> view.openExternalInJS = value ?: false }
       Prop("webviewDebuggingEnabled") { view: MinimalWebView, value: Boolean? -> view.webviewDebuggingEnabled = value ?: false }
