@@ -11,9 +11,6 @@ public class MinimalWebViewModule: Module {
       WebViewExtensions.register("permissions") { Permissions() }
       WebViewExtensions.register("sharedCookies") { SharedCookies() }
       WebViewExtensions.register("httpAuth") { HttpAuth() }
-      // Built in on iOS: WebKit's own fullscreen video and file picker.
-      WebViewExtensions.register("fullscreenVideo") { BuiltIn() }
-      WebViewExtensions.register("fileUpload") { BuiltIn() }
     }
 
     // View functions run on the main queue.
@@ -68,6 +65,3 @@ public class MinimalWebViewModule: Module {
     }
   }
 }
-
-/// Registered for helpers whose feature WebKit already provides, so they need no native code on iOS.
-private final class BuiltIn: WebViewExtension {}

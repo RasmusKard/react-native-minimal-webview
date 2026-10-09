@@ -20,7 +20,6 @@ import type {
   NavigationState,
   ProcessGoneEvent,
   WebViewErrorEvent,
-  WebViewExtension,
   WebViewProps,
   WebViewRef,
 } from './types';
@@ -52,15 +51,33 @@ const PASSTHROUGH = [
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
-/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. Add new props here. */
-const OWN = new Set<string>([
+/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
+const OWN = [
   ...PASSTHROUGH,
   ...([
-    'source', 'injectedScripts', 'webviewDebuggingEnabled', 'bridge', 'extensions', 'renderLoading', 'renderError',
-    'onNavigationRequest', 'onOpenExternal', 'onNavigation', 'onNavigationStateChange', 'onError', 'onProcessGone',
-    'onLoadStart', 'onLoad', 'onLoadEnd', 'children',
-  ] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[]),
-]);
+    'source',
+    'injectedScripts',
+    'webviewDebuggingEnabled',
+    'bridge',
+    'extensions',
+    'renderLoading',
+    'renderError',
+    'onNavigationRequest',
+    'onOpenExternal',
+    'onNavigation',
+    'onNavigationStateChange',
+    'onError',
+    'onProcessGone',
+    'onLoadStart',
+    'onLoad',
+    'onLoadEnd',
+    'children',
+  ] as const),
+] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
+type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OWN)[number]>;
+// A prop missing from OWN fails to compile here, by name.
+const OWN_SET: Set<string> &
+  ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
 
 type NativeProps = ViewProps &
   Passthrough &
@@ -68,7 +85,7 @@ type NativeProps = ViewProps &
     ref: Ref<NativeMethods>;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
-    extensions: WebViewExtension['native'][] | undefined;
+    extensions: ReturnType<typeof nativeSpecs>;
     openExternalInJS: boolean;
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
@@ -191,8 +208,9 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     };
   }, [store]);
 
+  const fixed = useFixedAtMount(props);
   const connection =
-    props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+    fixed.bridge && (fixed.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
     connection.attach((message) => void native.current?.bridgePost(message));
@@ -211,14 +229,16 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     else connection?.markUnavailable();
   };
 
-  const answer = (askId: number, value: unknown) => native.current?.answer(askId, { value: value ?? null });
+  const answer = (askId: number, value: unknown) =>
+    native.current?.answer(askId, { value: value ?? null });
 
   const onExtension = async ({
     nativeEvent: { name, event, payload, askId },
   }: NativeEvent<ExtensionEvent>) => {
     const extension = props.extensions?.find((candidate) => candidate.native.name === name);
+    const handler = extension?.on?.[event] as ((payload: unknown) => unknown) | undefined;
     const value = await settle(
-      () => extension?.onEvent?.(event, payload),
+      () => handler?.(payload),
       null,
       `the ${name} extension's ${event} handler failed`
     );
@@ -251,7 +271,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       {...settingsOf(props)}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      extensions={props.extensions?.map((extension) => extension.native)}
+      extensions={fixed.extensions}
       openExternalInJS={props.onOpenExternal !== undefined}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
@@ -265,9 +285,36 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   return withOverlay(webView, props, error, loading);
 }
 
+/** What native gets per extension: its name and config, and which events have a JS handler. */
+const nativeSpecs = (props: WebViewProps) =>
+  props.extensions?.map(({ native, on = {} }) => ({
+    ...native,
+    handles: Object.keys(on).filter((event) => on[event]),
+  }));
+
+/**
+ * Native sets up the extensions and the bridge once, at mount; their JS handlers (`on`, `bridge.handle`) stay
+ * live. A later change is ignored with a warning: remount with a new `key` to apply it.
+ */
+function useFixedAtMount(props: WebViewProps) {
+  const [fixed] = useState(() => ({ bridge: props.bridge, extensions: nativeSpecs(props) }));
+  const warned = useRef(false);
+  const changed =
+    props.bridge !== fixed.bridge ||
+    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions);
+  useEffect(() => {
+    if (!changed || warned.current) return;
+    warned.current = true;
+    console.warn(
+      '[react-native-minimal-webview] `extensions` and `bridge` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
+    );
+  }, [changed]);
+  return fixed;
+}
+
 /** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */
 function viewPropsOf(props: WebViewProps): ViewProps {
-  return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN.has(key)));
+  return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
 /** Native props that pass straight through. */

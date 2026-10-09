@@ -6,7 +6,7 @@ import type { WebViewExtension } from 'react-native-minimal-webview';
  */
 export const pageCounter = (options: { onPageLoaded?: (url: string, count: number) => void } = {}): WebViewExtension => ({
   native: { name: 'pageCounter' },
-  onEvent: (event, payload) => {
-    if (event === 'pageLoaded') options.onPageLoaded?.(String(payload['url']), Number(payload['count']));
+  on: {
+    pageLoaded: ({ url, count }: { url: string; count: number }) => options.onPageLoaded?.(url, count),
   },
 });

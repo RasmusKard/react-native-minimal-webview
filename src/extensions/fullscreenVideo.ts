@@ -12,7 +12,5 @@ export const fullscreenVideo = (
   } = {}
 ): WebViewExtension => ({
   native: { name: 'fullscreenVideo', config: { orientation: options.orientation ?? 'keep' } },
-  onEvent: (event, payload) => {
-    if (event === 'fullscreen') options.onChange?.(payload['active'] === true);
-  },
+  on: { fullscreen: ({ active }: { active: boolean }) => options.onChange?.(active) },
 });
