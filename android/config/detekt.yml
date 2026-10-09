@@ -1,5 +1,4 @@
 # Anti-slop profile: REPLACES the default rule set (do not use --build-upon-default-config).
-# Baseline: .claude/baseline/detekt.xml
 config:
   validation: true
   warningsAsErrors: false

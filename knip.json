@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["oxlint.config.mjs", "eslint.ci.config.mjs"],
+  "entry": ["eslint.ci.config.mjs"],
   "ignore": ["example/**"],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["expo-modules-core", "dependency-cruiser", "jscpd", "@babel/core", "babel-preset-expo", "react-test-renderer"]
+  "ignoreDependencies": ["expo-modules-core", "dependency-cruiser", "@babel/core", "babel-preset-expo", "react-test-renderer"]
 }
