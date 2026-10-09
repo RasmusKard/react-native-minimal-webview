@@ -66,13 +66,13 @@ class Permissions : WebViewExtension {
     return "${uri.scheme}://${uri.host}$port"
   }
 
-  // Origin rules in the bridge's format: exact origins, or a scheme plus "*." host suffix wildcard.
+  // Origin rules in the bridge's format, as OriginRules.swift: `*`, exact origins, or a scheme plus "*." host suffix wildcard.
   private fun allowed(origin: String): Boolean {
     val value = origin.lowercase()
     return origins.any { original ->
       val rule = original.lowercase()
       val wildcard = rule.indexOf("://*.")
-      if (wildcard < 0) rule == value else value.startsWith(rule.substring(0, wildcard + 3)) && value.endsWith(rule.substring(wildcard + 4))
+      if (wildcard < 0) rule == "*" || rule == value else value.startsWith(rule.substring(0, wildcard + 3)) && value.endsWith(rule.substring(wildcard + 4))
     }
   }
 
