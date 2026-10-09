@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-/** `headers` go on the first request only (as in react-native-webview), not on later navigations. */
+/** `headers` go on the first request only, not on later navigations. */
 export type WebViewSource = { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
 
 export type NavigationAction = 'allow' | 'block' | 'external';
@@ -127,7 +127,7 @@ export type WebViewProps = {
   mediaPlaybackRequiresUserAction?: boolean;
   /** iOS only (Android always plays inline). Default false. Fixed at creation. */
   allowsInlineMediaPlayback?: boolean;
-  /** iOS only (react-native-webview ignores it on Android too). Default true. */
+  /** iOS only. Default true. */
   scrollEnabled?: boolean;
   /** iOS only. Default true. */
   bounces?: boolean;

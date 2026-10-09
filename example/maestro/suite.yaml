@@ -1,0 +1,6 @@
+appId: expo.modules.minimalwebview.example
+name: ${SUITE}
+# Any suite that needs no driver: start it and wait for the harness's verdict. Run with -e SUITE=<name>.
+---
+- runFlow: subflows/launch.yaml
+- runFlow: subflows/finish.yaml

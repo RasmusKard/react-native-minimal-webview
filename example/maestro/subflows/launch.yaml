@@ -1,0 +1,5 @@
+appId: expo.modules.minimalwebview.example
+---
+# A fresh app for every suite, so nothing carries over from an earlier run (an open dialog, a half-run suite).
+- launchApp: { stopApp: true, permissions: { all: allow } }
+- runScript: ../scripts/start.js

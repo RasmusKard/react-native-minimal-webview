@@ -1,0 +1,13 @@
+appId: expo.modules.minimalwebview.example
+name: navigation
+env:
+  SUITE: navigation
+---
+# Android: a real tap on a link inside an iframe, where the harness says (iOS clicks it from script).
+- runFlow: subflows/launch.yaml
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - runFlow: { file: subflows/await.yaml, env: { N: 1 } }
+      - runFlow: subflows/tap-request-point.yaml
+- runFlow: subflows/finish.yaml
