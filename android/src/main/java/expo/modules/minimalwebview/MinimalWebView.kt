@@ -11,6 +11,7 @@ import android.net.http.SslError
 import android.os.Message
 import android.os.SystemClock
 import android.util.Log
+import java.net.URISyntaxException
 import android.view.View
 import android.view.ViewGroup
 import android.content.pm.PackageManager
@@ -74,8 +75,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var openExternalInJS = false
   private var loadedSource: Map<String, Any?>? = null
 
-  // Extensions live as long as this view. `wrap` runs again for each new WebView.
+  // Extensions live until the `extensions` prop changes. `wrap` runs again for each new WebView.
   private var activeExtensions: Map<String, WebViewExtension>? = null
+  private var installedExtensions: List<Map<String, Any?>>? = null
+  // The bridge as installed (script and origins), so a changed bridge prop can replace it.
+  private var installedBridge: Pair<String?, List<String>?>? = null
+  private var bridgeScriptHandler: ScriptHandler? = null
 
   // Every `ask` (navigation and extensions) waits here for JS, by id, until answered through extensionCall.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
@@ -126,10 +131,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
   fun applyProps() {
     applySettings()
-    if (activeExtensions == null) {
-      installExtensions()
-      installBridge()
-    }
+    if (extensions.orEmpty() != installedExtensions) installExtensions()
+    if (bridgeScript to bridgeOrigins != installedBridge) installBridge()
     installScripts()
     val next = source ?: return
     if (next == loadedSource) return
@@ -160,6 +163,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun installExtensions() {
+    activeExtensions?.values?.forEach { it.onDetach() }
+    installedExtensions = extensions.orEmpty()
     activeExtensions = extensions.orEmpty().mapNotNull { spec ->
       val name = spec["name"] as? String ?: return@mapNotNull null
       val extension = WebViewExtensions.create(name)
@@ -225,6 +230,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun installBridge() {
+    if (installedBridge != null) {
+      WebViewCompat.removeWebMessageListener(webView, "nativeBridgeTransport")
+      bridgeScriptHandler?.remove()
+      bridgeScriptHandler = null
+      replyProxy = null
+    }
+    installedBridge = bridgeScript to bridgeOrigins
     val script = bridgeScript ?: return
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) ||
       !WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
@@ -233,6 +245,18 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       return
     }
     val origins = bridgeOrigins.orEmpty().toSet()
+    // A malformed origin rule makes WebView throw; createBridge validates them, so this only guards against misuse.
+    // JS learns of it: calls reject with `unavailable`.
+    val installed = try {
+      addBridge(script, origins)
+      true
+    } catch (e: IllegalArgumentException) {
+      failed("bridge not installed: invalid allowedOrigins $origins", e)
+    }
+    if (!installed) onBridge(mapOf("unavailable" to true))
+  }
+
+  private fun addBridge(script: String, origins: Set<String>) {
     WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, _, isMainFrame, proxy ->
       // Main frame only, like iOS. The origin rules already filtered the sender.
       if (!isMainFrame) return@addWebMessageListener
@@ -240,7 +264,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       onBridge(mapOf("message" to message.data))
     }
     val pageWorld = WebViewCompat.getExecutionWorld(webView, JavaScriptExecutionWorld.PAGE_WORLD_NAME)
-    WebViewCompat.addJavaScriptOnEvent(webView, script, WebViewCompat.INJECTION_EVENT_DOCUMENT_START, origins, pageWorld)
+    bridgeScriptHandler = WebViewCompat.addJavaScriptOnEvent(
+      webView, script, WebViewCompat.INJECTION_EVENT_DOCUMENT_START, origins, pageWorld
+    )
   }
 
   /** Changed scripts take effect from the next navigation. */
@@ -259,7 +285,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     for (script in scripts) {
       val code = script["code"] as? String ?: continue
       // No frame selector in androidx.webkit 1.17: main-frame-only scripts guard themselves.
-      val source = if (script["mainFrameOnly"] == true) "if (window === window.top) {\n$code\n}" else code
+      // A prefix, not a wrapping block: top-level const/let/class in the script must stay global.
+      val source = if (script["mainFrameOnly"] == true) "if (window !== window.top) throw 0;\n$code" else code
       val event = if (script["when"] == "end") WebViewCompat.INJECTION_EVENT_DOCUMENT_END else WebViewCompat.INJECTION_EVENT_DOCUMENT_START
       scriptHandlers += WebViewCompat.addJavaScriptOnEvent(webView, source, event, setOf("*"), pageWorld)
     }
@@ -276,12 +303,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       notifyNavigation(request, "allow", decision.rule)
       return false
     }
-    when (decision.action) {
-      "ask" -> ask(request, decision.rule)
-      "external" -> openExternal(request.url)
+    // An external link that cannot be opened is reported as blocked.
+    val action = when (decision.action) {
+      "ask" -> return true.also { ask(request, decision.rule) }
+      "external" -> if (openExternal(request.url)) "external" else "block"
+      else -> decision.action
     }
-    if (decision.action != "ask") notifyNavigation(request, decision.action, decision.rule)
-    return decision.action != "allow"
+    notifyNavigation(request, action, decision.rule)
+    return action != "allow"
   }
 
   private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) {
@@ -311,9 +340,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
           askedAndAllowed += request.url
           webView.loadUrl(request.url)
         }
-        "external" -> openExternal(request.url)
       }
-      notifyNavigation(request, if (action in ACTIONS) action else "block", rule)
+      val opened = action != "external" || openExternal(request.url)
+      notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
     }
     onNavigationRequest(
       mapOf(
@@ -328,25 +357,56 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     postDelayed({ pendingAsks.remove(id)?.invoke(null) }, ASK_TIMEOUT_MS)
   }
 
-  private fun openExternal(url: String) {
-    if (openExternalInJS) return
+  /**
+   * Opens a URL outside the WebView. Returns false when it could not be opened (the caller reports `block`): a page
+   * controls the URL, so a malformed intent (bad syntax, launchFlags=zz) or a refused activity must not crash the app.
+   */
+  private fun openExternal(url: String): Boolean {
+    if (openExternalInJS) return true
+    val intent = try {
+      browsableIntent(url)
+    } catch (e: URISyntaxException) {
+      return failed("malformed external URL $url", e)
+    } catch (e: IllegalArgumentException) {
+      return failed("malformed external URL $url", e)
+    }
+    return try {
+      context.startActivity(intent)
+      true
+    } catch (e: ActivityNotFoundException) {
+      openFallback(intent, url, e)
+    } catch (e: SecurityException) {
+      failed("not allowed to open $url", e)
+    }
+  }
+
+  private fun failed(message: String, error: Exception): Boolean {
+    Log.w(TAG, message, error)
+    return false
+  }
+
+  /** Only what a browser would allow: BROWSABLE, no explicit component or selector, and no URI permission grants. */
+  private fun browsableIntent(url: String): Intent {
     val intent = if (url.startsWith("intent:", ignoreCase = true)) {
-      // Only what a browser would allow: no explicit component or selector.
       Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
-        addCategory(Intent.CATEGORY_BROWSABLE)
         component = null
         selector = null
       }
     } else {
       Intent(Intent.ACTION_VIEW, Uri.parse(url))
     }
-    try {
-      context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (e: ActivityNotFoundException) {
-      // No app for the link: an intent may name a web fallback, as Chrome supports. Otherwise nothing happens.
-      val fallback = intent.getStringExtra("browser_fallback_url")?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
-      if (fallback != null) webView.loadUrl(fallback) else Log.w(TAG, "no app opens $url", e)
-    }
+    intent.addCategory(Intent.CATEGORY_BROWSABLE)
+    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    return intent
+  }
+
+  // No app for the link: an intent may name a web fallback, as Chrome supports. It goes through the rules like any
+  // other navigation. Otherwise nothing happens.
+  private fun openFallback(intent: Intent, url: String, error: ActivityNotFoundException): Boolean {
+    val fallback = intent.getStringExtra("browser_fallback_url")?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+      ?: return failed("no app opens $url", error)
+    if (!decide(NavigationRules.Request(fallback, true, false, false))) webView.loadUrl(fallback)
+    return true
   }
 
   /** Answers every pending ask with null (block, cancel) and forgets the bridge's reply proxy. */
@@ -368,6 +428,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     val old = webView
     webView = createWebView()
     applySettings()
+    installedBridge = null
+    bridgeScriptHandler = null
     installBridge()
     installScripts(force = true)
     mount()
@@ -432,7 +494,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     // A failed main-frame load commits an error page at the failed URL: `url` becomes that URL, as on iOS.
     override fun onNavigationCompleted(navigation: Navigation) {
       if (navigation.didCommit()) url = navigation.url
-      if (navigation.didCommit() && !navigation.isSameDocument) askedAndAllowed.clear()
+      if (navigation.didCommit() && !navigation.isSameDocument) {
+        askedAndAllowed.clear()
+        // A new document: the old reply proxy is gone; JS queues bridge messages until the page is ready again.
+        replyProxy = null
+        if (installedBridge?.first != null) onBridge(mapOf("navigated" to true))
+      }
       if (!navigation.isSameDocument) {
         pendingUrl = null
         if (!navigation.didCommit()) {
@@ -490,7 +557,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     @SuppressLint("WebViewClientOnReceivedSslError") // because it always cancels; it only reports the error
     override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, sslError: SslError) {
       handler.cancel()
-      reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
+      // Also called for subresources (an ad image): only the main frame's URL is a page error.
+      if (sslError.url == (pendingUrl ?: url)) {
+        reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
+      }
     }
 
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
@@ -511,6 +581,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
         post { child.destroy() }
       }
       child.webViewClient = object : WebViewClient() {
+        // A renderer crash in the throwaway window must not take the app down.
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail) = true.also { finish() }
+
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
           val target = request.url.toString()
           if (!done && !decide(NavigationRules.Request(target, true, true, isUserGesture))) webView.loadUrl(target)

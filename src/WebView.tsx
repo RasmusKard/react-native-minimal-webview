@@ -27,6 +27,8 @@ import type {
 
 type NativeEvent<T> = { nativeEvent: T };
 
+type BridgeEvent = { message?: string; unavailable?: boolean; navigated?: boolean };
+
 /** `askId` is set when native waits for the answer (ExtensionHost.ask). */
 type ExtensionEvent = {
   name: string;
@@ -59,7 +61,7 @@ type NativeProps = Pick<
   onNavigation: (event: NativeEvent<NavigationEvent>) => void;
   onNavigationState: (event: NativeEvent<NavigationState>) => void;
   onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
-  onBridge: (event: NativeEvent<{ message?: string; unavailable?: boolean }>) => void;
+  onBridge: (event: NativeEvent<BridgeEvent>) => void;
   onExtension: (event: NativeEvent<ExtensionEvent>) => void;
   onError: (event: NativeEvent<WebViewErrorEvent>) => void;
   onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
@@ -152,8 +154,9 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
     return () => connection.detach();
   }, [connection]);
 
-  const onBridge = ({ nativeEvent }: NativeEvent<{ message?: string; unavailable?: boolean }>) => {
+  const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {
     if (nativeEvent.message !== undefined) connection?.receive(nativeEvent.message);
+    else if (nativeEvent.navigated) connection?.navigated();
     else connection?.markUnavailable();
   };
 
@@ -164,7 +167,13 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
     nativeEvent: { name, event, payload, askId },
   }: NativeEvent<ExtensionEvent>) => {
     const extension = props.extensions?.find((candidate) => candidate.native.name === name);
-    const value = await extension?.onEvent?.(event, payload);
+    // Native waits for every ask: a handler that throws still answers (null = the safe default).
+    const value = await Promise.resolve()
+      .then(() => extension?.onEvent?.(event, payload))
+      .catch((error: unknown) => {
+        console.error(`[minimal-rn-webview] the ${name} extension's ${event} handler failed`, error);
+        return null;
+      });
     if (askId !== undefined) await answer(name, askId, value);
   };
 
@@ -177,7 +186,13 @@ export function WebView({ ref, ...ownProps }: WebViewProps & { ref?: Ref<WebView
   const onNavigationRequest = async ({
     nativeEvent: { id, ...request },
   }: NativeEvent<NavigationRequest & { id: number }>) => {
-    await answer('', id, (await props.onNavigationRequest?.(request)) ?? 'block');
+    const action = await Promise.resolve()
+      .then(() => props.onNavigationRequest?.(request))
+      .catch((error: unknown) => {
+        console.error('[minimal-rn-webview] onNavigationRequest failed; blocking', error);
+        return 'block' as const;
+      });
+    await answer('', id, action ?? 'block');
   };
 
   const webView = (

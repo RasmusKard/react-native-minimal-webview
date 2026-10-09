@@ -75,14 +75,15 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       "applicationName": applicationNameForUserAgent ?? NSNull(),
       "mediaRequiresAction": mediaPlaybackRequiresUserAction,
       "inline": allowsInlineMediaPlayback,
-      "bridge": bridgeScript ?? NSNull()
+      "bridge": bridgeScript ?? NSNull(),
+      "extensions": extensions
     ]
     if settings != creationSettings {
       if webView != nil {
         log.warn("[minimal-rn-webview] a setting fixed at creation changed; recreating the WebView")
       }
       creationSettings = settings
-      recreate(reloading: webView?.url)
+      recreate()
     }
     guard let webView else { return }
     if installedScripts != injectedScripts as NSArray {
@@ -118,7 +119,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  private func recreate(reloading previous: URL?) {
+  /// A new WKWebView with the current settings. It reloads the page that was showing, or the source when there was
+  /// none or it was an html source (whose document cannot be refetched).
+  private func recreate() {
+    let previous = webView?.url.flatMap { $0.scheme == "http" || $0.scheme == "https" ? $0 : nil }
+    let reloadSource = webView != nil && (previous == nil || source?["html"] != nil)
+    activeExtensions?.forEach { $0.detach() }
+    activeExtensions = nil
     tearDown()
     let configuration = WKWebViewConfiguration()
     configuration.applicationNameForUserAgent = applicationNameForUserAgent
@@ -153,7 +160,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       }
     }
     activeExtensions?.forEach { $0.didCreate(webView) }
-    if let previous {
+    if reloadSource {
+      loadedSource = nil
+    } else if let previous, source?["html"] == nil {
+      programmaticUrl = previous
       webView.load(URLRequest(url: previous))
     }
   }
@@ -306,6 +316,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     failPendingReplies()
+    // A new document: JS queues bridge messages until the page is ready again.
+    if bridgeScript != nil { onBridge(["navigated": true]) }
     askedAndAllowed.removeAll()
     programmaticUrl = nil
     navigationExpected = false
@@ -373,6 +385,10 @@ private final class Host: ExtensionHost {
 
   func emit(_ event: String, _ payload: [String: Any]) {
     view?.onExtension(["name": name, "event": event, "payload": payload])
+  }
+
+  func reload() {
+    view?.reload()
   }
 
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void) {

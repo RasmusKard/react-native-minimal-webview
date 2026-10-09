@@ -52,6 +52,8 @@ public class MinimalWebViewModule: Module {
         webView.callAsyncJavaScript("return await (\n\(script)\n)", arguments: [:], in: nil, in: .page) { result in
           switch result {
           case .success(let value):
+            // NaN, Infinity and dates are not JSON: JSONSerialization would raise an uncatchable exception.
+            guard JSONSerialization.isValidJSONObject([value]) else { return promise.resolve(nil) }
             let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)
             promise.resolve(data.flatMap { String(data: $0, encoding: .utf8) })
           case .failure(let error):

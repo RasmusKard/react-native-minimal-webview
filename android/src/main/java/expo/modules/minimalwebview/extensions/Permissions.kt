@@ -26,7 +26,8 @@ class Permissions : WebViewExtension {
   override fun onPermissionRequest(request: PermissionRequest): Boolean {
     val origin = request.origin.toString().trimEnd('/')
     val wanted = request.resources.mapNotNull { RESOURCES[it]?.let { name -> it to name } }
-    if (!allowed(origin) || wanted.isEmpty()) {
+    // Android reports the requesting frame's origin: the top-level page must be allowed too (main frame only).
+    if (!allowed(origin) || !allowed(topOrigin()) || wanted.isEmpty()) {
       request.deny()
       return true
     }
@@ -39,7 +40,7 @@ class Permissions : WebViewExtension {
 
   override fun onGeolocationPrompt(origin: String, callback: GeolocationPermissions.Callback): Boolean {
     val trimmed = origin.trimEnd('/')
-    if (!allowed(trimmed)) {
+    if (!allowed(trimmed) || !allowed(topOrigin())) {
       callback.invoke(origin, false, false)
       return true
     }
@@ -59,11 +60,22 @@ class Permissions : WebViewExtension {
     }
   }
 
-  // Origin rules in the bridge's format: exact origins, or a scheme plus "*." host suffix wildcard.
-  private fun allowed(origin: String) = origins.any { rule ->
-    val wildcard = rule.indexOf("://*.")
-    if (wildcard < 0) rule == origin else origin.startsWith(rule.substring(0, wildcard + 3)) && origin.endsWith(rule.substring(wildcard + 4))
+  private fun topOrigin(): String {
+    val uri = android.net.Uri.parse(host.webView.url ?: return "")
+    val port = if (uri.port == -1) "" else ":${uri.port}"
+    return "${uri.scheme}://${uri.host}$port"
   }
+
+  // Origin rules in the bridge's format: exact origins, or a scheme plus "*." host suffix wildcard.
+  private fun allowed(origin: String): Boolean {
+    val value = origin.lowercase()
+    return origins.any { original ->
+      val rule = original.lowercase()
+      val wildcard = rule.indexOf("://*.")
+      if (wildcard < 0) rule == value else value.startsWith(rule.substring(0, wildcard + 3)) && value.endsWith(rule.substring(wildcard + 4))
+    }
+  }
+
 
   private companion object {
     val RESOURCES = mapOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE to "camera", PermissionRequest.RESOURCE_AUDIO_CAPTURE to "microphone")

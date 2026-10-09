@@ -3,7 +3,8 @@ import WebKit
 /// Bridge transport: page -> RN through a WKScriptMessageHandlerWithReply, RN -> page through callAsyncJavaScript.
 extension MinimalWebView {
   func bridgeReceive(_ message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
-    guard message.frameInfo.isMainFrame, originAllowed(message.frameInfo.securityOrigin), let text = message.body as? String else {
+    let origin = OriginRules.origin(of: message.frameInfo.securityOrigin)
+    guard message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin), let text = message.body as? String else {
       return replyHandler(nil, "origin not allowed")
     }
     if let header = Self.header(text), header.kind == "call" {
@@ -16,9 +17,10 @@ extension MinimalWebView {
 
   /// Answers a pending page call through its reply handler, or delivers a call or event to the page.
   func bridgePost(_ text: String) {
-    if let header = Self.header(text), header.kind == "result" || header.kind == "error",
-      let reply = pendingReplies.removeValue(forKey: header.id) {
-      return reply(text, nil)
+    if let header = Self.header(text), header.kind == "result" || header.kind == "error" {
+      // An answer to a call of a page that is gone has nobody to go to: drop it.
+      pendingReplies.removeValue(forKey: header.id)?(text, nil)
+      return
     }
     // The origin check runs in the page at delivery time: the document may have changed since the post was queued.
     webView?.callAsyncJavaScript(Self.deliver, arguments: ["message": text, "origins": bridgeOrigins], in: nil, in: .page) { [weak self] result in
@@ -34,7 +36,7 @@ extension MinimalWebView {
     waiting.forEach { $0(nil, "navigated") }
   }
 
-  /// Same rule format as originAllowed and the page client.
+  /// Same rule format as OriginRules and the page client.
   private static let deliver = """
     const o = location.origin;
     const ok = origins.some((r) => {
@@ -51,14 +53,6 @@ extension MinimalWebView {
     return (kind, id)
   }
 
-  /// Origin rules in Android's format: `https://example.com`, `https://*.example.com`, `http://localhost:8090`.
-  private func originAllowed(_ origin: WKSecurityOrigin) -> Bool {
-    let value = "\(origin.protocol)://\(origin.host)" + (origin.port == 0 ? "" : ":\(origin.port)")
-    return bridgeOrigins.contains { rule in
-      guard let wildcard = rule.range(of: "://*.") else { return rule == "*" || rule == value }
-      return value.hasPrefix(rule[..<wildcard.lowerBound] + "://") && value.hasSuffix("." + rule[wildcard.upperBound...])
-    }
-  }
 }
 
 /// Holds the view weakly: WKUserContentController retains its handlers.

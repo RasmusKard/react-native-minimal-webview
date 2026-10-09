@@ -34,6 +34,8 @@ public protocol ExtensionHost: AnyObject {
   func emit(_ event: String, _ payload: [String: Any])
   /// Async decide hook: emits `event` to the extension's JS `onEvent` and calls `onAnswer` with its result (nil if the view goes away).
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void)
+  /// The core's reload: retries the failed URL after an error.
+  func reload()
 }
 
 /// Third-party packages call `WebViewExtensions.register("name") { MyExtension() }` from their module's OnCreate.

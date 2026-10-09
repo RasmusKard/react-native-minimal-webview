@@ -10,7 +10,7 @@ extension MinimalWebView {
     // as on Android (shouldOverrideUrlLoading is not called for them).
     if action.targetFrame == nil { return decide(.allow) }
     let mainFrame = action.targetFrame?.isMainFrame ?? true
-    let own = mainFrame && target == programmaticUrl
+    let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
     if own || action.navigationType == .backForward || action.navigationType == .reload {
       if own { programmaticUrl = nil }
       expectNavigation(action, from: webView)
@@ -65,9 +65,11 @@ extension MinimalWebView {
       return
     }
     let id = register { [weak self] answer in
+      // The view can be gone (teardown flushes pending asks from deinit): the decision handler must still be called.
+      guard let self else { return completion(false) }
       let action = answer as? String ?? "block"
-      if action == "allow" { self?.askedAndAllowed.insert(request.url) }
-      self?.finish(request, ["allow", "block", "external"].contains(action) ? action : "block", decision.rule, completion)
+      if action == "allow" { self.askedAndAllowed.insert(request.url) }
+      self.finish(request, ["allow", "block", "external"].contains(action) ? action : "block", decision.rule, completion)
     }
     onNavigationRequest([
       "id": id, "url": request.url, "mainFrame": request.mainFrame, "newWindow": request.newWindow,
@@ -113,6 +115,16 @@ extension MinimalWebView {
     let waiting = pendingAsks.values
     pendingAsks.removeAll()
     waiting.forEach { $0(nil) }
+  }
+
+  /// Equal URLs, treating an empty path as "/": WebKit turns `https://example.com` into `https://example.com/`.
+  private static func sameURL(_ a: URL, _ b: URL) -> Bool {
+    func normalized(_ url: URL) -> String? {
+      guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+      if components.percentEncodedPath.isEmpty { components.percentEncodedPath = "/" }
+      return components.string
+    }
+    return normalized(a) == normalized(b)
   }
 
   /// Same URL apart from the fragment, and the new one has a fragment: a same-document navigation.

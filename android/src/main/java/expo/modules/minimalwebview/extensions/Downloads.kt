@@ -71,7 +71,8 @@ class Downloads : WebViewExtension {
   private fun saveData(url: String, name: String) {
     val header = url.substringBefore(',')
     val body = url.substringAfter(',')
-    val bytes = if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else Uri.decode(body).toByteArray()
+    // The body may be percent-encoded even when base64 (encodeURIComponent of the base64 text).
+    val bytes = if (header.endsWith(";base64")) Base64.decode(Uri.decode(body), Base64.DEFAULT) else Uri.decode(body).toByteArray()
     save(bytes, name, header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }, url)
   }
 
@@ -102,7 +103,8 @@ class Downloads : WebViewExtension {
   }
 
   private fun save(bytes: ByteArray, name: String, mimeType: String, url: String) {
-    val dir = File(host.webView.context.cacheDir, "downloads").apply { mkdirs() }
+    // One directory per download: the same guessed name must not overwrite a file already handed to the app.
+    val dir = File(host.webView.context.cacheDir, "downloads/${System.nanoTime()}").apply { mkdirs() }
     val file = File(dir, name)
     file.writeBytes(bytes)
     host.emit("download", mapOf("uri" to Uri.fromFile(file).toString(), "filename" to name, "mimeType" to mimeType, "url" to url.take(100)))

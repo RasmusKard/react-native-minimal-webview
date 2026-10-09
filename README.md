@@ -74,6 +74,7 @@ Rules are an ordered list, and the first match wins. Every field a rule sets mus
 **Platform differences:**
 - **`ask` on Android.** Android can't pause a navigation, so `ask` cancels it, asks, and reissues it with `loadUrl` on `allow`. The reissued load loses the referrer and the gesture flag, and its redirect chain restarts. `ask` works only for the main frame on Android; for iframes it falls back to `block`. iOS holds the navigation and asks for any frame.
 - **POST on Android.** Android never runs the rules for POST requests: form posts and payment redirects always load.
+- **POST into a new window on Android.** A form POST to `target=_blank` can't be captured, so it doesn't load; iOS loads it in place.
 - **iframes on Android.** Android only decides iframe navigations to non-http(s) schemes (`tel:`, `intent:` and so on). Rules for http(s) iframes, the `mainFrame: false` ones, apply only on iOS.
 - **Redirect loops.** A URL that `ask` allowed isn't asked again until the next page commits, so a redirect loop can't ask forever.
 - **`intent:` links (Android).** They're sanitised: browsable only, with no explicit component or selector. If no app handles one, its `S.browser_fallback_url` loads instead.

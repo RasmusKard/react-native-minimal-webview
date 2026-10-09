@@ -16,8 +16,8 @@ final class Permissions: WebViewExtension {
   }
 
   func requestMediaCapture(origin: WKSecurityOrigin, type: WKMediaCaptureType, decide: @escaping (WKPermissionDecision) -> Void) -> Bool {
-    let value = "\(origin.protocol)://\(origin.host)" + (origin.port == 0 ? "" : ":\(origin.port)")
-    guard allowed(value) else {
+    let value = OriginRules.origin(of: origin)
+    guard OriginRules.allows(origins, value) else {
       decide(.deny)
       return true
     }
@@ -36,11 +36,4 @@ final class Permissions: WebViewExtension {
     return true
   }
 
-  /// Exact origins, or a scheme plus `*.` host suffix wildcard (the bridge's format).
-  private func allowed(_ origin: String) -> Bool {
-    origins.contains { rule in
-      guard let wildcard = rule.range(of: "://*.") else { return rule == origin }
-      return origin.hasPrefix(rule[..<wildcard.lowerBound] + "://") && origin.hasSuffix("." + rule[wildcard.upperBound...])
-    }
-  }
 }

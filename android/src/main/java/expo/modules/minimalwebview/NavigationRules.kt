@@ -1,7 +1,5 @@
 package expo.modules.minimalwebview
 
-import java.net.URI
-
 /** The structured navigation rules. Semantics and cases: test-vectors/navigation-rules.json (shared with Swift and TS). */
 object NavigationRules {
   data class Request(val url: String, val mainFrame: Boolean, val newWindow: Boolean, val userInitiated: Boolean)
@@ -27,10 +25,23 @@ object NavigationRules {
     return if (index < 0) Decision("block", null) else Decision(rules[index]["action"] as? String ?: "block", index)
   }
 
-  // ponytail: an unparseable URL has no host and path "/", so only rules without host conditions match it
+  // scheme ":" ["//" authority] path, as in the TS matcher. java.net.URI rejects URLs Chromium accepts (a raw `|` in
+  // the query, `_` in a host), so the parts are split the same way on every platform.
+  private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)")
+
   private fun hostAndPath(url: String): Pair<String?, String> {
-    val uri = runCatching { URI(url) }.getOrNull()
-    return uri?.host?.lowercase()?.removeSuffix(".") to (uri?.rawPath ?: "").ifEmpty { "/" }
+    val match = urlParts.find(url) ?: return null to "/"
+    val authority = match.groups[2]?.value
+    val path = match.groupValues[3]
+    return hostOf(authority) to if (authority != null && path.isNotEmpty()) path else "/"
+  }
+
+  /** Host without userinfo, port or a trailing dot, lowercased; null when there is none. */
+  private fun hostOf(authority: String?): String? {
+    if (authority.isNullOrEmpty()) return null
+    val withoutUser = authority.substringAfterLast('@')
+    val host = if (withoutUser.startsWith("[")) withoutUser.substringBefore(']') + "]" else withoutUser.replace(Regex(":\\d*$"), "")
+    return host.lowercase().removeSuffix(".").ifEmpty { null }
   }
 
   private fun strings(value: Any?): List<String>? = when (value) {

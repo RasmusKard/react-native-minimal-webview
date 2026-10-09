@@ -2,61 +2,525 @@
   "description": "Shared navigation rule cases for the Kotlin, Swift and TS matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'.",
   "rulesets": {
     "app": [
-      { "scheme": ["tel", "mailto", "sms"], "action": "external" },
-      { "host": "*.example.com", "path": "/checkout", "action": "ask" },
-      { "host": ["example.com", "*.example.com"], "action": "allow" },
-      { "newWindow": true, "action": "external" },
-      { "scheme": ["http", "https"], "mainFrame": false, "action": "allow" },
-      { "scheme": ["http", "https"], "action": "external" }
+      {
+        "scheme": [
+          "tel",
+          "mailto",
+          "sms"
+        ],
+        "action": "external"
+      },
+      {
+        "host": "*.example.com",
+        "path": "/checkout",
+        "action": "ask"
+      },
+      {
+        "host": [
+          "example.com",
+          "*.example.com"
+        ],
+        "action": "allow"
+      },
+      {
+        "newWindow": true,
+        "action": "external"
+      },
+      {
+        "scheme": [
+          "http",
+          "https"
+        ],
+        "mainFrame": false,
+        "action": "allow"
+      },
+      {
+        "scheme": [
+          "http",
+          "https"
+        ],
+        "action": "external"
+      }
     ],
     "fields": [
-      { "userInitiated": true, "action": "external" },
-      { "host": "EXAMPLE.com", "path": ["/a%20b", "/x"], "action": "ask" },
-      { "host": "xn--mnchen-3ya.de", "action": "allow" },
-      { "scheme": "HTTPS", "host": "*.example.com", "action": "allow" }
+      {
+        "userInitiated": true,
+        "action": "external"
+      },
+      {
+        "host": "EXAMPLE.com",
+        "path": [
+          "/a%20b",
+          "/x"
+        ],
+        "action": "ask"
+      },
+      {
+        "host": "xn--mnchen-3ya.de",
+        "action": "allow"
+      },
+      {
+        "scheme": "HTTPS",
+        "host": "*.example.com",
+        "action": "allow"
+      }
     ],
-    "catchAll": [{ "action": "block" }, { "action": "allow" }]
+    "catchAll": [
+      {
+        "action": "block"
+      },
+      {
+        "action": "allow"
+      }
+    ]
   },
   "cases": [
-    { "name": "no rules: https allows", "rules": null, "request": { "url": "https://example.com/" }, "expect": { "action": "allow", "rule": null } },
-    { "name": "no rules: http allows", "rules": null, "request": { "url": "http://localhost:8090/a" }, "expect": { "action": "allow", "rule": null } },
-    { "name": "no rules: tel is external", "rules": null, "request": { "url": "tel:+3725551234" }, "expect": { "action": "external", "rule": null } },
-    { "name": "no rules: intent is external", "rules": null, "request": { "url": "intent://scan/#Intent;scheme=zxing;package=com.example;end" }, "expect": { "action": "external", "rule": null } },
-    { "name": "no rules: file blocks", "rules": null, "request": { "url": "file:///etc/hosts" }, "expect": { "action": "block", "rule": null } },
-    { "name": "no rules: about:blank iframe allows", "rules": null, "request": { "url": "about:blank", "mainFrame": false }, "expect": { "action": "allow", "rule": null } },
-
-    { "name": "internal: about:srcdoc skips rules", "rules": "app", "request": { "url": "about:srcdoc", "mainFrame": false }, "expect": { "action": "allow", "rule": null } },
-    { "name": "internal: blob skips rules", "rules": "app", "request": { "url": "blob:https://example.com/0f9e7c" }, "expect": { "action": "allow", "rule": null } },
-    { "name": "internal: data skips rules", "rules": "app", "request": { "url": "data:text/html,<p>x</p>", "newWindow": true }, "expect": { "action": "allow", "rule": null } },
-    { "name": "internal: javascript skips rules", "rules": "app", "request": { "url": "javascript:void(0)" }, "expect": { "action": "allow", "rule": null } },
-
-    { "name": "scheme list", "rules": "app", "request": { "url": "mailto:news@example.com" }, "expect": { "action": "external", "rule": 0 } },
-    { "name": "scheme is case-insensitive", "rules": "app", "request": { "url": "TEL:112" }, "expect": { "action": "external", "rule": 0 } },
-    { "name": "host-less URL never matches a host rule", "rules": "app", "request": { "url": "geo:59.43,24.75" }, "expect": { "action": "block", "rule": null } },
-    { "name": "exact host", "rules": "app", "request": { "url": "https://example.com/news" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "wildcard matches a subdomain", "rules": "app", "request": { "url": "https://www.example.com/" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "wildcard matches a deep subdomain", "rules": "app", "request": { "url": "https://a.b.example.com/" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "wildcard does not match a lookalike", "rules": "app", "request": { "url": "https://badexample.com/" }, "expect": { "action": "external", "rule": 5 } },
-    { "name": "wildcard does not match the apex", "rules": "fields", "request": { "url": "https://example.com/" }, "expect": { "action": "block", "rule": null } },
-    { "name": "host ignores case, port and userinfo", "rules": "app", "request": { "url": "HTTPS://user:pw@WWW.Example.COM:8443/x" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "host ignores a trailing dot", "rules": "app", "request": { "url": "https://example.com./" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "path prefix", "rules": "app", "request": { "url": "https://shop.example.com/checkout/pay?step=2" }, "expect": { "action": "ask", "rule": 1 } },
-    { "name": "path prefix is plain, not per segment", "rules": "app", "request": { "url": "https://shop.example.com/checkouts" }, "expect": { "action": "ask", "rule": 1 } },
-    { "name": "path is case-sensitive", "rules": "app", "request": { "url": "https://shop.example.com/Checkout" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "path ignores query and fragment", "rules": "app", "request": { "url": "https://shop.example.com/?p=/checkout#/checkout" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "path rule with apex host does not match (wildcard)", "rules": "app", "request": { "url": "https://example.com/checkout" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "earlier rule wins over newWindow", "rules": "app", "request": { "url": "https://example.com/share", "newWindow": true }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "newWindow to another site", "rules": "app", "request": { "url": "https://ads.test/click", "newWindow": true }, "expect": { "action": "external", "rule": 3 } },
-    { "name": "third-party iframe", "rules": "app", "request": { "url": "https://ads.test/frame", "mainFrame": false }, "expect": { "action": "allow", "rule": 4 } },
-    { "name": "third-party main frame", "rules": "app", "request": { "url": "https://other.test/" }, "expect": { "action": "external", "rule": 5 } },
-    { "name": "no match blocks", "rules": "app", "request": { "url": "ftp://files.test/" }, "expect": { "action": "block", "rule": null } },
-
-    { "name": "userInitiated", "rules": "fields", "request": { "url": "https://x.test/", "userInitiated": true }, "expect": { "action": "external", "rule": 0 } },
-    { "name": "rule host is case-insensitive", "rules": "fields", "request": { "url": "https://example.com/x/y" }, "expect": { "action": "ask", "rule": 1 } },
-    { "name": "path compares the percent-encoded form", "rules": "fields", "request": { "url": "https://example.com/a%20b/c" }, "expect": { "action": "ask", "rule": 1 } },
-    { "name": "empty path counts as /", "rules": "fields", "request": { "url": "https://example.com" }, "expect": { "action": "block", "rule": null } },
-    { "name": "punycode host", "rules": "fields", "request": { "url": "https://xn--mnchen-3ya.de/" }, "expect": { "action": "allow", "rule": 2 } },
-    { "name": "rule scheme is case-insensitive", "rules": "fields", "request": { "url": "https://m.example.com/" }, "expect": { "action": "allow", "rule": 3 } },
-    { "name": "rule with no fields matches everything", "rules": "catchAll", "request": { "url": "https://example.com/" }, "expect": { "action": "block", "rule": 0 } }
+    {
+      "name": "no rules: https allows",
+      "rules": null,
+      "request": {
+        "url": "https://example.com/"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: http allows",
+      "rules": null,
+      "request": {
+        "url": "http://localhost:8090/a"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: tel is external",
+      "rules": null,
+      "request": {
+        "url": "tel:+3725551234"
+      },
+      "expect": {
+        "action": "external",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: intent is external",
+      "rules": null,
+      "request": {
+        "url": "intent://scan/#Intent;scheme=zxing;package=com.example;end"
+      },
+      "expect": {
+        "action": "external",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: file blocks",
+      "rules": null,
+      "request": {
+        "url": "file:///etc/hosts"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: about:blank iframe allows",
+      "rules": null,
+      "request": {
+        "url": "about:blank",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "internal: about:srcdoc skips rules",
+      "rules": "app",
+      "request": {
+        "url": "about:srcdoc",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "internal: blob skips rules",
+      "rules": "app",
+      "request": {
+        "url": "blob:https://example.com/0f9e7c"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "internal: data skips rules",
+      "rules": "app",
+      "request": {
+        "url": "data:text/html,<p>x</p>",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "internal: javascript skips rules",
+      "rules": "app",
+      "request": {
+        "url": "javascript:void(0)"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "scheme list",
+      "rules": "app",
+      "request": {
+        "url": "mailto:news@example.com"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "scheme is case-insensitive",
+      "rules": "app",
+      "request": {
+        "url": "TEL:112"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "host-less URL never matches a host rule",
+      "rules": "app",
+      "request": {
+        "url": "geo:59.43,24.75"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "exact host",
+      "rules": "app",
+      "request": {
+        "url": "https://example.com/news"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "wildcard matches a subdomain",
+      "rules": "app",
+      "request": {
+        "url": "https://www.example.com/"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "wildcard matches a deep subdomain",
+      "rules": "app",
+      "request": {
+        "url": "https://a.b.example.com/"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "wildcard does not match a lookalike",
+      "rules": "app",
+      "request": {
+        "url": "https://badexample.com/"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 5
+      }
+    },
+    {
+      "name": "wildcard does not match the apex",
+      "rules": "fields",
+      "request": {
+        "url": "https://example.com/"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "host ignores case, port and userinfo",
+      "rules": "app",
+      "request": {
+        "url": "HTTPS://user:pw@WWW.Example.COM:8443/x"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "host ignores a trailing dot",
+      "rules": "app",
+      "request": {
+        "url": "https://example.com./"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "path prefix",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkout/pay?step=2"
+      },
+      "expect": {
+        "action": "ask",
+        "rule": 1
+      }
+    },
+    {
+      "name": "path prefix is plain, not per segment",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkouts"
+      },
+      "expect": {
+        "action": "ask",
+        "rule": 1
+      }
+    },
+    {
+      "name": "path is case-sensitive",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/Checkout"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "path ignores query and fragment",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/?p=/checkout#/checkout"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "path rule with apex host does not match (wildcard)",
+      "rules": "app",
+      "request": {
+        "url": "https://example.com/checkout"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "earlier rule wins over newWindow",
+      "rules": "app",
+      "request": {
+        "url": "https://example.com/share",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "newWindow to another site",
+      "rules": "app",
+      "request": {
+        "url": "https://ads.test/click",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "external",
+        "rule": 3
+      }
+    },
+    {
+      "name": "third-party iframe",
+      "rules": "app",
+      "request": {
+        "url": "https://ads.test/frame",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 4
+      }
+    },
+    {
+      "name": "third-party main frame",
+      "rules": "app",
+      "request": {
+        "url": "https://other.test/"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 5
+      }
+    },
+    {
+      "name": "no match blocks",
+      "rules": "app",
+      "request": {
+        "url": "ftp://files.test/"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "userInitiated",
+      "rules": "fields",
+      "request": {
+        "url": "https://x.test/",
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "rule host is case-insensitive",
+      "rules": "fields",
+      "request": {
+        "url": "https://example.com/x/y"
+      },
+      "expect": {
+        "action": "ask",
+        "rule": 1
+      }
+    },
+    {
+      "name": "path compares the percent-encoded form",
+      "rules": "fields",
+      "request": {
+        "url": "https://example.com/a%20b/c"
+      },
+      "expect": {
+        "action": "ask",
+        "rule": 1
+      }
+    },
+    {
+      "name": "empty path counts as /",
+      "rules": "fields",
+      "request": {
+        "url": "https://example.com"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "punycode host",
+      "rules": "fields",
+      "request": {
+        "url": "https://xn--mnchen-3ya.de/"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "rule scheme is case-insensitive",
+      "rules": "fields",
+      "request": {
+        "url": "https://m.example.com/"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 3
+      }
+    },
+    {
+      "name": "rule with no fields matches everything",
+      "rules": "catchAll",
+      "request": {
+        "url": "https://example.com/"
+      },
+      "expect": {
+        "action": "block",
+        "rule": 0
+      }
+    },
+    {
+      "name": "a raw | in the query still matches the host",
+      "rules": "app",
+      "request": {
+        "url": "https://example.com/search?q=a|b"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "an underscore in the host matches",
+      "rules": "app",
+      "request": {
+        "url": "https://my_host.example.com/"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "a caret in the path matches the prefix",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkout^x"
+      },
+      "expect": {
+        "action": "ask",
+        "rule": 1
+      }
+    }
   ]
 }

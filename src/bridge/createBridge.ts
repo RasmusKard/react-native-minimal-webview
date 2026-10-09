@@ -19,6 +19,8 @@ export type BridgeConnection = {
   receive(message: string): void;
   /** The platform lacks the WebView features the bridge needs: calls reject with `unavailable`. */
   markUnavailable(): void;
+  /** A new document committed: queue messages until its page client says `ready`. */
+  navigated(): void;
 };
 
 export const CONNECTION = Symbol('bridgeConnection');
@@ -32,7 +34,14 @@ type Pending = {
 const bridgeError = ({ code, message }: BridgeError) => Object.assign(new Error(message), { code });
 
 /** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
+/** `*`, `scheme://host[:port]` or `scheme://*.host[:port]`, as Android's addWebMessageListener accepts. */
+const ORIGIN_RULE = /^(\*|[a-z][a-z0-9+.-]*:\/\/(\*\.)?[^/:*?#\s]+(:\d+)?)$/i;
+
 export function createBridge(options: BridgeOptions): Bridge {
+  const invalid = options.allowedOrigins.filter((rule) => !ORIGIN_RULE.test(rule));
+  if (invalid.length) {
+    throw new Error(`createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`);
+  }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const handlers = new Map<string, BridgeHandler>();
   const listeners = new Map<string, Set<(payload: unknown) => void>>();
@@ -122,6 +131,9 @@ export function createBridge(options: BridgeOptions): Bridge {
       rejectAll('the WebView went away');
     },
     receive,
+    navigated() {
+      ready = false;
+    },
     markUnavailable() {
       unavailable = true;
       queue = [];

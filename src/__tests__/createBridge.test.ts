@@ -112,6 +112,24 @@ describe('createBridge', () => {
     await expect(bridge.call('later')).rejects.toMatchObject({ code: 'unavailable' });
   });
 
+  it('rejects malformed allowedOrigins up front', () => {
+    expect(() => createBridge({ allowedOrigins: ['https://example.com/'] })).toThrow(/invalid allowedOrigins/);
+    expect(() => createBridge({ allowedOrigins: ['example.com'] })).toThrow(/invalid allowedOrigins/);
+    expect(() =>
+      createBridge({ allowedOrigins: ['*', 'https://*.example.com', 'http://localhost:8090'] })
+    ).not.toThrow();
+  });
+
+  it('queues messages after a navigation until the new page is ready', () => {
+    const { bridge, connection, sent, fromPage } = setup();
+    fromPage({ id: '', kind: 'ready' });
+    connection.navigated();
+    bridge.emit('late', 1);
+    expect(sent).toEqual([]);
+    fromPage({ id: '', kind: 'ready' });
+    expect(sent).toEqual([{ v: 1, id: '', kind: 'event', method: 'late', params: 1 }]);
+  });
+
   it('drops malformed messages', () => {
     const { bridge, connection } = setup();
     const seen: unknown[] = [];
