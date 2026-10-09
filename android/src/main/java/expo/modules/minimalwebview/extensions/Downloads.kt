@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.DownloadInfo
 import expo.modules.minimalwebview.ExtensionHost
+import expo.modules.minimalwebview.TAG
 import expo.modules.minimalwebview.WebViewExtension
 import java.io.File
 import java.io.IOException
@@ -144,7 +145,7 @@ class Downloads : WebViewExtension {
   }
 
   private fun failed(name: String, url: String, error: Exception) {
-    Log.w("MinimalWebView", "download of $name failed", error)
+    Log.w(TAG, "download of $name failed", error)
     host.emit("downloadFailed", mapOf("filename" to name, "url" to url.take(100), "reason" to (error.message ?: error.toString())))
   }
 

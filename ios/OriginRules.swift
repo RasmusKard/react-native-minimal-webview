@@ -17,9 +17,12 @@ enum OriginRules {
     }
   }
 
+  // Built once: a regex literal in the function body is compiled again on every call. Regex isn't Sendable; every
+  // caller is a WebKit delegate callback on the main thread.
+  nonisolated(unsafe) private static let pattern = #/(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?/#
+
   private static func parse(_ text: String) -> (scheme: Substring, wildcard: Bool, host: Substring, port: Int)? {
-    guard let m = try? #/(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?/#
-      .wholeMatch(in: text.lowercased()) else { return nil }
+    guard let m = try? pattern.wholeMatch(in: text.lowercased()) else { return nil }
     return (m.1, m.2 != nil, m.3, m.4.flatMap { Int($0) } ?? (m.1 == "https" ? 443 : 80))
   }
 }
