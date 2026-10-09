@@ -50,10 +50,16 @@ class PullToRefresh : WebViewExtension {
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
       if (event.actionMasked != MotionEvent.ACTION_DOWN) return super.onInterceptTouchEvent(event)
       innerScrolled = false
-      return super.onInterceptTouchEvent(event).also {
+      val intercepted = super.onInterceptTouchEvent(event)
+      if (host.webView.canScrollVertically(-1)) {
+        // A scrolled document already ruled this gesture out, whatever the page says: don't ask it. Dropping the
+        // count makes a late answer or timeout from an earlier touch a no-op.
+        touches++
+      } else {
         innerScrolled = null
         checkInnerScroller(event.x, event.y)
       }
+      return intercepted
     }
   }
 }

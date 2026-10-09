@@ -15,12 +15,10 @@ import expo.modules.minimalwebview.WebViewExtension
 class Permissions : WebViewExtension {
   private lateinit var host: ExtensionHost
   private var origins: List<String> = emptyList()
-  private var hasHandler = false
 
   override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
     this.host = host
     origins = (config["origins"] as? List<*>)?.map { it.toString() } ?: emptyList()
-    hasHandler = config["hasHandler"] == true
   }
 
   override fun onPermissionRequest(request: PermissionRequest): Boolean {
@@ -54,7 +52,7 @@ class Permissions : WebViewExtension {
 
   /** Runs [grant] when the app agrees (or there is no handler), else [deny]. [grant] still checks the OS permission. */
   private fun decide(origin: String, resources: List<String>, deny: () -> Unit, grant: () -> Unit) {
-    if (!hasHandler) return grant()
+    if (!host.handles("permissionRequest")) return grant()
     host.ask("permissionRequest", mapOf("origin" to origin, "resources" to resources)) { answer ->
       if (answer == true) grant() else deny()
     }

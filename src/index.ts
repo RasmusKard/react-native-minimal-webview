@@ -1,6 +1,5 @@
 export { WebView, useWebViewState } from './WebView';
 export { createBridge } from './bridge/createBridge';
-export { decideNavigation, type NavigationDecision } from './navigationRules';
 export { downloads, type Download, type DownloadFailure } from './extensions/downloads';
 export { fileUpload, type FileRequest } from './extensions/fileUpload';
 export { fullscreenVideo } from './extensions/fullscreenVideo';

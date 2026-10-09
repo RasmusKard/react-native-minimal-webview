@@ -12,15 +12,13 @@ import expo.modules.minimalwebview.WebViewExtension
  */
 class FileUpload : WebViewExtension {
   private lateinit var host: ExtensionHost
-  private var hasHandler = false
 
   override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
     this.host = host
-    hasHandler = config["hasHandler"] == true
   }
 
   override fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-    if (!hasHandler) {
+    if (!host.handles("fileRequest")) {
       val launched = host.launchForResult(params.createIntent()) { resultCode, data ->
         callback.onReceiveValue(FileChooserParams.parseResult(resultCode, data))
       }

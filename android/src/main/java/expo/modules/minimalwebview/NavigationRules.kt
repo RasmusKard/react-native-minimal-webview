@@ -1,6 +1,6 @@
 package expo.modules.minimalwebview
 
-/** The structured navigation rules. Semantics and cases: test-vectors/navigation-rules.json (shared with Swift and TS). */
+/** The structured navigation rules. Semantics and cases: test-vectors/navigation-rules.json (shared with Swift). */
 object NavigationRules {
   data class Request(val url: String, val mainFrame: Boolean, val newWindow: Boolean, val userInitiated: Boolean)
 
@@ -26,8 +26,8 @@ object NavigationRules {
     return if (index < 0) Decision("block", null) else Decision(rules[index]["action"] as? String ?: "block", index)
   }
 
-  // scheme ":" ["//" authority] path, as in the TS matcher. java.net.URI rejects URLs Chromium accepts (a raw `|` in
-  // the query, `_` in a host), so the parts are split the same way on every platform.
+  // scheme ":" ["//" authority] path. java.net.URI rejects URLs Chromium accepts (a raw `|` in the query, `_` in a
+  // host), so the parts are split with a regex.
   private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)")
 
   private fun hostAndPath(url: String): Pair<String?, String> {

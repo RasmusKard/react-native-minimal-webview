@@ -89,7 +89,9 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("getUrl") { view: MinimalWebView -> view.webView.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
-        view.evaluate(script, promise)
+        view.evaluate(script) { result ->
+          result.fold(promise::resolve) { error -> promise.reject((error as EvaluateError).code, error.message, null) }
+        }
       }.runOnQueue(Queues.MAIN)
     }
   }

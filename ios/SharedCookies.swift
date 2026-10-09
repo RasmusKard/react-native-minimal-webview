@@ -5,6 +5,7 @@ import WebKit
 /// back as they happen. (Android needs no extension: CookieManager is already shared app-wide.)
 final class SharedCookies: NSObject, WebViewExtension, WKHTTPCookieStoreObserver {
   private weak var store: WKHTTPCookieStore?
+  private var copyScheduled = false
 
   func didCreate(_ webView: WKWebView) {
     store?.remove(self)
@@ -23,9 +24,16 @@ final class SharedCookies: NSObject, WebViewExtension, WKHTTPCookieStoreObserver
     group.notify(queue: .main, execute: done)
   }
 
+  /// One copy per main-queue turn: `prepare`'s setCookie calls, or a page setting many cookies, each fire this.
   func cookiesDidChange(in cookieStore: WKHTTPCookieStore) {
-    cookieStore.getAllCookies { cookies in
-      cookies.forEach(HTTPCookieStorage.shared.setCookie)
+    guard !copyScheduled else { return }
+    copyScheduled = true
+    DispatchQueue.main.async { [weak self] in
+      // Cleared before the read: a change after it schedules the next copy.
+      self?.copyScheduled = false
+      self?.store?.getAllCookies { cookies in
+        cookies.forEach(HTTPCookieStorage.shared.setCookie)
+      }
     }
   }
 

@@ -31,7 +31,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var openExternalInJS = false
   private var loadedSource: NSDictionary?
 
-  // Some WKWebViewConfiguration settings are fixed at creation: changing one recreates the WebView.
+  // Some WKWebViewConfiguration settings are fixed at creation: changing one recreates the WebView. The bridge and the
+  // extensions are set up with each WKWebView too; JS fixes them at mount, so they never change.
   private(set) var webView: WKWebView?
   private var creationSettings: NSDictionary?
   private var observations: [NSKeyValueObservation] = []
@@ -65,6 +66,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   // Bridge: page calls wait for RN's answer here, by message id. WebKit requires each reply handler be called once.
   var pendingReplies: [String: (Any?, String?) -> Void] = [:]
+  // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
+  // allowed). RN's messages are delivered only while the page still has it.
+  var bridgeOrigin: String?
   // The JS dialog on screen, and how to complete it if it has to go away. WebKit requires exactly one completion.
   var dialog: (controller: UIAlertController, cancel: () -> Void)?
 
@@ -78,9 +82,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let settings: NSDictionary = [
       "applicationName": applicationNameForUserAgent ?? NSNull(),
       "mediaRequiresAction": mediaPlaybackRequiresUserAction,
-      "inline": allowsInlineMediaPlayback,
-      "bridge": bridgeScript ?? NSNull(),
-      "extensions": extensions
+      "inline": allowsInlineMediaPlayback
     ]
     if settings != creationSettings {
       if webView != nil {
@@ -185,7 +187,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     self.webView = webView
     activeExtensions = extensions.compactMap { spec in
       guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
-      instance.attach(host: Host(view: self, name: name), config: spec["config"] as? [String: Any] ?? [:])
+      let host = Host(view: self, name: name, handles: Set(spec["handles"] as? [String] ?? []))
+      instance.attach(host: host, config: spec["config"] as? [String: Any] ?? [:])
       return instance
     }
     activeExtensions?.forEach { $0.didCreate(webView) }
@@ -308,7 +311,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let ssl = nsError.domain == NSURLErrorDomain && (NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed).contains(nsError.code)
     failedUrl = failing
     url = failing
-    onError(["kind": ssl ? "ssl" : "network", "url": failing, "code": nsError.code, "description": nsError.localizedDescription, "isMainFrame": true])
+    onError(["kind": ssl ? "ssl" : "network", "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
   }
 
   // MARK: WKNavigationDelegate
@@ -343,7 +346,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
     if navigationResponse.isForMainFrame, let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400 {
       let description = HTTPURLResponse.localizedString(forStatusCode: response.statusCode)
-      onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description, "isMainFrame": true])
+      onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description])
     }
     decisionHandler(.allow)
   }
@@ -372,6 +375,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     failPendingReplies()
+    bridgeOrigin = nil
     // A new document: JS queues bridge messages until the page is ready again.
     if bridgeScript != nil { onBridge(["navigated": true]) }
     askedAndAllowed.removeAll()
@@ -434,13 +438,19 @@ private let crashWindow: TimeInterval = 60
 private final class Host: ExtensionHost {
   private weak var view: MinimalWebView?
   private let name: String
+  private let handled: Set<String>
 
-  init(view: MinimalWebView, name: String) {
+  init(view: MinimalWebView, name: String, handles: Set<String>) {
     self.view = view
     self.name = name
+    handled = handles
   }
 
   var webView: WKWebView? { view?.webView }
+
+  func handles(_ event: String) -> Bool {
+    handled.contains(event)
+  }
 
   func emit(_ event: String, _ payload: [String: Any]) {
     view?.onExtension(["name": name, "event": event, "payload": payload])

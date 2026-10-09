@@ -56,5 +56,13 @@ for testCase in originCases {
     print("FAIL \(name): expected allowed \(allowed)")
   }
 }
+for (scheme, host, port, expected) in [
+  ("https", "example.com", 0, "https://example.com"), ("https", "example.com", 443, "https://example.com"),
+  ("http", "localhost", 8090, "http://localhost:8090"), ("http", "::1", 8090, "http://[::1]:8090"),
+  ("http", "[::1]", 80, "http://[::1]"),
+] where OriginRules.origin(scheme, host, port) != expected {
+  originFailures += 1
+  print("FAIL origin(\(scheme), \(host), \(port)): expected \(expected), got \(OriginRules.origin(scheme, host, port))")
+}
 print("\(originCases.count - originFailures)/\(originCases.count) origin rule cases pass")
 exit(failures + originFailures == 0 ? 0 : 1)

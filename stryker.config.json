@@ -3,8 +3,8 @@
   "testRunner": "jest",
   "coverageAnalysis": "off",
   "jest": { "enableFindRelatedTests": true },
-  "ignorePatterns": ["example", "android", "ios/**", "!ios/MinimalWebView+Bridge.swift"],
-  "mutate": ["src/navigationRules.ts", "src/bridge/createBridge.ts", "src/bridge/protocol.ts"],
+  "ignorePatterns": ["example", "android", "ios"],
+  "mutate": ["src/bridge/createBridge.ts", "src/bridge/protocol.ts"],
   "reporters": ["clear-text"],
   "thresholds": { "high": 80, "low": 60, "break": 50 }
 }

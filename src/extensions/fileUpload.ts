@@ -8,9 +8,10 @@ export type FileRequest = { accept: string[]; multiple: boolean; capture: boolea
  * WebKit's own picker.
  */
 export const fileUpload = (
-  options: { onFileRequest?: (request: FileRequest) => Promise<string[] | null> | string[] | null } = {}
+  options: {
+    onFileRequest?: (request: FileRequest) => Promise<string[] | null> | string[] | null;
+  } = {}
 ): WebViewExtension => ({
-  native: { name: 'fileUpload', config: { hasHandler: options.onFileRequest !== undefined } },
-  onEvent: (event, payload) =>
-    event === 'fileRequest' ? options.onFileRequest?.(payload as FileRequest) : undefined,
+  native: { name: 'fileUpload' },
+  on: { fileRequest: options.onFileRequest },
 });

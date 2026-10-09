@@ -1,4 +1,4 @@
-// The bridge wire format, shared by the RN side and the page client (compiled into it at build time).
+// The bridge wire format. The RN side parses with it; the page client imports only its types.
 
 export const PROTOCOL_VERSION = 1;
 export const MAX_MESSAGE_BYTES = 1_000_000;
