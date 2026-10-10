@@ -81,10 +81,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty(), contentLength)
       activeExtensions.orEmpty().values.any { it.onDownloadStart(download) }
     }
-    if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this) {
-      navigation.newDocument()
-      scripts.newDocument()
-    })
+    if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
   }
 
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used
@@ -188,6 +185,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** JS's answer to an `ask` (navigation or extension). */
   fun answer(askId: Int, value: Any?) {
     pendingAsks.remove(askId)?.invoke(value)
+  }
+
+  /** A new main-frame document: asks and evaluations for the old one are over, and the bridge waits for `ready`. */
+  internal fun newDocument() {
+    navigation.newDocument()
+    scripts.newDocument()
   }
 
   /** The active extensions' hooks, for the clients. */
