@@ -85,7 +85,7 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
         view.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
-      AsyncFunction("getUrl") { view: MinimalWebView -> view.webView.url }.runOnQueue(Queues.MAIN)
+      AsyncFunction("getUrl") { view: MinimalWebView -> view.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
         view.evaluate(script) { result ->
