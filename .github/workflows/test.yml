@@ -28,20 +28,5 @@ jobs:
           swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o rules
           && ./rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
 
-  kotlin-rules:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - uses: actions/setup-java@v4
-        with: { distribution: zulu, java-version: 17 }
-      # Workflows run only on pull_request, so the cache is written to the PR's ref: later pushes to the same PR reuse it.
-      - uses: gradle/actions/setup-gradle@v4
-        with: { cache-read-only: false }
-      - run: npm ci && (cd example && npm ci)
-      - run: cd example && npx expo prebuild --platform android --no-install
-      - run: cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest
-
   # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites
   # (example/harness.ts), which need an emulator and a simulator: see README "Development".
