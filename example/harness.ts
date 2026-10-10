@@ -1106,6 +1106,14 @@ async function sampleExtension(h: Harness) {
   r.check('its native side emits through the generic channel', h.events.pageCounts.length > before && event?.url === page, event);
   const inPage = (await h.ref.current?.evaluate('window.__pageCount')) as number;
   r.check('its native side reaches the page', inPage === event?.count, { inPage, event });
+  if (Platform.OS === 'ios') {
+    // configure() set data detectors before the WKWebView existed: WebKit turns the number into a tel: link.
+    h.loadSource({ html: '<p id="n">Call 415-555-0134 today</p>', baseUrl: h.pages });
+    const linked = async () => (await h.ref.current?.evaluate("document.querySelector('#n a[href^=tel]') !== null")) === true;
+    let ok = false;
+    for (const end = Date.now() + 5000; Date.now() < end && !(ok = await linked()); ) await sleep(250);
+    r.check('its configure hook sets creation-time settings', ok);
+  }
   r.done();
 }
 
