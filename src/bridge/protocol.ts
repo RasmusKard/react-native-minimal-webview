@@ -1,14 +1,12 @@
 // The bridge wire format. The RN side parses with it; the page client imports only its types.
 
 export const PROTOCOL_VERSION = 1;
-export const MAX_MESSAGE_BYTES = 1_000_000;
 
 const ERROR_CODES = [
   'timeout',
   'not_found', // no handler for the method
   'handler_error', // the handler threw or rejected
   'invalid', // malformed message
-  'too_large',
   'navigated', // the page navigated or the view went away while the call was pending
   'unavailable', // the platform lacks the needed WebView features
 ] as const;
@@ -33,9 +31,6 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 /** Returns the message, or a `BridgeError` saying why it was rejected. Never throws. */
 export function parseBridgeMessage(raw: string): BridgeMessage | BridgeError {
-  // UTF-16 length is a cheap upper bound proxy: one code unit is at most 3 UTF-8 bytes.
-  if (raw.length > MAX_MESSAGE_BYTES)
-    return { code: 'too_large', message: `message over ${MAX_MESSAGE_BYTES} bytes` };
   let value: unknown;
   try {
     value = JSON.parse(raw);
