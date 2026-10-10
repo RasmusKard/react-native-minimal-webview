@@ -761,8 +761,9 @@ async function crash(h: Harness) {
 
   // An html source has no URL to fetch (the URL is its baseUrl): recovery loads the source again.
   h.loadSource({ html: '<p id="marker">html source</p>', baseUrl: h.pages });
+  // An evaluate that the recovery's navigation rejects is expected while polling; its error code shows in the result.
   const marker = () =>
-    h.ref.current?.evaluate(`document.getElementById('marker')?.textContent ?? null`).catch(() => null);
+    h.ref.current?.evaluate(`document.getElementById('marker')?.textContent ?? null`).catch(errorCode);
   const shown = async () => {
     for (const end = Date.now() + 10000; Date.now() < end; await sleep(300)) if ((await marker()) === 'html source') return true;
     return false;
