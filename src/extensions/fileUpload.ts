@@ -4,14 +4,11 @@ export type FileRequest = { accept: string[]; multiple: boolean; capture: boolea
 
 /**
  * `<input type="file">` on Android: `onFileRequest` picks files (e.g. with expo-document-picker or expo-image-picker)
- * and returns their URIs, or null to cancel. Without it, the system chooser opens (no camera capture). iOS uses
- * WebKit's own picker.
+ * and returns their URIs, or null to cancel. iOS uses WebKit's own picker.
  */
-export const fileUpload = (
-  options: {
-    onFileRequest?: (request: FileRequest) => Promise<string[] | null> | string[] | null;
-  } = {}
-): WebViewExtension => ({
+export const fileUpload = (options: {
+  onFileRequest: (request: FileRequest) => Promise<string[] | null> | string[] | null;
+}): WebViewExtension => ({
   native: { name: 'fileUpload' },
   on: { fileRequest: options.onFileRequest },
 });
