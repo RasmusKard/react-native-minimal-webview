@@ -60,6 +60,41 @@ export function Browser() {
 }
 ```
 
+`useWebViewState(ref)` re-renders with each change of the navigation state, and follows the WebView when it remounts
+(a new `key`, a conditional render). While no WebView is mounted with `ref`, it is the initial state (`url: ''`).
+
+### Outside React
+
+For code outside React, such as a push notification handler, create the ref with `createWebViewRef()` at module
+level and pass it as `ref`:
+
+```tsx
+import { WebView, createWebViewRef } from 'minimal-rn-webview';
+
+export const webView = createWebViewRef();
+
+function onInboxNotification() {
+  // The committed url of the mounted WebView, read synchronously; '' while none is mounted.
+  if (webView.getState().url.startsWith('https://example.com/inbox')) webView.reload();
+}
+
+export function Browser() {
+  return <WebView ref={webView} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />;
+}
+```
+
+It works with `useWebViewState` too, and has the ref methods, forwarded to the WebView mounted with it (no-ops while none is: `evaluate` resolves
+`undefined` and `getUrl` `''`), plus:
+
+- `getState()`: the navigation state, synchronously. When the WebView unmounts it resets to the initial state, so a
+  stale `url` never looks valid.
+- `subscribe(listener)`: called on every change, including a WebView mounting or unmounting. Subscribers stay across
+  remounts. Returns the unsubscribe function.
+- `current`: the mounted WebView's ref, or `null` while none is mounted.
+
+Give each mounted WebView its own ref. If two are mounted with the same one, the last mounted wins (with a warning in
+development) until it unmounts.
+
 ## Navigation rules
 
 Rules are an ordered list, and the first match wins. Every field a rule sets must match. `scheme`, `host` and `path`
