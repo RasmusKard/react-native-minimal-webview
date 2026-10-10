@@ -44,17 +44,13 @@ object NavigationRules {
     return host.lowercase().removeSuffix(".").ifEmpty { null }
   }
 
-  private fun strings(value: Any?): List<String>? = when (value) {
-    null -> null
-    is String -> listOf(value)
-    is List<*> -> value.map { it.toString() }
-    else -> emptyList()
-  }
+  /** null when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing. */
+  private fun list(value: Any?): List<String>? = value?.let { (it as? List<*>)?.map(Any?::toString).orEmpty() }
 
   private fun matches(rule: Map<String, Any?>, scheme: String, host: String?, path: String, request: Request): Boolean {
-    val schemes = strings(rule["scheme"])
-    val hosts = strings(rule["host"])
-    val paths = strings(rule["path"])
+    val schemes = list(rule["scheme"])
+    val hosts = list(rule["host"])
+    val paths = list(rule["path"])
     return (schemes == null || schemes.any { it.equals(scheme, ignoreCase = true) }) &&
       (hosts == null || host != null && hosts.any { hostMatches(it.lowercase(), host) }) &&
       (paths == null || paths.any { path.startsWith(it) }) &&
