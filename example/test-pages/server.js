@@ -1,7 +1,10 @@
+/// <reference types="node" />
 // Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse tcp:8090 tcp:8090`, on the
 // Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests.
 //   /redirect?to=<path>&code=302  server redirect
 //   /download?name=<file>          attachment response
+//   /moved?key=<k>                 an attachment the first time for a key, then a redirect to /download on 127.0.0.1
+//                                  (an Android download is fetched again, and must follow it)
 //   /post                          echoes a form POST (payment-style flow)
 //   /slow?ms=<n>                   delays the response
 //   /status/<code>                 empty response with that status
@@ -16,6 +19,7 @@ const path = require('path');
 
 const PORT = Number(process.env.PORT ?? 8090);
 const ROOT = __dirname;
+/** @type {Record<string, string>} */
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
@@ -23,6 +27,7 @@ const TYPES = {
   '.txt': 'text/plain',
 };
 
+/** @param {import('http').ServerResponse} res @param {string} pathname */
 function serveFile(res, pathname) {
   let file = path.join(ROOT, path.normalize(pathname === '/' ? '/index.html' : pathname));
   // SPA-style fallback: extensionless paths (/spa/pushed, /checkout/pay) reload as spa.html
@@ -38,7 +43,9 @@ function serveFile(res, pathname) {
 const queued = new Map(); // platform (ios | android) -> suite name
 const dropping = new Set();
 const flakyKeys = new Set();
+const movedKeys = new Set();
 
+/** @param {import('http').IncomingMessage} req @param {import('http').ServerResponse} res */
 function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const q = url.searchParams;
@@ -112,13 +119,21 @@ function handle(req, res) {
     res.writeHead(302, { location: url.pathname.endsWith('A') ? '/checkout/loopB' : '/checkout/loopA' }).end();
   } else if (url.pathname === '/redirect') {
     res.writeHead(Number(q.get('code') ?? 302), { location: q.get('to') ?? '/' }).end();
+  } else if (url.pathname === '/moved' && movedKeys.has(q.get('key') ?? '')) {
+    res.writeHead(302, { location: `http://127.0.0.1:${PORT}/download?name=moved.txt` }).end();
+  } else if (url.pathname === '/moved') {
+    movedKeys.add(q.get('key') ?? '');
+    res.writeHead(200, { 'content-type': 'text/plain', 'content-disposition': 'attachment; filename="moved.txt"' });
+    res.end('first response\n');
   } else if (url.pathname === '/download') {
     const name = q.get('name') ?? 'report.txt';
     res.writeHead(200, {
       'content-type': 'text/plain',
       'content-disposition': `attachment; filename="${name}"`,
     });
-    res.end(`downloaded ${name} at ${new Date().toISOString()}\n`);
+    res.end(
+      `downloaded ${name} at ${new Date().toISOString()}\ncookie: ${req.headers.cookie ?? ''}\n`
+    );
   } else if (url.pathname === '/post') {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
