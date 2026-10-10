@@ -390,6 +390,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
     let recovered = crashTimes.count <= maxCrashesPerWindow
     dismissDialog()
+    // The page that asked is gone, as on Android (recover): fail its asks now rather than at the reload's commit, and
+    // deliver nothing until the reloaded page posts.
+    failPendingAsks()
+    bridgeOrigin = nil
     // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
     // (or the failed or committed URL) rather than jumping back to the source. An html source loads again.
     if recovered {

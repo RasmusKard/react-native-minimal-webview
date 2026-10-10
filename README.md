@@ -111,10 +111,10 @@ are lists, and one entry matching is enough:
 - `allow`: load in place.
 - `block`: cancel.
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
-- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits.
+- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once.
 
 **Defaults:**
-- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked.
+- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked. A new window counts as a main-frame navigation, so a tap in an iframe that runs `window.open('myapp://…')` still opens externally; without `javaScriptCanOpenWindowsAutomatically`, only a tap opens a window.
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load.
 
@@ -125,6 +125,7 @@ are lists, and one entry matching is enough:
 - **POST on Android.** Android never runs the rules for POST requests: form posts and payment redirects always load.
 - **POST into a new window on Android.** A form POST to `target=_blank` can't be captured, so it doesn't load; iOS loads it in place.
 - **iframes on Android.** Android only decides iframe navigations to non-http(s) schemes (`tel:`, `intent:` and so on). Rules for http(s) iframes, the `mainFrame: false` ones, apply only on iOS.
+- **`userInitiated`.** On iOS it's true only for a tapped link (`.linkActivated`). A `location.href` change or `window.open` from a click handler is false on iOS but true on Android (`hasGesture()`).
 - **Redirect loops.** A URL that `ask` allowed isn't asked again until the next page commits, so a redirect loop can't ask forever.
 - **`intent:` links (Android).** They're sanitised: browsable only, with no explicit component or selector. If no app handles one, its `S.browser_fallback_url` loads instead.
 
