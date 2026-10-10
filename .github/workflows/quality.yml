@@ -1,5 +1,9 @@
 name: quality
 on: pull_request
+
+concurrency:   # a new push cancels the run for the previous one
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   quality:
     runs-on: ubuntu-latest

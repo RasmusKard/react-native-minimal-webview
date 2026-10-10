@@ -1,15 +1,10 @@
-import WebKit
+import Foundation
 
 /// Origin rules in Android's format (the bridge's `allowedOrigins`):
 /// `*`, an exact http(s) origin such as `https://example.com:8443`, or `https://*.example.com` for subdomains.
 /// Compared case-insensitively, a missing port is the scheme's default, and a malformed rule matches nothing.
 /// createBridge validates the rules on the JS side. Cases: test-vectors/origin-rules.json.
 enum OriginRules {
-  /// The origin as `location.origin` writes it, so the bridge can compare the two exactly.
-  static func origin(of security: WKSecurityOrigin) -> String {
-    origin(security.protocol, security.host, security.port)
-  }
-
   /// The default port left out (WebKit reports it as 0), an IPv6 host in brackets.
   static func origin(_ scheme: String, _ host: String, _ port: Int) -> String {
     let defaultPort = scheme == "https" ? 443 : scheme == "http" ? 80 : nil
