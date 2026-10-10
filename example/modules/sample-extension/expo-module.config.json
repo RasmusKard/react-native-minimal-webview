@@ -1,0 +1,5 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["SampleExtensionModule"] },
+  "android": { "modules": ["expo.modules.sampleextension.SampleExtensionModule"] }
+}

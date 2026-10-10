@@ -7,7 +7,7 @@ export type NavigationAction = 'allow' | 'block' | 'external';
 
 /**
  * One navigation rule. Every field that is set must match; the first matching rule wins.
- * With no rules, http(s) loads in place and other schemes open externally. With rules and no match, the result is `block`.
+ * With no rules, http(s) loads in place and other schemes open externally from the main frame (a subframe is blocked). With rules and no match, the result is `block`.
  */
 export type NavigationRule = {
   /** Exact, case-insensitive: `['tel', 'mailto']`. */
@@ -109,7 +109,7 @@ export type WebViewProps = {
   source: WebViewSource;
   /** Replaces the whole user agent. */
   userAgent?: string;
-  /** Appended to the default user agent. */
+  /** Appended to the default user agent. On iOS it is fixed at creation: changing it recreates the WebView. */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
@@ -121,14 +121,17 @@ export type WebViewProps = {
   onOpenExternal?: (url: string) => void;
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
-  thirdPartyCookiesEnabled?: boolean;
+  thirdPartyCookies?: boolean;
   /** Default true. On iOS it is fixed at creation: changing it recreates the WebView. */
   mediaPlaybackRequiresUserAction?: boolean;
+  /** iOS only (Android always plays inline). Default false. Fixed at creation. */
   allowsInlineMediaPlayback?: boolean;
+  /** iOS only (react-native-webview ignores it on Android too). Default true. */
   scrollEnabled?: boolean;
+  /** iOS only. Default true. */
   bounces?: boolean;
   showsScrollIndicators?: boolean;
-  /** Default `__DEV__`. */
+  /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   webviewDebuggingEnabled?: boolean;
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;

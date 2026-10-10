@@ -1,21 +1,70 @@
 package expo.modules.minimalwebview
 
+import android.webkit.CookieManager
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.Promise
+import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.minimalwebview.extensions.Downloads
+import expo.modules.minimalwebview.extensions.FileUpload
+import expo.modules.minimalwebview.extensions.FullscreenVideo
+import expo.modules.minimalwebview.extensions.Permissions
+import expo.modules.minimalwebview.extensions.PullToRefresh
 
 class MinimalWebViewModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MinimalWebView")
 
+    OnCreate {
+      WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
+      WebViewExtensions.register("fileUpload") { FileUpload() }
+      WebViewExtensions.register("fullscreenVideo") { FullscreenVideo() }
+      WebViewExtensions.register("downloads") { Downloads() }
+      WebViewExtensions.register("permissions") { Permissions() }
+      // Built in on Android: CookieManager is shared app-wide.
+      WebViewExtensions.register("sharedCookies") { object : WebViewExtension {} }
+    }
+
+    OnActivityResult { _, payload -> ActivityResults.deliver(payload.requestCode, payload.resultCode, payload.data) }
+
+    // Cookies live in memory until flushed; persist them before the process can be killed.
+    OnActivityEntersBackground {
+      CookieManager.getInstance().flush()
+    }
+
+    // The WebView provider and the features this package uses (false: update Android System WebView).
+    Function("getAndroidWebViewInfo") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val provider = WebViewCompat.getCurrentWebViewPackage(context)
+      mapOf(
+        "version" to (provider?.versionName ?: ""),
+        "provider" to (provider?.packageName ?: ""),
+        "available" to (provider != null),
+        "features" to USED_FEATURES.associateWith { WebViewFeature.isFeatureSupported(it) }
+      )
+    }
+
     View(MinimalWebView::class) {
-      Events("onNavigationState", "onNavigationRequest", "onBridge")
+      Events("onNavigationState", "onNavigationRequest", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { view: MinimalWebView, source: Map<String, Any?>? -> view.source = source }
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
+      Prop("extensions") { view: MinimalWebView, extensions: List<Map<String, Any?>>? -> view.extensions = extensions }
+      Prop("userAgent") { view: MinimalWebView, value: String? -> view.userAgent = value }
+      Prop("applicationNameForUserAgent") { view: MinimalWebView, value: String? -> view.applicationNameForUserAgent = value }
+      Prop("thirdPartyCookies") { view: MinimalWebView, value: Boolean? -> view.thirdPartyCookies = value ?: false }
+      Prop("mediaPlaybackRequiresUserAction") { view: MinimalWebView, value: Boolean? ->
+        view.mediaPlaybackRequiresUserAction = value ?: true
+      }
+      Prop("showsScrollIndicators") { view: MinimalWebView, value: Boolean? -> view.showsScrollIndicators = value ?: true }
+      Prop("injectedScripts") { view: MinimalWebView, value: List<Map<String, Any?>>? -> view.injectedScripts = value }
+      Prop("openExternalInJS") { view: MinimalWebView, value: Boolean? -> view.openExternalInJS = value ?: false }
+      Prop("webviewDebuggingEnabled") { view: MinimalWebView, value: Boolean? -> view.webviewDebuggingEnabled = value ?: false }
 
       OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
@@ -24,10 +73,10 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("goForward") { view: MinimalWebView -> view.webView.goForward() }.runOnQueue(Queues.MAIN)
       AsyncFunction("reload") { view: MinimalWebView -> view.webView.reload() }.runOnQueue(Queues.MAIN)
       AsyncFunction("stopLoading") { view: MinimalWebView -> view.webView.stopLoading() }.runOnQueue(Queues.MAIN)
-      AsyncFunction("resolveNavigationRequest") { view: MinimalWebView, id: Int, action: String ->
-        view.resolveNavigationRequest(id, action)
-      }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
+      AsyncFunction("extensionCall") { view: MinimalWebView, name: String, method: String, args: Map<String, Any?> ->
+        view.extensionCall(name, method, args)
+      }.runOnQueue(Queues.MAIN)
       AsyncFunction("getUrl") { view: MinimalWebView -> view.webView.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
@@ -36,3 +85,9 @@ class MinimalWebViewModule : Module() {
     }
   }
 }
+
+private val USED_FEATURES = listOf(
+  WebViewFeature.NAVIGATION_LISTENER,
+  WebViewFeature.WEB_MESSAGE_LISTENER,
+  WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
+)

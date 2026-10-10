@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Upload</title>
+<script src="/common.js"></script>
+<style>
+  body { font: 16px system-ui; margin: 12px; }
+  /* Covers the viewport so a tap anywhere opens the chooser (harness taps the centre). */
+  #file { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0.15; }
+</style>
+<h1>Upload (tap anywhere)</h1>
+<input id="file" type="file" accept="text/plain,image/*" />
+<script>
+  document.getElementById('file').addEventListener('change', async (event) => {
+    for (const file of event.target.files) log('picked', file.name, file.size, await file.text());
+    event.target.value = '';
+  });
+  document.getElementById('file').addEventListener('cancel', () => log('cancelled'));
+</script>

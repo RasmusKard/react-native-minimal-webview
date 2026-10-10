@@ -7,4 +7,4 @@
 <h1>Device APIs</h1>
 <button id="camera" onclick="navigator.mediaDevices.getUserMedia({ video: true }).then((s) => { log('camera ok', s.getTracks().length); s.getTracks().forEach((t) => t.stop()); }, (e) => log('camera error', e.name))">getUserMedia video</button>
 <button id="mic" onclick="navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => { log('mic ok'); s.getTracks().forEach((t) => t.stop()); }, (e) => log('mic error', e.name))">getUserMedia audio</button>
-<button id="geo" onclick="navigator.geolocation.getCurrentPosition((p) => log('geo ok', p.coords.latitude, p.coords.longitude), (e) => log('geo error', e.code, e.message))">geolocation</button>
+<button id="geo" onclick="navigator.geolocation.getCurrentPosition((p) => log('geo ok', p.coords.latitude, p.coords.longitude), (e) => log('geo error', e.code, e.message), { timeout: 5000, maximumAge: 60000 })">geolocation</button>

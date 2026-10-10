@@ -17,6 +17,10 @@ export type BridgeConnection = {
   attach(post: (message: string) => void): void;
   detach(): void;
   receive(message: string): void;
+  /** The platform lacks the WebView features the bridge needs: calls reject with `unavailable`. */
+  markUnavailable(): void;
+  /** A new document committed: queue messages until its page client says `ready`. */
+  navigated(): void;
 };
 
 export const CONNECTION = Symbol('bridgeConnection');
@@ -30,7 +34,14 @@ type Pending = {
 const bridgeError = ({ code, message }: BridgeError) => Object.assign(new Error(message), { code });
 
 /** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
+/** `*`, `scheme://host[:port]` or `scheme://*.host[:port]`, as Android's addWebMessageListener accepts. */
+const ORIGIN_RULE = /^(\*|[a-z][a-z0-9+.-]*:\/\/(\*\.)?[^/:*?#\s]+(:\d+)?)$/i;
+
 export function createBridge(options: BridgeOptions): Bridge {
+  const invalid = options.allowedOrigins.filter((rule) => !ORIGIN_RULE.test(rule));
+  if (invalid.length) {
+    throw new Error(`createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`);
+  }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const handlers = new Map<string, BridgeHandler>();
   const listeners = new Map<string, Set<(payload: unknown) => void>>();
@@ -39,6 +50,7 @@ export function createBridge(options: BridgeOptions): Bridge {
   let ready = false;
   let queue: string[] = [];
   let nextId = 0;
+  let unavailable = false;
 
   const send = (message: BridgeMessage) => {
     const text = JSON.stringify(message);
@@ -46,14 +58,15 @@ export function createBridge(options: BridgeOptions): Bridge {
     else queue.push(text);
   };
 
-  /** Rejects every call in flight: their page is gone. */
-  const rejectAll = (message: string) => {
+  /** Rejects every call in flight, by default because their page is gone. */
+  const rejectAll = (message: string, code: BridgeError['code'] = 'navigated') => {
     for (const call of pending.values()) {
       clearTimeout(call.timer);
-      call.reject(bridgeError({ code: 'navigated', message }));
+      call.reject(bridgeError({ code, message }));
     }
     pending.clear();
   };
+  const unavailableMessage = 'this WebView lacks the features the bridge needs; update Android System WebView';
 
   const answer = async (id: string, method: string, params: unknown) => {
     const handler = handlers.get(method);
@@ -118,6 +131,14 @@ export function createBridge(options: BridgeOptions): Bridge {
       rejectAll('the WebView went away');
     },
     receive,
+    navigated() {
+      ready = false;
+    },
+    markUnavailable() {
+      unavailable = true;
+      queue = [];
+      rejectAll(unavailableMessage, 'unavailable');
+    },
   };
 
   return {
@@ -126,6 +147,7 @@ export function createBridge(options: BridgeOptions): Bridge {
       return () => handlers.delete(method);
     },
     call(method, params) {
+      if (unavailable) return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
       const id = `n${++nextId}`;
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {

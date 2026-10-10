@@ -1,0 +1,39 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.json
+      - run: node internal/build-page-client.mjs --check
+      - run: npm test -- --watchAll=false
+
+  # The rule matcher on every platform against the shared cases in test-vectors/navigation-rules.json.
+  swift-rules:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcrun swiftc ios/NavigationRules.swift ios/Tests/main.swift -o rules && ./rules test-vectors/navigation-rules.json
+
+  kotlin-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: zulu, java-version: 17 }
+      - run: npm ci && (cd example && npm ci)
+      - run: cd example && npx expo prebuild --platform android --no-install
+      - run: cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest
+
+  # On-device suites (example/harness.ts) need an emulator and a simulator; they run locally for now:
+  # see README "Development".
