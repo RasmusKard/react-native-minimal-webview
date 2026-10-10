@@ -220,7 +220,7 @@ request over: to decide, to use your own picker, or to observe it.
 | The page | Default (no prop) | Prop | Typical packages |
 |---|---|---|---|
 | `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser; it ignores `capture` | `onFileRequest({ accept, multiple, capture })` (Android only) returns URIs, or `null` to cancel | expo-document-picker, expo-image-picker |
-| Fullscreen video | iOS: WebKit's. Android: the page's fullscreen view covers the WebView's window on black, system bars hide, and back exits | `onFullscreenChange(active)` (Android only) | expo-screen-orientation |
+| Fullscreen video | iOS: WebKit's. Android: the page's fullscreen view covers the WebView's window on black, system bars hide, and back exits | `onFullscreenChange({ active })` (Android only) | expo-screen-orientation |
 | Camera, microphone, (Android) location | Android: denied. iOS: WebKit's own prompt (location always prompts) | `onPermissionRequest({ origin, resources })` answers `true` or `false`. Main frame only: other frames are denied without asking | expo-camera, expo-audio, expo-location |
 | A download | http(s): opens externally (`onOpenExternal`, or the system browser, which fetches it without the page's session; reported to `onNavigation` as `external`). `data:` and `blob:`: dropped | `onDownload(result)`: a [file in the app's cache](#downloads), or a failure | expo-file-system, expo-sharing |
 | HTTP basic or digest auth | Cancelled: the site's 401 page shows | `onHttpAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | expo-secure-store |
@@ -277,7 +277,7 @@ onPermissionRequest={async ({ origin, resources }) => {
 Let a portrait-locked app rotate while a video is fullscreen (Android), with expo-screen-orientation:
 
 ```tsx
-onFullscreenChange={(active) =>
+onFullscreenChange={({ active }) =>
   active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
 }
 ```

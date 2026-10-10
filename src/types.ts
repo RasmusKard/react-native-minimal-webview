@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 /** `headers` go on the first request only, not on later navigations. */
-export type WebViewSource = { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
+export type WebViewSource =
+  { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
 
 export type NavigationAction = 'allow' | 'block' | 'external';
 
@@ -148,7 +149,7 @@ type OwnProps = {
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
-  /** Called only for `ask` rules. Times out after 1 s, then `block`. */
+  /** Called only for `ask` rules. Times out after 1 s, then `block`. Without this prop, `ask` is `block`. */
   onNavigationRequest?: (
     request: NavigationRequest
   ) => NavigationAction | Promise<NavigationAction>;
@@ -189,10 +190,10 @@ type OwnProps = {
    */
   onFileRequest?: (request: FileRequest) => string[] | null | Promise<string[] | null>;
   /**
-   * Android: the page entered or left fullscreen. Fullscreen works without it: the page's view covers the window, the
-   * system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
+   * Android: the page entered or left fullscreen (`active`). Fullscreen works without it: the page's view covers the
+   * window, the system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
    */
-  onFullscreenChange?: (active: boolean) => void;
+  onFullscreenChange?: (event: { active: boolean }) => void;
   /**
    * Camera, microphone and (Android) location for the main frame. Answer true to grant: ask the OS first (expo-camera,
    * expo-location), or the page's request fails anyway. Without it: Android denies; iOS shows WebKit's own prompt, and

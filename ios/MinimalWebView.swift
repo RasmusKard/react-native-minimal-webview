@@ -8,7 +8,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onError = EventDispatcher()
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
-  let onNavigationRequest = EventDispatcher()
 
   // Props, applied together in applyProps()
   var source: WebViewSource?
@@ -27,9 +26,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var navigationRules: [[String: Any]]?
   var injectedScripts: [InjectedScript] = []
   private var installedScripts: NSArray?
-  /// JS handles `external` navigations (onOpenExternal); native only reports them.
-  var openExternalInJS = false
-  /// The page requests JS has a prop for (`download`, `permissionRequest`, ...), read when a request comes.
+  /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes. `openExternal`
+  /// is there when JS handles `external` navigations (onOpenExternal); native only reports them.
   var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 
