@@ -137,4 +137,15 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
   });
   // Android needs one page message before native can reply.
   send({ v: 1, id: '', kind: 'ready' });
+  // Back from the back-forward cache: scripts don't run again, but native reset the bridge when the page was left, and
+  // answers to this page's calls went to the page shown meanwhile. Fail those calls and announce the page again.
+  w.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    for (const call of pending.values()) {
+      clearTimeout(call.timer);
+      call.reject(fail('navigated', 'the page was left before the call was answered'));
+    }
+    pending.clear();
+    send({ v: 1, id: '', kind: 'ready' });
+  });
 }

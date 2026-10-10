@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Back-forward</title>
+<h1>Back-forward</h1>
+<p>Records each pageshow (persisted: restored from the back-forward cache) and answers bridge calls.</p>
+<script>
+  window.shows = [];
+  addEventListener('pageshow', (event) => window.shows.push(event.persisted));
+  if (window.nativeBridge) {
+    nativeBridge.handle('sum', ({ a, b }) => a + b);
+    nativeBridge.on('nativeEvent', (payload) => (window.lastEvent = payload));
+  }
+</script>

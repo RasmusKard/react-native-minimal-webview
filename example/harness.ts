@@ -1178,11 +1178,41 @@ async function network(h: Harness) {
   r.done();
 }
 
+/** The bridge after going back to a page, which WebKit (and Android with BFCache on) may restore without reloading it. */
+async function backForward(h: Harness) {
+  const r = reporter('backForward');
+  const page = `${h.pages}/back-forward.html?t=${Date.now()}`;
+  await openPage(h, page);
+  // A page call still waiting (the app answers 'slow' after 5 s) when the page is left: the answer can't reach it.
+  await h.ref.current?.evaluate(`(() => {
+    window.__straddle = undefined;
+    nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
+  })()`);
+  await openPage(h, `${h.pages}/spa.html?t=${Date.now()}`);
+  h.ref.current?.goBack();
+  await waitFor(h, (s) => s.url === page && idle(s));
+  await sleep(500);
+  const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
+  r.info('pageshow persisted flags', { shows });
+  const straddle = (await h.ref.current?.evaluate('window.__straddle')) as { error?: string } | null | undefined;
+  r.check('a page call cut off by leaving the page fails with navigated', !shows?.[1] || straddle?.error === 'navigated', straddle);
+  const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
+  r.check('RN -> page call after going back', sum === 5, sum);
+  h.bridge.emit('nativeEvent', { n: 7 });
+  await sleep(500);
+  const event = await h.ref.current?.evaluate('window.lastEvent');
+  r.check('RN -> page event after going back', (event as { n?: number } | null)?.n === 7, event);
+  const echo = await pageCall(h, 'echo', { back: true });
+  r.check('page -> RN call after going back', (echo.result as { back?: boolean } | undefined)?.back === true, echo);
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
   reissue,
   bridge,
+  backForward,
   ptr,
   upload,
   errors,
