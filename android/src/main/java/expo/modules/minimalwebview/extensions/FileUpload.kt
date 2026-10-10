@@ -8,7 +8,7 @@ import expo.modules.minimalwebview.WebViewExtension
 
 /**
  * `<input type="file">`: asks the app's `onFileRequest` for URIs (null = cancel). The app picks them, with
- * expo-document-picker or expo-image-picker. Built only on the extension interface.
+ * expo-document-picker or expo-image-picker. Without the prop the core opens the system chooser.
  */
 class FileUpload : WebViewExtension {
   private lateinit var host: ExtensionHost
@@ -18,6 +18,7 @@ class FileUpload : WebViewExtension {
   }
 
   override fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+    if (!host.handles("fileRequest")) return false
     val request = mapOf(
       "accept" to params.acceptTypes.filter { it.isNotEmpty() },
       "multiple" to (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE),

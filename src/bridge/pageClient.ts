@@ -23,7 +23,7 @@ type PageWindow = Window & {
 
 /** Installs only on an allowed origin (Android origin-rule format), matching what native accepts. */
 export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigins: string[]) {
-  // As OriginRules (Swift, Kotlin): test-vectors/origin-rules.json.
+  // As OriginRules.swift: test-vectors/origin-rules.json.
   const parse = (text: string) => {
     const m =
       /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(

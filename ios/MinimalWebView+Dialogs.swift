@@ -41,7 +41,7 @@ extension MinimalWebView: WKUIDelegate {
     showDialog(alert) { completionHandler(nil) }
   }
 
-  /// Camera and microphone: an extension decides (permissions); without one, denied, as on Android.
+  /// Camera and microphone, main frame only: a hook decides (onPermissionRequest); without one, WebKit's own prompt.
   func webView(
     _ webView: WKWebView,
     requestMediaCapturePermissionFor origin: WKSecurityOrigin,
@@ -51,7 +51,7 @@ extension MinimalWebView: WKUIDelegate {
   ) {
     guard frame.isMainFrame else { return decisionHandler(.deny) }
     let handled = activeExtensions?.contains { $0.requestMediaCapture(origin: origin, type: type, decide: decisionHandler) } == true
-    if !handled { decisionHandler(.deny) }
+    if !handled { decisionHandler(.prompt) }
   }
 
   /// Dismisses the dialog on screen, if any, completing it as cancelled (teardown, crash, recreate).

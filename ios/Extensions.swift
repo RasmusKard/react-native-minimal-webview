@@ -2,7 +2,8 @@ import WebKit
 
 /// A per-instance WebView extension. EXPERIMENTAL until the built-ins and one out-of-package extension use it.
 /// Every hook has a no-op default. Enable one on a WebView with the `extensions` prop. For the decide hooks, the first
-/// extension that handles a request wins.
+/// extension that handles a request wins. The core's page requests (permissions, downloads, HTTP auth) come after every
+/// extension.
 public protocol WebViewExtension: AnyObject {
   /// Runs before the WKWebView exists: `host.webView` is nil here. Use `didCreate` for the WebView.
   func attach(host: ExtensionHost, config: [String: Any])
@@ -46,7 +47,8 @@ public protocol ExtensionHost: AnyObject {
   func emit(_ event: String, _ payload: [String: Any])
   /// Whether the extension's JS helper has a handler for `event` (its `on` map); without one, `ask` answers nil.
   func handles(_ event: String) -> Bool
-  /// Async decide hook: emits `event` to its JS handler and calls `onAnswer` with the result (nil if the view goes away).
+  /// Async decide hook: emits `event` to its JS handler and calls `onAnswer` with the result (nil if the view goes away
+  /// or a new page replaces the one that asked).
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void)
   /// The core's reload: retries the failed URL after an error.
   func reload()

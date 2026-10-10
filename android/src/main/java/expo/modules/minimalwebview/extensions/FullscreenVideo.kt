@@ -14,9 +14,9 @@ import expo.modules.minimalwebview.ExtensionHost
 import expo.modules.minimalwebview.WebViewExtension
 
 /**
- * HTML5 fullscreen video: the page's fullscreen view covers the WebView's own window (so it also works inside an RN
- * Modal) on a black backdrop, system bars hide, and back exits. Orientation is the app's: it can unlock it in the
- * `fullscreen` event (expo-screen-orientation).
+ * HTML5 fullscreen video, always on: the page's fullscreen view covers the WebView's own window on a black backdrop,
+ * system bars hide, and back exits. Orientation is the app's: it can unlock it in
+ * `onFullscreenChange` (expo-screen-orientation).
  */
 class FullscreenVideo : WebViewExtension {
   private lateinit var host: ExtensionHost
@@ -46,7 +46,7 @@ class FullscreenVideo : WebViewExtension {
       hide(WindowInsetsCompat.Type.systemBars())
       systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
-    host.emit("fullscreen", mapOf("active" to true))
+    report(true)
     return true
   }
 
@@ -71,7 +71,11 @@ class FullscreenVideo : WebViewExtension {
     controller()?.show(WindowInsetsCompat.Type.systemBars())
     backCallback?.remove()
     backCallback = null
-    host.emit("fullscreen", mapOf("active" to false))
+    report(false)
+  }
+
+  private fun report(active: Boolean) {
+    if (host.handles("fullscreenChange")) host.emit("fullscreenChange", mapOf("active" to active))
   }
 
   private fun controller() = host.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }

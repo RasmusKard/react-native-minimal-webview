@@ -5,10 +5,20 @@ import { createRoot } from 'test-renderer';
 import { WebView } from '../WebView';
 import type { WebViewProps } from '../types';
 
-jest.mock('expo', () => ({
-  requireNativeView: () => 'MinimalWebView',
-  requireNativeModule: () => ({}),
-}));
+const mockAnswer = jest.fn();
+// A host element named MinimalWebView whose ref has the native `answer` method.
+jest.mock('expo', () => {
+  const { createElement, useImperativeHandle } = jest.requireActual<typeof import('react')>('react');
+  return {
+    requireNativeView:
+      () =>
+      ({ ref, ...props }: { ref: unknown }) => {
+        useImperativeHandle(ref as never, () => ({ answer: mockAnswer }));
+        return createElement('MinimalWebView', props);
+      },
+    requireNativeModule: () => ({}),
+  };
+});
 
 async function render(props: Partial<WebViewProps>) {
   const root = createRoot();
@@ -120,5 +130,92 @@ describe('extensions and bridge', () => {
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
     expect(native?.extensions).toEqual([{ name: 'sample', config: { mode: 'a' }, handles: [] }]);
     warn.mockRestore();
+  });
+});
+
+describe('page requests', () => {
+  type Fire = (event: string, payload: Record<string, unknown>, askId?: number) => Promise<void>;
+
+  async function renderRequests(props: Partial<WebViewProps>) {
+    const root = createRoot();
+    const show = (next: Partial<WebViewProps>) =>
+      act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} {...next} />));
+    await show(props);
+    const native = () =>
+      root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
+        requestHandlers: string[];
+        onExtension: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+      };
+    const fire: Fire = (event, payload, askId) =>
+      act(() => native().onExtension({ nativeEvent: { name: 'core', event, payload, askId } }));
+    return { show, native, fire };
+  }
+
+  beforeEach(() => mockAnswer.mockClear());
+
+  it('tells native which requests have a prop, as the same array until that set changes', async () => {
+    const { show, native } = await renderRequests({ onDownload: () => {} });
+    const first = native().requestHandlers;
+    expect(first).toEqual(['download']);
+    await show({ onDownload: () => {} });
+    expect(native().requestHandlers).toBe(first);
+    await show({ onDownload: () => {}, onPermissionRequest: () => true });
+    expect(native().requestHandlers).toEqual(['permissionRequest', 'download']);
+    await show({});
+    expect(native().requestHandlers).toEqual([]);
+  });
+
+  it('routes each request to its prop and answers with its result', async () => {
+    const onFileRequest = jest.fn(async () => ['file:///a.txt']);
+    const onFullscreenChange = jest.fn();
+    const onDownload = jest.fn();
+    const { fire } = await renderRequests({ onFileRequest, onFullscreenChange, onDownload });
+    await fire('fileRequest', { accept: [], multiple: false, capture: false }, 1);
+    expect(onFileRequest).toHaveBeenCalledWith({ accept: [], multiple: false, capture: false });
+    expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
+    await fire('fullscreenChange', { active: true });
+    expect(onFullscreenChange).toHaveBeenCalledWith({ active: true });
+    const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
+    await fire('download', failure);
+    expect(onDownload).toHaveBeenCalledWith(failure);
+    expect(mockAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers block to a navigation request when the prop throws or returns nothing', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onNavigationRequest = jest
+      .fn()
+      .mockResolvedValueOnce('allow')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('no'));
+    const { fire, native } = await renderRequests({ onNavigationRequest, onOpenExternal: () => {} });
+    expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
+    const request = { url: 'https://a.example', mainFrame: true, newWindow: false, userInitiated: true };
+    await fire('navigationRequest', request, 1);
+    expect(onNavigationRequest).toHaveBeenCalledWith(request);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
+    await fire('navigationRequest', request, 2);
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
+    await fire('navigationRequest', request, 3);
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: 'block' });
+    error.mockRestore();
+  });
+
+  it('answers null when the prop is gone or throws, and leaves extensions to their own handlers', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const authRequest = jest.fn();
+    const { fire } = await renderRequests({
+      onPermissionRequest: () => {
+        throw new Error('no');
+      },
+      extensions: [{ native: { name: 'other' }, on: { authRequest } }],
+    });
+    await fire('permissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2);
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
+    expect(error).toHaveBeenCalledWith('[react-native-minimal-webview] onPermissionRequest failed', expect.any(Error));
+    await fire('httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
+    expect(authRequest).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 });

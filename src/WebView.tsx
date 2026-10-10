@@ -5,6 +5,7 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -16,7 +17,6 @@ import type {
   AndroidWebViewInfo,
   Bridge,
   NavigationEvent,
-  NavigationRequest,
   NavigationState,
   ProcessGoneEvent,
   WebViewErrorEvent,
@@ -40,6 +40,22 @@ type ExtensionEvent = {
   payload: Record<string, unknown>;
   askId?: number;
 };
+
+/**
+ * Page requests the core answers natively, by native event name. Native asks JS (as extension `core`) only for those
+ * whose prop is set, and reads the set when the request comes, so a prop can come and go. `openExternal` is never
+ * asked: native only checks that JS opens external links itself, and reports them on `onNavigation`.
+ */
+const REQUESTS = {
+  navigationRequest: 'onNavigationRequest',
+  openExternal: 'onOpenExternal',
+  fileRequest: 'onFileRequest',
+  fullscreenChange: 'onFullscreenChange',
+  permissionRequest: 'onPermissionRequest',
+  download: 'onDownload',
+  httpAuthRequest: 'onHttpAuthRequest',
+} as const;
+const CORE = 'core';
 
 /** Props that pass straight through to the native view. */
 const PASSTHROUGH = [
@@ -67,8 +83,6 @@ const OWN = [
     'extensions',
     'renderLoading',
     'renderError',
-    'onNavigationRequest',
-    'onOpenExternal',
     'onNavigation',
     'onNavigationStateChange',
     'onError',
@@ -77,6 +91,7 @@ const OWN = [
     'onLoadStart',
     'onLoad',
     'onLoadEnd',
+    ...Object.values(REQUESTS),
     'children',
   ] as const),
 ] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
@@ -92,10 +107,9 @@ type NativeProps = ViewProps &
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
     extensions: ReturnType<typeof nativeSpecs>;
-    openExternalInJS: boolean;
+    requestHandlers: string[];
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
-    onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
     onBridge: (event: NativeEvent<BridgeEvent>) => void;
     onExtension: (event: NativeEvent<ExtensionEvent>) => void;
     onError: (event: NativeEvent<NativeErrorEvent>) => void;
@@ -107,7 +121,7 @@ type NativeMethods = Record<
   () => Promise<void>
 > & {
   bridgePost(message: string): Promise<void>;
-  /** Answers a native `ask` (navigation or extension). The value is wrapped: native arguments can't be of any type. */
+  /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
   answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
@@ -243,15 +257,22 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   const answer = (askId: number, value: unknown) =>
     native.current?.answer(askId, { value: value ?? null });
 
+  const requestHandlers = useRequestHandlers(props);
+
   const onExtension = async ({
     nativeEvent: { name, event, payload, askId },
   }: NativeEvent<ExtensionEvent>) => {
-    const extension = props.extensions?.find((candidate) => candidate.native.name === name);
-    const handler = extension?.on?.[event] as ((payload: unknown) => unknown) | undefined;
+    const request = name === CORE ? REQUESTS[event as keyof typeof REQUESTS] : undefined;
+    const handler = (
+      request
+        ? props[request]
+        : props.extensions?.find((candidate) => candidate.native.name === name)?.on?.[event]
+    ) as ((payload: unknown) => unknown) | undefined;
     const value = await settle(
       () => handler?.(payload),
-      null,
-      `the ${name} extension's ${event} handler failed`
+      // Native counts a missing answer as `block` too.
+      request === 'onNavigationRequest' ? 'block' : null,
+      request ? `${request} failed` : `the ${name} extension's ${event} handler failed`
     );
     if (askId !== undefined) await answer(askId, value);
   };
@@ -259,18 +280,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   const onNavigation = ({ nativeEvent }: NativeEvent<NavigationEvent>) => {
     if (nativeEvent.action === 'external') props.onOpenExternal?.(nativeEvent.url);
     props.onNavigation?.(nativeEvent);
-  };
-
-  // Native blocks unanswered requests after 1 s and ignores late answers.
-  const onNavigationRequest = async ({
-    nativeEvent: { id, ...request },
-  }: NativeEvent<NavigationRequest & { id: number }>) => {
-    const action = await settle(
-      () => props.onNavigationRequest?.(request),
-      'block',
-      'onNavigationRequest failed; blocking'
-    );
-    await answer(id, action ?? 'block');
   };
 
   const webView = (
@@ -283,10 +292,9 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
       extensions={fixed.extensions}
-      openExternalInJS={props.onOpenExternal !== undefined}
+      requestHandlers={requestHandlers}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
-      onNavigationRequest={onNavigationRequest}
       onBridge={onBridge}
       onExtension={onExtension}
       onError={onError}
@@ -294,6 +302,15 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     />
   );
   return withOverlay(webView, props, error, loading);
+}
+
+/** The page requests with a prop set, as a new array only when that set changes. */
+function useRequestHandlers(props: WebViewProps) {
+  const key = Object.entries(REQUESTS)
+    .filter(([, prop]) => props[prop])
+    .map(([event]) => event)
+    .join();
+  return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
 /** What native gets per extension: its name and config, and which events have a JS handler. */

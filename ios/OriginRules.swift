@@ -1,6 +1,6 @@
 import WebKit
 
-/// Origin rules in Android's format (the bridge's `allowedOrigins`, the permissions extension's `origins`):
+/// Origin rules in Android's format (the bridge's `allowedOrigins`):
 /// `*`, an exact http(s) origin such as `https://example.com:8443`, or `https://*.example.com` for subdomains.
 /// Compared case-insensitively, a missing port is the scheme's default, and a malformed rule matches nothing.
 /// createBridge validates the rules on the JS side. Cases: test-vectors/origin-rules.json.
