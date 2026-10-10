@@ -1,5 +1,5 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host and path are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host and path are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'.",
   "rulesets": {
     "app": [
       {
@@ -119,7 +119,7 @@
       }
     },
     {
-      "name": "no rules: tel is external",
+      "name": "no rules: tel in the main frame is external",
       "rules": null,
       "request": {
         "url": "tel:+3725551234"
@@ -130,10 +130,45 @@
       }
     },
     {
-      "name": "no rules: intent is external",
+      "name": "no rules: intent in the main frame is external",
       "rules": null,
       "request": {
         "url": "intent://scan/#Intent;scheme=zxing;package=com.example;end"
+      },
+      "expect": {
+        "action": "external",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: tel in a subframe blocks",
+      "rules": null,
+      "request": {
+        "url": "tel:+3725551234",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: custom scheme in a subframe blocks",
+      "rules": null,
+      "request": {
+        "url": "myapp://open",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: custom scheme in the main frame is external",
+      "rules": null,
+      "request": {
+        "url": "myapp://open"
       },
       "expect": {
         "action": "external",

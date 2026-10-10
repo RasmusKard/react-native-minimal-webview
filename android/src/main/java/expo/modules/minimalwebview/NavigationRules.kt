@@ -16,7 +16,8 @@ object NavigationRules {
       val action = when (scheme) {
         "http", "https" -> "allow"
         "file" -> "block"
-        else -> "external"
+        // an iframe (an ad) must not launch apps, so only the main frame goes external
+        else -> if (request.mainFrame) "external" else "block"
       }
       return Decision(action, null)
     }

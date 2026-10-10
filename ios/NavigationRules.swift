@@ -30,7 +30,8 @@ enum NavigationRules {
       switch scheme {
       case "http", "https": return Decision(action: "allow", rule: nil)
       case "file": return Decision(action: "block", rule: nil)
-      default: return Decision(action: "external", rule: nil)
+      // an iframe (an ad) must not launch apps, so only the main frame goes external
+      default: return Decision(action: request.mainFrame ? "external" : "block", rule: nil)
       }
     }
     // ponytail: an unparseable URL has no host and path "/", so only rules without host conditions match it
