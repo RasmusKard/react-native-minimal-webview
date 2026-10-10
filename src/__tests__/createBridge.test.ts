@@ -7,7 +7,8 @@ function setup(timeoutMs = 1000) {
   const connection = (bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
   const sent: BridgeMessage[] = [];
   connection.attach((text) => sent.push(JSON.parse(text) as BridgeMessage));
-  const fromPage = (message: object) => connection.receive(JSON.stringify({ v: 1, ...message }));
+  const fromPage = (message: object) =>
+    connection.receive(JSON.stringify({ v: 1, doc: 'd1', ...message }));
   return { bridge, connection, sent, fromPage };
 }
 
@@ -27,7 +28,7 @@ describe('createBridge', () => {
     bridge.emit('hello', 1);
     expect(sent).toEqual([]);
     fromPage({ id: '', kind: 'ready' });
-    expect(sent).toEqual([{ v: 1, id: '', kind: 'event', method: 'hello', params: 1 }]);
+    expect(sent).toEqual([{ v: 1, id: '', doc: 'd1', kind: 'event', method: 'hello', params: 1 }]);
   });
 
   it('resolves a call with the matching result', async () => {
@@ -83,15 +84,30 @@ describe('createBridge', () => {
     fromPage({ id: 'p3', kind: 'call', method: 'missing' });
     await flush();
     expect([...sent].sort((a, b) => a.id.localeCompare(b.id))).toEqual([
-      { v: 1, id: 'p1', kind: 'result', params: { x: 1 } },
-      { v: 1, id: 'p2', kind: 'error', error: { code: 'handler_error', message: 'Error: boom' } },
+      { v: 1, id: 'p1', doc: 'd1', kind: 'result', params: { x: 1 } },
+      {
+        v: 1,
+        id: 'p2',
+        doc: 'd1',
+        kind: 'error',
+        error: { code: 'handler_error', message: 'Error: boom' },
+      },
       {
         v: 1,
         id: 'p3',
+        doc: 'd1',
         kind: 'error',
         error: { code: 'not_found', message: 'no handler for missing' },
       },
     ]);
+  });
+
+  it('answers a page call made before the page is ready', async () => {
+    const { bridge, sent, fromPage } = setup();
+    bridge.handle('echo', (params) => params);
+    fromPage({ id: 'p1', kind: 'call', method: 'echo', params: 7 });
+    await flush();
+    expect(sent).toEqual([{ v: 1, id: 'p1', doc: 'd1', kind: 'result', params: 7 }]);
   });
 
   it('delivers page events to listeners until unsubscribed', () => {
@@ -113,8 +129,12 @@ describe('createBridge', () => {
   });
 
   it('rejects malformed allowedOrigins up front', () => {
-    expect(() => createBridge({ allowedOrigins: ['https://example.com/'] })).toThrow(/invalid allowedOrigins/);
-    expect(() => createBridge({ allowedOrigins: ['example.com'] })).toThrow(/invalid allowedOrigins/);
+    expect(() => createBridge({ allowedOrigins: ['https://example.com/'] })).toThrow(
+      /invalid allowedOrigins/
+    );
+    expect(() => createBridge({ allowedOrigins: ['example.com'] })).toThrow(
+      /invalid allowedOrigins/
+    );
     expect(() =>
       createBridge({ allowedOrigins: ['*', 'https://*.example.com', 'http://localhost:8090'] })
     ).not.toThrow();
@@ -127,7 +147,7 @@ describe('createBridge', () => {
     bridge.emit('late', 1);
     expect(sent).toEqual([]);
     fromPage({ id: '', kind: 'ready' });
-    expect(sent).toEqual([{ v: 1, id: '', kind: 'event', method: 'late', params: 1 }]);
+    expect(sent).toEqual([{ v: 1, id: '', doc: 'd1', kind: 'event', method: 'late', params: 1 }]);
   });
 
   it('sends calls made before the first page to it, without rejecting them', async () => {
@@ -157,7 +177,7 @@ describe('createBridge', () => {
     await expect(call).rejects.toMatchObject({ code: 'navigated' });
     bridge.emit('fresh', 2);
     fromPage({ id: '', kind: 'ready' });
-    expect(sent).toEqual([{ v: 1, id: '', kind: 'event', method: 'fresh', params: 2 }]);
+    expect(sent).toEqual([{ v: 1, id: '', doc: 'd1', kind: 'event', method: 'fresh', params: 2 }]);
   });
 
   it('does not send a queued call that already timed out', async () => {
@@ -180,5 +200,31 @@ describe('createBridge', () => {
     expect(seen).toEqual([]);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe('createBridge document token', () => {
+  it("sends to the document that said ready, and answers a page's call with that caller's token", async () => {
+    const { bridge, sent, fromPage, connection } = setup();
+    bridge.handle('echo', (params) => params);
+    fromPage({ id: 'p1', doc: 'early', kind: 'call', method: 'echo', params: 1 }); // before its ready
+    await flush();
+    bridge.emit('queued', 1);
+    fromPage({ id: '', doc: 'first', kind: 'ready' });
+    connection.navigated();
+    bridge.emit('next', 2);
+    fromPage({ id: '', doc: 'second', kind: 'ready' });
+    expect(sent.map((m) => [m.kind, m.doc])).toEqual([
+      ['result', 'early'],
+      ['event', 'first'],
+      ['event', 'second'],
+    ]);
+  });
+
+  it('drops a page message without a token', () => {
+    const { bridge, sent, connection } = setup();
+    bridge.emit('hello');
+    connection.receive(JSON.stringify({ v: 1, id: '', kind: 'ready' }));
+    expect(sent).toEqual([]);
   });
 });

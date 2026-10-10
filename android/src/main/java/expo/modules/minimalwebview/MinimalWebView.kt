@@ -33,7 +33,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   // Declared before webView: createWebView() reads them during construction.
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
   private val coreHost = hostFor("core") { event -> event in requestHandlers }
-  private val navigation = MinimalWebViewNavigation(this, coreHost) { onNavigation(it) }
+  private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
   /** Replaced when the render process dies; extensions read it through their host on every use. */
@@ -141,7 +141,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
   }
 
-  /** Settings that may change at any time; they apply from the next navigation. */
+  /**
+   * The settings, applied from each prop batch and to a new WebView after a crash. They apply from the next navigation.
+   * JS fixes applicationNameForUserAgent and mediaPlaybackRequiresUserAction at mount; the rest may change any time.
+   */
   private fun applySettings() {
     val settings = webView.settings
     settings.userAgentString = userAgent
@@ -190,13 +193,15 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       onExtension(mapOf("name" to name, "event" to event, "payload" to payload))
 
     override fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
-      onExtension(mapOf("name" to name, "event" to event, "payload" to payload, "askId" to register(onAnswer)))
+      this@MinimalWebView.ask(name, event, payload, onAnswer)
     }
   }
 
-  private fun register(onAnswer: (Any?) -> Unit): Int {
+  /** Asks JS as extension [name] (`core` for a page request). Returns the ask's id: [answer] with it, null to give up. */
+  internal fun ask(name: String, event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
     val id = ++nextAskId
     pendingAsks[id] = onAnswer
+    onExtension(mapOf("name" to name, "event" to event, "payload" to payload, "askId" to id))
     return id
   }
 

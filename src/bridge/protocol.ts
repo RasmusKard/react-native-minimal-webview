@@ -15,33 +15,51 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 export type BridgeError = { code: BridgeErrorCode; message: string };
 
 /**
- * `ready`: the page client is installed (Android needs one page message before it can reply).
+ * `ready`: the page's DOM is parsed (DOMContentLoaded), so its scripts have registered handlers. RN holds its calls and
+ * events for the page until then (native can't deliver before the page has posted). A page's own calls and their
+ * answers don't wait for it.
  * `call` / `result` / `error`: a request and its answer, matched by `id`.
  * `event`: fire-and-forget, `method` is the event name.
+ *
+ * `doc` is the page document's random token. The page puts it on every message it sends, and RN puts the token of the
+ * document it means on every message it sends: the page drops any message that isn't for it. Native delivers to
+ * whatever document is current (iOS checks only the origin), so a message posted as a same-origin navigation commits
+ * would otherwise reach the new page. Messages are built without it; `send` adds it.
  */
-export type BridgeMessage =
-  | { v: 1; id: string; kind: 'ready' }
-  | { v: 1; id: string; kind: 'call'; method: string; params?: unknown }
-  | { v: 1; id: string; kind: 'result'; params?: unknown }
-  | { v: 1; id: string; kind: 'error'; error: BridgeError }
-  | { v: 1; id: string; kind: 'event'; method: string; params?: unknown };
+export type BridgeMessage = { v: 1; id: string; doc?: string } & (
+  | { kind: 'ready' }
+  | { kind: 'call'; method: string; params?: unknown }
+  | { kind: 'result'; params?: unknown }
+  | { kind: 'error'; error: BridgeError }
+  | { kind: 'event'; method: string; params?: unknown }
+);
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-/** Returns the message, or a `BridgeError` saying why it was rejected. Never throws. */
-export function parseBridgeMessage(raw: string): BridgeMessage | BridgeError {
+/**
+ * Parses a message from the page, which always carries `doc`.
+ * Returns it, or a `BridgeError` saying why it was rejected. Never throws.
+ */
+export function parseBridgeMessage(raw: string): (BridgeMessage & { doc: string }) | BridgeError {
   let value: unknown;
   try {
     value = JSON.parse(raw);
   } catch {
     return { code: 'invalid', message: 'not JSON' };
   }
-  if (!isObject(value) || value['v'] !== PROTOCOL_VERSION || typeof value['id'] !== 'string') {
-    return { code: 'invalid', message: 'missing v or id' };
+  if (
+    !isObject(value) ||
+    value['v'] !== PROTOCOL_VERSION ||
+    typeof value['id'] !== 'string' ||
+    typeof value['doc'] !== 'string'
+  ) {
+    return { code: 'invalid', message: 'missing v, id or doc' };
   }
   const problem = kindProblem(value);
-  return problem ? { code: 'invalid', message: problem } : (value as BridgeMessage);
+  return problem
+    ? { code: 'invalid', message: problem }
+    : (value as BridgeMessage & { doc: string });
 }
 
 function kindProblem(value: Record<string, unknown>): string | null {
