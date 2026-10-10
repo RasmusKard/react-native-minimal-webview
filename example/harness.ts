@@ -951,14 +951,14 @@ async function injection(h: Harness) {
   r.done();
 }
 
-/** Downloads: an attachment, a blob: and a data: link all end in onDownload with a sanitised filename. */
+/** Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename. */
 async function downloadsSuite(h: Harness) {
   const r = reporter('downloads');
   await openPage(h, `${h.pages}/media.html?t=${Date.now()}`);
-  for (const [id, filename] of [
-    ['attachment', 'report.txt'],
-    ['blob', 'blob.txt'],
-    ['data', 'data.txt'],
+  for (const [id, filename, body] of [
+    ['attachment', 'report.txt', 'downloaded report.txt'],
+    ['blob', 'blob.txt', 'blob body'],
+    ['data', 'data.txt', 'data body'],
   ] as const) {
     const before = h.events.downloads.length;
     await click(h, id);
@@ -967,10 +967,8 @@ async function downloadsSuite(h: Harness) {
     // Android's DownloadListener does not pass the link's `download` attribute: data:/blob: names are guessed.
     const nameOk = Platform.OS === 'android' && id !== 'attachment' ? download?.filename.endsWith('.txt') : download?.filename === filename;
     r.check(`${id} download reaches onDownload`, done && nameOk === true, download);
-    if (download?.uri.startsWith('file:')) {
-      const body = await new File(download.uri).text();
-      r.info(`${id} body`, body.slice(0, 40));
-    }
+    const text = download?.uri.startsWith('file:') ? await new File(download.uri).text() : null;
+    r.check(`${id} file holds the body`, text?.startsWith(body) === true, text?.slice(0, 40));
   }
   r.done();
 }

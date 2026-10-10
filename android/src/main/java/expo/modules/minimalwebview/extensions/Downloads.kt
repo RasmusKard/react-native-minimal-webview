@@ -1,16 +1,9 @@
 package expo.modules.minimalwebview.extensions
 
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
-import android.os.Environment
 import android.util.Base64
 import android.util.Log
 import android.webkit.CookieManager
-import androidx.core.content.ContextCompat
 import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.DownloadInfo
 import expo.modules.minimalwebview.ExtensionHost
@@ -21,19 +14,19 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.concurrent.Executors
 
 /**
- * Downloads: http(s) through DownloadManager with the page's cookies and user agent (system notification, the public
- * Downloads folder; no permission needed on API 29+); data: and blob: are written to the app cache. Each finished
- * download emits `download {uri, filename, mimeType, url}`; a failed one emits `downloadFailed {filename, url, reason}`.
- * Nothing here may crash the app: the page controls the URL and DownloadManager can be disabled.
+ * Downloads: http(s) is fetched again with the page's cookies and user agent (WebView hands over only the URL), data:
+ * is decoded, and blob: is read by the page. Each lands in its own app-cache directory and emits
+ * `download {uri, filename, mimeType, url}`, as on iOS; a failed one emits `downloadFailed {filename, url, reason}`.
+ * Nothing here may crash the app: the page controls the URL.
  */
 class Downloads : WebViewExtension {
   private lateinit var host: ExtensionHost
-  private val pending = mutableMapOf<Long, Pair<String, String>>() // DownloadManager id -> filename, mimeType
-  private var receiver: BroadcastReceiver? = null
-  private val io = Executors.newSingleThreadExecutor()
+  private val io = Executors.newCachedThreadPool()
 
   override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
     this.host = host
@@ -43,70 +36,53 @@ class Downloads : WebViewExtension {
     val name = URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType)
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
-      download.url.startsWith("data:") -> saveData(name, download.url) { download.url }
-      else -> enqueue(download, name)
+      download.url.startsWith("data:") -> save(name, download.url) { file -> writeDataUrl(file, download.url) }
+      download.url.startsWith("http:") || download.url.startsWith("https:") -> fetch(download, name)
+      else -> failed(name, download.url, IOException("unsupported URL scheme"))
     }
     return true
   }
 
-  private fun enqueue(download: DownloadInfo, name: String) {
-    val context = host.webView.context
-    try {
-      val manager = context.getSystemService(DownloadManager::class.java)
-      val request = DownloadManager.Request(Uri.parse(download.url))
-        .setTitle(name)
-        .setMimeType(download.mimeType)
-        .addRequestHeader("User-Agent", download.userAgent)
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
-      CookieManager.getInstance().getCookie(download.url)?.let { request.addRequestHeader("Cookie", it) }
-      listen(context)
-      pending[manager.enqueue(request)] = name to download.mimeType
-    } catch (e: IllegalArgumentException) {
-      // Not an http(s) URL, or DownloadManager (the system app) is disabled.
-      failed(name, download.url, e)
-    } catch (e: IllegalStateException) {
-      // The public Downloads directory is unavailable.
-      failed(name, download.url, e)
+  private fun fetch(download: DownloadInfo, name: String) {
+    // Read on the main thread: CookieManager belongs to the WebView's thread.
+    val cookie = CookieManager.getInstance().getCookie(download.url)
+    save(name, download.url) { file ->
+      val connection = URL(download.url).openConnection() as HttpURLConnection
+      try {
+        connection.connectTimeout = TIMEOUT_MS
+        connection.readTimeout = TIMEOUT_MS
+        connection.setRequestProperty("User-Agent", download.userAgent)
+        cookie?.let { connection.setRequestProperty("Cookie", it) }
+        val status = connection.responseCode
+        if (status !in 200..299) throw IOException("HTTP $status")
+        connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
+        download.mimeType.ifEmpty { connection.contentType?.substringBefore(';') ?: "application/octet-stream" }
+      } finally {
+        connection.disconnect()
+      }
     }
   }
 
-  private fun listen(context: Context) {
-    if (receiver != null) return
-    receiver = object : BroadcastReceiver() {
-      override fun onReceive(context: Context, intent: Intent) {
-        val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-        val (name, mimeType) = pending.remove(id) ?: return
-        val uri = context.getSystemService(DownloadManager::class.java).getUriForDownloadedFile(id)
-        if (uri == null) {
-          host.emit("downloadFailed", mapOf("filename" to name, "url" to null, "reason" to "DownloadManager reported a failure"))
-        } else {
-          host.emit("download", mapOf("uri" to uri.toString(), "filename" to name, "mimeType" to mimeType, "url" to null))
-        }
-      }
-    }
-    ContextCompat.registerReceiver(
-      context, receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), ContextCompat.RECEIVER_EXPORTED
-    )
+  /** Writes [data] (a data: URL) to [file] and returns its MIME type. */
+  private fun writeDataUrl(file: File, data: String): String {
+    val header = data.substringBefore(',')
+    // The body may be percent-encoded even when base64 (encodeURIComponent of the base64 text).
+    val body = data.substringAfter(',').let { if ('%' in it) Uri.decode(it) else it }
+    file.writeBytes(if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else body.toByteArray())
+    return header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }
   }
 
   /**
-   * Writes a data: URL, which [dataUrl] produces, to the cache. Unquoting, decoding and writing the payload (a blob can
-   * be megabytes) run off the main thread; the event goes back on it. [url] is the download's own URL, for the event.
+   * Runs [write] off the main thread (a download can be megabytes); it fills the file and returns its MIME type. One
+   * directory per download, so the same guessed name never overwrites a file already handed to the app. The event goes
+   * back on the main thread. [url] is the download's own URL, for the event.
    */
-  private fun saveData(name: String, url: String, dataUrl: () -> String) {
-    val dir = File(host.webView.context.cacheDir, "downloads/${System.nanoTime()}")
+  private fun save(name: String, url: String, write: (File) -> String) {
+    val file = File(host.webView.context.cacheDir, "downloads/${System.nanoTime()}/$name")
     io.execute {
       val result = try {
-        val data = dataUrl()
-        val header = data.substringBefore(',')
-        // The body may be percent-encoded even when base64 (encodeURIComponent of the base64 text).
-        val body = data.substringAfter(',').let { if ('%' in it) Uri.decode(it) else it }
-        val bytes = if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else body.toByteArray()
-        // One directory per download: the same guessed name must not overwrite a file already handed to the app.
-        dir.mkdirs()
-        val mimeType = header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }
-        Saved(File(dir, name).apply { writeBytes(bytes) }, mimeType)
+        file.parentFile?.mkdirs()
+        write(file)
       } catch (e: IllegalArgumentException) {
         e // invalid base64
       } catch (e: IOException) {
@@ -116,9 +92,9 @@ class Downloads : WebViewExtension {
       }
       host.webView.post {
         when (result) {
-          is Saved -> host.emit(
+          is String -> host.emit(
             "download",
-            mapOf("uri" to Uri.fromFile(result.file).toString(), "filename" to name, "mimeType" to result.mimeType, "url" to url.take(100))
+            mapOf("uri" to Uri.fromFile(file).toString(), "filename" to name, "mimeType" to result, "url" to url.take(100))
           )
           is Exception -> failed(name, url, result)
         }
@@ -126,7 +102,7 @@ class Downloads : WebViewExtension {
     }
   }
 
-  /** WebView cannot hand blob: URLs to DownloadManager: the page reads the blob and returns it as a data: URL. */
+  /** WebView cannot fetch a blob: URL for us: the page reads the blob and returns it as a data: URL. */
   private fun readBlob(url: String, name: String) {
     val script = """
       fetch(${JSONObject.quote(url)}).then((r) => r.blob()).then((b) => new Promise((ok, fail) => {
@@ -136,7 +112,11 @@ class Downloads : WebViewExtension {
     """.trimIndent()
     host.evaluate(script) { result ->
       result.fold(
-        { json -> saveData(name, url) { JSONTokener(json).nextValue() as? String ?: throw IOException("could not read the blob") } },
+        { json ->
+          save(name, url) { file ->
+            writeDataUrl(file, JSONTokener(json).nextValue() as? String ?: throw IOException("could not read the blob"))
+          }
+        },
         { error -> failed(name, url, IOException("could not read the blob: ${error.message}")) }
       )
     }
@@ -148,10 +128,10 @@ class Downloads : WebViewExtension {
   }
 
   override fun onDetach() {
-    receiver?.let { host.webView.context.unregisterReceiver(it) }
-    receiver = null
     io.shutdown()
   }
 
-  private class Saved(val file: File, val mimeType: String)
+  private companion object {
+    const val TIMEOUT_MS = 30_000
+  }
 }
