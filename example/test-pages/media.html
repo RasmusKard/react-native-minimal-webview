@@ -9,6 +9,11 @@
 <label>any file <input id="file" type="file" onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
 <label>images, multiple <input id="images" type="file" accept="image/*" multiple onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
 <label>camera capture <input id="capture" type="file" accept="image/*" capture="environment" onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
+<div id="fs" style="background:#036;color:#fff;padding:8px">fullscreen target</div>
+<button id="fullscreen" onclick="document.getElementById('fs').requestFullscreen().then(() => log('fullscreen on'), (e) => log('fullscreen error', e.name))">go fullscreen</button>
 <a id="attachment" href="/download?name=report.txt">attachment download</a>
-<a id="blob" href="#" onclick="event.preventDefault(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['blob body'], { type: 'text/plain' })); a.download = 'blob.txt'; a.click()">blob: download</a>
+<a id="blob" download="blob.txt">blob: download</a>
+<script>
+  document.getElementById('blob').href = URL.createObjectURL(new Blob(['blob body'], { type: 'text/plain' }));
+</script>
 <a id="data" href="data:text/plain,data%20body" download="data.txt">data: download</a>

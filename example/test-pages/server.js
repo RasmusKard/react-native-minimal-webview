@@ -5,6 +5,8 @@
 //   /post                          echoes a form POST (payment-style flow)
 //   /slow?ms=<n>                   delays the response
 //   /status/<code>                 empty response with that status
+//   /ua                            shows the User-Agent header the server received
+//   /flaky?key=<k>                 503 the first time for a key, then the normal page (reload-after-error tests)
 //   /harness/run?platform=<ios|android>&suite=<name>  queues a harness suite; the example app polls /harness/next and posts results to
 //                                  /harness/log, which this server prints
 const fs = require('fs');
@@ -33,6 +35,7 @@ function serveFile(res, pathname) {
 }
 
 const queued = new Map(); // platform (ios | android) -> suite name
+const flakyKeys = new Set();
 
 function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -50,6 +53,17 @@ function handle(req, res) {
       console.log(body);
       res.end();
     });
+  } else if (url.pathname === '/ua') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><meta name="viewport" content="width=device-width"><pre id="ua">${(req.headers['user-agent'] ?? '').replace(/</g, '&lt;')}</pre>`);
+  } else if (url.pathname === '/flaky') {
+    const key = q.get('key') ?? '';
+    if (flakyKeys.has(key)) return serveFile(res, '/index.html');
+    flakyKeys.add(key);
+    res.writeHead(503).end('try again');
+  } else if (url.pathname === '/checkout/loopA' || url.pathname === '/checkout/loopB') {
+    // A redirect loop between two URLs (for the `ask` loop guard).
+    res.writeHead(302, { location: url.pathname.endsWith('A') ? '/checkout/loopB' : '/checkout/loopA' }).end();
   } else if (url.pathname === '/redirect') {
     res.writeHead(Number(q.get('code') ?? 302), { location: q.get('to') ?? '/' }).end();
   } else if (url.pathname === '/download') {

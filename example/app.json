@@ -8,7 +8,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "expo.modules.minimalwebview.example"
+      "bundleIdentifier": "expo.modules.minimalwebview.example",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Test pages use the camera.",
+        "NSMicrophoneUsageDescription": "Test pages use the microphone.",
+        "NSLocationWhenInUseUsageDescription": "Test pages use your location.",
+        "NSPhotoLibraryUsageDescription": "Test pages upload photos."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +24,13 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "expo.modules.minimalwebview.example"
+      "package": "expo.modules.minimalwebview.example",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
