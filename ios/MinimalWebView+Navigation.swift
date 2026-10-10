@@ -65,6 +65,11 @@ extension MinimalWebView {
       finish(request, decision.action, decision.rule, completion)
       return
     }
+    // Without an onNavigationRequest prop nobody could allow it.
+    guard requestHandlers.contains("navigationRequest") else {
+      finish(request, "block", decision.rule, completion)
+      return
+    }
     let id = register { [weak self] answer in
       // The view can be gone (teardown flushes pending asks from deinit): the decision handler must still be called.
       guard let self else { return completion(false) }
@@ -72,7 +77,7 @@ extension MinimalWebView {
       if action == "allow" { self.askedAndAllowed.insert(request.url) }
       self.finish(request, ["allow", "block", "external"].contains(action) ? action : "block", decision.rule, completion)
     }
-    onNavigationRequest(request.payload.merging(["id": id]) { $1 })
+    onExtension(["name": "core", "event": "navigationRequest", "payload": request.payload, "askId": id])
     // Unanswered after the timeout: block.
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
       self?.pendingAsks.removeValue(forKey: id)?(nil)
@@ -81,7 +86,7 @@ extension MinimalWebView {
 
   private func finish(_ request: NavigationRules.Request, _ action: String, _ rule: Int?, _ completion: (Bool) -> Void) {
     completion(action == "allow")
-    guard action == "external", !openExternalInJS else { return report(request, action, rule) }
+    guard action == "external", !requestHandlers.contains("openExternal") else { return report(request, action, rule) }
     // As on Android: an external URL that nothing opens is reported as blocked.
     guard let url = URL(string: request.url) else { return report(request, "block", rule) }
     UIApplication.shared.open(url) { [weak self] opened in self?.report(request, opened ? "external" : "block", rule) }

@@ -85,7 +85,7 @@ class MinimalWebViewModule : Module() {
     }
 
     View(MinimalWebView::class) {
-      Events("onNavigationState", "onNavigationRequest", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { view: MinimalWebView, source: WebViewSource? -> view.source = source }
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
@@ -104,7 +104,6 @@ class MinimalWebViewModule : Module() {
       }
       Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
       Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty().toSet() }
-      Prop("openExternalInJS") { view: MinimalWebView, value: Boolean? -> view.openExternalInJS = value ?: false }
       Prop("webviewDebuggingEnabled") { view: MinimalWebView, value: Boolean? -> view.webviewDebuggingEnabled = value ?: false }
 
       OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
