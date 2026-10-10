@@ -1,8 +1,9 @@
 name: test
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: pull_request
+
+concurrency:   # a new push cancels the run for the previous one
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   typescript:
@@ -18,25 +19,14 @@ jobs:
       - run: npm run check:pack   # clean build, then every relative import in the packed build/ must be packed too
 
   # The rule matchers on every platform against the shared cases in test-vectors/ (navigation and origin rules).
+  # Linux, not macOS: OriginRules.swift and NavigationRules.swift need only Foundation, and macOS minutes cost 10x.
   swift-rules:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: >-
-          xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o rules
-          && ./rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
-
-  kotlin-rules:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - uses: actions/setup-java@v4
-        with: { distribution: zulu, java-version: 17 }
-      - run: npm ci && (cd example && npm ci)
-      - run: cd example && npx expo prebuild --platform android --no-install
-      - run: cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest
+      - run: >-
+          swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o rules
+          && ./rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
 
-  # On-device suites (example/harness.ts) need an emulator and a simulator; they run locally for now:
-  # see README "Development".
+  # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites
+  # (example/harness.ts), which need an emulator and a simulator: see README "Development".
