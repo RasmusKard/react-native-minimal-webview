@@ -15,7 +15,7 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 export type BridgeError = { code: BridgeErrorCode; message: string };
 
 /**
- * `ready`: the page client is installed (Android needs one page message before it can reply).
+ * `ready`: the page client is installed (native can't deliver to the page before it has heard from it).
  * `call` / `result` / `error`: a request and its answer, matched by `id`.
  * `event`: fire-and-forget, `method` is the event name.
  */
