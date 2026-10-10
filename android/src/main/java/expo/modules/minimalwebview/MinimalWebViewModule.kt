@@ -62,7 +62,7 @@ class MinimalWebViewModule : Module() {
       Prop("extensions") { view: MinimalWebView, extensions: List<Map<String, Any?>>? -> view.extensions = extensions }
       Prop("userAgent") { view: MinimalWebView, value: String? -> view.userAgent = value }
       Prop("applicationNameForUserAgent") { view: MinimalWebView, value: String? -> view.applicationNameForUserAgent = value }
-      Prop("thirdPartyCookies") { view: MinimalWebView, value: Boolean? -> view.thirdPartyCookies = value ?: false }
+      Prop("thirdPartyCookiesEnabled") { view: MinimalWebView, value: Boolean? -> view.thirdPartyCookiesEnabled = value ?: false }
       Prop("mediaPlaybackRequiresUserAction") { view: MinimalWebView, value: Boolean? ->
         view.mediaPlaybackRequiresUserAction = value ?: true
       }

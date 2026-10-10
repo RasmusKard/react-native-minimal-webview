@@ -131,7 +131,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
 | `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
-| `thirdPartyCookies` | Android only. WebKit always blocks third-party cookies (as Safari does) |
+| `thirdPartyCookiesEnabled` | Android only, default false. WebKit always blocks third-party cookies (as Safari does) |
 | `mediaPlaybackRequiresUserAction` (default true), `allowsInlineMediaPlayback` (iOS, default false) | Fixed at creation on iOS |
 | `scrollEnabled`, `bounces` | iOS only |
 | `showsScrollIndicators` | |
