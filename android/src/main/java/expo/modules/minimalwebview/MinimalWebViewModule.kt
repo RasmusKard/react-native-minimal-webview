@@ -67,7 +67,8 @@ class MinimalWebViewModule : Module() {
     }
 
     // The WebView provider and the features this package uses (false: update Android System WebView).
-    Function("getAndroidWebViewInfo") {
+    // Computed on first access and fixed after: a WebView update restarts the process.
+    Constant("androidWebViewInfo") {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
       val provider = WebViewCompat.getCurrentWebViewPackage(context)
       mapOf(
