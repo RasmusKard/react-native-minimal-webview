@@ -16,5 +16,9 @@
 <script>
   document.getElementById('blob').href = URL.createObjectURL(new Blob(['blob body'], { type: 'text/plain' }));
 </script>
+<a id="moved">moved attachment</a>
+<script>
+  document.getElementById('moved').href = '/moved?key=' + Date.now();
+</script>
 <a id="baddata" href="data:text/plain;base64,@@@not-base64@@@" download="bad.txt">invalid data: download</a>
 <a id="data" href="data:text/plain,data%20body" download="data.txt">data: download</a>

@@ -22,6 +22,8 @@ dependencies {
   implementation 'androidx.webkit:webkit:1.17.1'
   implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0' // pullToRefresh
   implementation 'androidx.activity:activity:1.8.0' // fullscreenVideo: back press exits fullscreen
+  // downloads: OkHttp and the cookie bridge to CookieManager, at the app's React Native version (as the expo package does)
+  implementation 'com.facebook.react:react-android'
   testImplementation 'junit:junit:4.13.2'
   testImplementation 'org.json:json:20250517' // the real org.json; Android's is a stub in JVM tests
 }

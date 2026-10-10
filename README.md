@@ -161,7 +161,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
 | `fullscreenVideo({ onChange, orientation? })` | Built in (WebKit) | The page's fullscreen view covers the WebView's window (so it works inside a `Modal`) on black, system bars hide, and back exits. `orientation: 'unlock'` lets a portrait-locked app rotate while fullscreen |
 | `fileUpload({ onFileRequest? })` | Built in (WebKit's picker; needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`) | `onFileRequest({ accept, multiple, capture })` returns URIs, or `null` to cancel. Without it, the system chooser opens |
-| `downloads({ onDownload, onError? })` | `WKDownload` into the temporary directory | `DownloadManager` (the page's cookies and user agent, a notification, public Downloads); `data:` and `blob:` go to the cache. `onError({ filename, url, reason })` on both platforms |
+| `downloads({ onDownload, onError? })` | `WKDownload` (the page's session) into the temporary directory | Fetched again with the page's cookies and user agent into the cache; `data:` and `blob:` too. A POST body, the `headers` prop and `httpAuth` credentials don't go with it, so such a download can fail or save the wrong file (a login page). `onDownload` gets a `file://` on both platforms, `onError({ filename, url, reason })` |
 | `permissions({ origins, onPermissionRequest? })` | WebKit asks the OS. `true` skips WebKit's own prompt; other origins are denied | Grants only if the app says yes **and** the OS permission is granted. Never prompts by itself. WebView keeps a location answer until the page changes |
 | `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
 | `httpAuth({ onAuthRequest })` | `onAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | The same. Without the extension, auth challenges are cancelled and the site's 401 page shows |
@@ -192,9 +192,22 @@ permissions({
 });
 ```
 
-Sharing a download with expo-sharing:
+A download is a file in the app's cache. The app opens, saves or shares it, with expo-file-system and expo-sharing:
 
 ```tsx
+// Open it: Quick Look on iOS, an app for the MIME type on Android.
+downloads({ onDownload: ({ uri }) => new File(uri).preview() });
+
+// Save it where the user chooses: a folder pick on Android, the share sheet's "Save to Files" on iOS.
+downloads({
+  onDownload: async ({ uri, filename, mimeType }) => {
+    if (Platform.OS === 'ios') return Sharing.shareAsync(uri);
+    const target = (await Directory.pickDirectoryAsync()).createFile(filename, mimeType);
+    await target.write(await new File(uri).bytes());
+  },
+});
+
+// Share it.
 downloads({ onDownload: ({ uri }) => Sharing.shareAsync(uri) });
 ```
 
