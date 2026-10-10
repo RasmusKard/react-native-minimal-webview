@@ -15,7 +15,10 @@ describe('origin rules (shared cases)', () => {
   });
 
   it.each(cases)('page client: %s', (_name, c) => {
-    const w = { location: { origin: c.origin } } as Parameters<typeof installPageClient>[0];
+    const w = {
+      location: { origin: c.origin },
+      addEventListener: () => {},
+    } as unknown as Parameters<typeof installPageClient>[0];
     Object.assign(w, { top: w });
     installPageClient(w, 1000, c.rules);
     expect(w.nativeBridge !== undefined).toBe(c.allowed);
