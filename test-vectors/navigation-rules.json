@@ -1,5 +1,5 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host and path are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'.",
   "rulesets": {
     "app": [
       {
@@ -11,8 +11,12 @@
         "action": "external"
       },
       {
-        "host": "*.example.com",
-        "path": "/checkout",
+        "host": [
+          "*.example.com"
+        ],
+        "path": [
+          "/checkout"
+        ],
         "action": "ask"
       },
       {
@@ -48,7 +52,9 @@
         "action": "external"
       },
       {
-        "host": "EXAMPLE.com",
+        "host": [
+          "EXAMPLE.com"
+        ],
         "path": [
           "/a%20b",
           "/x"
@@ -56,18 +62,33 @@
         "action": "ask"
       },
       {
-        "host": "xn--mnchen-3ya.de",
+        "host": [
+          "xn--mnchen-3ya.de"
+        ],
         "action": "allow"
       },
       {
-        "scheme": "HTTPS",
-        "host": "*.example.com",
+        "scheme": [
+          "HTTPS"
+        ],
+        "host": [
+          "*.example.com"
+        ],
         "action": "allow"
       }
     ],
     "catchAll": [
       {
         "action": "block"
+      },
+      {
+        "action": "allow"
+      }
+    ],
+    "notAList": [
+      {
+        "scheme": "tel",
+        "action": "external"
       },
       {
         "action": "allow"
@@ -554,6 +575,17 @@
       },
       "expect": {
         "action": "ask",
+        "rule": 1
+      }
+    },
+    {
+      "name": "a field that is not a list never matches",
+      "rules": "notAList",
+      "request": {
+        "url": "tel:123"
+      },
+      "expect": {
+        "action": "allow",
         "rule": 1
       }
     }
