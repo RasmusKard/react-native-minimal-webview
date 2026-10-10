@@ -153,12 +153,16 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
 
 const NEEDS = {
   bridge: {
-    features: ['WEB_MESSAGE_LISTENER', 'JS_INJECTION_IN_FRAME_AND_WORLD'],
+    features: ['WEB_MESSAGE_LISTENER', 'DOCUMENT_START_SCRIPT'],
     lost: 'bridge calls reject with `unavailable`',
   },
   injectedScripts: {
+    features: ['DOCUMENT_START_SCRIPT'],
+    lost: "`when: 'start'` scripts don't run",
+  },
+  endScripts: {
     features: ['JS_INJECTION_IN_FRAME_AND_WORLD'],
-    lost: "injectedScripts don't run",
+    lost: "`when: 'end'` scripts don't run (WebView 146+)",
   },
 };
 // Read once: a WebView update restarts the app process.
@@ -182,7 +186,7 @@ export function warnUnsupported(used: Record<keyof typeof NEEDS, boolean>) {
     if (!device || !missing.length) continue;
     warned.add(prop);
     console.warn(
-      `[react-native-minimal-webview] ${prop} needs WebView features ${missing.join(', ')}, missing in ${device.provider} ${device.version}: ${lost}. Update Android System WebView to 146+.`
+      `[react-native-minimal-webview] ${prop} needs WebView features ${missing.join(', ')}, missing in ${device.provider} ${device.version}: ${lost}. Update Android System WebView.`
     );
   }
 }
@@ -217,10 +221,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     return () => connection.detach();
   }, [connection]);
 
-  const hasScripts = !!props.injectedScripts?.length;
+  const hasStart = !!props.injectedScripts?.some((script) => script.when !== 'end');
+  const hasEnd = !!props.injectedScripts?.some((script) => script.when === 'end');
   useEffect(
-    () => warnUnsupported({ bridge: !!connection, injectedScripts: hasScripts }),
-    [connection, hasScripts]
+    () => warnUnsupported({ bridge: !!connection, injectedScripts: hasStart, endScripts: hasEnd }),
+    [connection, hasStart, hasEnd]
   );
 
   const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {

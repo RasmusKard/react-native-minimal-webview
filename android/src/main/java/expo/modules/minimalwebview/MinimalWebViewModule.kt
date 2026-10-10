@@ -46,6 +46,7 @@ class MinimalWebViewModule : Module() {
         "features" to listOf(
           WebViewFeature.NAVIGATION_LISTENER,
           WebViewFeature.WEB_MESSAGE_LISTENER,
+          WebViewFeature.DOCUMENT_START_SCRIPT,
           WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
         ).associateWith { WebViewFeature.isFeatureSupported(it) }
       )

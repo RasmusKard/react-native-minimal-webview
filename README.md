@@ -13,14 +13,22 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 **Requirements:**
 - iOS 16.4.
 - Android API 29+. Set `minSdkVersion 29`, for example with `expo-build-properties`.
-- Expo SDK 58 or a bare app with the new architecture.
+- Expo SDK 53+ (React Native 0.79+, React 19) with the new architecture. A bare React Native app works too, once it has the `expo` package through `npx install-expo-modules@latest`.
 
-Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run, bridge calls and `evaluate` reject with `unavailable`, and `blob:` downloads fail. For `injectedScripts` and the bridge, the library warns about it once per process, in every build. To gate on it, check what the device supports:
+On Android, a few features depend on the device's Android System WebView. Any API 29+ device with WebView updates
+enabled has them all.
+- `when: 'end'` injected scripts need WebView 146+; older ones skip them.
+- The bridge and `when: 'start'` scripts need the `WEB_MESSAGE_LISTENER` and `DOCUMENT_START_SCRIPT` features; without
+  them bridge calls reject with `unavailable` and start scripts don't run. `evaluate` (and so `blob:` downloads) needs
+  `WEB_MESSAGE_LISTENER`. Both are in WebView 101 and newer.
+
+For the bridge and `injectedScripts`, the library warns about a missing feature once per process, in every build. To
+gate on it, check what the device supports:
 
 ```ts
 const info = WebView.getAndroidWebViewInfo(); // null on iOS
-const canInject = info?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
-const canBridge = canInject && info?.features.WEB_MESSAGE_LISTENER !== false;
+const canBridge = info?.features.WEB_MESSAGE_LISTENER !== false && info?.features.DOCUMENT_START_SCRIPT !== false;
+const canEndScripts = info?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
 ```
 
 ## Quick start
@@ -106,7 +114,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 ```
 
 **How it behaves:**
-- **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (Android System WebView older than 146; see Requirements), `invalid` and `too_large`.
+- **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (an Android System WebView without the bridge's features; see Requirements), `invalid` and `too_large`.
 - **Timeouts:** calls time out after 10 s by default (`timeoutMs`).
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts.
 - **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. The `permissions` extension's `origins` match the same way. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
@@ -120,7 +128,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 |---|---|
 | `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only |
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. On iOS the app name is fixed at creation: changing it recreates the WebView |
-| `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. Android needs System WebView 146+ (see Requirements) |
+| `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
 | `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
 | `thirdPartyCookies` | Android only. WebKit always blocks third-party cookies (as Safari does) |
