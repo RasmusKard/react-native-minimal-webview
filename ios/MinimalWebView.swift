@@ -62,8 +62,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var emitScheduled = false
   private var crashTimes: [Date] = []
 
-  // Bridge: page calls wait for RN's answer here, by message id. WebKit requires each reply handler be called once.
-  var pendingReplies: [String: (Any?, String?) -> Void] = [:]
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
   // allowed). RN's messages are delivered only while the page still has it.
   var bridgeOrigin: String?
@@ -163,7 +161,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // Without a gesture only when the app opts in (javaScriptCanOpenWindowsAutomatically).
     configuration.preferences.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
     if bridgeScript != nil {
-      configuration.userContentController.addScriptMessageHandler(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
+      configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
     installScripts(configuration.userContentController)
     activeExtensions = extensions.compactMap { spec in
@@ -215,7 +213,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     activeExtensions = nil
     failPendingAsks()
     dismissDialog()
-    failPendingReplies()
     observations.removeAll()
     webView?.configuration.userContentController.removeAllScriptMessageHandlers()
     webView?.stopLoading()
@@ -358,7 +355,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
     // challenge holds its own page's response, so that page can't commit while it waits.
     failPendingAsks()
-    failPendingReplies()
     bridgeOrigin = nil
     // A new document: JS queues bridge messages until the page is ready again.
     if bridgeScript != nil { onBridge(["navigated": true]) }
@@ -394,7 +390,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
     let recovered = crashTimes.count <= maxCrashesPerWindow
     dismissDialog()
-    failPendingReplies()
     // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
     // (or the failed or committed URL) rather than jumping back to the source. An html source loads again.
     if recovered {

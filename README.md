@@ -155,7 +155,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 - **Timeouts:** calls time out after 10 s by default (`timeoutMs`).
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts, and a page's own calls when it comes back from the back-forward cache. The other side may already have handled such a call, so retry only calls that are safe to repeat.
 - **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
-- **Transports:** iOS uses `WKScriptMessageHandlerWithReply` plus `callAsyncJavaScript`; Android uses `addWebMessageListener` with origin rules.
+- **Transports:** iOS uses a `WKScriptMessageHandler` plus `callAsyncJavaScript`; Android uses `addWebMessageListener` with origin rules.
 
 Build your own page APIs on top of it, for example an injected `window.MyAppAPI` that calls the bridge.
 
