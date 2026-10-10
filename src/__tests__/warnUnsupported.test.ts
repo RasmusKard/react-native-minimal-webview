@@ -1,9 +1,14 @@
 import type { AndroidWebViewInfo } from '../types';
 
 const mockGetInfo = jest.fn<AndroidWebViewInfo, []>();
+const nativeModule = {
+  get androidWebViewInfo() {
+    return mockGetInfo();
+  },
+};
 jest.mock('expo', () => ({
   requireNativeView: () => 'MinimalWebView',
-  requireNativeModule: () => ({ getAndroidWebViewInfo: mockGetInfo }),
+  requireNativeModule: () => nativeModule,
 }));
 
 const device = (documentStart: boolean, injection = documentStart): AndroidWebViewInfo => ({

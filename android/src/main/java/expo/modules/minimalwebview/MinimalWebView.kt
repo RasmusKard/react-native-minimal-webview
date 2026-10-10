@@ -41,12 +41,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     private set
 
   // Props, applied together in applyProps()
-  var source: Map<String, Any?>? = null
+  var source: WebViewSource? = null
   var navigationRules: List<Map<String, Any?>>? = null
   var bridgeScript: String? = null
   var bridgeOrigins: List<String>? = null
-  var extensions: List<Map<String, Any?>>? = null
-  var injectedScripts: List<Map<String, Any?>>? = null
+  var extensions: List<ExtensionSpec>? = null
+  var injectedScripts: List<InjectedScript>? = null
   var userAgent: String? = null
   var applicationNameForUserAgent: String? = null
   var thirdPartyCookiesEnabled = false
@@ -58,7 +58,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var openExternalInJS = false
   /** The page requests JS has a prop for (`fileRequest`, `download`, ...), read when a request comes. */
   var requestHandlers: Set<String> = emptySet()
-  private var loadedSource: Map<String, Any?>? = null
+  private var loadedSource: WebViewSource? = null
 
   // Installed once, from the first props: JS fixes `extensions` at mount. `wrap` runs again for each new WebView.
   private var activeExtensions: Map<String, WebViewExtension>? = null
@@ -132,13 +132,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     load(next)
   }
 
-  private fun load(source: Map<String, Any?>) {
-    val uri = source["uri"] as? String
-    if (uri != null) {
-      val headers = (source["headers"] as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value.toString() }
-      webView.loadUrl(uri, headers.orEmpty())
+  private fun load(source: WebViewSource) {
+    if (source.uri != null) {
+      webView.loadUrl(source.uri, source.headers.orEmpty())
     } else {
-      webView.loadDataWithBaseURL(source["baseUrl"] as? String, source["html"] as? String ?: "", "text/html", "utf-8", null)
+      webView.loadDataWithBaseURL(source.baseUrl, source.html ?: "", "text/html", "utf-8", null)
     }
   }
 
@@ -158,12 +156,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   private fun installExtensions() {
     activeExtensions = extensions.orEmpty().mapNotNull { spec ->
-      val name = spec["name"] as? String ?: return@mapNotNull null
+      val name = spec.name ?: return@mapNotNull null
       val extension = WebViewExtensions.create(name)
       if (extension == null) Log.w(TAG, "no WebView extension registered as $name")
-      @Suppress("UNCHECKED_CAST") // because config comes from JS as a plain object
-      val handles = (spec["handles"] as? List<*>).orEmpty().map { it.toString() }.toSet()
-      extension?.onAttach(hostFor(name) { it in handles }, spec["config"] as? Map<String, Any?> ?: emptyMap())
+      val handles = spec.handles.orEmpty().toSet()
+      extension?.onAttach(hostFor(name) { it in handles }, spec.config.orEmpty())
       extension?.let { name to it }
     }.toMap()
     mount()
