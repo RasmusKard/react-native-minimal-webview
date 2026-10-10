@@ -1,17 +1,28 @@
 import { installPageClient } from '../bridge/pageClient';
 
 type PageWindow = Parameters<typeof installPageClient>[0];
-type NativeBridge = { call(method: string, params?: unknown): Promise<unknown> };
+type NativeBridge = {
+  call(method: string, params?: unknown): Promise<unknown>;
+  handle(method: string, handler: (params: unknown) => unknown): void;
+  __receive(text: string): Promise<void>;
+};
 
 /** A page on an allowed origin with the Android transport: records what the page sends and its pageshow listener. */
-function page() {
-  const sent: { kind: string }[] = [];
+function page(readyState = 'complete') {
+  const sent: { kind: string; id?: string; doc?: string; params?: unknown }[] = [];
+  let onDomReady: (() => void) | undefined;
   let onPageShow: ((event: { persisted: boolean }) => void) | undefined;
   const w = {
     location: { origin: 'https://example.com' },
     nativeBridgeTransport: {
-      postMessage: (text: string) => sent.push(JSON.parse(text) as { kind: string }),
+      postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
       onmessage: null,
+    },
+    document: {
+      readyState,
+      addEventListener: (type: string, listener: () => void) => {
+        if (type === 'DOMContentLoaded') onDomReady = listener;
+      },
     },
     addEventListener: (type: string, listener: typeof onPageShow) => {
       if (type === 'pageshow') onPageShow = listener;
@@ -20,8 +31,29 @@ function page() {
   Object.assign(w, { top: w });
   installPageClient(w, 10_000, ['https://example.com']);
   const bridge = w.nativeBridge as NativeBridge;
-  return { sent, bridge, show: (persisted: boolean) => onPageShow?.({ persisted }) };
+  return {
+    sent,
+    bridge,
+    domReady: () => onDomReady?.(),
+    show: (persisted: boolean) => onPageShow?.({ persisted }),
+  };
 }
+
+describe('page client ready', () => {
+  it('is sent at once when the document is already parsed', () => {
+    expect(page('interactive').sent.map((m) => m.kind)).toEqual(['ready']);
+  });
+
+  it('waits for DOMContentLoaded while the document is loading; a call before it goes out', async () => {
+    const { sent, bridge, domReady, show } = page('loading');
+    const call = bridge.call('echo');
+    expect(sent.map((m) => m.kind)).toEqual(['call']);
+    domReady();
+    expect(sent.map((m) => m.kind)).toEqual(['call', 'ready']);
+    show(true); // settles the call, which nothing answers here
+    await expect(call).rejects.toMatchObject({ code: 'navigated' });
+  });
+});
 
 describe('page client after the back-forward cache', () => {
   it('fails calls cut off by leaving the page and announces the page again', async () => {
@@ -38,6 +70,44 @@ describe('page client after the back-forward cache', () => {
     show(false);
     expect(sent.map((m) => m.kind)).toEqual(['ready', 'call']);
     show(true); // settles the call, which the first show left pending
+    await expect(call).rejects.toMatchObject({ code: 'navigated' });
+  });
+});
+
+describe('page client messages from native', () => {
+  it('sends the answer to a native call as a message, and takes the answer to its own call from __receive', async () => {
+    const { sent, bridge } = page();
+    const doc = sent[0]!.doc;
+    bridge.handle('double', (n) => (n as number) * 2);
+    await bridge.__receive(
+      JSON.stringify({ v: 1, id: 'n1', doc, kind: 'call', method: 'double', params: 4 })
+    );
+    expect(sent.at(-1)).toMatchObject({ kind: 'result', id: 'n1', doc, params: 8 });
+
+    const call = bridge.call('echo', 1);
+    const id = sent.at(-1)!.id!;
+    await bridge.__receive(JSON.stringify({ v: 1, id, doc, kind: 'result', params: 'ok' }));
+    await expect(call).resolves.toBe('ok');
+  });
+
+  it('puts one token on everything it sends, and drops messages for another document', async () => {
+    const { sent, bridge, show } = page();
+    const doc = sent[0]!.doc;
+    expect(doc).toMatch(/^[a-z0-9]+$/);
+    bridge.handle('double', (n) => (n as number) * 2);
+    const call = bridge.call('echo');
+    const id = sent.at(-1)!.id!;
+    await bridge.__receive(
+      JSON.stringify({ v: 1, id: 'n1', doc: 'other', kind: 'call', method: 'double', params: 4 })
+    );
+    await bridge.__receive(
+      JSON.stringify({ v: 1, id, doc: 'other', kind: 'result', params: 'stale' })
+    );
+    expect(sent.map((m) => [m.kind, m.doc])).toEqual([
+      ['ready', doc],
+      ['call', doc],
+    ]);
+    show(true); // settles the call, which only a message for another document answered
     await expect(call).rejects.toMatchObject({ code: 'navigated' });
   });
 });

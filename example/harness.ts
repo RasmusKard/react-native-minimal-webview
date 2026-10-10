@@ -466,6 +466,15 @@ async function bridge(h: Harness) {
     (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
   );
 
+  // PENDING on-device verification: a call made as the page commits waits for DOMContentLoaded, so the handler that
+  // an inline script registers during load is there (not_found otherwise).
+  const early = `${page}&early=1`;
+  h.load(early);
+  await waitFor(h, (s) => s.url === early);
+  const duringLoad = await h.bridge.call('early').catch(errorCode);
+  r.check('a call made during load reaches a handler the page registers while loading', duringLoad === 'early-ok', duringLoad);
+  await waitFor(h, idle);
+
   const other = `http://127.0.0.1:8090/bridge.html?t=${Date.now()}`;
   h.load(other);
   await waitFor(h, (s) => s.url === other && idle(s));
@@ -848,7 +857,7 @@ async function mountSettings(h: Harness) {
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
   await click(h, 'checkout');
   const reached = await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000);
-  r.info('ask after the remount (iOS ask rules arrive in Phase 2)', { reached, asked });
+  r.check('ask works after the remount', reached && asked.length > 0, { reached, asked });
   h.setRules(undefined);
   h.setAsk(undefined);
   h.setProps({});
@@ -1308,6 +1317,14 @@ async function network(h: Harness) {
   });
   await openPage(h, `${h.pages}/auth2?t=${Date.now()}`);
   r.check('a decline asks once when the server offers Digest and Basic', asks === 1 && (await text('auth')) === 'unauthorized', asks);
+  // Wrong credentials every time: asked three times (the first answer and two retries), then the 401 page shows.
+  let wrongAsks = 0;
+  h.setAuth(() => {
+    wrongAsks++;
+    return { username: 'u', password: 'wrong' };
+  });
+  await openPage(h, `http://127.0.0.1:8090/auth?wrong=1&t=${Date.now()}`);
+  r.check('wrong credentials are retried at most 3 times', wrongAsks === 3 && (await text('auth')) === 'unauthorized', wrongAsks);
   h.setAuth(undefined);
 
   clearEvents(h);

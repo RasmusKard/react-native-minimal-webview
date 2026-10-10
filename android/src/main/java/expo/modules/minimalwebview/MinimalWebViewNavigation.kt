@@ -14,7 +14,6 @@ import java.net.URISyntaxException
 /** Navigation decisions: the rules, `ask`, external links and new windows. */
 internal class MinimalWebViewNavigation(
   private val owner: MinimalWebView,
-  private val core: ExtensionHost,
   private val onNavigation: (Map<String, Any?>) -> Unit
 ) {
   private val webView get() = owner.webView
@@ -59,14 +58,11 @@ internal class MinimalWebViewNavigation(
       return
     }
     // Without an onNavigationRequest prop nobody could allow it.
-    if (!core.handles("navigationRequest")) {
+    if ("navigationRequest" !in owner.requestHandlers) {
       notifyNavigation(request, "block", rule)
       return
     }
-    var answered = false
-    fun settle(answer: Any?) {
-      if (answered) return
-      answered = true
+    val id = owner.ask("core", "navigationRequest", fields(request)) { answer ->
       val action = answer as? String ?: "block"
       if (action == "allow") {
         askedAndAllowed += request.url
@@ -75,9 +71,8 @@ internal class MinimalWebViewNavigation(
       val opened = action != "external" || openExternal(request.url)
       notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
     }
-    core.ask("navigationRequest", fields(request), ::settle)
-    // Unanswered after the timeout: block. A late answer is ignored.
-    owner.postDelayed({ settle(null) }, ASK_TIMEOUT_MS)
+    // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
+    owner.postDelayed({ owner.answer(id, null) }, ASK_TIMEOUT_MS)
   }
 
   /**
@@ -97,7 +92,7 @@ internal class MinimalWebViewNavigation(
    * controls the URL, so a malformed intent (bad syntax, launchFlags=zz) or a refused activity must not crash the app.
    */
   private fun openExternal(url: String): Boolean {
-    if (core.handles("openExternal")) return true
+    if ("openExternal" in owner.requestHandlers) return true
     val intent = try {
       browsableIntent(url)
     } catch (e: URISyntaxException) {
