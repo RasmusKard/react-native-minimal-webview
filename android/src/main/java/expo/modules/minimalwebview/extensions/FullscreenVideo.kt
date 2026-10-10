@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview.extensions
 
-import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
@@ -16,20 +15,17 @@ import expo.modules.minimalwebview.WebViewExtension
 
 /**
  * HTML5 fullscreen video: the page's fullscreen view covers the WebView's own window (so it also works inside an RN
- * Modal) on a black backdrop, system bars hide, and back exits. With `orientation: 'unlock'` a portrait-locked app may
- * rotate while fullscreen; the orientation in effect when fullscreen started is restored afterwards.
+ * Modal) on a black backdrop, system bars hide, and back exits. Orientation is the app's: it can unlock it in the
+ * `fullscreen` event (expo-screen-orientation).
  */
 class FullscreenVideo : WebViewExtension {
   private lateinit var host: ExtensionHost
-  private var unlockOrientation = false
   private var shown: Pair<View, CustomViewCallback>? = null
   private var backdrop: FrameLayout? = null
-  private var savedOrientation: Int? = null
   private var backCallback: OnBackPressedCallback? = null
 
   override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
     this.host = host
-    unlockOrientation = config["orientation"] == "unlock"
   }
 
   override fun onShowCustomView(view: View, callback: CustomViewCallback): Boolean {
@@ -41,16 +37,10 @@ class FullscreenVideo : WebViewExtension {
       window.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
     shown = view to callback
-    host.activity?.let { activity ->
-      if (unlockOrientation) {
-        savedOrientation = activity.requestedOrientation
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
-      }
-      backCallback = (activity as? ComponentActivity)?.let { component ->
-        object : OnBackPressedCallback(true) {
-          override fun handleOnBackPressed() = exit()
-        }.also { component.onBackPressedDispatcher.addCallback(it) }
-      }
+    backCallback = (host.activity as? ComponentActivity)?.let { component ->
+      object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() = exit()
+      }.also { component.onBackPressedDispatcher.addCallback(it) }
     }
     controller()?.apply {
       hide(WindowInsetsCompat.Type.systemBars())
@@ -78,8 +68,6 @@ class FullscreenVideo : WebViewExtension {
     backdrop?.let { (it.parent as? ViewGroup)?.removeView(it) }
     backdrop?.removeAllViews()
     backdrop = null
-    savedOrientation?.let { host.activity?.requestedOrientation = it }
-    savedOrientation = null
     controller()?.show(WindowInsetsCompat.Type.systemBars())
     backCallback?.remove()
     backCallback = null

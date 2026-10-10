@@ -159,7 +159,7 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 | Extension | iOS | Android |
 |---|---|---|
 | `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
-| `fullscreenVideo({ onChange, orientation? })` | Built in (WebKit) | The page's fullscreen view covers the WebView's window (so it works inside a `Modal`) on black, system bars hide, and back exits. `orientation: 'unlock'` lets a portrait-locked app rotate while fullscreen |
+| `fullscreenVideo({ onChange })` | Built in (WebKit) | The page's fullscreen view covers the WebView's window (so it works inside a `Modal`) on black, system bars hide, and back exits. `onChange(active)` reports it |
 | `fileUpload({ onFileRequest })` | Built in (WebKit's picker; needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`) | `onFileRequest({ accept, multiple, capture })` returns URIs, or `null` to cancel. Without the extension, file inputs open nothing |
 | `downloads({ onDownload, onError? })` | `WKDownload` (the page's session) into the temporary directory | Fetched again with the page's cookies and user agent into the cache; `data:` and `blob:` too. A POST body, the `headers` prop and `httpAuth` credentials don't go with it, so such a download can fail or save the wrong file (a login page). `onDownload` gets a `file://` on both platforms, `onError({ filename, url, reason })` |
 | `permissions({ origins, onPermissionRequest? })` | WebKit asks the OS. `true` skips WebKit's own prompt; other origins are denied | Grants only if the app says yes **and** the OS permission is granted. Never prompts by itself. WebView keeps a location answer until the page changes |
@@ -199,6 +199,15 @@ permissions({
     if (resources.includes('camera')) return (await Camera.requestCameraPermissionsAsync()).granted;
     return false;
   },
+});
+```
+
+Let a portrait-locked app rotate while a video is fullscreen (Android), with expo-screen-orientation:
+
+```tsx
+fullscreenVideo({
+  onChange: (active) =>
+    active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP),
 });
 ```
 
