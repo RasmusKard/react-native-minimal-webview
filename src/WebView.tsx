@@ -26,6 +26,11 @@ import type {
 
 type NativeEvent<T> = { nativeEvent: T };
 
+/** Native reports every main-frame error as one event; `code` is the HTTP status for `http`. */
+type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
+  kind: WebViewErrorEvent['kind'] | 'http';
+};
+
 type BridgeEvent = { message?: string; unavailable?: boolean; navigated?: boolean };
 
 /** `askId` is set when native waits for the answer (ExtensionHost.ask). */
@@ -67,6 +72,7 @@ const OWN = [
     'onNavigation',
     'onNavigationStateChange',
     'onError',
+    'onHttpError',
     'onProcessGone',
     'onLoadStart',
     'onLoad',
@@ -92,7 +98,7 @@ type NativeProps = ViewProps &
     onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
     onBridge: (event: NativeEvent<BridgeEvent>) => void;
     onExtension: (event: NativeEvent<ExtensionEvent>) => void;
-    onError: (event: NativeEvent<WebViewErrorEvent>) => void;
+    onError: (event: NativeEvent<NativeErrorEvent>) => void;
     onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
   };
 
@@ -358,12 +364,17 @@ function useLoadEvents(props: WebViewProps, store: Store) {
 
   // An HTTP status (404, 503) still shows the site's own error page: only network and SSL failures count as a failed
   // load (no onLoad, renderError shown).
-  const onError = ({ nativeEvent }: NativeEvent<WebViewErrorEvent>) => {
-    if (nativeEvent.kind !== 'http') {
-      errorRef.current = nativeEvent;
-      setError(nativeEvent);
+  const onError = ({
+    nativeEvent: { kind, url, code, description },
+  }: NativeEvent<NativeErrorEvent>) => {
+    if (kind === 'http') {
+      props.onHttpError?.({ url, statusCode: code, description });
+      return;
     }
-    props.onError?.(nativeEvent);
+    const failure = { kind, url, code, description };
+    errorRef.current = failure;
+    setError(failure);
+    props.onError?.(failure);
   };
 
   return { error, loading, onNavigationState, onError };

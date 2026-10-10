@@ -38,6 +38,7 @@ export default function App() {
   }, []);
   const events = useRef<Harness['events']>({
     errors: [],
+    httpErrors: [],
     gone: [],
     loads: [],
     navigations: [],
@@ -124,6 +125,7 @@ export default function App() {
         applicationNameForUserAgent="MinimalWebViewExample/1.0"
         thirdPartyCookies
         onError={(event) => events.errors.push(event)}
+        onHttpError={(event) => events.httpErrors.push(event)}
         onProcessGone={(event) => events.gone.push(event)}
         onNavigation={(event) => events.navigations.push(event)}
         onLoadStart={() => events.loads.push('start')}

@@ -2,8 +2,8 @@ import { act } from 'react';
 import { Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
-import type { WebViewProps } from '../types';
 import { WebView } from '../WebView';
+import type { WebViewProps } from '../types';
 
 jest.mock('expo', () => ({
   requireNativeView: () => 'MinimalWebView',
@@ -42,6 +42,59 @@ describe('WebView', () => {
   });
 });
 
+describe('errors', () => {
+  async function renderErrors() {
+    const onError = jest.fn();
+    const onHttpError = jest.fn();
+    const root = createRoot();
+    await act(async () =>
+      root.render(
+        <WebView
+          source={{ uri: 'https://example.com' }}
+          onError={onError}
+          onHttpError={onHttpError}
+          renderError={() => <Text>failed</Text>}
+        />
+      )
+    );
+    const fire = (nativeEvent: Record<string, unknown>) =>
+      act(async () => {
+        const [native] = root.container.queryAll((node) => node.type === 'MinimalWebView');
+        native?.props.onError({ nativeEvent });
+      });
+    const failedShown = () =>
+      root.container.queryAll((node) => node.type === 'Text' && node.props.children === 'failed')
+        .length > 0;
+    return { onError, onHttpError, fire, failedShown };
+  }
+
+  it('reports an HTTP status to onHttpError only, and keeps the site page', async () => {
+    const { onError, onHttpError, fire, failedShown } = await renderErrors();
+    await fire({ kind: 'http', url: 'https://example.com/x', code: 404, description: 'Not Found' });
+    expect(onHttpError).toHaveBeenCalledWith({
+      url: 'https://example.com/x',
+      statusCode: 404,
+      description: 'Not Found',
+    });
+    expect(onError).not.toHaveBeenCalled();
+    expect(failedShown()).toBe(false);
+  });
+
+  it('reports a failed load to onError only, and shows renderError', async () => {
+    const { onError, onHttpError, fire, failedShown } = await renderErrors();
+    const failure = {
+      kind: 'network',
+      url: 'https://example.com/',
+      code: -1009,
+      description: 'offline',
+    };
+    await fire(failure);
+    expect(onError).toHaveBeenCalledWith(failure);
+    expect(onHttpError).not.toHaveBeenCalled();
+    expect(failedShown()).toBe(true);
+  });
+});
+
 describe('extensions and bridge', () => {
   it('are fixed at mount: a change warns once and native keeps the first specs', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -63,9 +116,7 @@ describe('extensions and bridge', () => {
     await show('b');
     expect(warn).toHaveBeenCalledTimes(1);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.extensions).toEqual([
-      { name: 'sample', config: { mode: 'a' }, handles: [] },
-    ]);
+    expect(native?.extensions).toEqual([{ name: 'sample', config: { mode: 'a' }, handles: [] }]);
     warn.mockRestore();
   });
 });
