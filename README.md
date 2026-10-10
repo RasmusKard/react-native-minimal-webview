@@ -27,7 +27,7 @@ For the bridge and `injectedScripts`, the library warns about a missing feature 
 gate on it, check what the device supports:
 
 ```ts
-const info = WebView.getAndroidWebViewInfo(); // null on iOS
+const info = WebView.androidWebViewInfo; // null on iOS
 const canBridge = info?.features.WEB_MESSAGE_LISTENER !== false && info?.features.DOCUMENT_START_SCRIPT !== false;
 const canEndScripts = info?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
 ```
@@ -62,7 +62,8 @@ export function Browser() {
 
 ## Navigation rules
 
-Rules are an ordered list, and the first match wins. Every field a rule sets must match:
+Rules are an ordered list, and the first match wins. Every field a rule sets must match. `scheme`, `host` and `path`
+are lists, and one entry matching is enough:
 
 | Field | Matches |
 |---|---|

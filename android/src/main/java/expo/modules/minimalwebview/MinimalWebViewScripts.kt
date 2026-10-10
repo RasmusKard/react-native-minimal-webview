@@ -14,7 +14,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
 
   // Bridge: the page posts through `window.nativeBridgeTransport`; replies go to the main frame's latest proxy.
   private var replyProxy: JavaScriptReplyProxy? = null
-  private var installedScripts: List<Map<String, Any?>>? = null
+  private var installedScripts: List<InjectedScript>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
   private val evaluations = mutableMapOf<Int, (Result<String>) -> Unit>()
   private var nextEvaluation = 0
@@ -80,15 +80,15 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     val canStart = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
     val canEnd = WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
     for (script in scripts) {
-      val code = script["code"] as? String ?: continue
-      val end = script["when"] == "end"
+      val code = script.code ?: continue
+      val end = script.time == InjectionTime.END
       if (if (end) !canEnd else !canStart) {
         Log.w(TAG, if (end) "`when: 'end'` scripts need WebView 146+; skipped" else "injectedScripts need DOCUMENT_START_SCRIPT; skipped")
         continue
       }
       // No frame selector in androidx.webkit 1.17: main-frame-only scripts guard themselves.
       // A prefix, not a wrapping block: top-level const/let/class in the script must stay global.
-      val source = if (script["mainFrameOnly"] == true) "if (window !== window.top) throw 0;\n$code" else code
+      val source = if (script.mainFrameOnly == true) "if (window !== window.top) throw 0;\n$code" else code
       scriptHandlers += if (end) {
         val pageWorld = WebViewCompat.getExecutionWorld(webView, JavaScriptExecutionWorld.PAGE_WORLD_NAME)
         WebViewCompat.addJavaScriptOnEvent(webView, source, WebViewCompat.INJECTION_EVENT_DOCUMENT_END, setOf("*"), pageWorld)

@@ -10,10 +10,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigation = EventDispatcher()
 
   // Props, applied together in applyProps()
-  var source: [String: Any]?
+  var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
-  var extensions: [[String: Any]] = []
+  var extensions: [ExtensionSpec] = []
   var userAgent: String?
   var applicationNameForUserAgent: String?
   var mediaPlaybackRequiresUserAction = true
@@ -24,7 +24,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var javaScriptCanOpenWindowsAutomatically = false
   var webviewDebuggingEnabled = false
   var navigationRules: [[String: Any]]?
-  var injectedScripts: [[String: Any]] = []
+  var injectedScripts: [InjectedScript] = []
   private var installedScripts: NSArray?
   /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes. `openExternal`
   /// is there when JS handles `external` navigations (onOpenExternal); native only reports them.
@@ -91,7 +91,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       recreate()
     }
     guard let webView, !preparing else { return }
-    if installedScripts != injectedScripts as NSArray {
+    if installedScripts != injectedScripts.map({ $0.toDictionary() }) as NSArray {
       installScripts(webView.configuration.userContentController)
     }
     webView.customUserAgent = userAgent
@@ -102,8 +102,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.isInspectable = webviewDebuggingEnabled
     // Shared with the live WebView (the configuration getter copies, but keeps the same preferences object).
     webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
-    guard let next = source, loadedSource != next as NSDictionary else { return }
-    loadedSource = next as NSDictionary
+    // Records aren't Equatable: compare their dictionaries.
+    guard let next = source, loadedSource != next.toDictionary() as NSDictionary else { return }
+    loadedSource = next.toDictionary() as NSDictionary
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes = []
     prepareExtensions(webView) { [weak self] in self?.load(next) }
@@ -126,13 +127,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  private func load(_ source: [String: Any]) {
-    if let uri = source["uri"] as? String, let target = URL(string: uri) {
+  private func load(_ source: WebViewSource) {
+    if let uri = source.uri, let target = URL(string: uri) {
       var request = URLRequest(url: target)
-      (source["headers"] as? [String: Any])?.forEach { request.setValue("\($0.value)", forHTTPHeaderField: $0.key) }
+      source.headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
       loadProgrammatic(request)
     } else {
-      htmlNavigation = webView?.loadHTMLString(source["html"] as? String ?? "", baseURL: (source["baseUrl"] as? String).flatMap(URL.init))
+      htmlNavigation = webView?.loadHTMLString(source.html ?? "", baseURL: source.baseUrl.flatMap(URL.init))
     }
   }
 
@@ -155,7 +156,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// none or it was an html source (whose document cannot be refetched).
   private func recreate() {
     let previous = webView?.url.flatMap { $0.scheme == "http" || $0.scheme == "https" ? $0 : nil }
-    let reloadSource = previous == nil || source?["html"] != nil
+    let reloadSource = previous == nil || source?.html != nil
     tearDown()
     let configuration = WKWebViewConfiguration()
     configuration.applicationNameForUserAgent = applicationNameForUserAgent
@@ -169,9 +170,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
     installScripts(configuration.userContentController)
     activeExtensions = extensions.compactMap { spec in
-      guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
-      let handles = Set(spec["handles"] as? [String] ?? [])
-      instance.attach(host: Host(view: self, name: name) { handles.contains($0) }, config: spec["config"] as? [String: Any] ?? [:])
+      guard let name = spec.name, let instance = WebViewExtensions.create(name) else { return nil }
+      let handles = Set(spec.handles ?? [])
+      instance.attach(host: Host(view: self, name: name) { handles.contains($0) }, config: spec.config ?? [:])
       return instance
     }
     let core: [WebViewExtension] = [Permissions(), Downloads(), HttpAuth()]
@@ -201,7 +202,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       if let previous, !reloadSource {
         self.loadProgrammatic(URLRequest(url: previous))
       } else {
-        self.loadedSource = self.source as NSDictionary?
+        self.loadedSource = self.source?.toDictionary() as NSDictionary?
         self.source.map(self.load)
       }
     }
@@ -214,11 +215,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       controller.addUserScript(WKUserScript(source: bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
     }
     for script in injectedScripts {
-      guard let code = script["code"] as? String else { continue }
-      let time: WKUserScriptInjectionTime = script["when"] as? String == "end" ? .atDocumentEnd : .atDocumentStart
-      controller.addUserScript(WKUserScript(source: code, injectionTime: time, forMainFrameOnly: script["mainFrameOnly"] as? Bool ?? false, in: .page))
+      guard let code = script.code else { continue }
+      let time: WKUserScriptInjectionTime = script.when == .end ? .atDocumentEnd : .atDocumentStart
+      controller.addUserScript(WKUserScript(source: code, injectionTime: time, forMainFrameOnly: script.mainFrameOnly ?? false, in: .page))
     }
-    installedScripts = injectedScripts as NSArray
+    installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
   }
 
   private func tearDown() {

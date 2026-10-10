@@ -12,11 +12,11 @@ export type NavigationAction = 'allow' | 'block' | 'external';
  */
 export type NavigationRule = {
   /** Exact, case-insensitive: `['tel', 'mailto']`. */
-  scheme?: string | string[];
-  /** Exact, or a `*.` suffix wildcard that matches subdomains only: `'*.example.com'` does not match `example.com`. */
-  host?: string | string[];
-  /** Plain prefix of the URL path: `'/checkout'` also matches `/checkouts`. */
-  path?: string | string[];
+  scheme?: string[];
+  /** Exact, or a `*.` suffix wildcard that matches subdomains only: `['*.example.com']` does not match `example.com`. */
+  host?: string[];
+  /** Plain prefixes of the URL path: `['/checkout']` also matches `/checkouts`. */
+  path?: string[];
   mainFrame?: boolean;
   newWindow?: boolean;
   /** A user gesture started it (Android `hasGesture()`, iOS `.linkActivated`). */

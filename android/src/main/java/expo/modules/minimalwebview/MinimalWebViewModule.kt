@@ -15,6 +15,9 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.records.Field
+import expo.modules.kotlin.records.Record
+import expo.modules.kotlin.types.Enumerable
 import expo.modules.minimalwebview.extensions.PullToRefresh
 import java.io.Serializable
 
@@ -64,7 +67,8 @@ class MinimalWebViewModule : Module() {
     }
 
     // The WebView provider and the features this package uses (false: update Android System WebView).
-    Function("getAndroidWebViewInfo") {
+    // Computed on first access and fixed after: a WebView update restarts the process.
+    Constant("androidWebViewInfo") {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
       val provider = WebViewCompat.getCurrentWebViewPackage(context)
       mapOf(
@@ -83,11 +87,11 @@ class MinimalWebViewModule : Module() {
     View(MinimalWebView::class) {
       Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
 
-      Prop("source") { view: MinimalWebView, source: Map<String, Any?>? -> view.source = source }
+      Prop("source") { view: MinimalWebView, source: WebViewSource? -> view.source = source }
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
-      Prop("extensions") { view: MinimalWebView, extensions: List<Map<String, Any?>>? -> view.extensions = extensions }
+      Prop("extensions") { view: MinimalWebView, extensions: List<ExtensionSpec>? -> view.extensions = extensions }
       Prop("userAgent") { view: MinimalWebView, value: String? -> view.userAgent = value }
       Prop("applicationNameForUserAgent") { view: MinimalWebView, value: String? -> view.applicationNameForUserAgent = value }
       Prop("thirdPartyCookies") { view: MinimalWebView, value: Boolean? -> view.thirdPartyCookies = value ?: false }
@@ -98,7 +102,7 @@ class MinimalWebViewModule : Module() {
       Prop("javaScriptCanOpenWindowsAutomatically") { view: MinimalWebView, value: Boolean? ->
         view.javaScriptCanOpenWindowsAutomatically = value ?: false
       }
-      Prop("injectedScripts") { view: MinimalWebView, value: List<Map<String, Any?>>? -> view.injectedScripts = value }
+      Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
       Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty().toSet() }
       Prop("webviewDebuggingEnabled") { view: MinimalWebView, value: Boolean? -> view.webviewDebuggingEnabled = value ?: false }
 
@@ -133,3 +137,30 @@ private object FileChooserContract : AppContextActivityResultContract<ChooserInt
   override fun parseResult(input: ChooserIntent, resultCode: Int, intent: Intent?): Array<Uri>? =
     FileChooserParams.parseResult(resultCode, intent)
 }
+
+// Data classes, so the skip checks in applyProps compare them with ==. Every field is optional, as on iOS.
+
+/** `{ uri, headers? }` or `{ html, baseUrl? }`. */
+data class WebViewSource(
+  @Field val uri: String? = null,
+  @Field val headers: Map<String, String>? = null,
+  @Field val html: String? = null,
+  @Field val baseUrl: String? = null
+) : Record
+
+data class InjectedScript(
+  @Field val code: String? = null,
+  @Field("when") val time: InjectionTime? = null,
+  @Field val mainFrameOnly: Boolean? = null
+) : Record
+
+enum class InjectionTime(val value: String) : Enumerable {
+  START("start"),
+  END("end")
+}
+
+data class ExtensionSpec(
+  @Field val name: String? = null,
+  @Field val config: Map<String, Any?>? = null,
+  @Field val handles: List<String>? = null
+) : Record

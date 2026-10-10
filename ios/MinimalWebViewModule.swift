@@ -14,10 +14,10 @@ public class MinimalWebViewModule: Module {
     View(MinimalWebView.self) {
       Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
 
-      Prop("source") { (view: MinimalWebView, source: [String: Any]?) in view.source = source }
+      Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
-      Prop("extensions") { (view: MinimalWebView, extensions: [[String: Any]]?) in view.extensions = extensions ?? [] }
+      Prop("extensions") { (view: MinimalWebView, extensions: [ExtensionSpec]?) in view.extensions = extensions ?? [] }
       Prop("userAgent") { (view: MinimalWebView, value: String?) in view.userAgent = value }
       Prop("applicationNameForUserAgent") { (view: MinimalWebView, value: String?) in view.applicationNameForUserAgent = value }
       Prop("mediaPlaybackRequiresUserAction") { (view: MinimalWebView, value: Bool?) in view.mediaPlaybackRequiresUserAction = value ?? true }
@@ -29,7 +29,7 @@ public class MinimalWebViewModule: Module {
         view.javaScriptCanOpenWindowsAutomatically = value ?? false
       }
       Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
-      Prop("injectedScripts") { (view: MinimalWebView, value: [[String: Any]]?) in view.injectedScripts = value ?? [] }
+      Prop("injectedScripts") { (view: MinimalWebView, value: [InjectedScript]?) in view.injectedScripts = value ?? [] }
       Prop("requestHandlers") { (view: MinimalWebView, value: [String]?) in view.requestHandlers = Set(value ?? []) }
       Prop("webviewDebuggingEnabled") { (view: MinimalWebView, value: Bool?) in view.webviewDebuggingEnabled = value ?? false }
 
@@ -61,4 +61,31 @@ public class MinimalWebViewModule: Module {
       }
     }
   }
+}
+
+// A prop that fails to convert is dropped whole (ExpoFabricView's try?), so every field is optional.
+
+/// `{ uri, headers? }` or `{ html, baseUrl? }`.
+struct WebViewSource: Record {
+  @Field var uri: String? = nil
+  @Field var headers: [String: String]? = nil
+  @Field var html: String? = nil
+  @Field var baseUrl: String? = nil
+}
+
+struct InjectedScript: Record {
+  @Field var code: String? = nil
+  @Field var when: InjectionTime? = nil
+  @Field var mainFrameOnly: Bool? = nil
+}
+
+enum InjectionTime: String, Enumerable {
+  case start
+  case end
+}
+
+struct ExtensionSpec: Record {
+  @Field var name: String? = nil
+  @Field var config: [String: Any]? = nil
+  @Field var handles: [String]? = nil
 }

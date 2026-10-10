@@ -185,7 +185,7 @@ const NEEDS = {
     lost: "`when: 'end'` scripts don't run (WebView 146+)",
   },
 };
-// Read once: a WebView update restarts the app process.
+// Read once, failures included.
 let info: AndroidWebViewInfo | null | undefined;
 const warned = new Set<string>();
 
@@ -196,9 +196,9 @@ export function warnUnsupported(used: Record<keyof typeof NEEDS, boolean>) {
     if (!used[prop as keyof typeof NEEDS] || warned.has(prop)) continue;
     if (info === undefined) {
       try {
-        info = WebView.getAndroidWebViewInfo();
+        info = WebView.androidWebViewInfo;
       } catch {
-        info = null;
+        info = null; // native module or React context missing: stay quiet
       }
     }
     const device = info;
@@ -414,13 +414,22 @@ function withOverlay(
   );
 }
 
-/** The WebView provider and which features this package uses are supported. Null on iOS. */
-WebView.getAndroidWebViewInfo = (): AndroidWebViewInfo | null =>
-  Platform.OS === 'android'
-    ? requireNativeModule<{ getAndroidWebViewInfo(): AndroidWebViewInfo }>(
-        'MinimalWebView'
-      ).getAndroidWebViewInfo()
-    : null;
+let androidInfo: AndroidWebViewInfo | undefined;
+export declare namespace WebView {
+  /**
+   * The Android WebView provider and which of the WebView features this package uses it supports. Null on iOS. Fixed
+   * for the life of the process: a WebView update restarts the app.
+   */
+  const androidWebViewInfo: AndroidWebViewInfo | null;
+}
+Object.defineProperty(WebView, 'androidWebViewInfo', {
+  get: (): AndroidWebViewInfo | null =>
+    Platform.OS === 'android'
+      ? (androidInfo ??= requireNativeModule<{ androidWebViewInfo: AndroidWebViewInfo }>(
+          'MinimalWebView'
+        ).androidWebViewInfo)
+      : null,
+});
 
 const styles = StyleSheet.create({ fill: { flex: 1 } });
 
