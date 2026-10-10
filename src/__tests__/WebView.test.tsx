@@ -140,6 +140,30 @@ describe('extensions and bridge', () => {
   });
 });
 
+describe('creation settings', () => {
+  it('are fixed at mount: a change warns once and native keeps the first values', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = createRoot();
+    const show = (applicationNameForUserAgent: string) =>
+      act(async () =>
+        root.render(
+          <WebView
+            source={{ uri: 'https://example.com' }}
+            applicationNameForUserAgent={applicationNameForUserAgent}
+          />
+        )
+      );
+    await show('App/1');
+    expect(warn).not.toHaveBeenCalled();
+    await show('App/2');
+    await show('App/3');
+    expect(warn).toHaveBeenCalledTimes(1);
+    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
+    expect(native?.applicationNameForUserAgent).toBe('App/1');
+    warn.mockRestore();
+  });
+});
+
 describe('page requests', () => {
   type Fire = (event: string, payload: Record<string, unknown>, askId?: number) => Promise<void>;
 
@@ -181,11 +205,31 @@ describe('page requests', () => {
     expect(onFileRequest).toHaveBeenCalledWith({ accept: [], multiple: false, capture: false });
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
     await fire('fullscreenChange', { active: true });
-    expect(onFullscreenChange).toHaveBeenCalledWith(true);
+    expect(onFullscreenChange).toHaveBeenCalledWith({ active: true });
     const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
     await fire('download', failure);
     expect(onDownload).toHaveBeenCalledWith(failure);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers block to a navigation request when the prop throws or returns nothing', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onNavigationRequest = jest
+      .fn()
+      .mockResolvedValueOnce('allow')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('no'));
+    const { fire, native } = await renderRequests({ onNavigationRequest, onOpenExternal: () => {} });
+    expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
+    const request = { url: 'https://a.example', mainFrame: true, newWindow: false, userInitiated: true };
+    await fire('navigationRequest', request, 1);
+    expect(onNavigationRequest).toHaveBeenCalledWith(request);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
+    await fire('navigationRequest', request, 2);
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
+    await fire('navigationRequest', request, 3);
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: 'block' });
+    error.mockRestore();
   });
 
   it('answers null when the prop is gone or throws, and leaves extensions to their own handlers', async () => {

@@ -767,6 +767,19 @@ async function crash(h: Harness) {
   else r.info('crash loop check skipped: the 4 crashes took', elapsed);
   r.check('loading a new source works after giving up', await openPage(h, `${h.pages}/?t=${Date.now()}`), h.state());
   r.check('a new source resets the crash-loop guard', (await kill(5))?.recovered === true, h.events.gone.at(-1));
+
+  // An html source has no URL to fetch (the URL is its baseUrl): recovery loads the source again.
+  h.loadSource({ html: '<p id="marker">html source</p>', baseUrl: h.pages });
+  // An evaluate that the recovery's navigation rejects is expected while polling; its error code shows in the result.
+  const marker = () =>
+    h.ref.current?.evaluate(`document.getElementById('marker')?.textContent ?? null`).catch(errorCode);
+  const shown = async () => {
+    for (const end = Date.now() + 10000; Date.now() < end; await sleep(300)) if ((await marker()) === 'html source') return true;
+    return false;
+  };
+  r.check('an html source is shown', await shown(), await marker());
+  r.check('processGone reported and recovered (html source)', (await kill(6))?.recovered === true, h.events.gone.at(-1));
+  r.check('the html source is shown again after recovery', await shown(), await marker());
   r.done();
 }
 
@@ -808,25 +821,32 @@ async function info(h: Harness) {
 }
 
 /**
- * Settings fixed at creation on iOS (applicationNameForUserAgent) recreate the WebView: afterwards the page, the
- * bridge, the extensions and `ask` must all still work. On Android the same change applies in place.
+ * Settings fixed at mount (applicationNameForUserAgent): a change while mounted is ignored, on both platforms (with a
+ * warning); a remount applies it, and afterwards the page, the bridge, the extensions and `ask` must all still work.
  */
-async function recreate(h: Harness) {
-  const r = reporter('recreate');
+async function mountSettings(h: Harness) {
+  const r = reporter('mountSettings');
+  const uaOf = async () => {
+    await openPage(h, `${h.pages}/ua?t=${Date.now()}`);
+    return (await h.ref.current?.evaluate(`document.getElementById('ua').textContent`)) as string;
+  };
   const page = `${h.pages}/bridge.html?t=${Date.now()}`;
   await openPage(h, page);
-  h.setProps({ applicationNameForUserAgent: 'Recreated/9' });
-  await sleep(1500);
+  h.setProps({ applicationNameForUserAgent: 'Remounted/9' });
+  await sleep(1000);
+  r.check('the page stays while a fixed setting changes', h.state().url === page && idle(h.state()), h.state());
+  const ignored = await uaOf();
+  r.check('the change is ignored while mounted', !ignored.includes('Remounted/9'), ignored);
+  h.remount();
+  await sleep(500);
   await waitFor(h, idle, 10000);
-  r.check('the page is shown again', h.state().url === page, h.state());
-  const recreatedVh = await viewportHeight(h);
-  r.check('100vh has a height after recreation', recreatedVh > 0, recreatedVh);
-  await openPage(h, `${h.pages}/ua?t=${Date.now()}`);
-  const ua = (await h.ref.current?.evaluate(`document.getElementById('ua').textContent`)) as string;
-  r.check('the new app name is in the UA', ua.endsWith(' Recreated/9'), ua);
+  const remountedVh = await viewportHeight(h);
+  r.check('100vh has a height after the remount', remountedVh > 0, remountedVh);
+  const ua = await uaOf();
+  r.check('the new app name is in the UA after a remount', ua.endsWith(' Remounted/9'), ua);
   await openPage(h, `${h.pages}/bridge.html?t=${Date.now()}`);
   await sleep(500);
-  r.check('the bridge works after recreation', (await h.bridge.call('sum', { a: 3, b: 4 }).catch(errorCode)) === 7);
+  r.check('the bridge works after the remount', (await h.bridge.call('sum', { a: 3, b: 4 }).catch(errorCode)) === 7);
   const asked: string[] = [];
   h.setAsk((request) => {
     asked.push(request.url);
@@ -837,7 +857,7 @@ async function recreate(h: Harness) {
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
   await click(h, 'checkout');
   const reached = await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000);
-  r.info('ask after recreation (iOS ask rules arrive in Phase 2)', { reached, asked });
+  r.info('ask after the remount (iOS ask rules arrive in Phase 2)', { reached, asked });
   h.setRules(undefined);
   h.setAsk(undefined);
   h.setProps({});
@@ -1307,11 +1327,6 @@ async function network(h: Harness) {
 
   // Native requests (RN fetch) and the WebView share cookies: both directions.
   await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);
-  if (Platform.OS === 'ios') {
-    // iOS copies them when a WebView is created: force a new one (a creation-time setting).
-    h.setProps({ applicationNameForUserAgent: 'Cookies/1' });
-    await sleep(1500);
-  }
   await openPage(h, `${h.pages}/cookies?t=${Date.now()}`);
   r.check('a cookie set by a native request reaches the page', (await text('cookies')).includes('fromNative='), await text('cookies'));
   await h.ref.current?.evaluate(`document.cookie = 'fromPage=${Date.now()}; path=/'`);
@@ -1375,7 +1390,7 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   crash,
   dialogs,
   info,
-  recreate,
+  mountSettings,
   overlays,
   navigation,
   injection,

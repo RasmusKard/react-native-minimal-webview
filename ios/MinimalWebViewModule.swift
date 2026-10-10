@@ -12,7 +12,7 @@ public class MinimalWebViewModule: Module {
 
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation", "onNavigationRequest")
+      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
@@ -31,7 +31,6 @@ public class MinimalWebViewModule: Module {
       Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
       Prop("injectedScripts") { (view: MinimalWebView, value: [InjectedScript]?) in view.injectedScripts = value ?? [] }
       Prop("requestHandlers") { (view: MinimalWebView, value: [String]?) in view.requestHandlers = Set(value ?? []) }
-      Prop("openExternalInJS") { (view: MinimalWebView, value: Bool?) in view.openExternalInJS = value ?? false }
       Prop("webviewDebuggingEnabled") { (view: MinimalWebView, value: Bool?) in view.webviewDebuggingEnabled = value ?? false }
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }

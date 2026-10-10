@@ -1,7 +1,9 @@
 // The page side of the bridge: installs `window.nativeBridge`. It runs inside the web page, so it imports nothing;
 // internal/build-page-client.mjs compiles it to the PAGE_CLIENT string that native injects at document start.
-// Transports: iOS WKScriptMessageHandlerWithReply (`webkit.messageHandlers.nativeBridge`), Android
-// addWebMessageListener (`window.nativeBridgeTransport`). Messages follow ./protocol.ts.
+// Transport, a plain pipe each way: page -> native through `postMessage` (iOS WKScriptMessageHandler at
+// `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at `window.nativeBridgeTransport`); native ->
+// page through `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android). Messages follow
+// ./protocol.ts, and answers to either side's calls travel as ordinary messages.
 import type { BridgeMessage as Message } from './protocol';
 
 type Pending = {
@@ -17,7 +19,7 @@ type PageWindow = Window & {
     onmessage: ((event: { data: string }) => void) | null;
   };
   webkit?: {
-    messageHandlers?: { nativeBridge?: { postMessage(message: string): Promise<string | null> } };
+    messageHandlers?: { nativeBridge?: { postMessage(message: string): void } };
   };
 };
 
@@ -59,33 +61,28 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
 
   const send = (message: Message) => {
     const text = JSON.stringify(message);
-    if (ios) {
-      // A reply (if any) is the answer to a call this page made.
-      void ios.postMessage(text).then((reply) => reply && receive(reply));
-    } else {
-      android?.postMessage(text);
-    }
+    (ios ?? android)?.postMessage(text);
   };
 
   const fail = (code: string, message: string) => Object.assign(new Error(message), { code });
 
-  /** Handles a message from native. Returns the reply for calls, which iOS passes back to the caller. */
-  const receive = async (text: string): Promise<string | null> => {
+  /** Handles a message from native. Answers to native's calls are sent back as messages. */
+  const receive = async (text: string) => {
     const message = JSON.parse(text) as Message;
     if (message.kind === 'result' || message.kind === 'error') {
       const call = pending.get(message.id);
-      if (!call) return null;
+      if (!call) return;
       pending.delete(message.id);
       clearTimeout(call.timer);
       if (message.kind === 'result') call.resolve(message.params);
       else call.reject(fail(message.error.code, message.error.message));
-      return null;
+      return;
     }
     if (message.kind === 'event') {
       listeners.get(message.method)?.forEach((listener) => listener(message.params));
-      return null;
+      return;
     }
-    if (message.kind !== 'call') return null;
+    if (message.kind !== 'call') return;
     const handler = handlers.get(message.method);
     const failure = (code: 'not_found' | 'handler_error', text: string): Message => ({
       v: 1,
@@ -101,9 +98,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
         reply = failure('handler_error', String(error));
       }
     }
-    if (ios) return JSON.stringify(reply);
     send(reply);
-    return null;
   };
 
   if (android) android.onmessage = (event) => void receive(event.data);
@@ -132,12 +127,12 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
       listeners.set(event, set.add(listener));
       return () => set.delete(listener);
     },
-    /** Native entry point for iOS (callAsyncJavaScript); Android uses the transport's onmessage. */
+    /** Native entry point for iOS (callAsyncJavaScript, origin-checked there); Android uses the transport's onmessage. */
     __receive: receive,
   });
-  // `ready` tells native to deliver what it queued for this page. Wait for DOMContentLoaded, so the page's synchronous
-  // and deferred scripts have registered their handlers and listeners; a call delivered earlier would get `not_found`.
-  // The page's own calls work before that: native answers them without waiting for `ready`.
+  // `ready` tells RN to deliver what it queued for this page (native can't deliver before the page has posted). Wait for
+  // DOMContentLoaded, so the page's synchronous and deferred scripts have registered their handlers and listeners; a
+  // call delivered earlier would get `not_found`. The page's own calls work before that: RN answers them at once.
   if (w.document.readyState === 'loading') {
     w.document.addEventListener('DOMContentLoaded', () => send({ v: 1, id: '', kind: 'ready' }), {
       once: true,

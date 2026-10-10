@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 /** `headers` go on the first request only, not on later navigations. */
-export type WebViewSource = { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
+export type WebViewSource =
+  { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
 
 export type NavigationAction = 'allow' | 'block' | 'external';
 
 /**
  * One navigation rule. Every field that is set must match; the first matching rule wins.
- * With no rules, http(s) loads in place and other schemes open externally. With rules and no match, the result is `block`.
+ * With no rules, http(s) loads in place and other schemes open externally from the main frame (a subframe is blocked). With rules and no match, the result is `block`.
  */
 export type NavigationRule = {
   /** Exact, case-insensitive: `['tel', 'mailto']`. */
@@ -144,11 +145,11 @@ type OwnProps = {
   source: WebViewSource;
   /** Replaces the whole user agent. */
   userAgent?: string;
-  /** Appended to the default user agent. On iOS it is fixed at creation: changing it recreates the WebView. */
+  /** Appended to the default user agent. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
-  /** Called only for `ask` rules. Times out after 1 s, then `block`. */
+  /** Called only for `ask` rules. Times out after 1 s, then `block`. Without this prop, `ask` is `block`. */
   onNavigationRequest?: (
     request: NavigationRequest
   ) => NavigationAction | Promise<NavigationAction>;
@@ -158,9 +159,12 @@ type OwnProps = {
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
   thirdPartyCookiesEnabled?: boolean;
-  /** Default true. On iOS it is fixed at creation: changing it recreates the WebView. */
+  /** Default true. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
   mediaPlaybackRequiresUserAction?: boolean;
-  /** iOS only (Android always plays inline). Default false. Fixed at creation. */
+  /**
+   * iOS only (Android always plays inline). Default false. Fixed at mount, like `bridge`: remount with a new `key` to
+   * change it.
+   */
   allowsInlineMediaPlayback?: boolean;
   /** iOS only. Default true. */
   scrollEnabled?: boolean;
@@ -189,10 +193,10 @@ type OwnProps = {
    */
   onFileRequest?: (request: FileRequest) => string[] | null | Promise<string[] | null>;
   /**
-   * Android: the page entered or left fullscreen. Fullscreen works without it: the page's view covers the window, the
-   * system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
+   * Android: the page entered or left fullscreen (`active`). Fullscreen works without it: the page's view covers the
+   * window, the system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
    */
-  onFullscreenChange?: (active: boolean) => void;
+  onFullscreenChange?: (event: { active: boolean }) => void;
   /**
    * Camera, microphone and (Android) location for the main frame. Answer true to grant: ask the OS first (expo-camera,
    * expo-location), or the page's request fails anyway. Without it: Android denies; iOS shows WebKit's own prompt, and

@@ -18,7 +18,6 @@ import type {
   AndroidWebViewInfo,
   Bridge,
   NavigationEvent,
-  NavigationRequest,
   NavigationState,
   ProcessGoneEvent,
   WebViewErrorEvent,
@@ -46,9 +45,12 @@ type ExtensionEvent = {
 
 /**
  * Page requests the core answers natively, by native event name. Native asks JS (as extension `core`) only for those
- * whose prop is set, and reads the set when the request comes, so a prop can come and go.
+ * whose prop is set, and reads the set when the request comes, so a prop can come and go. `openExternal` is never
+ * asked: native only checks that JS opens external links itself, and reports them on `onNavigation`.
  */
 const REQUESTS = {
+  navigationRequest: 'onNavigationRequest',
+  openExternal: 'onOpenExternal',
   fileRequest: 'onFileRequest',
   fullscreenChange: 'onFullscreenChange',
   permissionRequest: 'onPermissionRequest',
@@ -61,10 +63,7 @@ const CORE = 'core';
 const PASSTHROUGH = [
   'navigationRules',
   'userAgent',
-  'applicationNameForUserAgent',
   'thirdPartyCookiesEnabled',
-  'mediaPlaybackRequiresUserAction',
-  'allowsInlineMediaPlayback',
   'scrollEnabled',
   'bounces',
   'showsScrollIndicators',
@@ -72,9 +71,22 @@ const PASSTHROUGH = [
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
+/** Props native reads once, when it creates the WebView (fixed at mount, like `bridge` and `extensions`). */
+const FIXED = [
+  'applicationNameForUserAgent',
+  'mediaPlaybackRequiresUserAction',
+  'allowsInlineMediaPlayback',
+] as const;
+const fixedSettings = (props: WebViewProps) =>
+  Object.fromEntries(FIXED.map((key) => [key, props[key]])) as Pick<
+    WebViewProps,
+    (typeof FIXED)[number]
+  >;
+
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
 const OWN = [
   ...PASSTHROUGH,
+  ...FIXED,
   ...([
     'source',
     'injectedScripts',
@@ -83,8 +95,6 @@ const OWN = [
     'extensions',
     'renderLoading',
     'renderError',
-    'onNavigationRequest',
-    'onOpenExternal',
     'onNavigation',
     'onNavigationStateChange',
     'onError',
@@ -110,10 +120,8 @@ type NativeProps = ViewProps &
     bridgeOrigins: string[] | undefined;
     extensions: ReturnType<typeof nativeSpecs>;
     requestHandlers: string[];
-    openExternalInJS: boolean;
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
-    onNavigationRequest: (event: NativeEvent<NavigationRequest & { id: number }>) => void;
     onBridge: (event: NativeEvent<BridgeEvent>) => void;
     onExtension: (event: NativeEvent<ExtensionEvent>) => void;
     onError: (event: NativeEvent<NativeErrorEvent>) => void;
@@ -125,7 +133,7 @@ type NativeMethods = Record<
   () => Promise<void>
 > & {
   bridgePost(message: string): Promise<void>;
-  /** Answers a native `ask` (navigation or extension). The value is wrapped: native arguments can't be of any type. */
+  /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
   answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
@@ -325,8 +333,9 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
         : props.extensions?.find((candidate) => candidate.native.name === name)?.on?.[event]
     ) as ((payload: unknown) => unknown) | undefined;
     const value = await settle(
-      () => handler?.(event === 'fullscreenChange' ? payload.active : payload),
-      null,
+      () => handler?.(payload),
+      // Native counts a missing answer as `block` too.
+      request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `the ${name} extension's ${event} handler failed`
     );
     if (askId !== undefined) await answer(askId, value);
@@ -337,18 +346,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     props.onNavigation?.(nativeEvent);
   };
 
-  // Native blocks unanswered requests after 1 s and ignores late answers.
-  const onNavigationRequest = async ({
-    nativeEvent: { id, ...request },
-  }: NativeEvent<NavigationRequest & { id: number }>) => {
-    const action = await settle(
-      () => props.onNavigationRequest?.(request),
-      'block',
-      'onNavigationRequest failed; blocking'
-    );
-    await answer(id, action ?? 'block');
-  };
-
   const webView = (
     <NativeWebView
       {...(props.renderLoading || props.renderError ? {} : viewPropsOf(props))}
@@ -356,14 +353,13 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       source={props.source}
       style={props.renderLoading || props.renderError ? styles.fill : props.style}
       {...settingsOf(props)}
+      {...fixed.settings}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
       extensions={fixed.extensions}
       requestHandlers={requestHandlers}
-      openExternalInJS={props.onOpenExternal !== undefined}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
-      onNavigationRequest={onNavigationRequest}
       onBridge={onBridge}
       onExtension={onExtension}
       onError={onError}
@@ -413,20 +409,25 @@ const nativeSpecs = (props: WebViewProps) =>
   }));
 
 /**
- * Native sets up the extensions and the bridge once, at mount; their JS handlers (`on`, `bridge.handle`) stay
- * live. A later change is ignored with a warning: remount with a new `key` to apply it.
+ * Native sets up the extensions, the bridge and the creation settings (`FIXED`) once, at mount; the JS handlers
+ * (`on`, `bridge.handle`) stay live. A later change is ignored with a warning: remount with a new `key` to apply it.
  */
 function useFixedAtMount(props: WebViewProps) {
-  const [fixed] = useState(() => ({ bridge: props.bridge, extensions: nativeSpecs(props) }));
+  const [fixed] = useState(() => ({
+    bridge: props.bridge,
+    extensions: nativeSpecs(props),
+    settings: fixedSettings(props),
+  }));
   const warned = useRef(false);
   const changed =
     props.bridge !== fixed.bridge ||
-    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions);
+    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions) ||
+    JSON.stringify(fixedSettings(props)) !== JSON.stringify(fixed.settings);
   useEffect(() => {
     if (!changed || warned.current) return;
     warned.current = true;
     console.warn(
-      '[minimal-rn-webview] `extensions` and `bridge` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
+      '[minimal-rn-webview] `extensions`, `bridge`, `applicationNameForUserAgent`, `mediaPlaybackRequiresUserAction` and `allowsInlineMediaPlayback` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
     );
   }, [changed]);
   return fixed;

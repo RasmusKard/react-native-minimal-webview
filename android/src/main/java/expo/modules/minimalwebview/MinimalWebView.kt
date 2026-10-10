@@ -24,7 +24,6 @@ import expo.modules.minimalwebview.extensions.Permissions
 
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
-  private val onNavigationRequest by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
   private val onExtension by EventDispatcher<Map<String, Any?>>()
   private val onError by EventDispatcher<Map<String, Any?>>()
@@ -33,7 +32,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   // Declared before webView: createWebView() reads them during construction.
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
-  private val navigation = MinimalWebViewNavigation(this, ::register, { onNavigation(it) }, { onNavigationRequest(it) })
+  private val coreHost = hostFor("core") { event -> event in requestHandlers }
+  private val navigation = MinimalWebViewNavigation(this, coreHost) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
   /** Replaced when the render process dies; extensions read it through their host on every use. */
@@ -54,9 +54,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var showsScrollIndicators = true
   var javaScriptCanOpenWindowsAutomatically = false
   var webviewDebuggingEnabled = false
-  /** JS handles `external` navigations (onOpenExternal); native only reports them. */
-  var openExternalInJS = false
-  /** The page requests JS has a prop for (`fileRequest`, `download`, ...), read when a request comes. */
+  /**
+   * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
+   * `openExternal` is there when JS handles `external` navigations (onOpenExternal); native only reports them.
+   */
   var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
 
@@ -66,10 +67,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   // The page requests, answered by the core on every view. After the extensions, so an extension that handles the same
   // callback comes first. They ask JS only for the requests in requestHandlers.
   private val core = listOf(FileUpload(), FullscreenVideo(), Permissions(), Downloads(), HttpAuth()).onEach {
-    it.onAttach(hostFor("core") { event -> event in requestHandlers }, emptyMap())
+    it.onAttach(coreHost, emptyMap())
   }
 
-  // Every `ask` (navigation and extensions) waits here, by id, until answered through `answer` or failed with null by a
+  // Every `ask` (navigation request and extensions) waits here, by id, until answered through `answer` or failed with null by a
   // new document, a crash or destroy.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextAskId = 0
@@ -199,7 +200,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     return id
   }
 
-  /** JS's answer to an `ask` (navigation or extension). */
+  /** JS's answer to an `ask`. */
   fun answer(askId: Int, value: Any?) {
     pendingAsks.remove(askId)?.invoke(value)
   }
@@ -259,7 +260,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     crashTimes.addLast(now)
     while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
     val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW
-    val lastUrl = url.takeIf { it.isNotEmpty() }
+    // An html source's page has no URL to fetch (`url` is its baseUrl or about:blank): load the source again, as on iOS.
+    // Chromium reports the baseUrl canonicalized (`https://example.com` commits as `https://example.com/`).
+    val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }?.trimEnd('/')
+    val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl }
     failPending()
     val old = webView
     webView = createWebView()

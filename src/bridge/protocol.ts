@@ -15,8 +15,9 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 export type BridgeError = { code: BridgeErrorCode; message: string };
 
 /**
- * `ready`: the page's DOM is parsed (DOMContentLoaded), so its scripts have registered handlers. Native holds its
- * calls and events until then. A page's own calls and their answers don't wait for it.
+ * `ready`: the page's DOM is parsed (DOMContentLoaded), so its scripts have registered handlers. RN holds its calls and
+ * events for the page until then (native can't deliver before the page has posted). A page's own calls and their
+ * answers don't wait for it.
  * `call` / `result` / `error`: a request and its answer, matched by `id`.
  * `event`: fire-and-forget, `method` is the event name.
  */
