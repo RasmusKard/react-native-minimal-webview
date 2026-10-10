@@ -50,8 +50,16 @@ public protocol ExtensionHost: AnyObject {
   /// Async decide hook: emits `event` to its JS handler and calls `onAnswer` with the result (nil if the view goes away
   /// or a new page replaces the one that asked).
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void)
+  /// Runs an expression in the page's main frame and awaits it, like the `evaluate` ref method: its JSON, or an
+  /// `EvaluateError` (`ERR_EVALUATE`). Fails the same way if the view is gone.
+  func evaluate(_ script: String, onResult: @escaping (Result<String, Error>) -> Void)
   /// The core's reload: retries the failed URL after an error.
   func reload()
+}
+
+public struct EvaluateError: Error {
+  public let code: String
+  public let message: String
 }
 
 /// Third-party packages call `WebViewExtensions.register("name") { MyExtension() }` from their module's OnCreate.
