@@ -13,7 +13,7 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 **Requirements:**
 - iOS 16.4.
 - Android API 29+. Set `minSdkVersion 29`, for example with `expo-build-properties`.
-- Expo SDK 58 or a bare app with the new architecture.
+- Expo SDK 53+ (React Native 0.79+, React 19), or a bare app on those versions with the new architecture.
 
 Some features need Android System WebView 146 or newer; any API 29+ device with updates enabled has it. On an older one, `injectedScripts` don't run, bridge calls and `evaluate` reject with `unavailable`, and `blob:` downloads fail. For `injectedScripts` and the bridge, the library warns about it once per process, in every build. To gate on it, check what the device supports:
 
