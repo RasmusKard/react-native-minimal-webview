@@ -17,6 +17,7 @@ describe('origin rules (shared cases)', () => {
   it.each(cases)('page client: %s', (_name, c) => {
     const w = {
       location: { origin: c.origin },
+      document: { readyState: 'complete' },
       addEventListener: () => {},
     } as unknown as Parameters<typeof installPageClient>[0];
     Object.assign(w, { top: w });
