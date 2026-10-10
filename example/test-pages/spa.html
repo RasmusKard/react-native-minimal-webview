@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SPA</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>SPA</h1>
+<button id="push" onclick="history.pushState({}, '', '/spa/pushed?n=' + Date.now())">pushState</button>
+<button id="replace" onclick="history.replaceState({}, '', '/spa/replaced?n=' + Date.now())">replaceState</button>
+<button id="hash" onclick="location.hash = 'h' + Date.now()">hash change</button>
+<button id="back" onclick="history.back()">history.back()</button>
+<a id="redirect" href="/redirect?to=/spa.html%3Ffrom%3Dredirect">server redirect (302)</a>
+<a id="redirect301" href="/redirect?to=/spa.html%3Ffrom%3D301&code=301">server redirect (301)</a>
+<a id="chain" href="/redirect?to=/redirect%3Fto%3D/spa.html%253Ffrom%253Dchain">redirect chain</a>
+<button id="frame-push" onclick="document.getElementById('f').contentWindow.history.pushState({}, '', '/spa/in-frame')">pushState inside the iframe</button>
+<iframe id="f" src="/spa.html?frame=1" width="100%" height="80"></iframe>

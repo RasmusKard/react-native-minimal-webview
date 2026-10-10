@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pull to refresh</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>Pull to refresh</h1>
+<p>loaded at <b id="loaded"></b>, mode <b id="mode"></b></p>
+<div id="content"></div>
+<script>
+  const mode = new URLSearchParams(location.search).get('mode') || 'long';
+  document.getElementById('loaded').textContent = new Date().toISOString();
+  document.getElementById('mode').textContent = mode;
+  const items = Array.from({ length: mode === 'short' ? 2 : 80 }, (_, i) => `<p>row ${i}</p>`).join('');
+  document.getElementById('content').innerHTML =
+    mode === 'inner'
+      ? `<div id="scroller" style="height:60vh;overflow:auto;border:1px solid #888">${items}</div>`
+      : items;
+  if (mode === 'long') document.documentElement.style.minHeight = '100%';
+</script>

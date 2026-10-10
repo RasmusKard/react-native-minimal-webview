@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Navigation</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<h1>Navigation</h1>
+<a id="same" href="/spa.html">same origin</a>
+<a id="cross" href="http://127.0.0.1:8090/spa.html">other origin (127.0.0.1)</a>
+<a id="external" href="https://example.com/">external site</a>
+<a id="checkout" href="/checkout/pay">checkout path (ask rule)</a>
+<a id="blank" href="/spa.html" target="_blank">target=_blank</a>
+<button id="open" onclick="window.open('https://example.com/popup')">window.open</button>
+<a id="tel" href="tel:+3725551234">tel:</a>
+<a id="mailto" href="mailto:test@example.com">mailto:</a>
+<a id="sms" href="sms:+3725551234">sms:</a>
+<a id="intent" href="intent://scan/#Intent;scheme=zxing;package=com.google.zxing.client.android;end">intent: (zxing)</a>
+<a id="redirect" href="/redirect?to=/spa.html%3Ffrom%3Dredirect">server redirect to /spa.html</a>
+<a id="redirect-ext" href="/redirect?to=https://example.com/">server redirect to an external site</a>
+<button id="assign" onclick="location.assign('/spa.html?from=script')">location.assign (no gesture)</button>
+<iframe id="frame" src="/spa.html?frame=1" width="100%" height="120"></iframe>
+<iframe src="http://127.0.0.1:8090/spa.html?frame=cross" width="100%" height="120"></iframe>
