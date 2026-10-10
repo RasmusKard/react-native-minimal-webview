@@ -14,8 +14,8 @@ import expo.modules.minimalwebview.ExtensionHost
 import expo.modules.minimalwebview.WebViewExtension
 
 /**
- * HTML5 fullscreen video, always on: the page's fullscreen view covers the WebView's own window (so it also works inside
- * an RN Modal) on a black backdrop, system bars hide, and back exits. Orientation is the app's: it can unlock it in
+ * HTML5 fullscreen video, always on: the page's fullscreen view covers the WebView's own window on a black backdrop,
+ * system bars hide, and back exits. Orientation is the app's: it can unlock it in
  * `onFullscreenChange` (expo-screen-orientation).
  */
 class FullscreenVideo : WebViewExtension {
