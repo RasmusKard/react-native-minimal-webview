@@ -1178,11 +1178,34 @@ async function network(h: Harness) {
   r.done();
 }
 
+/** The bridge after going back to a page, which WebKit (and Android with BFCache on) may restore without reloading it. */
+async function backForward(h: Harness) {
+  const r = reporter('backForward');
+  const page = `${h.pages}/back-forward.html?t=${Date.now()}`;
+  await openPage(h, page);
+  await openPage(h, `${h.pages}/spa.html?t=${Date.now()}`);
+  h.ref.current?.goBack();
+  await waitFor(h, (s) => s.url === page && idle(s));
+  await sleep(500);
+  const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
+  r.info('pageshow persisted flags', { shows });
+  const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
+  r.check('RN -> page call after going back', sum === 5, sum);
+  h.bridge.emit('nativeEvent', { n: 7 });
+  await sleep(500);
+  const event = await h.ref.current?.evaluate('window.lastEvent');
+  r.check('RN -> page event after going back', (event as { n?: number } | null)?.n === 7, event);
+  const echo = await pageCall(h, 'echo', { back: true });
+  r.check('page -> RN call after going back', (echo.result as { back?: boolean } | undefined)?.back === true, echo);
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
   reissue,
   bridge,
+  backForward,
   ptr,
   upload,
   errors,
