@@ -772,8 +772,8 @@ async function dialogs(h: Harness) {
 
 async function info(h: Harness) {
   const r = reporter('info');
-  const result = WebView.getAndroidWebViewInfo();
-  r.info('getAndroidWebViewInfo', result);
+  const result = WebView.androidWebViewInfo;
+  r.info('androidWebViewInfo', result);
   if (Platform.OS === 'ios') {
     r.check('null on iOS', result === null);
   } else {
@@ -962,7 +962,7 @@ async function navigation(h: Harness) {
  */
 async function injection(h: Harness) {
   const r = reporter('injection');
-  const canEnd = WebView.getAndroidWebViewInfo()?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
+  const canEnd = WebView.androidWebViewInfo?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
   h.setProps({
     injectedScripts: [
       { code: 'window.__injectedStart = true;', when: 'start' },
