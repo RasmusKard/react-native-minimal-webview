@@ -60,7 +60,9 @@ describe('errors', () => {
     const fire = (nativeEvent: Record<string, unknown>) =>
       act(async () => {
         const [native] = root.container.queryAll((node) => node.type === 'MinimalWebView');
-        native?.props.onError({ nativeEvent });
+        const props = native?.props as
+          { onError: (event: { nativeEvent: Record<string, unknown> }) => void } | undefined;
+        props?.onError({ nativeEvent });
       });
     const failedShown = () =>
       root.container.queryAll((node) => node.type === 'Text' && node.props.children === 'failed')
