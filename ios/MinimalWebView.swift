@@ -368,6 +368,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+    // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
+    // challenge holds its own page's response, so that page can't commit while it waits.
+    failPendingAsks()
     failPendingReplies()
     bridgeOrigin = nil
     // A new document: JS queues bridge messages until the page is ready again.

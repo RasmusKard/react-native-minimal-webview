@@ -75,7 +75,7 @@ Rules are an ordered list, and the first match wins. Every field a rule sets mus
 - `allow`: load in place.
 - `block`: cancel.
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
-- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`.
+- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits.
 
 **Defaults:**
 - With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally.
@@ -192,6 +192,9 @@ request over: to decide, to use your own picker, or to observe it.
 `onPermissionRequest` never makes the OS prompt: the app asks the OS (expo-camera, expo-location), and without OS
 permission the page's request fails anyway (`NotReadableError`, geolocation code 2 or 3). On iOS, `true` skips WebKit's
 own prompt. Android's WebView keeps a location answer until the page changes.
+
+An unanswered request is cancelled when its page is replaced (navigation, reload, unmount). Until then, a handler that
+never settles blocks that page's further requests of the same kind.
 
 An [extension](#extensions) that handles the same platform callback comes before these props.
 

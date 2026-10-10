@@ -1,14 +1,10 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Message
-import android.util.Log
 import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.HttpAuthHandler
@@ -31,6 +27,7 @@ import androidx.webkit.Page
 internal class Listener(private val owner: MinimalWebView, private val newDocument: () -> Unit) : NavigationListener {
   override fun onNavigationStarted(navigation: Navigation) {
     if (navigation.isSameDocument) return
+    owner.cancelFileChooser()
     owner.pendingUrl = navigation.url
     owner.loading = true
     owner.stateChanged()
@@ -127,17 +124,11 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
     navigation.createWindow(isUserGesture, resultMsg)
 
   // The first hook that handles it wins (onFileRequest); otherwise the system chooser. Its intent ignores `capture`.
-  // Returning false makes WebView cancel the chooser itself.
   override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-    if (owner.hooks.any { it.onShowFileChooser(callback, params) }) return true
-    val activity = owner.appContext.currentActivity ?: return false
-    val code = ActivityResults.register { resultCode, data -> callback.onReceiveValue(FileChooserParams.parseResult(resultCode, data)) }
-    try {
-      activity.startActivityForResult(params.createIntent(), code)
-    } catch (e: ActivityNotFoundException) {
-      Log.w(TAG, "no activity opens the file chooser", e)
-      ActivityResults.deliver(code, Activity.RESULT_CANCELED, null)
-    }
+    val once = owner.holdFileChooser(callback)
+    if (owner.hooks.any { it.onShowFileChooser(once, params) }) return true
+    val module = owner.appContext.registry.getModule<MinimalWebViewModule>()
+    if (module == null) once.onReceiveValue(null) else module.openFileChooser(params.createIntent(), once::onReceiveValue)
     return true
   }
 
@@ -166,21 +157,5 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   override fun onProgressChanged(view: WebView, newProgress: Int) {
     owner.progress = newProgress / 100.0
     owner.stateChanged()
-  }
-}
-
-/** Pending activity results by request code, delivered from the module's OnActivityResult. */
-internal object ActivityResults {
-  private val pending = mutableMapOf<Int, (Int, Intent?) -> Unit>()
-  private var nextCode = 0x4D57 // "MW": away from codes apps commonly use
-
-  fun register(onResult: (Int, Intent?) -> Unit): Int {
-    val code = nextCode++
-    pending[code] = onResult
-    return code
-  }
-
-  fun deliver(requestCode: Int, resultCode: Int, data: Intent?) {
-    pending.remove(requestCode)?.invoke(resultCode, data)
   }
 }

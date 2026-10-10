@@ -63,7 +63,8 @@ interface ExtensionHost {
   /** Whether the extension's JS helper has a handler for [event] (its `on` map); without one, `ask` answers null. */
   fun handles(event: String): Boolean
 
-  /** Async decide hook: emits [event] to its JS handler and calls [onAnswer] with the result (null if the view goes away). */
+  /** Async decide hook: emits [event] to its JS handler and calls [onAnswer] with the result (null if the view goes away
+   * or a new page replaces the one that asked). */
   fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
   /** Runs an expression in the page's main frame and awaits it, like the `evaluate` ref method: its JSON, or an

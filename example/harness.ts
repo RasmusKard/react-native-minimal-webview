@@ -3,7 +3,6 @@
 import { File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
-  AuthRequest,
   Bridge,
   Download,
   DownloadFailure,
@@ -30,7 +29,7 @@ export type Harness = {
   state: () => NavigationState;
   load: (uri: string) => void;
   loadSource: (source: WebViewSource) => void;
-  setAuth: (handler: ((request: AuthRequest) => { username: string; password: string } | null) | undefined) => void;
+  setAuth: (handler: WebViewProps['onHttpAuthRequest']) => void;
   setRules: (rules: NavigationRule[] | undefined) => void;
   setAsk: (ask: WebViewProps['onNavigationRequest']) => void;
   bridge: Bridge;
@@ -531,14 +530,19 @@ async function upload(h: Harness) {
   file.write('hello from the app cache');
   const requests: FileRequest[] = [];
   let answer: string[] | null = null;
+  let hang = false;
   h.setFileRequest(async (request) => {
     requests.push(request);
+    if (hang) return await new Promise<null>(() => {});
     return answer;
   });
-  const uri = `${h.pages}/upload.html?t=${Date.now()}`;
-  h.load(uri);
-  await waitFor(h, (s) => s.url === uri && idle(s));
-  await sleep(500);
+  const open = async () => {
+    const uri = `${h.pages}/upload.html?t=${Date.now()}`;
+    h.load(uri);
+    await waitFor(h, (s) => s.url === uri && idle(s));
+    await sleep(500);
+  };
+  await open();
   const tapAndRead = async (label: string) => {
     const before = ((await h.ref.current?.evaluate('window.testLog.length')) as number) ?? 0;
     r.info('TAP', label);
@@ -576,6 +580,21 @@ async function upload(h: Harness) {
   answer = [file.uri];
   const again = await tapAndRead('after cancel');
   r.check('the chooser opens again after a cancel (callback called once)', again?.includes('hello') ?? false, again);
+
+  // A handler that never settles holds the page's chooser (WebView allows one); the next page cancels it.
+  hang = true;
+  const held = requests.length;
+  r.info('TAP', 'never settles');
+  for (const end = Date.now() + 10000; Date.now() < end && requests.length === held; ) await sleep(200);
+  r.check('a request whose handler never settles reaches JS', requests.length === held + 1, requests.length - held);
+  hang = false;
+  await open();
+  const afterHang = await tapAndRead('after navigation');
+  r.check(
+    'after navigating, the next request reaches JS and uploads',
+    requests.length === held + 2 && (afterHang?.includes('hello') ?? false),
+    { requests: requests.length - held, afterHang }
+  );
 
   // Without onFileRequest: the system chooser. It covers the app (AppState goes background); the driver presses back.
   h.setProps({ onFileRequest: undefined });
@@ -1043,10 +1062,11 @@ async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequestEvent[] = [];
   let answer = false;
-  h.setPermission(async (request) => {
+  const handler = async (request: PermissionRequestEvent) => {
     asked.push(request);
     return answer;
-  });
+  };
+  h.setPermission(handler);
   const press = async (id: string) => {
     const before = (await h.ref.current?.evaluate('window.testLog.length')) as number;
     await click(h, id);
@@ -1102,6 +1122,31 @@ async function permissionsSuite(h: Harness) {
     framed,
     asked: asked.length - askedBefore,
   });
+
+  // A handler that never settles: the next page cancels its request (deny) and asks the app again.
+  await openPage(h, `${h.pages}/device.html?t=${Date.now()}`);
+  let release: (value: boolean) => void = () => {};
+  h.setPermission((request) => {
+    asked.push(request);
+    return new Promise<boolean>((resolve) => (release = resolve));
+  });
+  askedBefore = asked.length;
+  await click(h, 'camera');
+  for (const end = Date.now() + 10000; Date.now() < end && asked.length === askedBefore; ) await sleep(200);
+  r.check('a request whose handler never settles reaches JS', asked.length === askedBefore + 1, asked.length - askedBefore);
+  h.setPermission(handler);
+  await openPage(h, `${h.pages}/device.html?t=${Date.now()}`);
+  answer = false;
+  const again = await press('camera');
+  r.check(
+    'after navigating, the page asks again and gets the answer',
+    asked.length === askedBefore + 2 && again.includes('NotAllowedError'),
+    { asked: asked.length - askedBefore, again }
+  );
+  release(true);
+  await sleep(300);
+  r.check('a late answer for the replaced page changes nothing', (await h.ref.current?.evaluate('1 + 1')) === 2);
+  answer = true;
 
   if (Platform.OS === 'android') {
     // Without onPermissionRequest: denied. Set again: asked again, without a remount.
@@ -1207,9 +1252,16 @@ async function network(h: Harness) {
   await waitFor(h, (s) => s.url === headersPage && idle(s));
   r.check('source.headers reach the first request', (await text('headers')).includes('"x-test-header":"hello"'));
 
-  h.setAuth(() => ({ username: 'u', password: 'p' }));
+  // Answered late: the challenge's own page load must not cancel it (pending asks end when a new page commits).
+  let authAsks = 0;
+  h.setAuth(async () => {
+    authAsks++;
+    await sleep(1500);
+    return { username: 'u', password: 'p' };
+  });
   await openPage(h, `${h.pages}/auth?t=${Date.now()}`);
   r.check('onHttpAuthRequest credentials authorize the page', (await text('auth')) === 'authorized', await text('auth'));
+  r.check('a late auth answer is not cancelled by its own page load', authAsks === 1 && (await text('auth')) === 'authorized', authAsks);
   h.setAuth(() => null);
   // Another origin: the WebView caches the credentials it just used for localhost's realm, as browsers do.
   await openPage(h, `http://127.0.0.1:8090/auth?t=${Date.now()}`);

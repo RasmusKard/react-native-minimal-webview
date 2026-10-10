@@ -47,7 +47,8 @@ public protocol ExtensionHost: AnyObject {
   func emit(_ event: String, _ payload: [String: Any])
   /// Whether the extension's JS helper has a handler for `event` (its `on` map); without one, `ask` answers nil.
   func handles(_ event: String) -> Bool
-  /// Async decide hook: emits `event` to its JS handler and calls `onAnswer` with the result (nil if the view goes away).
+  /// Async decide hook: emits `event` to its JS handler and calls `onAnswer` with the result (nil if the view goes away
+  /// or a new page replaces the one that asked).
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void)
   /// The core's reload: retries the failed URL after an error.
   func reload()

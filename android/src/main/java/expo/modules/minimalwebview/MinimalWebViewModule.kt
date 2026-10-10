@@ -1,16 +1,48 @@
 package expo.modules.minimalwebview
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient.FileChooserParams
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.Promise
+import expo.modules.kotlin.activityresult.AppContextActivityResultContract
+import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.minimalwebview.extensions.PullToRefresh
+import java.io.Serializable
 
 class MinimalWebViewModule : Module() {
+  private var fileChooser: AppContextActivityResultLauncher<ChooserIntent, Array<Uri>?>? = null
+  private var chooserOpen = false
+
+  /**
+   * The system file chooser (ChromeClient.onShowFileChooser), one at a time app-wide: the launcher keeps one callback,
+   * so a request while one is open gets null at once, as does one before the launcher is registered or without an
+   * activity. Otherwise [onResult] gets the picked URIs, or null on cancel.
+   */
+  internal fun openFileChooser(intent: Intent, onResult: (Array<Uri>?) -> Unit) {
+    val launcher = fileChooser
+    if (launcher == null || chooserOpen) return onResult(null)
+    chooserOpen = true
+    try {
+      launcher.launch(ChooserIntent(intent)) {
+        chooserOpen = false
+        onResult(it)
+      }
+    } catch (e: RuntimeException) { // no activity opens it, no current activity, or the launcher was unregistered
+      chooserOpen = false
+      Log.w(TAG, "the file chooser can't open", e)
+      onResult(null)
+    }
+  }
+
   override fun definition() = ModuleDefinition {
     Name("MinimalWebView")
 
@@ -20,8 +52,11 @@ class MinimalWebViewModule : Module() {
       WebViewExtensions.register("sharedCookies") { object : WebViewExtension {} }
     }
 
-    // The system file chooser's result (ChromeClient.onShowFileChooser).
-    OnActivityResult { _, payload -> ActivityResults.deliver(payload.requestCode, payload.resultCode, payload.data) }
+    // The fallback runs when the result reaches a recreated activity: the WebView that asked is gone.
+    // ponytail: if no result ever arrives (the activity died without one), choosers stay cancelled until relaunch.
+    RegisterActivityContracts {
+      fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> chooserOpen = false }
+    }
 
     // Cookies live in memory until flushed; persist them before the process can be killed.
     OnActivityEntersBackground {
@@ -88,4 +123,14 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
     }
   }
+}
+
+/** The chooser's intent. Serializable because the registry persists launch inputs; it never relaunches a restored one. */
+private class ChooserIntent(@Transient val intent: Intent? = null) : Serializable
+
+private object FileChooserContract : AppContextActivityResultContract<ChooserIntent, Array<Uri>?> {
+  override fun createIntent(context: Context, input: ChooserIntent) = checkNotNull(input.intent)
+
+  override fun parseResult(input: ChooserIntent, resultCode: Int, intent: Intent?): Array<Uri>? =
+    FileChooserParams.parseResult(resultCode, intent)
 }

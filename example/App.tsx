@@ -6,7 +6,6 @@ import {
   type WebViewSource,
   WebView,
   createBridge,
-  type AuthRequest,
   type PermissionRequestEvent,
   sharedCookies,
   type FileRequest,
@@ -58,7 +57,7 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const authRef = useRef<((request: AuthRequest) => { username: string; password: string } | null) | undefined>(undefined);
+  const authRef = useRef<WebViewProps['onHttpAuthRequest']>(undefined);
   const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(undefined);
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(undefined);
   const extensions = useMemo(
