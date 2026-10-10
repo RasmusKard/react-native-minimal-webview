@@ -67,3 +67,11 @@ final class WeakBridgeHandler: NSObject, WKScriptMessageHandlerWithReply {
     view.bridgeReceive(message, replyHandler: replyHandler)
   }
 }
+
+extension OriginRules {
+  /// The origin as `location.origin` writes it, so the bridge can compare the two exactly. Kept out of OriginRules.swift
+  /// so that file builds without WebKit (the rule tests run on Linux).
+  static func origin(of security: WKSecurityOrigin) -> String {
+    origin(security.protocol, security.host, security.port)
+  }
+}
