@@ -8,7 +8,7 @@ export type NavigationAction = 'allow' | 'block' | 'external';
 
 /**
  * One navigation rule. Every field that is set must match; the first matching rule wins.
- * With no rules, http(s) loads in place and other schemes open externally. With rules and no match, the result is `block`.
+ * With no rules, http(s) loads in place and other schemes open externally from the main frame (a subframe is blocked). With rules and no match, the result is `block`.
  */
 export type NavigationRule = {
   /** Exact, case-insensitive: `['tel', 'mailto']`. */

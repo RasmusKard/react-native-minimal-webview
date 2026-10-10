@@ -47,7 +47,7 @@ export function Browser() {
       source={{ uri: 'https://example.com' }}
       applicationNameForUserAgent="MyApp/1.0"
       navigationRules={[
-        { scheme: ['tel', 'mailto', 'sms'], action: 'external' },
+        { scheme: ['tel', 'mailto', 'sms'], mainFrame: true, action: 'external' },
         { host: ['example.com', '*.example.com'], action: 'allow' },
         { newWindow: true, action: 'external' },
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
@@ -114,7 +114,7 @@ are lists, and one entry matching is enough:
 - `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits.
 
 **Defaults:**
-- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally.
+- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked.
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load.
 
