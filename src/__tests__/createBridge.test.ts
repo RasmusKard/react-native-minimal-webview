@@ -94,6 +94,14 @@ describe('createBridge', () => {
     ]);
   });
 
+  it('answers a page call made before the page is ready', async () => {
+    const { bridge, sent, fromPage } = setup();
+    bridge.handle('echo', (params) => params);
+    fromPage({ id: 'p1', kind: 'call', method: 'echo', params: 7 });
+    await flush();
+    expect(sent).toEqual([{ v: 1, id: 'p1', kind: 'result', params: 7 }]);
+  });
+
   it('delivers page events to listeners until unsubscribed', () => {
     const { bridge, fromPage } = setup();
     const seen: unknown[] = [];
@@ -113,8 +121,12 @@ describe('createBridge', () => {
   });
 
   it('rejects malformed allowedOrigins up front', () => {
-    expect(() => createBridge({ allowedOrigins: ['https://example.com/'] })).toThrow(/invalid allowedOrigins/);
-    expect(() => createBridge({ allowedOrigins: ['example.com'] })).toThrow(/invalid allowedOrigins/);
+    expect(() => createBridge({ allowedOrigins: ['https://example.com/'] })).toThrow(
+      /invalid allowedOrigins/
+    );
+    expect(() => createBridge({ allowedOrigins: ['example.com'] })).toThrow(
+      /invalid allowedOrigins/
+    );
     expect(() =>
       createBridge({ allowedOrigins: ['*', 'https://*.example.com', 'http://localhost:8090'] })
     ).not.toThrow();

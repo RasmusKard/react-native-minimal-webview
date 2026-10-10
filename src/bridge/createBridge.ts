@@ -19,7 +19,7 @@ export type BridgeConnection = {
   receive(message: string): void;
   /** The platform lacks the WebView features the bridge needs: calls reject with `unavailable`. */
   markUnavailable(): void;
-  /** A new document committed: queue messages until its page client says `ready`. */
+  /** A new document committed: queue messages until its page client says `ready` (at DOMContentLoaded). */
   navigated(): void;
 };
 
@@ -94,13 +94,18 @@ export function createBridge(options: BridgeOptions): Bridge {
   const unavailableMessage =
     'this WebView lacks the features the bridge needs; update Android System WebView';
 
+  // Answers go out at once, not through the ready-gated queue: the page may be waiting for this answer before it
+  // reaches DOMContentLoaded (a module script awaiting a call), and `ready` is sent only then. A page's call is the
+  // message that lets native reply on Android, and iOS answers through the call's own reply handler.
+  const reply = (message: BridgeMessage) => post?.(JSON.stringify(message));
+
   const answer = async (id: string, method: string, params: unknown) => {
     const fail = (code: BridgeError['code'], message: string) =>
-      send({ v: 1, id, kind: 'error', error: { code, message } });
+      reply({ v: 1, id, kind: 'error', error: { code, message } });
     const handler = handlers.get(method);
     if (!handler) return fail('not_found', `no handler for ${method}`);
     try {
-      send({ v: 1, id, kind: 'result', params: await handler(params) });
+      reply({ v: 1, id, kind: 'result', params: await handler(params) });
     } catch (error) {
       fail('handler_error', String(error));
     }

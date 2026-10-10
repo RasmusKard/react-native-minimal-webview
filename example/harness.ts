@@ -466,6 +466,15 @@ async function bridge(h: Harness) {
     (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
   );
 
+  // PENDING on-device verification: a call made as the page commits waits for DOMContentLoaded, so the handler that
+  // an inline script registers during load is there (not_found otherwise).
+  const early = `${page}&early=1`;
+  h.load(early);
+  await waitFor(h, (s) => s.url === early);
+  const duringLoad = await h.bridge.call('early').catch(errorCode);
+  r.check('a call made during load reaches a handler the page registers while loading', duringLoad === 'early-ok', duringLoad);
+  await waitFor(h, idle);
+
   const other = `http://127.0.0.1:8090/bridge.html?t=${Date.now()}`;
   h.load(other);
   await waitFor(h, (s) => s.url === other && idle(s));

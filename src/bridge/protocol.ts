@@ -15,7 +15,8 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 export type BridgeError = { code: BridgeErrorCode; message: string };
 
 /**
- * `ready`: the page client is installed (Android needs one page message before it can reply).
+ * `ready`: the page's DOM is parsed (DOMContentLoaded), so its scripts have registered handlers. Native holds its
+ * calls and events until then. A page's own calls and their answers don't wait for it.
  * `call` / `result` / `error`: a request and its answer, matched by `id`.
  * `event`: fire-and-forget, `method` is the event name.
  */

@@ -135,8 +135,16 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
     /** Native entry point for iOS (callAsyncJavaScript); Android uses the transport's onmessage. */
     __receive: receive,
   });
-  // Android needs one page message before native can reply.
-  send({ v: 1, id: '', kind: 'ready' });
+  // `ready` tells native to deliver what it queued for this page. Wait for DOMContentLoaded, so the page's synchronous
+  // and deferred scripts have registered their handlers and listeners; a call delivered earlier would get `not_found`.
+  // The page's own calls work before that: native answers them without waiting for `ready`.
+  if (w.document.readyState === 'loading') {
+    w.document.addEventListener('DOMContentLoaded', () => send({ v: 1, id: '', kind: 'ready' }), {
+      once: true,
+    });
+  } else {
+    send({ v: 1, id: '', kind: 'ready' });
+  }
   // Back from the back-forward cache: scripts don't run again, but native reset the bridge when the page was left, and
   // answers to this page's calls went to the page shown meanwhile. Fail those calls and announce the page again.
   w.addEventListener('pageshow', (event) => {
