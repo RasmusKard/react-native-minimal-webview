@@ -54,11 +54,19 @@ export type NavigationState = {
   canGoForward: boolean;
 };
 
+/** A main-frame load that failed: no page arrived. */
 export type WebViewErrorEvent = {
-  kind: 'network' | 'http' | 'ssl';
+  kind: 'network' | 'ssl';
   url: string;
-  /** Platform error code, or the HTTP status for `http`. */
+  /** Platform error code. */
   code: number;
+  description: string;
+};
+
+/** A main-frame response with an HTTP error status (400+). The site's own error page still shows. */
+export type WebViewHttpErrorEvent = {
+  url: string;
+  statusCode: number;
   description: string;
 };
 
@@ -149,13 +157,14 @@ type OwnProps = {
   /** Fixed at mount: a change is ignored with a warning; remount with a new `key` to apply it. Handlers stay live. */
   extensions?: WebViewExtension[];
   renderLoading?: () => ReactNode;
-  /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onError still fires). */
+  /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onHttpError fires). */
   renderError?: (error: WebViewErrorEvent) => ReactNode;
 
   onNavigation?: (event: NavigationEvent) => void;
   /** Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;
   onError?: (event: WebViewErrorEvent) => void;
+  onHttpError?: (event: WebViewHttpErrorEvent) => void;
   onProcessGone?: (event: ProcessGoneEvent) => void;
   /** JS-only aliases derived from `loading`. */
   onLoadStart?: (state: NavigationState) => void;

@@ -12,6 +12,7 @@ import type {
   ProcessGoneEvent,
   PermissionRequestEvent,
   WebViewErrorEvent,
+  WebViewHttpErrorEvent,
   NavigationState,
   WebViewProps,
   WebViewRef,
@@ -41,6 +42,7 @@ export type Harness = {
   /** What the WebView reported, in order. Suites clear what they read. */
   events: {
     errors: WebViewErrorEvent[];
+    httpErrors: WebViewHttpErrorEvent[];
     gone: ProcessGoneEvent[];
     loads: string[];
     navigations: NavigationEvent[];
@@ -579,6 +581,7 @@ async function upload(h: Harness) {
 
 const clearEvents = (h: Harness) => {
   h.events.errors.length = 0;
+  h.events.httpErrors.length = 0;
   h.events.gone.length = 0;
   h.events.loads.length = 0;
 };
@@ -609,14 +612,15 @@ async function errors(h: Harness) {
 
   clearEvents(h);
   h.load(`${h.pages}/status/404?t=${Date.now()}`);
-  await waitFor(h, () => h.events.errors.length > 0, 10000);
-  const http = h.events.errors[0];
-  r.check('http error with the status code', http?.kind === 'http' && http.code === 404, http);
+  await waitFor(h, () => h.events.httpErrors.length > 0, 10000);
+  const http = h.events.httpErrors[0];
+  r.check('http error with the status code', http?.statusCode === 404, http);
+  r.check('an http error is not an onError', h.events.errors.length === 0, h.events.errors);
 
   clearEvents(h);
   await openPage(h, `${h.pages}/subresource-404.html?t=${Date.now()}`);
   await sleep(1000);
-  r.check('subresource 404s are not reported', h.events.errors.length === 0, h.events.errors);
+  r.check('subresource 404s are not reported', h.events.httpErrors.length === 0, h.events.httpErrors);
   r.check('onLoad after a clean load', h.events.loads.includes('load'), h.events.loads);
 
   clearEvents(h);
@@ -627,13 +631,13 @@ async function errors(h: Harness) {
   clearEvents(h);
   const flaky = `${h.pages}/flaky?key=${Date.now()}`;
   h.load(flaky);
-  await waitFor(h, () => h.events.errors.length > 0 && idle(h.state()), 10000);
-  r.check('503 reported', h.events.errors[0]?.code === 503, h.events.errors[0]);
+  await waitFor(h, () => h.events.httpErrors.length > 0 && idle(h.state()), 10000);
+  r.check('503 reported', h.events.httpErrors[0]?.statusCode === 503, h.events.httpErrors[0]);
   h.events.loads.length = 0;
   h.ref.current?.reload();
   const reloaded = await waitFor(h, () => h.events.loads.includes('load'), 10000);
   r.check('reload after an error loads the page', reloaded && h.state().url === flaky, { loads: h.events.loads, state: h.state() });
-  r.check('the reload reports no new error', h.events.errors.length === 1, h.events.errors);
+  r.check('the reload reports no new error', h.events.httpErrors.length === 1, h.events.httpErrors);
   r.done();
 }
 
@@ -1125,7 +1129,7 @@ async function network(h: Harness) {
   clearEvents(h);
   await openPage(h, `${h.pages}/status/404?t=${Date.now()}`);
   await sleep(800);
-  r.check('an HTTP 404 still reports onError', h.events.errors.some((e) => e.kind === 'http' && e.code === 404), h.events.errors);
+  r.check('an HTTP 404 reports onHttpError', h.events.httpErrors.some((e) => e.statusCode === 404), h.events.httpErrors);
   r.check('an HTTP 404 does not show renderError', !h.events.overlay.error);
 
   // Native requests (RN fetch) and the WebView share cookies: both directions.
