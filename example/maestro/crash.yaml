@@ -3,10 +3,10 @@ name: crash
 env:
   SUITE: crash
 ---
-# Five renderer kills; the harness asks for each once the page answers an evaluate (a live renderer).
+# Six renderer kills; the harness asks for each once the page answers an evaluate (a live renderer).
 - runFlow: subflows/launch.yaml
 - repeat:
-    times: 5
+    times: 6
     commands:
       - evalScript: ${output.n = (output.n || 0) + 1}
       - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }

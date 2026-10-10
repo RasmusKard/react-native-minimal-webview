@@ -54,7 +54,7 @@ extension MinimalWebView: WKUIDelegate {
     if !handled { decisionHandler(.prompt) }
   }
 
-  /// Dismisses the dialog on screen, if any, completing it as cancelled (teardown, crash, recreate).
+  /// Dismisses the dialog on screen, if any, completing it as cancelled (teardown, crash).
   func dismissDialog() {
     guard let current = dialog else { return }
     dialog = nil
