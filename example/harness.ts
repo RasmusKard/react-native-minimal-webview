@@ -961,13 +961,15 @@ async function downloadsSuite(h: Harness) {
     ['attachment', 'report.txt', 'downloaded report.txt'],
     ['blob', 'blob.txt', 'blob body'],
     ['data', 'data.txt', 'data body'],
+    // Android fetches it again and the server then redirects to another host; iOS keeps WebKit's first response.
+    ['moved', 'moved.txt', Platform.OS === 'android' ? 'downloaded moved.txt' : 'first response'],
   ] as const) {
     const before = h.events.downloads.length;
     await click(h, id);
     const done = await waitFor(h, () => h.events.downloads.length > before, 20000);
     const download = h.events.downloads[before];
     // Android's DownloadListener does not pass the link's `download` attribute: data:/blob: names are guessed.
-    const nameOk = Platform.OS === 'android' && id !== 'attachment' ? download?.filename.endsWith('.txt') : download?.filename === filename;
+    const nameOk = Platform.OS === 'android' && (id === 'blob' || id === 'data') ? download?.filename.endsWith('.txt') : download?.filename === filename;
     r.check(`${id} download reaches onDownload`, done && nameOk === true, download);
     const text = download?.uri.startsWith('file:') ? await new File(download.uri).text() : null;
     r.check(`${id} file holds the body`, text?.startsWith(body) === true, text?.slice(0, 80));

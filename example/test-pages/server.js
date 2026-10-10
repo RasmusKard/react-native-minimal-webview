@@ -3,6 +3,8 @@
 // Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests.
 //   /redirect?to=<path>&code=302  server redirect
 //   /download?name=<file>          attachment response
+//   /moved?key=<k>                 an attachment the first time for a key, then a redirect to /download on 127.0.0.1
+//                                  (an Android download is fetched again, and must follow it)
 //   /post                          echoes a form POST (payment-style flow)
 //   /slow?ms=<n>                   delays the response
 //   /status/<code>                 empty response with that status
@@ -41,6 +43,7 @@ function serveFile(res, pathname) {
 const queued = new Map(); // platform (ios | android) -> suite name
 const dropping = new Set();
 const flakyKeys = new Set();
+const movedKeys = new Set();
 
 /** @param {import('http').IncomingMessage} req @param {import('http').ServerResponse} res */
 function handle(req, res) {
@@ -116,6 +119,12 @@ function handle(req, res) {
     res.writeHead(302, { location: url.pathname.endsWith('A') ? '/checkout/loopB' : '/checkout/loopA' }).end();
   } else if (url.pathname === '/redirect') {
     res.writeHead(Number(q.get('code') ?? 302), { location: q.get('to') ?? '/' }).end();
+  } else if (url.pathname === '/moved' && movedKeys.has(q.get('key') ?? '')) {
+    res.writeHead(302, { location: `http://127.0.0.1:${PORT}/download?name=moved.txt` }).end();
+  } else if (url.pathname === '/moved') {
+    movedKeys.add(q.get('key') ?? '');
+    res.writeHead(200, { 'content-type': 'text/plain', 'content-disposition': 'attachment; filename="moved.txt"' });
+    res.end('first response\n');
   } else if (url.pathname === '/download') {
     const name = q.get('name') ?? 'report.txt';
     res.writeHead(200, {

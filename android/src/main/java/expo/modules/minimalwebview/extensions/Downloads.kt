@@ -3,24 +3,26 @@ package expo.modules.minimalwebview.extensions
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
-import android.webkit.CookieManager
 import androidx.webkit.URLUtilCompat
+import com.facebook.react.modules.network.ForwardingCookieHandler
 import expo.modules.minimalwebview.DownloadInfo
 import expo.modules.minimalwebview.ExtensionHost
 import expo.modules.minimalwebview.TAG
 import expo.modules.minimalwebview.WebViewExtension
+import okhttp3.JavaNetCookieJar
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
- * Downloads: http(s) is fetched again with the page's cookies and user agent (WebView hands over only the URL), data:
- * is decoded, and blob: is read by the page. Each lands in its own app-cache directory and emits
+ * Downloads: http(s) is fetched again with the WebView's cookies and the page's user agent (WebView hands over only the
+ * URL), data: is decoded, and blob: is read by the page. Each lands in its own app-cache directory and emits
  * `download {uri, filename, mimeType, url}`, as on iOS; a failed one emits `downloadFailed {filename, url, reason}`.
  * Nothing here may crash the app: the page controls the URL.
  */
@@ -44,21 +46,13 @@ class Downloads : WebViewExtension {
   }
 
   private fun fetch(download: DownloadInfo, name: String) {
-    // Read on the main thread: CookieManager belongs to the WebView's thread.
-    val cookie = CookieManager.getInstance().getCookie(download.url)
     save(name, download.url) { file ->
-      val connection = URL(download.url).openConnection() as HttpURLConnection
-      try {
-        connection.connectTimeout = TIMEOUT_MS
-        connection.readTimeout = TIMEOUT_MS
-        connection.setRequestProperty("User-Agent", download.userAgent)
-        cookie?.let { connection.setRequestProperty("Cookie", it) }
-        val status = connection.responseCode
-        if (status !in 200..299) throw IOException("HTTP $status")
-        connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
-        download.mimeType.ifEmpty { connection.contentType?.substringBefore(';') ?: "application/octet-stream" }
-      } finally {
-        connection.disconnect()
+      val request = Request.Builder().url(download.url).header("User-Agent", download.userAgent).build()
+      client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+        val body = response.body ?: throw IOException("no response body")
+        body.byteStream().use { input -> file.outputStream().use { input.copyTo(it) } }
+        download.mimeType.ifEmpty { response.header("Content-Type")?.substringBefore(';') ?: "application/octet-stream" }
       }
     }
   }
@@ -132,6 +126,21 @@ class Downloads : WebViewExtension {
   }
 
   private companion object {
-    const val TIMEOUT_MS = 30_000
+    /**
+     * Follows redirects (http to https too); each hop reads the WebView's cookies for its own host and stores what the
+     * server sets back into them, as React Native's fetch does. A redirect from https to http is refused, as Chrome
+     * blocks an insecure download started from a secure one.
+     */
+    val client: OkHttpClient by lazy {
+      OkHttpClient.Builder()
+        .cookieJar(JavaNetCookieJar(ForwardingCookieHandler()))
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .addNetworkInterceptor { chain ->
+          if (chain.call().request().isHttps && !chain.request().isHttps) throw IOException("refused a redirect from https to http")
+          chain.proceed(chain.request())
+        }
+        .build()
+    }
   }
 }
