@@ -2,7 +2,8 @@ import WebKit
 
 /// A per-instance WebView extension. EXPERIMENTAL until the built-ins and one out-of-package extension use it.
 /// Every hook has a no-op default. Enable one on a WebView with the `extensions` prop. For the decide hooks, the first
-/// extension that handles a request wins.
+/// extension that handles a request wins. The core's page requests (permissions, downloads, HTTP auth) come after every
+/// extension.
 public protocol WebViewExtension: AnyObject {
   /// Runs before the WKWebView exists: `host.webView` is nil here. Use `didCreate` for the WebView.
   func attach(host: ExtensionHost, config: [String: Any])

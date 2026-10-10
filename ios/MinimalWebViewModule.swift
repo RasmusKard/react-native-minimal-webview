@@ -7,10 +7,7 @@ public class MinimalWebViewModule: Module {
 
     OnCreate {
       WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
-      WebViewExtensions.register("downloads") { Downloads() }
-      WebViewExtensions.register("permissions") { Permissions() }
       WebViewExtensions.register("sharedCookies") { SharedCookies() }
-      WebViewExtensions.register("httpAuth") { HttpAuth() }
     }
 
     // View functions run on the main queue.
@@ -33,6 +30,7 @@ public class MinimalWebViewModule: Module {
       }
       Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
       Prop("injectedScripts") { (view: MinimalWebView, value: [[String: Any]]?) in view.injectedScripts = value ?? [] }
+      Prop("requestHandlers") { (view: MinimalWebView, value: [String]?) in view.requestHandlers = Set(value ?? []) }
       Prop("openExternalInJS") { (view: MinimalWebView, value: Bool?) in view.openExternalInJS = value ?? false }
       Prop("webviewDebuggingEnabled") { (view: MinimalWebView, value: Bool?) in view.webviewDebuggingEnabled = value ?? false }
 

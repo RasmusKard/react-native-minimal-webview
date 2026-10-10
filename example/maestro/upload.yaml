@@ -3,7 +3,8 @@ name: upload
 env:
   SUITE: upload
 ---
-# Android file chooser: four real taps on the page's file input (WebView opens choosers only on a gesture).
+# Android file chooser: real taps on the page's file input (WebView opens choosers only on a gesture). Four answered by
+# onFileRequest, two that open the system chooser (back cancels it once it covers the app), one onFileRequest again.
 - runFlow: subflows/launch.yaml
 - repeat:
     times: 4
@@ -11,4 +12,14 @@ env:
       - evalScript: ${output.n = (output.n || 0) + 1}
       - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
       - tapOn: { point: "50%, 49%" }
+- repeat:
+    times: 2
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+      - tapOn: { point: "50%, 49%" }
+      - extendedWaitUntil: { notVisible: { id: harness-request }, timeout: 10000 }
+      - back
+- runFlow: { file: subflows/await.yaml, env: { N: 7 } }
+- tapOn: { point: "50%, 49%" }
 - runFlow: subflows/finish.yaml

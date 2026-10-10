@@ -15,6 +15,7 @@ import android.webkit.WebView
  * A per-instance WebView extension. EXPERIMENTAL until the built-ins and one out-of-package extension use it.
  * Every hook has a no-op default. Enable one on a WebView with the `extensions` prop. For the decide hooks
  * (returning Boolean), the first extension that returns true handles the callback; it must then complete it once.
+ * The core's page requests (file chooser, fullscreen, permissions, downloads, HTTP auth) come after every extension.
  */
 interface WebViewExtension {
   fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {}

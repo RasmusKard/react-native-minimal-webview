@@ -1,10 +1,14 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Message
+import android.util.Log
 import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.HttpAuthHandler
@@ -106,7 +110,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     }
   }
 
-  // Basic and digest auth: an extension answers (httpAuth); without one, cancel (the page shows its 401).
+  // Basic and digest auth: a hook answers (onHttpAuthRequest); without one, cancel (the page shows its 401).
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
     if (owner.hooks.none { it.onHttpAuthRequest(handler, host, realm) }) handler.cancel()
   }
@@ -122,11 +126,22 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message) =
     navigation.createWindow(isUserGesture, resultMsg)
 
-  // First extension that handles it wins; otherwise the WebView cancels the chooser.
-  override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams) =
-    owner.hooks.any { it.onShowFileChooser(callback, params) }
+  // The first hook that handles it wins (onFileRequest); otherwise the system chooser. Its intent ignores `capture`.
+  // Returning false makes WebView cancel the chooser itself.
+  override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+    if (owner.hooks.any { it.onShowFileChooser(callback, params) }) return true
+    val activity = owner.appContext.currentActivity ?: return false
+    val code = ActivityResults.register { resultCode, data -> callback.onReceiveValue(FileChooserParams.parseResult(resultCode, data)) }
+    try {
+      activity.startActivityForResult(params.createIntent(), code)
+    } catch (e: ActivityNotFoundException) {
+      Log.w(TAG, "no activity opens the file chooser", e)
+      ActivityResults.deliver(code, Activity.RESULT_CANCELED, null)
+    }
+    return true
+  }
 
-  // Without an extension that handles them: deny (never grant device access by default).
+  // Without a hook that handles them: deny (never grant device access by default).
   override fun onPermissionRequest(request: PermissionRequest) {
     if (owner.hooks.none { it.onPermissionRequest(request) }) request.deny()
   }
@@ -151,5 +166,21 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   override fun onProgressChanged(view: WebView, newProgress: Int) {
     owner.progress = newProgress / 100.0
     owner.stateChanged()
+  }
+}
+
+/** Pending activity results by request code, delivered from the module's OnActivityResult. */
+internal object ActivityResults {
+  private val pending = mutableMapOf<Int, (Int, Intent?) -> Unit>()
+  private var nextCode = 0x4D57 // "MW": away from codes apps commonly use
+
+  fun register(onResult: (Int, Intent?) -> Unit): Int {
+    val code = nextCode++
+    pending[code] = onResult
+    return code
+  }
+
+  fun deliver(requestCode: Int, resultCode: Int, data: Intent?) {
+    pending.remove(requestCode)?.invoke(resultCode, data)
   }
 }

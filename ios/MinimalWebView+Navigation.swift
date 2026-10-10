@@ -19,9 +19,20 @@ extension MinimalWebView {
       url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: action.navigationType == .linkActivated
     )
     let download = activeExtensions?.contains { $0.wantsDownload(action) } == true
-    run(request) { allowed in
-      decide(allowed ? (download ? .download : .allow) : .cancel)
+    // `<a download>` or blob: that no hook takes (no onDownload): .allow would show it as a page.
+    let dropped = action.shouldPerformDownload && !download
+    run(request) { [weak self] allowed in
+      if allowed, dropped { self?.openDownload(target) }
+      decide(allowed && !dropped ? (download ? .download : .allow) : .cancel)
     }
+  }
+
+  /// A download no hook takes (no onDownload): http(s) opens externally, reported like an `external` navigation; the
+  /// browser fetches it without the page's session. A data: or blob: one only the page can read: dropped.
+  func openDownload(_ url: URL) {
+    guard ["http", "https"].contains(url.scheme?.lowercased()) else { return }
+    let request = NavigationRules.Request(url: url.absoluteString, mainFrame: true, newWindow: false, userInitiated: false)
+    finish(request, "external", nil) { _ in }
   }
 
   /// window.open and target=_blank: never a second WKWebView. `allow` loads the URL in this one.

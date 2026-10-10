@@ -3,6 +3,7 @@
 import { File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
+  AuthRequest,
   Bridge,
   Download,
   DownloadFailure,
@@ -20,7 +21,7 @@ import type {
 } from 'minimal-rn-webview';
 import type { RefObject } from 'react';
 import { WebView } from 'minimal-rn-webview';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 export type Harness = {
   pages: string;
@@ -29,7 +30,7 @@ export type Harness = {
   state: () => NavigationState;
   load: (uri: string) => void;
   loadSource: (source: WebViewSource) => void;
-  setAuth: (handler: ((request: { host: string; realm: string }) => { username: string; password: string } | null) | undefined) => void;
+  setAuth: (handler: ((request: AuthRequest) => { username: string; password: string } | null) | undefined) => void;
   setRules: (rules: NavigationRule[] | undefined) => void;
   setAsk: (ask: WebViewProps['onNavigationRequest']) => void;
   bridge: Bridge;
@@ -520,8 +521,8 @@ async function ptr(h: Harness) {
 }
 
 /**
- * Android file chooser through the fileUpload extension: the app answers with URIs it got from an Expo API.
- * The tap comes from outside (`INFO upload: TAP`), because WebView only opens choosers on a real gesture.
+ * Android file chooser through onFileRequest: the app answers with URIs it got from an Expo API. Without the prop, the
+ * system chooser. The taps come from outside (`INFO upload: TAP`), because WebView only opens choosers on a real gesture.
  */
 async function upload(h: Harness) {
   const r = reporter('upload');
@@ -575,6 +576,21 @@ async function upload(h: Harness) {
   answer = [file.uri];
   const again = await tapAndRead('after cancel');
   r.check('the chooser opens again after a cancel (callback called once)', again?.includes('hello') ?? false, again);
+
+  // Without onFileRequest: the system chooser. It covers the app (AppState goes background); the driver presses back.
+  h.setProps({ onFileRequest: undefined });
+  const states: string[] = [];
+  const subscription = AppState.addEventListener('change', (state) => states.push(state));
+  for (const label of ['system chooser', 'system chooser again']) {
+    states.length = 0;
+    const logged = await tapAndRead(label);
+    r.check(`without onFileRequest the system chooser opens (${label})`, states.includes('background'), states);
+    r.check(`back cancels it (${label})`, logged?.includes('cancelled') ?? false, logged);
+  }
+  subscription.remove();
+  h.setProps({});
+  const restored = await tapAndRead('onFileRequest again');
+  r.check('onFileRequest set again takes over without a remount', restored?.includes('hello') ?? false, restored);
   h.setFileRequest(undefined);
   r.done();
 }
@@ -995,10 +1011,34 @@ async function downloadsSuite(h: Harness) {
       : null;
     r.check(`${id} download url is ${url === null ? 'null' : 'the full server URL'}`, download?.url === url, download?.url);
   }
+
+  // Without onDownload: http(s) opens externally (here onOpenExternal), data: and blob: are dropped. Then set again.
+  const opened: string[] = [];
+  h.setProps({ onDownload: undefined, onOpenExternal: (url) => opened.push(url) });
+  await sleep(300);
+  const events = () => h.events.downloads.length + h.events.downloadFailures.length;
+  const before = events();
+  const page = h.state().url;
+  await click(h, 'attachment');
+  await waitFor(h, () => opened.length > 0);
+  r.check('without onDownload an http download goes to onOpenExternal', opened[0] === attachmentUrl, opened);
+  await click(h, 'blob');
+  await click(h, 'data');
+  await sleep(1500);
+  r.check(
+    'without onDownload data: and blob: are dropped (no event, no navigation)',
+    events() === before && opened.length === 1 && h.state().url === page,
+    { events: events() - before, opened, url: h.state().url }
+  );
+  const downloads = h.events.downloads.length;
+  h.setProps({});
+  await sleep(300);
+  await click(h, 'data');
+  r.check('onDownload set again takes over without a remount', await waitFor(h, () => h.events.downloads.length > downloads, 10000) && opened.length === 1);
   r.done();
 }
 
-/** Camera and location reach the page only when the app says yes and the origin is listed; the OS allows it here. */
+/** Camera and location reach the page only when onPermissionRequest says yes, main frame only; the OS allows it here. */
 async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequestEvent[] = [];
@@ -1045,15 +1085,36 @@ async function permissionsSuite(h: Harness) {
     r.check('location denied when the app says no (PERMISSION_DENIED)', geoDenied.includes('geo error 1'), geoDenied);
   }
 
-  const askedBefore = asked.length;
-  await openPage(h, `http://127.0.0.1:8090/device.html?t=${Date.now()}`);
+  // Another origin's frame, though the iframe allows the camera: denied without asking.
+  await openPage(h, `${h.pages}/device.html?t=${Date.now()}`);
   answer = true;
-  const other = await press('camera');
-  r.check(
-    'an origin outside the list is denied without asking',
-    other.includes('error') && asked.length === askedBefore,
-    { other, asked: asked.length }
+  let askedBefore = asked.length;
+  const before = (await h.ref.current?.evaluate('window.testLog.length')) as number;
+  await h.ref.current?.evaluate(
+    `document.body.append(Object.assign(document.createElement('iframe'), { allow: 'camera', src: 'http://127.0.0.1:8090/device.html?auto=camera' }))`
   );
+  let framed = '';
+  for (const end = Date.now() + 10000; Date.now() < end && !framed; await sleep(300)) {
+    framed = ((await h.ref.current?.evaluate(`window.testLog.slice(${before}).join()`)) as string) ?? '';
+  }
+  r.info('the cross-origin frame logged', framed);
+  r.check('a cross-origin frame is denied without asking', framed.includes('frame camera error') && asked.length === askedBefore, {
+    framed,
+    asked: asked.length - askedBefore,
+  });
+
+  if (Platform.OS === 'android') {
+    // Without onPermissionRequest: denied. Set again: asked again, without a remount.
+    h.setProps({ onPermissionRequest: undefined });
+    await sleep(300);
+    askedBefore = asked.length;
+    const unhandled = await press('camera');
+    r.check('without onPermissionRequest the camera is denied', unhandled.includes('NotAllowedError') && asked.length === askedBefore, unhandled);
+    h.setProps({});
+    await sleep(300);
+    const restored = await press('camera');
+    r.check('onPermissionRequest set again takes over without a remount', restored.includes('camera ok') && asked.length > askedBefore, restored);
+  }
   h.setPermission(undefined);
   r.done();
 }
@@ -1069,12 +1130,13 @@ async function fullscreen(h: Harness) {
   await openPage(h, `${h.pages}/media.html?t=${Date.now()}`);
   h.events.fullscreen.length = 0;
   // Screen pixels for the driver: the WebView starts 50 dp from the top of the screen (the example's padding).
-  const point = (await h.ref.current?.evaluate(`(() => {
-    const b = document.getElementById('fullscreen'); b.scrollIntoView({ block: 'center' });
-    const r = b.getBoundingClientRect(), d = devicePixelRatio;
-    return [Math.round((r.left + r.width / 2) * d), Math.round((50 + r.top + r.height / 2) * d)];
-  })()`)) as [number, number];
-  r.info('TAP', point.join(' '));
+  const fullscreenPoint = async () =>
+    (await h.ref.current?.evaluate(`(() => {
+      const b = document.getElementById('fullscreen'); b.scrollIntoView({ block: 'center' });
+      const r = b.getBoundingClientRect(), d = devicePixelRatio;
+      return [Math.round((r.left + r.width / 2) * d), Math.round((50 + r.top + r.height / 2) * d)];
+    })()`)) as [number, number];
+  r.info('TAP', (await fullscreenPoint()).join(' '));
   r.check(
     'entering fullscreen is reported',
     await waitFor(h, () => h.events.fullscreen.includes(true), 10000),
@@ -1092,6 +1154,23 @@ async function fullscreen(h: Harness) {
     h.events.fullscreen
   );
   r.check('the page is still there', h.state().url.includes('/media.html'), h.state());
+
+  // Always on: without onFullscreenChange too. Nothing is reported; the page's fullscreenElement tells.
+  h.setProps({ onFullscreenChange: undefined });
+  await sleep(300);
+  const active = async () => (await h.ref.current?.evaluate('document.fullscreenElement !== null')) === true;
+  const until = async (want: boolean) => {
+    for (const end = Date.now() + 10000; Date.now() < end; await sleep(300)) if ((await active()) === want) return true;
+    return false;
+  };
+  r.info('TAP', (await fullscreenPoint()).join(' '));
+  const entered = await until(true);
+  r.check('fullscreen works without onFullscreenChange', entered);
+  if (entered) {
+    r.info('BACK', 'leave');
+    r.check('back leaves it', await until(false));
+  }
+  h.setProps({});
   r.done();
 }
 
@@ -1130,11 +1209,11 @@ async function network(h: Harness) {
 
   h.setAuth(() => ({ username: 'u', password: 'p' }));
   await openPage(h, `${h.pages}/auth?t=${Date.now()}`);
-  r.check('httpAuth credentials authorize the page', (await text('auth')) === 'authorized', await text('auth'));
+  r.check('onHttpAuthRequest credentials authorize the page', (await text('auth')) === 'authorized', await text('auth'));
   h.setAuth(() => null);
   // Another origin: the WebView caches the credentials it just used for localhost's realm, as browsers do.
   await openPage(h, `http://127.0.0.1:8090/auth?t=${Date.now()}`);
-  r.check('httpAuth null cancels (the 401 page shows)', (await text('auth')) === 'unauthorized', await text('auth'));
+  r.check('onHttpAuthRequest null cancels (the 401 page shows)', (await text('auth')) === 'unauthorized', await text('auth'));
   let asks = 0;
   h.setAuth(() => {
     asks++;

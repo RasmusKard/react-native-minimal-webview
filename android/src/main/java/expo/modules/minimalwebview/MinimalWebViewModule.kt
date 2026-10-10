@@ -8,11 +8,6 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import expo.modules.minimalwebview.extensions.Downloads
-import expo.modules.minimalwebview.extensions.FileUpload
-import expo.modules.minimalwebview.extensions.FullscreenVideo
-import expo.modules.minimalwebview.extensions.HttpAuth
-import expo.modules.minimalwebview.extensions.Permissions
 import expo.modules.minimalwebview.extensions.PullToRefresh
 
 class MinimalWebViewModule : Module() {
@@ -21,14 +16,12 @@ class MinimalWebViewModule : Module() {
 
     OnCreate {
       WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
-      WebViewExtensions.register("fileUpload") { FileUpload() }
-      WebViewExtensions.register("fullscreenVideo") { FullscreenVideo() }
-      WebViewExtensions.register("downloads") { Downloads() }
-      WebViewExtensions.register("permissions") { Permissions() }
-      WebViewExtensions.register("httpAuth") { HttpAuth() }
       // Built in on Android: CookieManager is shared app-wide.
       WebViewExtensions.register("sharedCookies") { object : WebViewExtension {} }
     }
+
+    // The system file chooser's result (ChromeClient.onShowFileChooser).
+    OnActivityResult { _, payload -> ActivityResults.deliver(payload.requestCode, payload.resultCode, payload.data) }
 
     // Cookies live in memory until flushed; persist them before the process can be killed.
     OnActivityEntersBackground {
@@ -71,6 +64,7 @@ class MinimalWebViewModule : Module() {
         view.javaScriptCanOpenWindowsAutomatically = value ?: false
       }
       Prop("injectedScripts") { view: MinimalWebView, value: List<Map<String, Any?>>? -> view.injectedScripts = value }
+      Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty().toSet() }
       Prop("openExternalInJS") { view: MinimalWebView, value: Boolean? -> view.openExternalInJS = value ?: false }
       Prop("webviewDebuggingEnabled") { view: MinimalWebView, value: Boolean? -> view.webviewDebuggingEnabled = value ?: false }
 
