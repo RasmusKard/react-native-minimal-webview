@@ -739,7 +739,7 @@ async function info(h: Harness) {
     r.check('null on iOS', result === null);
   } else {
     r.check('provider available with a version', result?.available === true && /^\d+\./.test(result.version), result);
-    r.check('reports the features in use', Object.keys(result?.features ?? {}).length === 3, result?.features);
+    r.check('reports the features in use', Object.keys(result?.features ?? {}).length === 4, result?.features);
   }
   r.done();
 }
@@ -917,13 +917,18 @@ async function navigation(h: Harness) {
   r.done();
 }
 
-/** injectedScripts: start runs before page scripts, end after the DOM, mainFrameOnly skips iframes, changes apply next load. */
+/**
+ * injectedScripts: start runs before page scripts, end after the DOM, mainFrameOnly skips iframes, changes apply next
+ * load. Android WebView older than 146 skips end scripts.
+ */
 async function injection(h: Harness) {
   const r = reporter('injection');
+  const canEnd = WebView.getAndroidWebViewInfo()?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
   h.setProps({
     injectedScripts: [
       { code: 'window.__injectedStart = true;', when: 'start' },
-      { code: 'window.__injectedEnd = true; window.__marker = "one";', when: 'end', mainFrameOnly: true },
+      { code: 'window.__mainOnly = true; window.__marker = "one";', when: 'start', mainFrameOnly: true },
+      { code: 'window.__injectedEnd = true;', when: 'end', mainFrameOnly: true },
     ],
   });
   await sleep(500);
@@ -932,13 +937,14 @@ async function injection(h: Harness) {
   const text = async (id: string) =>
     (await h.ref.current?.evaluate(`document.getElementById('${id}').textContent`)) as string;
   r.check('a start script runs before page scripts', (await text('start')) === 'true');
-  r.check('an end script runs by load', (await text('end')) === 'true');
+  if (canEnd) r.check('an end script runs by load', (await text('end')) === 'true');
+  else r.check('an end script is skipped below WebView 146', (await h.ref.current?.evaluate('window.__injectedEnd')) == null);
   const frame = (await h.ref.current?.evaluate(`(() => {
     const w = document.querySelector('iframe').contentWindow;
-    return { start: w.__injectedStart === true, end: w.__injectedEnd === true };
-  })()`)) as { start: boolean; end: boolean };
+    return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
+  })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
   r.check('a start script without mainFrameOnly runs in iframes', frame.start, frame);
-  r.check('a mainFrameOnly script skips iframes', !frame.end, frame);
+  r.check('a mainFrameOnly script runs in the main frame and skips iframes', frame.top && !frame.mainOnly, frame);
   h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";', when: 'start' }] });
   await sleep(500);
   r.check('a changed script waits for the next navigation', (await h.ref.current?.evaluate('window.__marker')) === 'one');

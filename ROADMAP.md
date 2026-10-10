@@ -9,8 +9,6 @@ Possible future work, not commitments.
 - **POST loads** (`source.method` and `body`). Today's workaround is `source.html` with a self-submitting form.
 - **Android `scrollEnabled`.** Implement it, or document it as iOS-only. Injected CSS `overflow: hidden` covers it
   today.
-- **A fallback for Android System WebView older than 146**, through `addDocumentStartJavaScript`. It would cover the
-  bridge and `when: 'start'` scripts, but not `'end'` scripts without breaking globals, and it adds a second code path.
 
 ## User space (a recipe or an optional extension)
 
@@ -24,6 +22,11 @@ Possible future work, not commitments.
 - **Android `ask`:** the reissued load loses the referrer and the gesture flag, POST and the initial load skip the
   rules, and http(s) iframes aren't decided.
 - **iOS `onProcessGone.didCrash` is always true**, because WebKit doesn't report a reason.
+- **Android System WebView 133** (no `NAVIGATION_LISTENER`, tested on a Google APIs API 36 image): `pendingUrl` isn't
+  reported, a main-frame SSL error isn't reported, `100vh` is 0 after crash recovery, and back doesn't leave fullscreen
+  video. The `urlTracking`, `errors`, `crash` and `fullscreen` suites fail those checks there.
+- **Android System WebView older than 101** (91 on the API 29 Google APIs image) has no `DOCUMENT_START_SCRIPT`: no bridge and no
+  injected scripts.
 
 ## Project
 

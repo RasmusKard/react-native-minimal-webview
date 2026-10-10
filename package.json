@@ -72,9 +72,9 @@
     ]
   },
   "peerDependencies": {
-    "expo": "*",
-    "react": "*",
-    "react-native": "*"
+    "expo": ">=53",
+    "react": ">=19",
+    "react-native": ">=0.79"
   },
   "react-native": "src/index.ts"
 }

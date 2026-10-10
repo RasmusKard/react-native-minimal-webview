@@ -63,8 +63,10 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) =
     navigation.decide(NavigationRules.Request(request.url.toString(), request.isForMainFrame, false, request.hasGesture()))
 
+  // Without NavigationListener (WebView older than 146): a main-frame document starts loading here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (owner.hasNavigationListener) return
+    owner.newDocument()
     owner.loading = true
     owner.stateChanged()
   }

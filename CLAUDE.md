@@ -15,6 +15,10 @@ example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the name
 - A full run takes about 4 minutes per platform. Run it in the foreground; it fits in one 10-minute tool call.
 - Debug output for failed runs is in `~/.maestro/tests`.
 
+Android emulators: use Google APIs system images (`google_apis`), never Play Store ones (`google_apis_playstore`).
+On a Play Store image the Play Store updates Android System WebView in the background soon after boot, so a run
+silently tests a newer WebView than the image ships. A Google APIs image keeps its factory WebView.
+
 Before a run:
 1. In `example/`, start the test pages server with `npm run test-pages` (port 8090) and Metro with
    `npx expo start --clear`. Restart Metro with `--clear` after any JS edit in `src/` or `example/`; otherwise it
