@@ -114,7 +114,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 ```
 
 **How it behaves:**
-- **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (an Android System WebView without the bridge's features; see Requirements), `invalid` and `too_large`.
+- **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (an Android System WebView without the bridge's features; see Requirements) and `invalid`. Messages have no size limit.
 - **Timeouts:** calls time out after 10 s by default (`timeoutMs`).
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts.
 - **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. The `permissions` extension's `origins` match the same way. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
