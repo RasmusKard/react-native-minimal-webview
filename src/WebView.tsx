@@ -175,7 +175,7 @@ function createAdapter(): Adapter {
     goForward: () => attached?.goForward(),
     reload: () => attached?.reload(),
     stopLoading: () => attached?.stopLoading(),
-    evaluate: async (script) => attached?.evaluate(script),
+    evaluate: async (script) => await attached?.evaluate(script),
     getUrl: async () => (await attached?.getUrl()) ?? '',
     getState: () => state,
     subscribe(listener) {
