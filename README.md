@@ -13,7 +13,7 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 **Requirements:**
 - iOS 16.4.
 - Android API 29+. Set `minSdkVersion 29`, for example with `expo-build-properties`.
-- Expo SDK 53+ (React Native 0.79+, React 19), or a bare app on those versions with the new architecture.
+- Expo SDK 53+ (React Native 0.79+, React 19) with the new architecture. A bare React Native app works too, once it has the `expo` package through `npx install-expo-modules@latest`.
 
 On Android, a few features depend on the device's Android System WebView. Any API 29+ device with WebView updates
 enabled has them all.
