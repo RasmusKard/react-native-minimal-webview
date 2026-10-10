@@ -20,7 +20,7 @@ enabled has them all.
 - `when: 'end'` injected scripts need WebView 146+; older ones skip them.
 - The bridge and `when: 'start'` scripts need the `WEB_MESSAGE_LISTENER` and `DOCUMENT_START_SCRIPT` features; without
   them bridge calls reject with `unavailable` and start scripts don't run. `evaluate` (and so `blob:` downloads) needs
-  `WEB_MESSAGE_LISTENER`. WebView 133 has both.
+  `WEB_MESSAGE_LISTENER`. Both are in WebView 101 and newer.
 
 For the bridge and `injectedScripts`, the library warns about a missing feature once per process, in every build. To
 gate on it, check what the device supports:

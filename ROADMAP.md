@@ -25,7 +25,7 @@ Possible future work, not commitments.
 - **Android System WebView 133** (no `NAVIGATION_LISTENER`, tested on a Google APIs API 36 image): `pendingUrl` isn't
   reported, a main-frame SSL error isn't reported, `100vh` is 0 after crash recovery, and back doesn't leave fullscreen
   video. The `urlTracking`, `errors`, `crash` and `fullscreen` suites fail those checks there.
-- **Android System WebView 91** (the API 29 Google APIs image) has no `DOCUMENT_START_SCRIPT`: no bridge and no
+- **Android System WebView older than 101** (91 on the API 29 Google APIs image) has no `DOCUMENT_START_SCRIPT`: no bridge and no
   injected scripts.
 
 ## Project
