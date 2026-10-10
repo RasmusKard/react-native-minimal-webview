@@ -5,6 +5,7 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -40,6 +41,19 @@ type ExtensionEvent = {
   payload: Record<string, unknown>;
   askId?: number;
 };
+
+/**
+ * Page requests the core answers natively, by native event name. Native asks JS (as extension `core`) only for those
+ * whose prop is set, and reads the set when the request comes, so a prop can come and go.
+ */
+const REQUESTS = {
+  fileRequest: 'onFileRequest',
+  fullscreenChange: 'onFullscreenChange',
+  permissionRequest: 'onPermissionRequest',
+  download: 'onDownload',
+  httpAuthRequest: 'onHttpAuthRequest',
+} as const;
+const CORE = 'core';
 
 /** Props that pass straight through to the native view. */
 const PASSTHROUGH = [
@@ -77,6 +91,7 @@ const OWN = [
     'onLoadStart',
     'onLoad',
     'onLoadEnd',
+    ...Object.values(REQUESTS),
     'children',
   ] as const),
 ] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
@@ -92,6 +107,7 @@ type NativeProps = ViewProps &
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
     extensions: ReturnType<typeof nativeSpecs>;
+    requestHandlers: string[];
     openExternalInJS: boolean;
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
@@ -243,15 +259,21 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   const answer = (askId: number, value: unknown) =>
     native.current?.answer(askId, { value: value ?? null });
 
+  const requestHandlers = useRequestHandlers(props);
+
   const onExtension = async ({
     nativeEvent: { name, event, payload, askId },
   }: NativeEvent<ExtensionEvent>) => {
-    const extension = props.extensions?.find((candidate) => candidate.native.name === name);
-    const handler = extension?.on?.[event] as ((payload: unknown) => unknown) | undefined;
+    const request = name === CORE ? REQUESTS[event as keyof typeof REQUESTS] : undefined;
+    const handler = (
+      request
+        ? props[request]
+        : props.extensions?.find((candidate) => candidate.native.name === name)?.on?.[event]
+    ) as ((payload: unknown) => unknown) | undefined;
     const value = await settle(
-      () => handler?.(payload),
+      () => handler?.(event === 'fullscreenChange' ? payload.active : payload),
       null,
-      `the ${name} extension's ${event} handler failed`
+      request ? `${request} failed` : `the ${name} extension's ${event} handler failed`
     );
     if (askId !== undefined) await answer(askId, value);
   };
@@ -283,6 +305,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
       extensions={fixed.extensions}
+      requestHandlers={requestHandlers}
       openExternalInJS={props.onOpenExternal !== undefined}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
@@ -294,6 +317,15 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     />
   );
   return withOverlay(webView, props, error, loading);
+}
+
+/** The page requests with a prop set, as a new array only when that set changes. */
+function useRequestHandlers(props: WebViewProps) {
+  const key = Object.entries(REQUESTS)
+    .filter(([, prop]) => props[prop])
+    .map(([event]) => event)
+    .join();
+  return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
 /** What native gets per extension: its name and config, and which events have a JS handler. */

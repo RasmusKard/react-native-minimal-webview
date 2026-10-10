@@ -74,6 +74,18 @@ internal class MinimalWebViewNavigation(
   }
 
   /**
+   * A download nothing handled (no `onDownload`): an http(s) one opens externally, reported like an `external`
+   * navigation; the browser fetches it without the page's session. A data: or blob: one only the page can read: dropped.
+   */
+  fun openDownload(url: String) {
+    if (url.startsWith("http:") || url.startsWith("https:")) {
+      notifyNavigation(NavigationRules.Request(url, true, false, false), if (openExternal(url)) "external" else "block", null)
+    } else {
+      Log.w(TAG, "dropped a download from ${url.take(40)}")
+    }
+  }
+
+  /**
    * Opens a URL outside the WebView. Returns false when it could not be opened (the caller reports `block`): a page
    * controls the URL, so a malformed intent (bad syntax, launchFlags=zz) or a refused activity must not crash the app.
    */

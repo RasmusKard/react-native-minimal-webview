@@ -6,14 +6,8 @@ import {
   type WebViewSource,
   WebView,
   createBridge,
-  downloads,
-  type Download,
-  fullscreenVideo,
-  httpAuth,
-  permissions,
   type PermissionRequestEvent,
   sharedCookies,
-  fileUpload,
   type FileRequest,
   pullToRefresh,
   useWebViewState,
@@ -63,23 +57,12 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const authRef = useRef<((request: { host: string; realm: string }) => { username: string; password: string } | null) | undefined>(undefined);
+  const authRef = useRef<WebViewProps['onHttpAuthRequest']>(undefined);
   const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(undefined);
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(undefined);
   const extensions = useMemo(
     () => [
       pullToRefresh(),
-      fileUpload({ onFileRequest: (request) => fileRequestRef.current?.(request) ?? null }),
-      fullscreenVideo({ onChange: (active) => events.fullscreen.push(active) }),
-      downloads({
-        onDownload: (download) => events.downloads.push(download),
-        onError: (failure) => events.downloadFailures.push(failure),
-      }),
-      httpAuth({ onAuthRequest: (request) => authRef.current?.(request) ?? null }),
-      permissions({
-        origins: [PAGES],
-        onPermissionRequest: (request) => permissionRef.current?.(request) ?? false,
-      }),
       sharedCookies(),
       pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) }),
     ],
@@ -122,6 +105,11 @@ export default function App() {
         bridge={bridge}
         extensions={extensions}
         onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+        onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
+        onFullscreenChange={(active) => events.fullscreen.push(active)}
+        onDownload={(result) => ('uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result))}
+        onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
+        onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
         applicationNameForUserAgent="MinimalWebViewExample/1.0"
         thirdPartyCookiesEnabled
         onError={(event) => events.errors.push(event)}

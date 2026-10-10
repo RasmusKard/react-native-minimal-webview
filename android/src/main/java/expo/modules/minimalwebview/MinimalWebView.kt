@@ -2,11 +2,13 @@ package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.ValueCallback
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.webkit.WebViewCompat
@@ -14,6 +16,11 @@ import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
+import expo.modules.minimalwebview.extensions.Downloads
+import expo.modules.minimalwebview.extensions.FileUpload
+import expo.modules.minimalwebview.extensions.FullscreenVideo
+import expo.modules.minimalwebview.extensions.HttpAuth
+import expo.modules.minimalwebview.extensions.Permissions
 
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
@@ -49,14 +56,27 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var webviewDebuggingEnabled = false
   /** JS handles `external` navigations (onOpenExternal); native only reports them. */
   var openExternalInJS = false
+  /** The page requests JS has a prop for (`fileRequest`, `download`, ...), read when a request comes. */
+  var requestHandlers: Set<String> = emptySet()
   private var loadedSource: Map<String, Any?>? = null
 
   // Installed once, from the first props: JS fixes `extensions` at mount. `wrap` runs again for each new WebView.
   private var activeExtensions: Map<String, WebViewExtension>? = null
 
-  // Every `ask` (navigation and extensions) waits here for JS, by id, until answered through `answer`.
+  // The page requests, answered by the core on every view. After the extensions, so an extension that handles the same
+  // callback comes first. They ask JS only for the requests in requestHandlers.
+  private val core = listOf(FileUpload(), FullscreenVideo(), Permissions(), Downloads(), HttpAuth()).onEach {
+    it.onAttach(hostFor("core") { event -> event in requestHandlers }, emptyMap())
+  }
+
+  // Every `ask` (navigation and extensions) waits here, by id, until answered through `answer` or failed with null by a
+  // new document, a crash or destroy.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextAskId = 0
+
+  // The page's open file chooser (WebView allows one at a time). Chromium releases it only while its document is alive,
+  // so a navigation away cancels it when it starts, not at commit; a later answer is dropped.
+  private var fileChooser: ValueCallback<Array<Uri>>? = null
 
   // Navigation state. Native owns the committed URL; JS is told. The clients (MinimalWebViewClients.kt) write it.
   internal var url = ""
@@ -79,7 +99,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     view.webChromeClient = ChromeClient(this, navigation)
     view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty(), contentLength)
-      activeExtensions.orEmpty().values.any { it.onDownloadStart(download) }
+      if (hooks.none { it.onDownloadStart(download) }) navigation.openDownload(url)
     }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
   }
@@ -143,7 +163,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       if (extension == null) Log.w(TAG, "no WebView extension registered as $name")
       @Suppress("UNCHECKED_CAST") // because config comes from JS as a plain object
       val handles = (spec["handles"] as? List<*>).orEmpty().map { it.toString() }.toSet()
-      extension?.onAttach(hostFor(name, handles), spec["config"] as? Map<String, Any?> ?: emptyMap())
+      extension?.onAttach(hostFor(name) { it in handles }, spec["config"] as? Map<String, Any?> ?: emptyMap())
       extension?.let { name to it }
     }.toMap()
     mount()
@@ -161,10 +181,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 
-  private fun hostFor(name: String, handles: Set<String>) = object : ExtensionHost {
+  private fun hostFor(name: String, handled: (String) -> Boolean): ExtensionHost = object : ExtensionHost {
     override val webView get() = this@MinimalWebView.webView
     override val activity get() = appContext.currentActivity
-    override fun handles(event: String) = event in handles
+    override fun handles(event: String) = handled(event)
 
     override fun evaluate(script: String, onResult: (Result<String>) -> Unit) = this@MinimalWebView.evaluate(script, onResult)
 
@@ -187,24 +207,48 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     pendingAsks.remove(askId)?.invoke(value)
   }
 
+  /** Wraps the file chooser's [callback] so it is answered once: by its handler, or by [cancelFileChooser]. */
+  internal fun holdFileChooser(callback: ValueCallback<Array<Uri>>): ValueCallback<Array<Uri>> =
+    object : ValueCallback<Array<Uri>> {
+      override fun onReceiveValue(value: Array<Uri>?) {
+        if (fileChooser !== this) return
+        fileChooser = null
+        callback.onReceiveValue(value)
+      }
+    }.also { fileChooser = it }
+
+  internal fun cancelFileChooser() = fileChooser?.onReceiveValue(null)
+
   /** A new main-frame document: asks and evaluations for the old one are over, and the bridge waits for `ready`. */
   internal fun newDocument() {
+    // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
+    // challenge holds its own page's response, so that page can't commit while it waits.
+    // ponytail: without NavigationListener the chooser is cancelled only here, at commit; enough on WebView 133, which
+    // keeps the frame. Cancel in load/reload/shouldOverrideUrlLoading too if an older WebView stays blocked.
+    cancelFileChooser()
+    failAsks()
     navigation.newDocument()
     scripts.newDocument()
   }
 
-  /** The active extensions' hooks, for the clients. */
-  internal val hooks get() = activeExtensions.orEmpty().values
+  /** The extensions' hooks, then the core's, for the clients. */
+  internal val hooks get() = activeExtensions.orEmpty().values + core
 
   internal fun pageFinished(url: String) {
-    activeExtensions?.values?.forEach { it.onPageFinished(url) }
+    hooks.forEach { it.onPageFinished(url) }
   }
 
-  /** Answers every pending ask with null (block, cancel) and forgets the bridge's reply proxy. */
-  private fun failPending() {
+  /** Answers every pending ask with null (block, cancel). */
+  private fun failAsks() {
     val waiting = pendingAsks.values.toList()
     pendingAsks.clear()
     waiting.forEach { it(null) }
+  }
+
+  /** Answers every pending ask with null and forgets the bridge's reply proxy. */
+  private fun failPending() {
+    cancelFileChooser()
+    failAsks()
     scripts.failPending()
   }
 
@@ -233,7 +277,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   fun destroy() {
-    activeExtensions?.values?.forEach { it.onDetach() }
+    hooks.forEach { it.onDetach() }
     failPending()
     webView.stopLoading()
     webView.destroy()

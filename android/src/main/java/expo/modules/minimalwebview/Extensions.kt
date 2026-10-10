@@ -15,6 +15,7 @@ import android.webkit.WebView
  * A per-instance WebView extension. EXPERIMENTAL until the built-ins and one out-of-package extension use it.
  * Every hook has a no-op default. Enable one on a WebView with the `extensions` prop. For the decide hooks
  * (returning Boolean), the first extension that returns true handles the callback; it must then complete it once.
+ * The core's page requests (file chooser, fullscreen, permissions, downloads, HTTP auth) come after every extension.
  */
 interface WebViewExtension {
   fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {}
@@ -62,7 +63,8 @@ interface ExtensionHost {
   /** Whether the extension's JS helper has a handler for [event] (its `on` map); without one, `ask` answers null. */
   fun handles(event: String): Boolean
 
-  /** Async decide hook: emits [event] to its JS handler and calls [onAnswer] with the result (null if the view goes away). */
+  /** Async decide hook: emits [event] to its JS handler and calls [onAnswer] with the result (null if the view goes away
+   * or a new page replaces the one that asked). */
   fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
   /** Runs an expression in the page's main frame and awaits it, like the `evaluate` ref method: its JSON, or an
