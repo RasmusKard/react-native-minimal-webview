@@ -68,9 +68,6 @@ interface ExtensionHost {
   /** Runs an expression in the page's main frame and awaits it, like the `evaluate` ref method: its JSON, or an
    * [EvaluateError]. */
   fun evaluate(script: String, onResult: (Result<String>) -> Unit)
-
-  /** Checks only; never prompts. */
-  fun hasPermission(permission: String): Boolean
 }
 
 /** Third-party packages call `WebViewExtensions.register("name") { MyExtension() }` from their module's OnCreate. */

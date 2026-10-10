@@ -6,7 +6,6 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
-import android.content.pm.PackageManager
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -168,9 +167,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private fun hostFor(name: String, handles: Set<String>) = object : ExtensionHost {
     override val webView get() = this@MinimalWebView.webView
     override val activity get() = appContext.currentActivity
-    override fun hasPermission(permission: String) =
-      context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
-
     override fun handles(event: String) = event in handles
 
     override fun evaluate(script: String, onResult: (Result<String>) -> Unit) = this@MinimalWebView.evaluate(script, onResult)
