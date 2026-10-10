@@ -808,7 +808,7 @@ async function recreate(h: Harness) {
     asked.push(request.url);
     return 'allow';
   });
-  h.setRules([{ path: '/checkout', action: 'ask' }, { scheme: ['http', 'https'], action: 'allow' }]);
+  h.setRules([{ path: ['/checkout'], action: 'ask' }, { scheme: ['http', 'https'], action: 'allow' }]);
   await sleep(300);
   await openPage(h, `${h.pages}/nav.html?t=${Date.now()}`);
   await click(h, 'checkout');
@@ -848,8 +848,8 @@ async function navigation(h: Harness) {
   });
   h.setRules([
     { scheme: ['tel', 'mailto', 'sms'], action: 'external' },
-    { host: 'localhost', path: '/checkout', action: 'ask' },
-    { host: 'localhost', newWindow: true, path: '/spa', action: 'allow' },
+    { host: ['localhost'], path: ['/checkout'], action: 'ask' },
+    { host: ['localhost'], newWindow: true, path: ['/spa'], action: 'allow' },
     { newWindow: true, action: 'external' },
     { host: ['localhost', '127.0.0.1'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
@@ -932,7 +932,7 @@ async function navigation(h: Harness) {
 
   // Without onOpenExternal native opens externals itself, and reports `block` when nothing can open the URL.
   h.setProps({});
-  h.setRules([{ scheme: 'nosuchapp', action: 'external' }]);
+  h.setRules([{ scheme: ['nosuchapp'], action: 'external' }]);
   await sleep(500);
   await h.ref.current?.evaluate(`location.href = 'nosuchapp://x'`);
   await waitFor(h, () => lastNavigation()?.url === 'nosuchapp://x', 5000);
@@ -941,7 +941,7 @@ async function navigation(h: Harness) {
   if (Platform.OS === 'android') {
     // An intent: whose app is not installed falls back to the web.
     h.setProps({});
-    h.setRules([{ scheme: 'intent', action: 'external' }, { scheme: ['http', 'https'], action: 'allow' }]);
+    h.setRules([{ scheme: ['intent'], action: 'external' }, { scheme: ['http', 'https'], action: 'allow' }]);
     await sleep(500);
     const fallback = `${h.pages}/spa.html?from=fallback`;
     await h.ref.current?.evaluate(

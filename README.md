@@ -62,7 +62,8 @@ export function Browser() {
 
 ## Navigation rules
 
-Rules are an ordered list, and the first match wins. Every field a rule sets must match:
+Rules are an ordered list, and the first match wins. Every field a rule sets must match. `scheme`, `host` and `path`
+are lists, and one entry matching is enough:
 
 | Field | Matches |
 |---|---|

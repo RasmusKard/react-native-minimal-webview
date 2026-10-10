@@ -47,21 +47,17 @@ enum NavigationRules {
     return Decision(action: rules[index]["action"] as? String ?? "block", rule: index)
   }
 
-  private static func strings(_ value: Any?) -> [String]? {
-    switch value {
-    case nil: return nil
-    case let one as String: return [one]
-    case let many as [Any]: return many.map { "\($0)" }
-    default: return []
-    }
+  /// nil when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing.
+  private static func list(_ value: Any?) -> [String]? {
+    value.map { ($0 as? [Any])?.map { "\($0)" } ?? [] }
   }
 
   private static func matches(_ rule: [String: Any], _ scheme: String, _ host: String?, _ path: String, _ request: Request) -> Bool {
-    if let schemes = strings(rule["scheme"]), !schemes.contains(where: { $0.lowercased() == scheme }) { return false }
-    if let hosts = strings(rule["host"]) {
+    if let schemes = list(rule["scheme"]), !schemes.contains(where: { $0.lowercased() == scheme }) { return false }
+    if let hosts = list(rule["host"]) {
       guard let host, hosts.contains(where: { hostMatches($0.lowercased(), host) }) else { return false }
     }
-    if let paths = strings(rule["path"]), !paths.contains(where: { path.hasPrefix($0) }) { return false }
+    if let paths = list(rule["path"]), !paths.contains(where: { path.hasPrefix($0) }) { return false }
     return flag(rule["mainFrame"], request.mainFrame) && flag(rule["newWindow"], request.newWindow)
       && flag(rule["userInitiated"], request.userInitiated)
   }
