@@ -125,7 +125,8 @@ Build your own page APIs on top of it, for example an injected `window.MyAppAPI`
 ### Web content written for react-native-webview
 
 Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events keep working through
-the bridge. Only `allowedOrigins` get `ReactNativeWebView`, where react-native-webview gives it to every page.
+the bridge. Only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame; react-native-webview gives it
+to every page and every iframe.
 
 ```tsx
 const rnwMessages = {
