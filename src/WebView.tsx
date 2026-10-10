@@ -5,6 +5,7 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -22,6 +23,7 @@ import type {
   WebViewErrorEvent,
   WebViewProps,
   WebViewRef,
+  WebViewRefObject,
 } from './types';
 
 type NativeEvent<T> = { nativeEvent: T };
@@ -140,26 +142,77 @@ const INITIAL_STATE: NavigationState = {
   canGoForward: false,
 };
 
-const STORE = Symbol('navigationStateStore');
+type Attachment = { update(state: NavigationState): void; detach(): void };
+type Adapter = {
+  nav: WebViewRefObject;
+  attach(handle: WebViewRef, state: NavigationState): Attachment;
+};
 
-type Store = ReturnType<typeof createStore>;
+/** The navigation object behind each ref object: created by createWebViewRef, or made on first use for a plain ref. */
+const adapters = new WeakMap<object, Adapter>();
 
-type InternalRef = WebViewRef & { [STORE]: Store };
+function adapterFor(ref: object) {
+  let adapter = adapters.get(ref);
+  if (!adapter) adapters.set(ref, (adapter = createAdapter()));
+  return adapter;
+}
 
-function createStore() {
+function createAdapter(): Adapter {
+  let attached: WebViewRef | null = null;
   let state = INITIAL_STATE;
   const listeners = new Set<() => void>();
-  return {
-    get: () => state,
-    set(next: NavigationState) {
-      state = next;
-      listeners.forEach((listener) => listener());
+  const set = (next: NavigationState) => {
+    state = next;
+    listeners.forEach((listener) => listener());
+  };
+  const nav: WebViewRefObject = {
+    get current() {
+      return attached;
     },
-    subscribe(listener: () => void) {
+    goBack: () => attached?.goBack(),
+    goForward: () => attached?.goForward(),
+    reload: () => attached?.reload(),
+    stopLoading: () => attached?.stopLoading(),
+    evaluate: async (script) => await attached?.evaluate(script),
+    getUrl: async () => (await attached?.getUrl()) ?? '',
+    getState: () => state,
+    subscribe(listener) {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => void listeners.delete(listener);
     },
   };
+  return {
+    nav,
+    // Last attached wins, like a React ref; an earlier instance's later updates and detach are ignored.
+    attach(handle, initial) {
+      if (__DEV__ && attached) {
+        console.warn(
+          '[react-native-minimal-webview] This ref is already attached to a mounted WebView; the new one replaces it. Give each WebView its own ref.'
+        );
+      }
+      attached = handle;
+      set(initial);
+      return {
+        update: (next) => attached === handle && set(next),
+        detach() {
+          if (attached !== handle) return;
+          attached = null;
+          set(INITIAL_STATE);
+        },
+      };
+    },
+  };
+}
+
+/**
+ * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. It
+ * forwards the methods to whichever WebView is mounted with it (no-ops while none is), and keeps its subscribers across
+ * remounts.
+ */
+export function createWebViewRef(): WebViewRefObject {
+  const adapter = createAdapter();
+  adapters.set(adapter.nav, adapter);
+  return adapter.nav;
 }
 
 /** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
@@ -213,24 +266,25 @@ export function warnUnsupported(used: Record<keyof typeof NEEDS, boolean>) {
 
 export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
   const native = useRef<NativeMethods>(null);
-  const store = useRef(createStore()).current;
-  const { error, loading, onNavigationState, onError } = useLoadEvents(props, store);
+  const attachmentRef = useRef<Attachment>(undefined);
+  const { error, loading, onNavigationState, onError, lastRef } = useLoadEvents(
+    props,
+    attachmentRef
+  );
 
-  useImperativeHandle(ref, (): InternalRef => {
-    // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
-    return {
-      goBack: () => void native.current?.goBack(),
-      goForward: () => void native.current?.goForward(),
-      reload: () => void native.current?.reload(),
-      stopLoading: () => void native.current?.stopLoading(),
-      evaluate: async (script) => {
-        const json = await native.current?.evaluate(script);
-        return json ? (JSON.parse(json) as unknown) : undefined;
-      },
-      getUrl: async () => (await native.current?.getUrl()) ?? '',
-      [STORE]: store,
-    };
-  }, [store]);
+  // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
+  const [handle] = useState((): WebViewRef => ({
+    goBack: () => void native.current?.goBack(),
+    goForward: () => void native.current?.goForward(),
+    reload: () => void native.current?.reload(),
+    stopLoading: () => void native.current?.stopLoading(),
+    evaluate: async (script) => {
+      const json = await native.current?.evaluate(script);
+      return json ? (JSON.parse(json) as unknown) : undefined;
+    },
+    getUrl: async () => (await native.current?.getUrl()) ?? '',
+  }));
+  useAttach(ref, handle, lastRef, attachmentRef);
 
   const fixed = useFixedAtMount(props);
   const connection =
@@ -304,6 +358,29 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   return withOverlay(webView, props, error, loading);
 }
 
+/**
+ * Puts `handle` in a callback or plain ref. Any ref object also gets the navigation state through its adapter, which a
+ * createWebViewRef one is, so it forwards the methods too.
+ */
+function useAttach(
+  ref: Ref<WebViewRef> | undefined,
+  handle: WebViewRef,
+  lastRef: RefObject<NavigationState>,
+  attachmentRef: RefObject<Attachment | undefined>
+) {
+  const adapter = ref && typeof ref === 'object' ? adapterFor(ref) : undefined;
+  useImperativeHandle(adapter?.nav === ref ? undefined : ref, () => handle, [handle]);
+  useLayoutEffect(() => {
+    if (!adapter) return undefined;
+    const attached = adapter.attach(handle, lastRef.current);
+    attachmentRef.current = attached;
+    return () => {
+      attached.detach();
+      attachmentRef.current = undefined;
+    };
+  }, [adapter, handle, lastRef, attachmentRef]);
+}
+
 /** The page requests with a prop set, as a new array only when that set changes. */
 function useRequestHandlers(props: WebViewProps) {
   const key = Object.entries(REQUESTS)
@@ -358,14 +435,16 @@ function settingsOf(props: WebViewProps) {
  * Load events and the overlay state. The current load's main-frame error: onLoad fires only without one, and
  * renderError shows it until the next load starts.
  */
-function useLoadEvents(props: WebViewProps, store: Store) {
+function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment | undefined>) {
+  const lastRef = useRef(INITIAL_STATE);
   const [error, setError] = useState<WebViewErrorEvent | null>(null);
   const errorRef = useRef<WebViewErrorEvent | null>(null);
   const [loading, setLoading] = useState(true);
 
   const onNavigationState = ({ nativeEvent: state }: NativeEvent<NavigationState>) => {
-    const was = store.get().loading;
-    store.set(state);
+    const was = lastRef.current.loading;
+    lastRef.current = state;
+    attachmentRef.current?.update(state);
     setLoading(state.loading);
     props.onNavigationStateChange?.(state);
     if (!was && state.loading) {
@@ -394,7 +473,7 @@ function useLoadEvents(props: WebViewProps, store: Store) {
     props.onError?.(failure);
   };
 
-  return { error, loading, onNavigationState, onError };
+  return { error, loading, onNavigationState, onError, lastRef };
 }
 
 /** The error screen wins over the loading screen; both cover the WebView until the next load starts or finishes. */
@@ -433,10 +512,11 @@ Object.defineProperty(WebView, 'androidWebViewInfo', {
 
 const styles = StyleSheet.create({ fill: { flex: 1 } });
 
-/** The navigation state of a mounted `<WebView ref={ref}>`; re-renders on every change. */
+/**
+ * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one); re-renders
+ * on every change, and follows a remount. The initial state while none is mounted.
+ */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {
-  return useSyncExternalStore(
-    (listener) => (ref.current as InternalRef | null)?.[STORE].subscribe(listener) ?? (() => {}),
-    () => (ref.current as InternalRef | null)?.[STORE].get() ?? INITIAL_STATE
-  );
+  const { nav } = adapterFor(ref);
+  return useSyncExternalStore(nav.subscribe, nav.getState);
 }
