@@ -42,7 +42,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var injectedScripts: List<Map<String, Any?>>? = null
   var userAgent: String? = null
   var applicationNameForUserAgent: String? = null
-  var thirdPartyCookies = false
+  var thirdPartyCookiesEnabled = false
   var mediaPlaybackRequiresUserAction = true
   var showsScrollIndicators = true
   var javaScriptCanOpenWindowsAutomatically = false
@@ -131,7 +131,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     settings.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
     webView.isVerticalScrollBarEnabled = showsScrollIndicators
     webView.isHorizontalScrollBarEnabled = showsScrollIndicators
-    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, thirdPartyCookies)
+    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, thirdPartyCookiesEnabled)
     // Process-wide on Android: the last WebView to set it wins.
     WebView.setWebContentsDebuggingEnabled(webviewDebuggingEnabled)
   }

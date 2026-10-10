@@ -41,7 +41,7 @@ const PASSTHROUGH = [
   'navigationRules',
   'userAgent',
   'applicationNameForUserAgent',
-  'thirdPartyCookies',
+  'thirdPartyCookiesEnabled',
   'mediaPlaybackRequiresUserAction',
   'allowsInlineMediaPlayback',
   'scrollEnabled',

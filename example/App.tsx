@@ -122,7 +122,7 @@ export default function App() {
         extensions={extensions}
         onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
         applicationNameForUserAgent="MinimalWebViewExample/1.0"
-        thirdPartyCookies
+        thirdPartyCookiesEnabled
         onError={(event) => events.errors.push(event)}
         onProcessGone={(event) => events.gone.push(event)}
         onNavigation={(event) => events.navigations.push(event)}

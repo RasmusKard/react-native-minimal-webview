@@ -125,7 +125,7 @@ type OwnProps = {
   /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
-  thirdPartyCookies?: boolean;
+  thirdPartyCookiesEnabled?: boolean;
   /** Default true. On iOS it is fixed at creation: changing it recreates the WebView. */
   mediaPlaybackRequiresUserAction?: boolean;
   /** iOS only (Android always plays inline). Default false. Fixed at creation. */
