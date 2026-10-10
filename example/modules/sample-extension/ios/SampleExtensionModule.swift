@@ -26,7 +26,7 @@ private final class PageCounter: WebViewExtension {
 
   func didFinish(url: URL?) {
     count += 1
-    host?.webView?.evaluateJavaScript("window.__pageCount = \(count);")
+    host?.evaluate("window.__pageCount = \(count)") { _ in }
     host?.emit("pageLoaded", ["url": url?.absoluteString ?? "", "count": count])
   }
 }

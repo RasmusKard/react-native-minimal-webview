@@ -144,6 +144,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// Retries the failed URL after an error; otherwise a plain reload.
+  /// Shared by the `evaluate` ref method and `ExtensionHost.evaluate`. The page encodes the value, as on Android:
+  /// what JSON can't encode (a function, a cycle) gives "null".
+  func evaluate(_ script: String, onResult: @escaping (Result<String, Error>) -> Void) {
+    guard let webView else { return onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: "No WebView"))) }
+    let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
+    webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { result in
+      switch result {
+      case .success(let value): onResult(.success(value as? String ?? "null"))
+      case .failure(let error): onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: error.localizedDescription)))
+      }
+    }
+  }
+
   func reload() {
     if let failedUrl, let target = URL(string: failedUrl) {
       loadProgrammatic(URLRequest(url: target))
@@ -449,6 +462,11 @@ private final class Host: ExtensionHost {
 
   func reload() {
     view?.reload()
+  }
+
+  func evaluate(_ script: String, onResult: @escaping (Result<String, Error>) -> Void) {
+    guard let view else { return onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: "The view is gone"))) }
+    view.evaluate(script, onResult: onResult)
   }
 
   func ask(_ event: String, _ payload: [String: Any], onAnswer: @escaping (Any?) -> Void) {

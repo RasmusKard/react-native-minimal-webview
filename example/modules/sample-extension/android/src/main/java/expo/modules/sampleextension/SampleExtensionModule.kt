@@ -24,7 +24,7 @@ private class PageCounter : WebViewExtension {
 
   override fun onPageFinished(url: String) {
     count += 1
-    host.webView.evaluateJavascript("window.__pageCount = $count;", null)
+    host.evaluate("window.__pageCount = $count") {}
     host.emit("pageLoaded", mapOf("url" to url, "count" to count))
   }
 }
