@@ -1,0 +1,33 @@
+name: kotlin
+on:
+  pull_request:
+  # Only to refresh the Gradle cache that every PR starts from (a PR's own cache stays with that PR), so only when the
+  # dependencies change. An older main cache still saves most of the downloads.
+  push:
+    branches: [main]
+    paths:
+      - package-lock.json
+      - example/package-lock.json
+      - android/build.gradle
+      - example/modules/sample-extension/android/build.gradle
+      - .github/workflows/kotlin.yml
+
+concurrency:   # a new push cancels the run for the previous one
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The Kotlin rule matchers against the shared cases in test-vectors/ (navigation and origin rules).
+  kotlin-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: zulu, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { cache-read-only: false }
+      - run: npm ci && (cd example && npm ci)
+      - run: cd example && npx expo prebuild --platform android --no-install
+      - run: cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest
