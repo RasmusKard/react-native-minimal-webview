@@ -955,6 +955,8 @@ async function injection(h: Harness) {
 async function downloadsSuite(h: Harness) {
   const r = reporter('downloads');
   await openPage(h, `${h.pages}/media.html?t=${Date.now()}`);
+  // The attachment is fetched again on Android: the page's cookie must go with it.
+  await h.ref.current?.evaluate("document.cookie = 'dl=1'");
   for (const [id, filename, body] of [
     ['attachment', 'report.txt', 'downloaded report.txt'],
     ['blob', 'blob.txt', 'blob body'],
@@ -968,7 +970,8 @@ async function downloadsSuite(h: Harness) {
     const nameOk = Platform.OS === 'android' && id !== 'attachment' ? download?.filename.endsWith('.txt') : download?.filename === filename;
     r.check(`${id} download reaches onDownload`, done && nameOk === true, download);
     const text = download?.uri.startsWith('file:') ? await new File(download.uri).text() : null;
-    r.check(`${id} file holds the body`, text?.startsWith(body) === true, text?.slice(0, 40));
+    r.check(`${id} file holds the body`, text?.startsWith(body) === true, text?.slice(0, 80));
+    if (id === 'attachment') r.check('the attachment request carries the page cookie', text?.includes('dl=1') === true, text);
   }
   r.done();
 }

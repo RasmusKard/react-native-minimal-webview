@@ -118,7 +118,7 @@ function handle(req, res) {
       'content-type': 'text/plain',
       'content-disposition': `attachment; filename="${name}"`,
     });
-    res.end(`downloaded ${name} at ${new Date().toISOString()}\n`);
+    res.end(`downloaded ${name} at ${new Date().toISOString()}\ncookie: ${req.headers.cookie ?? ''}\n`);
   } else if (url.pathname === '/post') {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
