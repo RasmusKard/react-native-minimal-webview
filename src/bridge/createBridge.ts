@@ -55,24 +55,25 @@ export function createBridge(options: BridgeOptions): Bridge {
   const pending = new Map<string, Pending>();
   let post: ((message: string) => void) | null = null;
   let ready = false;
+  // The token of the document that last said `ready` (protocol.ts `doc`): what RN sends is for that document only.
+  let doc: string | undefined;
   // Messages for the next document that says `ready`. Only the latest document's: see navigated().
-  let queue: { id: string; text: string; call: boolean }[] = [];
+  let queue: BridgeMessage[] = [];
   // A document committed and hasn't said `ready` yet.
   let awaitingReady = false;
   let nextId = 0;
   let unavailable = false;
 
-  const deliver = (id: string, text: string) => {
-    post?.(text);
-    const call = pending.get(id);
+  const deliver = (message: BridgeMessage) => {
+    post?.(JSON.stringify({ ...message, doc }));
+    const call = pending.get(message.id);
     if (call) call.sent = true;
   };
 
   const send = (message: BridgeMessage) => {
-    const text = JSON.stringify(message);
-    if (post && ready) deliver(message.id, text);
+    if (post && ready) deliver(message);
     else {
-      queue.push({ id: message.id, text, call: message.kind === 'call' });
+      queue.push(message);
       // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call still times out
       if (queue.length > MAX_QUEUE) queue.shift();
     }
@@ -95,11 +96,11 @@ export function createBridge(options: BridgeOptions): Bridge {
     'this WebView lacks the features the bridge needs; update Android System WebView';
 
   // Answers go out at once, not through the ready-gated queue: the page may be waiting for this answer before it
-  // reaches DOMContentLoaded (a module script awaiting a call), and `ready` is sent only then. A page's call is the
-  // message that lets native reply on Android, and iOS answers through the call's own reply handler.
-  const reply = (message: BridgeMessage) => post?.(JSON.stringify(message));
-
-  const answer = async (id: string, method: string, params: unknown) => {
+  // reaches DOMContentLoaded (a module script awaiting a call), and `ready` is sent only then. Native can deliver it:
+  // the page's call is a message from that page. It carries the caller's token, so only that document takes it.
+  const answer = async (id: string, callerDoc: string, method: string, params: unknown) => {
+    const reply = (message: BridgeMessage) =>
+      post?.(JSON.stringify({ ...message, doc: callerDoc }));
     const fail = (code: BridgeError['code'], message: string) =>
       reply({ v: 1, id, kind: 'error', error: { code, message } });
     const handler = handlers.get(method);
@@ -124,14 +125,16 @@ export function createBridge(options: BridgeOptions): Bridge {
         rejectAll('the page navigated', 'navigated', true);
         ready = true;
         awaitingReady = false;
+        doc = message.doc;
         const flushing = queue;
         queue = [];
         // A queued call that already timed out is not sent: nobody waits for its answer.
-        for (const { id, text, call } of flushing) if (!call || pending.has(id)) deliver(id, text);
+        for (const queued of flushing)
+          if (queued.kind !== 'call' || pending.has(queued.id)) deliver(queued);
         break;
       }
       case 'call':
-        void answer(message.id, message.method, message.params);
+        void answer(message.id, message.doc, message.method, message.params);
         break;
       case 'event':
         listeners.get(message.method)?.forEach((listener) => listener(message.params));

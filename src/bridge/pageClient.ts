@@ -53,14 +53,15 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
   const listeners = new Map<string, Set<(payload: unknown) => void>>();
   const pending = new Map<string, Pending>();
   let nextId = 0;
-  // Per document: a late answer to a call of the previous page must not match a call of this one.
-  const idPrefix = `p${Math.random().toString(36).slice(2, 8)}-`;
+  // This document's token (protocol.ts `doc`): a message for another document, like a late answer to a call of the
+  // previous page, is dropped.
+  const doc = Math.random().toString(36).slice(2, 10);
 
   const ios = w.webkit?.messageHandlers?.nativeBridge;
   const android = w.nativeBridgeTransport;
 
   const send = (message: Message) => {
-    const text = JSON.stringify(message);
+    const text = JSON.stringify({ ...message, doc });
     (ios ?? android)?.postMessage(text);
   };
 
@@ -69,6 +70,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
   /** Handles a message from native. Answers to native's calls are sent back as messages. */
   const receive = async (text: string) => {
     const message = JSON.parse(text) as Message;
+    if (message.doc !== doc) return;
     if (message.kind === 'result' || message.kind === 'error') {
       const call = pending.get(message.id);
       if (!call) return;
@@ -105,7 +107,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
 
   w.nativeBridge = Object.freeze({
     call(method: string, params?: unknown): Promise<unknown> {
-      const id = `${idPrefix}${++nextId}`;
+      const id = `p${++nextId}`;
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);
