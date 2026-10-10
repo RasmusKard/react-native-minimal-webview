@@ -122,6 +122,31 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 
 Build your own page APIs on top of it, for example an injected `window.MyAppAPI` that calls the bridge.
 
+### Web content written for react-native-webview
+
+Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events keep working through
+the bridge. Only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame; react-native-webview gives it
+to every page and every iframe.
+
+```tsx
+const rnwMessages = {
+  when: 'start', // after the bridge's own script, so `window.nativeBridge` already exists
+  mainFrameOnly: true,
+  code: `if (window.nativeBridge) {
+    window.ReactNativeWebView = { postMessage: (data) => window.nativeBridge.emit('rnw', String(data)) };
+    window.nativeBridge.on('rnw', (data) =>
+      ${Platform.OS === 'ios' ? 'window' : 'document'}.dispatchEvent(new MessageEvent('message', { data })));
+  }`,
+} as const;
+
+<WebView bridge={bridge} injectedScripts={[rnwMessages]} … />
+
+useEffect(() => bridge.on('rnw', (data) => handleMessage(data as string)), [bridge]); // was onMessage
+bridge.emit('rnw', message); // was ref.current.postMessage(message)
+```
+
+The `message` event goes to `window` on iOS and `document` on Android, as react-native-webview sends it.
+
 ## Props
 
 | Prop | Notes |
