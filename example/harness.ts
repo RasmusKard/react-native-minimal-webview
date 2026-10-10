@@ -967,6 +967,10 @@ async function downloadsSuite(h: Harness) {
   await openPage(h, `${h.pages}/media.html?t=${Date.now()}`);
   // The attachment is fetched again on Android: the page's cookie must go with it.
   await h.ref.current?.evaluate("document.cookie = 'dl=1'");
+  // A long query: the event's `url` is the full server URL, never cut.
+  const attachmentUrl = await h.ref.current?.evaluate(
+    "(() => { const a = document.getElementById('attachment'); a.href += '&pad=' + 'x'.repeat(200); return a.href; })()"
+  );
   for (const [id, filename, body] of [
     ['attachment', 'report.txt', 'downloaded report.txt'],
     ['blob', 'blob.txt', 'blob body'],
@@ -984,6 +988,12 @@ async function downloadsSuite(h: Harness) {
     const text = download?.uri.startsWith('file:') ? await new File(download.uri).text() : null;
     r.check(`${id} file holds the body`, text?.startsWith(body) === true, text?.slice(0, 80));
     if (id === 'attachment') r.check('the attachment request carries the page cookie', text?.includes('dl=1') === true, text);
+    // The server URL for http downloads; null when the page generated the file (data:, blob:).
+    const url =
+      id === 'attachment' ? attachmentUrl
+      : id === 'moved' ? await h.ref.current?.evaluate("document.getElementById('moved').href")
+      : null;
+    r.check(`${id} download url is ${url === null ? 'null' : 'the full server URL'}`, download?.url === url, download?.url);
   }
   r.done();
 }
