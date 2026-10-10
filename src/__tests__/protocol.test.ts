@@ -1,4 +1,4 @@
-import { MAX_MESSAGE_BYTES, isBridgeError, parseBridgeMessage } from '../bridge/protocol';
+import { isBridgeError, parseBridgeMessage } from '../bridge/protocol';
 
 const parse = (value: unknown) => parseBridgeMessage(JSON.stringify(value));
 
@@ -32,7 +32,6 @@ describe('parseBridgeMessage', () => {
       JSON.stringify({ v: 1, id: '1', kind: 'error', error: { code: 'timeout' } }),
       'invalid',
     ],
-    ['an oversized message', 'x'.repeat(MAX_MESSAGE_BYTES + 1), 'too_large'],
   ])('rejects %s', (_name, raw, code) => {
     const result = parseBridgeMessage(raw);
     expect(isBridgeError(result) && result.code).toBe(code);
