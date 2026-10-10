@@ -6,9 +6,9 @@ export type PermissionRequestEvent = { origin: string; resources: PermissionReso
 /**
  * Camera, microphone and (Android) location for pages on `origins` (`*`, exact origins or `https://*.example.com`), main
  * frame only; every other origin is denied. `onPermissionRequest` may ask the OS (expo-camera, expo-audio,
- * expo-location) and answers true or false. Android grants only if the answer is true AND the OS permission is
- * granted; without a handler it grants what the OS already allows. On iOS WebKit asks the OS itself; true skips
- * WebKit's own prompt, and without a handler WebKit prompts. iOS location follows WebKit's default prompt.
+ * expo-location) and answers true or false. Android grants what it answers, or every listed origin without a handler;
+ * without OS permission the page's request fails. On iOS WebKit asks the OS itself; true skips WebKit's own prompt,
+ * and without a handler WebKit prompts. iOS location follows WebKit's default prompt.
  */
 export const permissions = (options: {
   origins: string[];

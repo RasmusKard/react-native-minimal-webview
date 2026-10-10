@@ -46,25 +46,25 @@ describe('extensions and bridge', () => {
   it('are fixed at mount: a change warns once and native keeps the first specs', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const root = createRoot();
-    const show = (orientation: 'keep' | 'unlock') =>
+    const show = (mode: 'a' | 'b') =>
       act(async () =>
         root.render(
           <WebView
             source={{ uri: 'https://example.com' }}
-            extensions={[{ native: { name: 'fullscreenVideo', config: { orientation } } }]}
+            extensions={[{ native: { name: 'sample', config: { mode } } }]}
           />
         )
       );
-    await show('keep');
-    await show('keep');
+    await show('a');
+    await show('a');
     expect(warn).not.toHaveBeenCalled();
-    await show('unlock');
-    await show('keep');
-    await show('unlock');
+    await show('b');
+    await show('a');
+    await show('b');
     expect(warn).toHaveBeenCalledTimes(1);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
     expect(native?.extensions).toEqual([
-      { name: 'fullscreenVideo', config: { orientation: 'keep' }, handles: [] },
+      { name: 'sample', config: { mode: 'a' }, handles: [] },
     ]);
     warn.mockRestore();
   });

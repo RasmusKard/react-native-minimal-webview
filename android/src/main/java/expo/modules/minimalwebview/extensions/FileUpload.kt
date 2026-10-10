@@ -7,8 +7,8 @@ import expo.modules.minimalwebview.ExtensionHost
 import expo.modules.minimalwebview.WebViewExtension
 
 /**
- * `<input type="file">`: asks the app's `onFileRequest` for URIs (null = cancel). Without a handler, opens the system
- * chooser (FileChooserParams.createIntent; no camera capture). Built only on the extension interface.
+ * `<input type="file">`: asks the app's `onFileRequest` for URIs (null = cancel). The app picks them, with
+ * expo-document-picker or expo-image-picker. Built only on the extension interface.
  */
 class FileUpload : WebViewExtension {
   private lateinit var host: ExtensionHost
@@ -18,13 +18,6 @@ class FileUpload : WebViewExtension {
   }
 
   override fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-    if (!host.handles("fileRequest")) {
-      val launched = host.launchForResult(params.createIntent()) { resultCode, data ->
-        callback.onReceiveValue(FileChooserParams.parseResult(resultCode, data))
-      }
-      if (!launched) callback.onReceiveValue(null)
-      return true
-    }
     val request = mapOf(
       "accept" to params.acceptTypes.filter { it.isNotEmpty() },
       "multiple" to (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE),

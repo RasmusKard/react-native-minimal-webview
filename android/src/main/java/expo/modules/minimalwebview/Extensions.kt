@@ -1,7 +1,6 @@
 package expo.modules.minimalwebview
 
 import android.app.Activity
-import android.content.Intent
 import android.net.Uri
 import android.view.View
 import android.webkit.GeolocationPermissions
@@ -69,28 +68,6 @@ interface ExtensionHost {
   /** Runs an expression in the page's main frame and awaits it, like the `evaluate` ref method: its JSON, or an
    * [EvaluateError]. */
   fun evaluate(script: String, onResult: (Result<String>) -> Unit)
-
-  /** Checks only; never prompts. */
-  fun hasPermission(permission: String): Boolean
-
-  /** Starts an activity for a result (e.g. the system file chooser); false when there is no activity. */
-  fun launchForResult(intent: Intent, onResult: (resultCode: Int, data: Intent?) -> Unit): Boolean
-}
-
-/** Pending activity results by request code, delivered from the module's OnActivityResult. */
-object ActivityResults {
-  private val pending = mutableMapOf<Int, (Int, Intent?) -> Unit>()
-  private var nextCode = 0x4D57 // "MW": away from codes apps commonly use
-
-  fun register(onResult: (Int, Intent?) -> Unit): Int {
-    val code = nextCode++
-    pending[code] = onResult
-    return code
-  }
-
-  fun deliver(requestCode: Int, resultCode: Int, data: Intent?) {
-    pending.remove(requestCode)?.invoke(resultCode, data)
-  }
 }
 
 /** Third-party packages call `WebViewExtensions.register("name") { MyExtension() }` from their module's OnCreate. */

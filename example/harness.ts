@@ -978,7 +978,7 @@ async function downloadsSuite(h: Harness) {
   r.done();
 }
 
-/** Camera and location reach the page only when the app says yes, the OS allows it and the origin is listed. */
+/** Camera and location reach the page only when the app says yes and the origin is listed; the OS allows it here. */
 async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequestEvent[] = [];
