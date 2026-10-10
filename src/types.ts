@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 /** `headers` go on the first request only, not on later navigations. */
-export type WebViewSource = { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
+export type WebViewSource =
+  { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
 
 export type NavigationAction = 'allow' | 'block' | 'external';
 
@@ -144,7 +145,7 @@ type OwnProps = {
   source: WebViewSource;
   /** Replaces the whole user agent. */
   userAgent?: string;
-  /** Appended to the default user agent. On iOS it is fixed at creation: changing it recreates the WebView. */
+  /** Appended to the default user agent. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
@@ -157,10 +158,13 @@ type OwnProps = {
   /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
   bridge?: Bridge;
   /** Android only; WebKit blocks third-party cookies on iOS. */
-  thirdPartyCookies?: boolean;
-  /** Default true. On iOS it is fixed at creation: changing it recreates the WebView. */
+  thirdPartyCookiesEnabled?: boolean;
+  /** Default true. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
   mediaPlaybackRequiresUserAction?: boolean;
-  /** iOS only (Android always plays inline). Default false. Fixed at creation. */
+  /**
+   * iOS only (Android always plays inline). Default false. Fixed at mount, like `bridge`: remount with a new `key` to
+   * change it.
+   */
   allowsInlineMediaPlayback?: boolean;
   /** iOS only. Default true. */
   scrollEnabled?: boolean;

@@ -9,7 +9,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
 
-  // Props, applied together in applyProps()
+  // Props, applied together in applyProps(). The bridge, the extensions and the three creation settings are fixed at mount
+  // (JS never changes them): they are read once, when the WKWebView is created.
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
@@ -31,13 +32,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 
-  // Some WKWebViewConfiguration settings are fixed at creation: changing one recreates the WebView. The bridge and the
-  // extensions are set up with each WKWebView too; JS fixes them at mount, so they never change.
+  // Created once, from the first props: WebKit reads some WKWebViewConfiguration settings only at creation.
   private(set) var webView: WKWebView?
-  private var creationSettings: NSDictionary?
   private var observations: [NSKeyValueObservation] = []
-  // Created with each WKWebView (see recreate), detached in tearDown: the extensions, then the core's page requests, so
-  // an extension that handles the same callback comes first.
+  // Created with the WKWebView (see createWebView), detached in tearDown: the extensions, then the core's page requests,
+  // so an extension that handles the same callback comes first.
   private(set) var activeExtensions: [WebViewExtension]?
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
@@ -54,7 +53,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var pendingAsks: [Int: (Any?) -> Void] = [:]
   var nextAskId = 0
   var askedAndAllowed: Set<String> = []
-  /// Extensions are preparing a new WKWebView (shared cookies): loads wait until they are done.
+  /// Extensions are preparing a `source` load (shared cookies): loads wait until they are done.
   private var preparing = false
   /// After a failed main-frame load `url` is the failed URL (as on Android, which commits an error page);
   /// WKWebView itself keeps the previous page, so `url` and reload() use this.
@@ -78,18 +77,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.
   func applyProps() {
-    let settings: NSDictionary = [
-      "applicationName": applicationNameForUserAgent ?? NSNull(),
-      "mediaRequiresAction": mediaPlaybackRequiresUserAction,
-      "inline": allowsInlineMediaPlayback
-    ]
-    if settings != creationSettings {
-      if webView != nil {
-        log.warn("[react-native-minimal-webview] a setting fixed at creation changed; recreating the WebView")
-      }
-      creationSettings = settings
-      recreate()
-    }
+    if webView == nil { createWebView() }
     guard let webView, !preparing else { return }
     if installedScripts != injectedScripts.map({ $0.toDictionary() }) as NSArray {
       installScripts(webView.configuration.userContentController)
@@ -165,12 +153,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// A new WKWebView with the current settings. It reloads the page that was showing, or the source when there was
-  /// none or it was an html source (whose document cannot be refetched).
-  private func recreate() {
-    let previous = webView?.url.flatMap { $0.scheme == "http" || $0.scheme == "https" ? $0 : nil }
-    let reloadSource = previous == nil || source?.html != nil
-    tearDown()
+  /// The WKWebView, from the first props. `source` loads from applyProps once the extensions are prepared.
+  private func createWebView() {
     let configuration = WKWebViewConfiguration()
     configuration.applicationNameForUserAgent = applicationNameForUserAgent
     configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
@@ -210,15 +194,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
     self.webView = webView
     activeExtensions?.forEach { $0.didCreate(webView) }
-    prepareExtensions(webView) { [weak self, weak webView] in
-      guard let self, let webView else { return }
-      if let previous, !reloadSource {
-        self.loadProgrammatic(URLRequest(url: previous))
-      } else {
-        self.loadedSource = self.source?.toDictionary() as NSDictionary?
-        self.source.map(self.load)
-      }
-    }
   }
 
   /// The bridge's page client first, then the app's scripts in order. Changes take effect from the next navigation.

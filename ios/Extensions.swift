@@ -8,10 +8,10 @@ public protocol WebViewExtension: AnyObject {
   /// Runs before the WKWebView exists: `host.webView` is nil here. Use `didCreate` for the WebView.
   func attach(host: ExtensionHost, config: [String: Any])
   /// Settings WebKit reads only at creation (data detectors, the data store, URL scheme handlers), after the core has
-  /// applied its own. Runs again for every new WKWebView. Add to `userContentController`; replacing it breaks the bridge.
+  /// applied its own. Runs once, before the WKWebView is created. Add to `userContentController`; replacing it breaks the bridge.
   func configure(_ configuration: WKWebViewConfiguration)
   func didCreate(_ webView: WKWebView)
-  /// Work that must finish before a `source` load or the first load in a new WKWebView (shared cookies): call `done` once.
+  /// Work that must finish before a `source` load (shared cookies): call `done` once.
   func prepare(_ webView: WKWebView, done: @escaping () -> Void)
   func didFinish(url: URL?)
   /// Return `.download` (or another policy) to override the default `.allow` for a main-frame response.

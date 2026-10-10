@@ -63,10 +63,7 @@ const CORE = 'core';
 const PASSTHROUGH = [
   'navigationRules',
   'userAgent',
-  'applicationNameForUserAgent',
-  'thirdPartyCookies',
-  'mediaPlaybackRequiresUserAction',
-  'allowsInlineMediaPlayback',
+  'thirdPartyCookiesEnabled',
   'scrollEnabled',
   'bounces',
   'showsScrollIndicators',
@@ -74,9 +71,22 @@ const PASSTHROUGH = [
 ] as const;
 type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
 
+/** Props native reads once, when it creates the WebView (fixed at mount, like `bridge` and `extensions`). */
+const FIXED = [
+  'applicationNameForUserAgent',
+  'mediaPlaybackRequiresUserAction',
+  'allowsInlineMediaPlayback',
+] as const;
+const fixedSettings = (props: WebViewProps) =>
+  Object.fromEntries(FIXED.map((key) => [key, props[key]])) as Pick<
+    WebViewProps,
+    (typeof FIXED)[number]
+  >;
+
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
 const OWN = [
   ...PASSTHROUGH,
+  ...FIXED,
   ...([
     'source',
     'injectedScripts',
@@ -343,6 +353,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       source={props.source}
       style={props.renderLoading || props.renderError ? styles.fill : props.style}
       {...settingsOf(props)}
+      {...fixed.settings}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
       extensions={fixed.extensions}
@@ -398,20 +409,25 @@ const nativeSpecs = (props: WebViewProps) =>
   }));
 
 /**
- * Native sets up the extensions and the bridge once, at mount; their JS handlers (`on`, `bridge.handle`) stay
- * live. A later change is ignored with a warning: remount with a new `key` to apply it.
+ * Native sets up the extensions, the bridge and the creation settings (`FIXED`) once, at mount; the JS handlers
+ * (`on`, `bridge.handle`) stay live. A later change is ignored with a warning: remount with a new `key` to apply it.
  */
 function useFixedAtMount(props: WebViewProps) {
-  const [fixed] = useState(() => ({ bridge: props.bridge, extensions: nativeSpecs(props) }));
+  const [fixed] = useState(() => ({
+    bridge: props.bridge,
+    extensions: nativeSpecs(props),
+    settings: fixedSettings(props),
+  }));
   const warned = useRef(false);
   const changed =
     props.bridge !== fixed.bridge ||
-    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions);
+    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions) ||
+    JSON.stringify(fixedSettings(props)) !== JSON.stringify(fixed.settings);
   useEffect(() => {
     if (!changed || warned.current) return;
     warned.current = true;
     console.warn(
-      '[react-native-minimal-webview] `extensions` and `bridge` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
+      '[react-native-minimal-webview] `extensions`, `bridge`, `applicationNameForUserAgent`, `mediaPlaybackRequiresUserAction` and `allowsInlineMediaPlayback` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
     );
   }, [changed]);
   return fixed;
