@@ -260,8 +260,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
     val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW
     // An html source's page has no URL to fetch (`url` is its baseUrl or about:blank): load the source again, as on iOS.
-    val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }
-    val lastUrl = url.takeIf { it.isNotEmpty() && it != htmlUrl }
+    // Chromium reports the baseUrl canonicalized (`https://example.com` commits as `https://example.com/`).
+    val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }?.trimEnd('/')
+    val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl }
     failPending()
     val old = webView
     webView = createWebView()
