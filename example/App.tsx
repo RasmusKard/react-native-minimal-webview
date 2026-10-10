@@ -1,40 +1,78 @@
-import MinimalWebViewModule, { MinimalWebView } from 'react-native-minimal-webview';
-import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { type WebViewRef, type WebViewSource, WebView, useWebViewState } from 'react-native-minimal-webview';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { SUITES, pollForSuites, type Harness } from './harness';
+
+const PAGES = 'http://localhost:8090';
 
 export default function App() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.container}>
-        <Text style={styles.header}>Module API Example</Text>
-        <Group name="Async functions">
-          <Button
-            title="Set value"
-            onPress={async () => {
-              await MinimalWebViewModule.setValueAsync('Hello from JS!');
-            }}
-          />
-        </Group>
-        <Group name="Views">
-          <MinimalWebView onTap={() => console.log('Tapped!')} style={styles.view} />
-        </Group>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+  const ref = useRef<WebViewRef>(null);
+  const state = useWebViewState(ref);
+  const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-function Group(props: { name: string; children: React.ReactNode }) {
+  const harness: Harness = {
+    pages: PAGES,
+    platform: `${Platform.OS} ${Platform.Version}`,
+    ref,
+    state: () => stateRef.current,
+    load: (uri) => setSource({ uri }),
+  };
+  const harnessRef = useRef(harness);
+  harnessRef.current = harness;
+
+  const run = (name: string) => {
+    void fetch(`${PAGES}/harness/run?platform=${Platform.OS}&suite=${name}`);
+  };
+
+  useEffect(() => pollForSuites(() => harnessRef.current), []);
+
   return (
-    <View style={styles.group}>
-      <Text style={styles.groupHeader}>{props.name}</Text>
-      {props.children}
+    <View style={styles.container}>
+      <WebView
+        ref={ref}
+        source={source}
+        style={styles.webview}
+        navigationRules={rules}
+        bridge={bridge}
+        extensions={extensions}
+        onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+        applicationNameForUserAgent="MinimalWebViewExample/1.0"
+        thirdPartyCookiesEnabled
+        onError={(event) => events.errors.push(event)}
+        onProcessGone={(event) => events.gone.push(event)}
+        onNavigation={(event) => events.navigations.push(event)}
+        onLoadStart={() => events.loads.push('start')}
+        onLoad={() => events.loads.push('load')}
+        onLoadEnd={() => events.loads.push('end')}
+        renderError={(error) => (
+          <ErrorScreen error={error} onRetry={() => ref.current?.reload()} mounted={events.overlay} />
+        )}
+        {...extraProps}
+      />
+      <Text testID="harness-request" style={styles.state}>
+        {driverRequest}
+      </Text>
+      <Text style={styles.state} numberOfLines={3}>
+        {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
+        {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
+      </Text>
+      <ScrollView horizontal style={styles.buttons}>
+        <Button title="back" onPress={() => ref.current?.goBack()} />
+        <Button title="home" onPress={() => setSource({ uri: `${PAGES}/?t=${Date.now()}` })} />
+        {Object.keys(SUITES).map((name) => (
+          <Button key={name} title={name} onPress={() => run(name)} />
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
-const styles = {
-  header: { fontSize: 30, margin: 20 },
-  groupHeader: { fontSize: 20, marginBottom: 20 },
-  group: { margin: 20, backgroundColor: '#fff', borderRadius: 10, padding: 20 },
-  container: { flex: 1, backgroundColor: '#eee' },
-  view: { flex: 1, height: 200 },
-};
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingTop: 50, backgroundColor: '#fff' },
+  webview: { flex: 1 },
+  state: { fontSize: 11, padding: 4 },
+  buttons: { flexGrow: 0, paddingBottom: 30 },
+});
