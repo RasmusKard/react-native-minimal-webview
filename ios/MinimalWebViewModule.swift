@@ -47,7 +47,7 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
         view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
       }
-      AsyncFunction("getUrl") { (view: MinimalWebView) in view.failedUrl ?? view.webView?.url?.absoluteString }
+      AsyncFunction("getUrl") { (view: MinimalWebView) in view.url }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in

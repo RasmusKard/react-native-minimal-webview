@@ -5,7 +5,7 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 - **Native decides, JS is told.**
   - Navigation rules run natively: no JS round trip per navigation, and the UI thread never blocks.
   - Only three hooks can change an outcome: `onNavigationRequest`, plus `onPermissionRequest` and `onFileRequest` in their extensions. Each has a safe default.
-- **One committed URL, owned by native.** `useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack` and `canGoForward`. SPA navigation (pushState, replaceState, hash) is included; iframes never change it.
+- **One committed URL, owned by native.** `useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack` and `canGoForward`. `url` is the page on screen: it changes when a load commits and on SPA navigation (pushState, replaceState, hash), and stays the old page while a load is in progress. After a failed load it is the failed URL. `pendingUrl` is a main-frame load in progress, which may still fail or be blocked. Iframes never change either.
 - **A promise bridge** between React Native and the page, restricted to the origins you allow.
 - **Opt-in extensions:** pull-to-refresh, fullscreen video, file upload, downloads, permissions and shared cookies. They are built on the same interface third parties use.
 - **The app owns device APIs.** The library never shows OS permission prompts or pickers itself. It has no config plugin and no dependency on expo-camera, expo-image-picker or similar packages.
@@ -169,7 +169,7 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
 
-**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()`.
+**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
 
