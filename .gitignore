@@ -57,3 +57,6 @@ yarn-error.log
 .expo/*
 .stryker-tmp/
 reports/
+
+# Claude Code agent worktrees
+.claude/worktrees/

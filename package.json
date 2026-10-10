@@ -23,7 +23,7 @@
     "prepare": "rm -rf build && tsc",
     "open:ios": "xed example/ios",
     "open:android": "open -a 'Android Studio' example/android",
-    "lint:ci": "eslint -c eslint.ci.config.mjs --quiet --suppressions-location .claude/baseline/eslint-suppressions.json src",
+    "lint:ci": "eslint -c eslint.ci.config.mjs --quiet src",
     "mutation": "stryker run",
     "build:page-client": "node internal/build-page-client.mjs",
     "check:pack": "npm run prepare && node internal/check-pack.mjs"
