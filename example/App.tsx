@@ -118,7 +118,7 @@ export default function App() {
           extensions={extensions}
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
           onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
-          onFullscreenChange={(active) => events.fullscreen.push(active)}
+          onFullscreenChange={({ active }) => events.fullscreen.push(active)}
           onDownload={(result) => ('uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result))}
           onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
           onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
