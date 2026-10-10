@@ -167,6 +167,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       configuration.userContentController.addScriptMessageHandler(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
     installScripts(configuration.userContentController)
+    activeExtensions = extensions.compactMap { spec in
+      guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
+      let host = Host(view: self, name: name, handles: Set(spec["handles"] as? [String] ?? []))
+      instance.attach(host: host, config: spec["config"] as? [String: Any] ?? [:])
+      return instance
+    }
+    activeExtensions?.forEach { $0.configure(configuration) }
     let webView = WKWebView(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     webView.navigationDelegate = self
@@ -184,12 +191,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       webView.observe(\.estimatedProgress) { _, _ in changed() }
     ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
     self.webView = webView
-    activeExtensions = extensions.compactMap { spec in
-      guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
-      let host = Host(view: self, name: name, handles: Set(spec["handles"] as? [String] ?? []))
-      instance.attach(host: host, config: spec["config"] as? [String: Any] ?? [:])
-      return instance
-    }
     activeExtensions?.forEach { $0.didCreate(webView) }
     prepareExtensions(webView) { [weak self, weak webView] in
       guard let self, let webView else { return }
