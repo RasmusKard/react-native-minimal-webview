@@ -259,7 +259,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     crashTimes.addLast(now)
     while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
     val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW
-    val lastUrl = url.takeIf { it.isNotEmpty() }
+    // An html source's page has no URL to fetch (`url` is its baseUrl or about:blank): load the source again, as on iOS.
+    val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }
+    val lastUrl = url.takeIf { it.isNotEmpty() && it != htmlUrl }
     failPending()
     val old = webView
     webView = createWebView()

@@ -140,6 +140,30 @@ describe('extensions and bridge', () => {
   });
 });
 
+describe('creation settings', () => {
+  it('are fixed at mount: a change warns once and native keeps the first values', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = createRoot();
+    const show = (applicationNameForUserAgent: string) =>
+      act(async () =>
+        root.render(
+          <WebView
+            source={{ uri: 'https://example.com' }}
+            applicationNameForUserAgent={applicationNameForUserAgent}
+          />
+        )
+      );
+    await show('App/1');
+    expect(warn).not.toHaveBeenCalled();
+    await show('App/2');
+    await show('App/3');
+    expect(warn).toHaveBeenCalledTimes(1);
+    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
+    expect(native?.applicationNameForUserAgent).toBe('App/1');
+    warn.mockRestore();
+  });
+});
+
 describe('page requests', () => {
   type Fire = (event: string, payload: Record<string, unknown>, askId?: number) => Promise<void>;
 
