@@ -30,8 +30,6 @@ class MinimalWebViewModule : Module() {
       WebViewExtensions.register("sharedCookies") { object : WebViewExtension {} }
     }
 
-    OnActivityResult { _, payload -> ActivityResults.deliver(payload.requestCode, payload.resultCode, payload.data) }
-
     // Cookies live in memory until flushed; persist them before the process can be killed.
     OnActivityEntersBackground {
       CookieManager.getInstance().flush()

@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview.extensions
 
-import android.Manifest
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import expo.modules.minimalwebview.ExtensionHost
@@ -8,9 +7,8 @@ import expo.modules.minimalwebview.WebViewExtension
 
 /**
  * Camera, microphone and location for pages on the configured origins (main frame only). The app's
- * `onPermissionRequest({origin, resources})` may request OS permission and answers true or false. Native grants only
- * when the app said yes AND the OS permission is granted. Without a handler: grant if the OS permission is already
- * granted. Never prompts by itself.
+ * `onPermissionRequest({origin, resources})` may request OS permission and answers true or false; without a handler,
+ * the origin list alone decides. Never prompts by itself: a grant the OS has not allowed still fails in the page.
  */
 class Permissions : WebViewExtension {
   private lateinit var host: ExtensionHost
@@ -29,10 +27,7 @@ class Permissions : WebViewExtension {
       request.deny()
       return true
     }
-    decide(origin, wanted.map { it.second }, deny = request::deny) {
-      val grantable = wanted.filter { (_, name) -> host.hasPermission(OS_PERMISSIONS.getValue(name)) }.map { it.first }
-      if (grantable.isEmpty()) request.deny() else request.grant(grantable.toTypedArray())
-    }
+    decide(origin, wanted.map { it.second }, deny = request::deny) { request.grant(wanted.map { it.first }.toTypedArray()) }
     return true
   }
 
@@ -42,15 +37,11 @@ class Permissions : WebViewExtension {
       callback.invoke(origin, false, false)
       return true
     }
-    decide(trimmed, listOf("geolocation"), deny = { callback.invoke(origin, false, false) }) {
-      val granted = host.hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
-        host.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-      callback.invoke(origin, granted, false)
-    }
+    decide(trimmed, listOf("geolocation"), deny = { callback.invoke(origin, false, false) }) { callback.invoke(origin, true, false) }
     return true
   }
 
-  /** Runs [grant] when the app agrees (or there is no handler), else [deny]. [grant] still checks the OS permission. */
+  /** Runs [grant] when the app agrees (or there is no handler), else [deny]. */
   private fun decide(origin: String, resources: List<String>, deny: () -> Unit, grant: () -> Unit) {
     if (!host.handles("permissionRequest")) return grant()
     host.ask("permissionRequest", mapOf("origin" to origin, "resources" to resources)) { answer ->
@@ -68,7 +59,6 @@ class Permissions : WebViewExtension {
 
   private companion object {
     val RESOURCES = mapOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE to "camera", PermissionRequest.RESOURCE_AUDIO_CAPTURE to "microphone")
-    val OS_PERMISSIONS = mapOf("camera" to Manifest.permission.CAMERA, "microphone" to Manifest.permission.RECORD_AUDIO)
   }
 }
 
