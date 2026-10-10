@@ -4,8 +4,6 @@ Possible future work, not commitments.
 
 ## Core, if wanted
 
-- **Incognito (non-persistent storage).** It has to be core: iOS needs `WKWebsiteDataStore.nonPersistent()` when
-  the WKWebView is created.
 - **POST loads** (`source.method` and `body`). Today's workaround is `source.html` with a self-submitting form.
 - **Android `scrollEnabled`.** Implement it, or document it as iOS-only. Injected CSS `overflow: hidden` covers it
   today.
@@ -13,6 +11,8 @@ Possible future work, not commitments.
 ## User space (a recipe or an optional extension)
 
 - **`onScroll`:** a page script plus `bridge.emit`.
+- **Incognito (non-persistent storage):** on iOS an extension's `configure` sets `WKWebsiteDataStore.nonPersistent()`;
+  Android needs its own approach.
 - **`clearCache` / `clearHistory`:** a built-in extension, like `sharedCookies`.
 - **iOS back/forward swipe gestures and the keyboard props** as an extension. The keyboard accessory one needs
   swizzling.

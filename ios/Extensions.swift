@@ -4,7 +4,11 @@ import WebKit
 /// Every hook has a no-op default. Enable one on a WebView with the `extensions` prop. For the decide hooks, the first
 /// extension that handles a request wins.
 public protocol WebViewExtension: AnyObject {
+  /// Runs before the WKWebView exists: `host.webView` is nil here. Use `didCreate` for the WebView.
   func attach(host: ExtensionHost, config: [String: Any])
+  /// Settings WebKit reads only at creation (data detectors, the data store, URL scheme handlers), after the core has
+  /// applied its own. Runs again for every new WKWebView. Add to `userContentController`; replacing it breaks the bridge.
+  func configure(_ configuration: WKWebViewConfiguration)
   func didCreate(_ webView: WKWebView)
   /// Work that must finish before a `source` load or the first load in a new WKWebView (shared cookies): call `done` once.
   func prepare(_ webView: WKWebView, done: @escaping () -> Void)
@@ -25,6 +29,7 @@ public protocol WebViewExtension: AnyObject {
 // Optional hooks: an extension implements only the ones it needs.
 public extension WebViewExtension {
   func attach(host: ExtensionHost, config: [String: Any]) { /* optional */ }
+  func configure(_ configuration: WKWebViewConfiguration) { /* optional */ }
   func didCreate(_ webView: WKWebView) { /* optional */ }
   func prepare(_ webView: WKWebView, done: @escaping () -> Void) { done() }
   func didFinish(url: URL?) { /* optional */ }

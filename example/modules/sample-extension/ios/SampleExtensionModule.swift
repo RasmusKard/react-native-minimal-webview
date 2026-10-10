@@ -19,6 +19,11 @@ private final class PageCounter: WebViewExtension {
     self.host = host
   }
 
+  // A creation-time setting: WebKit reads data detectors only from the configuration.
+  func configure(_ configuration: WKWebViewConfiguration) {
+    configuration.dataDetectorTypes = .phoneNumber
+  }
+
   func didFinish(url: URL?) {
     count += 1
     host?.webView?.evaluateJavaScript("window.__pageCount = \(count);")
