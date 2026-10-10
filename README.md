@@ -313,7 +313,7 @@ export const pageCounter = (): WebViewExtension => ({
 
 **The hooks:**
 - Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles` and `evaluate`.
-- iOS: `configure(_ configuration:)` (settings WebKit reads only at creation, such as data detectors, the data store or a URL scheme handler; runs before the WebView exists, for every new one), `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles` and `reload`.
+- iOS: `configure(_ configuration:)` (settings WebKit reads only at creation, such as data detectors, the data store or a URL scheme handler; runs before the WebView exists, for every new one), `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles`, `evaluate` and `reload`.
 - **Decide hooks:** the first extension that handles one wins. The page requests are handled by the core through the same hooks, after every extension.
 - **`ask`:** sends an event to the helper's handler for it in `on` and passes its return value back to native. `handles(event)` says whether the helper has one, so native can fall back to a default without it.
 
