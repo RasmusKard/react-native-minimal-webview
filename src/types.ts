@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
+import type { BridgeErrorCode } from './bridge/protocol';
+
 /** `headers` go on the first request only, not on later navigations. */
 export type WebViewSource =
   { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
@@ -90,7 +92,10 @@ export type BridgeHandler = (params: unknown) => unknown;
 export type Bridge = {
   /** Answers `nativeBridge.call(method, params)` from the page. Returns an unsubscribe function. */
   handle(method: string, handler: BridgeHandler): () => void;
-  /** Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown. */
+  /**
+   * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown, with an
+   * `Error` whose `code` is a {@link BridgeErrorCode}.
+   */
   call(method: string, params?: unknown): Promise<unknown>;
   /** Fires an event the page listens to with `nativeBridge.on`. */
   emit(event: string, payload?: unknown): void;
@@ -245,7 +250,8 @@ export type WebViewRef = {
   stopLoading(): void;
   /**
    * Runs an expression in the page's main frame and awaits it. Resolves with its value through JSON (`null` for what
-   * JSON can't encode); rejects with `ERR_EVALUATE` when it throws or rejects, or `navigated` (Android) on a new page.
+   * JSON can't encode). Rejects with `ERR_EVALUATE` when it throws or rejects (or, on iOS, before the WebView exists),
+   * `navigated` (Android) on a new page, or `unavailable` (Android) when the WebView lacks the features it needs.
    */
   evaluate(script: string): Promise<unknown>;
   /** The committed `url`, as in the navigation state, read from native now. */
