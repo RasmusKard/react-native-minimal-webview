@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse tcp:8090 tcp:8090`, on the
 // Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests.
 //   /redirect?to=<path>&code=302  server redirect
@@ -16,6 +17,7 @@ const path = require('path');
 
 const PORT = Number(process.env.PORT ?? 8090);
 const ROOT = __dirname;
+/** @type {Record<string, string>} */
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
@@ -23,6 +25,7 @@ const TYPES = {
   '.txt': 'text/plain',
 };
 
+/** @param {import('http').ServerResponse} res @param {string} pathname */
 function serveFile(res, pathname) {
   let file = path.join(ROOT, path.normalize(pathname === '/' ? '/index.html' : pathname));
   // SPA-style fallback: extensionless paths (/spa/pushed, /checkout/pay) reload as spa.html
