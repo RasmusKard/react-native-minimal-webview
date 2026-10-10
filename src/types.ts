@@ -39,9 +39,12 @@ export type NavigationEvent = NavigationRequest & {
 };
 
 export type NavigationState = {
-  /** The committed URL. Changes on commit and same-document navigation (pushState, hash); iframes never change it. */
+  /**
+   * The page on screen: changes on commit and same-document navigation (pushState, replaceState, hash), and stays the
+   * old page while a load is in progress. After a failed load, the failed URL. Iframes never change it.
+   */
   url: string;
-  /** A main-frame navigation that has started but not committed. */
+  /** A main-frame load in progress, which may still fail or be blocked. */
   pendingUrl: string | null;
   title: string;
   loading: boolean;
@@ -176,7 +179,7 @@ export type WebViewRef = {
    * JSON can't encode); rejects with `ERR_EVALUATE` when it throws or rejects, or `navigated` (Android) on a new page.
    */
   evaluate(script: string): Promise<unknown>;
-  /** Reads the native URL property directly. */
+  /** The committed `url`, as in the navigation state, read from native now. */
   getUrl(): Promise<string>;
 };
 

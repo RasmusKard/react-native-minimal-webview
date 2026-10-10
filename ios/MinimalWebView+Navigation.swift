@@ -13,30 +13,14 @@ extension MinimalWebView {
     let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
     if own || action.navigationType == .backForward || action.navigationType == .reload {
       if own { programmaticUrl = nil }
-      expectNavigation(action, from: webView)
       return decide(.allow)
     }
     let request = NavigationRules.Request(
       url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: action.navigationType == .linkActivated
     )
     let download = activeExtensions?.contains { $0.wantsDownload(action) } == true
-    run(request) { [weak self] allowed in
-      if allowed && !download { self?.expectNavigation(action, from: webView) }
+    run(request) { allowed in
       decide(allowed ? (download ? .download : .allow) : .cancel)
-    }
-  }
-
-  private func expectNavigation(_ action: WKNavigationAction, from webView: WKWebView) {
-    guard action.targetFrame?.isMainFrame == true else { return }
-    // Against the committed page: for our own loads WebKit has already moved `url` to the target.
-    if !Self.isFragmentOnly(action.request.url, from: committedUrl.flatMap(URL.init)) {
-      navigationExpected = true
-      expireExpectedNavigation()
-    } else if navigationExpected {
-      // A fragment step stays in the document, so the load loadProgrammatic expected is not coming.
-      navigationExpected = false
-      pendingUrl = nil
-      urlChanged(webView.url?.absoluteString)
     }
   }
 
@@ -117,16 +101,6 @@ extension MinimalWebView {
       return components.string
     }
     return normalized(a) == normalized(b)
-  }
-
-  /// Same URL apart from the fragment, and the new one has a fragment: a same-document navigation.
-  private static func isFragmentOnly(_ target: URL?, from current: URL?) -> Bool {
-    guard let target, let current, target.fragment != nil else { return false }
-    var a = URLComponents(url: target, resolvingAgainstBaseURL: false)
-    var b = URLComponents(url: current, resolvingAgainstBaseURL: false)
-    a?.fragment = nil
-    b?.fragment = nil
-    return a == b
   }
 }
 
