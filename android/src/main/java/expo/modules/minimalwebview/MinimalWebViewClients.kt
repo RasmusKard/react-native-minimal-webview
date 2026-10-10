@@ -27,6 +27,7 @@ import androidx.webkit.Page
 internal class Listener(private val owner: MinimalWebView, private val newDocument: () -> Unit) : NavigationListener {
   override fun onNavigationStarted(navigation: Navigation) {
     if (navigation.isSameDocument) return
+    owner.cancelFileChooser()
     owner.pendingUrl = navigation.url
     owner.loading = true
     owner.stateChanged()
@@ -106,7 +107,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     }
   }
 
-  // Basic and digest auth: an extension answers (httpAuth); without one, cancel (the page shows its 401).
+  // Basic and digest auth: a hook answers (onHttpAuthRequest); without one, cancel (the page shows its 401).
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
     if (owner.hooks.none { it.onHttpAuthRequest(handler, host, realm) }) handler.cancel()
   }
@@ -122,11 +123,16 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message) =
     navigation.createWindow(isUserGesture, resultMsg)
 
-  // First extension that handles it wins; otherwise the WebView cancels the chooser.
-  override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams) =
-    owner.hooks.any { it.onShowFileChooser(callback, params) }
+  // The first hook that handles it wins (onFileRequest); otherwise the system chooser. Its intent ignores `capture`.
+  override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+    val once = owner.holdFileChooser(callback)
+    if (owner.hooks.any { it.onShowFileChooser(once, params) }) return true
+    val module = owner.appContext.registry.getModule<MinimalWebViewModule>()
+    if (module == null) once.onReceiveValue(null) else module.openFileChooser(params.createIntent(), once::onReceiveValue)
+    return true
+  }
 
-  // Without an extension that handles them: deny (never grant device access by default).
+  // Without a hook that handles them: deny (never grant device access by default).
   override fun onPermissionRequest(request: PermissionRequest) {
     if (owner.hooks.none { it.onPermissionRequest(request) }) request.deny()
   }

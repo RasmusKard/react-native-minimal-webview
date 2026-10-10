@@ -4,10 +4,11 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 
 - **Native decides, JS is told.**
   - Navigation rules run natively: no JS round trip per navigation, and the UI thread never blocks.
-  - Only three hooks can change an outcome: `onNavigationRequest`, plus `onPermissionRequest` and `onFileRequest` in their extensions. Each has a safe default.
+  - Only `onNavigationRequest` and the page-request props (`onFileRequest`, `onPermissionRequest`, `onHttpAuthRequest`) can change an outcome. Each has a safe default without the prop.
 - **One committed URL, owned by native.** `useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack` and `canGoForward`. `url` is the page on screen: it changes when a load commits and on SPA navigation (pushState, replaceState, hash), and stays the old page while a load is in progress. After a failed load it is the failed URL. `pendingUrl` is a main-frame load in progress, which may still fail or be blocked. Iframes never change either.
 - **A promise bridge** between React Native and the page, restricted to the origins you allow.
-- **Opt-in extensions:** pull-to-refresh, fullscreen video, file upload, downloads, permissions and shared cookies. They are built on the same interface third parties use.
+- **Page requests just work:** file chooser, fullscreen video, permissions, downloads and HTTP auth each have a default, and an optional prop takes one over.
+- **Opt-in extensions:** pull-to-refresh and shared cookies. They are built on the same interface third parties use.
 - **The app owns device APIs.** The library never shows OS permission prompts or pickers itself. It has no config plugin and no dependency on expo-camera, expo-image-picker or similar packages.
 
 **Requirements:**
@@ -74,7 +75,7 @@ Rules are an ordered list, and the first match wins. Every field a rule sets mus
 - `allow`: load in place.
 - `block`: cancel.
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
-- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`.
+- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits.
 
 **Defaults:**
 - With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked.
@@ -117,7 +118,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 - **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (an Android System WebView without the bridge's features; see Requirements) and `invalid`. Messages have no size limit.
 - **Timeouts:** calls time out after 10 s by default (`timeoutMs`).
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts, and a page's own calls when it comes back from the back-forward cache. The other side may already have handled such a call, so retry only calls that are safe to repeat.
-- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. The `permissions` extension's `origins` match the same way. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
+- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
 - **Transports:** iOS uses `WKScriptMessageHandlerWithReply` plus `callAsyncJavaScript`; Android uses `addWebMessageListener` with origin rules.
 
 Build your own page APIs on top of it, for example an injected `window.MyAppAPI` that calls the bridge.
@@ -162,6 +163,7 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `showsScrollIndicators` | |
 | `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
+| `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload`, `onHttpAuthRequest` | See [Page requests](#page-requests). They can be added and removed at any time |
 | `extensions` | See below. Fixed at mount, like `bridge`; their handlers stay live |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onHttpError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
@@ -174,95 +176,106 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
 
-## Extensions
+## Page requests
 
-```tsx
-<WebView
-  extensions={[
-    pullToRefresh(),
-    fullscreenVideo(),
-    fileUpload({ onFileRequest }),
-    downloads({ onDownload }),
-    permissions({ origins: ['https://*.example.com'], onPermissionRequest }),
-    sharedCookies(),
-    httpAuth({ onAuthRequest }),
-  ]}
-/>
-```
+The page asks for things only the app can answer. Each request works without its prop. Passing the prop takes the
+request over: to decide, to use your own picker, or to observe it.
 
-| Extension | iOS | Android |
-|---|---|---|
-| `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
-| `fullscreenVideo({ onChange })` | Built in (WebKit) | The page's fullscreen view covers the WebView's window (so it works inside a `Modal`) on black, system bars hide, and back exits. `onChange(active)` reports it |
-| `fileUpload({ onFileRequest })` | Built in (WebKit's picker; needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`) | `onFileRequest({ accept, multiple, capture })` returns URIs, or `null` to cancel. Without the extension, file inputs open nothing |
-| `downloads({ onDownload, onError? })` | `WKDownload` (the page's session) into the temporary directory | Fetched again with the page's cookies and user agent into the cache; `data:` and `blob:` too. A POST body, the `headers` prop and `httpAuth` credentials don't go with it, so such a download can fail or save the wrong file (a login page). `onDownload` gets a `file://` on both platforms, `onError({ filename, url, reason })`. `url` is the server URL the file came from; `null` when the page generated it (`data:` or `blob:` URL) |
-| `permissions({ origins, onPermissionRequest? })` | WebKit asks the OS. `true` skips WebKit's own prompt; other origins are denied | Grants what `onPermissionRequest` answers; without it, listed origins are granted. Never prompts: the app asks the OS (expo-camera, expo-location), and without OS permission the page's request fails (`NotReadableError`, geolocation code 2 or 3). WebView keeps a location answer until the page changes |
-| `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
-| `httpAuth({ onAuthRequest })` | `onAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | The same. Without the extension, auth challenges are cancelled and the site's 401 page shows |
+| The page | Default (no prop) | Prop | Typical packages |
+|---|---|---|---|
+| `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser; it ignores `capture` | `onFileRequest({ accept, multiple, capture })` (Android only) returns URIs, or `null` to cancel | expo-document-picker, expo-image-picker |
+| Fullscreen video | iOS: WebKit's. Android: the page's fullscreen view covers the WebView's window on black, system bars hide, and back exits | `onFullscreenChange({ active })` (Android only) | expo-screen-orientation |
+| Camera, microphone, (Android) location | Android: denied. iOS: WebKit's own prompt (location always prompts) | `onPermissionRequest({ origin, resources })` answers `true` or `false`. Main frame only: other frames are denied without asking | expo-camera, expo-audio, expo-location |
+| A download | http(s): opens externally (`onOpenExternal`, or the system browser, which fetches it without the page's session; reported to `onNavigation` as `external`). `data:` and `blob:`: dropped | `onDownload(result)`: a [file in the app's cache](#downloads), or a failure | expo-file-system, expo-sharing |
+| HTTP basic or digest auth | Cancelled: the site's 401 page shows | `onHttpAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | expo-secure-store |
+
+`onPermissionRequest` never makes the OS prompt: the app asks the OS (expo-camera, expo-location), and without OS
+permission the page's request fails anyway (`NotReadableError`, geolocation code 2 or 3). On iOS, `true` skips WebKit's
+own prompt. Android's WebView keeps a location answer until the page changes.
+
+An unanswered request is cancelled when its page is replaced (navigation, reload, unmount). Until then, a handler that
+never settles blocks that page's further requests of the same kind.
+
+An [extension](#extensions) that handles the same platform callback comes before these props.
+
+### Downloads
+
+With `onDownload`, the core saves the file: `WKDownload` on iOS (the page's session) into the temporary directory; on
+Android it is fetched again with the page's cookies and user agent into the cache, `data:` and `blob:` too. A POST
+body, the `headers` prop and `onHttpAuthRequest` credentials don't go with an Android fetch, so such a download can fail
+or save the wrong file (a login page). The result is `{ uri, filename, mimeType, url }` with a `file://` `uri`, or
+`{ filename, url, reason }` when it failed: `'uri' in result` tells them apart. `url` is the server URL the file came
+from; `null` when the page generated it (`data:` or `blob:` URL).
 
 ### Recipes
 
 File upload with expo-document-picker, or expo-image-picker for photos and the camera:
 
 ```tsx
-fileUpload({
-  onFileRequest: async ({ accept, multiple }) => {
+<WebView
+  onFileRequest={async ({ accept, multiple }) => {
     const mimeTypes = accept.filter((type) => type.includes('/')); // the picker takes MIME types, not `.pdf`
     const result = await DocumentPicker.getDocumentAsync({ type: mimeTypes.length ? mimeTypes : '*/*', multiple });
     return result.canceled ? null : result.assets.map((asset) => asset.uri);
-  },
-});
+  }}
+/>
 ```
 
 ```tsx
-fileUpload({
-  onFileRequest: async ({ accept, multiple, capture }) => {
-    const pick = capture ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
-    const result = await pick({ allowsMultipleSelection: multiple });
-    return result.canceled ? null : result.assets.map((asset) => asset.uri);
-  },
-});
+onFileRequest={async ({ multiple, capture }) => {
+  const pick = capture ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
+  const result = await pick({ allowsMultipleSelection: multiple });
+  return result.canceled ? null : result.assets.map((asset) => asset.uri);
+}}
 ```
 
-Camera permission with expo-camera:
+Camera for one site, with expo-camera:
 
 ```tsx
-permissions({
-  origins: ['https://meet.example.com'],
-  onPermissionRequest: async ({ resources }) => {
-    if (resources.includes('camera')) return (await Camera.requestCameraPermissionsAsync()).granted;
-    return false;
-  },
-});
+onPermissionRequest={async ({ origin, resources }) => {
+  if (origin !== 'https://meet.example.com' || !resources.every((resource) => resource === 'camera')) return false;
+  return (await Camera.requestCameraPermissionsAsync()).granted;
+}}
 ```
 
 Let a portrait-locked app rotate while a video is fullscreen (Android), with expo-screen-orientation:
 
 ```tsx
-fullscreenVideo({
-  onChange: (active) =>
-    active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP),
-});
+onFullscreenChange={({ active }) =>
+  active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
+}
 ```
 
 A download is a file in the app's cache. The app opens, saves or shares it, with expo-file-system and expo-sharing:
 
 ```tsx
 // Open it: Quick Look on iOS, an app for the MIME type on Android.
-downloads({ onDownload: ({ uri }) => new File(uri).preview() });
+onDownload={(result) => 'uri' in result && new File(result.uri).preview()}
 
 // Save it where the user chooses: a folder pick on Android, the share sheet's "Save to Files" on iOS.
-downloads({
-  onDownload: async ({ uri, filename, mimeType }) => {
-    if (Platform.OS === 'ios') return Sharing.shareAsync(uri);
-    const target = (await Directory.pickDirectoryAsync()).createFile(filename, mimeType);
-    await target.write(await new File(uri).bytes());
-  },
-});
+onDownload={async (result) => {
+  if (!('uri' in result)) return console.warn('download failed', result.reason);
+  if (Platform.OS === 'ios') return Sharing.shareAsync(result.uri);
+  const target = (await Directory.pickDirectoryAsync()).createFile(result.filename, result.mimeType);
+  await target.write(await new File(result.uri).bytes());
+}}
 
 // Share it.
-downloads({ onDownload: ({ uri }) => Sharing.shareAsync(uri) });
+onDownload={(result) => 'uri' in result && Sharing.shareAsync(result.uri)}
 ```
+
+## Extensions
+
+Add-ons, enabled per WebView:
+
+```tsx
+<WebView extensions={[pullToRefresh(), sharedCookies()]} />
+```
+
+| Extension | iOS | Android |
+|---|---|---|
+| `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
+| `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
 
 ### Writing an extension
 
@@ -300,7 +313,7 @@ export const pageCounter = (): WebViewExtension => ({
 **The hooks:**
 - Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles` and `evaluate`.
 - iOS: `configure(_ configuration:)` (settings WebKit reads only at creation, such as data detectors, the data store or a URL scheme handler; runs before the WebView exists, for every new one), `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles` and `reload`.
-- **Decide hooks:** the first extension that handles one wins.
+- **Decide hooks:** the first extension that handles one wins. The page requests are handled by the core through the same hooks, after every extension.
 - **`ask`:** sends an event to the helper's handler for it in `on` and passes its return value back to native. `handles(event)` says whether the helper has one, so native can fall back to a default without it.
 
 The interface is **experimental** until it has had more outside users.
@@ -312,7 +325,7 @@ The interface is **experimental** until it has had more outside users.
 - A page can open a window only from a tap, unless `javaScriptCanOpenWindowsAutomatically` is set. The navigation rules decide every new window.
 - The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
-- Permissions are granted only to configured origins in the main frame, and are denied by default.
+- Camera, microphone and location are granted only when `onPermissionRequest` says so, to the main frame only. Without it, Android denies and iOS shows WebKit's prompt.
 - Download filenames are sanitised.
 - Debugging is on only in `__DEV__`.
 

@@ -8,7 +8,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onError = EventDispatcher()
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
-  let onNavigationRequest = EventDispatcher()
 
   // Props, applied together in applyProps()
   var source: [String: Any]?
@@ -27,8 +26,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var navigationRules: [[String: Any]]?
   var injectedScripts: [[String: Any]] = []
   private var installedScripts: NSArray?
-  /// JS handles `external` navigations (onOpenExternal); native only reports them.
-  var openExternalInJS = false
+  /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes. `openExternal`
+  /// is there when JS handles `external` navigations (onOpenExternal); native only reports them.
+  var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 
   // Some WKWebViewConfiguration settings are fixed at creation: changing one recreates the WebView. The bridge and the
@@ -36,7 +36,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private(set) var webView: WKWebView?
   private var creationSettings: NSDictionary?
   private var observations: [NSKeyValueObservation] = []
-  // Created with each WKWebView (see recreate), detached in tearDown.
+  // Created with each WKWebView (see recreate), detached in tearDown: the extensions, then the core's page requests, so
+  // an extension that handles the same callback comes first.
   private(set) var activeExtensions: [WebViewExtension]?
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
@@ -169,10 +170,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     installScripts(configuration.userContentController)
     activeExtensions = extensions.compactMap { spec in
       guard let name = spec["name"] as? String, let instance = WebViewExtensions.create(name) else { return nil }
-      let host = Host(view: self, name: name, handles: Set(spec["handles"] as? [String] ?? []))
-      instance.attach(host: host, config: spec["config"] as? [String: Any] ?? [:])
+      let handles = Set(spec["handles"] as? [String] ?? [])
+      instance.attach(host: Host(view: self, name: name) { handles.contains($0) }, config: spec["config"] as? [String: Any] ?? [:])
       return instance
     }
+    let core: [WebViewExtension] = [Permissions(), Downloads(), HttpAuth()]
+    core.forEach { $0.attach(host: Host(view: self, name: "core") { [weak self] in self?.requestHandlers.contains($0) == true }, config: [:]) }
+    activeExtensions? += core
     activeExtensions?.forEach { $0.configure(configuration) }
     let webView = WKWebView(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -327,6 +331,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if let policy = activeExtensions?.lazy.compactMap({ $0.decidePolicy(for: navigationResponse) }).first {
       return decisionHandler(policy)
     }
+    // A file no hook takes (no onDownload).
+    if Downloads.isDownload(navigationResponse), let url = navigationResponse.response.url {
+      openDownload(url)
+      return decisionHandler(.cancel)
+    }
     if navigationResponse.isForMainFrame, let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400 {
       let description = HTTPURLResponse.localizedString(forStatusCode: response.statusCode)
       onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description])
@@ -357,6 +366,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+    // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
+    // challenge holds its own page's response, so that page can't commit while it waits.
+    failPendingAsks()
     failPendingReplies()
     bridgeOrigin = nil
     // A new document: JS queues bridge messages until the page is ready again.
@@ -416,9 +428,9 @@ private let crashWindow: TimeInterval = 60
 private final class Host: ExtensionHost {
   private weak var view: MinimalWebView?
   private let name: String
-  private let handled: Set<String>
+  private let handled: (String) -> Bool
 
-  init(view: MinimalWebView, name: String, handles: Set<String>) {
+  init(view: MinimalWebView, name: String, handles: @escaping (String) -> Bool) {
     self.view = view
     self.name = name
     handled = handles
@@ -427,7 +439,7 @@ private final class Host: ExtensionHost {
   var webView: WKWebView? { view?.webView }
 
   func handles(_ event: String) -> Bool {
-    handled.contains(event)
+    handled(event)
   }
 
   func emit(_ event: String, _ payload: [String: Any]) {

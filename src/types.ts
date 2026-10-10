@@ -104,6 +104,27 @@ export type BridgeOptions = {
   timeoutMs?: number;
 };
 
+/** `<input type="file">` (Android). `capture` is the input's `capture` attribute: the page wants the camera. */
+export type FileRequest = { accept: string[]; multiple: boolean; capture: boolean };
+
+export type PermissionResource = 'camera' | 'microphone' | 'geolocation';
+/** `origin` is the requesting page's, as `location.origin` writes it. Only the main frame asks. */
+export type PermissionRequestEvent = { origin: string; resources: PermissionResource[] };
+
+/**
+ * A finished download: `uri` is a `file://` in the app's cache (iOS: the temporary directory). `url` is the server URL
+ * the file came from; `null` when the page generated it (`data:` or `blob:` URL).
+ */
+export type Download = { uri: string; filename: string; mimeType: string; url: string | null };
+
+/**
+ * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error). `url` as in {@link Download}.
+ * `'uri' in result` tells it from a {@link Download}.
+ */
+export type DownloadFailure = { filename: string; url: string | null; reason: string };
+
+export type AuthRequest = { host: string; realm: string };
+
 /** What an extension helper such as `pullToRefresh()` returns. */
 export type WebViewExtension = {
   /** The native extension to enable for this instance, by its registered name. */
@@ -127,7 +148,7 @@ type OwnProps = {
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
-  /** Called only for `ask` rules. Times out after 1 s, then `block`. */
+  /** Called only for `ask` rules. Times out after 1 s, then `block`. Without this prop, `ask` is `block`. */
   onNavigationRequest?: (
     request: NavigationRequest
   ) => NavigationAction | Promise<NavigationAction>;
@@ -154,8 +175,43 @@ type OwnProps = {
   javaScriptCanOpenWindowsAutomatically?: boolean;
   /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
   webviewDebuggingEnabled?: boolean;
-  /** Fixed at mount: a change is ignored with a warning; remount with a new `key` to apply it. Handlers stay live. */
+  /**
+   * Add-ons such as `pullToRefresh()`. Fixed at mount: a change is ignored with a warning; remount with a new `key` to
+   * apply it. Handlers stay live.
+   */
   extensions?: WebViewExtension[];
+
+  // Page requests: each works without its prop, as described. Passing one takes the request over. They can be added or
+  // removed at any time. An extension that handles the same platform callback comes first.
+  /**
+   * `<input type="file">` on Android: return `file://` or `content://` URIs, or null to cancel. Without it, the system
+   * file chooser opens (it ignores `capture`). iOS always shows WebKit's picker.
+   */
+  onFileRequest?: (request: FileRequest) => string[] | null | Promise<string[] | null>;
+  /**
+   * Android: the page entered or left fullscreen (`active`). Fullscreen works without it: the page's view covers the
+   * window, the system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
+   */
+  onFullscreenChange?: (event: { active: boolean }) => void;
+  /**
+   * Camera, microphone and (Android) location for the main frame. Answer true to grant: ask the OS first (expo-camera,
+   * expo-location), or the page's request fails anyway. Without it: Android denies; iOS shows WebKit's own prompt, and
+   * location always does.
+   */
+  onPermissionRequest?: (request: PermissionRequestEvent) => boolean | Promise<boolean>;
+  /**
+   * A download finished ({@link Download}, a file in the app's cache) or failed ({@link DownloadFailure}). Without it,
+   * an http(s) download opens externally (`onOpenExternal` or the system browser, without the page's session), and a
+   * `data:` or `blob:` one is dropped.
+   */
+  onDownload?: (result: Download | DownloadFailure) => void;
+  /** HTTP basic or digest auth: return credentials, or null to cancel. Without it, cancelled: the site's 401 page shows. */
+  onHttpAuthRequest?: (
+    request: AuthRequest
+  ) =>
+    | { username: string; password: string }
+    | null
+    | Promise<{ username: string; password: string } | null>;
   renderLoading?: () => ReactNode;
   /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onHttpError fires). */
   renderError?: (error: WebViewErrorEvent) => ReactNode;
