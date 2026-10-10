@@ -1,10 +1,7 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
@@ -174,18 +171,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     override fun hasPermission(permission: String) =
       context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
-    override fun launchForResult(intent: Intent, onResult: (Int, Intent?) -> Unit): Boolean {
-      val activity = appContext.currentActivity ?: return false
-      val code = ActivityResults.register(onResult)
-      try {
-        activity.startActivityForResult(intent, code)
-      } catch (e: ActivityNotFoundException) {
-        // Nothing can handle it: answer as a cancel, so the caller (e.g. the file chooser callback) completes.
-        Log.w(TAG, "no activity for $intent", e)
-        ActivityResults.deliver(code, Activity.RESULT_CANCELED, null)
-      }
-      return true
-    }
     override fun handles(event: String) = event in handles
 
     override fun evaluate(script: String, onResult: (Result<String>) -> Unit) = this@MinimalWebView.evaluate(script, onResult)
