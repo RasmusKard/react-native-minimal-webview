@@ -2,7 +2,6 @@ import {
   type NavigationRule,
   type WebViewProps,
   type WebViewErrorEvent,
-  type WebViewRef,
   type WebViewSource,
   WebView,
   createBridge,
@@ -11,17 +10,28 @@ import {
   type FileRequest,
   pullToRefresh,
   useWebViewState,
+  createWebViewRef,
 } from 'react-native-minimal-webview';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
 const PAGES = 'http://localhost:8090';
+const ref = createWebViewRef();
+let remount = () => {};
+
+/** Remounts its children on `remount()`, without re-rendering App. */
+function Remountable({ children }: { children: ReactNode }) {
+  const [key, setKey] = useState(0);
+  useEffect(() => {
+    remount = () => setKey((k) => k + 1);
+  }, []);
+  return <Fragment key={key}>{children}</Fragment>;
+}
 
 export default function App() {
-  const ref = useRef<WebViewRef>(null);
   const state = useWebViewState(ref);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
@@ -74,6 +84,7 @@ export default function App() {
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
     state: () => stateRef.current,
+    remount: () => remount(),
     load: (uri) => setSource({ uri }),
     loadSource: setSource,
     setAuth: (handler) => (authRef.current = handler),
@@ -107,7 +118,7 @@ export default function App() {
           extensions={extensions}
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
           onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
-          onFullscreenChange={({ active }) => events.fullscreen.push(active)}
+          onFullscreenChange={(active) => events.fullscreen.push(active)}
           onDownload={(result) => ('uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result))}
           onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
           onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
@@ -134,7 +145,7 @@ export default function App() {
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
       </Text>
       <ScrollView horizontal style={styles.buttons}>
-        <Button title="back" onPress={() => ref.current?.goBack()} />
+        <Button title="back" onPress={() => ref.goBack()} />
         <Button title="home" onPress={() => setSource({ uri: `${PAGES}/?t=${Date.now()}` })} />
         {Object.keys(SUITES).map((name) => (
           <Button key={name} title={name} onPress={() => run(name)} />

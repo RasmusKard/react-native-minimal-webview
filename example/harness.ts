@@ -15,18 +15,19 @@ import type {
   WebViewHttpErrorEvent,
   NavigationState,
   WebViewProps,
-  WebViewRef,
+  WebViewRefObject,
   WebViewSource,
 } from 'react-native-minimal-webview';
-import type { RefObject } from 'react';
 import { WebView } from 'react-native-minimal-webview';
 import { AppState, Platform } from 'react-native';
 
 export type Harness = {
   pages: string;
   platform: string;
-  ref: RefObject<WebViewRef | null>;
+  ref: WebViewRefObject;
   state: () => NavigationState;
+  /** Remounts the WebView (a new `key`) without re-rendering App. */
+  remount: () => void;
   load: (uri: string) => void;
   loadSource: (source: WebViewSource) => void;
   setAuth: (handler: WebViewProps['onHttpAuthRequest']) => void;
@@ -232,6 +233,20 @@ async function urlTracking(h: Harness) {
     h.state()
   );
   await agree(h, r, 'slow load agrees');
+
+  // A remount App doesn't re-render for: useWebViewState and getState() follow the new WebView, which loads the
+  // source again, instead of keeping the old one's /slow page.
+  const beforeRemount = h.state().url;
+  h.remount();
+  await sleep(0);
+  r.check('a remount resets the state', h.state().url !== beforeRemount, h.state());
+  r.check(
+    'useWebViewState follows the remounted WebView',
+    await waitFor(h, (s) => s.url === first && idle(s)),
+    h.state()
+  );
+  r.check('getState() is the same state', h.ref.getState() === h.state(), h.ref.getState());
+  await agree(h, r, 'remounted WebView agrees');
   r.done();
 }
 

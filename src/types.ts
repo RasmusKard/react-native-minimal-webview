@@ -248,6 +248,16 @@ export type WebViewRef = {
   getUrl(): Promise<string>;
 };
 
+/** What `createWebViewRef()` returns: a `WebViewRef` that outlives the WebViews mounted with it. */
+export type WebViewRefObject = WebViewRef & {
+  /** The mounted WebView's ref, or null while none is mounted. */
+  readonly current: WebViewRef | null;
+  /** The mounted WebView's navigation state, read synchronously; the initial state while none is mounted. */
+  getState(): NavigationState;
+  /** Calls `listener` on every state change, including a WebView mounting or unmounting. Returns the unsubscribe. */
+  subscribe(listener: () => void): () => void;
+};
+
 export type AndroidWebViewInfo = {
   version: string;
   provider: string;

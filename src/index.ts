@@ -1,4 +1,4 @@
-export { WebView, useWebViewState } from './WebView';
+export { WebView, createWebViewRef, useWebViewState } from './WebView';
 export { createBridge } from './bridge/createBridge';
 export { pullToRefresh } from './extensions/pullToRefresh';
 export { sharedCookies } from './extensions/sharedCookies';

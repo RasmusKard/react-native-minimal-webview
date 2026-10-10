@@ -1,19 +1,26 @@
-import { act } from 'react';
+import { type RefObject, act, createRef, useState } from 'react';
 import { Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
-import { WebView } from '../WebView';
-import type { WebViewProps } from '../types';
+import { WebView, createWebViewRef, useWebViewState } from '../WebView';
+import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 
 const mockAnswer = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer` method.
+const mockGoBack = jest.fn();
+// A host element named MinimalWebView whose ref has the native `answer`, `goBack`, `evaluate` and `getUrl` methods.
 jest.mock('expo', () => {
-  const { createElement, useImperativeHandle } = jest.requireActual<typeof import('react')>('react');
+  const { createElement, useImperativeHandle } =
+    jest.requireActual<typeof import('react')>('react');
   return {
     requireNativeView:
       () =>
       ({ ref, ...props }: { ref: unknown }) => {
-        useImperativeHandle(ref as never, () => ({ answer: mockAnswer }));
+        useImperativeHandle(ref as never, () => ({
+          answer: mockAnswer,
+          goBack: mockGoBack,
+          evaluate: async () => '{"a":1}',
+          getUrl: async () => 'https://example.com/native',
+        }));
         return createElement('MinimalWebView', props);
       },
     requireNativeModule: () => ({}),
@@ -212,10 +219,149 @@ describe('page requests', () => {
     });
     await fire('permissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2);
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
-    expect(error).toHaveBeenCalledWith('[react-native-minimal-webview] onPermissionRequest failed', expect.any(Error));
+    expect(error).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] onPermissionRequest failed',
+      expect.any(Error)
+    );
     await fire('httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     expect(authRequest).not.toHaveBeenCalled();
     error.mockRestore();
   });
+});
+
+describe('navigation state across remounts', () => {
+  const at = (url: string): NavigationState => ({
+    url,
+    pendingUrl: null,
+    title: '',
+    loading: false,
+    progress: 0,
+    canGoBack: false,
+    canGoForward: false,
+  });
+  const fireState = (root: ReturnType<typeof createRoot>, state: NavigationState, index = 0) =>
+    act(async () => {
+      const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[index];
+      (
+        native?.props as { onNavigationState: (event: { nativeEvent: NavigationState }) => void }
+      ).onNavigationState({ nativeEvent: state });
+    });
+
+  it('createWebViewRef forwards to the mounted WebView, and does nothing while none is', async () => {
+    const ref = createWebViewRef();
+    expect(ref.current).toBeNull();
+    ref.goBack();
+    expect(await ref.evaluate('1')).toBeUndefined();
+    expect(await ref.getUrl()).toBe('');
+    expect(mockGoBack).not.toHaveBeenCalled();
+
+    const root = createRoot();
+    await act(async () =>
+      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+    expect(ref.current).not.toBeNull();
+    ref.goBack();
+    expect(mockGoBack).toHaveBeenCalledTimes(1);
+    expect(await ref.evaluate('1')).toEqual({ a: 1 });
+    expect(await ref.getUrl()).toBe('https://example.com/native');
+    await act(async () => root.unmount());
+    expect(ref.current).toBeNull();
+  });
+
+  it('getState and subscribe follow attach, detach and re-attach; detach resets to the initial state', async () => {
+    const ref = createWebViewRef();
+    const listener = jest.fn();
+    ref.subscribe(listener);
+    const root = createRoot();
+    const show = (key: number | null) =>
+      act(async () =>
+        root.render(
+          <>
+            {key === null ? null : (
+              <WebView key={key} ref={ref} source={{ uri: 'https://example.com' }} />
+            )}
+          </>
+        )
+      );
+    await show(1);
+    await fireState(root, at('https://example.com/a'));
+    expect(ref.getState().url).toBe('https://example.com/a');
+    listener.mockClear();
+
+    await show(2); // remount
+    expect(listener).toHaveBeenCalled();
+    expect(ref.getState().url).toBe('');
+    await fireState(root, at('https://example.com/b'));
+    expect(ref.getState().url).toBe('https://example.com/b');
+
+    listener.mockClear();
+    await show(null);
+    expect(listener).toHaveBeenCalled();
+    expect(ref.getState()).toEqual(at(''));
+  });
+
+  it('a second WebView with the same ref replaces the first, with a warning; the first unmounting leaves it', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const ref = createWebViewRef();
+    const root = createRoot();
+    const show = (first: boolean) =>
+      act(async () =>
+        root.render(
+          <>
+            {first ? <WebView ref={ref} source={{ uri: 'https://example.com' }} /> : null}
+            <WebView ref={ref} source={{ uri: 'https://example.com' }} />
+          </>
+        )
+      );
+    await show(true);
+    expect(warn).toHaveBeenCalledTimes(1);
+    await fireState(root, at('https://example.com/second'), 1);
+    await fireState(root, at('https://example.com/first'), 0);
+    expect(ref.getState().url).toBe('https://example.com/second');
+    await show(false);
+    expect(ref.current).not.toBeNull();
+    expect(ref.getState().url).toBe('https://example.com/second');
+    warn.mockRestore();
+  });
+
+  it.each([
+    ['createWebViewRef', () => createWebViewRef()],
+    ['a plain ref', () => createRef<WebViewRef>()],
+  ])(
+    'useWebViewState follows a remount the caller does not re-render for, with %s',
+    async (_, make) => {
+      const ref = make() as RefObject<WebViewRef | null>;
+      let remount = () => {};
+      let renders = 0;
+      function Reader() {
+        renders++;
+        return <Text>{useWebViewState(ref).url}</Text>;
+      }
+      function Host() {
+        const [key, setKey] = useState(0);
+        remount = () => setKey(key + 1);
+        return <WebView key={key} ref={ref} source={{ uri: 'https://example.com' }} />;
+      }
+      const root = createRoot();
+      await act(async () =>
+        root.render(
+          <>
+            <Reader />
+            <Host />
+          </>
+        )
+      );
+      const shown = () =>
+        root.container.queryAll((node) => node.type === 'Text')[0]?.props.children as string;
+      await fireState(root, at('https://example.com/a'));
+      expect(shown()).toBe('https://example.com/a');
+      await act(async () => remount());
+      expect(shown()).toBe('');
+      const before = renders;
+      await fireState(root, at('https://example.com/b'));
+      expect(shown()).toBe('https://example.com/b');
+      expect(renders).toBeGreaterThan(before);
+    }
+  );
 });
