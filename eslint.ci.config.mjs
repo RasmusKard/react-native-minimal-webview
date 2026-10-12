@@ -1,6 +1,6 @@
 // CI only (not per edit). Run: npm run lint:ci
-import tseslint from 'typescript-eslint';
 import sonarjs from 'eslint-plugin-sonarjs';
+import tseslint from 'typescript-eslint';
 
 export default [
   { ignores: ['build/**', 'example/**', 'ios/**', 'android/**', '**/*.d.ts'] },
