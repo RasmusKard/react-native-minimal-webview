@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import sonarjs from 'eslint-plugin-sonarjs';
 
 export default [
-  { ignores: ['build/**', 'example/**', 'ios/**', 'android/**', 'internal/**', '**/*.d.ts'] },
+  { ignores: ['build/**', 'example/**', 'ios/**', 'android/**', '**/*.d.ts'] },
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
     languageOptions: { parser: tseslint.parser },
