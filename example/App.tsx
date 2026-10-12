@@ -13,14 +13,28 @@ import {
   createWebViewRef,
 } from 'minimal-rn-webview';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { pageCounter } from 'sample-extension';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { pageCounter } from 'sample-extension';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
 const PAGES = 'http://localhost:8090';
 const ref = createWebViewRef();
 let remount = () => {};
+// Event logs the harness reads and clears. They live outside React: nothing renders them.
+const events: Harness['events'] = {
+  errors: [],
+  httpErrors: [],
+  gone: [],
+  loads: [],
+  navigations: [],
+  downloads: [],
+  downloadFailures: [],
+  fullscreen: [],
+  pageCounts: [],
+  overlay: { error: false },
+};
+const pageEvents: unknown[] = [];
 
 /** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
@@ -40,20 +54,7 @@ export default function App() {
   useEffect(() => {
     onDriverRequest(setDriverRequest);
   }, []);
-  const events = useRef<Harness['events']>({
-    errors: [],
-    httpErrors: [],
-    gone: [],
-    loads: [],
-    navigations: [],
-    downloads: [],
-    downloadFailures: [],
-    fullscreen: [],
-    pageCounts: [],
-    overlay: { error: false },
-  }).current;
   const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
-  const pageEvents = useRef<unknown[]>([]).current;
   const bridge = useMemo(() => {
     const b = createBridge({ allowedOrigins: [PAGES], timeoutMs: 3000 });
     b.handle('echo', (params) => params);
@@ -63,13 +64,15 @@ export default function App() {
     b.handle('slow', () => new Promise((resolve) => setTimeout(() => resolve('too late'), 5000)));
     b.on('pageEvent', (payload) => pageEvents.push(payload));
     return b;
-  }, [pageEvents]);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  }, []);
 
   const authRef = useRef<WebViewProps['onHttpAuthRequest']>(undefined);
-  const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(undefined);
-  const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(undefined);
+  const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(
+    undefined
+  );
+  const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
+    undefined
+  );
   const extensions = useMemo(
     () => [
       pullToRefresh(),
@@ -83,7 +86,7 @@ export default function App() {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
-    state: () => stateRef.current,
+    state: () => state,
     remount: () => remount(),
     load: (uri) => setSource({ uri }),
     loadSource: setSource,
@@ -98,7 +101,9 @@ export default function App() {
     setAsk: (ask) => (askRef.current = ask),
   };
   const harnessRef = useRef(harness);
-  harnessRef.current = harness;
+  useEffect(() => {
+    harnessRef.current = harness;
+  });
 
   const run = (name: string) => {
     void fetch(`${PAGES}/harness/run?platform=${Platform.OS}&suite=${name}`);
@@ -119,7 +124,9 @@ export default function App() {
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
           onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
           onFullscreenChange={({ active }) => events.fullscreen.push(active)}
-          onDownload={(result) => ('uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result))}
+          onDownload={(result) =>
+            'uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result)
+          }
           onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
           onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
           applicationNameForUserAgent="MinimalWebViewExample/1.0"
@@ -131,9 +138,7 @@ export default function App() {
           onLoadStart={() => events.loads.push('start')}
           onLoad={() => events.loads.push('load')}
           onLoadEnd={() => events.loads.push('end')}
-          renderError={(error) => (
-            <ErrorScreen error={error} onRetry={() => ref.reload()} mounted={events.overlay} />
-          )}
+          renderError={(error) => <ErrorScreen error={error} onRetry={() => ref.reload()} />}
           {...extraProps}
         />
       </Remountable>
@@ -156,13 +161,13 @@ export default function App() {
 }
 
 /** The example's error screen; records whether it is mounted so the harness can check renderError. */
-function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void; mounted: { error: boolean } }) {
+function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void }) {
   useEffect(() => {
-    props.mounted.error = true;
+    events.overlay.error = true;
     return () => {
-      props.mounted.error = false;
+      events.overlay.error = false;
     };
-  }, [props.mounted]);
+  }, []);
   return (
     <View style={styles.overlay}>
       <Text>
