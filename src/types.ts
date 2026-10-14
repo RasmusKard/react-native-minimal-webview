@@ -299,11 +299,19 @@ export type WebViewRef = {
    */
   get(key: string): Promise<unknown>;
   /**
-   * Android: calls a public `WebView` method (`call('clearCache', true)`), or a `WebViewCompat` one, and resolves with
-   * its result through JSON. The methods the core owns (loads, clients, `destroy`) reject with `ERR_NATIVE`. iOS rejects
-   * with `unavailable`: call WebKit from a native hook instead.
+   * Calls a platform method and resolves with its result through JSON (README: Platform settings). Android: a public
+   * `WebView` method (`call('clearCache', [true])`), or a `WebViewCompat` one. iOS: an Objective-C selector on a root
+   * of {@link IOSSettings}, `configuration.websiteDataStore` or `configuration.websiteDataStore.httpCookieStore`, the
+   * arguments set by the method's signature (`call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true])`);
+   * a selector that ends in a completion handler needs the handler's shape:
+   * `call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' })`. A wrong
+   * shape crashes. The methods the core owns, and private selectors, reject with `ERR_NATIVE`.
    */
-  call(method: string, ...args: unknown[]): Promise<unknown>;
+  call(
+    method: string,
+    args?: unknown[],
+    options?: { completion?: 'void' | 'value' | 'valueError' | 'bool' }
+  ): Promise<unknown>;
 };
 
 /** What `createWebViewRef()` returns: a `WebViewRef` that outlives the WebViews mounted with it. */

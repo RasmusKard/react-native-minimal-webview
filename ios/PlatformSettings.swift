@@ -13,6 +13,9 @@ import WebKit
 /// `websiteDataStore` from `"default"` or `"nonPersistent"`. Anything else is rejected before KVC runs: a wrong value
 /// in an object-typed property can take the process down (WebKit asserts), and an unknown key raises an Objective-C
 /// exception Swift can't catch. Underscore (private) properties are refused.
+///
+/// `call` invokes a method by selector on a root, or on `configuration.websiteDataStore` and its `httpCookieStore`,
+/// through MRWInvoke (MRWInvoke.h), which sets the arguments by the method's signature.
 final class PlatformSettings {
   /// "root.key" -> the last value applied or rejected, so an unchanged value is neither applied nor reported again.
   private var applied: [String: NSObject] = [:]
@@ -60,9 +63,46 @@ final class PlatformSettings {
     guard !key.hasPrefix("_"), !key.contains("."), class_getProperty(type(of: object), key) != nil else {
       throw PlatformError("no such property \(path)")
     }
-    let data = try JSONSerialization.data(withJSONObject: Self.jsonable(object.value(forKey: key)), options: .fragmentsAllowed)
+    let data = try JSONSerialization.data(withJSONObject: MRWJsonable(object.value(forKey: key)), options: .fragmentsAllowed)
     return String(decoding: data, as: UTF8.self)
   }
+
+  /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
+  /// `completion` names the block shape of a selector that ends in a completion handler (MRWInvoke.h). The roots are
+  /// `root(_:)`'s, `configuration.websiteDataStore` and `configuration.websiteDataStore.httpCookieStore`.
+  func call(_ path: String, args: [Any], completion: String?, webView: WKWebView, resolve: @escaping (String?, String?) -> Void) throws {
+    guard let dot = path.lastIndex(of: ".") else { throw PlatformError("use root.selector:") }
+    let selector = String(path[path.index(after: dot)...])
+    guard let object = callRoot(String(path[..<dot]), webView: webView) else {
+      throw PlatformError("unknown root: use configuration, preferences, webpagePreferences, webView, scrollView, configuration.websiteDataStore or configuration.websiteDataStore.httpCookieStore")
+    }
+    guard !Self.owned.contains(selector), !Self.ownedPrefixes.contains(where: selector.hasPrefix) else {
+      throw PlatformError("\(selector) is owned by the core, or private")
+    }
+    MRWInvoke(object, NSSelectorFromString(selector), args, completion) { result, error in
+      guard error == nil, let result, let data = try? JSONSerialization.data(withJSONObject: result, options: .fragmentsAllowed) else {
+        return resolve(nil, error ?? "the result is not JSON")
+      }
+      resolve(String(decoding: data, as: UTF8.self), nil)
+    }
+  }
+
+  private func callRoot(_ name: String, webView: WKWebView) -> NSObject? {
+    switch name {
+    case "configuration.websiteDataStore": return webView.configuration.websiteDataStore
+    case "configuration.websiteDataStore.httpCookieStore": return webView.configuration.websiteDataStore.httpCookieStore
+    default: return root(name, webView: webView, configuration: webView.configuration)
+    }
+  }
+
+  /// The methods the ref and the core own (loads, navigation, scripts, delegates), and the plumbing that would reach
+  /// private API or bypass the settings rules (KVC, performSelector).
+  private static let owned: Set<String> = [
+    "loadRequest:", "loadHTMLString:baseURL:", "loadFileURL:allowingReadAccessTo:", "stopLoading", "goBack", "goForward",
+    "reload", "reloadFromOrigin", "setNavigationDelegate:", "setUIDelegate:", "setValue:forKey:", "setValue:forKeyPath:",
+    "setValuesForKeysWithDictionary:", "valueForKey:", "valueForKeyPath:", "dealloc",
+  ]
+  private static let ownedPrefixes = ["_", "evaluateJavaScript:", "callAsyncJavaScript:", "performSelector"]
 
   private func root(_ name: String, webView: WKWebView?, configuration: WKWebViewConfiguration?) -> NSObject? {
     switch name {
@@ -140,30 +180,6 @@ final class PlatformSettings {
     return UIColor(red: part(24), green: part(16), blue: part(8), alpha: part(0))
   }
 
-  /// A KVC value as JSON: numbers, strings, URLs, the four structs as objects, lists and objects of them; else null.
-  private static func jsonable(_ value: Any?) -> Any {
-    switch value {
-    case nil, is NSNull: return NSNull()
-    case let number as NSNumber: return number
-    case let string as String: return string
-    case let url as URL: return url.absoluteString
-    case let array as [Any]: return array.map(jsonable)
-    case let dictionary as [String: Any]: return dictionary.mapValues(jsonable)
-    case let value as NSValue:
-      switch String(cString: value.objCType) {
-      case "{UIEdgeInsets=dddd}":
-        let i = value.uiEdgeInsetsValue
-        return ["top": i.top, "left": i.left, "bottom": i.bottom, "right": i.right]
-      case "{CGPoint=dd}": return ["x": value.cgPointValue.x, "y": value.cgPointValue.y]
-      case "{CGSize=dd}": return ["width": value.cgSizeValue.width, "height": value.cgSizeValue.height]
-      case "{CGRect={CGPoint=dd}{CGSize=dd}}":
-        let r = value.cgRectValue
-        return ["x": r.origin.x, "y": r.origin.y, "width": r.width, "height": r.height]
-      default: return NSNull()
-      }
-    default: return NSNull()
-    }
-  }
 }
 
 struct PlatformError: Error {

@@ -212,7 +212,7 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
 
-**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state), `get(key)` and `call(method, ...args)` (see [Platform settings](#platform-settings)).
+**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state), `get(key)` and `call(method, args?, options?)` (see [Platform settings](#platform-settings)).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
 
@@ -236,7 +236,7 @@ offers is reachable by its own name, without a change to this package, through `
   }}
 />
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
-await ref.current?.call('clearCache', true);                   // Android: a public WebView method
+await ref.current?.call('clearCache', [true]);                 // Android: a public WebView method; iOS takes a selector, see below
 ```
 
 - **The keys autocomplete**, with their type and `@since`, from the SDK headers (`src/platform.generated.ts`), and the
@@ -252,9 +252,39 @@ await ref.current?.call('clearCache', true);                   // Android: a pub
   property's type never reaches it.
 - **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a later change warns, and
   a remount with a new `key` applies it. A key you remove is not reset; set the default yourself.
-- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't). **`call(method, ...args)`** calls a
-  public `WebView` method on Android and resolves with its result; the methods the core owns (loads, clients,
-  `destroy`, `evaluateJavascript`) are refused. On iOS it rejects with `unavailable`: call WebKit from a native hook.
+- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't). **`call(method, args?, options?)`** calls
+  a platform method and resolves with its result through JSON. Android: a public `WebView` method, or a
+  `WebViewCompat` one, by name: `call('clearCache', [true])`. iOS: an Objective-C selector on a settings root,
+  `configuration.websiteDataStore` or `configuration.websiteDataStore.httpCookieStore`, the arguments set by the
+  method's signature: booleans, numbers, strings, the four structs as objects, `null` for nil, and `{ set: [...] }`,
+  `{ date: seconds }`, `{ url }` or `{ data: base64 }` for an NSSet, NSDate, NSURL or NSData. A selector that ends in
+  a completion handler needs the handler's shape in `options.completion`:
+
+  | `completion` | The handler | Resolves with |
+  |---|---|---|
+  | `'void'` | `(void)` | `null` |
+  | `'value'` | `(id)` | the value |
+  | `'valueError'` | `(id, NSError *)` | the value, or rejects with the error |
+  | `'bool'` | `(BOOL)` | the boolean |
+
+  ```ts
+  await ref.call(
+    'configuration.websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
+    [{ set: [WK.WebsiteDataType.cookies, WK.WebsiteDataType.localStorage] }, { date: 0 }],
+    { completion: 'void' }
+  );
+  const pdf = await ref.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
+  const png = await ref.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
+  await ref.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
+  ```
+
+  Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as
+  base64, a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any
+  other object is `null`. The methods the core owns (loads, `reload`, `goBack`, `evaluateJavaScript:`, the
+  delegates, `destroy` on Android), private (`_`) selectors and KVC are refused with `ERR_NATIVE`, as are an unknown
+  selector, a wrong argument count and an argument that doesn't fit the signature. Two things the signature can't
+  check are undefined behaviour and crash the app: a wrong completion shape, and an object argument of the wrong
+  class. For a method that takes an object, write a [native hook](#native-hooks).
 - The security defaults below are only defaults: `android.settings.allowFileAccess` or
   `ios.webpagePreferences.allowsContentJavaScript` change them, on your responsibility.
 

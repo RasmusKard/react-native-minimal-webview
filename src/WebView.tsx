@@ -128,8 +128,13 @@ type NativeMethods = {
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
-  /** `{ get }` reads a setting, `{ call, args }` calls a WebView method (Android): the JSON of the result. */
-  native(request: { get?: string; call?: string; args?: unknown[] }): Promise<string>;
+  /** `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. */
+  native(request: {
+    get?: string;
+    call?: string;
+    args?: unknown[];
+    completion?: string;
+  }): Promise<string>;
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
@@ -182,7 +187,7 @@ function createAdapter(): Adapter {
     evaluate: async (script) => await attached?.evaluate(script),
     getUrl: async () => (await attached?.getUrl()) ?? '',
     get: async (key) => await attached?.get(key),
-    call: async (method, ...args) => await attached?.call(method, ...args),
+    call: async (method, args, options) => await attached?.call(method, args, options),
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
@@ -292,7 +297,10 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       evaluate: async (script) => parsed(await native.current?.evaluate(script)),
       getUrl: async () => (await native.current?.getUrl()) ?? '',
       get: async (key) => parsed(await native.current?.native({ get: key })),
-      call: async (method, ...args) => parsed(await native.current?.native({ call: method, args })),
+      call: async (method, args = [], options) =>
+        parsed(
+          await native.current?.native({ call: method, args, completion: options?.completion })
+        ),
     };
   });
   useAttach(ref, handle, lastRef, attachmentRef);

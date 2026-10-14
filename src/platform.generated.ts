@@ -362,7 +362,8 @@ export type AndroidSettingKeys = {
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
  * `configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }`. An option set's `all` is the OR of its listed
- * bits, not `NSUIntegerMax`, which JSON can't carry.
+ * bits, not `NSUIntegerMax`, which JSON can't carry. `WebsiteDataType` has the `WKWebsiteDataStore` data type names, for
+ * `call`.
  */
 export const WK = {
   SelectionGranularity: {
@@ -444,6 +445,23 @@ export const WK = {
     scrollableAxes: 1,
     never: 2,
     always: 3,
+  },
+  /** `WKWebsiteDataStore` data types: `removeDataOfTypes:`, `fetchDataRecordsOfTypes:` */
+  WebsiteDataType: {
+    fetchCache: 'WKWebsiteDataTypeFetchCache',
+    diskCache: 'WKWebsiteDataTypeDiskCache',
+    memoryCache: 'WKWebsiteDataTypeMemoryCache',
+    cookies: 'WKWebsiteDataTypeCookies',
+    sessionStorage: 'WKWebsiteDataTypeSessionStorage',
+    localStorage: 'WKWebsiteDataTypeLocalStorage',
+    webSQLDatabases: 'WKWebsiteDataTypeWebSQLDatabases',
+    indexedDBDatabases: 'WKWebsiteDataTypeIndexedDBDatabases',
+    serviceWorkerRegistrations: 'WKWebsiteDataTypeServiceWorkerRegistrations',
+    fileSystem: 'WKWebsiteDataTypeFileSystem',
+    searchFieldRecentSearches: 'WKWebsiteDataTypeSearchFieldRecentSearches',
+    mediaKeys: 'WKWebsiteDataTypeMediaKeys',
+    hashSalt: 'WKWebsiteDataTypeHashSalt',
+    screenTime: 'WKWebsiteDataTypeScreenTime',
   },
 } as const;
 

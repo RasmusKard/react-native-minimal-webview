@@ -35,14 +35,21 @@ public class MinimalWebViewModule: Module {
         default: break
         }
       }
-      // `{ get: 'scrollView.bounces' }`: the JSON of the property. Method calls are Android-only (a native hook on iOS).
+      // `{ get: 'scrollView.bounces' }` reads a property; `{ call: 'webView.selector:', args, completion }` calls a
+      // method (README: Platform settings). Both resolve with the JSON of the result.
       AsyncFunction("native") { (view: MinimalWebView, request: [String: Any], promise: Promise) in
-        guard let get = request["get"] as? String else {
-          return promise.reject("unavailable", "only `get` is supported on iOS; use a native hook to call methods")
-        }
         guard let webView = view.webView else { return promise.reject("ERR_NATIVE", "No WebView") }
         do {
-          promise.resolve(try view.platformSettings.get(get, webView: webView))
+          if let get = request["get"] as? String {
+            promise.resolve(try view.platformSettings.get(get, webView: webView))
+          } else if let call = request["call"] as? String {
+            let args = request["args"] as? [Any] ?? []
+            try view.platformSettings.call(call, args: args, completion: request["completion"] as? String, webView: webView) { json, error in
+              if let error { promise.reject("ERR_NATIVE", error) } else { promise.resolve(json) }
+            }
+          } else {
+            throw PlatformError("a request needs `get` or `call`")
+          }
         } catch let error as PlatformError {
           promise.reject("ERR_NATIVE", error.message)
         } catch {

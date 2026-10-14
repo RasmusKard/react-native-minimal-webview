@@ -18,6 +18,7 @@ const WEBKIT_HEADERS = [
   'WKWebpagePreferences',
   'WKWebView',
   'WKDataDetectorTypes',
+  'WKWebsiteDataRecord',
 ];
 /** Root -> its Objective-C class. */
 const IOS_ROOTS = {
@@ -41,7 +42,7 @@ async function importInputs() {
     `${frameworks}/UIKit.framework/Headers/UIScrollView.h`,
   ];
   for (const path of headers) {
-    // The preprocessor lines, the interfaces, their properties and the enum blocks.
+    // The preprocessor lines, the interfaces, their properties, the enum blocks and the string constants.
     let inEnum = false;
     const lines = readFileSync(path, 'utf8')
       .split('\n')
@@ -53,7 +54,9 @@ async function importInputs() {
         inEnum = /^typedef NS_(ENUM|OPTIONS)\b/.test(line);
         return (
           inEnum ||
-          /^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b|^@(interface|end)\b|^@property\b/.test(line)
+          /^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b|^@(interface|end)\b|^@property\b|^WK_EXTERN NSString \* const /.test(
+            line
+          )
         );
       });
     const name = path.slice(path.lastIndexOf('/') + 1);
@@ -274,6 +277,16 @@ function iosEnums(text: string) {
   return enums;
 }
 
+/** The `WKWebsiteDataType*` string constants (their value is their name) as `{ cookies: 'WKWebsiteDataTypeCookies' }`. */
+function websiteDataTypes(text: string) {
+  const entries = [
+    ...text.matchAll(/^WK_EXTERN NSString \* const WKWebsiteDataType(\w+)\s*([^;]*);/gm),
+  ]
+    .filter(([, , macros]) => iosAvailability(macros) && !macros.includes('DEPRECATED'))
+    .map(([, name]) => [lowerFirst(name), `'WKWebsiteDataType${name}'`]);
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
 // Android
 
 /** JVM descriptors of the one-argument setter parameters the reflection channel takes. */
@@ -395,9 +408,14 @@ export type AndroidSettingKeys = ${object({
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
  * \`configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }\`. An option set's \`all\` is the OR of its listed
- * bits, not \`NSUIntegerMax\`, which JSON can't carry.
+ * bits, not \`NSUIntegerMax\`, which JSON can't carry. \`WebsiteDataType\` has the \`WKWebsiteDataStore\` data type names, for
+ * \`call\`.
  */
-export const WK = ${object(iosEnums(ios))} as const;
+export const WK = ${object({
+    ...iosEnums(ios),
+    '/** `WKWebsiteDataStore` data types: `removeDataOfTypes:`, `fetchDataRecordsOfTypes:` */\nWebsiteDataType':
+      object(websiteDataTypes(ios)),
+  })} as const;
 
 /** The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants: \`settings: { cacheMode: Android.WebSettings.LOAD_NO_CACHE }\`. */
 export const Android = ${object({

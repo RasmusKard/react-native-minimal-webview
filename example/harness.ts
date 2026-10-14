@@ -1116,9 +1116,64 @@ async function settings(h: Harness) {
         'get rejects for an unknown property',
         (await get('scrollView.nope')) === 'ERR_NATIVE'
       );
+      // call: a void completion handler, valueError with NSData and UIImage, value, a struct and a BOOL, refusals.
+      const call = (
+        method: string,
+        args?: unknown[],
+        options?: { completion?: 'void' | 'value' | 'valueError' | 'bool' }
+      ) => h.ref.call(method, args, options).catch(errorCode);
+      await h.ref.evaluate(`(document.cookie = 'mrw=1; path=/')`);
+      const before = await h.ref.evaluate('document.cookie');
+      const cleared = await call(
+        'configuration.websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
+        [{ set: [WK.WebsiteDataType.cookies] }, { date: 0 }],
+        { completion: 'void' }
+      );
       r.check(
-        'call is unavailable on iOS',
-        (await h.ref.call('clearCache').catch(errorCode)) === 'unavailable'
+        'call clears site data (a void completion handler)',
+        before === 'mrw=1' && cleared === null && (await h.ref.evaluate('document.cookie')) === '',
+        { before, cleared }
+      );
+      const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null], {
+        completion: 'valueError',
+      });
+      r.check(
+        'call resolves NSData as base64 (valueError)',
+        typeof pdf === 'string' && pdf.length > 100 && pdf.startsWith('JVBERi0'),
+        String(pdf).slice(0, 20)
+      );
+      const png = await call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], {
+        completion: 'valueError',
+      });
+      r.check(
+        'call resolves a UIImage as a PNG (valueError)',
+        typeof png === 'string' && png.startsWith('iVBORw0KGgo'),
+        String(png).slice(0, 20)
+      );
+      const records = await call(
+        'configuration.websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
+        [{ set: [WK.WebsiteDataType.localStorage] }],
+        { completion: 'value' }
+      );
+      r.check('call resolves a value completion handler', Array.isArray(records), records);
+      await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 30 }, false]);
+      const offset = (await get('scrollView.contentOffset')) as { y: number } | undefined;
+      r.check('call takes a struct and a BOOL', offset?.y === 30, offset);
+      r.check(
+        'call refuses a core-owned selector',
+        (await call('webView.loadRequest:', [null])) === 'ERR_NATIVE'
+      );
+      r.check(
+        'call refuses a private selector',
+        (await call('webView._nope', [])) === 'ERR_NATIVE'
+      );
+      r.check(
+        'call rejects an unknown selector',
+        (await call('webView.nope:', [1])) === 'ERR_NATIVE'
+      );
+      r.check(
+        'call rejects a wrong argument count',
+        (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'ERR_NATIVE'
       );
       h.setProps({ ios: { scrollView: { bounces: 'yes' as never } } });
       await sleep(500);
@@ -1188,7 +1243,7 @@ async function settings(h: Harness) {
       r.check('get rejects for an unknown key', (await get('settings.nope')) === 'ERR_NATIVE');
       r.check(
         'call runs a WebView method',
-        (await h.ref.call('clearCache', true).catch(errorCode)) === null
+        (await h.ref.call('clearCache', [true]).catch(errorCode)) === null
       );
       r.check(
         'call returns the result',
