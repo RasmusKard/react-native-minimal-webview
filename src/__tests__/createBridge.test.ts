@@ -17,10 +17,36 @@ const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 describe('createBridge', () => {
   afterEach(() => jest.useRealTimers());
 
-  it('injects the page client with its timeout and origins', () => {
+  it('injects a page client that runs on its own, with its timeout and origins', async () => {
     const { connection } = setup(2500);
-    expect(connection.script).toMatch(/^\(function installPageClient\(/);
     expect(connection.script).toMatch(/\)\(window, 2500, \["https:\/\/example.com"\]\);$/);
+    const sent: { kind: string; doc: string; params?: unknown }[] = [];
+    const transport = {
+      postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
+      onmessage: null as ((event: { data: string }) => void) | null,
+    };
+    const page = {
+      location: { origin: 'https://example.com' },
+      nativeBridgeTransport: transport,
+      document: { readyState: 'complete', addEventListener: () => {} },
+      addEventListener: () => {},
+      nativeBridge: undefined as
+        { handle(method: string, handler: (p: number) => number): void } | undefined,
+    };
+    Object.assign(page, { top: page });
+    // eslint-disable-next-line no-new-func -- because the script native injects is what this test runs, as the page would
+    const inject = new Function('window', connection.script) as (window: unknown) => void;
+    inject(page);
+    page.nativeBridge?.handle('double', (n) => n * 2);
+    const doc = sent[0]?.doc;
+    transport.onmessage?.({
+      data: JSON.stringify({ v: 1, id: 'n1', kind: 'call', method: 'double', params: 4, doc }),
+    });
+    await Promise.resolve();
+    expect(sent.map((m) => [m.kind, m.params])).toEqual([
+      ['ready', undefined],
+      ['result', 8],
+    ]);
   });
 
   it('queues messages until the page is ready', () => {
