@@ -14,11 +14,11 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx tsc --noEmit -p tsconfig.json
-      - run: node internal/build-page-client.mjs --check
+      - run: node .github/scripts/build-page-client.mjs --check
       - run: npm test -- --watchAll=false
       - run: npm run check:pack   # clean build, then every relative import in the packed build/ must be packed too
 
-  # The rule matchers on every platform against the shared cases in test-vectors/ (navigation and origin rules).
+  # The rule matchers on every platform against the shared cases in src/__tests__/vectors/ (navigation and origin rules).
   # Linux, not macOS: OriginRules.swift and NavigationRules.swift need only Foundation, and macOS minutes cost 10x.
   swift-rules:
     runs-on: ubuntu-latest
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: >-
           swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o rules
-          && ./rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
+          && ./rules
 
   # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites
   # (example/harness.ts), which need an emulator and a simulator: see README "Development".
