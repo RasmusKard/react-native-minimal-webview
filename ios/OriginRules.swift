@@ -3,7 +3,7 @@ import Foundation
 /// Origin rules in Android's format (the bridge's `allowedOrigins`):
 /// `*`, an exact http(s) origin such as `https://example.com:8443`, or `https://*.example.com` for subdomains.
 /// Compared case-insensitively, a missing port is the scheme's default, and a malformed rule matches nothing.
-/// createBridge validates the rules on the JS side. Cases: test-vectors/origin-rules.json.
+/// createBridge validates the rules on the JS side. Cases: src/__tests__/vectors/origin-rules.json.
 enum OriginRules {
   /// The default port left out (WebKit reports it as 0), an IPv6 host in brackets.
   static func origin(_ scheme: String, _ host: String, _ port: Int) -> String {

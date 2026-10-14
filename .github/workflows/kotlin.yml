@@ -17,7 +17,7 @@ concurrency:   # a new push cancels the run for the previous one
   cancel-in-progress: true
 
 jobs:
-  # The Kotlin rule matchers against the shared cases in test-vectors/ (navigation and origin rules).
+  # The Kotlin rule matchers against the shared cases in src/__tests__/vectors/ (navigation and origin rules).
   kotlin-rules:
     runs-on: ubuntu-latest
     steps:

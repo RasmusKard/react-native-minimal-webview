@@ -1,6 +1,6 @@
 import Foundation
 
-/// The structured navigation rules. Semantics and cases: test-vectors/navigation-rules.json (shared with Kotlin).
+/// The structured navigation rules. Semantics and cases: src/__tests__/vectors/navigation-rules.json (shared with Kotlin).
 enum NavigationRules {
   struct Request {
     let url: String

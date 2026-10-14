@@ -4,10 +4,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 
 class NavigationRulesTest {
-  private val vectors = JSONObject(File("../test-vectors/navigation-rules.json").readText())
+  private val vectors = JSONObject(
+    checkNotNull(javaClass.getResource("/vectors/navigation-rules.json")) { "test resource vectors/navigation-rules.json missing" }.readText()
+  )
 
   private fun toKotlin(value: Any?): Any? = when (value) {
     is JSONObject -> value.keys().asSequence().associateWith { toKotlin(value.get(it)) }

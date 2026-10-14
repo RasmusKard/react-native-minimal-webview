@@ -1,6 +1,6 @@
 /// <reference types="node" />
 // Fails if a packed build/**/*.js or .d.ts file imports a relative path that the package leaves out (a `files`
-// negation in package.json that drops too much). Run after `npm run build`: node internal/check-pack.mjs
+// negation in package.json that drops too much). Run after `npm run build`: node .github/scripts/check-pack.mjs
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { posix } from 'node:path';

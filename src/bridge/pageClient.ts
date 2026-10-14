@@ -1,5 +1,5 @@
 // The page side of the bridge: installs `window.nativeBridge`. It runs inside the web page, so it imports nothing;
-// internal/build-page-client.mjs compiles it to the PAGE_CLIENT string that native injects at document start.
+// .github/scripts/build-page-client.mjs compiles it to the PAGE_CLIENT string that native injects at document start.
 // Transport, a plain pipe each way: page -> native through `postMessage` (iOS WKScriptMessageHandler at
 // `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at `window.nativeBridgeTransport`); native ->
 // page through `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android). Messages follow
@@ -25,7 +25,7 @@ type PageWindow = Window & {
 
 /** Installs only on an allowed origin (Android origin-rule format), matching what native accepts. */
 export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigins: string[]) {
-  // As OriginRules.swift: test-vectors/origin-rules.json.
+  // As OriginRules.swift: src/__tests__/vectors/origin-rules.json.
   const parse = (text: string) => {
     const m =
       /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(
