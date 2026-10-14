@@ -62,7 +62,7 @@ internal class MinimalWebViewNavigation(
       notifyNavigation(request, "block", rule)
       return
     }
-    val id = owner.ask("core", "navigationRequest", fields(request)) { answer ->
+    val id = owner.askWithId("core.navigationRequest", fields(request)) { answer ->
       val action = answer as? String ?: "block"
       if (action == "allow") {
         askedAndAllowed += request.url

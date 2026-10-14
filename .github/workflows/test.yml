@@ -15,6 +15,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit -p tsconfig.json
       - run: node .github/scripts/build-page-client.mjs --check
+      - run: npm run gen:platform-types -- --check   # src/platform.generated.ts matches the vendored SDK extracts
       - run: npm test -- --watchAll=false
       - run: npm run check:pack   # clean build, then every relative import in the packed build/ must be packed too
 

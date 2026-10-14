@@ -8,7 +8,8 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 - **One committed URL, owned by native.** `useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack` and `canGoForward`. `url` is the page on screen: it changes when a load commits and on SPA navigation (pushState, replaceState, hash), and stays the old page while a load is in progress. After a failed load it is the failed URL. `pendingUrl` is a main-frame load in progress, which may still fail or be blocked. Iframes never change either.
 - **A promise bridge** between React Native and the page, restricted to the origins you allow.
 - **Page requests just work:** file chooser, fullscreen video, permissions, downloads and HTTP auth each have a default, and an optional prop takes one over.
-- **Opt-in extensions:** pull-to-refresh and shared cookies. They are built on the same interface third parties use.
+- **Every platform setting by name,** without a change to this package: `ios={{ scrollView: { bounces: false } }}`,
+  `android={{ settings: { textZoom: 120 } }}`.
 - **The app owns device APIs.** The library never shows OS permission prompts or pickers itself. It has no config plugin and no dependency on expo-camera, expo-image-picker or similar packages.
 
 **Requirements:**
@@ -47,11 +48,9 @@ export function Browser() {
       source={{ uri: 'https://example.com' }}
       applicationNameForUserAgent="MyApp/1.0"
       navigationRules={[
-        { scheme: ['tel', 'mailto', 'sms'], mainFrame: true, action: 'external' },
         { host: ['example.com', '*.example.com'], action: 'allow' },
-        { newWindow: true, action: 'external' },
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
-        { scheme: ['http', 'https'], action: 'external' },
+        { action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
       ]}
       renderError={(error) => <OfflineScreen error={error} onRetry={() => ref.current?.reload()} />}
       style={{ flex: 1 }}
@@ -114,7 +113,7 @@ are lists, and one entry matching is enough:
 - `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once.
 
 **Defaults:**
-- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked. A new window counts as a main-frame navigation, so a tap in an iframe that runs `window.open('myapp://…')` still opens externally; without `javaScriptCanOpenWindowsAutomatically`, only a tap opens a window.
+- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked. A new window counts as a main-frame navigation, so a tap in an iframe that runs `window.open('myapp://…')` still opens externally; without the `javaScriptCanOpenWindowsAutomatically` setting, only a tap opens a window.
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load.
 
@@ -132,16 +131,20 @@ are lists, and one entry matching is enough:
 ## The bridge
 
 ```tsx
-const bridge = useMemo(() => {
-  const b = createBridge({ allowedOrigins: ['https://example.com', 'https://*.example.com'] });
-  b.handle('share', async ({ url }) => { await Share.share({ url }); return true });
-  return b;
-}, []);
+const bridge = useMemo(() => createBridge({ allowedOrigins: ['https://example.com', 'https://*.example.com'] }), []);
+useEffect(
+  () => bridge.handle('share', async ({ url }) => { await Share.share({ url, message }); return true }), // the unsubscribe
+  [bridge, message]
+);
 
 <WebView bridge={bridge} … />
 await bridge.call('getCartCount');   // a method the page registered
 bridge.emit('themeChanged', 'dark');
 ```
+
+Make the bridge once (`useMemo`, or at module level like `createWebViewRef`): a new one recreates the WebView. A
+handler sees the values of the render that registered it, so register it in an effect with those values in the
+deps; `handle` returns the unsubscribe, which the effect's cleanup runs.
 
 In the page:
 
@@ -192,18 +195,15 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | Prop | Notes |
 |---|---|
 | `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only |
-| `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. The app name is fixed at mount: remount with a new `key` to change it |
+| `ios`, `android` | Any WebKit property or Android setter, by name. See [Platform settings](#platform-settings) |
+| `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. The app name is read when the WebView is created: a change recreates it (the page reloads) |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
-| `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
-| `thirdPartyCookiesEnabled` | Android only, default false. WebKit always blocks third-party cookies (as Safari does) |
-| `mediaPlaybackRequiresUserAction` (default true), `allowsInlineMediaPlayback` (iOS, default false) | Fixed at mount, like `bridge`: remount with a new `key` to change them |
-| `scrollEnabled`, `bounces` | iOS only |
-| `showsScrollIndicators` | |
-| `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
-| `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
+| `bridge` | `createBridge(...)`. Read when the WebView is created: a change recreates it |
+| `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
+| `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload`, `onHttpAuthRequest` | See [Page requests](#page-requests). They can be added and removed at any time |
-| `extensions` | See below. Fixed at mount, like `bridge`; their handlers stay live |
+| `nativeOptions`, `onNativeEvent` | What your [native hooks](#native-hooks) get, and what they send. `nativeOptions` is read when the WebView is created, like `bridge` |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onHttpError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled |
@@ -211,9 +211,98 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
 
-**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state).
+**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state), `get(key)` and `call(method, args?, options?)` (see [Platform settings](#platform-settings)).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
+
+## Platform settings
+
+The user agent props above are the only settings the package knows by name. Its other defaults are plain keys your
+own override: no script-opened windows (`javaScriptCanOpenWindowsAutomatically`, in `ios.preferences` and
+`android.settings`), playback only on a gesture (`ios.configuration.mediaTypesRequiringUserActionForPlayback`,
+`android.settings.mediaPlaybackRequiresUserGesture`) and debugging in `__DEV__` only (`ios.webView.inspectable`,
+`android.webView.webContentsDebuggingEnabled`, which is process-wide). Everything else the platform offers is reachable
+by its own name, without a change to this package, through `ios` and `android`:
+
+```tsx
+<WebView
+  ios={{
+    configuration: { dataDetectorTypes: WK.DataDetectorTypes.link, websiteDataStore: 'nonPersistent' }, // WKWebViewConfiguration: read once, at creation
+    preferences: { minimumFontSize: 12 },                                        // WKPreferences
+    webpagePreferences: { allowsContentJavaScript: false },                      // WKWebpagePreferences, from the next navigation
+    webView: { allowsBackForwardNavigationGestures: true },                      // WKWebView
+    scrollView: { bounces: false, contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never }, // its UIScrollView
+  }}
+  android={{
+    settings: { textZoom: 120, algorithmicDarkeningAllowed: true }, // WebSettings, then WebSettingsCompat
+    webView: { overScrollMode: 2, acceptThirdPartyCookies: true },   // WebView, then WebViewCompat, then CookieManager
+  }}
+/>
+const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
+await ref.current?.call('webView.clearCache', [true]);         // a public method; iOS takes a selector, see call below
+```
+
+- **The keys autocomplete**, with their type and `@since`, from the SDK headers (`src/platform.generated.ts`), and the
+  platforms' enums and constants come as `WK` (`WK.DataDetectorTypes.link`, `WK.ContentMode.desktop`) and `Android`
+  (`Android.WebSettings.LOAD_NO_CACHE`). A key the headers don't list, from a newer SDK, still type-checks.
+- **Names are the platform's.** iOS keys are Objective-C property names (`inspectable`, `scrollEnabled`), set with
+  Key-Value Coding. Android keys are setter names without `set` (`textZoom` for `setTextZoom`), found by reflection,
+  with the `WebSettingsCompat` and `WebViewCompat` statics as fallbacks, so an androidx.webkit feature works the day it
+  ships. Enums and option sets are their raw numbers; iOS structs are objects (`contentInset: { top, left, bottom, right }`).
+- **Only public API.** A key must name a public property or setter that takes the value's type; a private
+  (underscore) one is refused. Anything else is skipped with a warning naming the key and the reason, including a
+  compat feature this device's WebView lacks. Nothing in this channel can crash the app: a value that doesn't fit the
+  property's type never reaches it.
+- **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a change recreates the
+  WebView (the page reloads), as a change of `bridge` or `nativeOptions` does. A key you remove is not reset; set the
+  default yourself.
+- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and
+  `httpCookieStore` are roots too, on Android `cookieManager` and `webStorage`. **`call`** is below.
+- The security defaults below are only defaults: `android.settings.allowFileAccess` or
+  `ios.webpagePreferences.allowsContentJavaScript` change them, on your responsibility.
+
+### call
+
+`call(method, args?, options?)` calls a platform method, `root.method`, and resolves with its result through JSON
+(`ERR_NATIVE` for one it refuses or that fails). Android: a public method of `webView` (then `WebViewCompat`'s
+statics), `cookieManager` or `webStorage`:
+
+```ts
+await ref.call('webView.clearCache', [true]);
+await ref.call('cookieManager.removeAllCookies', [null]);
+await ref.call('webStorage.deleteAllData');
+```
+
+iOS: an Objective-C selector on a settings root, `websiteDataStore` or `httpCookieStore`, the arguments set by the
+method's signature: booleans, numbers, strings, the four structs as objects, `null` for nil, and `{ set: [...] }`,
+`{ date: seconds }` or `{ data: base64 }` for an NSSet, NSDate or NSData. A selector that ends in a completion handler
+needs the handler's shape in `options.completion`:
+
+| `completion` | The handler | Resolves with |
+|---|---|---|
+| `'void'` | `(void)` | `null` |
+| `'value'` | `(id)` | the value |
+| `'valueError'` | `(id, NSError *)` | the value, or rejects with the error |
+| `'error'` | `(NSError *)` | `null`, or rejects with the error |
+
+```ts
+await ref.call(
+  'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
+  [{ set: [WK.WebsiteDataType.cookies, WK.WebsiteDataType.localStorage] }, { date: 0 }],
+  { completion: 'void' }
+);
+const pdf = await ref.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
+const png = await ref.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
+await ref.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
+```
+
+Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,
+a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
+is `null`. Refused with `ERR_NATIVE`: what the core owns (on iOS every selector that loads, navigates, runs a script,
+starts a download or sets a delegate; on Android the loads, clients, `destroy` and `evaluateJavascript`), private
+(`_`) selectors and KVC, as well as an unknown selector, a wrong argument count and an argument that doesn't fit the
+signature. Two things the signature can't check are undefined behaviour and crash the app: a wrong completion shape,
+and an object argument of the wrong class. For a method that takes an object, write a [native hook](#native-hooks).
 
 ## Page requests
 
@@ -235,7 +324,7 @@ own prompt. Android's WebView keeps a location answer until the page changes.
 An unanswered request is cancelled when its page is replaced (navigation, reload, unmount). Until then, a handler that
 never settles blocks that page's further requests of the same kind.
 
-An [extension](#extensions) that handles the same platform callback comes before these props.
+A [native hook](#native-hooks) whose delegate or client takes the same platform callback comes before these props.
 
 ### Downloads
 
@@ -303,65 +392,63 @@ onDownload={async (result) => {
 onDownload={(result) => 'uri' in result && Sharing.shareAsync(result.uri)}
 ```
 
-## Extensions
+## Native hooks
 
-Add-ons, enabled per WebView:
-
-```tsx
-<WebView extensions={[pullToRefresh(), sharedCookies()]} />
-```
-
-| Extension | iOS | Android |
-|---|---|---|
-| `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
-| `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
-
-### Writing an extension
-
-An extension is native code registered by name, plus an optional JS helper. `example/modules/sample-extension` is a complete one that lives outside the package.
-
-```kotlin
-// Android: in your Expo module's OnCreate
-WebViewExtensions.register("pageCounter") { PageCounter() }
-
-class PageCounter : WebViewExtension {
-  private lateinit var host: ExtensionHost
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) { this.host = host }
-  override fun onPageFinished(url: String) = host.emit("pageLoaded", mapOf("url" to url))
-}
-```
+Anything the settings can't express is a few lines of Swift or Kotlin in your own Expo module (a
+[local module](https://docs.expo.dev/modules/get-started/) in `modules/`, or a package). There is no protocol to
+implement: a hook gets the real `WKWebView` or `WebView` and its creation-time configuration, and can chain its own
+delegates and clients. `example/modules/sample-extension` is a complete one.
 
 ```swift
-// iOS: in your Expo module's OnCreate
-WebViewExtensions.register("pageCounter") { PageCounter() }
-
-final class PageCounter: WebViewExtension {
-  private var host: ExtensionHost?  // keep it strong; it holds the view weakly
-  func attach(host: ExtensionHost, config: [String: Any]) { self.host = host }
-  func didFinish(url: URL?) { host?.emit("pageLoaded", ["url": url?.absoluteString ?? ""]) }
+// iOS, in your module's OnCreate: a hook under the nativeOptions key that enables it
+MinimalWebViewHooks.configure["pageCounter"] = { configuration, context in   // before the WKWebView exists
+  configuration.dataDetectorTypes = .phoneNumber
+}
+MinimalWebViewHooks.attach["pageCounter"] = { webView, context in             // once it exists; return a detach closure or nil
+  context.navigationDelegates.append(PageCounter(context: context))
+  return nil
 }
 ```
 
-```ts
-export const pageCounter = (): WebViewExtension => ({
-  native: { name: 'pageCounter', config: {} },
-  on: { pageLoaded: ({ url }: { url: string }) => console.log('loaded', url) },
-});
+```kotlin
+// Android, in your module's OnCreate
+MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             // for each WebView: the first, and any after a crash
+  context.clients += PageCounter(context)  // a WebViewClient
+  null
+}
 ```
 
-**The hooks:**
-- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles` and `evaluate`.
-- iOS: `configure(_ configuration:)` (settings WebKit reads only at creation, such as data detectors, the data store or a URL scheme handler; runs once, before the WebView exists), `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles`, `evaluate` and `reload`.
-- **Decide hooks:** the first extension that handles one wins. The page requests are handled by the core through the same hooks, after every extension.
-- **`ask`:** sends an event to the helper's handler for it in `on` and passes its return value back to native. `handles(event)` says whether the helper has one, so native can fall back to a default without it.
+```tsx
+<WebView nativeOptions={{ pageCounter: true }} onNativeEvent={({ name, payload }) => … } />  // name: 'pageCounter.pageLoaded'
+```
 
-The interface is **experimental** until it has had more outside users.
+- **`nativeOptions`** enables hooks: a hook runs for a WebView whose `nativeOptions` has its key, and `context.options`
+  is the whole prop, so the key's value can configure it. Read when the WebView is created, like `bridge`: a change
+  recreates it.
+- **Delegates and clients.** A callback the core doesn't implement goes to the first of your delegates (clients) that
+  does. A decision callback the core implements goes to the first of yours that does, and the core steps aside: on iOS
+  navigation and response policy, authentication, a new window, JS dialogs and media capture; on Android
+  `shouldOverrideUrlLoading`, HTTP auth, SSL errors, permissions, geolocation, fullscreen, a new window and the file
+  chooser. An observation callback the core implements reaches the core first, then every one of yours. So a client
+  that overrides `shouldOverrideUrlLoading` switches the navigation rules off for that WebView, and one that overrides
+  `onPageFinished` is just told. Android's `shouldInterceptRequest` runs on a background thread, as always.
+- **Events.** `context.emit(name, payload)` sends `onNativeEvent({ name: '<hook>.<name>', payload })`: the hook's key
+  is the prefix, so names never collide with the package's (`core.`) or another hook's. `context.ask(name, payload) { answer in … }`
+  waits for the handler's return value (a promise is awaited; a throw or no handler answers null).
+- **Lifecycle.** `configure` runs after the `ios.configuration` settings and before the bridge, so replacing the
+  user content controller is fine. `attach` runs once the WebView exists (on Android also for the new WebView after a
+  renderer crash); the closure it returns runs when that WebView goes away. Everything runs on the main thread. Set
+  delegates in `attach`: WebKit reads what a delegate responds to when it is assigned, and the core re-assigns itself
+  after each change to the lists.
+- **What not to touch:** the WebView's own delegate and client slots (use the lists), the bridge's script message
+  handler and user scripts, and Android's download listener. `MinimalWebViewHooks.webViewClass` (iOS) and
+  `webViewFactory` (Android) let a subclass override what the platform class allows.
 
 ## Security defaults
 
 - File access is off, mixed content is never allowed, and SSL errors are always cancelled.
 - There is no `addJavascriptInterface`. Android pages see one extra global, `nativeEvaluateResult`, for `evaluate` results.
-- A page can open a window only from a tap, unless `javaScriptCanOpenWindowsAutomatically` is set. The navigation rules decide every new window.
+- A page can open a window only from a tap, unless the `javaScriptCanOpenWindowsAutomatically` setting is on. The navigation rules decide every new window.
 - The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
 - Camera, microphone and location are granted only when `onPermissionRequest` says so, to the main frame only. Without it, Android denies and iOS shows WebKit's prompt.

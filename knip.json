@@ -1,7 +1,16 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["example/**"],
-  "ignoreBinaries": ["xed"],
+  "ignore": [
+    "example/**"
+  ],
+  "ignoreBinaries": [
+    "xed",
+    "javap"
+  ],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["expo-modules-core", "@babel/core", "babel-preset-expo"]
+  "ignoreDependencies": [
+    "expo-modules-core",
+    "@babel/core",
+    "babel-preset-expo"
+  ]
 }

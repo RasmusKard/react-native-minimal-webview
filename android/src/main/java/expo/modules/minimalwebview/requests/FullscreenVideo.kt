@@ -1,4 +1,4 @@
-package expo.modules.minimalwebview.extensions
+package expo.modules.minimalwebview.requests
 
 import android.graphics.Color
 import android.view.View
@@ -10,34 +10,29 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import expo.modules.minimalwebview.ExtensionHost
-import expo.modules.minimalwebview.WebViewExtension
+import expo.modules.minimalwebview.MinimalWebView
 
 /**
  * HTML5 fullscreen video, always on: the page's fullscreen view covers the WebView's own window on a black backdrop,
  * system bars hide, and back exits. Orientation is the app's: it can unlock it in
  * `onFullscreenChange` (expo-screen-orientation).
  */
-class FullscreenVideo : WebViewExtension {
-  private lateinit var host: ExtensionHost
+internal class FullscreenVideo(private val owner: MinimalWebView) {
   private var shown: Pair<View, CustomViewCallback>? = null
   private var backdrop: FrameLayout? = null
   private var backCallback: OnBackPressedCallback? = null
 
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
-    this.host = host
-  }
-
-  override fun onShowCustomView(view: View, callback: CustomViewCallback): Boolean {
+  /** Returns false when there is no window to cover; the caller then tells WebView the view is hidden. */
+  fun onShowCustomView(view: View, callback: CustomViewCallback): Boolean {
     if (shown != null) exit()
-    val window = host.webView.rootView as? ViewGroup ?: return false
+    val window = owner.webView.rootView as? ViewGroup ?: return false
     backdrop = FrameLayout(view.context).apply {
       setBackgroundColor(Color.BLACK)
       addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
       window.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
     shown = view to callback
-    backCallback = (host.activity as? ComponentActivity)?.let { component ->
+    backCallback = (owner.activity as? ComponentActivity)?.let { component ->
       object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() = exit()
       }.also { component.onBackPressedDispatcher.addCallback(it) }
@@ -50,10 +45,7 @@ class FullscreenVideo : WebViewExtension {
     return true
   }
 
-  override fun onHideCustomView(): Boolean {
-    removeView()
-    return true
-  }
+  fun onHideCustomView() = removeView()
 
   /** Leaves fullscreen from our side: WebView then calls onHideCustomView. */
   private fun exit() {
@@ -75,10 +67,10 @@ class FullscreenVideo : WebViewExtension {
   }
 
   private fun report(active: Boolean) {
-    if (host.handles("fullscreenChange")) host.emit("fullscreenChange", mapOf("active" to active))
+    if ("fullscreenChange" in owner.requestHandlers) owner.emit("core.fullscreenChange", mapOf("active" to active))
   }
 
-  private fun controller() = host.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+  private fun controller() = owner.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
-  override fun onDetach() = exit()
+  fun detach() = exit()
 }

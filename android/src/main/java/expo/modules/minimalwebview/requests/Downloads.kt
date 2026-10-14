@@ -1,14 +1,12 @@
-package expo.modules.minimalwebview.extensions
+package expo.modules.minimalwebview.requests
 
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import androidx.webkit.URLUtilCompat
 import com.facebook.react.modules.network.ForwardingCookieHandler
-import expo.modules.minimalwebview.DownloadInfo
-import expo.modules.minimalwebview.ExtensionHost
+import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.TAG
-import expo.modules.minimalwebview.WebViewExtension
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -20,6 +18,15 @@ import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+/** What WebView's DownloadListener reports. */
+internal data class DownloadInfo(
+  val url: String,
+  val userAgent: String,
+  val contentDisposition: String,
+  val mimeType: String,
+  val contentLength: Long
+)
+
 /**
  * Downloads, with the app's `onDownload`: http(s) is fetched again with the WebView's cookies and the page's user agent
  * (WebView hands over only the URL), data: is decoded, and blob: is read by the page. Each lands in its own app-cache
@@ -27,16 +34,12 @@ import java.util.concurrent.TimeUnit
  * reason}`. `url` is the full http(s) URL, or null for data: and blob: (the page made the file itself). Without the prop
  * the core opens it externally. Nothing here may crash the app: the page controls the URL.
  */
-class Downloads : WebViewExtension {
-  private lateinit var host: ExtensionHost
+internal class Downloads(private val owner: MinimalWebView) {
   private val io = Executors.newCachedThreadPool()
 
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
-    this.host = host
-  }
-
-  override fun onDownloadStart(download: DownloadInfo): Boolean {
-    if (!host.handles("download")) return false
+  /** Returns true when the app's prop takes the download. */
+  fun onDownloadStart(download: DownloadInfo): Boolean {
+    if ("download" !in owner.requestHandlers) return false
     val name = URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType)
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
@@ -74,7 +77,7 @@ class Downloads : WebViewExtension {
    * back on the main thread. [url] is the download's own URL, for the event.
    */
   private fun save(name: String, url: String, write: (File) -> String) {
-    val file = File(host.webView.context.cacheDir, "downloads/${System.nanoTime()}/$name")
+    val file = File(owner.webView.context.cacheDir, "downloads/${System.nanoTime()}/$name")
     io.execute {
       val result = try {
         file.parentFile?.mkdirs()
@@ -86,10 +89,10 @@ class Downloads : WebViewExtension {
       } catch (e: JSONException) {
         e
       }
-      host.webView.post {
+      owner.webView.post {
         when (result) {
-          is String -> host.emit(
-            "download",
+          is String -> owner.emit(
+            "core.download",
             mapOf("uri" to Uri.fromFile(file).toString(), "filename" to name, "mimeType" to result, "url" to serverUrl(url))
           )
           is Exception -> failed(name, url, result)
@@ -106,7 +109,7 @@ class Downloads : WebViewExtension {
         reader.readAsDataURL(b);
       }))
     """.trimIndent()
-    host.evaluate(script) { result ->
+    owner.evaluate(script) { result ->
       result.fold(
         { json ->
           save(name, url) { file ->
@@ -120,13 +123,13 @@ class Downloads : WebViewExtension {
 
   private fun failed(name: String, url: String, error: Exception) {
     Log.w(TAG, "download of $name failed", error)
-    host.emit("download", mapOf("filename" to name, "url" to serverUrl(url), "reason" to (error.message ?: error.toString())))
+    owner.emit("core.download", mapOf("filename" to name, "url" to serverUrl(url), "reason" to (error.message ?: error.toString())))
   }
 
   /** The download's server URL for the events; null when the page generated the file (data:, blob:). */
   private fun serverUrl(url: String) = url.takeIf { it.startsWith("http:") || it.startsWith("https:") }
 
-  override fun onDetach() {
+  fun detach() {
     io.shutdown()
   }
 
