@@ -136,10 +136,9 @@ describe('platform settings', () => {
     });
   });
 
-  it('put the user agent props over the app keys, the app keys over the defaults, and keep the other roots', async () => {
+  it('put userAgent over the app keys, the app keys over the defaults, and keep the other roots', async () => {
     const settings = await settingsOf({
       userAgent: 'Agent/1',
-      applicationNameForUserAgent: 'App/1',
       ios: {
         configuration: {
           allowsInlineMediaPlayback: true,
@@ -158,7 +157,6 @@ describe('platform settings', () => {
       configuration: {
         mediaTypesRequiringUserActionForPlayback: 0,
         allowsInlineMediaPlayback: true,
-        applicationNameForUserAgent: 'App/1',
       },
       preferences: { javaScriptCanOpenWindowsAutomatically: true },
       webView: {
@@ -170,12 +168,15 @@ describe('platform settings', () => {
     });
   });
 
-  it('recreate the native view for a changed app name, with the new settings', async () => {
+  it('recreate the native view for a changed configuration key, with the new settings', async () => {
     const root = createRoot();
     const show = (name: string) =>
       act(async () =>
         root.render(
-          <WebView source={{ uri: 'https://example.com' }} applicationNameForUserAgent={name} />
+          <WebView
+            source={{ uri: 'https://example.com' }}
+            ios={{ configuration: { applicationNameForUserAgent: name } }}
+          />
         )
       );
     mockMount.mockClear();

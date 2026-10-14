@@ -63,7 +63,6 @@ const OWN = [
   'ios',
   'android',
   'userAgent',
-  'applicationNameForUserAgent',
   'navigationRules',
   'injectedScripts',
   'bridge',
@@ -418,8 +417,8 @@ let lastBridgeId = 0;
 
 /**
  * What native sets up once, when it creates the WebView: the bridge, the hooks' options and the creation-time
- * settings (`ios.configuration`, and the app name, which is one of its keys). As the native view's `key`, a change
- * recreates the WebView, like a new `key` on the component would: the page reloads from `source`.
+ * settings (`ios.configuration`). As the native view's `key`, a change recreates the WebView, like a new `key` on the
+ * component would: the page reloads from `source`.
  */
 function creationKey(props: WebViewProps) {
   const bridge = props.bridge;
@@ -428,8 +427,7 @@ function creationKey(props: WebViewProps) {
   return JSON.stringify([
     id ?? 0,
     props.nativeOptions,
-    props.applicationNameForUserAgent,
-    props.ios?.configuration,
+    Platform.OS === 'ios' ? props.ios?.configuration : undefined,
   ]);
 }
 
@@ -440,24 +438,17 @@ function viewPropsOf(props: WebViewProps): ViewProps {
 
 /**
  * The platform's settings for native: the package's defaults (playback on a gesture, no script-opened windows,
- * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and the user agent
- * props on top. A user agent prop that is unset resets its key to the default, so removing the prop undoes it.
+ * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and `userAgent` on
+ * top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
-  const set = <T,>(
-    value: T | undefined,
-    key: string,
-    map: (value: T) => SettingValue = (v) => v as never
-  ) => (value === undefined ? {} : { [key]: map(value) });
+  const set = (value: string | undefined, key: string) =>
+    value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
     const { configuration, preferences, webView, ...rest } = props.ios ?? {};
     return {
       ...rest,
-      configuration: {
-        mediaTypesRequiringUserActionForPlayback: MEDIA_ALL,
-        ...configuration,
-        ...set(props.applicationNameForUserAgent, 'applicationNameForUserAgent'),
-      },
+      configuration: { mediaTypesRequiringUserActionForPlayback: MEDIA_ALL, ...configuration },
       preferences: { javaScriptCanOpenWindowsAutomatically: false, ...preferences },
       webView: {
         customUserAgent: null,
@@ -475,11 +466,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
       mediaPlaybackRequiresUserGesture: true,
       javaScriptCanOpenWindowsAutomatically: false,
       ...settings,
-      ...set(
-        props.applicationNameForUserAgent,
-        'userAgentString',
-        (name) => `${nativeModule().defaultUserAgent} ${name}`
-      ),
       ...set(props.userAgent, 'userAgentString'),
     },
     webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
@@ -537,10 +523,18 @@ export declare namespace WebView {
    * for the life of the process: a WebView update restarts the app.
    */
   const androidWebViewInfo: AndroidWebViewInfo | null;
+  /**
+   * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
+   * `ios.configuration.applicationNameForUserAgent` appends.
+   */
+  const defaultUserAgent: string | null;
 }
 Object.defineProperty(WebView, 'androidWebViewInfo', {
   get: (): AndroidWebViewInfo | null =>
     Platform.OS === 'android' ? (androidInfo ??= nativeModule().androidWebViewInfo) : null,
+});
+Object.defineProperty(WebView, 'defaultUserAgent', {
+  get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });
 
 /**

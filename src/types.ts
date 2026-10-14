@@ -190,17 +190,16 @@ export type NativeEvent = { name: string; payload: Record<string, unknown> };
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
 type OwnProps = {
   source: WebViewSource;
-  /** Platform settings by name; see {@link IOSSettings}. The user agent props below win over the same keys here. */
+  /** Platform settings by name; see {@link IOSSettings}. The `userAgent` prop wins over the same key here. */
   ios?: IOSSettings;
-  /** Platform settings by name; see {@link AndroidSettings}. The user agent props below win over the same keys here. */
+  /** Platform settings by name; see {@link AndroidSettings}. The `userAgent` prop wins over the same key here. */
   android?: AndroidSettings;
-  /** Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). */
-  userAgent?: string;
   /**
-   * Appended to the default user agent (`ios.configuration.applicationNameForUserAgent`, a creation-time key: a
-   * change recreates the WebView, on both platforms; `android.settings.userAgentString`).
+   * Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). To append to
+   * the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
+   * `android.settings.userAgentString` from `WebView.defaultUserAgent`.
    */
-  applicationNameForUserAgent?: string;
+  userAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
   /** Called only for `ask` rules. Times out after 1 s, then `block`. Without this prop, `ask` is `block`. */

@@ -782,7 +782,7 @@ async function errors(h: Harness) {
   r.done();
 }
 
-/** applicationNameForUserAgent appends to the default UA; userAgent replaces it. Both reach the server. */
+/** The app name appended through the platform keys (the example's `ios` and `android` props) reaches the server; userAgent replaces it. */
 async function ua(h: Harness) {
   const r = reporter('ua');
   const read = async () => {
@@ -995,8 +995,8 @@ async function info(h: Harness) {
 }
 
 /**
- * A creation-time setting (applicationNameForUserAgent) changed while mounted recreates the WebView, on both
- * platforms; afterwards the page, the bridge, the extensions and `ask` must all still work.
+ * A creation-time setting changed while mounted recreates the WebView (iOS: an `ios.configuration` key; Android has
+ * none, so `nativeOptions` stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
  */
 async function mountSettings(h: Harness) {
   const r = reporter('mountSettings');
@@ -1006,13 +1006,24 @@ async function mountSettings(h: Harness) {
   };
   const page = `${h.pages}/bridge.html?t=${Date.now()}`;
   await openPage(h, page);
-  h.setProps({ applicationNameForUserAgent: 'Remounted/9' });
+  h.setProps(
+    Platform.OS === 'ios'
+      ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
+      : {
+          nativeOptions: { pageCounter: true, remounted: true },
+          android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } },
+        }
+  );
   await sleep(500);
   await waitFor(h, idle, 10000);
   const remountedVh = await viewportHeight(h);
   r.check('100vh has a height after the recreation', remountedVh > 0, remountedVh);
   const ua = await uaOf();
-  r.check('a changed app name recreates the WebView and applies', ua.endsWith(' Remounted/9'), ua);
+  r.check(
+    'a changed creation-time setting recreates the WebView and applies',
+    ua.endsWith(' Remounted/9'),
+    ua
+  );
   await openPage(h, `${h.pages}/bridge.html?t=${Date.now()}`);
   await sleep(500);
   r.check(

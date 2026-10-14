@@ -130,8 +130,13 @@ export default function App() {
             }
             onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
             onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
-            applicationNameForUserAgent="MinimalWebViewExample/1.0"
-            android={{ webView: { acceptThirdPartyCookies: true } }}
+            ios={{ configuration: { applicationNameForUserAgent: 'MinimalWebViewExample/1.0' } }}
+            android={{
+              webView: { acceptThirdPartyCookies: true },
+              settings: {
+                userAgentString: `${WebView.defaultUserAgent} MinimalWebViewExample/1.0`,
+              },
+            }}
             onError={(event) => {
               events.errors.push(event);
               setError(event);
