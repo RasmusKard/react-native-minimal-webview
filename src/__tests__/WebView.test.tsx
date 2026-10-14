@@ -17,7 +17,9 @@ jest.mock('expo', () => {
     requireNativeView:
       () =>
       ({ ref, ...props }: { ref: unknown }) => {
-        useEffect(() => mockMount(), []);
+        useEffect(() => {
+          mockMount();
+        }, []);
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
           navigate: mockNavigate,
