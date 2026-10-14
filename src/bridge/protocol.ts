@@ -1,7 +1,5 @@
 // The bridge wire format. The RN side parses with it; the page client imports only its types.
 
-export const PROTOCOL_VERSION = 1;
-
 const ERROR_CODES = [
   'timeout',
   'not_found', // no handler for the method
@@ -26,7 +24,7 @@ export type BridgeError = { code: BridgeErrorCode; message: string };
  * whatever document is current (iOS checks only the origin), so a message posted as a same-origin navigation commits
  * would otherwise reach the new page. Messages are built without it; `send` adds it.
  */
-export type BridgeMessage = { v: 1; id: string; doc?: string } & (
+export type BridgeMessage = { id: string; doc?: string } & (
   | { kind: 'ready' }
   | { kind: 'call'; method: string; params?: unknown }
   | { kind: 'result'; params?: unknown }
@@ -48,13 +46,8 @@ export function parseBridgeMessage(raw: string): (BridgeMessage & { doc: string 
   } catch {
     return { code: 'invalid', message: 'not JSON' };
   }
-  if (
-    !isObject(value) ||
-    value['v'] !== PROTOCOL_VERSION ||
-    typeof value['id'] !== 'string' ||
-    typeof value['doc'] !== 'string'
-  ) {
-    return { code: 'invalid', message: 'missing v, id or doc' };
+  if (!isObject(value) || typeof value['id'] !== 'string' || typeof value['doc'] !== 'string') {
+    return { code: 'invalid', message: 'missing id or doc' };
   }
   const problem = kindProblem(value);
   return problem
