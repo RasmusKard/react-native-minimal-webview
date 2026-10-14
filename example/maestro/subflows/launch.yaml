@@ -1,5 +1,11 @@
 appId: expo.modules.minimalwebview.example
 ---
-# A fresh app for every suite, so nothing carries over from an earlier run (an open dialog, a half-run suite).
-- launchApp: { stopApp: true, permissions: { all: allow } }
+# The app stays up between suites: the harness resets itself after each one (pollForSuites). It launches fresh only for
+# the first suite of a run, after a failed or cut-off suite, or when it stops polling (the test server decides). A
+# launch costs ~7 s on Android: 2 s of launchApp, then 5 s of app start with the dev bundle from Metro.
+- runScript: ../scripts/idle.js
+- runFlow:
+    when: { true: '${output.launch}' }
+    commands:
+      - launchApp: { stopApp: true, permissions: { all: allow } }
 - runScript: ../scripts/start.js
