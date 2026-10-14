@@ -309,11 +309,10 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   });
   useAttach(ref, handle, lastRef, attachmentRef);
 
-  const fixed = useFixedAtMount(props);
   // The same string while nothing in it changed, so a re-render sends native nothing.
-  const settings = JSON.stringify(platformSettings({ ...props, ...fixed.creation }));
+  const settings = JSON.stringify(platformSettings(props));
   const connection =
-    fixed.bridge && (fixed.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+    props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
     connection.attach((message) => void native.current?.bridgePost(message));
@@ -364,6 +363,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   const webView = (
     <NativeWebView
+      key={creationKey(props)}
       {...(props.renderLoading || props.renderError ? {} : viewPropsOf(props))}
       ref={native}
       source={props.source}
@@ -375,7 +375,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      nativeOptions={fixed.nativeOptions}
+      nativeOptions={props.nativeOptions}
       requestHandlers={requestHandlers}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
@@ -420,38 +420,25 @@ function useRequestHandlers(props: WebViewProps) {
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
-/** The props that are creation-time settings on iOS: fixed at mount on both platforms, for one behaviour. */
-const CREATION = ['applicationNameForUserAgent'] as const;
-const creationProps = (props: WebViewProps) =>
-  Object.fromEntries(CREATION.map((key) => [key, props[key]])) as Pick<
-    WebViewProps,
-    (typeof CREATION)[number]
-  >;
+/** Bridges by identity, for the creation key. */
+const bridgeIds = new WeakMap<object, number>();
+let lastBridgeId = 0;
 
 /**
- * Native sets up the bridge, the hooks (with their options) and the creation settings once, at mount; the JS handlers
- * (`bridge.handle`, `onNativeEvent`) stay live. A later change is ignored with a warning: remount with a new `key` to
- * apply it. (A changed `ios.configuration` key is reported by native, through `settingsRejected`.)
+ * What native sets up once, when it creates the WebView: the bridge, the hooks' options and the creation-time
+ * settings (`ios.configuration`, and the app name, which is one of its keys). As the native view's `key`, a change
+ * recreates the WebView, like a new `key` on the component would: the page reloads from `source`.
  */
-function useFixedAtMount(props: WebViewProps) {
-  const [fixed] = useState(() => ({
-    bridge: props.bridge,
-    nativeOptions: props.nativeOptions,
-    creation: creationProps(props),
-  }));
-  const warned = useRef(false);
-  const changed =
-    props.bridge !== fixed.bridge ||
-    JSON.stringify(props.nativeOptions) !== JSON.stringify(fixed.nativeOptions) ||
-    JSON.stringify(creationProps(props)) !== JSON.stringify(fixed.creation);
-  useEffect(() => {
-    if (!changed || warned.current) return;
-    warned.current = true;
-    console.warn(
-      '[minimal-rn-webview] `bridge`, `nativeOptions` and `applicationNameForUserAgent` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
-    );
-  }, [changed]);
-  return fixed;
+function creationKey(props: WebViewProps) {
+  const bridge = props.bridge;
+  let id = bridge && bridgeIds.get(bridge);
+  if (bridge && id === undefined) bridgeIds.set(bridge, (id = ++lastBridgeId));
+  return JSON.stringify([
+    id ?? 0,
+    props.nativeOptions,
+    props.applicationNameForUserAgent,
+    props.ios?.configuration,
+  ]);
 }
 
 /** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */

@@ -194,14 +194,14 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 |---|---|
 | `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only |
 | `ios`, `android` | Any WebKit property or Android setter, by name. See [Platform settings](#platform-settings) |
-| `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. The app name is fixed at mount: remount with a new `key` to change it |
+| `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. The app name is read when the WebView is created: a change recreates it (the page reloads) |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
-| `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
+| `bridge` | `createBridge(...)`. Read when the WebView is created: a change recreates it |
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
 | `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload`, `onHttpAuthRequest` | See [Page requests](#page-requests). They can be added and removed at any time |
-| `nativeOptions`, `onNativeEvent` | What your [native hooks](#native-hooks) get, and what they send. `nativeOptions` is fixed at mount, like `bridge` |
+| `nativeOptions`, `onNativeEvent` | What your [native hooks](#native-hooks) get, and what they send. `nativeOptions` is read when the WebView is created, like `bridge` |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onHttpError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled |
@@ -251,8 +251,9 @@ await ref.current?.call('webView.clearCache', [true]);         // a public metho
   (underscore) one is refused. Anything else is skipped with a warning naming the key and the reason, including a
   compat feature this device's WebView lacks. Nothing in this channel can crash the app: a value that doesn't fit the
   property's type never reaches it.
-- **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a later change warns, and
-  a remount with a new `key` applies it. A key you remove is not reset; set the default yourself.
+- **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a change recreates the
+  WebView (the page reloads), as a change of `bridge` or `nativeOptions` does. A key you remove is not reset; set the
+  default yourself.
 - **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and
   `httpCookieStore` are roots too, on Android `cookieManager` and `webStorage`. **`call`** is below.
 - The security defaults below are only defaults: `android.settings.allowFileAccess` or
@@ -420,7 +421,7 @@ MinimalWebViewHooks.attach += { webView, context ->                 // for each 
 ```
 
 - **`nativeOptions`** is what every hook gets as `context.options`: how an app enables a hook for one WebView and
-  configures it. Fixed at mount, like `bridge`.
+  configures it. Read when the WebView is created, like `bridge`: a change recreates it.
 - **Delegates and clients.** A callback the core doesn't implement goes to the first of your delegates (clients) that
   does. A decision callback the core implements goes to the first of yours that does, and the core steps aside: on iOS
   navigation and response policy, authentication, a new window, JS dialogs and media capture; on Android

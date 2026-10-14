@@ -7,15 +7,17 @@ import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
+const mockMount = jest.fn();
 // A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `getUrl` and `native`
 // methods; `native` echoes its request as JSON.
 jest.mock('expo', () => {
-  const { createElement, useImperativeHandle } =
+  const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
   return {
     requireNativeView:
       () =>
       ({ ref, ...props }: { ref: unknown }) => {
+        useEffect(() => mockMount(), []);
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
           navigate: mockNavigate,
@@ -117,8 +119,7 @@ describe('errors', () => {
 });
 
 describe('nativeOptions and bridge', () => {
-  it('are fixed at mount: a change warns once and native keeps the first options', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  it('recreate the native view when they change, and keep it otherwise', async () => {
     const root = createRoot();
     const show = (mode: 'a' | 'b') =>
       act(async () =>
@@ -126,16 +127,14 @@ describe('nativeOptions and bridge', () => {
           <WebView source={{ uri: 'https://example.com' }} nativeOptions={{ sample: { mode } }} />
         )
       );
+    mockMount.mockClear();
     await show('a');
     await show('a');
-    expect(warn).not.toHaveBeenCalled();
+    expect(mockMount).toHaveBeenCalledTimes(1);
     await show('b');
-    await show('a');
-    await show('b');
-    expect(warn).toHaveBeenCalledTimes(1);
+    expect(mockMount).toHaveBeenCalledTimes(2);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.nativeOptions).toEqual({ sample: { mode: 'a' } });
-    warn.mockRestore();
+    expect(native?.nativeOptions).toEqual({ sample: { mode: 'b' } });
   });
 });
 
@@ -188,8 +187,7 @@ describe('platform settings', () => {
     });
   });
 
-  it('keep the creation-time props as they were at mount, with one warning', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  it('recreate the native view for a changed app name, with the new settings', async () => {
     const root = createRoot();
     const show = (name: string) =>
       act(async () =>
@@ -197,17 +195,15 @@ describe('platform settings', () => {
           <WebView source={{ uri: 'https://example.com' }} applicationNameForUserAgent={name} />
         )
       );
+    mockMount.mockClear();
     await show('App/1');
-    expect(warn).not.toHaveBeenCalled();
     await show('App/2');
-    await show('App/3');
-    expect(warn).toHaveBeenCalledTimes(1);
+    expect(mockMount).toHaveBeenCalledTimes(2);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
       settings: string;
     };
     const settings = JSON.parse(native.settings) as { configuration: Record<string, unknown> };
-    expect(settings.configuration.applicationNameForUserAgent).toBe('App/1');
-    warn.mockRestore();
+    expect(settings.configuration.applicationNameForUserAgent).toBe('App/2');
   });
 
   it('warn for each key native rejected', async () => {

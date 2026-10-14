@@ -994,8 +994,8 @@ async function info(h: Harness) {
 }
 
 /**
- * Settings fixed at mount (applicationNameForUserAgent): a change while mounted is ignored, on both platforms (with a
- * warning); a remount applies it, and afterwards the page, the bridge, the extensions and `ask` must all still work.
+ * A creation-time setting (applicationNameForUserAgent) changed while mounted recreates the WebView, on both
+ * platforms; afterwards the page, the bridge, the extensions and `ask` must all still work.
  */
 async function mountSettings(h: Harness) {
   const r = reporter('mountSettings');
@@ -1006,21 +1006,12 @@ async function mountSettings(h: Harness) {
   const page = `${h.pages}/bridge.html?t=${Date.now()}`;
   await openPage(h, page);
   h.setProps({ applicationNameForUserAgent: 'Remounted/9' });
-  await sleep(1000);
-  r.check(
-    'the page stays while a fixed setting changes',
-    h.state().url === page && idle(h.state()),
-    h.state()
-  );
-  const ignored = await uaOf();
-  r.check('the change is ignored while mounted', !ignored.includes('Remounted/9'), ignored);
-  h.remount();
   await sleep(500);
   await waitFor(h, idle, 10000);
   const remountedVh = await viewportHeight(h);
-  r.check('100vh has a height after the remount', remountedVh > 0, remountedVh);
+  r.check('100vh has a height after the recreation', remountedVh > 0, remountedVh);
   const ua = await uaOf();
-  r.check('the new app name is in the UA after a remount', ua.endsWith(' Remounted/9'), ua);
+  r.check('a changed app name recreates the WebView and applies', ua.endsWith(' Remounted/9'), ua);
   await openPage(h, `${h.pages}/bridge.html?t=${Date.now()}`);
   await sleep(500);
   r.check(
@@ -1076,6 +1067,7 @@ async function settings(h: Harness) {
         },
       });
       await sleep(500);
+      await waitFor(h, idle, 10000); // the configuration key recreated the WebView, which reloads the page
       r.check(
         'a BOOL applies',
         (await get('scrollView.bounces')) === false,
@@ -1108,9 +1100,8 @@ async function settings(h: Harness) {
       r.check('a private property warns', warned('ios.webView._private: private'), warnings);
       r.check('a read-only property warns', warned('ios.webView.URL: read-only'), warnings);
       r.check(
-        'a configuration change while mounted warns',
-        warned('ios.configuration.allowsInlineMediaPlayback: read once'),
-        warnings
+        'a configuration key recreates the WebView and applies',
+        (await get('configuration.allowsInlineMediaPlayback')) === true
       );
       r.check(
         'get rejects for an unknown property',
@@ -1197,7 +1188,13 @@ async function settings(h: Harness) {
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'ERR_NATIVE'
       );
-      h.setProps({ ios: { scrollView: { bounces: 'yes' as never } } });
+      // The same configuration, so this is the same WebView.
+      h.setProps({
+        ios: {
+          configuration: { allowsInlineMediaPlayback: true },
+          scrollView: { bounces: 'yes' as never },
+        },
+      });
       await sleep(500);
       r.check(
         'a value of the wrong type warns',
@@ -1205,14 +1202,6 @@ async function settings(h: Harness) {
         warnings
       );
       r.check('and leaves the property alone', (await get('scrollView.bounces')) === false);
-      h.setProps({ ios: { configuration: { allowsInlineMediaPlayback: true } } });
-      h.remount();
-      await sleep(500);
-      await waitFor(h, idle, 10000);
-      r.check(
-        'a configuration key applies when the WebView is created',
-        (await get('configuration.allowsInlineMediaPlayback')) === true
-      );
     } else {
       h.setProps({
         android: {

@@ -145,7 +145,7 @@ type Root<Known> = Known & Record<string, SettingValue | undefined>;
  * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with `ref.get('scrollView.bounces')`.
  */
 export type IOSSettings = {
-  /** `WKWebViewConfiguration`: read once, when the WKWebView is created. A later change warns; remount with a new `key`. */
+  /** `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page reloads). */
   configuration?: Root<IOSSettingKeys['configuration']>;
   /** `WKPreferences` (`configuration.preferences`), live. */
   preferences?: Root<IOSSettingKeys['preferences']>;
@@ -183,8 +183,8 @@ type OwnProps = {
   /** Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). */
   userAgent?: string;
   /**
-   * Appended to the default user agent (`ios.configuration.applicationNameForUserAgent`, which is fixed at mount:
-   * remount with a new `key` to change it; `android.settings.userAgentString`, live).
+   * Appended to the default user agent (`ios.configuration.applicationNameForUserAgent`, a creation-time key: a
+   * change recreates the WebView, on both platforms; `android.settings.userAgentString`).
    */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
@@ -195,9 +195,9 @@ type OwnProps = {
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
-  /** Fixed at mount: remount with a new `key` to change it. */
+  /** Read when the WebView is created: a change recreates it (the page reloads). */
   bridge?: Bridge;
-  /** What the native hooks get as their options (README: Native hooks). Fixed at mount, like `bridge`. */
+  /** What the native hooks get as their options (README: Native hooks). Read when the WebView is created, like `bridge`. */
   nativeOptions?: Record<string, unknown>;
   /**
    * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
