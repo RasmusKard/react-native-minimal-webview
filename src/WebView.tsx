@@ -65,9 +65,6 @@ const OWN = [
   'android',
   'userAgent',
   'applicationNameForUserAgent',
-  'mediaPlaybackRequiresUserAction',
-  'javaScriptCanOpenWindowsAutomatically',
-  'webviewDebuggingEnabled',
   'navigationRules',
   'injectedScripts',
   'bridge',
@@ -423,8 +420,8 @@ function useRequestHandlers(props: WebViewProps) {
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
-/** The cross-platform props that are creation-time settings on iOS: fixed at mount on both platforms, for one behaviour. */
-const CREATION = ['applicationNameForUserAgent', 'mediaPlaybackRequiresUserAction'] as const;
+/** The props that are creation-time settings on iOS: fixed at mount on both platforms, for one behaviour. */
+const CREATION = ['applicationNameForUserAgent'] as const;
 const creationProps = (props: WebViewProps) =>
   Object.fromEntries(CREATION.map((key) => [key, props[key]])) as Pick<
     WebViewProps,
@@ -451,7 +448,7 @@ function useFixedAtMount(props: WebViewProps) {
     if (!changed || warned.current) return;
     warned.current = true;
     console.warn(
-      '[minimal-rn-webview] `bridge`, `nativeOptions`, `applicationNameForUserAgent` and `mediaPlaybackRequiresUserAction` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
+      '[minimal-rn-webview] `bridge`, `nativeOptions` and `applicationNameForUserAgent` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
     );
   }, [changed]);
   return fixed;
@@ -463,9 +460,9 @@ function viewPropsOf(props: WebViewProps): ViewProps {
 }
 
 /**
- * The platform's settings for native: the app's `ios` or `android` roots with the cross-platform props on top. A
- * cross-platform prop that is unset resets its key to the default (the user agent, playback, windows, debugging), so
- * removing the prop undoes it; the app's own key for it comes between the two.
+ * The platform's settings for native: the package's defaults (playback on a gesture, no script-opened windows,
+ * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and the user agent
+ * props on top. A user agent prop that is unset resets its key to the default, so removing the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
   const set = <T,>(
@@ -473,8 +470,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
     key: string,
     map: (value: T) => SettingValue = (v) => v as never
   ) => (value === undefined ? {} : { [key]: map(value) });
-  const inspectable = props.webviewDebuggingEnabled;
-  const windows = props.javaScriptCanOpenWindowsAutomatically;
   if (Platform.OS === 'ios') {
     const { configuration, preferences, webView, ...rest } = props.ios ?? {};
     return {
@@ -483,23 +478,13 @@ function platformSettings(props: WebViewProps): NativeSettings {
         mediaTypesRequiringUserActionForPlayback: MEDIA_ALL,
         ...configuration,
         ...set(props.applicationNameForUserAgent, 'applicationNameForUserAgent'),
-        ...set(
-          props.mediaPlaybackRequiresUserAction,
-          'mediaTypesRequiringUserActionForPlayback',
-          (v) => (v ? MEDIA_ALL : 0)
-        ),
       },
-      preferences: {
-        javaScriptCanOpenWindowsAutomatically: false,
-        ...preferences,
-        ...set(windows, 'javaScriptCanOpenWindowsAutomatically'),
-      },
+      preferences: { javaScriptCanOpenWindowsAutomatically: false, ...preferences },
       webView: {
         customUserAgent: null,
         inspectable: __DEV__,
         ...webView,
         ...set(props.userAgent, 'customUserAgent'),
-        ...set(inspectable, 'inspectable'),
       },
     };
   }
@@ -517,14 +502,8 @@ function platformSettings(props: WebViewProps): NativeSettings {
         (name) => `${nativeModule().defaultUserAgent} ${name}`
       ),
       ...set(props.userAgent, 'userAgentString'),
-      ...set(props.mediaPlaybackRequiresUserAction, 'mediaPlaybackRequiresUserGesture'),
-      ...set(windows, 'javaScriptCanOpenWindowsAutomatically'),
     },
-    webView: {
-      webContentsDebuggingEnabled: __DEV__,
-      ...webView,
-      ...set(inspectable, 'webContentsDebuggingEnabled'),
-    },
+    webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
   };
 }
 

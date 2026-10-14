@@ -1416,7 +1416,8 @@ async function navigation(h: Harness) {
   );
   h.setProps({
     onOpenExternal: (url) => external.push(url),
-    javaScriptCanOpenWindowsAutomatically: true,
+    ios: { preferences: { javaScriptCanOpenWindowsAutomatically: true } },
+    android: { settings: { javaScriptCanOpenWindowsAutomatically: true } },
   });
   await sleep(500);
   h.loadSource(selfOpening('opted-in'));

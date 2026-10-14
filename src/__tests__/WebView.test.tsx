@@ -154,16 +154,21 @@ describe('platform settings', () => {
     });
   });
 
-  it('put the cross-platform props over the app keys, and keep the other roots', async () => {
+  it('put the user agent props over the app keys, the app keys over the defaults, and keep the other roots', async () => {
     const settings = await settingsOf({
       userAgent: 'Agent/1',
       applicationNameForUserAgent: 'App/1',
-      mediaPlaybackRequiresUserAction: false,
-      javaScriptCanOpenWindowsAutomatically: true,
-      webviewDebuggingEnabled: false,
       ios: {
-        configuration: { allowsInlineMediaPlayback: true },
-        webView: { customUserAgent: 'Overridden/0', allowsBackForwardNavigationGestures: true },
+        configuration: {
+          allowsInlineMediaPlayback: true,
+          mediaTypesRequiringUserActionForPlayback: 0,
+        },
+        preferences: { javaScriptCanOpenWindowsAutomatically: true },
+        webView: {
+          customUserAgent: 'Overridden/0',
+          inspectable: false,
+          allowsBackForwardNavigationGestures: true,
+        },
         scrollView: { bounces: false },
       },
     });

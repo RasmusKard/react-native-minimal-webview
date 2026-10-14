@@ -115,7 +115,7 @@ are lists, and one entry matching is enough:
 - `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once.
 
 **Defaults:**
-- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked. A new window counts as a main-frame navigation, so a tap in an iframe that runs `window.open('myapp://…')` still opens externally; without `javaScriptCanOpenWindowsAutomatically`, only a tap opens a window.
+- With no rules, http(s) loads in place, `file:` is blocked and every other scheme opens externally from the main frame. A subframe's navigation to one is blocked. A new window counts as a main-frame navigation, so a tap in an iframe that runs `window.open('myapp://…')` still opens externally; without the `javaScriptCanOpenWindowsAutomatically` setting, only a tap opens a window.
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load.
 
@@ -200,9 +200,6 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
 | `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
-| `mediaPlaybackRequiresUserAction` | Default true. Fixed at mount, like `bridge`: remount with a new `key` to change it |
-| `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
-| `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload`, `onHttpAuthRequest` | See [Page requests](#page-requests). They can be added and removed at any time |
 | `nativeOptions`, `onNativeEvent` | What your [native hooks](#native-hooks) get, and what they send. `nativeOptions` is fixed at mount, like `bridge` |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onHttpError` |
@@ -218,8 +215,12 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 
 ## Platform settings
 
-The four cross-platform props above are the only settings the package knows by name. Everything else the platform
-offers is reachable by its own name, without a change to this package, through `ios` and `android`:
+The user agent props above are the only settings the package knows by name. Its other defaults are plain keys your
+own override: no script-opened windows (`javaScriptCanOpenWindowsAutomatically`, in `ios.preferences` and
+`android.settings`), playback only on a gesture (`ios.configuration.mediaTypesRequiringUserActionForPlayback`,
+`android.settings.mediaPlaybackRequiresUserGesture`) and debugging in `__DEV__` only (`ios.webView.inspectable`,
+`android.webView.webContentsDebuggingEnabled`, which is process-wide). Everything else the platform offers is reachable
+by its own name, without a change to this package, through `ios` and `android`:
 
 ```tsx
 <WebView
@@ -443,7 +444,7 @@ MinimalWebViewHooks.attach += { webView, context ->                 // for each 
 
 - File access is off, mixed content is never allowed, and SSL errors are always cancelled.
 - There is no `addJavascriptInterface`. Android pages see one extra global, `nativeEvaluateResult`, for `evaluate` results.
-- A page can open a window only from a tap, unless `javaScriptCanOpenWindowsAutomatically` is set. The navigation rules decide every new window.
+- A page can open a window only from a tap, unless the `javaScriptCanOpenWindowsAutomatically` setting is on. The navigation rules decide every new window.
 - The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
 - Camera, microphone and location are granted only when `onPermissionRequest` says so, to the main frame only. Without it, Android denies and iOS shows WebKit's prompt.

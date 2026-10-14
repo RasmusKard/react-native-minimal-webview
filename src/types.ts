@@ -176,9 +176,9 @@ export type NativeEvent = { name: string; payload: Record<string, unknown> };
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
 type OwnProps = {
   source: WebViewSource;
-  /** Platform settings by name; see {@link IOSSettings}. The cross-platform props below win over the same keys here. */
+  /** Platform settings by name; see {@link IOSSettings}. The user agent props below win over the same keys here. */
   ios?: IOSSettings;
-  /** Platform settings by name; see {@link AndroidSettings}. The cross-platform props below win over the same keys here. */
+  /** Platform settings by name; see {@link AndroidSettings}. The user agent props below win over the same keys here. */
   android?: AndroidSettings;
   /** Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). */
   userAgent?: string;
@@ -211,22 +211,6 @@ type OwnProps = {
    * cookie changes back as they happen. Android needs nothing: `CookieManager` is shared app-wide.
    */
   sharedCookies?: boolean;
-  /**
-   * Default true (`ios.configuration.mediaTypesRequiringUserActionForPlayback`, fixed at mount: remount with a new
-   * `key` to change it; `android.settings.mediaPlaybackRequiresUserGesture`, live).
-   */
-  mediaPlaybackRequiresUserAction?: boolean;
-  /**
-   * Lets a script open a window (`window.open`) without a user gesture. Default false: only a tap opens one. The
-   * navigation rules still decide it (`newWindow: true`). Some flows need it, like an OAuth popup opened after an
-   * `await`. (`ios.preferences.javaScriptCanOpenWindowsAutomatically`, `android.settings.javaScriptCanOpenWindowsAutomatically`.)
-   */
-  javaScriptCanOpenWindowsAutomatically?: boolean;
-  /**
-   * Default `__DEV__` (`ios.webView.inspectable`; `android.webView.webContentsDebuggingEnabled`, which is process-wide:
-   * the last WebView to set it wins).
-   */
-  webviewDebuggingEnabled?: boolean;
   // Page requests: each works without its prop, as described. Passing one takes the request over. They can be added or
   // removed at any time. A native hook that takes the same platform callback comes first.
   /**
