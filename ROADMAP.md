@@ -4,13 +4,11 @@ Possible future work, not commitments.
 
 ## Core, if wanted
 
-- **POST loads** (`source.method` and `body`). Today's workaround is `source.html` with a self-submitting form.
 - **Android `scrollEnabled`.** iOS has `ios.scrollView.scrollEnabled`; Android has no setter for it. Injected CSS
   `overflow: hidden` covers it today.
 
 ## User space (a recipe or an optional extension)
 
-- **`onScroll`:** a page script plus `bridge.emit`.
 - **Incognito (non-persistent storage):** on iOS an extension's `configure` sets `WKWebsiteDataStore.nonPersistent()`;
   Android needs its own approach.
 - **`clearCache` / `clearHistory`:** a built-in extension, like `sharedCookies`.

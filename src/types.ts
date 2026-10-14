@@ -11,9 +11,15 @@ import type {
   UIEdgeInsets,
 } from './platform.generated';
 
-/** `headers` go on the first request only, not on later navigations. */
+/**
+ * `headers` go on the first request only, not on later navigations. `body` makes the request a POST with that
+ * form-urlencoded body (`a=1&b=2`): iOS sends `headers` with it and sets `Content-Type` when they don't; Android's
+ * `postUrl` sends neither. `reload()` and crash recovery send the POST again. A `file://` uri loads with read access
+ * to its directory on iOS; Android needs `android.settings.allowFileAccess`.
+ */
 export type WebViewSource =
-  { uri: string; headers?: Record<string, string> } | { html: string; baseUrl?: string };
+  | { uri: string; headers?: Record<string, string>; body?: string }
+  | { html: string; baseUrl?: string };
 
 export type NavigationAction = 'allow' | 'block' | 'external';
 
@@ -121,7 +127,8 @@ export type BridgeOptions = {
 /** `<input type="file">` (Android). `capture` is the input's `capture` attribute: the page wants the camera. */
 export type FileRequest = { accept: string[]; multiple: boolean; capture: boolean };
 
-export type PermissionResource = 'camera' | 'microphone' | 'geolocation';
+/** `geolocation` and `protectedMedia` (the device id DRM playback needs) are Android only. */
+export type PermissionResource = 'camera' | 'microphone' | 'geolocation' | 'protectedMedia';
 /** `origin` is the requesting page's, as `location.origin` writes it. Only the main frame asks. */
 export type PermissionRequestEvent = { origin: string; resources: PermissionResource[] };
 
@@ -174,7 +181,7 @@ export type IOSSettings = {
 export type AndroidSettings = {
   /** `WebSettings` setters, then static `WebSettingsCompat` ones. */
   settings?: Root<AndroidSettingKeys['settings']>;
-  /** `WebView` setters (static ones too), then `WebViewCompat` ones, then `CookieManager`'s `acceptThirdPartyCookies`. */
+  /** `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s `acceptThirdPartyCookies`. */
   webView?: Root<AndroidSettingKeys['webView']>;
 };
 
@@ -232,9 +239,9 @@ type OwnProps = {
    */
   onFullscreenChange?: (event: { active: boolean }) => void;
   /**
-   * Camera, microphone and (Android) location for the main frame. Answer true to grant: ask the OS first (expo-camera,
-   * expo-location), or the page's request fails anyway. Without it: Android denies; iOS shows WebKit's own prompt, and
-   * location always does.
+   * Camera, microphone and, on Android, location and protected media (DRM) for the main frame. Answer true to grant:
+   * ask the OS first (expo-camera, expo-location), or the page's request fails anyway. Without it: Android denies; iOS
+   * shows WebKit's own prompt, and location always does.
    */
   onPermissionRequest?: (request: PermissionRequestEvent) => boolean | Promise<boolean>;
   /**

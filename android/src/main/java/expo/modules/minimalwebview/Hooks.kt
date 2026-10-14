@@ -6,6 +6,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewClientCompat
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Native hooks: how an app or a package reaches the WebView this package creates, with no protocol to implement.
@@ -52,7 +53,8 @@ internal class HookContext(private val name: String, private val view: WebViewCo
     view.ask("${this.name}.$name", payload, onAnswer)
 }
 
-private val overrideCache = HashMap<String, Boolean>()
+// Concurrent: shouldInterceptRequest asks on Chromium's IO thread while the main thread fills it.
+private val overrideCache = ConcurrentHashMap<String, Boolean>()
 private val BASES = setOf<Class<*>>(WebViewClient::class.java, WebChromeClient::class.java, WebViewClientCompat::class.java)
 
 /** Whether this client's class overrides the callback [name] taking [types]; the base classes' own methods don't count. */

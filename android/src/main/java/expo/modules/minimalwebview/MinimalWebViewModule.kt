@@ -106,7 +106,7 @@ class MinimalWebViewModule : Module() {
         when (action) {
           "back" -> view.webView.goBack()
           "forward" -> view.webView.goForward()
-          "reload" -> view.webView.reload()
+          "reload" -> view.reload()
           "stop" -> view.webView.stopLoading()
         }
       }.runOnQueue(Queues.MAIN)
@@ -166,10 +166,11 @@ private object FileChooserContract : AppContextActivityResultContract<ChooserInt
 
 // Data classes, so the skip checks in applyProps compare them with ==. Every field is optional, as on iOS.
 
-/** `{ uri, headers? }` or `{ html, baseUrl? }`. */
+/** `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `body` makes the request a form-urlencoded POST. */
 data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
+  @Field val body: String? = null,
   @Field val html: String? = null,
   @Field val baseUrl: String? = null
 ) : Record

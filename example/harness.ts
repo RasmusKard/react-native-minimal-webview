@@ -1,6 +1,6 @@
 // Scripted spike checks. Results go to the JS console as `[harness] PASS|FAIL|INFO ...` lines, readable from
 // logcat (ReactNativeJS) or the Metro log, so no screenshots are needed.
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
   Bridge,
@@ -2060,6 +2060,55 @@ async function backForward(h: Harness) {
   r.done();
 }
 
+/** `source.body` (a form POST, sent again by reload) and a `file://` source with its own assets. */
+async function sources(h: Harness) {
+  const r = reporter('sources');
+  const text = async (id: string) =>
+    (await h.ref.current?.evaluate(
+      `document.getElementById('${id}')?.textContent ?? ''`
+    )) as string;
+
+  const post = `${h.pages}/post?t=${Date.now()}`;
+  const body = `amount=9.99&t=${Date.now()}`;
+  h.loadSource({ uri: post, body });
+  await waitFor(h, (s) => s.url === post && idle(s));
+  r.check('source.body is sent as a form POST', (await text('body')) === body, await text('body'));
+  // The page can't be fetched by URL: reload sends the POST again (Android's WebView would decline the resubmission).
+  await h.ref.current?.evaluate(`document.getElementById('body').textContent = 'stale'`);
+  const loads = h.events.loads.length;
+  h.ref.reload();
+  await waitFor(h, () => h.events.loads.slice(loads).includes('end'));
+  await sleep(300);
+  r.check('reload sends the POST again', (await text('body')) === body, await text('body'));
+
+  const dir = new Directory(Paths.cache, `site-${Date.now()}`);
+  dir.create();
+  await new File(dir, 'style.css').write('body { color: rgb(1, 2, 3) }');
+  await new File(dir, 'app.js').write('window.__asset = 1');
+  const index = new File(dir, 'index.html');
+  await index.write(
+    '<!doctype html><link rel="stylesheet" href="style.css"><script src="app.js"></script><p id="local">local</p>'
+  );
+  if (Platform.OS === 'android') h.setProps({ android: { settings: { allowFileAccess: true } } });
+  h.loadSource({ uri: index.uri });
+  await waitFor(h, (s) => s.url.endsWith('/index.html') && idle(s));
+  const loaded = await h.ref.current?.evaluate(
+    `[getComputedStyle(document.body).color, window.__asset, document.getElementById('local')?.textContent]`
+  );
+  r.check(
+    'a file:// source loads with its own stylesheet and script',
+    JSON.stringify(loaded) === JSON.stringify(['rgb(1, 2, 3)', 1, 'local']),
+    { loaded, url: h.state().url }
+  );
+  if (Platform.OS === 'android') {
+    h.setProps({ android: { settings: { allowFileAccess: false } } });
+    await sleep(100);
+  }
+  h.setProps({});
+  dir.delete();
+  r.done();
+}
+
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   realSite,
@@ -2083,4 +2132,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   fullscreen,
   sampleExtension,
   network,
+  sources,
 };

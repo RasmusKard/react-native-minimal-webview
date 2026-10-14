@@ -21,7 +21,7 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
   /** A layout that holds [content] (the WebView). */
   fun wrap(content: View): View = Layout(content.context).apply {
     addView(content)
-    setOnRefreshListener { owner.webView.reload() }
+    setOnRefreshListener { owner.reload() }
     setOnChildScrollUpCallback { _, _ -> owner.webView.canScrollVertically(-1) || innerScrolled != false }
     layout = this
   }

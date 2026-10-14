@@ -113,10 +113,24 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if let uri = source.uri, let target = URL(string: uri) {
       var request = URLRequest(url: target)
       source.headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+      if let body = source.body {
+        request.httpMethod = "POST"
+        request.httpBody = Data(body.utf8)
+        if request.value(forHTTPHeaderField: "Content-Type") == nil {
+          request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        }
+      }
       loadProgrammatic(request)
     } else {
       htmlNavigation = webView?.loadHTMLString(source.html ?? "", baseURL: source.baseUrl.flatMap(URL.init))
     }
+  }
+
+  /// The committed page is the POST `source`: it can't be fetched again by URL, so reload and crash recovery load the
+  /// source instead, as for an html one.
+  private var onPostSource: Bool {
+    guard let source, source.body != nil, let uri = source.uri.flatMap(URL.init), let page = URL(string: url) else { return false }
+    return Self.sameURL(page, uri)
   }
 
   /// Settings keys that could not be applied: JS warns.
@@ -124,10 +138,16 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if !rejected.isEmpty { emit("core.settingsRejected", ["rejected": rejected]) }
   }
 
-  /// Loads a request the app started, not the page: it skips the navigation rules.
+  /// Loads a request the app started, not the page: it skips the navigation rules. A file URL goes through loadFileURL
+  /// with its directory as the read root, so the page's own assets load (load(_:) can't read local files).
+  // shortcut: the read root is the file's directory; add a source field if a site needs a wider one
   func loadProgrammatic(_ request: URLRequest) {
     programmaticUrl = request.url
-    webView?.load(request)
+    if let url = request.url, url.isFileURL {
+      webView?.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+    } else {
+      webView?.load(request)
+    }
   }
 
   /// The `evaluate` ref method. The page encodes the value, as on Android: what JSON can't encode (a function, a
@@ -144,7 +164,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func reload() {
-    if let failedUrl, let target = URL(string: failedUrl) {
+    if onPostSource, let source {
+      load(source)
+    } else if let failedUrl, let target = URL(string: failedUrl) {
       loadProgrammatic(URLRequest(url: target))
     } else {
       webView?.reload()
@@ -406,9 +428,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     failPendingAsks()
     bridgeOrigin = nil
     // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
-    // (or the failed or committed URL) rather than jumping back to the source. An html source loads again.
+    // (or the failed or committed URL) rather than jumping back to the source. An html or POST source loads again.
     if recovered {
-      let page = htmlCommit != nil ? nil : failedUrl.flatMap(URL.init) ?? webView.backForwardList.currentItem?.url ?? URL(string: url)
+      let page = htmlCommit != nil || onPostSource ? nil : failedUrl.flatMap(URL.init) ?? webView.backForwardList.currentItem?.url ?? URL(string: url)
       if let page, page.scheme == "http" || page.scheme == "https" {
         loadProgrammatic(URLRequest(url: page))
       } else if let source {
