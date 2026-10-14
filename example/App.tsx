@@ -6,9 +6,7 @@ import {
   WebView,
   createBridge,
   type PermissionRequestEvent,
-  sharedCookies,
   type FileRequest,
-  pullToRefresh,
   useWebViewState,
   createWebViewRef,
 } from 'minimal-rn-webview';
@@ -74,11 +72,7 @@ export default function App() {
     undefined
   );
   const extensions = useMemo(
-    () => [
-      pullToRefresh(),
-      sharedCookies(),
-      pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) }),
-    ],
+    () => [pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) })],
     []
   );
 
@@ -121,6 +115,8 @@ export default function App() {
           style={styles.webview}
           navigationRules={rules}
           bridge={bridge}
+          pullToRefresh
+          sharedCookies
           extensions={extensions}
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
           onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}

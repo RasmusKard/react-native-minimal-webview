@@ -19,7 +19,6 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 import expo.modules.kotlin.types.Enumerable
-import expo.modules.minimalwebview.extensions.PullToRefresh
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Serializable
@@ -51,12 +50,6 @@ class MinimalWebViewModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("MinimalWebView")
-
-    OnCreate {
-      WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
-      // Built in on Android: CookieManager is shared app-wide.
-      WebViewExtensions.register("sharedCookies") { object : WebViewExtension {} }
-    }
 
     // The fallback runs when the result reaches a recreated activity: the WebView that asked is gone.
     // ponytail: if no result ever arrives (the activity died without one), choosers stay cancelled until relaunch.
@@ -102,6 +95,7 @@ class MinimalWebViewModule : Module() {
       Prop("extensions") { view: MinimalWebView, extensions: List<ExtensionSpec>? -> view.extensions = extensions }
       // JSON, so a null (reset this key) survives: the map conversion drops nulls on iOS, and this keeps both the same.
       Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
+      Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
       Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
       Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty().toSet() }
 

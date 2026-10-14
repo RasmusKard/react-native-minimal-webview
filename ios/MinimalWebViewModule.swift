@@ -5,11 +5,6 @@ public class MinimalWebViewModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebView")
 
-    OnCreate {
-      WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
-      WebViewExtensions.register("sharedCookies") { SharedCookies() }
-    }
-
     // View functions run on the main queue.
     View(MinimalWebView.self) {
       Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
@@ -23,6 +18,8 @@ public class MinimalWebViewModule: Module {
         let data = json?.data(using: .utf8) ?? Data()
         view.settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
       }
+      Prop("pullToRefresh") { (view: MinimalWebView, value: Bool?) in view.pullToRefresh = value ?? false }
+      Prop("sharedCookies") { (view: MinimalWebView, value: Bool?) in view.sharedCookies = value ?? false }
       Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
       Prop("injectedScripts") { (view: MinimalWebView, value: [InjectedScript]?) in view.injectedScripts = value ?? [] }
       Prop("requestHandlers") { (view: MinimalWebView, value: [String]?) in view.requestHandlers = Set(value ?? []) }

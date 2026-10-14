@@ -49,6 +49,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
   var settings: Map<String, Any?>? = null
   internal val platformSettings = PlatformSettings(this)
+  var pullToRefresh = false
+  private val refresher = PullToRefresh(this)
+  /** What [mount] last wrapped the WebView with; null before the first mount. */
+  private var mountedPullToRefresh: Boolean? = null
   /**
    * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
    * `openExternal` is there when JS handles `external` navigations (onOpenExternal); native only reports them.
@@ -118,7 +122,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
   fun applyProps() {
     applySettings()
-    if (activeExtensions == null) installExtensions()
+    if (activeExtensions == null) installExtensions() else if (mountedPullToRefresh != pullToRefresh) mount()
     scripts.apply()
     val next = source ?: return
     if (next == loadedSource) return
@@ -159,14 +163,19 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     mount()
   }
 
-  /** Puts the WebView inside the extensions' containers, in list order: the first extension wraps the WebView. */
+  /**
+   * Puts the WebView inside the pull-to-refresh layout (when enabled) and the extensions' containers, in list order:
+   * the first extension wraps the rest.
+   */
   private fun mount() {
     removeAllViews()
     (webView.parent as? ViewGroup)?.removeView(webView)
+    mountedPullToRefresh = pullToRefresh
+    val wrappers = listOfNotNull(if (pullToRefresh) refresher::wrap else null) + activeExtensions.orEmpty().values.map { it::wrap }
     // A wrapper's addView(view) would give the view WRAP_CONTENT, and for the WebView Chromium then resolves CSS vh to 0.
-    val content = activeExtensions.orEmpty().values.fold(webView as View) { view, extension ->
+    val content = wrappers.fold(webView as View) { view, wrap ->
       view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-      extension.wrap(view)
+      wrap(view)
     }
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
@@ -227,6 +236,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val hooks get() = activeExtensions.orEmpty().values + core
 
   internal fun pageFinished(url: String) {
+    refresher.pageFinished()
     hooks.forEach { it.onPageFinished(url) }
   }
 

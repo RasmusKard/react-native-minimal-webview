@@ -73,6 +73,8 @@ const OWN = [
   'navigationRules',
   'injectedScripts',
   'bridge',
+  'pullToRefresh',
+  'sharedCookies',
   'extensions',
   'renderLoading',
   'renderError',
@@ -98,8 +100,10 @@ const MEDIA_ALL = 3;
 type NativeSettings = Record<string, Record<string, SettingValue>>;
 
 type NativeProps = ViewProps &
-  Pick<WebViewProps, 'source' | 'navigationRules' | 'injectedScripts'> & {
+  Pick<WebViewProps, 'source' | 'navigationRules' | 'injectedScripts' | 'pullToRefresh'> & {
     ref: Ref<NativeMethods>;
+    /** iOS only: Android's CookieManager is already shared. */
+    sharedCookies: boolean | undefined;
     /**
      * The platform's settings by root and name, as JSON: `ios` or `android` with the cross-platform props on top. A
      * string, so that a `null` (reset this key) survives the trip; the native dictionary conversion drops it.
@@ -354,6 +358,8 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       source={props.source}
       style={props.renderLoading || props.renderError ? styles.fill : props.style}
       settings={settings}
+      pullToRefresh={props.pullToRefresh ?? false}
+      sharedCookies={Platform.OS === 'ios' ? (props.sharedCookies ?? false) : undefined}
       navigationRules={props.navigationRules}
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}

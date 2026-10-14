@@ -204,6 +204,13 @@ type OwnProps = {
   onOpenExternal?: (url: string) => void;
   /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
   bridge?: Bridge;
+  /** Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android. */
+  pullToRefresh?: boolean;
+  /**
+   * iOS: copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, and the WebView's
+   * cookie changes back as they happen. Android needs nothing: `CookieManager` is shared app-wide.
+   */
+  sharedCookies?: boolean;
   /**
    * Default true (`ios.configuration.mediaTypesRequiringUserActionForPlayback`, fixed at mount: remount with a new
    * `key` to change it; `android.settings.mediaPlaybackRequiresUserGesture`, live).

@@ -527,8 +527,8 @@ async function bridge(h: Harness) {
 }
 
 /**
- * Pull-to-refresh through the extension hooks. The gesture comes from outside the app: the suite logs
- * `INFO ptr: SWIPE "<kind>"` and the driver (adb input swipe / agent-device swipe) performs it.
+ * The `pullToRefresh` prop. The gesture comes from outside the app: the suite logs `INFO ptr: SWIPE "<kind>"` and the
+ * driver (adb input swipe / agent-device swipe) performs it.
  */
 async function ptr(h: Harness) {
   const r = reporter('ptr');

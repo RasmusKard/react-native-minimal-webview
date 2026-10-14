@@ -18,6 +18,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The `ios` prop: WebKit properties by name, applied by PlatformSettings.
   var settings: [String: Any] = [:]
   let platformSettings = PlatformSettings()
+  var pullToRefresh = false
+  private lazy var refresher = PullToRefresh { [weak self] in self?.reload() }
+  var sharedCookies = false
+  private let cookies = SharedCookies()
   var navigationRules: [[String: Any]]?
   var injectedScripts: [InjectedScript] = []
   private var installedScripts: NSArray?
@@ -75,6 +79,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       installScripts(webView.configuration.userContentController)
     }
     report(platformSettings.apply(settings, webView: webView))
+    refresher.set(pullToRefresh, on: webView.scrollView)
+    cookies.set(sharedCookies)
     // Records aren't Equatable: compare their dictionaries.
     guard let next = source, loadedSource != next.toDictionary() as NSDictionary else { return }
     loadedSource = next.toDictionary() as NSDictionary
@@ -83,10 +89,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     prepareExtensions(webView) { [weak self] in self?.load(next) }
   }
 
-  /// Runs every extension's `prepare` (shared cookies) and holds loads until all are done, then loads.
+  /// Runs the shared-cookie copy and every extension's `prepare`, holds loads until all are done, then loads.
   private func prepareExtensions(_ webView: WKWebView, then load: @escaping () -> Void) {
     preparing = true
     let group = DispatchGroup()
+    group.enter()
+    cookies.prepare(webView) { group.leave() }
     activeExtensions?.forEach { extensionInstance in
       group.enter()
       extensionInstance.prepare(webView) { group.leave() }
@@ -181,6 +189,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       webView.observe(\.estimatedProgress) { _, _ in changed() }
     ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
     self.webView = webView
+    cookies.didCreate(webView)
     activeExtensions?.forEach { $0.didCreate(webView) }
   }
 
@@ -199,6 +208,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func tearDown() {
+    cookies.detach()
     activeExtensions?.forEach { $0.detach() }
     activeExtensions = nil
     failPendingAsks()
@@ -273,6 +283,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func pageFinished(_ webView: WKWebView) {
+    refresher.loadEnded()
     activeExtensions?.forEach { $0.didFinish(url: webView.url) }
   }
 

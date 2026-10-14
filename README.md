@@ -8,7 +8,8 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 - **One committed URL, owned by native.** `useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack` and `canGoForward`. `url` is the page on screen: it changes when a load commits and on SPA navigation (pushState, replaceState, hash), and stays the old page while a load is in progress. After a failed load it is the failed URL. `pendingUrl` is a main-frame load in progress, which may still fail or be blocked. Iframes never change either.
 - **A promise bridge** between React Native and the page, restricted to the origins you allow.
 - **Page requests just work:** file chooser, fullscreen video, permissions, downloads and HTTP auth each have a default, and an optional prop takes one over.
-- **Opt-in extensions:** pull-to-refresh and shared cookies. They are built on the same interface third parties use.
+- **Every platform setting by name,** without a change to this package: `ios={{ scrollView: { bounces: false } }}`,
+  `android={{ settings: { textZoom: 120 } }}`.
 - **The app owns device APIs.** The library never shows OS permission prompts or pickers itself. It has no config plugin and no dependency on expo-camera, expo-image-picker or similar packages.
 
 **Requirements:**
@@ -197,6 +198,8 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
 | `bridge` | `createBridge(...)`. Fixed at mount: remount with a new `key` to change it |
+| `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
+| `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `mediaPlaybackRequiresUserAction` | Default true. Fixed at mount, like `bridge`: remount with a new `key` to change it |
 | `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
@@ -342,20 +345,8 @@ onDownload={(result) => 'uri' in result && Sharing.shareAsync(result.uri)}
 
 ## Extensions
 
-Add-ons, enabled per WebView:
-
-```tsx
-<WebView extensions={[pullToRefresh(), sharedCookies()]} />
-```
-
-| Extension | iOS | Android |
-|---|---|---|
-| `pullToRefresh()` | `UIRefreshControl` | `SwipeRefreshLayout`. A pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead of reloading |
-| `sharedCookies()` | Copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen | Built in (`CookieManager` is app-wide, flushed when the app backgrounds) |
-
-### Writing an extension
-
-An extension is native code registered by name, plus an optional JS helper. `example/modules/sample-extension` is a complete one that lives outside the package.
+Native add-ons, enabled per WebView with `extensions={[pageCounter()]}`. An extension is native code registered by
+name, plus an optional JS helper. `example/modules/sample-extension` is a complete one that lives outside the package.
 
 ```kotlin
 // Android: in your Expo module's OnCreate
