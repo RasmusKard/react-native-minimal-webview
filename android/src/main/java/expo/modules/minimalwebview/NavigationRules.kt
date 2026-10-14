@@ -1,6 +1,6 @@
 package expo.modules.minimalwebview
 
-/** The structured navigation rules. Semantics and cases: test-vectors/navigation-rules.json (shared with Swift). */
+/** The structured navigation rules. Semantics and cases: src/__tests__/vectors/navigation-rules.json (shared with Swift). */
 object NavigationRules {
   data class Request(val url: String, val mainFrame: Boolean, val newWindow: Boolean, val userInitiated: Boolean)
 

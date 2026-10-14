@@ -1,4 +1,4 @@
-import vectors from '../../test-vectors/origin-rules.json';
+import vectors from './vectors/origin-rules.json';
 import { createBridge } from '../bridge/createBridge';
 import { installPageClient } from '../bridge/pageClient';
 
