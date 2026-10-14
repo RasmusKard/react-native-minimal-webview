@@ -86,7 +86,8 @@ export default function App() {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
-    state: () => state,
+    // Read live: the harness keeps one harness object per suite, so a closure over `state` would stay stale.
+    state: () => ref.getState(),
     remount: () => remount(),
     load: (uri) => setSource({ uri }),
     loadSource: setSource,
