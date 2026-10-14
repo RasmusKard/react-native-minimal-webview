@@ -6,9 +6,9 @@ import android.webkit.PermissionRequest
 import expo.modules.minimalwebview.MinimalWebView
 
 /**
- * Camera, microphone and location for the main frame: the app's `onPermissionRequest({origin, resources})` may request
- * OS permission and answers true or false. Without the prop the core denies. Never prompts by itself: a grant the OS has
- * not allowed still fails in the page.
+ * Camera, microphone, location and protected media (the device id DRM playback needs) for the main frame: the app's
+ * `onPermissionRequest({origin, resources})` may request OS permission and answers true or false. Without the prop the
+ * core denies. Never prompts by itself: a grant the OS has not allowed still fails in the page.
  */
 internal class Permissions(private val owner: MinimalWebView) {
   /** Returns true when the app's prop takes the request; it is then granted or denied once. */
@@ -45,6 +45,10 @@ internal class Permissions(private val owner: MinimalWebView) {
   }
 
   private companion object {
-    val RESOURCES = mapOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE to "camera", PermissionRequest.RESOURCE_AUDIO_CAPTURE to "microphone")
+    val RESOURCES = mapOf(
+      PermissionRequest.RESOURCE_VIDEO_CAPTURE to "camera",
+      PermissionRequest.RESOURCE_AUDIO_CAPTURE to "microphone",
+      PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID to "protectedMedia"
+    )
   }
 }
