@@ -157,7 +157,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 - **Navigation:** calls in flight are rejected with `navigated` when the page navigates or the WebView unmounts, and a page's own calls when it comes back from the back-forward cache. The other side may already have handled such a call, so retry only calls that are safe to repeat.
 - **Page load:** calls and events from React Native wait until the page's DOM is parsed (`DOMContentLoaded`), so handlers and listeners registered by its synchronous or deferred scripts are in place. A page's own calls work earlier, and are answered at once.
 - **One document:** every message is for one document. A call or event sent while the page navigates never reaches the next page, even on the same origin; it is rejected with `navigated` or dropped.
-- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. One file of test cases (`test-vectors/origin-rules.json`) checks every matcher.
+- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443. One file of test cases (`src/__tests__/vectors/origin-rules.json`) checks every matcher.
 - **Transports:** iOS uses a `WKScriptMessageHandler` plus `callAsyncJavaScript`; Android uses `addWebMessageListener` with origin rules.
 
 Build your own page APIs on top of it, for example an injected `window.MyAppAPI` that calls the bridge.
@@ -375,7 +375,7 @@ npm install && (cd example && npm install)
 npm test                                   # TS unit tests (bridge protocol, createBridge, origin matchers)
 npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
 (cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
-xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules test-vectors/navigation-rules.json test-vectors/origin-rules.json
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 cd example && npm run test-pages           # local test pages on :8090
 npx expo run:android | npx expo run:ios
 example/maestro/run.sh android emulator-5554          # on-device suites through Maestro (all, or name some)
