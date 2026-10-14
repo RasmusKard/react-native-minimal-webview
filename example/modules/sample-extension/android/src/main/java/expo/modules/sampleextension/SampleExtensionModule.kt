@@ -1,30 +1,38 @@
 package expo.modules.sampleextension
 
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import expo.modules.minimalwebview.ExtensionHost
-import expo.modules.minimalwebview.WebViewExtension
-import expo.modules.minimalwebview.WebViewExtensions
+import expo.modules.minimalwebview.MinimalWebViewHooks
+import expo.modules.minimalwebview.WebViewContext
 
 class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SampleExtension")
-    OnCreate { WebViewExtensions.register("pageCounter") { PageCounter() } }
+    OnCreate {
+      MinimalWebViewHooks.attach += { _, context ->
+        if (context.options["pageCounter"] != null) context.clients += PageCounter(context)
+        null
+      }
+    }
   }
 }
 
-/** Uses only the public extension interface: no access to the WebView's internals. */
-private class PageCounter : WebViewExtension {
-  private lateinit var host: ExtensionHost
+/**
+ * Counts page loads through two client callbacks: `onPageFinished`, which the core implements and fans out, and
+ * `onPageCommitVisible`, which it doesn't and forwards.
+ */
+private class PageCounter(private val context: WebViewContext) : WebViewClient() {
   private var count = 0
 
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
-    this.host = host
+  override fun onPageFinished(view: WebView, url: String?) {
+    count += 1
+    view.evaluateJavascript("window.__pageCount = $count", null)
+    context.emit("pageCounter.pageLoaded", mapOf("url" to url.orEmpty(), "count" to count))
   }
 
-  override fun onPageFinished(url: String) {
-    count += 1
-    host.evaluate("window.__pageCount = $count") {}
-    host.emit("pageLoaded", mapOf("url" to url, "count" to count))
+  override fun onPageCommitVisible(view: WebView, url: String?) {
+    context.emit("pageCounter.commitVisible", mapOf("url" to url.orEmpty()))
   }
 }

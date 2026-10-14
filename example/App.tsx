@@ -12,7 +12,7 @@ import {
 } from 'minimal-rn-webview';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { pageCounter } from 'sample-extension';
+import { isPageCounterEvent } from 'sample-extension';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
@@ -30,6 +30,7 @@ const events: Harness['events'] = {
   downloadFailures: [],
   fullscreen: [],
   pageCounts: [],
+  hookEvents: [],
   overlay: { error: false },
 };
 const pageEvents: unknown[] = [];
@@ -71,11 +72,6 @@ export default function App() {
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
     undefined
   );
-  const extensions = useMemo(
-    () => [pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) })],
-    []
-  );
-
   const harness: Harness = {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
@@ -117,7 +113,12 @@ export default function App() {
           bridge={bridge}
           pullToRefresh
           sharedCookies
-          extensions={extensions}
+          nativeOptions={{ pageCounter: true }}
+          onNativeEvent={(event) => {
+            if (!isPageCounterEvent(event)) return;
+            if (event.name === 'pageCounter.pageLoaded') events.pageCounts.push(event.payload);
+            else events.hookEvents.push(event.name);
+          }}
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
           onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
           onFullscreenChange={({ active }) => events.fullscreen.push(active)}

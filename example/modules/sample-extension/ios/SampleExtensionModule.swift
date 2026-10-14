@@ -5,28 +5,37 @@ import WebKit
 public class SampleExtensionModule: Module {
   public func definition() -> ModuleDefinition {
     Name("SampleExtension")
-    OnCreate { WebViewExtensions.register("pageCounter") { PageCounter() } }
+    OnCreate {
+      // A creation-time setting: WebKit reads data detectors only from the configuration.
+      MinimalWebViewHooks.configure.append { configuration, context in
+        if context.options["pageCounter"] != nil { configuration.dataDetectorTypes = .phoneNumber }
+      }
+      MinimalWebViewHooks.attach.append { _, context in
+        guard context.options["pageCounter"] != nil else { return nil }
+        context.navigationDelegates.append(PageCounter(context: context))
+        return nil
+      }
+    }
   }
 }
 
-/// Uses only the public extension protocol: no access to the WebView's internals.
-private final class PageCounter: WebViewExtension {
-  // Strong: nothing else retains the host, and it holds the view weakly.
-  private var host: ExtensionHost?
+/// Counts page loads through two delegate callbacks: `didFinish`, which the core implements and fans out, and
+/// `didReceiveServerRedirect`, which it doesn't and forwards.
+private final class PageCounter: NSObject, WKNavigationDelegate {
+  private weak var context: WebViewContext?
   private var count = 0
 
-  func attach(host: ExtensionHost, config: [String: Any]) {
-    self.host = host
+  init(context: WebViewContext) {
+    self.context = context
   }
 
-  // A creation-time setting: WebKit reads data detectors only from the configuration.
-  func configure(_ configuration: WKWebViewConfiguration) {
-    configuration.dataDetectorTypes = .phoneNumber
-  }
-
-  func didFinish(url: URL?) {
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     count += 1
-    host?.evaluate("window.__pageCount = \(count)") { _ in }
-    host?.emit("pageLoaded", ["url": url?.absoluteString ?? "", "count": count])
+    webView.evaluateJavaScript("window.__pageCount = \(count)")
+    context?.emit("pageCounter.pageLoaded", ["url": webView.url?.absoluteString ?? "", "count": count])
+  }
+
+  func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+    context?.emit("pageCounter.redirect", ["url": webView.url?.absoluteString ?? ""])
   }
 }

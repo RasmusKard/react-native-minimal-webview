@@ -7,12 +7,12 @@ public class MinimalWebViewModule: Module {
 
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onNativeEvent", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
-      Prop("extensions") { (view: MinimalWebView, extensions: [ExtensionSpec]?) in view.extensions = extensions ?? [] }
+      Prop("nativeOptions") { (view: MinimalWebView, options: [String: Any]?) in view.options = options ?? [:] }
       // JSON, so a null (reset this key) survives: the dictionary conversion drops nulls.
       Prop("settings") { (view: MinimalWebView, json: String?) in
         let data = json?.data(using: .utf8) ?? Data()
@@ -50,7 +50,7 @@ public class MinimalWebViewModule: Module {
         }
       }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
-      // JS's answer to an `ask` (navigation or extension).
+      // JS's answer to an `ask` (a page request, a navigation request or a hook's).
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
         view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
       }
@@ -92,8 +92,3 @@ enum InjectionTime: String, Enumerable {
   case end
 }
 
-struct ExtensionSpec: Record {
-  @Field var name: String? = nil
-  @Field var config: [String: Any]? = nil
-  @Field var handles: [String]? = nil
-}

@@ -86,13 +86,13 @@ class MinimalWebViewModule : Module() {
     }
 
     View(MinimalWebView::class) {
-      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onNativeEvent", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { view: MinimalWebView, source: WebViewSource? -> view.source = source }
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
-      Prop("extensions") { view: MinimalWebView, extensions: List<ExtensionSpec>? -> view.extensions = extensions }
+      Prop("nativeOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.options = options.orEmpty() }
       // JSON, so a null (reset this key) survives: the map conversion drops nulls on iOS, and this keeps both the same.
       Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
       Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
@@ -184,8 +184,3 @@ enum class InjectionTime(val value: String) : Enumerable {
   END("end")
 }
 
-data class ExtensionSpec(
-  @Field val name: String? = null,
-  @Field val config: Map<String, Any?>? = null,
-  @Field val handles: List<String>? = null
-) : Record

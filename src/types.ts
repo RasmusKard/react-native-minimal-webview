@@ -37,7 +37,7 @@ export type NavigationRequest = {
 
 export type NavigationEvent = NavigationRequest & {
   action: NavigationAction;
-  /** Index of the matching rule in `navigationRules`, or null when the default or an extension decided. */
+  /** Index of the matching rule in `navigationRules`, or null when the default or a native hook decided. */
   rule: number | null;
 };
 
@@ -166,19 +166,8 @@ export type AndroidSettings = {
   webView?: Record<string, SettingValue>;
 };
 
-/** What an extension helper such as `pullToRefresh()` returns. */
-export type WebViewExtension = {
-  /** The native extension to enable for this instance, by its registered name. */
-  native: { name: string; config?: Record<string, unknown> };
-  /**
-   * Handlers for the events the native extension emits, by event name. A handler's return value answers a native
-   * `ask`. Native can check which events have a handler (`host.handles`), to fall back to a default without one.
-   */
-  on?: Record<string, ExtensionHandler | undefined>;
-};
-
-/** Takes the event's payload; `never` lets each handler declare the payload type its native side sends. */
-export type ExtensionHandler = (payload: never) => unknown;
+/** An event a native hook sent with `emit` or `ask` (README: Native hooks). */
+export type NativeEvent = { name: string; payload: Record<string, unknown> };
 
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
 type OwnProps = {
@@ -202,8 +191,15 @@ type OwnProps = {
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
-  /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
+  /** Fixed at mount: remount with a new `key` to change it. */
   bridge?: Bridge;
+  /** What the native hooks get as their options (README: Native hooks). Fixed at mount, like `bridge`. */
+  nativeOptions?: Record<string, unknown>;
+  /**
+   * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
+   * a throw answers null.
+   */
+  onNativeEvent?: (event: NativeEvent) => unknown;
   /** Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android. */
   pullToRefresh?: boolean;
   /**
@@ -227,14 +223,8 @@ type OwnProps = {
    * the last WebView to set it wins).
    */
   webviewDebuggingEnabled?: boolean;
-  /**
-   * Add-ons such as `pullToRefresh()`. Fixed at mount: a change is ignored with a warning; remount with a new `key` to
-   * apply it. Handlers stay live.
-   */
-  extensions?: WebViewExtension[];
-
   // Page requests: each works without its prop, as described. Passing one takes the request over. They can be added or
-  // removed at any time. An extension that handles the same platform callback comes first.
+  // removed at any time. A native hook that takes the same platform callback comes first.
   /**
    * `<input type="file">` on Android: return `file://` or `content://` URIs, or null to cancel. Without it, the system
    * file chooser opens (it ignores `capture`). iOS always shows WebKit's picker.

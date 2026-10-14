@@ -55,6 +55,8 @@ export type Harness = {
     downloadFailures: DownloadFailure[];
     fullscreen: boolean[];
     pageCounts: { url: string; count: number }[];
+    /** The names of the sample hook's other events (a forwarded delegate callback). */
+    hookEvents: string[];
     /** Whether the example's renderError screen is mounted. */
     overlay: { error: boolean };
   };
@@ -848,6 +850,7 @@ async function crash(h: Harness) {
   clearEvents(h);
   const firstKillAt = Date.now();
   const loadsBefore = h.events.loads.length;
+  const countsBefore = h.events.pageCounts.length;
   const first = await kill(1);
   r.check('processGone reported and recovered', first?.recovered === true, first);
   r.check(
@@ -858,6 +861,12 @@ async function crash(h: Harness) {
       15000
     ),
     h.state()
+  );
+  // Android attaches the hooks to the new WebView; iOS keeps the delegates: the sample's page counter still counts.
+  r.check(
+    'the hooks are attached after recovery',
+    await waitFor(h, () => h.events.pageCounts.length > countsBefore, 5000),
+    h.events.pageCounts.length - countsBefore
   );
   const recoveredVh = await viewportHeight(h);
   r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
@@ -1724,17 +1733,34 @@ async function fullscreen(h: Harness) {
 async function sampleExtension(h: Harness) {
   const r = reporter('sampleExtension');
   const before = h.events.pageCounts.length;
+  h.events.hookEvents.length = 0;
   const page = `${h.pages}/spa.html?t=${Date.now()}`;
   await openPage(h, page);
   await sleep(1000);
   const event = h.events.pageCounts.at(-1);
   r.check(
-    'its native side emits through the generic channel',
+    'its delegate gets a callback the core implements too, and emits through onNativeEvent',
     h.events.pageCounts.length > before && event?.url === page,
     event
   );
   const inPage = (await h.ref.current?.evaluate('window.__pageCount')) as number;
   r.check('its native side reaches the page', inPage === event?.count, { inPage, event });
+  if (Platform.OS === 'ios') {
+    h.load(`${h.pages}/redirect?to=${encodeURIComponent('/spa.html?from=hook')}`);
+    await waitFor(h, (s) => s.url.includes('from=hook') && idle(s));
+    await sleep(300);
+    r.check(
+      'a callback the core does not implement is forwarded to its delegate (didReceiveServerRedirect)',
+      h.events.hookEvents.includes('pageCounter.redirect'),
+      h.events.hookEvents
+    );
+  } else {
+    r.check(
+      'a callback the core does not implement is forwarded to its client (onPageCommitVisible)',
+      h.events.hookEvents.includes('pageCounter.commitVisible'),
+      h.events.hookEvents
+    );
+  }
   if (Platform.OS === 'ios') {
     // configure() set data detectors before the WKWebView existed: WebKit turns the number into a tel: link.
     h.loadSource({ html: '<p id="n">Call 415-555-0134 today</p>', baseUrl: h.pages });

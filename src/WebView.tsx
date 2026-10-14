@@ -17,6 +17,7 @@ import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
 import type {
   AndroidWebViewInfo,
   Bridge,
+  NativeEvent as HookEventBody,
   NavigationEvent,
   NavigationState,
   ProcessGoneEvent,
@@ -36,16 +37,11 @@ type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
 
 type BridgeEvent = { message?: string; unavailable?: boolean; navigated?: boolean };
 
-/** `askId` is set when native waits for the answer (ExtensionHost.ask). */
-type ExtensionEvent = {
-  name: string;
-  event: string;
-  payload: Record<string, unknown>;
-  askId?: number;
-};
+/** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
+type HookEvent = HookEventBody & { askId?: number };
 
 /**
- * Page requests the core answers natively, by native event name. Native asks JS (as extension `core`) only for those
+ * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
  * whose prop is set, and reads the set when the request comes, so a prop can come and go. `openExternal` is never
  * asked: native only checks that JS opens external links itself, and reports them on `onNavigation`.
  */
@@ -58,7 +54,8 @@ const REQUESTS = {
   download: 'onDownload',
   httpAuthRequest: 'onHttpAuthRequest',
 } as const;
-const CORE = 'core';
+/** The core's own events; everything else is a hook's, for `onNativeEvent`. */
+const CORE = 'core.';
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
 const OWN = [
@@ -75,7 +72,8 @@ const OWN = [
   'bridge',
   'pullToRefresh',
   'sharedCookies',
-  'extensions',
+  'nativeOptions',
+  'onNativeEvent',
   'renderLoading',
   'renderError',
   'onNavigation',
@@ -111,12 +109,12 @@ type NativeProps = ViewProps &
     settings: string;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
-    extensions: ReturnType<typeof nativeSpecs>;
+    nativeOptions: Record<string, unknown> | undefined;
     requestHandlers: string[];
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
     onBridge: (event: NativeEvent<BridgeEvent>) => void;
-    onExtension: (event: NativeEvent<ExtensionEvent>) => void;
+    onNativeEvent: (event: NativeEvent<HookEvent>) => void;
     onError: (event: NativeEvent<NativeErrorEvent>) => void;
     onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
   };
@@ -327,21 +325,21 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   const requestHandlers = useRequestHandlers(props);
 
-  const onExtension = async ({
-    nativeEvent: { name, event, payload, askId },
-  }: NativeEvent<ExtensionEvent>) => {
-    if (name === CORE && event === 'settingsRejected') return warnRejected(payload);
-    const request = name === CORE ? REQUESTS[event as keyof typeof REQUESTS] : undefined;
-    const handler = (
-      request
-        ? props[request]
-        : props.extensions?.find((candidate) => candidate.native.name === name)?.on?.[event]
-    ) as ((payload: unknown) => unknown) | undefined;
+  const onNativeEvent = async ({
+    nativeEvent: { name, payload, askId },
+  }: NativeEvent<HookEvent>) => {
+    if (name === `${CORE}settingsRejected`) return warnRejected(payload);
+    const request = name.startsWith(CORE)
+      ? REQUESTS[name.slice(CORE.length) as keyof typeof REQUESTS]
+      : undefined;
+    const handler = request
+      ? (props[request] as ((payload: unknown) => unknown) | undefined)
+      : () => props.onNativeEvent?.({ name, payload });
     const value = await settle(
       () => handler?.(payload),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
-      request ? `${request} failed` : `the ${name} extension's ${event} handler failed`
+      request ? `${request} failed` : `onNativeEvent failed for ${name}`
     );
     if (askId !== undefined) await answer(askId, value);
   };
@@ -364,12 +362,12 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      extensions={fixed.extensions}
+      nativeOptions={fixed.nativeOptions}
       requestHandlers={requestHandlers}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
       onBridge={onBridge}
-      onExtension={onExtension}
+      onNativeEvent={onNativeEvent}
       onError={onError}
       onProcessGone={({ nativeEvent }) => props.onProcessGone?.(nativeEvent)}
     />
@@ -409,13 +407,6 @@ function useRequestHandlers(props: WebViewProps) {
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
-/** What native gets per extension: its name and config, and which events have a JS handler. */
-const nativeSpecs = (props: WebViewProps) =>
-  props.extensions?.map(({ native, on = {} }) => ({
-    ...native,
-    handles: Object.keys(on).filter((event) => on[event]),
-  }));
-
 /** The cross-platform props that are creation-time settings on iOS: fixed at mount on both platforms, for one behaviour. */
 const CREATION = ['applicationNameForUserAgent', 'mediaPlaybackRequiresUserAction'] as const;
 const creationProps = (props: WebViewProps) =>
@@ -425,26 +416,26 @@ const creationProps = (props: WebViewProps) =>
   >;
 
 /**
- * Native sets up the extensions, the bridge and the creation settings once, at mount; the JS handlers (`on`,
- * `bridge.handle`) stay live. A later change is ignored with a warning: remount with a new `key` to apply it. (A
- * changed `ios.configuration` key is reported by native, through `settingsRejected`.)
+ * Native sets up the bridge, the hooks (with their options) and the creation settings once, at mount; the JS handlers
+ * (`bridge.handle`, `onNativeEvent`) stay live. A later change is ignored with a warning: remount with a new `key` to
+ * apply it. (A changed `ios.configuration` key is reported by native, through `settingsRejected`.)
  */
 function useFixedAtMount(props: WebViewProps) {
   const [fixed] = useState(() => ({
     bridge: props.bridge,
-    extensions: nativeSpecs(props),
+    nativeOptions: props.nativeOptions,
     creation: creationProps(props),
   }));
   const warned = useRef(false);
   const changed =
     props.bridge !== fixed.bridge ||
-    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions) ||
+    JSON.stringify(props.nativeOptions) !== JSON.stringify(fixed.nativeOptions) ||
     JSON.stringify(creationProps(props)) !== JSON.stringify(fixed.creation);
   useEffect(() => {
     if (!changed || warned.current) return;
     warned.current = true;
     console.warn(
-      '[minimal-rn-webview] `extensions`, `bridge`, `applicationNameForUserAgent` and `mediaPlaybackRequiresUserAction` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
+      '[minimal-rn-webview] `bridge`, `nativeOptions`, `applicationNameForUserAgent` and `mediaPlaybackRequiresUserAction` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
     );
   }, [changed]);
   return fixed;

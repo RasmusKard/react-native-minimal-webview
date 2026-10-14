@@ -1,6 +1,7 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
@@ -8,34 +9,36 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
-import expo.modules.minimalwebview.extensions.Downloads
-import expo.modules.minimalwebview.extensions.FileUpload
-import expo.modules.minimalwebview.extensions.FullscreenVideo
-import expo.modules.minimalwebview.extensions.HttpAuth
-import expo.modules.minimalwebview.extensions.Permissions
+import expo.modules.minimalwebview.requests.DownloadInfo
+import expo.modules.minimalwebview.requests.Downloads
+import expo.modules.minimalwebview.requests.FileUpload
+import expo.modules.minimalwebview.requests.FullscreenVideo
+import expo.modules.minimalwebview.requests.HttpAuth
+import expo.modules.minimalwebview.requests.Permissions
 
-class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
+class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext), WebViewContext {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
-  private val onExtension by EventDispatcher<Map<String, Any?>>()
+  private val onNativeEvent by EventDispatcher<Map<String, Any?>>()
   private val onError by EventDispatcher<Map<String, Any?>>()
   private val onProcessGone by EventDispatcher<Map<String, Any?>>()
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
   // Declared before webView: createWebView() reads them during construction.
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
-  private val coreHost = hostFor("core") { event -> event in requestHandlers }
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
-  /** Replaced when the render process dies; extensions read it through their host on every use. */
+  /** Replaced when the render process dies; the hooks are attached to each one. */
   var webView = createWebView()
     private set
 
@@ -44,7 +47,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var navigationRules: List<Map<String, Any?>>? = null
   var bridgeScript: String? = null
   var bridgeOrigins: List<String>? = null
-  var extensions: List<ExtensionSpec>? = null
+  /** The `nativeOptions` prop, for the hooks. */
+  override var options: Map<String, Any?> = emptyMap()
   var injectedScripts: List<InjectedScript>? = null
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
   var settings: Map<String, Any?>? = null
@@ -60,17 +64,22 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
 
-  // Installed once, from the first props: JS fixes `extensions` at mount. `wrap` runs again for each new WebView.
-  private var activeExtensions: Map<String, WebViewExtension>? = null
+  // The hooks' clients (WebViewContext) and the core's page requests. The clients (MinimalWebViewClients.kt) route each
+  // callback by the rule in WebViewContext. The page requests ask JS only for the requests in requestHandlers.
+  override val clients = mutableListOf<WebViewClient>()
+  override val chromeClients = mutableListOf<WebChromeClient>()
+  override val activity: Activity? get() = appContext.currentActivity
+  internal val fileUpload = FileUpload(this)
+  internal val fullscreen = FullscreenVideo(this)
+  internal val permissions = Permissions(this)
+  internal val downloads = Downloads(this)
+  internal val httpAuth = HttpAuth(this)
+  /** What the attach hooks returned, run before their WebView goes away. */
+  private var detachers: List<() -> Unit> = emptyList()
+  private var mounted = false
 
-  // The page requests, answered by the core on every view. After the extensions, so an extension that handles the same
-  // callback comes first. They ask JS only for the requests in requestHandlers.
-  private val core = listOf(FileUpload(), FullscreenVideo(), Permissions(), Downloads(), HttpAuth()).onEach {
-    it.onAttach(coreHost, emptyMap())
-  }
-
-  // Every `ask` (navigation request and extensions) waits here, by id, until answered through `answer` or failed with null by a
-  // new document, a crash or destroy.
+  // Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until answered through `answer`
+  // or failed with null by a new document, a crash or destroy.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextAskId = 0
 
@@ -93,13 +102,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 
-  private fun createWebView() = WebView(context).also { view ->
+  private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
     view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty(), contentLength)
-      if (hooks.none { it.onDownloadStart(download) }) navigation.openDownload(url)
+      if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
   }
@@ -122,7 +131,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
   fun applyProps() {
     applySettings()
-    if (activeExtensions == null) installExtensions() else if (mountedPullToRefresh != pullToRefresh) mount()
+    // The first prop batch: the hooks get their options with it.
+    if (!mounted) {
+      mount()
+      attachHooks()
+    } else if (mountedPullToRefresh != pullToRefresh) {
+      mount()
+    }
     scripts.apply()
     val next = source ?: return
     if (next == loadedSource) return
@@ -146,32 +161,31 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
    */
   private fun applySettings(force: Boolean = false) {
     val rejected = platformSettings.apply(settings, force)
-    if (rejected.isNotEmpty()) {
-      onExtension(mapOf("name" to "core", "event" to "settingsRejected", "payload" to mapOf("rejected" to rejected)))
-    }
+    if (rejected.isNotEmpty()) emit("core.settingsRejected", mapOf("rejected" to rejected))
   }
 
-  private fun installExtensions() {
-    activeExtensions = extensions.orEmpty().mapNotNull { spec ->
-      val name = spec.name ?: return@mapNotNull null
-      val extension = WebViewExtensions.create(name)
-      if (extension == null) Log.w(TAG, "no WebView extension registered as $name")
-      val handles = spec.handles.orEmpty().toSet()
-      extension?.onAttach(hostFor(name) { it in handles }, spec.config.orEmpty())
-      extension?.let { name to it }
-    }.toMap()
-    mount()
+  private fun attachHooks() {
+    detachers = MinimalWebViewHooks.attach.mapNotNull { it(webView, this) }
+  }
+
+  private fun detachHooks() {
+    detachers.forEach { it() }
+    detachers = emptyList()
+    clients.clear()
+    chromeClients.clear()
   }
 
   /**
-   * Puts the WebView inside the pull-to-refresh layout (when enabled) and the extensions' containers, in list order:
-   * the first extension wraps the rest.
+   * Puts the WebView inside the pull-to-refresh layout (when enabled) and the hooks' containers, in list order: the
+   * first hook wraps the rest.
    */
   private fun mount() {
     removeAllViews()
     (webView.parent as? ViewGroup)?.removeView(webView)
+    mounted = true
     mountedPullToRefresh = pullToRefresh
-    val wrappers = listOfNotNull(if (pullToRefresh) refresher::wrap else null) + activeExtensions.orEmpty().values.map { it::wrap }
+    val wrappers = listOfNotNull(if (pullToRefresh) refresher::wrap else null) +
+      MinimalWebViewHooks.wrap.map { wrap -> { view: View -> wrap(view, this) } }
     // A wrapper's addView(view) would give the view WRAP_CONTENT, and for the WebView Chromium then resolves CSS vh to 0.
     val content = wrappers.fold(webView as View) { view, wrap ->
       view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
@@ -180,26 +194,17 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 
-  private fun hostFor(name: String, handled: (String) -> Boolean): ExtensionHost = object : ExtensionHost {
-    override val webView get() = this@MinimalWebView.webView
-    override val activity get() = appContext.currentActivity
-    override fun handles(event: String) = handled(event)
+  override fun emit(name: String, payload: Map<String, Any?>) = onNativeEvent(mapOf("name" to name, "payload" to payload))
 
-    override fun evaluate(script: String, onResult: (Result<String>) -> Unit) = this@MinimalWebView.evaluate(script, onResult)
-
-    override fun emit(event: String, payload: Map<String, Any?>) =
-      onExtension(mapOf("name" to name, "event" to event, "payload" to payload))
-
-    override fun ask(event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
-      this@MinimalWebView.ask(name, event, payload, onAnswer)
-    }
+  override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
+    askWithId(name, payload, onAnswer)
   }
 
-  /** Asks JS as extension [name] (`core` for a page request). Returns the ask's id: [answer] with it, null to give up. */
-  internal fun ask(name: String, event: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
+  /** [ask], returning the ask's id: [answer] with it, null to give up. */
+  internal fun askWithId(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
     val id = ++nextAskId
     pendingAsks[id] = onAnswer
-    onExtension(mapOf("name" to name, "event" to event, "payload" to payload, "askId" to id))
+    onNativeEvent(mapOf("name" to name, "payload" to payload, "askId" to id))
     return id
   }
 
@@ -232,12 +237,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     scripts.newDocument()
   }
 
-  /** The extensions' hooks, then the core's, for the clients. */
-  internal val hooks get() = activeExtensions.orEmpty().values + core
-
   internal fun pageFinished(url: String) {
     refresher.pageFinished()
-    hooks.forEach { it.onPageFinished(url) }
+    httpAuth.pageFinished()
   }
 
   /** Answers every pending ask with null (block, cancel). */
@@ -269,11 +271,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }?.trimEnd('/')
     val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl }
     failPending()
+    detachHooks()
     val old = webView
     webView = createWebView()
     applySettings(force = true)
     scripts.reinstall()
     mount()
+    attachHooks()
     old.destroy()
     if (recovered) {
       if (lastUrl != null) webView.loadUrl(lastUrl) else source?.let(::load)
@@ -282,7 +286,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   fun destroy() {
-    hooks.forEach { it.onDetach() }
+    detachHooks()
+    fullscreen.detach()
+    downloads.detach()
     failPending()
     webView.stopLoading()
     webView.destroy()

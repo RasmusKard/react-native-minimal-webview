@@ -204,7 +204,7 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 | `javaScriptCanOpenWindowsAutomatically` | Default false: only a tap opens a window (`target=_blank`, `window.open` in a click handler). Set it for a page that opens one by itself, like an OAuth popup after an `await`. The navigation rules decide either way (`newWindow: true`) |
 | `webviewDebuggingEnabled` | Default `__DEV__`. Process-wide on Android |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload`, `onHttpAuthRequest` | See [Page requests](#page-requests). They can be added and removed at any time |
-| `extensions` | See below. Fixed at mount, like `bridge`; their handlers stay live |
+| `nativeOptions`, `onNativeEvent` | What your [native hooks](#native-hooks) get, and what they send. `nativeOptions` is fixed at mount, like `bridge` |
 | `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onHttpError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled |
@@ -275,7 +275,7 @@ own prompt. Android's WebView keeps a location answer until the page changes.
 An unanswered request is cancelled when its page is replaced (navigation, reload, unmount). Until then, a handler that
 never settles blocks that page's further requests of the same kind.
 
-An [extension](#extensions) that handles the same platform callback comes before these props.
+A [native hook](#native-hooks) whose delegate or client takes the same platform callback comes before these props.
 
 ### Downloads
 
@@ -343,47 +343,57 @@ onDownload={async (result) => {
 onDownload={(result) => 'uri' in result && Sharing.shareAsync(result.uri)}
 ```
 
-## Extensions
+## Native hooks
 
-Native add-ons, enabled per WebView with `extensions={[pageCounter()]}`. An extension is native code registered by
-name, plus an optional JS helper. `example/modules/sample-extension` is a complete one that lives outside the package.
-
-```kotlin
-// Android: in your Expo module's OnCreate
-WebViewExtensions.register("pageCounter") { PageCounter() }
-
-class PageCounter : WebViewExtension {
-  private lateinit var host: ExtensionHost
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) { this.host = host }
-  override fun onPageFinished(url: String) = host.emit("pageLoaded", mapOf("url" to url))
-}
-```
+Anything the settings can't express is a few lines of Swift or Kotlin in your own Expo module (a
+[local module](https://docs.expo.dev/modules/get-started/) in `modules/`, or a package). There is no protocol to
+implement: a hook gets the real `WKWebView` or `WebView` and its creation-time configuration, and can chain its own
+delegates and clients. `example/modules/sample-extension` is a complete one.
 
 ```swift
-// iOS: in your Expo module's OnCreate
-WebViewExtensions.register("pageCounter") { PageCounter() }
-
-final class PageCounter: WebViewExtension {
-  private var host: ExtensionHost?  // keep it strong; it holds the view weakly
-  func attach(host: ExtensionHost, config: [String: Any]) { self.host = host }
-  func didFinish(url: URL?) { host?.emit("pageLoaded", ["url": url?.absoluteString ?? ""]) }
+// iOS, in your module's OnCreate
+MinimalWebViewHooks.configure.append { configuration, context in   // before the WKWebView exists
+  if context.options["pageCounter"] != nil { configuration.dataDetectorTypes = .phoneNumber }
+}
+MinimalWebViewHooks.attach.append { webView, context in             // once it exists; return a detach closure or nil
+  guard context.options["pageCounter"] != nil else { return nil }
+  context.navigationDelegates.append(PageCounter(context: context))  // a WKNavigationDelegate
+  return nil
 }
 ```
 
-```ts
-export const pageCounter = (): WebViewExtension => ({
-  native: { name: 'pageCounter', config: {} },
-  on: { pageLoaded: ({ url }: { url: string }) => console.log('loaded', url) },
-});
+```kotlin
+// Android, in your module's OnCreate
+MinimalWebViewHooks.attach += { webView, context ->                 // for each WebView: the first, and any after a crash
+  if (context.options["pageCounter"] != null) context.clients += PageCounter(context)  // a WebViewClient
+  null
+}
 ```
 
-**The hooks:**
-- Android: `wrap` (container), `onPageFinished`, `onShowFileChooser`, `onPermissionRequest`, `onGeolocationPrompt`, `onShowCustomView`/`onHideCustomView`, `onDownloadStart`, `onHttpAuthRequest` and `onDetach`. The host gives `webView`, `activity`, `emit`, `ask`, `handles` and `evaluate`.
-- iOS: `configure(_ configuration:)` (settings WebKit reads only at creation, such as data detectors, the data store or a URL scheme handler; runs once, before the WebView exists), `didCreate`, `prepare`, `didFinish`, `decidePolicy(for:)`, `wantsDownload`, `didBecome(download)`, `requestMediaCapture`, `authenticate` and `detach`. The host gives `webView`, `emit`, `ask`, `handles`, `evaluate` and `reload`.
-- **Decide hooks:** the first extension that handles one wins. The page requests are handled by the core through the same hooks, after every extension.
-- **`ask`:** sends an event to the helper's handler for it in `on` and passes its return value back to native. `handles(event)` says whether the helper has one, so native can fall back to a default without it.
+```tsx
+<WebView nativeOptions={{ pageCounter: true }} onNativeEvent={({ name, payload }) => … } />
+```
 
-The interface is **experimental** until it has had more outside users.
+- **`nativeOptions`** is what every hook gets as `context.options`: how an app enables a hook for one WebView and
+  configures it. Fixed at mount, like `bridge`.
+- **Delegates and clients.** A callback the core doesn't implement goes to the first of your delegates (clients) that
+  does. A decision callback the core implements goes to the first of yours that does, and the core steps aside: on iOS
+  navigation and response policy, authentication, a new window, JS dialogs and media capture; on Android
+  `shouldOverrideUrlLoading`, HTTP auth, SSL errors, permissions, geolocation, fullscreen, a new window and the file
+  chooser. An observation callback the core implements reaches the core first, then every one of yours. So a client
+  that overrides `shouldOverrideUrlLoading` switches the navigation rules off for that WebView, and one that overrides
+  `onPageFinished` is just told. Android's `shouldInterceptRequest` runs on a background thread, as always.
+- **Events.** `context.emit(name, payload)` sends `onNativeEvent({ name, payload })`; `context.ask(name, payload) { answer in … }`
+  waits for the handler's return value (a promise is awaited; a throw or no handler answers null). Names starting
+  with `core.` are the package's; prefix yours with the hook's name.
+- **Lifecycle.** `configure` runs after the `ios.configuration` settings and before the bridge, so replacing the
+  user content controller is fine. `attach` runs once the WebView exists (on Android also for the new WebView after a
+  renderer crash); the closure it returns runs when that WebView goes away. Everything runs on the main thread. Set
+  delegates in `attach`: WebKit reads what a delegate responds to when it is assigned, and the core re-assigns itself
+  after each change to the lists.
+- **What not to touch:** the WebView's own delegate and client slots (use the lists), the bridge's script message
+  handler and user scripts, and Android's download listener. `MinimalWebViewHooks.webViewClass` (iOS) and
+  `webViewFactory` (Android) let a subclass override what the platform class allows.
 
 ## Security defaults
 

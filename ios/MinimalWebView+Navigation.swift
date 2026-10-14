@@ -18,7 +18,7 @@ extension MinimalWebView {
     let request = NavigationRules.Request(
       url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: action.navigationType == .linkActivated
     )
-    let download = activeExtensions?.contains { $0.wantsDownload(action) } == true
+    let download = downloads.wantsDownload(action)
     // `<a download>` or blob: that no hook takes (no onDownload): .allow would show it as a page.
     let dropped = action.shouldPerformDownload && !download
     run(request) { [weak self] allowed in
@@ -77,7 +77,7 @@ extension MinimalWebView {
       if action == "allow" { self.askedAndAllowed.insert(request.url) }
       self.finish(request, ["allow", "block", "external"].contains(action) ? action : "block", decision.rule, completion)
     }
-    onExtension(["name": "core", "event": "navigationRequest", "payload": request.payload, "askId": id])
+    onNativeEvent(["name": "core.navigationRequest", "payload": request.payload, "askId": id])
     // Unanswered after the timeout: block.
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
       self?.pendingAsks.removeValue(forKey: id)?(nil)

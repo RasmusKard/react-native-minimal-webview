@@ -116,17 +116,14 @@ describe('errors', () => {
   });
 });
 
-describe('extensions and bridge', () => {
-  it('are fixed at mount: a change warns once and native keeps the first specs', async () => {
+describe('nativeOptions and bridge', () => {
+  it('are fixed at mount: a change warns once and native keeps the first options', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const root = createRoot();
     const show = (mode: 'a' | 'b') =>
       act(async () =>
         root.render(
-          <WebView
-            source={{ uri: 'https://example.com' }}
-            extensions={[{ native: { name: 'sample', config: { mode } } }]}
-          />
+          <WebView source={{ uri: 'https://example.com' }} nativeOptions={{ sample: { mode } }} />
         )
       );
     await show('a');
@@ -137,7 +134,7 @@ describe('extensions and bridge', () => {
     await show('b');
     expect(warn).toHaveBeenCalledTimes(1);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.extensions).toEqual([{ name: 'sample', config: { mode: 'a' }, handles: [] }]);
+    expect(native?.nativeOptions).toEqual({ sample: { mode: 'a' } });
     warn.mockRestore();
   });
 });
@@ -213,13 +210,12 @@ describe('platform settings', () => {
     const root = createRoot();
     await act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} />));
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-      onExtension: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+      onNativeEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
     };
     await act(() =>
-      native.onExtension({
+      native.onNativeEvent({
         nativeEvent: {
-          name: 'core',
-          event: 'settingsRejected',
+          name: 'core.settingsRejected',
           payload: { rejected: [{ key: 'scrollView.nope', reason: 'no such property' }] },
         },
       })
@@ -241,10 +237,10 @@ describe('page requests', () => {
     const native = () =>
       root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
         requestHandlers: string[];
-        onExtension: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+        onNativeEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
       };
-    const fire: Fire = (event, payload, askId) =>
-      act(() => native().onExtension({ nativeEvent: { name: 'core', event, payload, askId } }));
+    const fire: Fire = (name, payload, askId) =>
+      act(() => native().onNativeEvent({ nativeEvent: { name, payload, askId } }));
     return { show, native, fire };
   }
 
@@ -267,13 +263,13 @@ describe('page requests', () => {
     const onFullscreenChange = jest.fn();
     const onDownload = jest.fn();
     const { fire } = await renderRequests({ onFileRequest, onFullscreenChange, onDownload });
-    await fire('fileRequest', { accept: [], multiple: false, capture: false }, 1);
+    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 1);
     expect(onFileRequest).toHaveBeenCalledWith({ accept: [], multiple: false, capture: false });
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
-    await fire('fullscreenChange', { active: true });
+    await fire('core.fullscreenChange', { active: true });
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true });
     const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
-    await fire('download', failure);
+    await fire('core.download', failure);
     expect(onDownload).toHaveBeenCalledWith(failure);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
@@ -296,34 +292,43 @@ describe('page requests', () => {
       newWindow: false,
       userInitiated: true,
     };
-    await fire('navigationRequest', request, 1);
+    await fire('core.navigationRequest', request, 1);
     expect(onNavigationRequest).toHaveBeenCalledWith(request);
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
-    await fire('navigationRequest', request, 2);
+    await fire('core.navigationRequest', request, 2);
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
-    await fire('navigationRequest', request, 3);
+    await fire('core.navigationRequest', request, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: 'block' });
     error.mockRestore();
   });
 
-  it('answers null when the prop is gone or throws, and leaves extensions to their own handlers', async () => {
+  it('answers null when the prop is gone or throws, and routes other names to onNativeEvent', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const authRequest = jest.fn();
+    const onNativeEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
     const { fire } = await renderRequests({
       onPermissionRequest: () => {
         throw new Error('no');
       },
-      extensions: [{ native: { name: 'other' }, on: { authRequest } }],
+      onNativeEvent,
     });
-    await fire('permissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2);
+    await fire(
+      'core.permissionRequest',
+      { origin: 'https://example.com', resources: ['camera'] },
+      2
+    );
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[minimal-rn-webview] onPermissionRequest failed',
       expect.any(Error)
     );
-    await fire('httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
+    await fire('core.httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    expect(authRequest).not.toHaveBeenCalled();
+    expect(onNativeEvent).not.toHaveBeenCalled();
+    await fire('pageCounter.pick', { a: 1 }, 4);
+    expect(onNativeEvent).toHaveBeenCalledWith({ name: 'pageCounter.pick', payload: { a: 1 } });
+    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pageCounter.pick!' });
+    await fire('pageCounter.note', { b: 2 });
+    expect(mockAnswer).toHaveBeenCalledTimes(3);
     error.mockRestore();
   });
 });
