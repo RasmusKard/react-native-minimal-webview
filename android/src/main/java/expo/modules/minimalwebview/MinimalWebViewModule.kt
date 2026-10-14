@@ -62,7 +62,7 @@ class MinimalWebViewModule : Module() {
       CookieManager.getInstance().flush()
     }
 
-    // What `applicationNameForUserAgent` appends to: JS sets `settings.userAgentString` from it.
+    // The platform's default user agent (`WebView.defaultUserAgent` in JS), for apps that append to it.
     Constant("defaultUserAgent") {
       WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
     }
