@@ -369,21 +369,21 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    pageFinished(webView)
-    refreshSoon()
-    forward { $0.webView?(webView, didFinish: navigation) }
+    loadEnded(webView) { $0.webView?(webView, didFinish: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadFailed(webView, error) { $0.webView?(webView, didFail: navigation, withError: error) }
+    failed(error)
+    loadEnded(webView) { $0.webView?(webView, didFail: navigation, withError: error) }
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadFailed(webView, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    failed(error)
+    loadEnded(webView) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
   }
 
-  private func loadFailed(_ webView: WKWebView, _ error: Error, _ callback: (WKNavigationDelegate) -> Void) {
-    failed(error)
+  /// A load finished or failed: the core's bookkeeping, then the hook delegates' callback.
+  private func loadEnded(_ webView: WKWebView, _ callback: (WKNavigationDelegate) -> Void) {
     pageFinished(webView)
     refreshSoon()
     forward(callback)
