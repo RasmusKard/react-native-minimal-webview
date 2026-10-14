@@ -41,10 +41,9 @@ id MRWJsonable(id value) {
 static id MRWObject(id json) {
   if (json == NSNull.null) return nil;
   if (![json isKindOfClass:NSDictionary.class] || [json count] != 1) return json;
-  id set = json[@"set"], date = json[@"date"], url = json[@"url"], data = json[@"data"];
+  id set = json[@"set"], date = json[@"date"], data = json[@"data"];
   if ([set isKindOfClass:NSArray.class]) return [NSSet setWithArray:set];
   if ([date isKindOfClass:NSNumber.class]) return [NSDate dateWithTimeIntervalSince1970:[date doubleValue]];
-  if ([url isKindOfClass:NSString.class]) return [NSURL URLWithString:url];
   if ([data isKindOfClass:NSString.class]) return [[NSData alloc] initWithBase64EncodedString:data options:0];
   return json;
 }
@@ -134,7 +133,7 @@ static id MRWBlock(NSString *completion, void (^resolve)(id, NSString *)) {
   if ([completion isEqualToString:@"valueError"]) {
     return [^(id value, NSError *error) { resolve(MRWJsonable(value), error.localizedDescription); } copy];
   }
-  if ([completion isEqualToString:@"bool"]) return [^(BOOL value) { resolve(@(value), nil); } copy];
+  if ([completion isEqualToString:@"error"]) return [^(NSError *error) { resolve(NSNull.null, error.localizedDescription); } copy];
   return nil;
 }
 
@@ -156,7 +155,7 @@ void MRWInvoke(id target, SEL selector, NSArray *args, NSString *completion, voi
     resolve(result, error);
   };
   id block = takesBlock ? MRWBlock(completion, once) : nil;
-  if (takesBlock && !block) return once(nil, @"the method takes a completion handler: pass its shape as `completion` (void, value, valueError or bool)");
+  if (takesBlock && !block) return once(nil, @"the method takes a completion handler: pass its shape as `completion` (void, value, valueError or error)");
   NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
   NSMutableArray *keep = [NSMutableArray new];
   invocation.target = target;

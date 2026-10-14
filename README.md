@@ -236,7 +236,7 @@ offers is reachable by its own name, without a change to this package, through `
   }}
 />
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
-await ref.current?.call('clearCache', [true]);                 // Android: a public WebView method; iOS takes a selector, see below
+await ref.current?.call('webView.clearCache', [true]);         // a public method; iOS takes a selector, see call below
 ```
 
 - **The keys autocomplete**, with their type and `@since`, from the SDK headers (`src/platform.generated.ts`), and the
@@ -252,41 +252,53 @@ await ref.current?.call('clearCache', [true]);                 // Android: a pub
   property's type never reaches it.
 - **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a later change warns, and
   a remount with a new `key` applies it. A key you remove is not reset; set the default yourself.
-- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't). **`call(method, args?, options?)`** calls
-  a platform method and resolves with its result through JSON. Android: a public `WebView` method, or a
-  `WebViewCompat` one, by name: `call('clearCache', [true])`. iOS: an Objective-C selector on a settings root,
-  `configuration.websiteDataStore` or `configuration.websiteDataStore.httpCookieStore`, the arguments set by the
-  method's signature: booleans, numbers, strings, the four structs as objects, `null` for nil, and `{ set: [...] }`,
-  `{ date: seconds }`, `{ url }` or `{ data: base64 }` for an NSSet, NSDate, NSURL or NSData. A selector that ends in
-  a completion handler needs the handler's shape in `options.completion`:
-
-  | `completion` | The handler | Resolves with |
-  |---|---|---|
-  | `'void'` | `(void)` | `null` |
-  | `'value'` | `(id)` | the value |
-  | `'valueError'` | `(id, NSError *)` | the value, or rejects with the error |
-  | `'bool'` | `(BOOL)` | the boolean |
-
-  ```ts
-  await ref.call(
-    'configuration.websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-    [{ set: [WK.WebsiteDataType.cookies, WK.WebsiteDataType.localStorage] }, { date: 0 }],
-    { completion: 'void' }
-  );
-  const pdf = await ref.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
-  const png = await ref.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
-  await ref.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
-  ```
-
-  Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as
-  base64, a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any
-  other object is `null`. The methods the core owns (loads, `reload`, `goBack`, `evaluateJavaScript:`, the
-  delegates, `destroy` on Android), private (`_`) selectors and KVC are refused with `ERR_NATIVE`, as are an unknown
-  selector, a wrong argument count and an argument that doesn't fit the signature. Two things the signature can't
-  check are undefined behaviour and crash the app: a wrong completion shape, and an object argument of the wrong
-  class. For a method that takes an object, write a [native hook](#native-hooks).
+- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and
+  `httpCookieStore` are roots too, on Android `cookieManager` and `webStorage`. **`call`** is below.
 - The security defaults below are only defaults: `android.settings.allowFileAccess` or
   `ios.webpagePreferences.allowsContentJavaScript` change them, on your responsibility.
+
+### call
+
+`call(method, args?, options?)` calls a platform method, `root.method`, and resolves with its result through JSON
+(`ERR_NATIVE` for one it refuses or that fails). Android: a public method of `webView` (then `WebViewCompat`'s
+statics), `cookieManager` or `webStorage`:
+
+```ts
+await ref.call('webView.clearCache', [true]);
+await ref.call('cookieManager.removeAllCookies', [null]);
+await ref.call('webStorage.deleteAllData');
+```
+
+iOS: an Objective-C selector on a settings root, `websiteDataStore` or `httpCookieStore`, the arguments set by the
+method's signature: booleans, numbers, strings, the four structs as objects, `null` for nil, and `{ set: [...] }`,
+`{ date: seconds }` or `{ data: base64 }` for an NSSet, NSDate or NSData. A selector that ends in a completion handler
+needs the handler's shape in `options.completion`:
+
+| `completion` | The handler | Resolves with |
+|---|---|---|
+| `'void'` | `(void)` | `null` |
+| `'value'` | `(id)` | the value |
+| `'valueError'` | `(id, NSError *)` | the value, or rejects with the error |
+| `'error'` | `(NSError *)` | `null`, or rejects with the error |
+
+```ts
+await ref.call(
+  'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
+  [{ set: [WK.WebsiteDataType.cookies, WK.WebsiteDataType.localStorage] }, { date: 0 }],
+  { completion: 'void' }
+);
+const pdf = await ref.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
+const png = await ref.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
+await ref.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
+```
+
+Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,
+a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
+is `null`. Refused with `ERR_NATIVE`: what the core owns (on iOS every selector that loads, navigates, runs a script,
+starts a download or sets a delegate; on Android the loads, clients, `destroy` and `evaluateJavascript`), private
+(`_`) selectors and KVC, as well as an unknown selector, a wrong argument count and an argument that doesn't fit the
+signature. Two things the signature can't check are undefined behaviour and crash the app: a wrong completion shape,
+and an object argument of the wrong class. For a method that takes an object, write a [native hook](#native-hooks).
 
 ## Page requests
 

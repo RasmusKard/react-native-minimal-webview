@@ -14,8 +14,9 @@ import WebKit
 /// in an object-typed property can take the process down (WebKit asserts), and an unknown key raises an Objective-C
 /// exception Swift can't catch. Underscore (private) properties are refused.
 ///
-/// `call` invokes a method by selector on a root, or on `configuration.websiteDataStore` and its `httpCookieStore`,
-/// through MRWInvoke (MRWInvoke.h), which sets the arguments by the method's signature.
+/// `get` reads a property of a root and `call` invokes a method on one by selector, through MRWInvoke (MRWInvoke.h),
+/// which sets the arguments by the method's signature. For those two, `websiteDataStore` and `httpCookieStore` are
+/// roots as well.
 final class PlatformSettings {
   /// "root.key" -> the last value applied or rejected, so an unchanged value is neither applied nor reported again.
   private var applied: [String: NSObject] = [:]
@@ -43,7 +44,7 @@ final class PlatformSettings {
           continue
         }
         guard let object = root(rootName, webView: webView, configuration: configuration) else {
-          rejected.append(["key": id, "reason": "unknown root: use configuration, preferences, webpagePreferences, webView or scrollView"])
+          rejected.append(["key": id, "reason": "unknown root: use \(Self.roots)"])
           continue
         }
         if let reason = set(object, key, value) { rejected.append(["key": id, "reason": reason]) }
@@ -58,7 +59,7 @@ final class PlatformSettings {
     let rootName = String(path[..<dot])
     let key = String(path[path.index(after: dot)...])
     guard let object = root(rootName, webView: webView, configuration: webView.configuration) else {
-      throw PlatformError("unknown root: use configuration, preferences, webpagePreferences, webView or scrollView")
+      throw PlatformError("unknown root: use \(Self.roots)")
     }
     guard !key.hasPrefix("_"), !key.contains("."), class_getProperty(type(of: object), key) != nil else {
       throw PlatformError("no such property \(path)")
@@ -68,15 +69,14 @@ final class PlatformSettings {
   }
 
   /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
-  /// `completion` names the block shape of a selector that ends in a completion handler (MRWInvoke.h). The roots are
-  /// `root(_:)`'s, `configuration.websiteDataStore` and `configuration.websiteDataStore.httpCookieStore`.
+  /// `completion` names the block shape of a selector that ends in a completion handler (MRWInvoke.h).
   func call(_ path: String, args: [Any], completion: String?, webView: WKWebView, resolve: @escaping (String?, String?) -> Void) throws {
     guard let dot = path.lastIndex(of: ".") else { throw PlatformError("use root.selector:") }
     let selector = String(path[path.index(after: dot)...])
-    guard let object = callRoot(String(path[..<dot]), webView: webView) else {
-      throw PlatformError("unknown root: use configuration, preferences, webpagePreferences, webView, scrollView, configuration.websiteDataStore or configuration.websiteDataStore.httpCookieStore")
+    guard let object = root(String(path[..<dot]), webView: webView, configuration: webView.configuration) else {
+      throw PlatformError("unknown root: use \(Self.roots)")
     }
-    guard !Self.owned.contains(selector), !Self.ownedPrefixes.contains(where: selector.hasPrefix) else {
+    guard !Self.refused.contains(where: selector.hasPrefix) else {
       throw PlatformError("\(selector) is owned by the core, or private")
     }
     MRWInvoke(object, NSSelectorFromString(selector), args, completion) { result, error in
@@ -87,22 +87,14 @@ final class PlatformSettings {
     }
   }
 
-  private func callRoot(_ name: String, webView: WKWebView) -> NSObject? {
-    switch name {
-    case "configuration.websiteDataStore": return webView.configuration.websiteDataStore
-    case "configuration.websiteDataStore.httpCookieStore": return webView.configuration.websiteDataStore.httpCookieStore
-    default: return root(name, webView: webView, configuration: webView.configuration)
-    }
-  }
-
-  /// The methods the ref and the core own (loads, navigation, scripts, delegates), and the plumbing that would reach
-  /// private API or bypass the settings rules (KVC, performSelector).
-  private static let owned: Set<String> = [
-    "loadRequest:", "loadHTMLString:baseURL:", "loadFileURL:allowingReadAccessTo:", "stopLoading", "goBack", "goForward",
-    "reload", "reloadFromOrigin", "setNavigationDelegate:", "setUIDelegate:", "setValue:forKey:", "setValue:forKeyPath:",
-    "setValuesForKeysWithDictionary:", "valueForKey:", "valueForKeyPath:", "dealloc",
+  /// Selector prefixes `call` refuses: what the ref and the core own (every load, navigation, script, download and
+  /// delegate selector), private API, and the plumbing that would reach either (KVC, performSelector).
+  private static let refused = [
+    "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
+    "setNavigationDelegate", "setUIDelegate", "setValue", "setValuesForKeys", "valueForKey", "dictionaryWithValuesForKeys",
+    "performSelector", "dealloc",
   ]
-  private static let ownedPrefixes = ["_", "evaluateJavaScript:", "callAsyncJavaScript:", "performSelector"]
+  static let roots = "configuration, preferences, webpagePreferences, webView, scrollView, websiteDataStore or httpCookieStore"
 
   private func root(_ name: String, webView: WKWebView?, configuration: WKWebViewConfiguration?) -> NSObject? {
     switch name {
@@ -111,6 +103,8 @@ final class PlatformSettings {
     case "webpagePreferences": return webView?.configuration.defaultWebpagePreferences
     case "webView": return webView
     case "scrollView": return webView?.scrollView
+    case "websiteDataStore": return webView?.configuration.websiteDataStore
+    case "httpCookieStore": return webView?.configuration.websiteDataStore.httpCookieStore
     default: return nil
     }
   }

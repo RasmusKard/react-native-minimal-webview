@@ -2,6 +2,7 @@ package expo.modules.minimalwebview
 
 import android.webkit.CookieManager
 import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
@@ -16,7 +17,8 @@ import java.lang.reflect.Modifier
  * setter this package doesn't know (one a newer SDK or androidx.webkit adds) needs no code here.
  * `settings.textZoom: 120` calls `WebSettings.setTextZoom(120)`, else `WebSettingsCompat.setTextZoom(settings, 120)`.
  * `webView.acceptThirdPartyCookies: true` calls `WebView.set…`, else `WebViewCompat.set…(webView, …)`, else
- * `CookieManager.set…(webView, …)`. [get] reads through the matching getter and [call] invokes a WebView method.
+ * `CookieManager.set…(webView, …)`. [get] reads through the matching getter and [call] invokes a method; for those two,
+ * `cookieManager` and `webStorage` (the process-wide instances) are roots as well.
  *
  * Only public SDK methods: `getMethods()` returns nothing else, and reflection on them is allowed. A key with no public
  * setter for the value's type, a feature this device's WebView lacks (`UnsupportedOperationException`) or a method the
@@ -34,7 +36,7 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     if (force) applied.clear()
     val rejected = mutableListOf<Map<String, String>>()
     for ((rootName, entries) in settings.orEmpty()) {
-      val targets = targets(rootName)
+      val targets = if (rootName == "settings" || rootName == "webView") targets(rootName) else null
       if (targets == null || entries !is Map<*, *>) {
         rejected += mapOf("key" to rootName, "reason" to "unknown root: use settings or webView")
         continue
@@ -53,8 +55,7 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
 
   /** `root.key`: the getter's value (`getKey`, `isKey` or `key()`), as JSON. Throws with the reason when it can't. */
   fun get(path: String): String {
-    val (rootName, key) = path.split('.', limit = 2).let { if (it.size == 2) it[0] to it[1] else throw problem("use root.key") }
-    val targets = targets(rootName) ?: throw problem("unknown root: use settings or webView")
+    val (targets, key) = resolve(path)
     val capital = key.replaceFirstChar { it.uppercaseChar() }
     for (target in targets) {
       for (method in target.cls.methods) {
@@ -66,17 +67,25 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     throw problem("no public getter for $path")
   }
 
-  /** Invokes a public WebView method the core doesn't own and returns its result as JSON. Throws with the reason. */
-  fun call(name: String, args: List<Any?>): String {
+  /** `root.method` with [args]: a public method the core doesn't own, its result as JSON. Throws with the reason. */
+  fun call(path: String, args: List<Any?>): String {
+    val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is owned by the core")
-    for (target in webViewTargets()) {
+    for (target in targets) {
       for (method in target.cls.methods) {
         if (method.name != name) continue
         val arguments = arguments(method, target, args) ?: continue
         return toJson(invoke(method, target, arguments))
       }
     }
-    throw problem("no public method $name takes these arguments")
+    throw problem("no public method $path takes these arguments")
+  }
+
+  /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
+  private fun resolve(path: String): Pair<List<Target>, String> {
+    val parts = path.split('.', limit = 2)
+    if (parts.size != 2) throw problem("use root.key")
+    return (targets(parts[0]) ?: throw problem("unknown root: use settings, webView, cookieManager or webStorage")) to parts[1]
   }
 
   private fun targets(root: String): List<Target>? = when (root) {
@@ -84,15 +93,15 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
       Target(WebSettings::class.java, owner.webView.settings, null),
       Target(WebSettingsCompat::class.java, null, owner.webView.settings)
     )
-    "webView" -> webViewTargets()
+    "webView" -> listOf(
+      Target(WebView::class.java, owner.webView, null),
+      Target(WebViewCompat::class.java, null, owner.webView),
+      Target(CookieManager::class.java, CookieManager.getInstance(), owner.webView)
+    )
+    "cookieManager" -> listOf(Target(CookieManager::class.java, CookieManager.getInstance(), null))
+    "webStorage" -> listOf(Target(WebStorage::class.java, WebStorage.getInstance(), null))
     else -> null
   }
-
-  private fun webViewTargets() = listOf(
-    Target(WebView::class.java, owner.webView, null),
-    Target(WebViewCompat::class.java, null, owner.webView),
-    Target(CookieManager::class.java, CookieManager.getInstance(), owner.webView)
-  )
 
   private fun set(targets: List<Target>, key: String, value: Any?): String? {
     if (key.isEmpty() || key.startsWith("_")) return "not a public setter"

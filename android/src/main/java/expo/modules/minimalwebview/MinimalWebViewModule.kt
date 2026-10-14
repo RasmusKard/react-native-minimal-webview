@@ -110,7 +110,8 @@ class MinimalWebViewModule : Module() {
           "stop" -> view.webView.stopLoading()
         }
       }.runOnQueue(Queues.MAIN)
-      // `{ get: 'settings.textZoom' }` or `{ call: 'clearCache', args: [true] }`: the JSON of the result.
+      // `{ get: 'settings.textZoom' }` or `{ call: 'webView.clearCache', args: '[true]' }`: the JSON of the result. `args` is
+      // a JSON string so a null argument survives the conversion.
       AsyncFunction("native") { view: MinimalWebView, request: Map<String, Any?>, promise: Promise ->
         val get = request["get"] as? String
         val call = request["call"] as? String
@@ -118,7 +119,7 @@ class MinimalWebViewModule : Module() {
           promise.resolve(
             when {
               get != null -> view.platformSettings.get(get)
-              call != null -> view.platformSettings.call(call, request["args"] as? List<Any?> ?: emptyList())
+              call != null -> view.platformSettings.call(call, (request["args"] as? String)?.let { fromJson(JSONArray(it)) as List<Any?> } ?: emptyList())
               else -> throw IllegalArgumentException("a request needs `get` or `call`")
             }
           )

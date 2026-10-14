@@ -1120,18 +1120,20 @@ async function settings(h: Harness) {
       const call = (
         method: string,
         args?: unknown[],
-        options?: { completion?: 'void' | 'value' | 'valueError' | 'bool' }
+        options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
       ) => h.ref.call(method, args, options).catch(errorCode);
       await h.ref.evaluate(`(document.cookie = 'mrw=1; path=/')`);
       const before = await h.ref.evaluate('document.cookie');
       const cleared = await call(
-        'configuration.websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
+        'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
         [{ set: [WK.WebsiteDataType.cookies] }, { date: 0 }],
         { completion: 'void' }
       );
       r.check(
         'call clears site data (a void completion handler)',
-        before === 'mrw=1' && cleared === null && (await h.ref.evaluate('document.cookie')) === '',
+        String(before).includes('mrw=1') &&
+          cleared === null &&
+          (await h.ref.evaluate('document.cookie')) === '',
         { before, cleared }
       );
       const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null], {
@@ -1151,11 +1153,31 @@ async function settings(h: Harness) {
         String(png).slice(0, 20)
       );
       const records = await call(
-        'configuration.websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
+        'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
         [{ set: [WK.WebsiteDataType.localStorage] }],
         { completion: 'value' }
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
+      await h.ref.evaluate(`sessionStorage.setItem('mrw', '1')`);
+      const session = await call(
+        'webView.fetchDataOfTypes:completionHandler:',
+        [WK.WebViewDataType.sessionStorage],
+        {
+          completion: 'valueError',
+        }
+      );
+      const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
+        completion: 'error',
+      });
+      r.check(
+        'call takes NSData and an error completion handler',
+        typeof session === 'string' && session.length > 0 && restored === null,
+        { session: String(session).slice(0, 12), restored }
+      );
+      r.check(
+        'get reads a websiteDataStore property',
+        (await get('websiteDataStore.persistent')) === true
+      );
       await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 30 }, false]);
       const offset = (await get('scrollView.contentOffset')) as { y: number } | undefined;
       r.check('call takes a struct and a BOOL', offset?.y === 30, offset);
@@ -1243,15 +1265,34 @@ async function settings(h: Harness) {
       r.check('get rejects for an unknown key', (await get('settings.nope')) === 'ERR_NATIVE');
       r.check(
         'call runs a WebView method',
-        (await h.ref.call('clearCache', [true]).catch(errorCode)) === null
+        (await h.ref.call('webView.clearCache', [true]).catch(errorCode)) === null
       );
       r.check(
         'call returns the result',
-        (await h.ref.call('getTitle').catch(errorCode)) === 'Test pages'
+        (await h.ref.call('webView.getTitle').catch(errorCode)) === 'Test pages'
       );
       r.check(
         'call rejects for a core-owned method',
-        (await h.ref.call('destroy').catch(errorCode)) === 'ERR_NATIVE'
+        (await h.ref.call('webView.destroy').catch(errorCode)) === 'ERR_NATIVE'
+      );
+      await h.ref.evaluate(`(document.cookie = 'mrw=1; path=/')`);
+      const before = await h.ref.evaluate('document.cookie');
+      const removed = await h.ref.call('cookieManager.removeAllCookies', [null]).catch(errorCode);
+      await sleep(500);
+      r.check(
+        'call clears cookies through cookieManager',
+        String(before).includes('mrw=1') &&
+          removed === null &&
+          (await h.ref.evaluate('document.cookie')) === '',
+        { before, removed }
+      );
+      r.check(
+        'call reaches webStorage',
+        (await h.ref.call('webStorage.deleteAllData').catch(errorCode)) === null
+      );
+      r.check(
+        'call rejects an unknown root',
+        (await h.ref.call('clearCache', [true]).catch(errorCode)) === 'ERR_NATIVE'
       );
       h.setProps({ android: { settings: { textZoom: 'big' as never } } });
       await sleep(500);

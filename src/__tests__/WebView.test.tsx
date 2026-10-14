@@ -370,7 +370,7 @@ describe('navigation state across remounts', () => {
     expect(await ref.evaluate('1')).toEqual({ a: 1 });
     expect(await ref.getUrl()).toBe('https://example.com/native');
     expect(await ref.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
-    expect(await ref.call('clearCache', [true])).toEqual({ call: 'clearCache', args: [true] });
+    expect(await ref.call('clearCache', [true])).toEqual({ call: 'clearCache', args: '[true]' });
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
   });

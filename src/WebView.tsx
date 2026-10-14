@@ -128,11 +128,14 @@ type NativeMethods = {
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
-  /** `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. */
+  /**
+   * `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. `args` is
+   * JSON too, so that a `null` argument survives the native dictionary conversion.
+   */
   native(request: {
     get?: string;
     call?: string;
-    args?: unknown[];
+    args?: string;
     completion?: string;
   }): Promise<string>;
 };
@@ -299,7 +302,11 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       get: async (key) => parsed(await native.current?.native({ get: key })),
       call: async (method, args = [], options) =>
         parsed(
-          await native.current?.native({ call: method, args, completion: options?.completion })
+          await native.current?.native({
+            call: method,
+            args: JSON.stringify(args),
+            completion: options?.completion,
+          })
         ),
     };
   });
