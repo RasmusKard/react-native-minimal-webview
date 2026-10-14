@@ -6,7 +6,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -165,7 +164,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun attachHooks() {
-    detachers = MinimalWebViewHooks.attach.mapNotNull { it(webView, this) }
+    detachers = MinimalWebViewHooks.attach.mapNotNull { (name, hook) ->
+      if (options.containsKey(name)) hook(webView, HookContext(name, this)) else null
+    }
   }
 
   private fun detachHooks() {
@@ -175,22 +176,15 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     chromeClients.clear()
   }
 
-  /**
-   * Puts the WebView inside the pull-to-refresh layout (when enabled) and the hooks' containers, in list order: the
-   * first hook wraps the rest.
-   */
+  /** Puts the WebView inside the pull-to-refresh layout, when enabled. */
   private fun mount() {
     removeAllViews()
     (webView.parent as? ViewGroup)?.removeView(webView)
     mounted = true
     mountedPullToRefresh = pullToRefresh
-    val wrappers = listOfNotNull(if (pullToRefresh) refresher::wrap else null) +
-      MinimalWebViewHooks.wrap.map { wrap -> { view: View -> wrap(view, this) } }
-    // A wrapper's addView(view) would give the view WRAP_CONTENT, and for the WebView Chromium then resolves CSS vh to 0.
-    val content = wrappers.fold(webView as View) { view, wrap ->
-      view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-      wrap(view)
-    }
+    // The refresher's addView(view) would give the view WRAP_CONTENT, and Chromium then resolves CSS vh to 0.
+    webView.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    val content = if (pullToRefresh) refresher.wrap(webView) else webView
     addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 

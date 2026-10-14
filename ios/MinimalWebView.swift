@@ -55,6 +55,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var programmaticUrl: URL?
   /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
   var pendingAsks: [Int: (Any?) -> Void] = [:]
+  /// The enabled hooks' contexts, for the life of the WKWebView: a hook may keep a weak reference to its own.
+  var hookContexts: [String: HookContext] = [:]
   var nextAskId = 0
   var askedAndAllowed: Set<String> = []
   /// A `source` load is being prepared (shared cookies): loads wait until it is done.
@@ -155,7 +157,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The creation-time settings (`ios.configuration`) and the configure hooks go first and the bridge after them,
     // so nothing they set displaces the content controller the bridge is installed in.
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
-    MinimalWebViewHooks.configure.forEach { $0(configuration, self) }
+    for (name, hook) in MinimalWebViewHooks.configure where options[name] != nil { hook(configuration, hookContext(name)) }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
@@ -178,7 +180,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
     self.webView = webView
     cookies.didCreate(webView)
-    detachers = MinimalWebViewHooks.attach.compactMap { $0(webView, self) }
+    detachers = MinimalWebViewHooks.attach.compactMap { name, hook in
+      options[name] != nil ? hook(webView, hookContext(name)) : nil
+    }
   }
 
   /// The bridge's page client first, then the app's scripts in order. Changes take effect from the next navigation.
@@ -199,6 +203,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
+    hookContexts = [:]
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
     failPendingAsks()
@@ -418,9 +423,16 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 private let maxCrashesPerWindow = 3
 private let crashWindow: TimeInterval = 60
 
-/// What the hooks see of this view. The delegate lists live on the proxy; WebKit reads what a delegate responds to
-/// when it is assigned, so each change re-assigns it.
+/// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
+/// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
 extension MinimalWebView: WebViewContext {
+  func hookContext(_ name: String) -> HookContext {
+    if let context = hookContexts[name] { return context }
+    let context = HookContext(name, self)
+    hookContexts[name] = context
+    return context
+  }
+
   var navigationDelegates: [WKNavigationDelegate] {
     get { proxy.navigationDelegates }
     set {

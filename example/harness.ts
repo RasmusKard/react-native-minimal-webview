@@ -55,7 +55,7 @@ export type Harness = {
     downloadFailures: DownloadFailure[];
     fullscreen: boolean[];
     pageCounts: { url: string; count: number }[];
-    /** The names of the sample hook's other events (a forwarded delegate callback). */
+    /** The names of the hooks' other events. */
     hookEvents: string[];
     /** Whether the example's renderError screen is mounted. */
     overlay: { error: boolean };
@@ -1864,8 +1864,7 @@ async function sampleExtension(h: Harness) {
     asks++;
     return null;
   });
-  h.setProps({ nativeOptions: { pageCounter: true, hookAuth: true } });
-  h.remount();
+  h.setProps({ nativeOptions: { pageCounter: true, hookAuth: true } }); // recreates the WebView
   await sleep(500);
   await waitFor(h, idle, 10000);
   await openPage(h, `${h.pages}/auth?hook=1&t=${Date.now()}`);
@@ -1878,8 +1877,18 @@ async function sampleExtension(h: Harness) {
     { auth, asks }
   );
   h.setAuth(undefined);
+  // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
+  h.setProps({ nativeOptions: { pageCounter: true, hookDialogs: true } });
+  await sleep(500);
+  await waitFor(h, idle, 10000);
+  h.events.hookEvents.length = 0;
+  const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
+  r.check(
+    'its UI delegate takes over a dialog the core implements (alert), with no dialog shown',
+    after === 'after' && h.events.hookEvents.includes('hookDialogs.alert'),
+    { after, hookEvents: h.events.hookEvents }
+  );
   h.setProps({});
-  h.remount();
   await sleep(500);
   await waitFor(h, idle, 10000);
   if (Platform.OS === 'ios') {

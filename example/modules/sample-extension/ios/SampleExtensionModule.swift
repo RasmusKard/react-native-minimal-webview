@@ -7,13 +7,18 @@ public class SampleExtensionModule: Module {
     Name("SampleExtension")
     OnCreate {
       // A creation-time setting: WebKit reads data detectors only from the configuration.
-      MinimalWebViewHooks.configure.append { configuration, context in
-        if context.options["pageCounter"] != nil { configuration.dataDetectorTypes = .phoneNumber }
+      MinimalWebViewHooks.configure["pageCounter"] = { configuration, _ in configuration.dataDetectorTypes = .phoneNumber }
+      MinimalWebViewHooks.attach["pageCounter"] = { _, context in
+        context.navigationDelegates.append(PageCounter(context: context))
+        return nil
       }
-      MinimalWebViewHooks.attach.append { _, context in
-        if context.options["pageCounter"] != nil { context.navigationDelegates.append(PageCounter(context: context)) }
-        // A decision callback the core implements: this delegate takes it over, and the app's prop is not asked.
-        if context.options["hookAuth"] != nil { context.navigationDelegates.append(HookAuth()) }
+      // Decision callbacks the core implements: these delegates take them over, and the app's props are not asked.
+      MinimalWebViewHooks.attach["hookAuth"] = { _, context in
+        context.navigationDelegates.append(HookAuth())
+        return nil
+      }
+      MinimalWebViewHooks.attach["hookDialogs"] = { _, context in
+        context.uiDelegates.append(HookDialogs(context: context))
         return nil
       }
     }
@@ -35,6 +40,25 @@ private final class HookAuth: NSObject, WKNavigationDelegate {
   }
 }
 
+/// Answers every alert itself and reports it, instead of the core's dialog.
+private final class HookDialogs: NSObject, WKUIDelegate {
+  private weak var context: WebViewContext?
+
+  init(context: WebViewContext) {
+    self.context = context
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    runJavaScriptAlertPanelWithMessage message: String,
+    initiatedByFrame frame: WKFrameInfo,
+    completionHandler: @escaping @MainActor () -> Void
+  ) {
+    context?.emit("alert", ["message": message])
+    completionHandler()
+  }
+}
+
 /// Counts page loads through two delegate callbacks: `didFinish`, which the core implements and fans out, and
 /// `didReceiveServerRedirect`, which it doesn't and forwards.
 private final class PageCounter: NSObject, WKNavigationDelegate {
@@ -48,10 +72,10 @@ private final class PageCounter: NSObject, WKNavigationDelegate {
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     count += 1
     webView.evaluateJavaScript("window.__pageCount = \(count)")
-    context?.emit("pageCounter.pageLoaded", ["url": webView.url?.absoluteString ?? "", "count": count])
+    context?.emit("pageLoaded", ["url": webView.url?.absoluteString ?? "", "count": count])
   }
 
   func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
-    context?.emit("pageCounter.redirect", ["url": webView.url?.absoluteString ?? ""])
+    context?.emit("redirect", ["url": webView.url?.absoluteString ?? ""])
   }
 }

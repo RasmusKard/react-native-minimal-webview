@@ -115,8 +115,8 @@ export default function App() {
           sharedCookies
           nativeOptions={{ pageCounter: true }}
           onNativeEvent={(event) => {
-            if (!isPageCounterEvent(event)) return;
-            if (event.name === 'pageCounter.pageLoaded') events.pageCounts.push(event.payload);
+            if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
+              events.pageCounts.push(event.payload);
             else events.hookEvents.push(event.name);
           }}
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
