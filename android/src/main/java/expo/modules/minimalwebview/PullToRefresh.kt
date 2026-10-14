@@ -1,47 +1,43 @@
-package expo.modules.minimalwebview.extensions
+package expo.modules.minimalwebview
 
 import android.content.Context
 import android.view.MotionEvent
 import android.view.View
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import expo.modules.minimalwebview.ExtensionHost
-import expo.modules.minimalwebview.WebViewExtension
 
 /**
- * Pull down at the top of the page to reload. Built only on the extension interface. WebView sends no nested-scroll
- * events, so it asks the WebView whether the document can scroll up, and on touch-down asks the page whether the
- * element under the finger is inside an inner scroller (overflow: auto) that is already scrolled.
+ * Pull down at the top of the page to reload (the `pullToRefresh` prop): a SwipeRefreshLayout around the WebView.
+ * WebView sends no nested-scroll events, so it asks the WebView whether the document can scroll up, and on touch-down
+ * asks the page whether the element under the finger is inside an inner scroller (overflow: auto) that is already
+ * scrolled.
  */
-class PullToRefresh : WebViewExtension {
-  private lateinit var host: ExtensionHost
+internal class PullToRefresh(private val owner: MinimalWebView) {
   private var layout: SwipeRefreshLayout? = null
   // The page's answer for the current touch; null while it is pending, which holds the pull off. The down event itself
   // must see false: SwipeRefreshLayout only tracks a gesture whose down event it accepted.
   private var innerScrolled: Boolean? = false
   private var touches = 0
 
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
-    this.host = host
-  }
-
-  override fun wrap(content: View): View = Layout(content.context).apply {
+  /** A layout that holds [content] (the WebView). */
+  fun wrap(content: View): View = Layout(content.context).apply {
     addView(content)
-    setOnRefreshListener { host.webView.reload() }
-    setOnChildScrollUpCallback { _, _ -> host.webView.canScrollVertically(-1) || innerScrolled != false }
+    setOnRefreshListener { owner.webView.reload() }
+    setOnChildScrollUpCallback { _, _ -> owner.webView.canScrollVertically(-1) || innerScrolled != false }
     layout = this
   }
 
   private fun checkInnerScroller(x: Float, y: Float) {
     val touch = ++touches
-    val density = host.webView.resources.displayMetrics.density
-    host.webView.evaluateJavascript("($INNER_SCROLLED)(${x / density}, ${y / density})") { result ->
+    val density = owner.webView.resources.displayMetrics.density
+    owner.webView.evaluateJavascript("($INNER_SCROLLED)(${x / density}, ${y / density})") { result ->
       if (touch == touches) innerScrolled = result == "true"
     }
     // A busy page answers late: don't hold the pull off for longer than this.
-    host.webView.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
+    owner.webView.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
   }
 
-  override fun onPageFinished(url: String) {
+  /** A load ended: the spinner stops, or it would ignore the next pull. */
+  fun pageFinished() {
     layout?.isRefreshing = false
     innerScrolled = false
   }
@@ -51,7 +47,7 @@ class PullToRefresh : WebViewExtension {
       if (event.actionMasked != MotionEvent.ACTION_DOWN) return super.onInterceptTouchEvent(event)
       innerScrolled = false
       val intercepted = super.onInterceptTouchEvent(event)
-      if (host.webView.canScrollVertically(-1)) {
+      if (owner.webView.canScrollVertically(-1)) {
         // A scrolled document already ruled this gesture out, whatever the page says: don't ask it. Dropping the
         // count makes a late answer or timeout from an earlier touch a no-op.
         touches++

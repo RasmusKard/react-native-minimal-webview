@@ -2,6 +2,6 @@
   "name": "sample-extension",
   "version": "0.0.1",
   "private": true,
-  "description": "An out-of-package minimal-rn-webview extension: counts page loads and stamps each page with the count.",
+  "description": "An out-of-package minimal-rn-webview hook: counts page loads and stamps each page with the count.",
   "main": "src/index.ts"
 }

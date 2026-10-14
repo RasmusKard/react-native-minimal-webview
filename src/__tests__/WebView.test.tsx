@@ -6,24 +6,30 @@ import { WebView, createWebViewRef, useWebViewState } from '../WebView';
 import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 
 const mockAnswer = jest.fn();
-const mockGoBack = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer`, `goBack`, `evaluate` and `getUrl` methods.
+const mockNavigate = jest.fn();
+const mockMount = jest.fn();
+// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `getUrl` and `native`
+// methods; `native` echoes its request as JSON.
 jest.mock('expo', () => {
-  const { createElement, useImperativeHandle } =
+  const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
   return {
     requireNativeView:
       () =>
       ({ ref, ...props }: { ref: unknown }) => {
+        useEffect(() => {
+          mockMount();
+        }, []);
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
-          goBack: mockGoBack,
+          navigate: mockNavigate,
           evaluate: async () => '{"a":1}',
           getUrl: async () => 'https://example.com/native',
+          native: async (request: unknown) => JSON.stringify(request),
         }));
         return createElement('MinimalWebView', props);
       },
-    requireNativeModule: () => ({}),
+    requireNativeModule: () => ({ defaultUserAgent: 'Mozilla/5.0 (Android)' }),
   };
 });
 
@@ -114,52 +120,111 @@ describe('errors', () => {
   });
 });
 
-describe('extensions and bridge', () => {
-  it('are fixed at mount: a change warns once and native keeps the first specs', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+describe('nativeOptions and bridge', () => {
+  it('recreate the native view when they change, and keep it otherwise', async () => {
     const root = createRoot();
     const show = (mode: 'a' | 'b') =>
       act(async () =>
         root.render(
-          <WebView
-            source={{ uri: 'https://example.com' }}
-            extensions={[{ native: { name: 'sample', config: { mode } } }]}
-          />
+          <WebView source={{ uri: 'https://example.com' }} nativeOptions={{ sample: { mode } }} />
         )
       );
+    mockMount.mockClear();
     await show('a');
     await show('a');
-    expect(warn).not.toHaveBeenCalled();
+    expect(mockMount).toHaveBeenCalledTimes(1);
     await show('b');
-    await show('a');
-    await show('b');
-    expect(warn).toHaveBeenCalledTimes(1);
+    expect(mockMount).toHaveBeenCalledTimes(2);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.extensions).toEqual([{ name: 'sample', config: { mode: 'a' }, handles: [] }]);
-    warn.mockRestore();
+    expect(native?.nativeOptions).toEqual({ sample: { mode: 'b' } });
   });
 });
 
-describe('creation settings', () => {
-  it('are fixed at mount: a change warns once and native keeps the first values', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+describe('platform settings', () => {
+  const settingsOf = async (props: Partial<WebViewProps>) =>
+    JSON.parse((await render(props)).native?.settings as string) as Record<
+      string,
+      Record<string, unknown>
+    >;
+
+  it('are the defaults alone without props (jest runs as iOS)', async () => {
+    expect(await settingsOf({})).toEqual({
+      configuration: { mediaTypesRequiringUserActionForPlayback: 3 },
+      preferences: { javaScriptCanOpenWindowsAutomatically: false },
+      webView: { customUserAgent: null, inspectable: true },
+    });
+  });
+
+  it('put the user agent props over the app keys, the app keys over the defaults, and keep the other roots', async () => {
+    const settings = await settingsOf({
+      userAgent: 'Agent/1',
+      applicationNameForUserAgent: 'App/1',
+      ios: {
+        configuration: {
+          allowsInlineMediaPlayback: true,
+          mediaTypesRequiringUserActionForPlayback: 0,
+        },
+        preferences: { javaScriptCanOpenWindowsAutomatically: true },
+        webView: {
+          customUserAgent: 'Overridden/0',
+          inspectable: false,
+          allowsBackForwardNavigationGestures: true,
+        },
+        scrollView: { bounces: false },
+      },
+    });
+    expect(settings).toEqual({
+      configuration: {
+        mediaTypesRequiringUserActionForPlayback: 0,
+        allowsInlineMediaPlayback: true,
+        applicationNameForUserAgent: 'App/1',
+      },
+      preferences: { javaScriptCanOpenWindowsAutomatically: true },
+      webView: {
+        customUserAgent: 'Agent/1',
+        inspectable: false,
+        allowsBackForwardNavigationGestures: true,
+      },
+      scrollView: { bounces: false },
+    });
+  });
+
+  it('recreate the native view for a changed app name, with the new settings', async () => {
     const root = createRoot();
-    const show = (applicationNameForUserAgent: string) =>
+    const show = (name: string) =>
       act(async () =>
         root.render(
-          <WebView
-            source={{ uri: 'https://example.com' }}
-            applicationNameForUserAgent={applicationNameForUserAgent}
-          />
+          <WebView source={{ uri: 'https://example.com' }} applicationNameForUserAgent={name} />
         )
       );
+    mockMount.mockClear();
     await show('App/1');
-    expect(warn).not.toHaveBeenCalled();
     await show('App/2');
-    await show('App/3');
-    expect(warn).toHaveBeenCalledTimes(1);
-    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.applicationNameForUserAgent).toBe('App/1');
+    expect(mockMount).toHaveBeenCalledTimes(2);
+    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
+      settings: string;
+    };
+    const settings = JSON.parse(native.settings) as { configuration: Record<string, unknown> };
+    expect(settings.configuration.applicationNameForUserAgent).toBe('App/2');
+  });
+
+  it('warn for each key native rejected', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = createRoot();
+    await act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} />));
+    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
+      onNativeEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+    };
+    await act(() =>
+      native.onNativeEvent({
+        nativeEvent: {
+          name: 'core.settingsRejected',
+          payload: { rejected: [{ key: 'scrollView.nope', reason: 'no such property' }] },
+        },
+      })
+    );
+    expect(warn).toHaveBeenCalledWith('[minimal-rn-webview] ios.scrollView.nope: no such property');
+    expect(mockAnswer).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 });
@@ -175,10 +240,10 @@ describe('page requests', () => {
     const native = () =>
       root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
         requestHandlers: string[];
-        onExtension: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+        onNativeEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
       };
-    const fire: Fire = (event, payload, askId) =>
-      act(() => native().onExtension({ nativeEvent: { name: 'core', event, payload, askId } }));
+    const fire: Fire = (name, payload, askId) =>
+      act(() => native().onNativeEvent({ nativeEvent: { name, payload, askId } }));
     return { show, native, fire };
   }
 
@@ -201,13 +266,13 @@ describe('page requests', () => {
     const onFullscreenChange = jest.fn();
     const onDownload = jest.fn();
     const { fire } = await renderRequests({ onFileRequest, onFullscreenChange, onDownload });
-    await fire('fileRequest', { accept: [], multiple: false, capture: false }, 1);
+    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 1);
     expect(onFileRequest).toHaveBeenCalledWith({ accept: [], multiple: false, capture: false });
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
-    await fire('fullscreenChange', { active: true });
+    await fire('core.fullscreenChange', { active: true });
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true });
     const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
-    await fire('download', failure);
+    await fire('core.download', failure);
     expect(onDownload).toHaveBeenCalledWith(failure);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
@@ -219,37 +284,54 @@ describe('page requests', () => {
       .mockResolvedValueOnce('allow')
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('no'));
-    const { fire, native } = await renderRequests({ onNavigationRequest, onOpenExternal: () => {} });
+    const { fire, native } = await renderRequests({
+      onNavigationRequest,
+      onOpenExternal: () => {},
+    });
     expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
-    const request = { url: 'https://a.example', mainFrame: true, newWindow: false, userInitiated: true };
-    await fire('navigationRequest', request, 1);
+    const request = {
+      url: 'https://a.example',
+      mainFrame: true,
+      newWindow: false,
+      userInitiated: true,
+    };
+    await fire('core.navigationRequest', request, 1);
     expect(onNavigationRequest).toHaveBeenCalledWith(request);
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
-    await fire('navigationRequest', request, 2);
+    await fire('core.navigationRequest', request, 2);
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
-    await fire('navigationRequest', request, 3);
+    await fire('core.navigationRequest', request, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: 'block' });
     error.mockRestore();
   });
 
-  it('answers null when the prop is gone or throws, and leaves extensions to their own handlers', async () => {
+  it('answers null when the prop is gone or throws, and routes other names to onNativeEvent', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const authRequest = jest.fn();
+    const onNativeEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
     const { fire } = await renderRequests({
       onPermissionRequest: () => {
         throw new Error('no');
       },
-      extensions: [{ native: { name: 'other' }, on: { authRequest } }],
+      onNativeEvent,
     });
-    await fire('permissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2);
+    await fire(
+      'core.permissionRequest',
+      { origin: 'https://example.com', resources: ['camera'] },
+      2
+    );
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[minimal-rn-webview] onPermissionRequest failed',
       expect.any(Error)
     );
-    await fire('httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
+    await fire('core.httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    expect(authRequest).not.toHaveBeenCalled();
+    expect(onNativeEvent).not.toHaveBeenCalled();
+    await fire('pageCounter.pick', { a: 1 }, 4);
+    expect(onNativeEvent).toHaveBeenCalledWith({ name: 'pageCounter.pick', payload: { a: 1 } });
+    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pageCounter.pick!' });
+    await fire('pageCounter.note', { b: 2 });
+    expect(mockAnswer).toHaveBeenCalledTimes(3);
     error.mockRestore();
   });
 });
@@ -278,7 +360,8 @@ describe('navigation state across remounts', () => {
     ref.goBack();
     expect(await ref.evaluate('1')).toBeUndefined();
     expect(await ref.getUrl()).toBe('');
-    expect(mockGoBack).not.toHaveBeenCalled();
+    expect(await ref.get('scrollView.bounces')).toBeUndefined();
+    expect(mockNavigate).not.toHaveBeenCalled();
 
     const root = createRoot();
     await act(async () =>
@@ -286,9 +369,11 @@ describe('navigation state across remounts', () => {
     );
     expect(ref.current).not.toBeNull();
     ref.goBack();
-    expect(mockGoBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith('back');
     expect(await ref.evaluate('1')).toEqual({ a: 1 });
     expect(await ref.getUrl()).toBe('https://example.com/native');
+    expect(await ref.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
+    expect(await ref.call('clearCache', [true])).toEqual({ call: 'clearCache', args: '[true]' });
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
   });

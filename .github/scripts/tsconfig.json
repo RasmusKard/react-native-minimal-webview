@@ -1,0 +1,13 @@
+{
+  "// ": "For editors and agent-guard only: Node types for the scripts here. Node runs the .mts as is; nothing runs tsc on them.",
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "nodenext",
+    "target": "es2023",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["*.mjs", "*.mts"]
+}

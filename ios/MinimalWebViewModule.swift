@@ -5,42 +5,61 @@ public class MinimalWebViewModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebView")
 
-    OnCreate {
-      WebViewExtensions.register("pullToRefresh") { PullToRefresh() }
-      WebViewExtensions.register("sharedCookies") { SharedCookies() }
-    }
-
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge", "onExtension", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onNativeEvent", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
-      Prop("extensions") { (view: MinimalWebView, extensions: [ExtensionSpec]?) in view.extensions = extensions ?? [] }
-      Prop("userAgent") { (view: MinimalWebView, value: String?) in view.userAgent = value }
-      Prop("applicationNameForUserAgent") { (view: MinimalWebView, value: String?) in view.applicationNameForUserAgent = value }
-      Prop("mediaPlaybackRequiresUserAction") { (view: MinimalWebView, value: Bool?) in view.mediaPlaybackRequiresUserAction = value ?? true }
-      Prop("allowsInlineMediaPlayback") { (view: MinimalWebView, value: Bool?) in view.allowsInlineMediaPlayback = value ?? false }
-      Prop("scrollEnabled") { (view: MinimalWebView, value: Bool?) in view.scrollEnabled = value ?? true }
-      Prop("bounces") { (view: MinimalWebView, value: Bool?) in view.bounces = value ?? true }
-      Prop("showsScrollIndicators") { (view: MinimalWebView, value: Bool?) in view.showsScrollIndicators = value ?? true }
-      Prop("javaScriptCanOpenWindowsAutomatically") { (view: MinimalWebView, value: Bool?) in
-        view.javaScriptCanOpenWindowsAutomatically = value ?? false
+      Prop("nativeOptions") { (view: MinimalWebView, options: [String: Any]?) in view.options = options ?? [:] }
+      // JSON, so a null (reset this key) survives: the dictionary conversion drops nulls.
+      Prop("settings") { (view: MinimalWebView, json: String?) in
+        let data = json?.data(using: .utf8) ?? Data()
+        view.settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
       }
+      Prop("pullToRefresh") { (view: MinimalWebView, value: Bool?) in view.pullToRefresh = value ?? false }
+      Prop("sharedCookies") { (view: MinimalWebView, value: Bool?) in view.sharedCookies = value ?? false }
       Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
       Prop("injectedScripts") { (view: MinimalWebView, value: [InjectedScript]?) in view.injectedScripts = value ?? [] }
       Prop("requestHandlers") { (view: MinimalWebView, value: [String]?) in view.requestHandlers = Set(value ?? []) }
-      Prop("webviewDebuggingEnabled") { (view: MinimalWebView, value: Bool?) in view.webviewDebuggingEnabled = value ?? false }
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
-      AsyncFunction("goBack") { (view: MinimalWebView) in view.webView?.goBack() }
-      AsyncFunction("goForward") { (view: MinimalWebView) in view.webView?.goForward() }
-      AsyncFunction("reload") { (view: MinimalWebView) in view.reload() }
-      AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
+      AsyncFunction("navigate") { (view: MinimalWebView, action: String) in
+        switch action {
+        case "back": view.webView?.goBack()
+        case "forward": view.webView?.goForward()
+        case "reload": view.reload()
+        case "stop": view.webView?.stopLoading()
+        default: break
+        }
+      }
+      // `{ get: 'scrollView.bounces' }` reads a property; `{ call: 'webView.selector:', args, completion }` calls a
+      // method (README: Platform settings). Both resolve with the JSON of the result. `args` is a JSON string so a null
+      // argument survives the conversion.
+      AsyncFunction("native") { (view: MinimalWebView, request: [String: Any], promise: Promise) in
+        guard let webView = view.webView else { return promise.reject("ERR_NATIVE", "No WebView") }
+        do {
+          if let get = request["get"] as? String {
+            promise.resolve(try view.platformSettings.get(get, webView: webView))
+          } else if let call = request["call"] as? String {
+            let data = (request["args"] as? String)?.data(using: .utf8) ?? Data()
+            let args = (try? JSONSerialization.jsonObject(with: data)) as? [Any] ?? []
+            try view.platformSettings.call(call, args: args, completion: request["completion"] as? String, webView: webView) { json, error in
+              if let error { promise.reject("ERR_NATIVE", error) } else { promise.resolve(json) }
+            }
+          } else {
+            throw PlatformError("a request needs `get` or `call`")
+          }
+        } catch let error as PlatformError {
+          promise.reject("ERR_NATIVE", error.message)
+        } catch {
+          promise.reject("ERR_NATIVE", error.localizedDescription)
+        }
+      }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
-      // JS's answer to an `ask` (navigation or extension).
+      // JS's answer to an `ask` (a page request, a navigation request or a hook's).
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
         view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
       }
@@ -82,8 +101,3 @@ enum InjectionTime: String, Enumerable {
   case end
 }
 
-struct ExtensionSpec: Record {
-  @Field var name: String? = nil
-  @Field var config: [String: Any]? = nil
-  @Field var handles: [String]? = nil
-}
