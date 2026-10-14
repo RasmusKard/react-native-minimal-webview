@@ -473,7 +473,9 @@ MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             //
   `shouldOverrideUrlLoading`, HTTP auth, SSL errors, permissions, geolocation, fullscreen, a new window and the file
   chooser. An observation callback the core implements reaches the core first, then every one of yours. So a client
   that overrides `shouldOverrideUrlLoading` switches the navigation rules off for that WebView, and one that overrides
-  `onPageFinished` is just told. Android's `shouldInterceptRequest` runs on a background thread, as always.
+  `onPageFinished` is just told. Android's `shouldInterceptRequest` runs on a background thread, as always. A client may extend `WebViewClientCompat`:
+  overriding its `onReceivedError`, `onSafeBrowsingHit` or `shouldOverrideUrlLoading(WebView, String)` variant counts as
+  overriding the platform callback that forwards to it.
 - **Events.** `context.emit(name, payload)` sends `onNativeEvent({ name: '<hook>.<name>', payload })`: the hook's key
   is the prefix, so names never collide with the package's (`core.`) or another hook's. `context.ask(name, payload) { answer in … }`
   waits for the handler's return value (a promise is awaited; a throw or no handler answers null).
