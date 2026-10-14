@@ -31,6 +31,9 @@ const IOS_ROOTS = {
   scrollView: 'UIScrollView',
 };
 const ANDROID_CLASSES = ['WebSettings', 'WebView', 'CookieManager'];
+/** One `<class>` block of api-versions.xml. */
+const classBlock = (api: string, name: string) =>
+  api.match(new RegExp(`\t<class name="${name}" [^]*?</class>\n`))?.[0] ?? '';
 const ANDROIDX_API =
   'https://raw.githubusercontent.com/androidx/androidx/androidx-main/webkit/webkit/api/current.txt';
 
@@ -71,12 +74,18 @@ async function importInputs() {
   const platforms = readdirSync(`${home}/platforms`).filter((d) => d.startsWith('android-'));
   const platform = `${home}/platforms/${platforms.sort((a, b) => parseFloat(a.slice(8)) - parseFloat(b.slice(8))).at(-1)}`;
   const api = readFileSync(`${platform}/data/api-versions.xml`, 'utf8');
-  const classes = ANDROID_CLASSES.map(
-    (c) => api.match(new RegExp(`\t<class name="android/webkit/${c}" [^]*?</class>\n`))?.[0]
-  );
+  const classes = [
+    ...ANDROID_CLASSES.map((c) => classBlock(api, `android/webkit/${c}`)),
+    // Of View, only the scroll setters WebView inherits (overScrollMode, the scroll bars, nested scrolling): its other
+    // hundred setters (alpha, visibility, translation) are React Native's business.
+    classBlock(api, 'android/view/View')
+      .split('\n')
+      .filter((line) => !line.startsWith('\t\t') || /^\t\t<method name="set\w*scroll/i.test(line))
+      .join('\n'),
+  ];
   writeFileSync(
     new URL('android-webkit-api.xml', inputs),
-    `<!-- Extract of ${platform.slice(home.length)}/data/api-versions.xml -->\n${classes.join('')}`
+    `<!-- Extract of ${platform.slice(home.length)}/data/api-versions.xml; of View, only its scroll setters -->\n${classes.join('')}`
   );
   const constants = execFileSync('javap', [
     '-constants',
@@ -310,10 +319,9 @@ const JAVA_TYPES: Record<string, string> = {
 };
 const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase());
 
-/** `set<Key>(<leading><simple>)V` methods of an android.webkit class from api-versions.xml: key -> TypeScript member. */
+/** `set<Key>(<leading><simple>)V` methods of a class (`android/webkit/WebView`) from api-versions.xml: key -> TypeScript member. */
 function androidKeys(xml: string, cls: string, leading = '', text = '') {
-  const block =
-    xml.match(new RegExp(`<class name="android/webkit/${cls}"[^]*?</class>`))?.[0] ?? '';
+  const block = classBlock(xml, cls);
   const pattern = new RegExp(
     `<method name="set(\\w+)\\(${leading}(Z|I|J|F|D|Ljava/lang/String;)\\)V"([^/]*)/>`,
     'g'
@@ -397,18 +405,24 @@ export type IOSSettingKeys = ${object(
 
 /**
  * The Android settings keys by root: the one-argument \`WebSettings\`, \`WebView\` and \`CookieManager\` setters, then
- * \`WebSettingsCompat\`'s and \`WebViewCompat\`'s statics. \`@since\` is the API level. A key a newer SDK or
- * androidx.webkit adds works too: \`AndroidSettings\` takes any key.
+ * \`WebSettingsCompat\`'s and \`WebViewCompat\`'s statics, then the scroll setters \`WebView\` inherits from \`View\`.
+ * \`@since\` is the API level. A key a newer SDK or androidx.webkit adds works too: \`AndroidSettings\` takes any key.
  */
 export type AndroidSettingKeys = ${object({
     '/** `WebSettings`, then `WebSettingsCompat` */\nsettings': `{\n${members(
-      androidKeys(xml, 'WebSettings'),
+      androidKeys(xml, 'android/webkit/WebSettings'),
       androidxKeys(androidx, 'WebSettingsCompat', 'WebSettings')
     )}\n}`,
-    '/** `WebView`, then `WebViewCompat`, then `CookieManager` */\nwebView': `{\n${members(
-      androidKeys(xml, 'WebView'),
+    "/** `WebView`, then `WebViewCompat`, then `CookieManager`, then `View`'s scroll setters */\nwebView": `{\n${members(
+      androidKeys(xml, 'android/webkit/WebView'),
       androidxKeys(androidx, 'WebViewCompat', 'WebView'),
-      androidKeys(xml, 'CookieManager', 'Landroid/webkit/WebView;', '`CookieManager`')
+      androidKeys(
+        xml,
+        'android/webkit/CookieManager',
+        'Landroid/webkit/WebView;',
+        '`CookieManager`'
+      ),
+      androidKeys(xml, 'android/view/View', '', '`View`')
     )}\n}`,
   })};
 

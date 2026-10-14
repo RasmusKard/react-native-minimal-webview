@@ -171,8 +171,8 @@ export type IOSSettingKeys = {
 
 /**
  * The Android settings keys by root: the one-argument `WebSettings`, `WebView` and `CookieManager` setters, then
- * `WebSettingsCompat`'s and `WebViewCompat`'s statics. `@since` is the API level. A key a newer SDK or
- * androidx.webkit adds works too: `AndroidSettings` takes any key.
+ * `WebSettingsCompat`'s and `WebViewCompat`'s statics, then the scroll setters `WebView` inherits from `View`.
+ * `@since` is the API level. A key a newer SDK or androidx.webkit adds works too: `AndroidSettings` takes any key.
  */
 export type AndroidSettingKeys = {
   /** `WebSettings`, then `WebSettingsCompat` */
@@ -328,7 +328,7 @@ export type AndroidSettingKeys = {
     /** `WebSettingsCompat`, WebView feature `WEB_AUTHENTICATION` */
     webAuthenticationSupport?: number;
   };
-  /** `WebView`, then `WebViewCompat`, then `CookieManager` */
+  /** `WebView`, then `WebViewCompat`, then `CookieManager`, then `View`'s scroll setters */
   webView: {
     /** @since 28 */
     dataDirectorySuffix?: string;
@@ -362,6 +362,81 @@ export type AndroidSettingKeys = {
      * @since 21
      */
     acceptThirdPartyCookies?: boolean;
+    /**
+     * `View`
+     * @since 1
+     */
+    horizontalScrollBarEnabled?: boolean;
+    /**
+     * `View`
+     * @since 21
+     */
+    nestedScrollingEnabled?: boolean;
+    /**
+     * `View`
+     * @since 9
+     */
+    overScrollMode?: number;
+    /**
+     * `View`
+     * @since 16
+     */
+    scrollBarDefaultDelayBeforeFade?: number;
+    /**
+     * `View`
+     * @since 16
+     */
+    scrollBarFadeDuration?: number;
+    /**
+     * `View`
+     * @since 16
+     */
+    scrollBarSize?: number;
+    /**
+     * `View`
+     * @since 1
+     */
+    scrollBarStyle?: number;
+    /**
+     * `View`
+     * @since 31
+     */
+    scrollCaptureHint?: number;
+    /**
+     * `View`
+     * @since 3
+     */
+    scrollContainer?: boolean;
+    /**
+     * `View`
+     * @since 23
+     */
+    scrollIndicators?: number;
+    /**
+     * `View`
+     * @since 14
+     */
+    scrollX?: number;
+    /**
+     * `View`
+     * @since 14
+     */
+    scrollY?: number;
+    /**
+     * `View`
+     * @since 5
+     */
+    scrollbarFadingEnabled?: boolean;
+    /**
+     * `View`
+     * @since 1
+     */
+    verticalScrollBarEnabled?: boolean;
+    /**
+     * `View`
+     * @since 11
+     */
+    verticalScrollbarPosition?: number;
   };
 };
 
