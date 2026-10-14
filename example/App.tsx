@@ -50,6 +50,7 @@ export default function App() {
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
   const [driverRequest, setDriverRequest] = useState('');
+  const [error, setError] = useState<WebViewErrorEvent | null>(null);
   useEffect(() => {
     onDriverRequest(setDriverRequest);
   }, []);
@@ -104,42 +105,51 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Remountable>
-        <WebView
-          ref={ref}
-          source={source}
-          style={styles.webview}
-          navigationRules={rules}
-          bridge={bridge}
-          pullToRefresh
-          sharedCookies
-          nativeOptions={{ pageCounter: true }}
-          onNativeEvent={(event) => {
-            if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
-              events.pageCounts.push(event.payload);
-            else events.hookEvents.push(event.name);
-          }}
-          onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
-          onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
-          onFullscreenChange={({ active }) => events.fullscreen.push(active)}
-          onDownload={(result) =>
-            'uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result)
-          }
-          onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
-          onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
-          applicationNameForUserAgent="MinimalWebViewExample/1.0"
-          android={{ webView: { acceptThirdPartyCookies: true } }}
-          onError={(event) => events.errors.push(event)}
-          onHttpError={(event) => events.httpErrors.push(event)}
-          onProcessGone={(event) => events.gone.push(event)}
-          onNavigation={(event) => events.navigations.push(event)}
-          onLoadStart={() => events.loads.push('start')}
-          onLoad={() => events.loads.push('load')}
-          onLoadEnd={() => events.loads.push('end')}
-          renderError={(error) => <ErrorScreen error={error} onRetry={() => ref.reload()} />}
-          {...extraProps}
-        />
-      </Remountable>
+      {/* The README's error screen recipe: an overlay the app owns, cleared when the next load starts. */}
+      <View style={styles.webview}>
+        <Remountable>
+          <WebView
+            ref={ref}
+            source={source}
+            style={styles.webview}
+            navigationRules={rules}
+            bridge={bridge}
+            pullToRefresh
+            sharedCookies
+            nativeOptions={{ pageCounter: true }}
+            onNativeEvent={(event) => {
+              if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
+                events.pageCounts.push(event.payload);
+              else events.hookEvents.push(event.name);
+            }}
+            onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+            onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
+            onFullscreenChange={({ active }) => events.fullscreen.push(active)}
+            onDownload={(result) =>
+              'uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result)
+            }
+            onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
+            onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
+            applicationNameForUserAgent="MinimalWebViewExample/1.0"
+            android={{ webView: { acceptThirdPartyCookies: true } }}
+            onError={(event) => {
+              events.errors.push(event);
+              setError(event);
+            }}
+            onHttpError={(event) => events.httpErrors.push(event)}
+            onProcessGone={(event) => events.gone.push(event)}
+            onNavigation={(event) => events.navigations.push(event)}
+            onLoadStart={() => {
+              events.loads.push('start');
+              setError(null);
+            }}
+            onLoad={() => events.loads.push('load')}
+            onLoadEnd={() => events.loads.push('end')}
+            {...extraProps}
+          />
+        </Remountable>
+        {error ? <ErrorScreen error={error} onRetry={() => ref.reload()} /> : null}
+      </View>
       <Text testID="harness-request" style={styles.state}>
         {driverRequest}
       </Text>
@@ -158,7 +168,7 @@ export default function App() {
   );
 }
 
-/** The example's error screen; records whether it is mounted so the harness can check renderError. */
+/** The example's error screen; records whether it is mounted so the harness can check the recipe. */
 function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void }) {
   useEffect(() => {
     events.overlay.error = true;
@@ -167,7 +177,7 @@ function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void }) {
     };
   }, []);
   return (
-    <View style={styles.overlay}>
+    <View style={[StyleSheet.absoluteFill, styles.overlay]}>
       <Text>
         {props.error.kind} error {props.error.code}: {props.error.description}
       </Text>
@@ -177,7 +187,7 @@ function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fee' },
+  overlay: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fee' },
   container: { flex: 1, paddingTop: 50, backgroundColor: '#fff' },
   webview: { flex: 1 },
   state: { fontSize: 11, padding: 4 },

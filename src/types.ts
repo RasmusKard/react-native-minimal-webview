@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { BridgeErrorCode } from './bridge/protocol';
@@ -257,10 +256,6 @@ type OwnProps = {
     | { username: string; password: string }
     | null
     | Promise<{ username: string; password: string } | null>;
-  renderLoading?: () => ReactNode;
-  /** Shown for network and SSL failures. An HTTP error status keeps the site's own error page (onHttpError fires). */
-  renderError?: (error: WebViewErrorEvent) => ReactNode;
-
   onNavigation?: (event: NavigationEvent) => void;
   /** Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;
@@ -275,7 +270,7 @@ type OwnProps = {
 
 /**
  * Plus React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch events).
- * They go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set.
+ * They go to the native view.
  */
 export type WebViewProps = OwnProps & Omit<ViewProps, keyof OwnProps | 'children'>;
 

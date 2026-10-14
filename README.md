@@ -52,7 +52,6 @@ export function Browser() {
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
         { action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
       ]}
-      renderError={(error) => <OfflineScreen error={error} onRetry={() => ref.current?.reload()} />}
       style={{ flex: 1 }}
     />
   );
@@ -228,16 +227,35 @@ observe `scrollView.contentOffset` on iOS and `setOnScrollChangeListener` on And
 | `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload`, `onHttpAuthRequest` | See [Page requests](#page-requests). They can be added and removed at any time |
 | `nativeOptions`, `onNativeEvent` | What your [native hooks](#native-hooks) get, and what they send. `nativeOptions` is read when the WebView is created, like `bridge` |
-| `renderLoading`, `renderError` | Overlays that cover the WebView while loading, or after a main-frame network or SSL error until the next load. An HTTP error page (404, 503) is shown as the site sent it, and reported in `onHttpError` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled |
 | `onHttpError` | `{ url, statusCode, description }`: the main frame got an HTTP error status (400+), and the site's own error page shows |
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
-| `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the outermost view: the native view, or the container when `renderLoading` or `renderError` is set |
+| `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |
 
 **Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state), `get(key)` and `call(method, args?, options?)` (see [Platform settings](#platform-settings)).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects (Android code `navigated`, iOS `ERR_EVALUATE`) instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
+
+### Loading and error screens
+
+There is no `renderLoading` or `renderError`: the navigation state and `onError` give the same screens in a few
+lines, under your own layout.
+
+```tsx
+const { loading } = useWebViewState(ref);
+const [error, setError] = useState<WebViewErrorEvent | null>(null);
+<View style={{ flex: 1 }}>
+  <WebView ref={ref} source={source} onError={setError} onLoadStart={() => setError(null)} style={{ flex: 1 }} />
+  {error ? (
+    <OfflineScreen style={StyleSheet.absoluteFill} error={error} onRetry={() => ref.current?.reload()} />
+  ) : loading ? (
+    <ActivityIndicator style={StyleSheet.absoluteFill} />
+  ) : null}
+</View>
+```
+
+An HTTP error status (404, 503) is not a failed load: the site's own error page shows, and `onHttpError` fires.
 
 ## Platform settings
 

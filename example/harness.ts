@@ -57,7 +57,7 @@ export type Harness = {
     pageCounts: { url: string; count: number }[];
     /** The names of the hooks' other events. */
     hookEvents: string[];
-    /** Whether the example's renderError screen is mounted. */
+    /** Whether the example's error screen (the README recipe) is mounted. */
     overlay: { error: boolean };
   };
 };
@@ -569,7 +569,8 @@ async function ptr(h: Harness) {
   r.check('a pull inside a scrolled inner scroller does not reload', !(await pull('inner')));
 
   // A reload that fails must end the refresh, or the control stays refreshing and ignores the next pull.
-  h.setProps({ renderError: undefined });
+  // The example's error screen would cover the WebView and take the next pull: keep its onError out of the way.
+  h.setProps({ onError: (event) => h.events.errors.push(event) });
   const key = Date.now();
   const dropping = `${h.pages}/drop?key=${key}`;
   h.load(dropping);
@@ -1303,17 +1304,17 @@ async function settings(h: Harness) {
   r.done();
 }
 
-/** renderError covers the WebView after a main-frame failure and goes away on the next load. */
+/** The README's error screen recipe (the example's ErrorScreen): shown after a main-frame failure, gone on the next load. */
 async function overlays(h: Harness) {
   const r = reporter('overlays');
   clearEvents(h);
   h.load(`http://localhost:8099/nothing?t=${Date.now()}`);
   await waitFor(h, () => h.events.errors.length > 0, 10000);
   await sleep(800);
-  r.check('renderError is shown after a failure', h.events.overlay.error);
+  r.check('the error screen is shown after a failure', h.events.overlay.error);
   await openPage(h, `${h.pages}/?t=${Date.now()}`);
   await sleep(800);
-  r.check('renderError goes away on the next load', !h.events.overlay.error);
+  r.check('the error screen goes away on the next load', !h.events.overlay.error);
   r.done();
 }
 
@@ -1986,7 +1987,7 @@ async function network(h: Harness) {
     h.events.httpErrors.some((e) => e.statusCode === 404),
     h.events.httpErrors
   );
-  r.check('an HTTP 404 does not show renderError', !h.events.overlay.error);
+  r.check('an HTTP 404 does not show the error screen', !h.events.overlay.error);
 
   // Native requests (RN fetch) and the WebView share cookies: both directions.
   await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);

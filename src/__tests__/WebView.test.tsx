@@ -39,10 +39,7 @@ async function render(props: Partial<WebViewProps>) {
     root.render(<WebView source={{ uri: 'https://example.com' }} onLoad={() => {}} {...props} />)
   );
   const native = root.container.queryAll((node) => node.type === 'MinimalWebView');
-  const container = root.container.queryAll(
-    (node) => node.type === 'View' && node.props.testID === 'web'
-  );
-  return { native: native[0]?.props, container: container[0]?.props };
+  return { native: native[0]?.props };
 }
 
 const viewProps = { testID: 'web', accessibilityLabel: 'Checkout' };
@@ -52,16 +49,6 @@ describe('WebView', () => {
     const { native } = await render(viewProps);
     expect(native).toMatchObject(viewProps);
     expect(native).not.toHaveProperty('onLoad');
-  });
-
-  it('forwards them to the container instead when an overlay can cover the WebView', async () => {
-    const { native, container } = await render({
-      ...viewProps,
-      renderLoading: () => <Text>Loading</Text>,
-    });
-    expect(container).toMatchObject(viewProps);
-    expect(native).not.toHaveProperty('testID');
-    expect(container).not.toHaveProperty('renderLoading');
   });
 });
 
@@ -76,7 +63,6 @@ describe('errors', () => {
           source={{ uri: 'https://example.com' }}
           onError={onError}
           onHttpError={onHttpError}
-          renderError={() => <Text>failed</Text>}
         />
       )
     );
@@ -87,14 +73,11 @@ describe('errors', () => {
           { onError: (event: { nativeEvent: Record<string, unknown> }) => void } | undefined;
         props?.onError({ nativeEvent });
       });
-    const failedShown = () =>
-      root.container.queryAll((node) => node.type === 'Text' && node.props.children === 'failed')
-        .length > 0;
-    return { onError, onHttpError, fire, failedShown };
+    return { onError, onHttpError, fire };
   }
 
-  it('reports an HTTP status to onHttpError only, and keeps the site page', async () => {
-    const { onError, onHttpError, fire, failedShown } = await renderErrors();
+  it('reports an HTTP status to onHttpError only', async () => {
+    const { onError, onHttpError, fire } = await renderErrors();
     await fire({ kind: 'http', url: 'https://example.com/x', code: 404, description: 'Not Found' });
     expect(onHttpError).toHaveBeenCalledWith({
       url: 'https://example.com/x',
@@ -102,11 +85,10 @@ describe('errors', () => {
       description: 'Not Found',
     });
     expect(onError).not.toHaveBeenCalled();
-    expect(failedShown()).toBe(false);
   });
 
-  it('reports a failed load to onError only, and shows renderError', async () => {
-    const { onError, onHttpError, fire, failedShown } = await renderErrors();
+  it('reports a failed load to onError only', async () => {
+    const { onError, onHttpError, fire } = await renderErrors();
     const failure = {
       kind: 'network',
       url: 'https://example.com/',
@@ -116,7 +98,6 @@ describe('errors', () => {
     await fire(failure);
     expect(onError).toHaveBeenCalledWith(failure);
     expect(onHttpError).not.toHaveBeenCalled();
-    expect(failedShown()).toBe(true);
   });
 });
 
