@@ -866,8 +866,34 @@ async function crash(h: Harness) {
     'the bridge works after recovery',
     (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4
   );
+  // Android builds a new WebView on recovery: its settings must be applied again.
+  const scrollbar =
+    Platform.OS === 'ios'
+      ? 'scrollView.showsVerticalScrollIndicator'
+      : 'webView.verticalScrollBarEnabled';
+  const showScrollbar = (shown: boolean) =>
+    h.setProps(
+      Platform.OS === 'ios'
+        ? { ios: { scrollView: { showsVerticalScrollIndicator: shown } } }
+        : { android: { webView: { verticalScrollBarEnabled: shown } } }
+    );
+  showScrollbar(false);
+  await sleep(500);
+  r.check(
+    'a setting applies before a crash',
+    (await h.ref.get(scrollbar).catch(errorCode)) === false
+  );
+  await kill(2);
+  await sleep(1000);
+  r.check(
+    'the setting is still applied after recovery',
+    (await h.ref.get(scrollbar).catch(errorCode)) === false
+  );
+  showScrollbar(true);
+  await sleep(300);
+  h.setProps({});
 
-  for (const n of [2, 3]) {
+  for (const n of [3]) {
     await kill(n);
   }
   const fourth = await kill(4);
@@ -1010,6 +1036,165 @@ async function mountSettings(h: Harness) {
   h.setAsk(undefined);
   h.setProps({});
   await sleep(1500);
+  r.done();
+}
+
+/** `ios` / `android` settings by name: applied live, read back with `get`, rejected with a warning when wrong. */
+async function settings(h: Harness) {
+  const r = reporter('settings');
+  const warnings: string[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map(String).join(' '));
+    warn(...args);
+  };
+  const get = (key: string) => h.ref.get(key).catch(errorCode);
+  const warned = (text: string) => warnings.some((line) => line.includes(text));
+  try {
+    await openPage(h, `${h.pages}/?t=${Date.now()}`);
+    if (Platform.OS === 'ios') {
+      h.setProps({
+        ios: {
+          scrollView: {
+            bounces: false,
+            contentInsetAdjustmentBehavior: 2,
+            contentInset: { top: 5, left: 0, bottom: 0, right: 0 },
+            nope: 1,
+          },
+          webView: { allowsBackForwardNavigationGestures: true, _private: 1, URL: 'x' },
+          preferences: { minimumFontSize: 12 },
+          configuration: { allowsInlineMediaPlayback: true },
+        },
+      });
+      await sleep(500);
+      r.check(
+        'a BOOL applies',
+        (await get('scrollView.bounces')) === false,
+        await get('scrollView.bounces')
+      );
+      r.check(
+        'an enum applies by raw value',
+        (await get('scrollView.contentInsetAdjustmentBehavior')) === 2
+      );
+      const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
+      r.check(
+        'a struct applies and reads back',
+        inset?.top === 5 && inset.left === 0 && inset.bottom === 0 && inset.right === 0,
+        inset
+      );
+      r.check(
+        'a WKWebView property applies',
+        (await get('webView.allowsBackForwardNavigationGestures')) === true
+      );
+      r.check(
+        'a WKPreferences property applies',
+        (await get('preferences.minimumFontSize')) === 12
+      );
+      r.check(
+        'an unknown property warns',
+        warned('ios.scrollView.nope: no such property'),
+        warnings
+      );
+      r.check('a private property warns', warned('ios.webView._private: private'), warnings);
+      r.check('a read-only property warns', warned('ios.webView.URL: read-only'), warnings);
+      r.check(
+        'a configuration change while mounted warns',
+        warned('ios.configuration.allowsInlineMediaPlayback: read once'),
+        warnings
+      );
+      r.check(
+        'get rejects for an unknown property',
+        (await get('scrollView.nope')) === 'ERR_NATIVE'
+      );
+      r.check(
+        'call is unavailable on iOS',
+        (await h.ref.call('clearCache').catch(errorCode)) === 'unavailable'
+      );
+      h.setProps({ ios: { scrollView: { bounces: 'yes' as never } } });
+      await sleep(500);
+      r.check(
+        'a value of the wrong type warns',
+        warned('ios.scrollView.bounces:') && warned("can't take"),
+        warnings
+      );
+      r.check('and leaves the property alone', (await get('scrollView.bounces')) === false);
+      h.setProps({ ios: { configuration: { allowsInlineMediaPlayback: true } } });
+      h.remount();
+      await sleep(500);
+      await waitFor(h, idle, 10000);
+      r.check(
+        'a configuration key applies when the WebView is created',
+        (await get('configuration.allowsInlineMediaPlayback')) === true
+      );
+    } else {
+      h.setProps({
+        android: {
+          settings: { textZoom: 120, algorithmicDarkeningAllowed: true, nope: 1 },
+          webView: {
+            overScrollMode: 2,
+            verticalScrollBarEnabled: false,
+            _private: 1,
+            webViewClient: null,
+          },
+        },
+      });
+      await sleep(500);
+      r.check(
+        'a WebSettings setter applies',
+        (await get('settings.textZoom')) === 120,
+        await get('settings.textZoom')
+      );
+      r.check(
+        'a WebSettingsCompat setter applies',
+        (await get('settings.algorithmicDarkeningAllowed')) === true
+      );
+      r.check('a WebView setter applies', (await get('webView.overScrollMode')) === 2);
+      r.check('an is-getter reads back', (await get('webView.verticalScrollBarEnabled')) === false);
+      r.check(
+        'an unknown setter warns',
+        warned('android.settings.nope: no public setter'),
+        warnings
+      );
+      r.check(
+        'a private key warns',
+        warned('android.webView._private: not a public setter'),
+        warnings
+      );
+      r.check(
+        'a core-owned setter warns',
+        warned('android.webView.webViewClient: owned by the core'),
+        warnings
+      );
+      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'ERR_NATIVE');
+      r.check(
+        'call runs a WebView method',
+        (await h.ref.call('clearCache', true).catch(errorCode)) === null
+      );
+      r.check(
+        'call returns the result',
+        (await h.ref.call('getTitle').catch(errorCode)) === 'Test pages'
+      );
+      r.check(
+        'call rejects for a core-owned method',
+        (await h.ref.call('destroy').catch(errorCode)) === 'ERR_NATIVE'
+      );
+      h.setProps({ android: { settings: { textZoom: 'big' as never } } });
+      await sleep(500);
+      r.check(
+        'a value of the wrong type warns',
+        warned('android.settings.textZoom: no public setter takes a String'),
+        warnings
+      );
+      r.check('and leaves the setting alone', (await get('settings.textZoom')) === 120);
+    }
+  } finally {
+    console.warn = warn;
+    // A new WebView: the keys above are not reset by their absence.
+    h.setProps({});
+    h.remount();
+    await sleep(500);
+    await waitFor(h, idle, 10000);
+  }
   r.done();
 }
 
@@ -1727,6 +1912,7 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   dialogs,
   info,
   mountSettings,
+  settings,
   overlays,
   navigation,
   injection,

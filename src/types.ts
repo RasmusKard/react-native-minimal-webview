@@ -131,6 +131,41 @@ export type DownloadFailure = { filename: string; url: string | null; reason: st
 
 export type AuthRequest = { host: string; realm: string };
 
+/** What a platform setting can take: what its property or setter accepts. An object is an iOS struct (`{ top, left, bottom, right }`, `{ x, y }`, `{ width, height }`). */
+export type SettingValue = boolean | number | string | null | Record<string, number>;
+
+/**
+ * WebKit settings by Objective-C property name, applied with Key-Value Coding, so any public property works, including
+ * ones this package has never heard of: `{ scrollView: { bounces: false }, webView: { allowsBackForwardNavigationGestures: true } }`.
+ * A value must fit the property's type (enums and option sets by raw value; `websiteDataStore` takes `'default'` or
+ * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with `ref.get('scrollView.bounces')`.
+ */
+export type IOSSettings = {
+  /** `WKWebViewConfiguration`: read once, when the WKWebView is created. A later change warns; remount with a new `key`. */
+  configuration?: Record<string, SettingValue>;
+  /** `WKPreferences` (`configuration.preferences`), live. */
+  preferences?: Record<string, SettingValue>;
+  /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
+  webpagePreferences?: Record<string, SettingValue>;
+  /** The `WKWebView`, live. */
+  webView?: Record<string, SettingValue>;
+  /** Its `UIScrollView`, live. */
+  scrollView?: Record<string, SettingValue>;
+};
+
+/**
+ * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
+ * newer SDK or androidx.webkit adds: `{ settings: { textZoom: 120, algorithmicDarkeningAllowed: true }, webView: { overScrollMode: 2 } }`.
+ * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning.
+ * Read one back with `ref.get('settings.textZoom')`.
+ */
+export type AndroidSettings = {
+  /** `WebSettings` setters, then static `WebSettingsCompat` ones. */
+  settings?: Record<string, SettingValue>;
+  /** `WebView` setters (static ones too), then `WebViewCompat` ones, then `CookieManager`'s `acceptThirdPartyCookies`. */
+  webView?: Record<string, SettingValue>;
+};
+
 /** What an extension helper such as `pullToRefresh()` returns. */
 export type WebViewExtension = {
   /** The native extension to enable for this instance, by its registered name. */
@@ -148,9 +183,16 @@ export type ExtensionHandler = (payload: never) => unknown;
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
 type OwnProps = {
   source: WebViewSource;
-  /** Replaces the whole user agent. */
+  /** Platform settings by name; see {@link IOSSettings}. The cross-platform props below win over the same keys here. */
+  ios?: IOSSettings;
+  /** Platform settings by name; see {@link AndroidSettings}. The cross-platform props below win over the same keys here. */
+  android?: AndroidSettings;
+  /** Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). */
   userAgent?: string;
-  /** Appended to the default user agent. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
+  /**
+   * Appended to the default user agent (`ios.configuration.applicationNameForUserAgent`, which is fixed at mount:
+   * remount with a new `key` to change it; `android.settings.userAgentString`, live).
+   */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
@@ -162,27 +204,21 @@ type OwnProps = {
   onOpenExternal?: (url: string) => void;
   /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
   bridge?: Bridge;
-  /** Android only; WebKit blocks third-party cookies on iOS. */
-  thirdPartyCookiesEnabled?: boolean;
-  /** Default true. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
-  mediaPlaybackRequiresUserAction?: boolean;
   /**
-   * iOS only (Android always plays inline). Default false. Fixed at mount, like `bridge`: remount with a new `key` to
-   * change it.
+   * Default true (`ios.configuration.mediaTypesRequiringUserActionForPlayback`, fixed at mount: remount with a new
+   * `key` to change it; `android.settings.mediaPlaybackRequiresUserGesture`, live).
    */
-  allowsInlineMediaPlayback?: boolean;
-  /** iOS only. Default true. */
-  scrollEnabled?: boolean;
-  /** iOS only. Default true. */
-  bounces?: boolean;
-  showsScrollIndicators?: boolean;
+  mediaPlaybackRequiresUserAction?: boolean;
   /**
    * Lets a script open a window (`window.open`) without a user gesture. Default false: only a tap opens one. The
    * navigation rules still decide it (`newWindow: true`). Some flows need it, like an OAuth popup opened after an
-   * `await`.
+   * `await`. (`ios.preferences.javaScriptCanOpenWindowsAutomatically`, `android.settings.javaScriptCanOpenWindowsAutomatically`.)
    */
   javaScriptCanOpenWindowsAutomatically?: boolean;
-  /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
+  /**
+   * Default `__DEV__` (`ios.webView.inspectable`; `android.webView.webContentsDebuggingEnabled`, which is process-wide:
+   * the last WebView to set it wins).
+   */
   webviewDebuggingEnabled?: boolean;
   /**
    * Add-ons such as `pullToRefresh()`. Fixed at mount: a change is ignored with a warning; remount with a new `key` to
@@ -256,6 +292,17 @@ export type WebViewRef = {
   evaluate(script: string): Promise<unknown>;
   /** The committed `url`, as in the navigation state, read from native now. */
   getUrl(): Promise<string>;
+  /**
+   * A platform setting read by name, through JSON: `get('scrollView.bounces')` on iOS, `get('settings.textZoom')` on
+   * Android (the roots of {@link IOSSettings} and {@link AndroidSettings}). Rejects with `ERR_NATIVE` for one it can't read.
+   */
+  get(key: string): Promise<unknown>;
+  /**
+   * Android: calls a public `WebView` method (`call('clearCache', true)`), or a `WebViewCompat` one, and resolves with
+   * its result through JSON. The methods the core owns (loads, clients, `destroy`) reject with `ERR_NATIVE`. iOS rejects
+   * with `unavailable`: call WebKit from a native hook instead.
+   */
+  call(method: string, ...args: unknown[]): Promise<unknown>;
 };
 
 /** What `createWebViewRef()` returns: a `WebViewRef` that outlives the WebViews mounted with it. */

@@ -9,21 +9,15 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
 
-  // Props, applied together in applyProps(). The bridge, the extensions and the three creation settings are fixed at mount
-  // (JS never changes them): they are read once, when the WKWebView is created.
+  // Props, applied together in applyProps(). The bridge, the extensions and the `configuration` settings are fixed at
+  // mount: they are read once, when the WKWebView is created.
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
   var extensions: [ExtensionSpec] = []
-  var userAgent: String?
-  var applicationNameForUserAgent: String?
-  var mediaPlaybackRequiresUserAction = true
-  var allowsInlineMediaPlayback = false
-  var scrollEnabled = true
-  var bounces = true
-  var showsScrollIndicators = true
-  var javaScriptCanOpenWindowsAutomatically = false
-  var webviewDebuggingEnabled = false
+  /// The `ios` prop: WebKit properties by name, applied by PlatformSettings.
+  var settings: [String: Any] = [:]
+  let platformSettings = PlatformSettings()
   var navigationRules: [[String: Any]]?
   var injectedScripts: [InjectedScript] = []
   private var installedScripts: NSArray?
@@ -80,14 +74,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if installedScripts != injectedScripts.map({ $0.toDictionary() }) as NSArray {
       installScripts(webView.configuration.userContentController)
     }
-    webView.customUserAgent = userAgent
-    webView.scrollView.isScrollEnabled = scrollEnabled
-    webView.scrollView.bounces = bounces
-    webView.scrollView.showsVerticalScrollIndicator = showsScrollIndicators
-    webView.scrollView.showsHorizontalScrollIndicator = showsScrollIndicators
-    webView.isInspectable = webviewDebuggingEnabled
-    // Shared with the live WebView (the configuration getter copies, but keeps the same preferences object).
-    webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
+    report(platformSettings.apply(settings, webView: webView))
     // Records aren't Equatable: compare their dictionaries.
     guard let next = source, loadedSource != next.toDictionary() as NSDictionary else { return }
     loadedSource = next.toDictionary() as NSDictionary
@@ -123,6 +110,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
+  /// Settings keys that could not be applied: JS warns.
+  private func report(_ rejected: [[String: String]]) {
+    guard !rejected.isEmpty else { return }
+    onExtension(["name": "core", "event": "settingsRejected", "payload": ["rejected": rejected]])
+  }
+
   /// Loads a request the app started, not the page: it skips the navigation rules.
   func loadProgrammatic(_ request: URLRequest) {
     programmaticUrl = request.url
@@ -154,12 +147,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The WKWebView, from the first props. `source` loads from applyProps once the extensions are prepared.
   private func createWebView() {
     let configuration = WKWebViewConfiguration()
-    configuration.applicationNameForUserAgent = applicationNameForUserAgent
-    configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
-    configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback
-    // A tap's window.open and target=_blank reach createWebViewWith, as on Android; the navigation rules decide.
-    // Without a gesture only when the app opts in (javaScriptCanOpenWindowsAutomatically).
-    configuration.preferences.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
+    // The creation-time settings (`ios.configuration`) go first and the bridge after them, so nothing the app sets
+    // displaces the content controller the bridge is installed in.
+    report(platformSettings.apply(settings, webView: nil, configuration: configuration))
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }

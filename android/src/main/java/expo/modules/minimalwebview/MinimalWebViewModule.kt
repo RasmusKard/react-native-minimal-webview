@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
+import android.webkit.WebSettings
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.Promise
@@ -19,6 +20,8 @@ import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 import expo.modules.kotlin.types.Enumerable
 import expo.modules.minimalwebview.extensions.PullToRefresh
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.Serializable
 
 class MinimalWebViewModule : Module() {
@@ -66,6 +69,11 @@ class MinimalWebViewModule : Module() {
       CookieManager.getInstance().flush()
     }
 
+    // What `applicationNameForUserAgent` appends to: JS sets `settings.userAgentString` from it.
+    Constant("defaultUserAgent") {
+      WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
+    }
+
     // The WebView provider and the features this package uses (false: update Android System WebView).
     // Computed on first access and fixed after: a WebView update restarts the process.
     Constant("androidWebViewInfo") {
@@ -92,27 +100,38 @@ class MinimalWebViewModule : Module() {
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
       Prop("extensions") { view: MinimalWebView, extensions: List<ExtensionSpec>? -> view.extensions = extensions }
-      Prop("userAgent") { view: MinimalWebView, value: String? -> view.userAgent = value }
-      Prop("applicationNameForUserAgent") { view: MinimalWebView, value: String? -> view.applicationNameForUserAgent = value }
-      Prop("thirdPartyCookiesEnabled") { view: MinimalWebView, value: Boolean? -> view.thirdPartyCookiesEnabled = value ?: false }
-      Prop("mediaPlaybackRequiresUserAction") { view: MinimalWebView, value: Boolean? ->
-        view.mediaPlaybackRequiresUserAction = value ?: true
-      }
-      Prop("showsScrollIndicators") { view: MinimalWebView, value: Boolean? -> view.showsScrollIndicators = value ?: true }
-      Prop("javaScriptCanOpenWindowsAutomatically") { view: MinimalWebView, value: Boolean? ->
-        view.javaScriptCanOpenWindowsAutomatically = value ?: false
-      }
+      // JSON, so a null (reset this key) survives: the map conversion drops nulls on iOS, and this keeps both the same.
+      Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
       Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
       Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty().toSet() }
-      Prop("webviewDebuggingEnabled") { view: MinimalWebView, value: Boolean? -> view.webviewDebuggingEnabled = value ?: false }
 
       OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
 
-      AsyncFunction("goBack") { view: MinimalWebView -> view.webView.goBack() }.runOnQueue(Queues.MAIN)
-      AsyncFunction("goForward") { view: MinimalWebView -> view.webView.goForward() }.runOnQueue(Queues.MAIN)
-      AsyncFunction("reload") { view: MinimalWebView -> view.webView.reload() }.runOnQueue(Queues.MAIN)
-      AsyncFunction("stopLoading") { view: MinimalWebView -> view.webView.stopLoading() }.runOnQueue(Queues.MAIN)
+      AsyncFunction("navigate") { view: MinimalWebView, action: String ->
+        when (action) {
+          "back" -> view.webView.goBack()
+          "forward" -> view.webView.goForward()
+          "reload" -> view.webView.reload()
+          "stop" -> view.webView.stopLoading()
+        }
+      }.runOnQueue(Queues.MAIN)
+      // `{ get: 'settings.textZoom' }` or `{ call: 'clearCache', args: [true] }`: the JSON of the result.
+      AsyncFunction("native") { view: MinimalWebView, request: Map<String, Any?>, promise: Promise ->
+        val get = request["get"] as? String
+        val call = request["call"] as? String
+        try {
+          promise.resolve(
+            when {
+              get != null -> view.platformSettings.get(get)
+              call != null -> view.platformSettings.call(call, request["args"] as? List<Any?> ?: emptyList())
+              else -> throw IllegalArgumentException("a request needs `get` or `call`")
+            }
+          )
+        } catch (e: IllegalArgumentException) {
+          promise.reject("ERR_NATIVE", e.message, e)
+        }
+      }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
         view.answer(askId, answer["value"])
@@ -126,6 +145,18 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
     }
   }
+}
+
+/** The `settings` prop's JSON (always an object: JS builds it) as nested maps and lists, with JSON null as null. */
+private fun parseSettings(json: String): Map<String, Any?> = JSONObject(json).toMap()
+
+private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence().associateWith { fromJson(get(it)) }
+
+private fun fromJson(value: Any?): Any? = when (value) {
+  JSONObject.NULL -> null
+  is JSONObject -> value.toMap()
+  is JSONArray -> List(value.length()) { fromJson(value.get(it)) }
+  else -> value
 }
 
 /** The chooser's intent. Serializable because the registry persists launch inputs; it never relaunches a restored one. */

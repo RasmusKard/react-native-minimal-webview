@@ -7,7 +7,6 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -47,13 +46,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   var bridgeOrigins: List<String>? = null
   var extensions: List<ExtensionSpec>? = null
   var injectedScripts: List<InjectedScript>? = null
-  var userAgent: String? = null
-  var applicationNameForUserAgent: String? = null
-  var thirdPartyCookiesEnabled = false
-  var mediaPlaybackRequiresUserAction = true
-  var showsScrollIndicators = true
-  var javaScriptCanOpenWindowsAutomatically = false
-  var webviewDebuggingEnabled = false
+  /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
+  var settings: Map<String, Any?>? = null
+  internal val platformSettings = PlatformSettings(this)
   /**
    * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
    * `openExternal` is there when JS handles `external` navigations (onOpenExternal); native only reports them.
@@ -142,20 +137,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   /**
-   * The settings, applied from each prop batch and to a new WebView after a crash. They apply from the next navigation.
-   * JS fixes applicationNameForUserAgent and mediaPlaybackRequiresUserAction at mount; the rest may change any time.
+   * The `android` settings, applied from each prop batch (only the keys that changed) and all again to a new WebView
+   * after a crash. A key that can't be applied is reported to JS, which warns.
    */
-  private fun applySettings() {
-    val settings = webView.settings
-    settings.userAgentString = userAgent
-      ?: applicationNameForUserAgent?.let { "${WebSettings.getDefaultUserAgent(context)} $it" }
-    settings.mediaPlaybackRequiresUserGesture = mediaPlaybackRequiresUserAction
-    settings.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
-    webView.isVerticalScrollBarEnabled = showsScrollIndicators
-    webView.isHorizontalScrollBarEnabled = showsScrollIndicators
-    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, thirdPartyCookiesEnabled)
-    // Process-wide on Android: the last WebView to set it wins.
-    WebView.setWebContentsDebuggingEnabled(webviewDebuggingEnabled)
+  private fun applySettings(force: Boolean = false) {
+    val rejected = platformSettings.apply(settings, force)
+    if (rejected.isNotEmpty()) {
+      onExtension(mapOf("name" to "core", "event" to "settingsRejected", "payload" to mapOf("rejected" to rejected)))
+    }
   }
 
   private fun installExtensions() {
@@ -272,7 +261,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     failPending()
     val old = webView
     webView = createWebView()
-    applySettings()
+    applySettings(force = true)
     scripts.reinstall()
     mount()
     old.destroy()

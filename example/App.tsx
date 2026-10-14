@@ -131,7 +131,7 @@ export default function App() {
           onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
           onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
           applicationNameForUserAgent="MinimalWebViewExample/1.0"
-          thirdPartyCookiesEnabled
+          android={{ webView: { acceptThirdPartyCookies: true } }}
           onError={(event) => events.errors.push(event)}
           onHttpError={(event) => events.httpErrors.push(event)}
           onProcessGone={(event) => events.gone.push(event)}
