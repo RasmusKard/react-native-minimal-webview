@@ -1883,6 +1883,12 @@ async function sampleExtension(h: Harness) {
   await waitFor(h, idle, 10000);
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
+  // The event reaches JS on its own schedule, after the evaluate result at times.
+  for (
+    const end = Date.now() + 3000;
+    Date.now() < end && !h.events.hookEvents.includes('hookDialogs.alert');
+  )
+    await sleep(100);
   r.check(
     'its UI delegate takes over a dialog the core implements (alert), with no dialog shown',
     after === 'after' && h.events.hookEvents.includes('hookDialogs.alert'),
