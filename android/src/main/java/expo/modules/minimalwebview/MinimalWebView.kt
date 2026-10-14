@@ -23,6 +23,7 @@ import expo.modules.minimalwebview.requests.FileUpload
 import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.HttpAuth
 import expo.modules.minimalwebview.requests.Permissions
+import java.util.concurrent.CopyOnWriteArrayList
 
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext), WebViewContext {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
@@ -65,7 +66,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   // The hooks' clients (WebViewContext) and the core's page requests. The clients (MinimalWebViewClients.kt) route each
   // callback by the rule in WebViewContext. The page requests ask JS only for the requests in requestHandlers.
-  override val clients = mutableListOf<WebViewClient>()
+  // Copy-on-write: Chromium reads it from its IO thread (shouldInterceptRequest) while attach and detach write it.
+  override val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   override val chromeClients = mutableListOf<WebChromeClient>()
   override val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
@@ -147,11 +149,24 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun load(source: WebViewSource) {
-    if (source.uri != null) {
-      webView.loadUrl(source.uri, source.headers.orEmpty())
-    } else {
+    if (source.uri == null) {
       webView.loadDataWithBaseURL(source.baseUrl, source.html ?: "", "text/html", "utf-8", null)
+    } else if (source.body != null) {
+      webView.postUrl(source.uri, source.body.toByteArray()) // form-urlencoded; postUrl takes no headers
+    } else {
+      webView.loadUrl(source.uri, source.headers.orEmpty())
     }
+  }
+
+  /**
+   * The committed page is the POST `source`: it can't be fetched again by URL (WebView's reload declines the form
+   * resubmission), so reload and crash recovery load the source instead, as for an html one.
+   */
+  private val onPostSource: Boolean
+    get() = source?.let { it.body != null && it.uri?.trimEnd('/') == url.trimEnd('/') } == true
+
+  fun reload() {
+    if (onPostSource) source?.let(::load) else webView.reload()
   }
 
   /**
@@ -260,10 +275,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     crashTimes.addLast(now)
     while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
     val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW
-    // An html source's page has no URL to fetch (`url` is its baseUrl or about:blank): load the source again, as on iOS.
+    // An html source's page has no URL to fetch (`url` is its baseUrl or about:blank) and a POST source's can't be
+    // fetched by URL: load the source again, as on iOS.
     // Chromium reports the baseUrl canonicalized (`https://example.com` commits as `https://example.com/`).
     val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }?.trimEnd('/')
-    val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl }
+    val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl && !onPostSource }
     failPending()
     detachHooks()
     val old = webView

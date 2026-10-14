@@ -190,11 +190,35 @@ bridge.emit('rnw', message); // was ref.current.postMessage(message)
 
 The `message` event goes to `window` on iOS and `document` on Android, as react-native-webview sends it.
 
+### Scroll position
+
+There is no `onScroll` prop. A start script reports the main frame's scroll position over the bridge, at most once
+per frame:
+
+```tsx
+const scroll = {
+  when: 'start',
+  mainFrameOnly: true,
+  code: `let queued = false;
+  addEventListener('scroll', () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; window.nativeBridge?.emit('scroll', { x: scrollX, y: scrollY }); });
+  }, { passive: true });`,
+} as const;
+
+<WebView bridge={bridge} injectedScripts={[scroll]} … />
+useEffect(() => bridge.on('scroll', (position) => onScroll(position as { x: number; y: number })), [bridge]);
+```
+
+Only pages in `allowedOrigins` report. For offsets during a bounce or a pinch, a [native hook](#native-hooks) can
+observe `scrollView.contentOffset` on iOS and `setOnScrollChangeListener` on Android.
+
 ## Props
 
 | Prop | Notes |
 |---|---|
-| `source` | `{ uri, headers? }` or `{ html, baseUrl? }`. `headers` go on the first request only |
+| `source` | `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `headers` go on the first request only. `body` makes it a form-urlencoded POST (Android sends no `headers` with it); `reload()` and crash recovery send it again. A `file://` uri loads with read access to its directory; Android needs `android.settings.allowFileAccess: true` |
 | `ios`, `android` | Any WebKit property or Android setter, by name. See [Platform settings](#platform-settings) |
 | `userAgent` / `applicationNameForUserAgent` | Replace the user agent, or append to the default one. The app name is read when the WebView is created: a change recreates it (the page reloads) |
 | `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
@@ -313,7 +337,7 @@ request over: to decide, to use your own picker, or to observe it.
 |---|---|---|---|
 | `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser; it ignores `capture` | `onFileRequest({ accept, multiple, capture })` (Android only) returns URIs, or `null` to cancel | expo-document-picker, expo-image-picker |
 | Fullscreen video | iOS: WebKit's. Android: the page's fullscreen view covers the WebView's window on black, system bars hide, and back exits | `onFullscreenChange({ active })` (Android only) | expo-screen-orientation |
-| Camera, microphone, (Android) location | Android: denied. iOS: WebKit's own prompt (location always prompts) | `onPermissionRequest({ origin, resources })` answers `true` or `false`. Main frame only: other frames are denied without asking | expo-camera, expo-audio, expo-location |
+| Camera, microphone, (Android) location and protected media | Android: denied. iOS: WebKit's own prompt (location always prompts; FairPlay asks nothing) | `onPermissionRequest({ origin, resources })` answers `true` or `false`. Main frame only: other frames are denied without asking. `protectedMedia` is the device id DRM (Widevine) playback needs | expo-camera, expo-audio, expo-location |
 | A download | http(s): opens externally (`onOpenExternal`, or the system browser, which fetches it without the page's session; reported to `onNavigation` as `external`). `data:` and `blob:`: dropped | `onDownload(result)`: a [file in the app's cache](#downloads), or a failure | expo-file-system, expo-sharing |
 | HTTP basic or digest auth | Cancelled: the site's 401 page shows | `onHttpAuthRequest({ host, realm })` returns `{ username, password }`, or `null` to cancel | expo-secure-store |
 
@@ -451,7 +475,7 @@ MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             //
 - A page can open a window only from a tap, unless the `javaScriptCanOpenWindowsAutomatically` setting is on. The navigation rules decide every new window.
 - The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
-- Camera, microphone and location are granted only when `onPermissionRequest` says so, to the main frame only. Without it, Android denies and iOS shows WebKit's prompt.
+- Camera, microphone, location and protected media are granted only when `onPermissionRequest` says so, to the main frame only. Without it, Android denies and iOS shows WebKit's prompt.
 - Download filenames are sanitised.
 - Debugging is on only in `__DEV__`.
 
