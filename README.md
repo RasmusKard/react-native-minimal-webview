@@ -224,11 +224,11 @@ offers is reachable by its own name, without a change to this package, through `
 ```tsx
 <WebView
   ios={{
-    configuration: { dataDetectorTypes: 1, websiteDataStore: 'nonPersistent' }, // WKWebViewConfiguration: read once, at creation
+    configuration: { dataDetectorTypes: WK.DataDetectorTypes.link, websiteDataStore: 'nonPersistent' }, // WKWebViewConfiguration: read once, at creation
     preferences: { minimumFontSize: 12 },                                        // WKPreferences
     webpagePreferences: { allowsContentJavaScript: false },                      // WKWebpagePreferences, from the next navigation
     webView: { allowsBackForwardNavigationGestures: true },                      // WKWebView
-    scrollView: { bounces: false, contentInsetAdjustmentBehavior: 2 },           // its UIScrollView
+    scrollView: { bounces: false, contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never }, // its UIScrollView
   }}
   android={{
     settings: { textZoom: 120, algorithmicDarkeningAllowed: true }, // WebSettings, then WebSettingsCompat
@@ -239,6 +239,9 @@ const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.
 await ref.current?.call('clearCache', true);                   // Android: a public WebView method
 ```
 
+- **The keys autocomplete**, with their type and `@since`, from the SDK headers (`src/platform.generated.ts`), and the
+  platforms' enums and constants come as `WK` (`WK.DataDetectorTypes.link`, `WK.ContentMode.desktop`) and `Android`
+  (`Android.WebSettings.LOAD_NO_CACHE`). A key the headers don't list, from a newer SDK, still type-checks.
 - **Names are the platform's.** iOS keys are Objective-C property names (`inspectable`, `scrollEnabled`), set with
   Key-Value Coding. Android keys are setter names without `set` (`textZoom` for `setTextZoom`), found by reflection,
   with the `WebSettingsCompat` and `WebViewCompat` statics as fallbacks, so an androidx.webkit feature works the day it

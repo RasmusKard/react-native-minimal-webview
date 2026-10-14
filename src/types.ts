@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { BridgeErrorCode } from './bridge/protocol';
+import type { AndroidSettingKeys, IOSSettingKeys } from './platform.generated';
 
 /** `headers` go on the first request only, not on later navigations. */
 export type WebViewSource =
@@ -134,6 +135,9 @@ export type AuthRequest = { host: string; realm: string };
 /** What a platform setting can take: what its property or setter accepts. An object is an iOS struct (`{ top, left, bottom, right }`, `{ x, y }`, `{ width, height }`). */
 export type SettingValue = boolean | number | string | null | Record<string, number>;
 
+/** A root's generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus, untyped, any other key the platform has. */
+type Root<Known> = Known & Record<string, SettingValue | undefined>;
+
 /**
  * WebKit settings by Objective-C property name, applied with Key-Value Coding, so any public property works, including
  * ones this package has never heard of: `{ scrollView: { bounces: false }, webView: { allowsBackForwardNavigationGestures: true } }`.
@@ -142,15 +146,15 @@ export type SettingValue = boolean | number | string | null | Record<string, num
  */
 export type IOSSettings = {
   /** `WKWebViewConfiguration`: read once, when the WKWebView is created. A later change warns; remount with a new `key`. */
-  configuration?: Record<string, SettingValue>;
+  configuration?: Root<IOSSettingKeys['configuration']>;
   /** `WKPreferences` (`configuration.preferences`), live. */
-  preferences?: Record<string, SettingValue>;
+  preferences?: Root<IOSSettingKeys['preferences']>;
   /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
-  webpagePreferences?: Record<string, SettingValue>;
+  webpagePreferences?: Root<IOSSettingKeys['webpagePreferences']>;
   /** The `WKWebView`, live. */
-  webView?: Record<string, SettingValue>;
+  webView?: Root<IOSSettingKeys['webView']>;
   /** Its `UIScrollView`, live. */
-  scrollView?: Record<string, SettingValue>;
+  scrollView?: Root<IOSSettingKeys['scrollView']>;
 };
 
 /**
@@ -161,9 +165,9 @@ export type IOSSettings = {
  */
 export type AndroidSettings = {
   /** `WebSettings` setters, then static `WebSettingsCompat` ones. */
-  settings?: Record<string, SettingValue>;
+  settings?: Root<AndroidSettingKeys['settings']>;
   /** `WebView` setters (static ones too), then `WebViewCompat` ones, then `CookieManager`'s `acceptThirdPartyCookies`. */
-  webView?: Record<string, SettingValue>;
+  webView?: Root<AndroidSettingKeys['webView']>;
 };
 
 /** An event a native hook sent with `emit` or `ask` (README: Native hooks). */

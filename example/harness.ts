@@ -18,7 +18,7 @@ import type {
   WebViewRefObject,
   WebViewSource,
 } from 'minimal-rn-webview';
-import { WebView } from 'minimal-rn-webview';
+import { WebView, WK } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
 
 export type Harness = {
@@ -1066,7 +1066,7 @@ async function settings(h: Harness) {
         ios: {
           scrollView: {
             bounces: false,
-            contentInsetAdjustmentBehavior: 2,
+            contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never,
             contentInset: { top: 5, left: 0, bottom: 0, right: 0 },
             nope: 1,
           },
@@ -1083,7 +1083,8 @@ async function settings(h: Harness) {
       );
       r.check(
         'an enum applies by raw value',
-        (await get('scrollView.contentInsetAdjustmentBehavior')) === 2
+        (await get('scrollView.contentInsetAdjustmentBehavior')) ===
+          WK.ContentInsetAdjustmentBehavior.never
       );
       const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
       r.check(

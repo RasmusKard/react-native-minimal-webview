@@ -14,6 +14,7 @@ import {
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
+import { WK } from './platform.generated';
 import type {
   AndroidWebViewInfo,
   Bridge,
@@ -93,9 +94,9 @@ const OWN_SET: Set<string> &
   ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
 
 /** `WKAudiovisualMediaTypeAudio | Video`; WebKit's `.all` is NSUIntegerMax, which JSON can't carry exactly. */
-const MEDIA_ALL = 3;
+const MEDIA_ALL = WK.AudiovisualMediaTypes.all;
 
-type NativeSettings = Record<string, Record<string, SettingValue>>;
+type NativeSettings = Record<string, Record<string, SettingValue | undefined>>;
 
 type NativeProps = ViewProps &
   Pick<WebViewProps, 'source' | 'navigationRules' | 'injectedScripts' | 'pullToRefresh'> & {
