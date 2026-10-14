@@ -14,12 +14,15 @@ import {
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
+import { WK } from './platform.generated';
 import type {
   AndroidWebViewInfo,
   Bridge,
+  NativeEvent as HookEventBody,
   NavigationEvent,
   NavigationState,
   ProcessGoneEvent,
+  SettingValue,
   WebViewErrorEvent,
   WebViewProps,
   WebViewRef,
@@ -35,16 +38,11 @@ type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
 
 type BridgeEvent = { message?: string; unavailable?: boolean; navigated?: boolean };
 
-/** `askId` is set when native waits for the answer (ExtensionHost.ask). */
-type ExtensionEvent = {
-  name: string;
-  event: string;
-  payload: Record<string, unknown>;
-  askId?: number;
-};
+/** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
+type HookEvent = HookEventBody & { askId?: number };
 
 /**
- * Page requests the core answers natively, by native event name. Native asks JS (as extension `core`) only for those
+ * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
  * whose prop is set, and reads the set when the request comes, so a prop can come and go. `openExternal` is never
  * asked: native only checks that JS opens external links itself, and reports them on `onNavigation`.
  */
@@ -57,90 +55,93 @@ const REQUESTS = {
   download: 'onDownload',
   httpAuthRequest: 'onHttpAuthRequest',
 } as const;
-const CORE = 'core';
-
-/** Props that pass straight through to the native view. */
-const PASSTHROUGH = [
-  'navigationRules',
-  'userAgent',
-  'thirdPartyCookiesEnabled',
-  'scrollEnabled',
-  'bounces',
-  'showsScrollIndicators',
-  'javaScriptCanOpenWindowsAutomatically',
-] as const;
-type Passthrough = Pick<WebViewProps, (typeof PASSTHROUGH)[number]>;
-
-/** Props native reads once, when it creates the WebView (fixed at mount, like `bridge` and `extensions`). */
-const FIXED = [
-  'applicationNameForUserAgent',
-  'mediaPlaybackRequiresUserAction',
-  'allowsInlineMediaPlayback',
-] as const;
-const fixedSettings = (props: WebViewProps) =>
-  Object.fromEntries(FIXED.map((key) => [key, props[key]])) as Pick<
-    WebViewProps,
-    (typeof FIXED)[number]
-  >;
+/** The core's own events; everything else is a hook's, for `onNativeEvent`. */
+const CORE = 'core.';
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
 const OWN = [
-  ...PASSTHROUGH,
-  ...FIXED,
-  ...([
-    'source',
-    'injectedScripts',
-    'webviewDebuggingEnabled',
-    'bridge',
-    'extensions',
-    'renderLoading',
-    'renderError',
-    'onNavigation',
-    'onNavigationStateChange',
-    'onError',
-    'onHttpError',
-    'onProcessGone',
-    'onLoadStart',
-    'onLoad',
-    'onLoadEnd',
-    ...Object.values(REQUESTS),
-    'children',
-  ] as const),
-] satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
+  'source',
+  'ios',
+  'android',
+  'userAgent',
+  'applicationNameForUserAgent',
+  'navigationRules',
+  'injectedScripts',
+  'bridge',
+  'pullToRefresh',
+  'sharedCookies',
+  'nativeOptions',
+  'onNativeEvent',
+  'renderLoading',
+  'renderError',
+  'onNavigation',
+  'onNavigationStateChange',
+  'onError',
+  'onHttpError',
+  'onProcessGone',
+  'onLoadStart',
+  'onLoad',
+  'onLoadEnd',
+  ...Object.values(REQUESTS),
+  'children',
+] as const satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
 type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OWN)[number]>;
 // A prop missing from OWN fails to compile here, by name.
 const OWN_SET: Set<string> &
   ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
 
+/** `WKAudiovisualMediaTypeAudio | Video`; WebKit's `.all` is NSUIntegerMax, which JSON can't carry exactly. */
+const MEDIA_ALL = WK.AudiovisualMediaTypes.all;
+
+type NativeSettings = Record<string, Record<string, SettingValue | undefined>>;
+
 type NativeProps = ViewProps &
-  Passthrough &
-  Pick<WebViewProps, 'source' | 'injectedScripts' | 'webviewDebuggingEnabled'> & {
+  Pick<WebViewProps, 'source' | 'navigationRules' | 'injectedScripts' | 'pullToRefresh'> & {
     ref: Ref<NativeMethods>;
+    /** iOS only: Android's CookieManager is already shared. */
+    sharedCookies: boolean | undefined;
+    /**
+     * The platform's settings by root and name, as JSON: `ios` or `android` with the cross-platform props on top. A
+     * string, so that a `null` (reset this key) survives the trip; the native dictionary conversion drops it.
+     */
+    settings: string;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
-    extensions: ReturnType<typeof nativeSpecs>;
+    nativeOptions: Record<string, unknown> | undefined;
     requestHandlers: string[];
     onNavigation: (event: NativeEvent<NavigationEvent>) => void;
     onNavigationState: (event: NativeEvent<NavigationState>) => void;
     onBridge: (event: NativeEvent<BridgeEvent>) => void;
-    onExtension: (event: NativeEvent<ExtensionEvent>) => void;
+    onNativeEvent: (event: NativeEvent<HookEvent>) => void;
     onError: (event: NativeEvent<NativeErrorEvent>) => void;
     onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
   };
 
-type NativeMethods = Record<
-  'goBack' | 'goForward' | 'reload' | 'stopLoading',
-  () => Promise<void>
-> & {
+type NativeMethods = {
+  navigate(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>;
   bridgePost(message: string): Promise<void>;
   /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
   answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
   getUrl(): Promise<string | null>;
+  /**
+   * `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. `args` is
+   * JSON too, so that a `null` argument survives the native dictionary conversion.
+   */
+  native(request: {
+    get?: string;
+    call?: string;
+    args?: string;
+    completion?: string;
+  }): Promise<string>;
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
+const nativeModule = () =>
+  requireNativeModule<{ androidWebViewInfo: AndroidWebViewInfo; defaultUserAgent: string }>(
+    'MinimalWebView'
+  );
 
 const INITIAL_STATE: NavigationState = {
   url: '',
@@ -185,6 +186,8 @@ function createAdapter(): Adapter {
     stopLoading: () => attached?.stopLoading(),
     evaluate: async (script) => await attached?.evaluate(script),
     getUrl: async () => (await attached?.getUrl()) ?? '',
+    get: async (key) => await attached?.get(key),
+    call: async (method, args, options) => await attached?.call(method, args, options),
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
@@ -283,22 +286,33 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   );
 
   // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
-  const [handle] = useState((): WebViewRef => ({
-    goBack: () => void native.current?.goBack(),
-    goForward: () => void native.current?.goForward(),
-    reload: () => void native.current?.reload(),
-    stopLoading: () => void native.current?.stopLoading(),
-    evaluate: async (script) => {
-      const json = await native.current?.evaluate(script);
-      return json ? (JSON.parse(json) as unknown) : undefined;
-    },
-    getUrl: async () => (await native.current?.getUrl()) ?? '',
-  }));
+  const [handle] = useState((): WebViewRef => {
+    const parsed = (json: string | null | undefined) =>
+      json ? (JSON.parse(json) as unknown) : undefined;
+    return {
+      goBack: () => void native.current?.navigate('back'),
+      goForward: () => void native.current?.navigate('forward'),
+      reload: () => void native.current?.navigate('reload'),
+      stopLoading: () => void native.current?.navigate('stop'),
+      evaluate: async (script) => parsed(await native.current?.evaluate(script)),
+      getUrl: async () => (await native.current?.getUrl()) ?? '',
+      get: async (key) => parsed(await native.current?.native({ get: key })),
+      call: async (method, args = [], options) =>
+        parsed(
+          await native.current?.native({
+            call: method,
+            args: JSON.stringify(args),
+            completion: options?.completion,
+          })
+        ),
+    };
+  });
   useAttach(ref, handle, lastRef, attachmentRef);
 
-  const fixed = useFixedAtMount(props);
+  // The same string while nothing in it changed, so a re-render sends native nothing.
+  const settings = JSON.stringify(platformSettings(props));
   const connection =
-    fixed.bridge && (fixed.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+    props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
     connection.attach((message) => void native.current?.bridgePost(message));
@@ -323,20 +337,21 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   const requestHandlers = useRequestHandlers(props);
 
-  const onExtension = async ({
-    nativeEvent: { name, event, payload, askId },
-  }: NativeEvent<ExtensionEvent>) => {
-    const request = name === CORE ? REQUESTS[event as keyof typeof REQUESTS] : undefined;
-    const handler = (
-      request
-        ? props[request]
-        : props.extensions?.find((candidate) => candidate.native.name === name)?.on?.[event]
-    ) as ((payload: unknown) => unknown) | undefined;
+  const onNativeEvent = async ({
+    nativeEvent: { name, payload, askId },
+  }: NativeEvent<HookEvent>) => {
+    if (name === `${CORE}settingsRejected`) return warnRejected(payload);
+    const request = name.startsWith(CORE)
+      ? REQUESTS[name.slice(CORE.length) as keyof typeof REQUESTS]
+      : undefined;
+    const handler = request
+      ? (props[request] as ((payload: unknown) => unknown) | undefined)
+      : () => props.onNativeEvent?.({ name, payload });
     const value = await settle(
       () => handler?.(payload),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
-      request ? `${request} failed` : `the ${name} extension's ${event} handler failed`
+      request ? `${request} failed` : `onNativeEvent failed for ${name}`
     );
     if (askId !== undefined) await answer(askId, value);
   };
@@ -348,20 +363,24 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   const webView = (
     <NativeWebView
+      key={creationKey(props)}
       {...(props.renderLoading || props.renderError ? {} : viewPropsOf(props))}
       ref={native}
       source={props.source}
       style={props.renderLoading || props.renderError ? styles.fill : props.style}
-      {...settingsOf(props)}
-      {...fixed.settings}
+      settings={settings}
+      pullToRefresh={props.pullToRefresh ?? false}
+      sharedCookies={Platform.OS === 'ios' ? (props.sharedCookies ?? false) : undefined}
+      navigationRules={props.navigationRules}
+      injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      extensions={fixed.extensions}
+      nativeOptions={props.nativeOptions}
       requestHandlers={requestHandlers}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
       onBridge={onBridge}
-      onExtension={onExtension}
+      onNativeEvent={onNativeEvent}
       onError={onError}
       onProcessGone={({ nativeEvent }) => props.onProcessGone?.(nativeEvent)}
     />
@@ -401,36 +420,25 @@ function useRequestHandlers(props: WebViewProps) {
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
-/** What native gets per extension: its name and config, and which events have a JS handler. */
-const nativeSpecs = (props: WebViewProps) =>
-  props.extensions?.map(({ native, on = {} }) => ({
-    ...native,
-    handles: Object.keys(on).filter((event) => on[event]),
-  }));
+/** Bridges by identity, for the creation key. */
+const bridgeIds = new WeakMap<object, number>();
+let lastBridgeId = 0;
 
 /**
- * Native sets up the extensions, the bridge and the creation settings (`FIXED`) once, at mount; the JS handlers
- * (`on`, `bridge.handle`) stay live. A later change is ignored with a warning: remount with a new `key` to apply it.
+ * What native sets up once, when it creates the WebView: the bridge, the hooks' options and the creation-time
+ * settings (`ios.configuration`, and the app name, which is one of its keys). As the native view's `key`, a change
+ * recreates the WebView, like a new `key` on the component would: the page reloads from `source`.
  */
-function useFixedAtMount(props: WebViewProps) {
-  const [fixed] = useState(() => ({
-    bridge: props.bridge,
-    extensions: nativeSpecs(props),
-    settings: fixedSettings(props),
-  }));
-  const warned = useRef(false);
-  const changed =
-    props.bridge !== fixed.bridge ||
-    JSON.stringify(nativeSpecs(props)) !== JSON.stringify(fixed.extensions) ||
-    JSON.stringify(fixedSettings(props)) !== JSON.stringify(fixed.settings);
-  useEffect(() => {
-    if (!changed || warned.current) return;
-    warned.current = true;
-    console.warn(
-      '[react-native-minimal-webview] `extensions`, `bridge`, `applicationNameForUserAgent`, `mediaPlaybackRequiresUserAction` and `allowsInlineMediaPlayback` are fixed at mount; this change is ignored. Remount the WebView with a new `key` to apply it.'
-    );
-  }, [changed]);
-  return fixed;
+function creationKey(props: WebViewProps) {
+  const bridge = props.bridge;
+  let id = bridge && bridgeIds.get(bridge);
+  if (bridge && id === undefined) bridgeIds.set(bridge, (id = ++lastBridgeId));
+  return JSON.stringify([
+    id ?? 0,
+    props.nativeOptions,
+    props.applicationNameForUserAgent,
+    props.ios?.configuration,
+  ]);
 }
 
 /** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */
@@ -438,13 +446,59 @@ function viewPropsOf(props: WebViewProps): ViewProps {
   return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
-/** Native props that pass straight through. */
-function settingsOf(props: WebViewProps) {
+/**
+ * The platform's settings for native: the package's defaults (playback on a gesture, no script-opened windows,
+ * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and the user agent
+ * props on top. A user agent prop that is unset resets its key to the default, so removing the prop undoes it.
+ */
+function platformSettings(props: WebViewProps): NativeSettings {
+  const set = <T,>(
+    value: T | undefined,
+    key: string,
+    map: (value: T) => SettingValue = (v) => v as never
+  ) => (value === undefined ? {} : { [key]: map(value) });
+  if (Platform.OS === 'ios') {
+    const { configuration, preferences, webView, ...rest } = props.ios ?? {};
+    return {
+      ...rest,
+      configuration: {
+        mediaTypesRequiringUserActionForPlayback: MEDIA_ALL,
+        ...configuration,
+        ...set(props.applicationNameForUserAgent, 'applicationNameForUserAgent'),
+      },
+      preferences: { javaScriptCanOpenWindowsAutomatically: false, ...preferences },
+      webView: {
+        customUserAgent: null,
+        inspectable: __DEV__,
+        ...webView,
+        ...set(props.userAgent, 'customUserAgent'),
+      },
+    };
+  }
+  if (Platform.OS !== 'android') return {};
+  const { settings, webView } = props.android ?? {};
   return {
-    ...(Object.fromEntries(PASSTHROUGH.map((key) => [key, props[key]])) as Passthrough),
-    injectedScripts: props.injectedScripts,
-    webviewDebuggingEnabled: props.webviewDebuggingEnabled ?? __DEV__,
+    settings: {
+      userAgentString: null,
+      mediaPlaybackRequiresUserGesture: true,
+      javaScriptCanOpenWindowsAutomatically: false,
+      ...settings,
+      ...set(
+        props.applicationNameForUserAgent,
+        'userAgentString',
+        (name) => `${nativeModule().defaultUserAgent} ${name}`
+      ),
+      ...set(props.userAgent, 'userAgentString'),
+    },
+    webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
   };
+}
+
+/** Settings keys native could not apply. */
+function warnRejected(payload: Record<string, unknown>) {
+  for (const { key, reason } of (payload['rejected'] ?? []) as { key: string; reason: string }[]) {
+    console.warn(`[react-native-minimal-webview] ${Platform.OS}.${key}: ${reason}`);
+  }
 }
 
 /**
@@ -519,11 +573,7 @@ export declare namespace WebView {
 }
 Object.defineProperty(WebView, 'androidWebViewInfo', {
   get: (): AndroidWebViewInfo | null =>
-    Platform.OS === 'android'
-      ? (androidInfo ??= requireNativeModule<{ androidWebViewInfo: AndroidWebViewInfo }>(
-          'MinimalWebView'
-        ).androidWebViewInfo)
-      : null,
+    Platform.OS === 'android' ? (androidInfo ??= nativeModule().androidWebViewInfo) : null,
 });
 
 const styles = StyleSheet.create({ fill: { flex: 1 } });

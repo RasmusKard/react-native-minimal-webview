@@ -6,15 +6,13 @@ import {
   WebView,
   createBridge,
   type PermissionRequestEvent,
-  sharedCookies,
   type FileRequest,
-  pullToRefresh,
   useWebViewState,
   createWebViewRef,
 } from 'react-native-minimal-webview';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { pageCounter } from 'sample-extension';
+import { isPageCounterEvent } from 'sample-extension';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
@@ -32,6 +30,7 @@ const events: Harness['events'] = {
   downloadFailures: [],
   fullscreen: [],
   pageCounts: [],
+  hookEvents: [],
   overlay: { error: false },
 };
 const pageEvents: unknown[] = [];
@@ -73,20 +72,12 @@ export default function App() {
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
     undefined
   );
-  const extensions = useMemo(
-    () => [
-      pullToRefresh(),
-      sharedCookies(),
-      pageCounter({ onPageLoaded: (url, count) => events.pageCounts.push({ url, count }) }),
-    ],
-    []
-  );
-
   const harness: Harness = {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
-    state: () => state,
+    // Read live: the harness keeps one harness object per suite, so a closure over `state` would stay stale.
+    state: () => ref.getState(),
     remount: () => remount(),
     load: (uri) => setSource({ uri }),
     loadSource: setSource,
@@ -120,7 +111,14 @@ export default function App() {
           style={styles.webview}
           navigationRules={rules}
           bridge={bridge}
-          extensions={extensions}
+          pullToRefresh
+          sharedCookies
+          nativeOptions={{ pageCounter: true }}
+          onNativeEvent={(event) => {
+            if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
+              events.pageCounts.push(event.payload);
+            else events.hookEvents.push(event.name);
+          }}
           onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
           onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
           onFullscreenChange={({ active }) => events.fullscreen.push(active)}
@@ -130,7 +128,7 @@ export default function App() {
           onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
           onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
           applicationNameForUserAgent="MinimalWebViewExample/1.0"
-          thirdPartyCookiesEnabled
+          android={{ webView: { acceptThirdPartyCookies: true } }}
           onError={(event) => events.errors.push(event)}
           onHttpError={(event) => events.httpErrors.push(event)}
           onProcessGone={(event) => events.gone.push(event)}

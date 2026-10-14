@@ -2,6 +2,14 @@ import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { BridgeErrorCode } from './bridge/protocol';
+import type {
+  AndroidSettingKeys,
+  CGPoint,
+  CGRect,
+  CGSize,
+  IOSSettingKeys,
+  UIEdgeInsets,
+} from './platform.generated';
 
 /** `headers` go on the first request only, not on later navigations. */
 export type WebViewSource =
@@ -37,7 +45,7 @@ export type NavigationRequest = {
 
 export type NavigationEvent = NavigationRequest & {
   action: NavigationAction;
-  /** Index of the matching rule in `navigationRules`, or null when the default or an extension decided. */
+  /** Index of the matching rule in `navigationRules`, or null when the default or a native hook decided. */
   rule: number | null;
 };
 
@@ -131,26 +139,61 @@ export type DownloadFailure = { filename: string; url: string | null; reason: st
 
 export type AuthRequest = { host: string; realm: string };
 
-/** What an extension helper such as `pullToRefresh()` returns. */
-export type WebViewExtension = {
-  /** The native extension to enable for this instance, by its registered name. */
-  native: { name: string; config?: Record<string, unknown> };
-  /**
-   * Handlers for the events the native extension emits, by event name. A handler's return value answers a native
-   * `ask`. Native can check which events have a handler (`host.handles`), to fall back to a default without one.
-   */
-  on?: Record<string, ExtensionHandler | undefined>;
+/** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
+export type SettingValue =
+  boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
+
+/** A root's generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus, untyped, any other key the platform has. */
+type Root<Known> = Known & Record<string, SettingValue | undefined>;
+
+/**
+ * WebKit settings by Objective-C property name, applied with Key-Value Coding, so any public property works, including
+ * ones this package has never heard of: `{ scrollView: { bounces: false }, webView: { allowsBackForwardNavigationGestures: true } }`.
+ * A value must fit the property's type (enums and option sets by raw value; `websiteDataStore` takes `'default'` or
+ * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with `ref.get('scrollView.bounces')`.
+ */
+export type IOSSettings = {
+  /** `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page reloads). */
+  configuration?: Root<IOSSettingKeys['configuration']>;
+  /** `WKPreferences` (`configuration.preferences`), live. */
+  preferences?: Root<IOSSettingKeys['preferences']>;
+  /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
+  webpagePreferences?: Root<IOSSettingKeys['webpagePreferences']>;
+  /** The `WKWebView`, live. */
+  webView?: Root<IOSSettingKeys['webView']>;
+  /** Its `UIScrollView`, live. */
+  scrollView?: Root<IOSSettingKeys['scrollView']>;
 };
 
-/** Takes the event's payload; `never` lets each handler declare the payload type its native side sends. */
-export type ExtensionHandler = (payload: never) => unknown;
+/**
+ * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
+ * newer SDK or androidx.webkit adds: `{ settings: { textZoom: 120, algorithmicDarkeningAllowed: true }, webView: { overScrollMode: 2 } }`.
+ * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning.
+ * Read one back with `ref.get('settings.textZoom')`.
+ */
+export type AndroidSettings = {
+  /** `WebSettings` setters, then static `WebSettingsCompat` ones. */
+  settings?: Root<AndroidSettingKeys['settings']>;
+  /** `WebView` setters (static ones too), then `WebViewCompat` ones, then `CookieManager`'s `acceptThirdPartyCookies`. */
+  webView?: Root<AndroidSettingKeys['webView']>;
+};
+
+/** An event a native hook sent with `emit` or `ask` (README: Native hooks). */
+export type NativeEvent = { name: string; payload: Record<string, unknown> };
 
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
 type OwnProps = {
   source: WebViewSource;
-  /** Replaces the whole user agent. */
+  /** Platform settings by name; see {@link IOSSettings}. The user agent props below win over the same keys here. */
+  ios?: IOSSettings;
+  /** Platform settings by name; see {@link AndroidSettings}. The user agent props below win over the same keys here. */
+  android?: AndroidSettings;
+  /** Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). */
   userAgent?: string;
-  /** Appended to the default user agent. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
+  /**
+   * Appended to the default user agent (`ios.configuration.applicationNameForUserAgent`, a creation-time key: a
+   * change recreates the WebView, on both platforms; `android.settings.userAgentString`).
+   */
   applicationNameForUserAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
@@ -160,38 +203,24 @@ type OwnProps = {
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
-  /** Fixed at mount, like `extensions`: remount with a new `key` to change it. */
+  /** Read when the WebView is created: a change recreates it (the page reloads). */
   bridge?: Bridge;
-  /** Android only; WebKit blocks third-party cookies on iOS. */
-  thirdPartyCookiesEnabled?: boolean;
-  /** Default true. Fixed at mount, like `bridge`: remount with a new `key` to change it. */
-  mediaPlaybackRequiresUserAction?: boolean;
+  /** What the native hooks get as their options (README: Native hooks). Read when the WebView is created, like `bridge`. */
+  nativeOptions?: Record<string, unknown>;
   /**
-   * iOS only (Android always plays inline). Default false. Fixed at mount, like `bridge`: remount with a new `key` to
-   * change it.
+   * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
+   * a throw answers null.
    */
-  allowsInlineMediaPlayback?: boolean;
-  /** iOS only. Default true. */
-  scrollEnabled?: boolean;
-  /** iOS only. Default true. */
-  bounces?: boolean;
-  showsScrollIndicators?: boolean;
+  onNativeEvent?: (event: NativeEvent) => unknown;
+  /** Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android. */
+  pullToRefresh?: boolean;
   /**
-   * Lets a script open a window (`window.open`) without a user gesture. Default false: only a tap opens one. The
-   * navigation rules still decide it (`newWindow: true`). Some flows need it, like an OAuth popup opened after an
-   * `await`.
+   * iOS: copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, and the WebView's
+   * cookie changes back as they happen. Android needs nothing: `CookieManager` is shared app-wide.
    */
-  javaScriptCanOpenWindowsAutomatically?: boolean;
-  /** Default `__DEV__`. Process-wide on Android: the last WebView to set it wins. */
-  webviewDebuggingEnabled?: boolean;
-  /**
-   * Add-ons such as `pullToRefresh()`. Fixed at mount: a change is ignored with a warning; remount with a new `key` to
-   * apply it. Handlers stay live.
-   */
-  extensions?: WebViewExtension[];
-
+  sharedCookies?: boolean;
   // Page requests: each works without its prop, as described. Passing one takes the request over. They can be added or
-  // removed at any time. An extension that handles the same platform callback comes first.
+  // removed at any time. A native hook that takes the same platform callback comes first.
   /**
    * `<input type="file">` on Android: return `file://` or `content://` URIs, or null to cancel. Without it, the system
    * file chooser opens (it ignores `capture`). iOS always shows WebKit's picker.
@@ -256,6 +285,27 @@ export type WebViewRef = {
   evaluate(script: string): Promise<unknown>;
   /** The committed `url`, as in the navigation state, read from native now. */
   getUrl(): Promise<string>;
+  /**
+   * A platform setting read by name, through JSON: `get('scrollView.bounces')` on iOS, `get('settings.textZoom')` on
+   * Android (the roots of {@link IOSSettings} and {@link AndroidSettings}; also `websiteDataStore` and `httpCookieStore` on
+   * iOS, `cookieManager` and `webStorage` on Android). Rejects with `ERR_NATIVE` for one it can't read.
+   */
+  get(key: string): Promise<unknown>;
+  /**
+   * Calls a platform method, `root.method`, and resolves with its result through JSON (README: Platform settings).
+   * Android: a public method of `webView` (then `WebViewCompat`'s statics), `cookieManager` or `webStorage`:
+   * `call('webView.clearCache', [true])`, `call('cookieManager.removeAllCookies', [null])`. iOS: an Objective-C
+   * selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`, the arguments set by the
+   * method's signature (`call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true])`); a selector that
+   * ends in a completion handler needs the handler's shape:
+   * `call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' })`. A wrong
+   * shape crashes. What the core owns, and private selectors, reject with `ERR_NATIVE`.
+   */
+  call(
+    method: string,
+    args?: unknown[],
+    options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
+  ): Promise<unknown>;
 };
 
 /** What `createWebViewRef()` returns: a `WebViewRef` that outlives the WebViews mounted with it. */

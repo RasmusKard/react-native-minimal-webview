@@ -13,6 +13,7 @@
     "ios",
     "!ios/Tests",
     "android/build.gradle",
+    "android/consumer-rules.pro",
     "android/src/main",
     "expo-module.config.json"
   ],
@@ -26,6 +27,7 @@
     "lint:ci": "eslint -c eslint.ci.config.mjs --quiet src",
     "mutation": "stryker run",
     "build:page-client": "node .github/scripts/build-page-client.mjs",
+    "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
     "check:pack": "npm run prepare && node .github/scripts/check-pack.mjs"
   },
   "keywords": [

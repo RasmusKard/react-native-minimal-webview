@@ -1,26 +1,28 @@
 import UIKit
-import WebKit
 
-/// Pull down at the top of the page to reload. Built only on the extension interface.
-final class PullToRefresh: NSObject, WebViewExtension {
-  // Strong: nothing else retains the host, and it holds the view weakly.
-  private var host: ExtensionHost?
+/// Pull down at the top of the page to reload (the `pullToRefresh` prop): a UIRefreshControl on the scroll view.
+final class PullToRefresh: NSObject {
   private let control = UIRefreshControl()
+  private let reload: () -> Void
 
-  func attach(host: ExtensionHost, config: [String: Any]) {
-    self.host = host
+  init(reload: @escaping () -> Void) {
+    self.reload = reload
+    super.init()
+    control.addTarget(self, action: #selector(refresh), for: .valueChanged)
   }
 
-  func didCreate(_ webView: WKWebView) {
-    control.addTarget(self, action: #selector(refresh), for: .valueChanged)
-    webView.scrollView.refreshControl = control
+  /// Puts the control on `scrollView`, or takes it off.
+  func set(_ enabled: Bool, on scrollView: UIScrollView) {
+    let wanted: UIRefreshControl? = enabled ? control : nil
+    if scrollView.refreshControl !== wanted { scrollView.refreshControl = wanted }
+  }
+
+  /// A load ended, finished or failed: the spinner stops, or it would ignore the next pull.
+  func loadEnded() {
+    control.endRefreshing()
   }
 
   @objc private func refresh() {
-    host?.reload()
-  }
-
-  func didFinish(url: URL?) {
-    control.endRefreshing()
+    reload()
   }
 }
