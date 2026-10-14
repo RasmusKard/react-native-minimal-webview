@@ -467,6 +467,8 @@ MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             //
 - **`nativeOptions`** enables hooks: a hook runs for a WebView whose `nativeOptions` has its key, and `context.options`
   is the whole prop, so the key's value can configure it. Read when the WebView is created, like `bridge`: a change
   recreates it.
+  Keys are global, and a later registration under the same key silently replaces the earlier one: a package should
+  prefix its keys with its name (`myPackage.pageCounter`).
 - **Delegates and clients.** A callback the core doesn't implement goes to the first of your delegates (clients) that
   does. A decision callback the core implements goes to the first of yours that does, and the core steps aside: on iOS
   navigation and response policy, authentication, a new window, JS dialogs and media capture; on Android
