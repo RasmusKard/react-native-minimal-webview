@@ -340,13 +340,16 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
-    downloads.didBecome(download)
-    forward { $0.webView?(webView, navigationAction: navigationAction, didBecome: download) }
+    became(download) { $0.webView?(webView, navigationAction: navigationAction, didBecome: download) }
   }
 
   func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+    became(download) { $0.webView?(webView, navigationResponse: navigationResponse, didBecome: download) }
+  }
+
+  private func became(_ download: WKDownload, _ callback: (WKNavigationDelegate) -> Void) {
     downloads.didBecome(download)
-    forward { $0.webView?(webView, navigationResponse: navigationResponse, didBecome: download) }
+    forward(callback)
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
@@ -372,17 +375,18 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    failed(error)
-    pageFinished(webView)
-    refreshSoon()
-    forward { $0.webView?(webView, didFail: navigation, withError: error) }
+    loadFailed(webView, error) { $0.webView?(webView, didFail: navigation, withError: error) }
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    loadFailed(webView, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+  }
+
+  private func loadFailed(_ webView: WKWebView, _ error: Error, _ callback: (WKNavigationDelegate) -> Void) {
     failed(error)
     pageFinished(webView)
     refreshSoon()
-    forward { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    forward(callback)
   }
 
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
