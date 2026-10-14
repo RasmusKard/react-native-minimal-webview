@@ -78,17 +78,17 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
   // DOMContentLoaded, so the page's synchronous and deferred scripts have registered their handlers and listeners; a
   // call delivered earlier would get `not_found`. The page's own calls work before that: RN answers them at once.
   if (w.document.readyState === 'loading') {
-    w.document.addEventListener('DOMContentLoaded', () => send({ v: 1, id: '', kind: 'ready' }), {
+    w.document.addEventListener('DOMContentLoaded', () => send({ id: '', kind: 'ready' }), {
       once: true,
     });
   } else {
-    send({ v: 1, id: '', kind: 'ready' });
+    send({ id: '', kind: 'ready' });
   }
   // Back from the back-forward cache: scripts don't run again, but native reset the bridge when the page was left, and
   // answers to this page's calls went to the page shown meanwhile. Fail those calls and announce the page again.
   w.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
     endpoint.rejectPending('navigated', 'the page was left before the call was answered');
-    send({ v: 1, id: '', kind: 'ready' });
+    send({ id: '', kind: 'ready' });
   });
 }

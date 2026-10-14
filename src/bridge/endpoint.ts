@@ -38,11 +38,11 @@ export function createEndpoint(
           );
         }, timeoutMs);
         pending.set(id, { resolve, reject, timer, sent: false });
-        send({ v: 1, id, kind: 'call', method, params });
+        send({ id, kind: 'call', method, params });
       });
     },
     emit(event: string, payload?: unknown) {
-      send({ v: 1, id: '', kind: 'event', method: event, params: payload });
+      send({ id: '', kind: 'event', method: event, params: payload });
     },
     handle(method: string, handler: (params: unknown) => unknown) {
       handlers.set(method, handler);
@@ -68,11 +68,11 @@ export function createEndpoint(
         case 'call': {
           const { id, method } = message;
           const fail = (code: BridgeError['code'], text: string) =>
-            reply({ v: 1, id, kind: 'error', error: { code, message: text } });
+            reply({ id, kind: 'error', error: { code, message: text } });
           const handler = handlers.get(method);
           if (!handler) return fail('not_found', `no handler for ${method}`);
           try {
-            reply({ v: 1, id, kind: 'result', params: await handler(message.params) });
+            reply({ id, kind: 'result', params: await handler(message.params) });
           } catch (error) {
             fail('handler_error', String(error));
           }
