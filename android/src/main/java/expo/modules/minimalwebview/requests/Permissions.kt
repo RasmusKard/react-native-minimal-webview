@@ -1,31 +1,25 @@
-package expo.modules.minimalwebview.extensions
+package expo.modules.minimalwebview.requests
 
 import android.net.Uri
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
-import expo.modules.minimalwebview.ExtensionHost
-import expo.modules.minimalwebview.WebViewExtension
+import expo.modules.minimalwebview.MinimalWebView
 
 /**
  * Camera, microphone and location for the main frame: the app's `onPermissionRequest({origin, resources})` may request
  * OS permission and answers true or false. Without the prop the core denies. Never prompts by itself: a grant the OS has
  * not allowed still fails in the page.
  */
-class Permissions : WebViewExtension {
-  private lateinit var host: ExtensionHost
-
-  override fun onAttach(host: ExtensionHost, config: Map<String, Any?>) {
-    this.host = host
-  }
-
-  override fun onPermissionRequest(request: PermissionRequest): Boolean {
+internal class Permissions(private val owner: MinimalWebView) {
+  /** Returns true when the app's prop takes the request; it is then granted or denied once. */
+  fun onPermissionRequest(request: PermissionRequest): Boolean {
     val wanted = request.resources.mapNotNull { RESOURCES[it]?.let { name -> it to name } }
     return decide(request.origin.toString(), wanted.map { it.second }, deny = request::deny) {
       request.grant(wanted.map { it.first }.toTypedArray())
     }
   }
 
-  override fun onGeolocationPrompt(origin: String, callback: GeolocationPermissions.Callback) =
+  fun onGeolocationPrompt(origin: String, callback: GeolocationPermissions.Callback) =
     decide(origin, listOf("geolocation"), deny = { callback.invoke(origin, false, false) }) { callback.invoke(origin, true, false) }
 
   /**
@@ -33,10 +27,10 @@ class Permissions : WebViewExtension {
    * frame's origin but not the frame: one that isn't the top-level page's is denied (main frame only).
    */
   private fun decide(origin: String, resources: List<String>, deny: () -> Unit, grant: () -> Unit): Boolean {
-    if (!host.handles("permissionRequest")) return false
+    if ("permissionRequest" !in owner.requestHandlers) return false
     val value = originOf(origin)
-    if (resources.isEmpty() || value != originOf(host.webView.url)) return true.also { deny() }
-    host.ask("permissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
+    if (resources.isEmpty() || value != originOf(owner.webView.url)) return true.also { deny() }
+    owner.ask("core.permissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
       if (answer == true) grant() else deny()
     }
     return true

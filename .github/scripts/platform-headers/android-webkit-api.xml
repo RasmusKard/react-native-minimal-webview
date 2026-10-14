@@ -1,0 +1,286 @@
+<!-- Extract of /platforms/android-37.0/data/api-versions.xml -->
+	<class name="android/webkit/WebSettings" since="1">
+		<extends name="java/lang/Object"/>
+		<method name="&lt;init>()V" since="22"/>
+		<method name="enableSmoothTransition()Z" since="11" deprecated="17"/>
+		<method name="getAllowContentAccess()Z" since="11"/>
+		<method name="getAllowFileAccess()Z" since="3"/>
+		<method name="getAllowFileAccessFromFileURLs()Z" since="16"/>
+		<method name="getAllowUniversalAccessFromFileURLs()Z" since="16"/>
+		<method name="getBlockNetworkImage()Z"/>
+		<method name="getBlockNetworkLoads()Z" since="8"/>
+		<method name="getBuiltInZoomControls()Z" since="3"/>
+		<method name="getCacheMode()I"/>
+		<method name="getCursiveFontFamily()Ljava/lang/String;"/>
+		<method name="getDatabaseEnabled()Z" since="5" deprecated="35"/>
+		<method name="getDatabasePath()Ljava/lang/String;" since="5" deprecated="19"/>
+		<method name="getDefaultFixedFontSize()I"/>
+		<method name="getDefaultFontSize()I"/>
+		<method name="getDefaultTextEncodingName()Ljava/lang/String;"/>
+		<method name="getDefaultUserAgent(Landroid/content/Context;)Ljava/lang/String;" since="17"/>
+		<method name="getDefaultZoom()Landroid/webkit/WebSettings$ZoomDensity;" since="7" deprecated="19"/>
+		<method name="getDisabledActionModeMenuItems()I" since="24"/>
+		<method name="getDisplayZoomControls()Z" since="11"/>
+		<method name="getDomStorageEnabled()Z" since="7"/>
+		<method name="getFantasyFontFamily()Ljava/lang/String;"/>
+		<method name="getFixedFontFamily()Ljava/lang/String;"/>
+		<method name="getForceDark()I" since="29" deprecated="33"/>
+		<method name="getJavaScriptCanOpenWindowsAutomatically()Z"/>
+		<method name="getJavaScriptEnabled()Z"/>
+		<method name="getLayoutAlgorithm()Landroid/webkit/WebSettings$LayoutAlgorithm;"/>
+		<method name="getLightTouchEnabled()Z" deprecated="18"/>
+		<method name="getLoadWithOverviewMode()Z" since="7"/>
+		<method name="getLoadsImagesAutomatically()Z"/>
+		<method name="getMediaPlaybackRequiresUserGesture()Z" since="17"/>
+		<method name="getMinimumFontSize()I"/>
+		<method name="getMinimumLogicalFontSize()I"/>
+		<method name="getMixedContentMode()I" since="21"/>
+		<method name="getNavDump()Z" deprecated="15" removed="17"/>
+		<method name="getOffscreenPreRaster()Z" since="23"/>
+		<method name="getPluginState()Landroid/webkit/WebSettings$PluginState;" since="8" deprecated="18"/>
+		<method name="getPluginsEnabled()Z" deprecated="15" removed="18"/>
+		<method name="getPluginsPath()Ljava/lang/String;" deprecated="15" removed="18"/>
+		<method name="getSafeBrowsingEnabled()Z" since="26"/>
+		<method name="getSansSerifFontFamily()Ljava/lang/String;"/>
+		<method name="getSaveFormData()Z" deprecated="26"/>
+		<method name="getSavePassword()Z" deprecated="18"/>
+		<method name="getSerifFontFamily()Ljava/lang/String;"/>
+		<method name="getStandardFontFamily()Ljava/lang/String;"/>
+		<method name="getTextSize()Landroid/webkit/WebSettings$TextSize;" deprecated="15"/>
+		<method name="getTextZoom()I" since="14"/>
+		<method name="getUseDoubleTree()Z" deprecated="15" removed="17"/>
+		<method name="getUseWebViewBackgroundForOverscrollBackground()Z" since="9" deprecated="15" removed="17"/>
+		<method name="getUseWideViewPort()Z"/>
+		<method name="getUserAgent()I" deprecated="15" removed="17"/>
+		<method name="getUserAgentString()Ljava/lang/String;" since="3"/>
+		<method name="isAlgorithmicDarkeningAllowed()Z" since="33"/>
+		<method name="setAlgorithmicDarkeningAllowed(Z)V" since="33"/>
+		<method name="setAllowContentAccess(Z)V" since="11"/>
+		<method name="setAllowFileAccess(Z)V" since="3"/>
+		<method name="setAllowFileAccessFromFileURLs(Z)V" since="16" deprecated="30"/>
+		<method name="setAllowUniversalAccessFromFileURLs(Z)V" since="16" deprecated="30"/>
+		<method name="setAppCacheEnabled(Z)V" since="7" deprecated="30" removed="33"/>
+		<method name="setAppCacheMaxSize(J)V" since="7" deprecated="18" removed="33"/>
+		<method name="setAppCachePath(Ljava/lang/String;)V" since="7" deprecated="30" removed="33"/>
+		<method name="setBlockNetworkImage(Z)V"/>
+		<method name="setBlockNetworkLoads(Z)V" since="8"/>
+		<method name="setBuiltInZoomControls(Z)V" since="3"/>
+		<method name="setCacheMode(I)V"/>
+		<method name="setCursiveFontFamily(Ljava/lang/String;)V"/>
+		<method name="setDatabaseEnabled(Z)V" since="5" deprecated="35"/>
+		<method name="setDatabasePath(Ljava/lang/String;)V" since="5" deprecated="19"/>
+		<method name="setDefaultFixedFontSize(I)V"/>
+		<method name="setDefaultFontSize(I)V"/>
+		<method name="setDefaultTextEncodingName(Ljava/lang/String;)V"/>
+		<method name="setDefaultZoom(Landroid/webkit/WebSettings$ZoomDensity;)V" since="7" deprecated="19"/>
+		<method name="setDisabledActionModeMenuItems(I)V" since="24"/>
+		<method name="setDisplayZoomControls(Z)V" since="11"/>
+		<method name="setDomStorageEnabled(Z)V" since="7"/>
+		<method name="setEnableSmoothTransition(Z)V" since="11" deprecated="17"/>
+		<method name="setFantasyFontFamily(Ljava/lang/String;)V"/>
+		<method name="setFixedFontFamily(Ljava/lang/String;)V"/>
+		<method name="setForceDark(I)V" since="29" deprecated="33"/>
+		<method name="setGeolocationDatabasePath(Ljava/lang/String;)V" since="5" deprecated="24"/>
+		<method name="setGeolocationEnabled(Z)V" since="5"/>
+		<method name="setJavaScriptCanOpenWindowsAutomatically(Z)V"/>
+		<method name="setJavaScriptEnabled(Z)V"/>
+		<method name="setLayoutAlgorithm(Landroid/webkit/WebSettings$LayoutAlgorithm;)V"/>
+		<method name="setLightTouchEnabled(Z)V" deprecated="18"/>
+		<method name="setLoadWithOverviewMode(Z)V" since="7"/>
+		<method name="setLoadsImagesAutomatically(Z)V"/>
+		<method name="setMediaPlaybackRequiresUserGesture(Z)V" since="17"/>
+		<method name="setMinimumFontSize(I)V"/>
+		<method name="setMinimumLogicalFontSize(I)V"/>
+		<method name="setMixedContentMode(I)V" since="21"/>
+		<method name="setNavDump(Z)V" deprecated="15" removed="17"/>
+		<method name="setNeedInitialFocus(Z)V"/>
+		<method name="setOffscreenPreRaster(Z)V" since="23"/>
+		<method name="setPluginState(Landroid/webkit/WebSettings$PluginState;)V" since="8" deprecated="18"/>
+		<method name="setPluginsEnabled(Z)V" deprecated="15" removed="18"/>
+		<method name="setPluginsPath(Ljava/lang/String;)V" deprecated="15" removed="18"/>
+		<method name="setRenderPriority(Landroid/webkit/WebSettings$RenderPriority;)V" deprecated="18"/>
+		<method name="setSafeBrowsingEnabled(Z)V" since="26"/>
+		<method name="setSansSerifFontFamily(Ljava/lang/String;)V"/>
+		<method name="setSaveFormData(Z)V" deprecated="26"/>
+		<method name="setSavePassword(Z)V" deprecated="18"/>
+		<method name="setSerifFontFamily(Ljava/lang/String;)V"/>
+		<method name="setStandardFontFamily(Ljava/lang/String;)V"/>
+		<method name="setSupportMultipleWindows(Z)V"/>
+		<method name="setSupportZoom(Z)V"/>
+		<method name="setTextSize(Landroid/webkit/WebSettings$TextSize;)V" deprecated="15"/>
+		<method name="setTextZoom(I)V" since="14"/>
+		<method name="setUseDoubleTree(Z)V" deprecated="15" removed="17"/>
+		<method name="setUseWebViewBackgroundForOverscrollBackground(Z)V" since="9" deprecated="15" removed="17"/>
+		<method name="setUseWideViewPort(Z)V"/>
+		<method name="setUserAgent(I)V" deprecated="15" removed="17"/>
+		<method name="setUserAgentString(Ljava/lang/String;)V" since="3"/>
+		<method name="supportMultipleWindows()Z"/>
+		<method name="supportZoom()Z"/>
+		<field name="FORCE_DARK_AUTO" since="29" deprecated="33"/>
+		<field name="FORCE_DARK_OFF" since="29" deprecated="33"/>
+		<field name="FORCE_DARK_ON" since="29" deprecated="33"/>
+		<field name="LOAD_CACHE_ELSE_NETWORK"/>
+		<field name="LOAD_CACHE_ONLY"/>
+		<field name="LOAD_DEFAULT"/>
+		<field name="LOAD_NORMAL" deprecated="17"/>
+		<field name="LOAD_NO_CACHE"/>
+		<field name="MENU_ITEM_NONE" since="24"/>
+		<field name="MENU_ITEM_PROCESS_TEXT" since="24"/>
+		<field name="MENU_ITEM_SHARE" since="24"/>
+		<field name="MENU_ITEM_WEB_SEARCH" since="24"/>
+		<field name="MIXED_CONTENT_ALWAYS_ALLOW" since="21"/>
+		<field name="MIXED_CONTENT_COMPATIBILITY_MODE" since="21"/>
+		<field name="MIXED_CONTENT_NEVER_ALLOW" since="21"/>
+	</class>
+	<class name="android/webkit/WebView" since="1">
+		<extends name="android/widget/AbsoluteLayout"/>
+		<implements name="android/view/ViewGroup$OnHierarchyChangeListener"/>
+		<implements name="android/view/ViewTreeObserver$OnGlobalFocusChangeListener"/>
+		<method name="&lt;init>(Landroid/content/Context;)V"/>
+		<method name="&lt;init>(Landroid/content/Context;Landroid/util/AttributeSet;)V"/>
+		<method name="&lt;init>(Landroid/content/Context;Landroid/util/AttributeSet;I)V"/>
+		<method name="&lt;init>(Landroid/content/Context;Landroid/util/AttributeSet;II)V" since="21"/>
+		<method name="&lt;init>(Landroid/content/Context;Landroid/util/AttributeSet;IZ)V" since="11" deprecated="17"/>
+		<method name="addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V"/>
+		<method name="canGoBack()Z"/>
+		<method name="canGoBackOrForward(I)Z"/>
+		<method name="canGoForward()Z"/>
+		<method name="canZoomIn()Z" since="11" deprecated="17"/>
+		<method name="canZoomOut()Z" since="11" deprecated="17"/>
+		<method name="capturePicture()Landroid/graphics/Picture;" deprecated="19"/>
+		<method name="clearCache(Z)V"/>
+		<method name="clearClientCertPreferences(Ljava/lang/Runnable;)V" since="21"/>
+		<method name="clearFormData()V"/>
+		<method name="clearHistory()V"/>
+		<method name="clearMatches()V" since="3"/>
+		<method name="clearSslPreferences()V"/>
+		<method name="clearView()V" deprecated="18"/>
+		<method name="copyBackForwardList()Landroid/webkit/WebBackForwardList;"/>
+		<method name="createPrintDocumentAdapter()Landroid/print/PrintDocumentAdapter;" since="19" deprecated="21"/>
+		<method name="createPrintDocumentAdapter(Ljava/lang/String;)Landroid/print/PrintDocumentAdapter;" since="21"/>
+		<method name="createWebMessageChannel()[Landroid/webkit/WebMessagePort;" since="23"/>
+		<method name="debugDump()V" deprecated="15" removed="17"/>
+		<method name="destroy()V"/>
+		<method name="disablePlatformNotifications()V" deprecated="15" removed="17"/>
+		<method name="disableWebView()V" since="28"/>
+		<method name="documentHasImages(Landroid/os/Message;)V"/>
+		<method name="emulateShiftHeld()V" since="8" deprecated="15" removed="17"/>
+		<method name="enablePlatformNotifications()V" deprecated="15" removed="17"/>
+		<method name="enableSlowWholeDocumentDraw()V" since="21"/>
+		<method name="evaluateJavascript(Ljava/lang/String;Landroid/webkit/ValueCallback;)V" since="19"/>
+		<method name="findAddress(Ljava/lang/String;)Ljava/lang/String;" deprecated="28"/>
+		<method name="findAll(Ljava/lang/String;)I" since="3" deprecated="16"/>
+		<method name="findAllAsync(Ljava/lang/String;)V" since="16"/>
+		<method name="findNext(Z)V" since="3"/>
+		<method name="flingScroll(II)V"/>
+		<method name="freeMemory()V" since="7" deprecated="19"/>
+		<method name="getCertificate()Landroid/net/http/SslCertificate;"/>
+		<method name="getContentHeight()I"/>
+		<method name="getCurrentWebViewPackage()Landroid/content/pm/PackageInfo;" since="26"/>
+		<method name="getFavicon()Landroid/graphics/Bitmap;"/>
+		<method name="getHitTestResult()Landroid/webkit/WebView$HitTestResult;"/>
+		<method name="getHttpAuthUsernamePassword(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;" deprecated="26"/>
+		<method name="getOriginalUrl()Ljava/lang/String;" since="3"/>
+		<method name="getPluginList()Landroid/webkit/PluginList;" removed="12"/>
+		<method name="getProgress()I"/>
+		<method name="getRendererPriorityWaivedWhenNotVisible()Z" since="26"/>
+		<method name="getRendererRequestedPriority()I" since="26"/>
+		<method name="getSafeBrowsingPrivacyPolicyUrl()Landroid/net/Uri;" since="27"/>
+		<method name="getScale()F" deprecated="17"/>
+		<method name="getSettings()Landroid/webkit/WebSettings;"/>
+		<method name="getTextClassifier()Landroid/view/textclassifier/TextClassifier;" since="27"/>
+		<method name="getTitle()Ljava/lang/String;"/>
+		<method name="getUrl()Ljava/lang/String;"/>
+		<method name="getVisibleTitleHeight()I" since="11" deprecated="15" removed="17"/>
+		<method name="getWebChromeClient()Landroid/webkit/WebChromeClient;" since="26"/>
+		<method name="getWebViewClassLoader()Ljava/lang/ClassLoader;" since="28"/>
+		<method name="getWebViewClient()Landroid/webkit/WebViewClient;" since="26"/>
+		<method name="getWebViewLooper()Landroid/os/Looper;" since="28"/>
+		<method name="getWebViewRenderProcess()Landroid/webkit/WebViewRenderProcess;" since="29"/>
+		<method name="getWebViewRenderProcessClient()Landroid/webkit/WebViewRenderProcessClient;" since="29"/>
+		<method name="getZoomControls()Landroid/view/View;" deprecated="15" removed="16"/>
+		<method name="goBack()V"/>
+		<method name="goBackOrForward(I)V"/>
+		<method name="goForward()V"/>
+		<method name="invokeZoomPicker()V"/>
+		<method name="isPrivateBrowsingEnabled()Z" since="11"/>
+		<method name="loadData(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"/>
+		<method name="loadDataWithBaseURL(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"/>
+		<method name="loadUrl(Ljava/lang/String;)V"/>
+		<method name="loadUrl(Ljava/lang/String;Ljava/util/Map;)V" since="8"/>
+		<method name="onPause()V" since="11"/>
+		<method name="onResume()V" since="11"/>
+		<method name="overlayHorizontalScrollbar()Z" deprecated="23"/>
+		<method name="overlayVerticalScrollbar()Z" deprecated="23"/>
+		<method name="pageDown(Z)Z"/>
+		<method name="pageUp(Z)Z"/>
+		<method name="pauseTimers()V"/>
+		<method name="postUrl(Ljava/lang/String;[B)V" since="5"/>
+		<method name="postVisualStateCallback(JLandroid/webkit/WebView$VisualStateCallback;)V" since="23"/>
+		<method name="postWebMessage(Landroid/webkit/WebMessage;Landroid/net/Uri;)V" since="23"/>
+		<method name="refreshPlugins(Z)V" removed="12"/>
+		<method name="reload()V"/>
+		<method name="removeJavascriptInterface(Ljava/lang/String;)V" since="11"/>
+		<method name="requestFocusNodeHref(Landroid/os/Message;)V"/>
+		<method name="requestImageRef(Landroid/os/Message;)V"/>
+		<method name="restorePicture(Landroid/os/Bundle;Ljava/io/File;)Z" since="3" deprecated="15" removed="17"/>
+		<method name="restoreState(Landroid/os/Bundle;)Landroid/webkit/WebBackForwardList;"/>
+		<method name="resumeTimers()V"/>
+		<method name="savePassword(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V" deprecated="18"/>
+		<method name="savePicture(Landroid/os/Bundle;Ljava/io/File;)Z" since="3" deprecated="15" removed="17"/>
+		<method name="saveState(Landroid/os/Bundle;)Landroid/webkit/WebBackForwardList;"/>
+		<method name="saveWebArchive(Ljava/lang/String;)V" since="11"/>
+		<method name="saveWebArchive(Ljava/lang/String;ZLandroid/webkit/ValueCallback;)V" since="11"/>
+		<method name="setCertificate(Landroid/net/http/SslCertificate;)V" deprecated="17"/>
+		<method name="setDataDirectorySuffix(Ljava/lang/String;)V" since="28"/>
+		<method name="setDownloadListener(Landroid/webkit/DownloadListener;)V"/>
+		<method name="setFindListener(Landroid/webkit/WebView$FindListener;)V" since="16"/>
+		<method name="setHorizontalScrollbarOverlay(Z)V" deprecated="23"/>
+		<method name="setHttpAuthUsernamePassword(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V" deprecated="26"/>
+		<method name="setInitialScale(I)V"/>
+		<method name="setMapTrackballToArrowKeys(Z)V" deprecated="17"/>
+		<method name="setNetworkAvailable(Z)V" since="3"/>
+		<method name="setPictureListener(Landroid/webkit/WebView$PictureListener;)V" deprecated="15"/>
+		<method name="setRendererPriorityPolicy(IZ)V" since="26"/>
+		<method name="setSafeBrowsingWhitelist(Ljava/util/List;Landroid/webkit/ValueCallback;)V" since="27"/>
+		<method name="setTextClassifier(Landroid/view/textclassifier/TextClassifier;)V" since="27"/>
+		<method name="setVerticalScrollbarOverlay(Z)V" deprecated="23"/>
+		<method name="setWebChromeClient(Landroid/webkit/WebChromeClient;)V"/>
+		<method name="setWebContentsDebuggingEnabled(Z)V" since="19"/>
+		<method name="setWebViewClient(Landroid/webkit/WebViewClient;)V"/>
+		<method name="setWebViewRenderProcessClient(Landroid/webkit/WebViewRenderProcessClient;)V" since="29"/>
+		<method name="setWebViewRenderProcessClient(Ljava/util/concurrent/Executor;Landroid/webkit/WebViewRenderProcessClient;)V" since="29"/>
+		<method name="showFindDialog(Ljava/lang/String;Z)Z" since="11" deprecated="18"/>
+		<method name="startSafeBrowsing(Landroid/content/Context;Landroid/webkit/ValueCallback;)V" since="27" deprecated="37.0"/>
+		<method name="stopLoading()V"/>
+		<method name="zoomBy(F)V" since="21"/>
+		<method name="zoomIn()Z"/>
+		<method name="zoomOut()Z"/>
+		<field name="RENDERER_PRIORITY_BOUND" since="26"/>
+		<field name="RENDERER_PRIORITY_IMPORTANT" since="26"/>
+		<field name="RENDERER_PRIORITY_WAIVED" since="26"/>
+		<field name="SCHEME_GEO"/>
+		<field name="SCHEME_MAILTO"/>
+		<field name="SCHEME_TEL"/>
+	</class>
+	<class name="android/webkit/CookieManager" since="1">
+		<extends name="java/lang/Object"/>
+		<method name="&lt;init>()V" since="22" deprecated="29"/>
+		<method name="acceptCookie()Z"/>
+		<method name="acceptThirdPartyCookies(Landroid/webkit/WebView;)Z" since="21"/>
+		<method name="allowFileSchemeCookies()Z" since="12"/>
+		<method name="flush()V" since="21"/>
+		<method name="getCookie(Ljava/lang/String;)Ljava/lang/String;"/>
+		<method name="getInstance()Landroid/webkit/CookieManager;"/>
+		<method name="hasCookies()Z"/>
+		<method name="removeAllCookie()V" deprecated="21"/>
+		<method name="removeAllCookies(Landroid/webkit/ValueCallback;)V" since="21"/>
+		<method name="removeExpiredCookie()V" deprecated="21"/>
+		<method name="removeSessionCookie()V" deprecated="21"/>
+		<method name="removeSessionCookies(Landroid/webkit/ValueCallback;)V" since="21"/>
+		<method name="setAcceptCookie(Z)V"/>
+		<method name="setAcceptFileSchemeCookies(Z)V" since="12" deprecated="30"/>
+		<method name="setAcceptThirdPartyCookies(Landroid/webkit/WebView;Z)V" since="21"/>
+		<method name="setCookie(Ljava/lang/String;Ljava/lang/String;)V"/>
+		<method name="setCookie(Ljava/lang/String;Ljava/lang/String;Landroid/webkit/ValueCallback;)V" since="21"/>
+	</class>

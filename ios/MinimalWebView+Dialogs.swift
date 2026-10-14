@@ -50,8 +50,7 @@ extension MinimalWebView: WKUIDelegate {
     decisionHandler: @escaping @MainActor (WKPermissionDecision) -> Void
   ) {
     guard frame.isMainFrame else { return decisionHandler(.deny) }
-    let handled = activeExtensions?.contains { $0.requestMediaCapture(origin: origin, type: type, decide: decisionHandler) } == true
-    if !handled { decisionHandler(.prompt) }
+    if !permissions.requestMediaCapture(origin: origin, type: type, decide: decisionHandler) { decisionHandler(.prompt) }
   }
 
   /// Dismisses the dialog on screen, if any, completing it as cancelled (teardown, crash).

@@ -1,19 +1,29 @@
 import WebKit
 
-/// Shares login cookies between the WebView and native requests (URLSession, fetch). HTTPCookieStorage is copied into the
-/// WebView before each `source` load, and the WebView's cookie changes (including ones set by XHR and fetch) are copied
-/// back as they happen. (Android needs no extension: CookieManager is already shared app-wide.)
-final class SharedCookies: NSObject, WebViewExtension, WKHTTPCookieStoreObserver {
+/// Shares login cookies between the WebView and native requests (URLSession, fetch) when the `sharedCookies` prop is
+/// set: HTTPCookieStorage is copied into the WebView before each `source` load, and the WebView's cookie changes
+/// (including ones set by XHR and fetch) are copied back as they happen. (Android needs nothing: CookieManager is
+/// already shared app-wide.)
+final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   private weak var store: WKHTTPCookieStore?
+  private var enabled = false
   private var copyScheduled = false
 
   func didCreate(_ webView: WKWebView) {
     store?.remove(self)
     store = webView.configuration.websiteDataStore.httpCookieStore
-    store?.add(self)
+    if enabled { store?.add(self) }
   }
 
+  func set(_ enabled: Bool) {
+    guard enabled != self.enabled else { return }
+    self.enabled = enabled
+    if enabled { store?.add(self) } else { store?.remove(self) }
+  }
+
+  /// Work that must finish before a `source` load: calls `done` once the native cookies are in the WebView.
   func prepare(_ webView: WKWebView, done: @escaping () -> Void) {
+    guard enabled else { return done() }
     let store = webView.configuration.websiteDataStore.httpCookieStore
     let group = DispatchGroup()
     // ponytail: one setCookie per cookie; iOS 26's batch setCookies can replace this when the minimum allows

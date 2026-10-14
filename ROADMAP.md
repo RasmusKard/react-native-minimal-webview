@@ -5,8 +5,8 @@ Possible future work, not commitments.
 ## Core, if wanted
 
 - **POST loads** (`source.method` and `body`). Today's workaround is `source.html` with a self-submitting form.
-- **Android `scrollEnabled`.** Implement it, or document it as iOS-only. Injected CSS `overflow: hidden` covers it
-  today.
+- **Android `scrollEnabled`.** iOS has `ios.scrollView.scrollEnabled`; Android has no setter for it. Injected CSS
+  `overflow: hidden` covers it today.
 
 ## User space (a recipe or an optional extension)
 
@@ -14,8 +14,8 @@ Possible future work, not commitments.
 - **Incognito (non-persistent storage):** on iOS an extension's `configure` sets `WKWebsiteDataStore.nonPersistent()`;
   Android needs its own approach.
 - **`clearCache` / `clearHistory`:** a built-in extension, like `sharedCookies`.
-- **iOS back/forward swipe gestures and the keyboard props** as an extension. The keyboard accessory one needs
-  swizzling.
+- **iOS keyboard props** as an extension. The keyboard accessory one needs swizzling. (Back/forward swipe gestures
+  are `ios.webView.allowsBackForwardNavigationGestures`.)
 
 ## Known limits, left as they are
 

@@ -5,13 +5,12 @@ import WebKit
 /// each finished download emits `download {uri, filename, mimeType, url}` for the app to share or move (expo-sharing,
 /// expo-file-system), a failed one `download {filename, url, reason}`. `url` is the full http(s) URL, or null for data:
 /// and blob: (the page made the file itself). Without the prop the core opens them externally.
-final class Downloads: NSObject, WebViewExtension, WKDownloadDelegate {
-  // Strong: nothing else retains the host, and it holds the view weakly.
-  private var host: ExtensionHost?
+final class Downloads: NSObject, WKDownloadDelegate {
+  private weak var view: MinimalWebView?
   private var files: [ObjectIdentifier: (url: URL, mimeType: String)] = [:]
 
-  func attach(host: ExtensionHost, config: [String: Any]) {
-    self.host = host
+  init(view: MinimalWebView) {
+    self.view = view
   }
 
   /// A main-frame response that is a file, not a page.
@@ -20,10 +19,12 @@ final class Downloads: NSObject, WebViewExtension, WKDownloadDelegate {
     return response.isForMainFrame && (disposition.lowercased().hasPrefix("attachment") || !response.canShowMIMEType)
   }
 
+  /// `.download` for a file the app's prop takes; nil otherwise.
   func decidePolicy(for response: WKNavigationResponse) -> WKNavigationResponsePolicy? {
     handled && Self.isDownload(response) ? .download : nil
   }
 
+  /// Whether a navigation WebKit marks as a download (`<a download>`, blob:) becomes one.
   func wantsDownload(_ action: WKNavigationAction) -> Bool {
     handled && action.shouldPerformDownload
   }
@@ -32,7 +33,7 @@ final class Downloads: NSObject, WebViewExtension, WKDownloadDelegate {
     if handled { download.delegate = self }
   }
 
-  private var handled: Bool { host?.handles("download") == true }
+  private var handled: Bool { view?.requestHandlers.contains("download") == true }
 
   func download(
     _ download: WKDownload,
@@ -51,7 +52,7 @@ final class Downloads: NSObject, WebViewExtension, WKDownloadDelegate {
 
   func downloadDidFinish(_ download: WKDownload) {
     guard let file = files.removeValue(forKey: ObjectIdentifier(download)) else { return }
-    host?.emit("download", [
+    view?.emit("core.download", [
       "uri": file.url.absoluteString, "filename": file.url.lastPathComponent, "mimeType": file.mimeType,
       "url": serverUrl(download)
     ])
@@ -59,7 +60,7 @@ final class Downloads: NSObject, WebViewExtension, WKDownloadDelegate {
 
   func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
     let file = files.removeValue(forKey: ObjectIdentifier(download))
-    host?.emit("download", [
+    view?.emit("core.download", [
       "filename": file?.url.lastPathComponent ?? "", "url": serverUrl(download),
       "reason": error.localizedDescription
     ])
