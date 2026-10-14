@@ -2,9 +2,14 @@ package expo.modules.minimalwebview
 
 import android.app.Activity
 import android.content.Context
+import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.SafeBrowsingResponseCompat
+import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import java.util.concurrent.ConcurrentHashMap
 
@@ -57,8 +62,32 @@ internal class HookContext(private val name: String, private val view: WebViewCo
 private val overrideCache = ConcurrentHashMap<String, Boolean>()
 private val BASES = setOf<Class<*>>(WebViewClient::class.java, WebChromeClient::class.java, WebViewClientCompat::class.java)
 
-/** Whether this client's class overrides the callback [name] taking [types]; the base classes' own methods don't count. */
-internal fun Any.overrides(name: String, vararg types: Class<*>): Boolean =
-  overrideCache.getOrPut("${javaClass.name}#$name(${types.joinToString { it.name }})") {
-    javaClass.getMethod(name, *types).declaringClass !in BASES
+/**
+ * WebViewClientCompat's own overrides that only forward to a variant of the callback (the first two are final): the
+ * variant's parameter types, by the callback's signature.
+ */
+private val COMPAT_VARIANTS: Map<String, Array<Class<*>>> = mapOf(
+  signature("onReceivedError", WebView::class.java, WebResourceRequest::class.java, WebResourceError::class.java) to
+    arrayOf(WebView::class.java, WebResourceRequest::class.java, WebResourceErrorCompat::class.java),
+  signature("onSafeBrowsingHit", WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java) to
+    arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponseCompat::class.java),
+  signature("shouldOverrideUrlLoading", WebView::class.java, WebResourceRequest::class.java) to
+    arrayOf(WebView::class.java, String::class.java)
+)
+
+private fun signature(callback: String, vararg types: Class<*>) = "$callback(${types.joinToString { it.name }})"
+
+/** Whether this client's class overrides the callback [callback] taking [types]; the base classes' own methods don't count. */
+internal fun Any.overrides(callback: String, vararg types: Class<*>): Boolean = javaClass.overrides(callback, *types)
+
+/**
+ * [Any.overrides] for the class. A WebViewClientCompat subclass that leaves one of the compat class's forwarding
+ * overrides in place (COMPAT_VARIANTS) overrides the callback only through the variant the forwarder calls.
+ */
+internal fun Class<*>.overrides(callback: String, vararg types: Class<*>): Boolean =
+  overrideCache.getOrPut("${this.name}#${signature(callback, *types)}") {
+    val declared = getMethod(callback, *types).declaringClass
+    if (declared != WebViewClientCompat::class.java) return@getOrPut declared !in BASES
+    val variant = COMPAT_VARIANTS[signature(callback, *types)] ?: return@getOrPut false
+    getMethod(callback, *variant).declaringClass !in BASES
   }

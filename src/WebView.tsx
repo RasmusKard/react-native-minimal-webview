@@ -1,6 +1,5 @@
 import { requireNativeModule, requireNativeView } from 'expo';
 import {
-  type ReactElement,
   type Ref,
   type RefObject,
   useEffect,
@@ -11,7 +10,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
+import { Platform, type ViewProps } from 'react-native';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
 import { WK } from './platform.generated';
@@ -64,7 +63,6 @@ const OWN = [
   'ios',
   'android',
   'userAgent',
-  'applicationNameForUserAgent',
   'navigationRules',
   'injectedScripts',
   'bridge',
@@ -72,8 +70,6 @@ const OWN = [
   'sharedCookies',
   'nativeOptions',
   'onNativeEvent',
-  'renderLoading',
-  'renderError',
   'onNavigation',
   'onNavigationStateChange',
   'onError',
@@ -280,10 +276,7 @@ export function warnUnsupported(used: Record<keyof typeof NEEDS, boolean>) {
 export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
   const native = useRef<NativeMethods>(null);
   const attachmentRef = useRef<Attachment>(undefined);
-  const { error, loading, onNavigationState, onError, lastRef } = useLoadEvents(
-    props,
-    attachmentRef
-  );
+  const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
 
   // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
   const [handle] = useState((): WebViewRef => {
@@ -361,13 +354,12 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     props.onNavigation?.(nativeEvent);
   };
 
-  const webView = (
+  return (
     <NativeWebView
       key={creationKey(props)}
-      {...(props.renderLoading || props.renderError ? {} : viewPropsOf(props))}
+      {...viewPropsOf(props)}
       ref={native}
       source={props.source}
-      style={props.renderLoading || props.renderError ? styles.fill : props.style}
       settings={settings}
       pullToRefresh={props.pullToRefresh ?? false}
       sharedCookies={Platform.OS === 'ios' ? (props.sharedCookies ?? false) : undefined}
@@ -385,7 +377,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       onProcessGone={({ nativeEvent }) => props.onProcessGone?.(nativeEvent)}
     />
   );
-  return withOverlay(webView, props, error, loading);
 }
 
 /**
@@ -426,8 +417,8 @@ let lastBridgeId = 0;
 
 /**
  * What native sets up once, when it creates the WebView: the bridge, the hooks' options and the creation-time
- * settings (`ios.configuration`, and the app name, which is one of its keys). As the native view's `key`, a change
- * recreates the WebView, like a new `key` on the component would: the page reloads from `source`.
+ * settings (`ios.configuration`). As the native view's `key`, a change recreates the WebView, like a new `key` on the
+ * component would: the page reloads from `source`.
  */
 function creationKey(props: WebViewProps) {
   const bridge = props.bridge;
@@ -436,36 +427,28 @@ function creationKey(props: WebViewProps) {
   return JSON.stringify([
     id ?? 0,
     props.nativeOptions,
-    props.applicationNameForUserAgent,
-    props.ios?.configuration,
+    Platform.OS === 'ios' ? props.ios?.configuration : undefined,
   ]);
 }
 
-/** `style`, `testID`, the accessibility props and the other ViewProps, for the outermost view. */
+/** `style`, `testID`, the accessibility props and the other ViewProps, for the native view. */
 function viewPropsOf(props: WebViewProps): ViewProps {
   return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
 /**
  * The platform's settings for native: the package's defaults (playback on a gesture, no script-opened windows,
- * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and the user agent
- * props on top. A user agent prop that is unset resets its key to the default, so removing the prop undoes it.
+ * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and `userAgent` on
+ * top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
-  const set = <T,>(
-    value: T | undefined,
-    key: string,
-    map: (value: T) => SettingValue = (v) => v as never
-  ) => (value === undefined ? {} : { [key]: map(value) });
+  const set = (value: string | undefined, key: string) =>
+    value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
     const { configuration, preferences, webView, ...rest } = props.ios ?? {};
     return {
       ...rest,
-      configuration: {
-        mediaTypesRequiringUserActionForPlayback: MEDIA_ALL,
-        ...configuration,
-        ...set(props.applicationNameForUserAgent, 'applicationNameForUserAgent'),
-      },
+      configuration: { mediaTypesRequiringUserActionForPlayback: MEDIA_ALL, ...configuration },
       preferences: { javaScriptCanOpenWindowsAutomatically: false, ...preferences },
       webView: {
         customUserAgent: null,
@@ -483,11 +466,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
       mediaPlaybackRequiresUserGesture: true,
       javaScriptCanOpenWindowsAutomatically: false,
       ...settings,
-      ...set(
-        props.applicationNameForUserAgent,
-        'userAgentString',
-        (name) => `${nativeModule().defaultUserAgent} ${name}`
-      ),
       ...set(props.userAgent, 'userAgentString'),
     },
     webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
@@ -501,25 +479,18 @@ function warnRejected(payload: Record<string, unknown>) {
   }
 }
 
-/**
- * Load events and the overlay state. The current load's main-frame error: onLoad fires only without one, and
- * renderError shows it until the next load starts.
- */
+/** Load events. The current load's main-frame error: onLoad fires only without one. */
 function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment | undefined>) {
   const lastRef = useRef(INITIAL_STATE);
-  const [error, setError] = useState<WebViewErrorEvent | null>(null);
   const errorRef = useRef<WebViewErrorEvent | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const onNavigationState = ({ nativeEvent: state }: NativeEvent<NavigationState>) => {
     const was = lastRef.current.loading;
     lastRef.current = state;
     attachmentRef.current?.update(state);
-    setLoading(state.loading);
     props.onNavigationStateChange?.(state);
     if (!was && state.loading) {
       errorRef.current = null;
-      setError(null);
       props.onLoadStart?.(state);
     }
     if (was && !state.loading) {
@@ -529,7 +500,7 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
   };
 
   // An HTTP status (404, 503) still shows the site's own error page: only network and SSL failures count as a failed
-  // load (no onLoad, renderError shown).
+  // load (no onLoad).
   const onError = ({
     nativeEvent: { kind, url, code, description },
   }: NativeEvent<NativeErrorEvent>) => {
@@ -539,28 +510,10 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
     }
     const failure = { kind, url, code, description };
     errorRef.current = failure;
-    setError(failure);
     props.onError?.(failure);
   };
 
-  return { error, loading, onNavigationState, onError, lastRef };
-}
-
-/** The error screen wins over the loading screen; both cover the WebView until the next load starts or finishes. */
-function withOverlay(
-  webView: ReactElement,
-  props: WebViewProps,
-  error: WebViewErrorEvent | null,
-  loading: boolean
-) {
-  if (!props.renderLoading && !props.renderError) return webView;
-  const overlay = error ? props.renderError?.(error) : loading ? props.renderLoading?.() : null;
-  return (
-    <View {...viewPropsOf(props)}>
-      {webView}
-      {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
-    </View>
-  );
+  return { onNavigationState, onError, lastRef };
 }
 
 let androidInfo: AndroidWebViewInfo | undefined;
@@ -570,13 +523,19 @@ export declare namespace WebView {
    * for the life of the process: a WebView update restarts the app.
    */
   const androidWebViewInfo: AndroidWebViewInfo | null;
+  /**
+   * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
+   * `ios.configuration.applicationNameForUserAgent` appends.
+   */
+  const defaultUserAgent: string | null;
 }
 Object.defineProperty(WebView, 'androidWebViewInfo', {
   get: (): AndroidWebViewInfo | null =>
     Platform.OS === 'android' ? (androidInfo ??= nativeModule().androidWebViewInfo) : null,
 });
-
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+Object.defineProperty(WebView, 'defaultUserAgent', {
+  get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
+});
 
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one); re-renders
