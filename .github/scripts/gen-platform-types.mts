@@ -3,6 +3,7 @@
 // node .github/scripts/gen-platform-types.mts (`--check` fails if the output is stale).
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and androidx main: the explicit
 // step after an SDK upgrade. It keeps only the declarations this script reads (the iOS doc comments are Apple's).
+// A generated member list repeats by nature, so .jscpd.json leaves *.generated.ts out of the duplicate check.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
