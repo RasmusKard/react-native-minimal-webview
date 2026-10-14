@@ -219,9 +219,17 @@ describe('page requests', () => {
       .mockResolvedValueOnce('allow')
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('no'));
-    const { fire, native } = await renderRequests({ onNavigationRequest, onOpenExternal: () => {} });
+    const { fire, native } = await renderRequests({
+      onNavigationRequest,
+      onOpenExternal: () => {},
+    });
     expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
-    const request = { url: 'https://a.example', mainFrame: true, newWindow: false, userInitiated: true };
+    const request = {
+      url: 'https://a.example',
+      mainFrame: true,
+      newWindow: false,
+      userInitiated: true,
+    };
     await fire('navigationRequest', request, 1);
     expect(onNavigationRequest).toHaveBeenCalledWith(request);
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
