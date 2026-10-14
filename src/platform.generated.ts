@@ -368,8 +368,8 @@ export type AndroidSettingKeys = {
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
  * `configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }`. An option set's `all` is the OR of its listed
- * bits, not `NSUIntegerMax`, which JSON can't carry. `WebsiteDataType` has the `WKWebsiteDataStore` data type names, for
- * `call`.
+ * bits, not `NSUIntegerMax`, which JSON can't carry. `WebsiteDataType` has the data type names the `websiteDataStore`
+ * methods take, for `call`; `WebViewDataType` is the option set `webView.fetchDataOfTypes:` takes.
  */
 export const WK = {
   SelectionGranularity: {

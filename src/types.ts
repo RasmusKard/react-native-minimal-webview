@@ -2,7 +2,14 @@ import type { ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { BridgeErrorCode } from './bridge/protocol';
-import type { AndroidSettingKeys, IOSSettingKeys } from './platform.generated';
+import type {
+  AndroidSettingKeys,
+  CGPoint,
+  CGRect,
+  CGSize,
+  IOSSettingKeys,
+  UIEdgeInsets,
+} from './platform.generated';
 
 /** `headers` go on the first request only, not on later navigations. */
 export type WebViewSource =
@@ -132,8 +139,9 @@ export type DownloadFailure = { filename: string; url: string | null; reason: st
 
 export type AuthRequest = { host: string; realm: string };
 
-/** What a platform setting can take: what its property or setter accepts. An object is an iOS struct (`{ top, left, bottom, right }`, `{ x, y }`, `{ width, height }`). */
-export type SettingValue = boolean | number | string | null | Record<string, number>;
+/** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
+export type SettingValue =
+  boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
 
 /** A root's generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus, untyped, any other key the platform has. */
 type Root<Known> = Known & Record<string, SettingValue | undefined>;

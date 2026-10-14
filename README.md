@@ -48,11 +48,9 @@ export function Browser() {
       source={{ uri: 'https://example.com' }}
       applicationNameForUserAgent="MyApp/1.0"
       navigationRules={[
-        { scheme: ['tel', 'mailto', 'sms'], mainFrame: true, action: 'external' },
         { host: ['example.com', '*.example.com'], action: 'allow' },
-        { newWindow: true, action: 'external' },
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
-        { scheme: ['http', 'https'], action: 'external' },
+        { action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
       ]}
       renderError={(error) => <OfflineScreen error={error} onRetry={() => ref.current?.reload()} />}
       style={{ flex: 1 }}
@@ -133,16 +131,20 @@ are lists, and one entry matching is enough:
 ## The bridge
 
 ```tsx
-const bridge = useMemo(() => {
-  const b = createBridge({ allowedOrigins: ['https://example.com', 'https://*.example.com'] });
-  b.handle('share', async ({ url }) => { await Share.share({ url }); return true });
-  return b;
-}, []);
+const bridge = useMemo(() => createBridge({ allowedOrigins: ['https://example.com', 'https://*.example.com'] }), []);
+useEffect(
+  () => bridge.handle('share', async ({ url }) => { await Share.share({ url, message }); return true }), // the unsubscribe
+  [bridge, message]
+);
 
 <WebView bridge={bridge} … />
 await bridge.call('getCartCount');   // a method the page registered
 bridge.emit('themeChanged', 'dark');
 ```
+
+Make the bridge once (`useMemo`, or at module level like `createWebViewRef`): a new one recreates the WebView. A
+handler sees the values of the render that registered it, so register it in an effect with those values in the
+deps; `handle` returns the unsubscribe, which the effect's cleanup runs.
 
 In the page:
 

@@ -4,6 +4,7 @@
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and androidx main: the explicit
 // step after an SDK upgrade. It keeps only the declarations this script reads (the iOS doc comments are Apple's).
 // A generated member list repeats by nature, so .jscpd.json leaves *.generated.ts out of the duplicate check.
+// The WK constant names are the header names with their common prefix stripped: an SDK rename renames a constant.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -414,8 +415,8 @@ export type AndroidSettingKeys = ${object({
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
  * \`configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }\`. An option set's \`all\` is the OR of its listed
- * bits, not \`NSUIntegerMax\`, which JSON can't carry. \`WebsiteDataType\` has the \`WKWebsiteDataStore\` data type names, for
- * \`call\`.
+ * bits, not \`NSUIntegerMax\`, which JSON can't carry. \`WebsiteDataType\` has the data type names the \`websiteDataStore\`
+ * methods take, for \`call\`; \`WebViewDataType\` is the option set \`webView.fetchDataOfTypes:\` takes.
  */
 export const WK = ${object({
     ...iosEnums(ios),
