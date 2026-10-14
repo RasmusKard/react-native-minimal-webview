@@ -13,6 +13,7 @@
     "ios",
     "!ios/Tests",
     "android/build.gradle",
+    "android/consumer-rules.pro",
     "android/src/main",
     "expo-module.config.json"
   ],

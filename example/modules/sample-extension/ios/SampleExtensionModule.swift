@@ -11,11 +11,27 @@ public class SampleExtensionModule: Module {
         if context.options["pageCounter"] != nil { configuration.dataDetectorTypes = .phoneNumber }
       }
       MinimalWebViewHooks.attach.append { _, context in
-        guard context.options["pageCounter"] != nil else { return nil }
-        context.navigationDelegates.append(PageCounter(context: context))
+        if context.options["pageCounter"] != nil { context.navigationDelegates.append(PageCounter(context: context)) }
+        // A decision callback the core implements: this delegate takes it over, and the app's prop is not asked.
+        if context.options["hookAuth"] != nil { context.navigationDelegates.append(HookAuth()) }
         return nil
       }
     }
+  }
+}
+
+/// Answers every HTTP basic or digest challenge itself.
+private final class HookAuth: NSObject, WKNavigationDelegate {
+  func webView(
+    _ webView: WKWebView,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    let method = challenge.protectionSpace.authenticationMethod
+    guard method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest else {
+      return completionHandler(.performDefaultHandling, nil)
+    }
+    completionHandler(.useCredential, URLCredential(user: "u", password: "p", persistence: .forSession))
   }
 }
 

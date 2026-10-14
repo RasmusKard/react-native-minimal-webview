@@ -356,8 +356,7 @@ MinimalWebViewHooks.configure.append { configuration, context in   // before the
   if context.options["pageCounter"] != nil { configuration.dataDetectorTypes = .phoneNumber }
 }
 MinimalWebViewHooks.attach.append { webView, context in             // once it exists; return a detach closure or nil
-  guard context.options["pageCounter"] != nil else { return nil }
-  context.navigationDelegates.append(PageCounter(context: context))  // a WKNavigationDelegate
+  if context.options["pageCounter"] != nil { context.navigationDelegates.append(PageCounter(context: context)) }
   return nil
 }
 ```

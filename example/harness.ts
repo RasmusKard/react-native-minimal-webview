@@ -1138,7 +1138,12 @@ async function settings(h: Harness) {
     } else {
       h.setProps({
         android: {
-          settings: { textZoom: 120, algorithmicDarkeningAllowed: true, nope: 1 },
+          settings: {
+            textZoom: 120,
+            algorithmicDarkeningAllowed: true,
+            paymentRequestEnabled: true,
+            nope: 1,
+          },
           webView: {
             overScrollMode: 2,
             verticalScrollBarEnabled: false,
@@ -1156,6 +1161,11 @@ async function settings(h: Harness) {
       r.check(
         'a WebSettingsCompat setter applies',
         (await get('settings.algorithmicDarkeningAllowed')) === true
+      );
+      r.check(
+        'a setter only WebSettingsCompat has applies (through reflection on androidx, R8 included)',
+        (await get('settings.paymentRequestEnabled')) === true,
+        await get('settings.paymentRequestEnabled')
       );
       r.check('a WebView setter applies', (await get('webView.overScrollMode')) === 2);
       r.check('an is-getter reads back', (await get('webView.verticalScrollBarEnabled')) === false);
@@ -1761,6 +1771,30 @@ async function sampleExtension(h: Harness) {
       h.events.hookEvents
     );
   }
+  // A decision callback the core implements: the hook's delegate wins, and onHttpAuthRequest is never asked.
+  let asks = 0;
+  h.setAuth(() => {
+    asks++;
+    return null;
+  });
+  h.setProps({ nativeOptions: { pageCounter: true, hookAuth: true } });
+  h.remount();
+  await sleep(500);
+  await waitFor(h, idle, 10000);
+  await openPage(h, `${h.pages}/auth?hook=1&t=${Date.now()}`);
+  const auth = (await h.ref.current?.evaluate(
+    `document.getElementById('auth')?.textContent ?? ''`
+  )) as string;
+  r.check(
+    'its delegate takes over a decision the core implements (HTTP auth)',
+    auth === 'authorized' && asks === 0,
+    { auth, asks }
+  );
+  h.setAuth(undefined);
+  h.setProps({});
+  h.remount();
+  await sleep(500);
+  await waitFor(h, idle, 10000);
   if (Platform.OS === 'ios') {
     // configure() set data detectors before the WKWebView existed: WebKit turns the number into a tel: link.
     h.loadSource({ html: '<p id="n">Call 415-555-0134 today</p>', baseUrl: h.pages });
