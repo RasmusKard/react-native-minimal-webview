@@ -1,4 +1,4 @@
-<!-- Extract of /platforms/android-37.0/data/api-versions.xml -->
+<!-- Extract of /platforms/android-37.0/data/api-versions.xml; of View, only its scroll setters -->
 	<class name="android/webkit/WebSettings" since="1">
 		<extends name="java/lang/Object"/>
 		<method name="&lt;init>()V" since="22"/>
@@ -283,4 +283,28 @@
 		<method name="setAcceptThirdPartyCookies(Landroid/webkit/WebView;Z)V" since="21"/>
 		<method name="setCookie(Ljava/lang/String;Ljava/lang/String;)V"/>
 		<method name="setCookie(Ljava/lang/String;Ljava/lang/String;Landroid/webkit/ValueCallback;)V" since="21"/>
+	</class>
+	<class name="android/view/View" since="1">
+		<method name="setHorizontalScrollBarEnabled(Z)V"/>
+		<method name="setHorizontalScrollbarThumbDrawable(Landroid/graphics/drawable/Drawable;)V" since="29"/>
+		<method name="setHorizontalScrollbarTrackDrawable(Landroid/graphics/drawable/Drawable;)V" since="29"/>
+		<method name="setNestedScrollingEnabled(Z)V" since="21"/>
+		<method name="setOnScrollChangeListener(Landroid/view/View$OnScrollChangeListener;)V" since="23"/>
+		<method name="setOverScrollMode(I)V" since="9"/>
+		<method name="setScrollBarDefaultDelayBeforeFade(I)V" since="16"/>
+		<method name="setScrollBarFadeDuration(I)V" since="16"/>
+		<method name="setScrollBarSize(I)V" since="16"/>
+		<method name="setScrollBarStyle(I)V"/>
+		<method name="setScrollCaptureCallback(Landroid/view/ScrollCaptureCallback;)V" since="31"/>
+		<method name="setScrollCaptureHint(I)V" since="31"/>
+		<method name="setScrollContainer(Z)V" since="3"/>
+		<method name="setScrollIndicators(I)V" since="23"/>
+		<method name="setScrollIndicators(II)V" since="23"/>
+		<method name="setScrollX(I)V" since="14"/>
+		<method name="setScrollY(I)V" since="14"/>
+		<method name="setScrollbarFadingEnabled(Z)V" since="5"/>
+		<method name="setVerticalScrollBarEnabled(Z)V"/>
+		<method name="setVerticalScrollbarPosition(I)V" since="11"/>
+		<method name="setVerticalScrollbarThumbDrawable(Landroid/graphics/drawable/Drawable;)V" since="29"/>
+		<method name="setVerticalScrollbarTrackDrawable(Landroid/graphics/drawable/Drawable;)V" since="29"/>
 	</class>

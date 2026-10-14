@@ -110,7 +110,7 @@ extension MinimalWebView {
   }
 
   /// Equal URLs, treating an empty path as "/": WebKit turns `https://example.com` into `https://example.com/`.
-  private static func sameURL(_ a: URL, _ b: URL) -> Bool {
+  static func sameURL(_ a: URL, _ b: URL) -> Bool {
     func normalized(_ url: URL) -> String? {
       guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
       if components.percentEncodedPath.isEmpty { components.percentEncodedPath = "/" }

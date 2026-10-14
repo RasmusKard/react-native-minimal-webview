@@ -82,10 +82,11 @@ public class MinimalWebViewModule: Module {
 
 // A prop that fails to convert is dropped whole (ExpoFabricView's try?), so every field is optional.
 
-/// `{ uri, headers? }` or `{ html, baseUrl? }`.
+/// `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `body` makes the request a form-urlencoded POST.
 struct WebViewSource: Record {
   @Field var uri: String? = nil
   @Field var headers: [String: String]? = nil
+  @Field var body: String? = nil
   @Field var html: String? = nil
   @Field var baseUrl: String? = nil
 }
