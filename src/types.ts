@@ -92,10 +92,12 @@ export type ProcessGoneEvent = {
   recovered: boolean;
 };
 
+/**
+ * Runs at document start, before any page script. Code for when the DOM is parsed goes in
+ * `addEventListener('DOMContentLoaded', …)`.
+ */
 export type InjectedScript = {
   code: string;
-  /** Document start runs before any page script; end runs after the DOM is parsed. */
-  when: 'start' | 'end';
   mainFrameOnly?: boolean;
 };
 

@@ -19,9 +19,8 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 
 On Android, a few features depend on the device's Android System WebView. Any API 29+ device with WebView updates
 enabled has them all.
-- `when: 'end'` injected scripts need WebView 146+; older ones skip them.
-- The bridge and `when: 'start'` scripts need the `WEB_MESSAGE_LISTENER` and `DOCUMENT_START_SCRIPT` features; without
-  them bridge calls reject with `unavailable` and start scripts don't run. `evaluate` (and so `blob:` downloads) needs
+- The bridge and injected scripts need the `WEB_MESSAGE_LISTENER` and `DOCUMENT_START_SCRIPT` features; without
+  them bridge calls reject with `unavailable` and injected scripts don't run. `evaluate` (and so `blob:` downloads) needs
   `WEB_MESSAGE_LISTENER`. Both are in WebView 101 and newer.
 
 For the bridge and `injectedScripts`, the library warns about a missing feature once per process, in every build. To
@@ -30,7 +29,6 @@ gate on it, check what the device supports:
 ```ts
 const info = WebView.androidWebViewInfo; // null on iOS
 const canBridge = info?.features.WEB_MESSAGE_LISTENER !== false && info?.features.DOCUMENT_START_SCRIPT !== false;
-const canEndScripts = info?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
 ```
 
 ## Quick start
@@ -171,8 +169,7 @@ to every page and every iframe.
 
 ```tsx
 const rnwMessages = {
-  when: 'start', // after the bridge's own script, so `window.nativeBridge` already exists
-  mainFrameOnly: true,
+  mainFrameOnly: true, // after the bridge's own script, so `window.nativeBridge` already exists
   code: `if (window.nativeBridge) {
     window.ReactNativeWebView = { postMessage: (data) => window.nativeBridge.emit('rnw', String(data)) };
     window.nativeBridge.on('rnw', (data) =>
@@ -190,12 +187,11 @@ The `message` event goes to `window` on iOS and `document` on Android, as react-
 
 ### Scroll position
 
-There is no `onScroll` prop. A start script reports the main frame's scroll position over the bridge, at most once
+There is no `onScroll` prop. An injected script reports the main frame's scroll position over the bridge, at most once
 per frame:
 
 ```tsx
 const scroll = {
-  when: 'start',
   mainFrameOnly: true,
   code: `let queued = false;
   addEventListener('scroll', () => {
@@ -219,7 +215,7 @@ observe `scrollView.contentOffset` on iOS and `setOnScrollChangeListener` on And
 | `source` | `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `headers` go on the first request only. `body` makes it a form-urlencoded POST (Android sends no `headers` with it); `reload()` and crash recovery send it again. A `file://` uri loads with read access to its directory; Android needs `android.settings.allowFileAccess: true` |
 | `ios`, `android` | Any WebKit property or Android setter, by name. See [Platform settings](#platform-settings) |
 | `userAgent` | Replaces the user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). To append to the default one instead: `ios.configuration.applicationNameForUserAgent` (read when the WebView is created: a change recreates it), and on Android `android.settings.userAgentString` from `WebView.defaultUserAgent` plus your suffix |
-| `injectedScripts` | `[{ code, when: 'start' \| 'end', mainFrameOnly? }]`. Changes apply from the next navigation. On Android, `'end'` scripts need System WebView 146+ (see Requirements) |
+| `injectedScripts` | `[{ code, mainFrameOnly? }]`, run at document start, before the page's scripts; code for the parsed DOM goes in `addEventListener('DOMContentLoaded', …)`. Changes apply from the next navigation |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See above |
 | `bridge` | `createBridge(...)`. Read when the WebView is created: a change recreates it |
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |

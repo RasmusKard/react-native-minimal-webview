@@ -18,7 +18,6 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
-import expo.modules.kotlin.types.Enumerable
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Serializable
@@ -79,8 +78,7 @@ class MinimalWebViewModule : Module() {
         "features" to listOf(
           WebViewFeature.NAVIGATION_LISTENER,
           WebViewFeature.WEB_MESSAGE_LISTENER,
-          WebViewFeature.DOCUMENT_START_SCRIPT,
-          WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
+          WebViewFeature.DOCUMENT_START_SCRIPT
         ).associateWith { WebViewFeature.isFeatureSupported(it) }
       )
     }
@@ -177,12 +175,6 @@ data class WebViewSource(
 
 data class InjectedScript(
   @Field val code: String? = null,
-  @Field("when") val time: InjectionTime? = null,
   @Field val mainFrameOnly: Boolean? = null
 ) : Record
-
-enum class InjectionTime(val value: String) : Enumerable {
-  START("start"),
-  END("end")
-}
 

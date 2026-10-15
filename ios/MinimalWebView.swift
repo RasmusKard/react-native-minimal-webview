@@ -232,8 +232,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
     for script in injectedScripts {
       guard let code = script.code else { continue }
-      let time: WKUserScriptInjectionTime = script.when == .end ? .atDocumentEnd : .atDocumentStart
-      controller.addUserScript(WKUserScript(source: code, injectionTime: time, forMainFrameOnly: script.mainFrameOnly ?? false, in: .page))
+      controller.addUserScript(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.mainFrameOnly ?? false, in: .page))
     }
     installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
   }

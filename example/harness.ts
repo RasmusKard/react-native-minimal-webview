@@ -1003,7 +1003,7 @@ async function info(h: Harness) {
     );
     r.check(
       'reports the features in use',
-      Object.keys(result?.features ?? {}).length === 4,
+      Object.keys(result?.features ?? {}).length === 3,
       result?.features
     );
   }
@@ -1540,44 +1540,40 @@ async function navigation(h: Harness) {
 }
 
 /**
- * injectedScripts: start runs before page scripts, end after the DOM, mainFrameOnly skips iframes, changes apply next
- * load. Android WebView older than 146 skips end scripts.
+ * injectedScripts: run before page scripts, a DOMContentLoaded listener once the DOM is parsed, mainFrameOnly skips
+ * iframes, changes apply next load.
  */
 async function injection(h: Harness) {
   const r = reporter('injection');
-  const canEnd = WebView.androidWebViewInfo?.features.JS_INJECTION_IN_FRAME_AND_WORLD !== false;
   h.setProps({
     injectedScripts: [
-      { code: 'window.__injectedStart = true;', when: 'start' },
+      { code: 'window.__injectedStart = true;' },
+      { code: 'window.__mainOnly = true; window.__marker = "one";', mainFrameOnly: true },
       {
-        code: 'window.__mainOnly = true; window.__marker = "one";',
-        when: 'start',
+        code: `addEventListener('DOMContentLoaded', () => (window.__injectedEnd = !!document.getElementById('end')));`,
         mainFrameOnly: true,
       },
-      { code: 'window.__injectedEnd = true;', when: 'end', mainFrameOnly: true },
     ],
   });
   await sleep(500);
   await openPage(h, fresh(h, '/injection.html'));
   await sleep(500);
-  r.check('a start script runs before page scripts', (await text(h, 'start')) === 'true');
-  if (canEnd) r.check('an end script runs by load', (await text(h, 'end')) === 'true');
-  else
-    r.check(
-      'an end script is skipped below WebView 146',
-      (await h.ref.evaluate('window.__injectedEnd')) == null
-    );
+  r.check('a script runs before page scripts', (await text(h, 'start')) === 'true');
+  r.check(
+    'its DOMContentLoaded listener runs once the DOM is parsed',
+    (await text(h, 'end')) === 'true'
+  );
   const frame = (await h.ref.evaluate(`(() => {
     const w = document.querySelector('iframe').contentWindow;
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
-  r.check('a start script without mainFrameOnly runs in iframes', frame.start, frame);
+  r.check('a script without mainFrameOnly runs in iframes', frame.start, frame);
   r.check(
     'a mainFrameOnly script runs in the main frame and skips iframes',
     frame.top && !frame.mainOnly,
     frame
   );
-  h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";', when: 'start' }] });
+  h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
   await sleep(500);
   r.check(
     'a changed script waits for the next navigation',

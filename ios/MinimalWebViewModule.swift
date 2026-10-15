@@ -93,12 +93,6 @@ struct WebViewSource: Record {
 
 struct InjectedScript: Record {
   @Field var code: String? = nil
-  @Field var when: InjectionTime? = nil
   @Field var mainFrameOnly: Bool? = nil
-}
-
-enum InjectionTime: String, Enumerable {
-  case start
-  case end
 }
 
