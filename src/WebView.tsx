@@ -15,7 +15,6 @@ import { Platform, type ViewProps } from 'react-native';
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
 import { WK } from './platform.generated';
 import type {
-  AndroidWebViewInfo,
   Bridge,
   NativeEvent as HookEventBody,
   NavigationEvent,
@@ -133,10 +132,7 @@ type NativeMethods = {
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
-const nativeModule = () =>
-  requireNativeModule<{ androidWebViewInfo: AndroidWebViewInfo; defaultUserAgent: string }>(
-    'MinimalWebView'
-  );
+const nativeModule = () => requireNativeModule<{ defaultUserAgent: string }>('MinimalWebView');
 
 const INITIAL_STATE: NavigationState = {
   url: '',
@@ -462,23 +458,13 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
   return { onNavigationState, onError, lastRef };
 }
 
-let androidInfo: AndroidWebViewInfo | undefined;
 export declare namespace WebView {
-  /**
-   * The Android WebView provider and which of the WebView features this package uses it supports. Null on iOS. Fixed
-   * for the life of the process: a WebView update restarts the app.
-   */
-  const androidWebViewInfo: AndroidWebViewInfo | null;
   /**
    * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
    * `ios.configuration.applicationNameForUserAgent` appends.
    */
   const defaultUserAgent: string | null;
 }
-Object.defineProperty(WebView, 'androidWebViewInfo', {
-  get: (): AndroidWebViewInfo | null =>
-    Platform.OS === 'android' ? (androidInfo ??= nativeModule().androidWebViewInfo) : null,
-});
 Object.defineProperty(WebView, 'defaultUserAgent', {
   get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });

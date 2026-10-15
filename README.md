@@ -23,13 +23,7 @@ enabled has them all.
   them bridge calls reject with `unavailable` and injected scripts don't run. `evaluate` (and so `blob:` downloads) needs
   `WEB_MESSAGE_LISTENER`. Both are in WebView 101 and newer.
 
-For the bridge and `injectedScripts`, the library warns about a missing feature once per process, in every build. To
-gate on it, check what the device supports:
-
-```ts
-const info = WebView.androidWebViewInfo; // null on iOS
-const canBridge = info?.features.WEB_MESSAGE_LISTENER !== false && info?.features.DOCUMENT_START_SCRIPT !== false;
-```
+For the bridge and `injectedScripts`, the library warns about a missing feature once per process, in every build.
 
 ## Quick start
 

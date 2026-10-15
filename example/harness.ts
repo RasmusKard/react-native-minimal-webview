@@ -989,27 +989,6 @@ async function dialogs(h: Harness) {
   r.done();
 }
 
-async function info(h: Harness) {
-  const r = reporter('info');
-  const result = WebView.androidWebViewInfo;
-  r.info('androidWebViewInfo', result);
-  if (Platform.OS === 'ios') {
-    r.check('null on iOS', result === null);
-  } else {
-    r.check(
-      'provider available with a version',
-      result?.available === true && /^\d+\./.test(result.version),
-      result
-    );
-    r.check(
-      'reports the features in use',
-      Object.keys(result?.features ?? {}).length === 3,
-      result?.features
-    );
-  }
-  r.done();
-}
-
 /**
  * A creation-time setting changed while mounted recreates the WebView (iOS: an `ios.configuration` key; Android has
  * none, so `nativeOptions` stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
@@ -2058,7 +2037,6 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   ua,
   crash,
   dialogs,
-  info,
   mountSettings,
   settings,
   overlays,

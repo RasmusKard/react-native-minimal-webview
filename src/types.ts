@@ -311,12 +311,3 @@ export type WebViewRefObject = WebViewRef & {
   /** Calls `listener` on every state change, including a WebView mounting or unmounting. Returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
 };
-
-export type AndroidWebViewInfo = {
-  version: string;
-  provider: string;
-  /** False when the WebView provider is missing or disabled. */
-  available: boolean;
-  /** `WebViewFeature` name to support, for the features this package uses. */
-  features: Record<string, boolean>;
-};

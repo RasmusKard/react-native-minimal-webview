@@ -7,8 +7,6 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultContract
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
@@ -64,23 +62,6 @@ class MinimalWebViewModule : Module() {
     // The platform's default user agent (`WebView.defaultUserAgent` in JS), for apps that append to it.
     Constant("defaultUserAgent") {
       WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
-    }
-
-    // The WebView provider and the features this package uses (false: update Android System WebView).
-    // Computed on first access and fixed after: a WebView update restarts the process.
-    Constant("androidWebViewInfo") {
-      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
-      val provider = WebViewCompat.getCurrentWebViewPackage(context)
-      mapOf(
-        "version" to (provider?.versionName ?: ""),
-        "provider" to (provider?.packageName ?: ""),
-        "available" to (provider != null),
-        "features" to listOf(
-          WebViewFeature.NAVIGATION_LISTENER,
-          WebViewFeature.WEB_MESSAGE_LISTENER,
-          WebViewFeature.DOCUMENT_START_SCRIPT
-        ).associateWith { WebViewFeature.isFeatureSupported(it) }
-      )
     }
 
     View(MinimalWebView::class) {
