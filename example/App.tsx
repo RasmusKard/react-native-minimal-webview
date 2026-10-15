@@ -66,7 +66,6 @@ export default function App() {
     return b;
   }, []);
 
-  const authRef = useRef<WebViewProps['onHttpAuthRequest']>(undefined);
   const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(
     undefined
   );
@@ -82,7 +81,6 @@ export default function App() {
     remount: () => remount(),
     load: (uri) => setSource({ uri }),
     loadSource: setSource,
-    setAuth: (handler) => (authRef.current = handler),
     setRules,
     bridge,
     pageEvents,
@@ -128,7 +126,6 @@ export default function App() {
             onDownload={(result) =>
               'uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result)
             }
-            onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
             onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
             ios={{ configuration: { applicationNameForUserAgent: 'MinimalWebViewExample/1.0' } }}
             android={{
@@ -153,7 +150,7 @@ export default function App() {
             {...extraProps}
           />
         </Remountable>
-        {error ? <ErrorScreen error={error} onRetry={() => ref.reload()} /> : null}
+        {error ? <ErrorScreen error={error} onRetry={() => ref.current?.reload()} /> : null}
       </View>
       <Text testID="harness-request" style={styles.state}>
         {driverRequest}
@@ -163,7 +160,7 @@ export default function App() {
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
       </Text>
       <ScrollView horizontal style={styles.buttons}>
-        <Button title="back" onPress={() => ref.goBack()} />
+        <Button title="back" onPress={() => ref.current?.goBack()} />
         <Button title="home" onPress={() => setSource({ uri: `${PAGES}/?t=${Date.now()}` })} />
         {Object.keys(SUITES).map((name) => (
           <Button key={name} title={name} onPress={() => run(name)} />

@@ -159,13 +159,10 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     if (hook != null) hook.onReceivedClientCertRequest(view, request) else super.onReceivedClientCertRequest(view, request)
   }
 
-  // Basic and digest auth: a hook client, else the app's prop (onHttpAuthRequest), else cancel (the page shows its 401).
+  // Basic and digest auth: a hook client, else cancel (the page shows its 401).
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
     val hook = deciding("onReceivedHttpAuthRequest", WEB_VIEW, HttpAuthHandler::class.java, STRING, STRING)
-    when {
-      hook != null -> hook.onReceivedHttpAuthRequest(view, handler, host, realm)
-      !owner.httpAuth.onHttpAuthRequest(handler, host, realm) -> handler.cancel()
-    }
+    if (hook != null) hook.onReceivedHttpAuthRequest(view, handler, host, realm) else handler.cancel()
   }
 
   override fun shouldOverrideKeyEvent(view: WebView, event: KeyEvent): Boolean =

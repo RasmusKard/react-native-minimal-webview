@@ -21,7 +21,6 @@ import expo.modules.minimalwebview.requests.DownloadInfo
 import expo.modules.minimalwebview.requests.Downloads
 import expo.modules.minimalwebview.requests.FileUpload
 import expo.modules.minimalwebview.requests.FullscreenVideo
-import expo.modules.minimalwebview.requests.HttpAuth
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -74,7 +73,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   internal val downloads = Downloads(this)
-  internal val httpAuth = HttpAuth(this)
   /** What the attach hooks returned, run before their WebView goes away. */
   private var detachers: List<() -> Unit> = emptyList()
   private var mounted = false
@@ -250,7 +248,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   internal fun pageFinished(url: String) {
     refresher.pageFinished()
-    httpAuth.pageFinished()
   }
 
   /** Answers every pending ask with null (block, cancel). */

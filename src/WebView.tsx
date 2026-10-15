@@ -15,7 +15,6 @@ import { Platform, type ViewProps } from 'react-native';
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
 import { WK } from './platform.generated';
 import type {
-  AndroidWebViewInfo,
   Bridge,
   NativeEvent as HookEventBody,
   NavigationEvent,
@@ -52,7 +51,6 @@ const REQUESTS = {
   fullscreenChange: 'onFullscreenChange',
   permissionRequest: 'onPermissionRequest',
   download: 'onDownload',
-  httpAuthRequest: 'onHttpAuthRequest',
 } as const;
 /** The core's own events; everything else is a hook's, for `onNativeEvent`. */
 const CORE = 'core.';
@@ -120,7 +118,6 @@ type NativeMethods = {
   answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
-  getUrl(): Promise<string | null>;
   /**
    * `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. `args` is
    * JSON too, so that a `null` argument survives the native dictionary conversion.
@@ -134,10 +131,7 @@ type NativeMethods = {
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
-const nativeModule = () =>
-  requireNativeModule<{ androidWebViewInfo: AndroidWebViewInfo; defaultUserAgent: string }>(
-    'MinimalWebView'
-  );
+const nativeModule = () => requireNativeModule<{ defaultUserAgent: string }>('MinimalWebView');
 
 const INITIAL_STATE: NavigationState = {
   url: '',
@@ -176,14 +170,6 @@ function createAdapter(): Adapter {
     get current() {
       return attached;
     },
-    goBack: () => attached?.goBack(),
-    goForward: () => attached?.goForward(),
-    reload: () => attached?.reload(),
-    stopLoading: () => attached?.stopLoading(),
-    evaluate: async (script) => await attached?.evaluate(script),
-    getUrl: async () => (await attached?.getUrl()) ?? '',
-    get: async (key) => await attached?.get(key),
-    call: async (method, args, options) => await attached?.call(method, args, options),
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
@@ -214,9 +200,8 @@ function createAdapter(): Adapter {
 }
 
 /**
- * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. It
- * forwards the methods to whichever WebView is mounted with it (no-ops while none is), and keeps its subscribers across
- * remounts.
+ * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. Its
+ * `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
  */
 export function createWebViewRef(): WebViewRefObject {
   const adapter = createAdapter();
@@ -248,7 +233,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
       evaluate: async (script) => parsed(await native.current?.evaluate(script)),
-      getUrl: async () => (await native.current?.getUrl()) ?? '',
       get: async (key) => parsed(await native.current?.native({ get: key })),
       call: async (method, args = [], options) =>
         parsed(
@@ -335,7 +319,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
 /**
  * Puts `handle` in a callback or plain ref. Any ref object also gets the navigation state through its adapter, which a
- * createWebViewRef one is, so it forwards the methods too.
+ * createWebViewRef one is, so its `current` comes from the adapter too.
  */
 function useAttach(
   ref: Ref<WebViewRef> | undefined,
@@ -463,23 +447,13 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
   return { onNavigationState, onError, lastRef };
 }
 
-let androidInfo: AndroidWebViewInfo | undefined;
 export declare namespace WebView {
-  /**
-   * The Android WebView provider and which of the WebView features this package uses it supports. Null on iOS. Fixed
-   * for the life of the process: a WebView update restarts the app.
-   */
-  const androidWebViewInfo: AndroidWebViewInfo | null;
   /**
    * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
    * `ios.configuration.applicationNameForUserAgent` appends.
    */
   const defaultUserAgent: string | null;
 }
-Object.defineProperty(WebView, 'androidWebViewInfo', {
-  get: (): AndroidWebViewInfo | null =>
-    Platform.OS === 'android' ? (androidInfo ??= nativeModule().androidWebViewInfo) : null,
-});
 Object.defineProperty(WebView, 'defaultUserAgent', {
   get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });

@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-import androidx.webkit.JavaScriptExecutionWorld
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
@@ -73,25 +72,13 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     installedScripts = scripts
     scriptHandlers.forEach { it.remove() }
     scriptHandlers.clear()
-    if (scripts.isEmpty()) return
-    // Start scripts use the long-standing document-start API; only end scripts need WebView 146+.
-    val canStart by lazy { !lacks("injectedScripts", listOf(WebViewFeature.DOCUMENT_START_SCRIPT), "`when: 'start'` scripts don't run") }
-    val canEnd by lazy {
-      !lacks("endScripts", listOf(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD), "`when: 'end'` scripts don't run (WebView 146+)")
-    }
+    if (scripts.isEmpty() || lacks("injectedScripts", listOf(WebViewFeature.DOCUMENT_START_SCRIPT), "injected scripts don't run")) return
     for (script in scripts) {
       val code = script.code ?: continue
-      val end = script.time == InjectionTime.END
-      if (if (end) !canEnd else !canStart) continue
       // No frame selector in androidx.webkit 1.17: main-frame-only scripts guard themselves.
       // A prefix, not a wrapping block: top-level const/let/class in the script must stay global.
       val source = if (script.mainFrameOnly == true) "if (window !== window.top) throw 0;\n$code" else code
-      scriptHandlers += if (end) {
-        val pageWorld = WebViewCompat.getExecutionWorld(webView, JavaScriptExecutionWorld.PAGE_WORLD_NAME)
-        WebViewCompat.addJavaScriptOnEvent(webView, source, WebViewCompat.INJECTION_EVENT_DOCUMENT_END, setOf("*"), pageWorld)
-      } else {
-        WebViewCompat.addDocumentStartJavaScript(webView, source, setOf("*"))
-      }
+      scriptHandlers += WebViewCompat.addDocumentStartJavaScript(webView, source, setOf("*"))
     }
   }
 

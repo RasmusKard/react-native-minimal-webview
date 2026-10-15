@@ -92,10 +92,12 @@ export type ProcessGoneEvent = {
   recovered: boolean;
 };
 
+/**
+ * Runs at document start, before any page script. Code for when the DOM is parsed goes in
+ * `addEventListener('DOMContentLoaded', …)`.
+ */
 export type InjectedScript = {
   code: string;
-  /** Document start runs before any page script; end runs after the DOM is parsed. */
-  when: 'start' | 'end';
   mainFrameOnly?: boolean;
 };
 
@@ -143,8 +145,6 @@ export type Download = { uri: string; filename: string; mimeType: string; url: s
  */
 export type DownloadFailure = { filename: string; url: string | null; reason: string };
 
-export type AuthRequest = { host: string; realm: string };
-
 /** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
 export type SettingValue =
   boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
@@ -156,7 +156,7 @@ type Root<Known> = Known & Record<string, SettingValue | undefined>;
  * WebKit settings by Objective-C property name, applied with Key-Value Coding, so any public property works, including
  * ones this package has never heard of: `{ scrollView: { bounces: false }, webView: { allowsBackForwardNavigationGestures: true } }`.
  * A value must fit the property's type (enums and option sets by raw value; `websiteDataStore` takes `'default'` or
- * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with `ref.get('scrollView.bounces')`.
+ * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with the ref's `get('scrollView.bounces')`.
  */
 export type IOSSettings = {
   /** `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page reloads). */
@@ -175,7 +175,7 @@ export type IOSSettings = {
  * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
  * newer SDK or androidx.webkit adds: `{ settings: { textZoom: 120, algorithmicDarkeningAllowed: true }, webView: { overScrollMode: 2 } }`.
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning.
- * Read one back with `ref.get('settings.textZoom')`.
+ * Read one back with the ref's `get('settings.textZoom')`.
  */
 export type AndroidSettings = {
   /** `WebSettings` setters, then static `WebSettingsCompat` ones. */
@@ -248,13 +248,6 @@ type OwnProps = {
    * `data:` or `blob:` one is dropped.
    */
   onDownload?: (result: Download | DownloadFailure) => void;
-  /** HTTP basic or digest auth: return credentials, or null to cancel. Without it, cancelled: the site's 401 page shows. */
-  onHttpAuthRequest?: (
-    request: AuthRequest
-  ) =>
-    | { username: string; password: string }
-    | null
-    | Promise<{ username: string; password: string } | null>;
   onNavigation?: (event: NavigationEvent) => void;
   /** Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;
@@ -284,8 +277,6 @@ export type WebViewRef = {
    * `navigated` on a new page, or `unavailable` (Android) when the WebView lacks the features it needs.
    */
   evaluate(script: string): Promise<unknown>;
-  /** The committed `url`, as in the navigation state, read from native now. */
-  getUrl(): Promise<string>;
   /**
    * A platform setting read by name, through JSON: `get('scrollView.bounces')` on iOS, `get('settings.textZoom')` on
    * Android (the roots of {@link IOSSettings} and {@link AndroidSettings}; also `websiteDataStore` and `httpCookieStore` on
@@ -309,21 +300,12 @@ export type WebViewRef = {
   ): Promise<unknown>;
 };
 
-/** What `createWebViewRef()` returns: a `WebViewRef` that outlives the WebViews mounted with it. */
-export type WebViewRefObject = WebViewRef & {
+/** What `createWebViewRef()` returns: a ref that outlives the WebViews mounted with it. */
+export type WebViewRefObject = {
   /** The mounted WebView's ref, or null while none is mounted. */
   readonly current: WebViewRef | null;
   /** The mounted WebView's navigation state, read synchronously; the initial state while none is mounted. */
   getState(): NavigationState;
   /** Calls `listener` on every state change, including a WebView mounting or unmounting. Returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
-};
-
-export type AndroidWebViewInfo = {
-  version: string;
-  provider: string;
-  /** False when the WebView provider is missing or disabled. */
-  available: boolean;
-  /** `WebViewFeature` name to support, for the features this package uses. */
-  features: Record<string, boolean>;
 };

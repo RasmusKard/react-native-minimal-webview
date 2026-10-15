@@ -38,7 +38,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // the hooks' delegates (DelegateProxy).
   private(set) lazy var permissions = Permissions(view: self)
   private(set) lazy var downloads = Downloads(view: self)
-  private lazy var httpAuth = HttpAuth(view: self)
   private lazy var proxy = DelegateProxy(core: self)
   /// What the attach hooks returned, run in tearDown.
   private var detachers: [() -> Void] = []
@@ -233,8 +232,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
     for script in injectedScripts {
       guard let code = script.code else { continue }
-      let time: WKUserScriptInjectionTime = script.when == .end ? .atDocumentEnd : .atDocumentStart
-      controller.addUserScript(WKUserScript(source: code, injectionTime: time, forMainFrameOnly: script.mainFrameOnly ?? false, in: .page))
+      controller.addUserScript(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.mainFrameOnly ?? false, in: .page))
     }
     installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
   }
@@ -320,7 +318,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   private func pageFinished(_ webView: WKWebView) {
     refresher.loadEnded()
-    httpAuth.pageFinished()
   }
 
   /// An observation callback the core implements: every hook delegate that implements it gets it after the core.
@@ -369,20 +366,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description])
     }
     decisionHandler(.allow)
-  }
-
-  func webView(
-    _ webView: WKWebView,
-    didReceive challenge: URLAuthenticationChallenge,
-    completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-  ) {
-    let method = challenge.protectionSpace.authenticationMethod
-    let isHTTPAuth = method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest
-    // A declined login shows the site's 401 page. (.cancelAuthenticationChallenge would fail the navigation on iOS 17.)
-    let reply = { (credential: URLCredential?) in completionHandler(credential == nil ? .rejectProtectionSpace : .useCredential, credential) }
-    let handled = isHTTPAuth && httpAuth.authenticate(challenge, completion: reply)
-    // Server trust and everything else: WebKit's default (an invalid certificate fails, as on Android).
-    if !handled { completionHandler(isHTTPAuth ? .rejectProtectionSpace : .performDefaultHandling, nil) }
   }
 
   func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
