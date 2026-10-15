@@ -190,7 +190,7 @@ describe('platform settings', () => {
     expect(settings.configuration.applicationNameForUserAgent).toBe('App/2');
   });
 
-  it('warn for each key native rejected', async () => {
+  it('logs native warnings', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const root = createRoot();
     await act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} />));
@@ -200,8 +200,8 @@ describe('platform settings', () => {
     await act(() =>
       native.onNativeEvent({
         nativeEvent: {
-          name: 'core.settingsRejected',
-          payload: { rejected: [{ key: 'scrollView.nope', reason: 'no such property' }] },
+          name: 'core.warning',
+          payload: { message: 'ios.scrollView.nope: no such property' },
         },
       })
     );
