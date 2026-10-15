@@ -281,7 +281,7 @@ export type WebViewRef = {
   /**
    * Runs an expression in the page's main frame and awaits it. Resolves with its value through JSON (`null` for what
    * JSON can't encode). Rejects with `ERR_EVALUATE` when it throws or rejects (or, on iOS, before the WebView exists),
-   * `navigated` (Android) on a new page, or `unavailable` (Android) when the WebView lacks the features it needs.
+   * `navigated` on a new page, or `unavailable` (Android) when the WebView lacks the features it needs.
    */
   evaluate(script: string): Promise<unknown>;
   /** The committed `url`, as in the navigation state, read from native now. */

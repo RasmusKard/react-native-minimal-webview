@@ -23,7 +23,7 @@ example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the name
   the rest. The script exits non-zero if any suite failed.
 - The app launches once per run and stays up: the harness resets itself after each suite, and Maestro waits on the
   test server, not the screen. The next suite relaunches the app only after a failed or cut-off one.
-- A full run takes about 4 minutes per platform, also with Android and iOS running at the same time (each platform has
+- A full run takes about 3 minutes per platform, also with Android and iOS running at the same time (each platform has
   its own harness queue). Start the second ~10 s after the first: once, two Maestro CLIs starting in the same second
   killed Android's device server. Each fits in one 10-minute tool call.
 - Debug output for failed runs is in `~/.maestro/tests`. The test pages server prints every check, with timestamps.
