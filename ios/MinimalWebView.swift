@@ -67,6 +67,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var lastEmitted: NSDictionary?
   private var emitScheduled = false
   private var crashTimes: [Date] = []
+  /// `evaluate` calls waiting for their result, by id, until a new document or a dead web process rejects them.
+  private var evaluations: [Int: (Result<String, Error>) -> Void] = [:]
+  private var nextEvaluation = 0
 
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
   // allowed). RN's messages are delivered only while the page still has it.
@@ -153,16 +156,29 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// The `evaluate` ref method. The page encodes the value, as on Android: what JSON can't encode (a function, a
-  /// cycle) gives "null".
+  /// cycle) gives "null". A new document rejects what is still waiting with `navigated`, as on Android: WebKit settles
+  /// a call whose page went away seconds later or never.
   func evaluate(_ script: String, onResult: @escaping (Result<String, Error>) -> Void) {
     guard let webView else { return onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: "No WebView"))) }
+    let id = nextEvaluation
+    nextEvaluation += 1
+    evaluations[id] = onResult
     let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
-    webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { result in
+    webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { [weak self] result in
+      // Already rejected when its page went away.
+      guard let onResult = self?.evaluations.removeValue(forKey: id) else { return }
       switch result {
       case .success(let value): onResult(.success(value as? String ?? "null"))
       case .failure(let error): onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: error.localizedDescription)))
       }
     }
+  }
+
+  /// The page the waiting `evaluate` calls run in is gone.
+  private func failEvaluations() {
+    let waiting = evaluations.values
+    evaluations = [:]
+    waiting.forEach { $0(.failure(EvaluateError(code: "navigated", message: "the page navigated before the script finished"))) }
   }
 
   func reload() {
@@ -231,6 +247,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
     failPendingAsks()
+    failEvaluations()
     dismissDialog()
     observations.removeAll()
     webView?.configuration.userContentController.removeAllScriptMessageHandlers()
@@ -386,6 +403,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
     // challenge holds its own page's response, so that page can't commit while it waits.
     failPendingAsks()
+    failEvaluations()
     bridgeOrigin = nil
     // A new document: JS queues bridge messages until the page is ready again.
     if bridgeScript != nil { onBridge(["navigated": true]) }
@@ -425,9 +443,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
     let recovered = crashTimes.count <= maxCrashesPerWindow
     dismissDialog()
-    // The page that asked is gone, as on Android (recover): fail its asks now rather than at the reload's commit, and
-    // deliver nothing until the reloaded page posts.
+    // The page that asked is gone, as on Android (recover): fail its asks and evaluate calls now rather than at the
+    // reload's commit, and deliver nothing until the reloaded page posts.
     failPendingAsks()
+    failEvaluations()
     bridgeOrigin = nil
     // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
     // (or the failed or committed URL) rather than jumping back to the source. An html or POST source loads again.
