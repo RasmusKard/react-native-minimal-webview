@@ -1,11 +1,7 @@
-import type { Bridge, BridgeHandler, BridgeOptions } from '../types';
+import type { Bridge, BridgeOptions } from '../types';
+import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
-import {
-  type BridgeError,
-  type BridgeMessage,
-  isBridgeError,
-  parseBridgeMessage,
-} from './protocol';
+import { type BridgeMessage, isBridgeError, parseBridgeMessage } from './protocol';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -25,34 +21,18 @@ export type BridgeConnection = {
 
 export const CONNECTION = Symbol('bridgeConnection');
 
-type Pending = {
-  resolve(value: unknown): void;
-  reject(error: Error): void;
-  timer: ReturnType<typeof setTimeout>;
-  /** Posted to a document (not just queued for the next one). */
-  sent: boolean;
-};
-
 const MAX_QUEUE = 1000;
-
-const bridgeError = ({ code, message }: BridgeError) => Object.assign(new Error(message), { code });
-
-/** `*`, `http(s)://host[:port]` or `http(s)://*.host[:port]`: addWebMessageListener's rules minus custom schemes. */
-const ORIGIN_RULE =
-  /^(\*|https?:\/\/(\*\.(?!\[))?([a-z0-9_-]+(\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(:\d{1,5})?)$/i;
 
 /** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
 export function createBridge(options: BridgeOptions): Bridge {
-  const invalid = options.allowedOrigins.filter((rule) => !ORIGIN_RULE.test(rule));
+  // `*` or what the page client parses: addWebMessageListener's rules minus custom schemes.
+  const invalid = options.allowedOrigins.filter((rule) => rule !== '*' && !parseOrigin(rule));
   if (invalid.length) {
     throw new Error(
       `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
     );
   }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const handlers = new Map<string, BridgeHandler>();
-  const listeners = new Map<string, Set<(payload: unknown) => void>>();
-  const pending = new Map<string, Pending>();
   let post: ((message: string) => void) | null = null;
   let ready = false;
   // The token of the document that last said `ready` (protocol.ts `doc`): what RN sends is for that document only.
@@ -61,56 +41,32 @@ export function createBridge(options: BridgeOptions): Bridge {
   let queue: BridgeMessage[] = [];
   // A document committed and hasn't said `ready` yet.
   let awaitingReady = false;
-  let nextId = 0;
   let unavailable = false;
 
   const deliver = (message: BridgeMessage) => {
     post?.(JSON.stringify({ ...message, doc }));
-    const call = pending.get(message.id);
+    const call = endpoint.pending.get(message.id);
     if (call) call.sent = true;
   };
 
-  const send = (message: BridgeMessage) => {
-    if (post && ready) deliver(message);
-    else {
-      queue.push(message);
-      // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call still times out
-      if (queue.length > MAX_QUEUE) queue.shift();
-    }
-  };
+  const endpoint = createEndpoint(
+    (message) => {
+      if (post && ready) deliver(message);
+      else {
+        queue.push(message);
+        // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call still times out
+        if (queue.length > MAX_QUEUE) queue.shift();
+      }
+    },
+    timeoutMs,
+    'n'
+  );
 
-  /** Rejects calls in flight (by default because their page is gone): all, or only those already posted to a page. */
-  const rejectAll = (
-    message: string,
-    code: BridgeError['code'] = 'navigated',
-    onlySent = false
-  ) => {
-    for (const [id, call] of pending) {
-      if (onlySent && !call.sent) continue;
-      clearTimeout(call.timer);
-      call.reject(bridgeError({ code, message }));
-      pending.delete(id);
-    }
-  };
+  /** Rejects the calls already posted to a page that is gone. */
+  const rejectSent = (message: string) =>
+    endpoint.rejectPending('navigated', message, (call) => call.sent);
   const unavailableMessage =
     'this WebView lacks the features the bridge needs; update Android System WebView';
-
-  // Answers go out at once, not through the ready-gated queue: the page may be waiting for this answer before it
-  // reaches DOMContentLoaded (a module script awaiting a call), and `ready` is sent only then. Native can deliver it:
-  // the page's call is a message from that page. It carries the caller's token, so only that document takes it.
-  const answer = async (id: string, callerDoc: string, method: string, params: unknown) => {
-    const reply = (message: BridgeMessage) =>
-      post?.(JSON.stringify({ ...message, doc: callerDoc }));
-    const fail = (code: BridgeError['code'], message: string) =>
-      reply({ v: 1, id, kind: 'error', error: { code, message } });
-    const handler = handlers.get(method);
-    if (!handler) return fail('not_found', `no handler for ${method}`);
-    try {
-      reply({ v: 1, id, kind: 'result', params: await handler(params) });
-    } catch (error) {
-      fail('handler_error', String(error));
-    }
-  };
 
   const receive = (text: string) => {
     const message = parseBridgeMessage(text);
@@ -119,35 +75,25 @@ export function createBridge(options: BridgeOptions): Bridge {
         console.warn(`[react-native-minimal-webview] dropped a bridge message: ${message.message}`);
       return;
     }
-    switch (message.kind) {
-      case 'ready': {
-        // A new document: calls posted to the previous one can no longer be answered. Queued ones are for this one.
-        rejectAll('the page navigated', 'navigated', true);
-        ready = true;
-        awaitingReady = false;
-        doc = message.doc;
-        const flushing = queue;
-        queue = [];
-        // A queued call that already timed out is not sent: nobody waits for its answer.
-        for (const queued of flushing)
-          if (queued.kind !== 'call' || pending.has(queued.id)) deliver(queued);
-        break;
-      }
-      case 'call':
-        void answer(message.id, message.doc, message.method, message.params);
-        break;
-      case 'event':
-        listeners.get(message.method)?.forEach((listener) => listener(message.params));
-        break;
-      default: {
-        const call = pending.get(message.id);
-        if (!call) return;
-        pending.delete(message.id);
-        clearTimeout(call.timer);
-        if (message.kind === 'result') call.resolve(message.params);
-        else call.reject(bridgeError(message.error));
-      }
+    if (message.kind !== 'ready') {
+      // Answers go out at once, not through the ready-gated queue: the page may be waiting for this answer before it
+      // reaches DOMContentLoaded (a module script awaiting a call), and `ready` is sent only then. Native can deliver
+      // it: the page's call is a message from that page. It carries the caller's token, so only that document takes it.
+      const reply = (answer: BridgeMessage) =>
+        post?.(JSON.stringify({ ...answer, doc: message.doc }));
+      void endpoint.receive(message, reply);
+      return;
     }
+    // A new document: calls posted to the previous one can no longer be answered. Queued ones are for this one.
+    rejectSent('the page navigated');
+    ready = true;
+    awaitingReady = false;
+    doc = message.doc;
+    const flushing = queue;
+    queue = [];
+    // A queued call that already timed out is not sent: nobody waits for its answer.
+    for (const queued of flushing)
+      if (queued.kind !== 'call' || endpoint.pending.has(queued.id)) deliver(queued);
   };
 
   const connection: BridgeConnection = {
@@ -161,15 +107,15 @@ export function createBridge(options: BridgeOptions): Bridge {
       ready = false;
       awaitingReady = false;
       queue = [];
-      rejectAll('the WebView went away');
+      endpoint.rejectPending('navigated', 'the WebView went away');
     },
     receive,
     navigated() {
-      rejectAll('the page navigated', 'navigated', true);
+      rejectSent('the page navigated');
       // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
       // carry over to an unrelated next one.
       if (awaitingReady) {
-        rejectAll('the page navigated before the bridge was ready');
+        endpoint.rejectPending('navigated', 'the page navigated before the bridge was ready');
         queue = [];
       }
       ready = false;
@@ -178,38 +124,19 @@ export function createBridge(options: BridgeOptions): Bridge {
     markUnavailable() {
       unavailable = true;
       queue = [];
-      rejectAll(unavailableMessage, 'unavailable');
+      endpoint.rejectPending('unavailable', unavailableMessage);
     },
   };
 
   return {
-    handle(method, handler) {
-      handlers.set(method, handler);
-      return () => handlers.delete(method);
-    },
+    handle: endpoint.handle,
     call(method, params) {
       if (unavailable)
         return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
-      const id = `n${++nextId}`;
-      return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          reject(
-            bridgeError({ code: 'timeout', message: `${method} timed out after ${timeoutMs} ms` })
-          );
-        }, timeoutMs);
-        pending.set(id, { resolve, reject, timer, sent: false });
-        send({ v: 1, id, kind: 'call', method, params });
-      });
+      return endpoint.call(method, params);
     },
-    emit(event, payload) {
-      send({ v: 1, id: '', kind: 'event', method: event, params: payload });
-    },
-    on(event, listener) {
-      const set = listeners.get(event) ?? new Set();
-      listeners.set(event, set.add(listener));
-      return () => set.delete(listener);
-    },
+    emit: endpoint.emit,
+    on: endpoint.on,
     [CONNECTION]: connection,
   } as Bridge;
 }

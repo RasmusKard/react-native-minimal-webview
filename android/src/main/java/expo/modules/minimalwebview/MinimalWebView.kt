@@ -174,9 +174,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
    * after a crash. A key that can't be applied is reported to JS, which warns.
    */
   private fun applySettings(force: Boolean = false) {
-    val rejected = platformSettings.apply(settings, force)
-    if (rejected.isNotEmpty()) emit("core.settingsRejected", mapOf("rejected" to rejected))
+    platformSettings.apply(settings, force).forEach { warn("android.${it["key"]}: ${it["reason"]}") }
   }
+
+  /** A warning for the app's developer, which JS logs with console.warn. */
+  internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
 
   private fun attachHooks() {
     detachers = MinimalWebViewHooks.attach.mapNotNull { (name, hook) ->

@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-import android.util.Log
 import androidx.webkit.JavaScriptExecutionWorld
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
@@ -39,9 +38,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
 
   private fun installBridge() {
     val script = owner.bridgeScript ?: return
-    if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) ||
-      !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
-    ) {
+    val bridgeFeatures = listOf(WebViewFeature.WEB_MESSAGE_LISTENER, WebViewFeature.DOCUMENT_START_SCRIPT)
+    if (lacks("bridge", bridgeFeatures, "bridge calls reject with `unavailable`")) {
       onBridge(mapOf("unavailable" to true))
       return
     }
@@ -77,15 +75,14 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     scriptHandlers.clear()
     if (scripts.isEmpty()) return
     // Start scripts use the long-standing document-start API; only end scripts need WebView 146+.
-    val canStart = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
-    val canEnd = WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
+    val canStart by lazy { !lacks("injectedScripts", listOf(WebViewFeature.DOCUMENT_START_SCRIPT), "`when: 'start'` scripts don't run") }
+    val canEnd by lazy {
+      !lacks("endScripts", listOf(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD), "`when: 'end'` scripts don't run (WebView 146+)")
+    }
     for (script in scripts) {
       val code = script.code ?: continue
       val end = script.time == InjectionTime.END
-      if (if (end) !canEnd else !canStart) {
-        Log.w(TAG, if (end) "`when: 'end'` scripts need WebView 146+; skipped" else "injectedScripts need DOCUMENT_START_SCRIPT; skipped")
-        continue
-      }
+      if (if (end) !canEnd else !canStart) continue
       // No frame selector in androidx.webkit 1.17: main-frame-only scripts guard themselves.
       // A prefix, not a wrapping block: top-level const/let/class in the script must stay global.
       val source = if (script.mainFrameOnly == true) "if (window !== window.top) throw 0;\n$code" else code
@@ -155,6 +152,25 @@ $script
   }
 
   private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
+
+  /** Whether this device's WebView lacks one of [features] that [prop] needs; warns about it once per process. */
+  private fun lacks(prop: String, features: List<String>, lost: String): Boolean {
+    val missing = features.filterNot(WebViewFeature::isFeatureSupported)
+    if (missing.isEmpty()) return false
+    if (warnedProps.add(prop)) {
+      val provider = WebViewCompat.getCurrentWebViewPackage(owner.context)
+      owner.warn(
+        "$prop needs WebView features ${missing.joinToString()}, missing in ${provider?.packageName} ${provider?.versionName}: $lost. " +
+          "Update Android System WebView."
+      )
+    }
+    return true
+  }
+
+  private companion object {
+    /** The props [lacks] has warned about. */
+    val warnedProps = mutableSetOf<String>()
+  }
 }
 
 /** Why an `evaluate` failed; [code] is the JS error code (`ERR_EVALUATE`, `navigated`, `unavailable`). */
