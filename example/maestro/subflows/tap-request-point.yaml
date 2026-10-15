@@ -1,6 +1,5 @@
 appId: expo.modules.minimalwebview.example
 ---
-# Taps the screen point the harness asked for in its current request.
-- copyTextFrom: { id: harness-request }
+# Taps the screen point the harness asked for in its current request (output.request, from await.yaml).
 - runScript: ../scripts/point.js
 - tapOn: { point: "${output.x}, ${output.y}" }
