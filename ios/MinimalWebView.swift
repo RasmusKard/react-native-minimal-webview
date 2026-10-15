@@ -133,9 +133,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     return Self.sameURL(page, uri)
   }
 
-  /// Settings keys that could not be applied: JS warns.
+  /// Settings keys that could not be applied, as warnings: JS logs them with console.warn.
   private func report(_ rejected: [[String: String]]) {
-    if !rejected.isEmpty { emit("core.settingsRejected", ["rejected": rejected]) }
+    for entry in rejected {
+      emit("core.warning", ["message": "ios.\(entry["key"] ?? ""): \(entry["reason"] ?? "")"])
+    }
   }
 
   /// Loads a request the app started, not the page: it skips the navigation rules. A file URL goes through loadFileURL

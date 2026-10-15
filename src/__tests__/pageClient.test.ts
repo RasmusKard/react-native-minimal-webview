@@ -80,13 +80,13 @@ describe('page client messages from native', () => {
     const doc = sent[0]!.doc;
     bridge.handle('double', (n) => (n as number) * 2);
     await bridge.__receive(
-      JSON.stringify({ v: 1, id: 'n1', doc, kind: 'call', method: 'double', params: 4 })
+      JSON.stringify({ id: 'n1', doc, kind: 'call', method: 'double', params: 4 })
     );
     expect(sent.at(-1)).toMatchObject({ kind: 'result', id: 'n1', doc, params: 8 });
 
     const call = bridge.call('echo', 1);
     const id = sent.at(-1)!.id!;
-    await bridge.__receive(JSON.stringify({ v: 1, id, doc, kind: 'result', params: 'ok' }));
+    await bridge.__receive(JSON.stringify({ id, doc, kind: 'result', params: 'ok' }));
     await expect(call).resolves.toBe('ok');
   });
 
@@ -98,11 +98,9 @@ describe('page client messages from native', () => {
     const call = bridge.call('echo');
     const id = sent.at(-1)!.id!;
     await bridge.__receive(
-      JSON.stringify({ v: 1, id: 'n1', doc: 'other', kind: 'call', method: 'double', params: 4 })
+      JSON.stringify({ id: 'n1', doc: 'other', kind: 'call', method: 'double', params: 4 })
     );
-    await bridge.__receive(
-      JSON.stringify({ v: 1, id, doc: 'other', kind: 'result', params: 'stale' })
-    );
+    await bridge.__receive(JSON.stringify({ id, doc: 'other', kind: 'result', params: 'stale' }));
     expect(sent.map((m) => [m.kind, m.doc])).toEqual([
       ['ready', doc],
       ['call', doc],

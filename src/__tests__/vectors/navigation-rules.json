@@ -3,27 +3,16 @@
   "rulesets": {
     "app": [
       {
-        "scheme": [
-          "tel",
-          "mailto",
-          "sms"
-        ],
+        "scheme": ["tel", "mailto", "sms"],
         "action": "external"
       },
       {
-        "host": [
-          "*.example.com"
-        ],
-        "path": [
-          "/checkout"
-        ],
+        "host": ["*.example.com"],
+        "path": ["/checkout"],
         "action": "ask"
       },
       {
-        "host": [
-          "example.com",
-          "*.example.com"
-        ],
+        "host": ["example.com", "*.example.com"],
         "action": "allow"
       },
       {
@@ -31,18 +20,12 @@
         "action": "external"
       },
       {
-        "scheme": [
-          "http",
-          "https"
-        ],
+        "scheme": ["http", "https"],
         "mainFrame": false,
         "action": "allow"
       },
       {
-        "scheme": [
-          "http",
-          "https"
-        ],
+        "scheme": ["http", "https"],
         "action": "external"
       }
     ],
@@ -52,28 +35,17 @@
         "action": "external"
       },
       {
-        "host": [
-          "EXAMPLE.com"
-        ],
-        "path": [
-          "/a%20b",
-          "/x"
-        ],
+        "host": ["EXAMPLE.com"],
+        "path": ["/a%20b", "/x"],
         "action": "ask"
       },
       {
-        "host": [
-          "xn--mnchen-3ya.de"
-        ],
+        "host": ["xn--mnchen-3ya.de"],
         "action": "allow"
       },
       {
-        "scheme": [
-          "HTTPS"
-        ],
-        "host": [
-          "*.example.com"
-        ],
+        "scheme": ["HTTPS"],
+        "host": ["*.example.com"],
         "action": "allow"
       }
     ],

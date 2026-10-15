@@ -233,46 +233,6 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
       return fallback;
     });
 
-const NEEDS = {
-  bridge: {
-    features: ['WEB_MESSAGE_LISTENER', 'DOCUMENT_START_SCRIPT'],
-    lost: 'bridge calls reject with `unavailable`',
-  },
-  injectedScripts: {
-    features: ['DOCUMENT_START_SCRIPT'],
-    lost: "`when: 'start'` scripts don't run",
-  },
-  endScripts: {
-    features: ['JS_INJECTION_IN_FRAME_AND_WORLD'],
-    lost: "`when: 'end'` scripts don't run (WebView 146+)",
-  },
-};
-// Read once, failures included.
-let info: AndroidWebViewInfo | null | undefined;
-const warned = new Set<string>();
-
-/** Android: warns once per process for each used prop whose WebView features the device lacks. */
-export function warnUnsupported(used: Record<keyof typeof NEEDS, boolean>) {
-  if (Platform.OS !== 'android') return;
-  for (const [prop, { features, lost }] of Object.entries(NEEDS)) {
-    if (!used[prop as keyof typeof NEEDS] || warned.has(prop)) continue;
-    if (info === undefined) {
-      try {
-        info = WebView.androidWebViewInfo;
-      } catch {
-        info = null; // native module or React context missing: stay quiet
-      }
-    }
-    const device = info;
-    const missing = features.filter((feature) => device && !device.features[feature]);
-    if (!device || !missing.length) continue;
-    warned.add(prop);
-    console.warn(
-      `[minimal-rn-webview] ${prop} needs WebView features ${missing.join(', ')}, missing in ${device.provider} ${device.version}: ${lost}. Update Android System WebView.`
-    );
-  }
-}
-
 export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
   const native = useRef<NativeMethods>(null);
   const attachmentRef = useRef<Attachment>(undefined);
@@ -312,13 +272,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
     return () => connection.detach();
   }, [connection]);
 
-  const hasStart = !!props.injectedScripts?.some((script) => script.when !== 'end');
-  const hasEnd = !!props.injectedScripts?.some((script) => script.when === 'end');
-  useEffect(
-    () => warnUnsupported({ bridge: !!connection, injectedScripts: hasStart, endScripts: hasEnd }),
-    [connection, hasStart, hasEnd]
-  );
-
   const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {
     if (nativeEvent.message !== undefined) connection?.receive(nativeEvent.message);
     else if (nativeEvent.navigated) connection?.navigated();
@@ -333,7 +286,8 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   const onNativeEvent = async ({
     nativeEvent: { name, payload, askId },
   }: NativeEvent<HookEvent>) => {
-    if (name === `${CORE}settingsRejected`) return warnRejected(payload);
+    if (name === `${CORE}warning`)
+      return console.warn(`[minimal-rn-webview] ${String(payload['message'])}`);
     const request = name.startsWith(CORE)
       ? REQUESTS[name.slice(CORE.length) as keyof typeof REQUESTS]
       : undefined;
@@ -470,13 +424,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
     },
     webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
   };
-}
-
-/** Settings keys native could not apply. */
-function warnRejected(payload: Record<string, unknown>) {
-  for (const { key, reason } of (payload['rejected'] ?? []) as { key: string; reason: string }[]) {
-    console.warn(`[minimal-rn-webview] ${Platform.OS}.${key}: ${reason}`);
-  }
 }
 
 /** Load events. The current load's main-frame error: onLoad fires only without one. */
