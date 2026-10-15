@@ -143,8 +143,6 @@ export type Download = { uri: string; filename: string; mimeType: string; url: s
  */
 export type DownloadFailure = { filename: string; url: string | null; reason: string };
 
-export type AuthRequest = { host: string; realm: string };
-
 /** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
 export type SettingValue =
   boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
@@ -248,13 +246,6 @@ type OwnProps = {
    * `data:` or `blob:` one is dropped.
    */
   onDownload?: (result: Download | DownloadFailure) => void;
-  /** HTTP basic or digest auth: return credentials, or null to cancel. Without it, cancelled: the site's 401 page shows. */
-  onHttpAuthRequest?: (
-    request: AuthRequest
-  ) =>
-    | { username: string; password: string }
-    | null
-    | Promise<{ username: string; password: string } | null>;
   onNavigation?: (event: NavigationEvent) => void;
   /** Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;

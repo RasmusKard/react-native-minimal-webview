@@ -306,7 +306,7 @@ describe('page requests', () => {
       '[minimal-rn-webview] onPermissionRequest failed',
       expect.any(Error)
     );
-    await fire('core.httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
+    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     expect(onNativeEvent).not.toHaveBeenCalled();
     await fire('pageCounter.pick', { a: 1 }, 4);

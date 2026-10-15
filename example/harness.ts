@@ -30,7 +30,6 @@ export type Harness = {
   remount: () => void;
   load: (uri: string) => void;
   loadSource: (source: WebViewSource) => void;
-  setAuth: (handler: WebViewProps['onHttpAuthRequest']) => void;
   setRules: (rules: NavigationRule[] | undefined) => void;
   setAsk: (ask: WebViewProps['onNavigationRequest']) => void;
   bridge: Bridge;
@@ -156,7 +155,6 @@ async function reset(h: Harness) {
   h.setProps({});
   h.setRules(undefined);
   h.setAsk(undefined);
-  h.setAuth(undefined);
   h.setPermission(undefined);
   h.setFileRequest(undefined);
   const loads = h.events.loads.length;
@@ -1877,20 +1875,11 @@ async function sampleExtension(h: Harness) {
       h.events.hookEvents
     );
   }
-  // A decision callback the core implements: the hook's delegate wins, and onHttpAuthRequest is never asked.
-  let asks = 0;
-  h.setAuth(() => {
-    asks++;
-    return null;
-  });
+  // HTTP auth, which the core declines: the hook's delegate (client) answers it.
   await recreate(h, { nativeOptions: { pageCounter: true, hookAuth: true } });
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
-  r.check(
-    'its delegate takes over a decision the core implements (HTTP auth)',
-    auth === 'authorized' && asks === 0,
-    { auth, asks }
-  );
+  r.check('its delegate answers HTTP auth', auth === 'authorized', auth);
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(h, { nativeOptions: { pageCounter: true, hookDialogs: true } });
   h.events.hookEvents.length = 0;
@@ -1913,7 +1902,7 @@ async function sampleExtension(h: Harness) {
   r.done();
 }
 
-/** First-load headers, HTTP auth, shared cookies, download failures, HTTP error pages. */
+/** First-load headers, declined HTTP auth, shared cookies, download failures, HTTP error pages. */
 async function network(h: Harness) {
   const r = reporter('network');
 
@@ -1925,54 +1914,13 @@ async function network(h: Harness) {
     (await text(h, 'headers')).includes('"x-test-header":"hello"')
   );
 
-  // Answered late: the challenge's own page load must not cancel it (pending asks end when a new page commits).
-  let authAsks = 0;
-  h.setAuth(async () => {
-    authAsks++;
-    await sleep(1500);
-    return { username: 'u', password: 'p' };
-  });
-  await openPage(h, fresh(h, '/auth'));
-  r.check(
-    'onHttpAuthRequest credentials authorize the page',
-    (await text(h, 'auth')) === 'authorized',
-    await text(h, 'auth')
-  );
-  r.check(
-    'a late auth answer is not cancelled by its own page load',
-    authAsks === 1 && (await text(h, 'auth')) === 'authorized',
-    authAsks
-  );
-  h.setAuth(() => null);
-  // Another origin: the WebView caches the credentials it just used for localhost's realm, as browsers do.
+  // Without a hook that answers it, HTTP auth is declined. Another origin: iOS reuses the credentials a hook gave for
+  // localhost (sampleExtension), as browsers do.
   await openPage(h, fresh(h, 'http://127.0.0.1:8090/auth'));
   r.check(
-    'onHttpAuthRequest null cancels (the 401 page shows)',
+    'HTTP auth without a hook shows the 401 page',
     (await text(h, 'auth')) === 'unauthorized',
     await text(h, 'auth')
-  );
-  let asks = 0;
-  h.setAuth(() => {
-    asks++;
-    return null;
-  });
-  await openPage(h, fresh(h, '/auth2'));
-  r.check(
-    'a decline asks once when the server offers Digest and Basic',
-    asks === 1 && (await text(h, 'auth')) === 'unauthorized',
-    asks
-  );
-  // Wrong credentials every time: asked three times (the first answer and two retries), then the 401 page shows.
-  let wrongAsks = 0;
-  h.setAuth(() => {
-    wrongAsks++;
-    return { username: 'u', password: 'wrong' };
-  });
-  await openPage(h, fresh(h, 'http://127.0.0.1:8090/auth?wrong=1'));
-  r.check(
-    'wrong credentials are retried at most 3 times',
-    wrongAsks === 3 && (await text(h, 'auth')) === 'unauthorized',
-    wrongAsks
   );
 
   clearEvents(h);

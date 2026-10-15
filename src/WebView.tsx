@@ -52,7 +52,6 @@ const REQUESTS = {
   fullscreenChange: 'onFullscreenChange',
   permissionRequest: 'onPermissionRequest',
   download: 'onDownload',
-  httpAuthRequest: 'onHttpAuthRequest',
 } as const;
 /** The core's own events; everything else is a hook's, for `onNativeEvent`. */
 const CORE = 'core.';
