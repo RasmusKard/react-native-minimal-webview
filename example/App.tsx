@@ -17,6 +17,11 @@ import { isPageCounterEvent } from 'sample-extension';
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
 const PAGES = 'http://localhost:8090';
+/**
+ * The example's creation-time settings. A suite's extra `ios` keeps them unless it sets its own `configuration`:
+ * dropping them would recreate the WebView, and with it start the crash-loop guard over.
+ */
+const IOS_CONFIGURATION = { applicationNameForUserAgent: 'MinimalWebViewExample/1.0' };
 const ref = createWebViewRef();
 let remount = () => {};
 // Event logs the harness reads and clears. They live outside React: nothing renders them.
@@ -130,7 +135,6 @@ export default function App() {
             }
             onHttpAuthRequest={(request) => authRef.current?.(request) ?? null}
             onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
-            ios={{ configuration: { applicationNameForUserAgent: 'MinimalWebViewExample/1.0' } }}
             android={{
               webView: { acceptThirdPartyCookies: true },
               settings: {
@@ -151,6 +155,7 @@ export default function App() {
             onLoad={() => events.loads.push('load')}
             onLoadEnd={() => events.loads.push('end')}
             {...extraProps}
+            ios={{ configuration: IOS_CONFIGURATION, ...extraProps.ios }}
           />
         </Remountable>
         {error ? <ErrorScreen error={error} onRetry={() => ref.reload()} /> : null}
