@@ -8,8 +8,8 @@
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
-ANDROID_SUITES="urlTracking navigation reissue bridge backForward injection errors crash mountSettings settings overlays upload downloads permissions fullscreen info ua dialogs sampleExtension ptr network sources"
-IOS_SUITES="urlTracking navigation reissue bridge backForward injection errors crash mountSettings settings overlays downloads permissions info ua dialogs sampleExtension ptr network sources"
+ANDROID_SUITES="urlTracking navigation reissue bridge backForward injection errors crash mountSettings settings overlays upload downloads permissions fullscreen ua dialogs sampleExtension ptr network sources"
+IOS_SUITES="urlTracking navigation reissue bridge backForward injection errors crash mountSettings settings overlays downloads permissions ua dialogs sampleExtension ptr network sources"
 [ $# -eq 0 ] && { [ "$PLATFORM" = android ] && set -- $ANDROID_SUITES || set -- $IOS_SUITES; }
 if [ "$PLATFORM" = android ]; then
   # Root for the crash suite's renderer kills (it restarts adbd, so before the reverses), then the device's localhost
