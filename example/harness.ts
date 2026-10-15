@@ -186,15 +186,15 @@ const href = async (h: Harness) => (await h.ref.evaluate('location.href')) as st
 const click = (h: Harness, id: string) =>
   h.ref.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
 
-/** Committed url, getUrl() and the page's location.href all agree, once the coalesced state event has arrived. */
+/** Committed url and the page's location.href agree, once the coalesced state event has arrived. */
 async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
   let seen = {};
   const agreed = await until(
     async () => {
-      const [page, native] = [await href(h), await h.ref.getUrl()];
+      const page = await href(h);
       const { url } = h.state();
-      seen = { url, getUrl: native, href: page };
-      return url === page && native === page;
+      seen = { url, href: page };
+      return url === page;
     },
     2000,
     50
@@ -778,7 +778,6 @@ async function errors(h: Harness) {
   const network = h.events.errors[0];
   r.check('network error', gotNetwork && network?.kind === 'network', network);
   r.check('url is the failed url', h.state().url === unreachable, h.state());
-  r.check('getUrl is the failed url', (await h.ref.getUrl()) === unreachable);
   r.check(
     'onLoadEnd without onLoad after a failure',
     h.events.loads.includes('end') && !h.events.loads.includes('load'),

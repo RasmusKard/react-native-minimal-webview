@@ -73,7 +73,7 @@ export function Browser() {
 ```
 
 It works with `useWebViewState` too, and has the ref methods, forwarded to the WebView mounted with it (no-ops while none is: `evaluate` resolves
-`undefined` and `getUrl` `''`), plus:
+`undefined`), plus:
 
 - `getState()`: the navigation state, synchronously. When the WebView unmounts it resets to the initial state, so a
   stale `url` never looks valid.
@@ -222,7 +222,7 @@ observe `scrollView.contentOffset` on iOS and `setOnScrollChangeListener` on And
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |
 
-**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `getUrl()` (the same `url` as the navigation state), `get(key)` and `call(method, args?, options?)` (see [Platform settings](#platform-settings)).
+**Ref methods:** `goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, `get(key)` and `call(method, args?, options?)` (see [Platform settings](#platform-settings)). The committed `url` is in the navigation state.
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A throw or rejection rejects with code `ERR_EVALUATE`. If the page navigates before the script finishes, it rejects with code `navigated` instead of waiting forever. The result is whatever the page's own JS returns, so treat it as page data. On Android the result comes back through a `window.nativeEvaluateResult` object that pages and their frames get; only the main frame's replies count, and a page can forge one only for a value it could already control.
 

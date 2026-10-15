@@ -118,7 +118,6 @@ type NativeMethods = {
   answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result, or null. */
   evaluate(script: string): Promise<string | null>;
-  getUrl(): Promise<string | null>;
   /**
    * `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. `args` is
    * JSON too, so that a `null` argument survives the native dictionary conversion.
@@ -176,7 +175,6 @@ function createAdapter(): Adapter {
     reload: () => attached?.reload(),
     stopLoading: () => attached?.stopLoading(),
     evaluate: async (script) => await attached?.evaluate(script),
-    getUrl: async () => (await attached?.getUrl()) ?? '',
     get: async (key) => await attached?.get(key),
     call: async (method, args, options) => await attached?.call(method, args, options),
     getState: () => state,
@@ -243,7 +241,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
       evaluate: async (script) => parsed(await native.current?.evaluate(script)),
-      getUrl: async () => (await native.current?.getUrl()) ?? '',
       get: async (key) => parsed(await native.current?.native({ get: key })),
       call: async (method, args = [], options) =>
         parsed(

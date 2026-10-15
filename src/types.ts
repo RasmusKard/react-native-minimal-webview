@@ -277,8 +277,6 @@ export type WebViewRef = {
    * `navigated` on a new page, or `unavailable` (Android) when the WebView lacks the features it needs.
    */
   evaluate(script: string): Promise<unknown>;
-  /** The committed `url`, as in the navigation state, read from native now. */
-  getUrl(): Promise<string>;
   /**
    * A platform setting read by name, through JSON: `get('scrollView.bounces')` on iOS, `get('settings.textZoom')` on
    * Android (the roots of {@link IOSSettings} and {@link AndroidSettings}; also `websiteDataStore` and `httpCookieStore` on

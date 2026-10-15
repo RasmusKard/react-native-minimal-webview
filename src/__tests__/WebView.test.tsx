@@ -8,7 +8,7 @@ import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
 const mockMount = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `getUrl` and `native`
+// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate` and `native`
 // methods; `native` echoes its request as JSON.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
@@ -24,7 +24,6 @@ jest.mock('expo', () => {
           answer: mockAnswer,
           navigate: mockNavigate,
           evaluate: async () => '{"a":1}',
-          getUrl: async () => 'https://example.com/native',
           native: async (request: unknown) => JSON.stringify(request),
         }));
         return createElement('MinimalWebView', props);
@@ -341,7 +340,6 @@ describe('navigation state across remounts', () => {
     expect(ref.current).toBeNull();
     ref.goBack();
     expect(await ref.evaluate('1')).toBeUndefined();
-    expect(await ref.getUrl()).toBe('');
     expect(await ref.get('scrollView.bounces')).toBeUndefined();
     expect(mockNavigate).not.toHaveBeenCalled();
 
@@ -353,7 +351,6 @@ describe('navigation state across remounts', () => {
     ref.goBack();
     expect(mockNavigate).toHaveBeenCalledWith('back');
     expect(await ref.evaluate('1')).toEqual({ a: 1 });
-    expect(await ref.getUrl()).toBe('https://example.com/native');
     expect(await ref.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
     expect(await ref.call('clearCache', [true])).toEqual({ call: 'clearCache', args: '[true]' });
     await act(async () => root.unmount());
