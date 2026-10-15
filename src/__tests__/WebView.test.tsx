@@ -8,7 +8,7 @@ import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
 const mockMount = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `getUrl` and `native`
+// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate` and `native`
 // methods; `native` echoes its request as JSON.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
@@ -24,7 +24,6 @@ jest.mock('expo', () => {
           answer: mockAnswer,
           navigate: mockNavigate,
           evaluate: async () => '{"a":1}',
-          getUrl: async () => 'https://example.com/native',
           native: async (request: unknown) => JSON.stringify(request),
         }));
         return createElement('MinimalWebView', props);
@@ -306,7 +305,7 @@ describe('page requests', () => {
       '[minimal-rn-webview] onPermissionRequest failed',
       expect.any(Error)
     );
-    await fire('core.httpAuthRequest', { host: 'example.com', realm: 'r' }, 3);
+    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     expect(onNativeEvent).not.toHaveBeenCalled();
     await fire('pageCounter.pick', { a: 1 }, 4);
@@ -336,26 +335,20 @@ describe('navigation state across remounts', () => {
       ).onNavigationState({ nativeEvent: state });
     });
 
-  it('createWebViewRef forwards to the mounted WebView, and does nothing while none is', async () => {
+  it("createWebViewRef's current is the mounted WebView's ref, and null while none is", async () => {
     const ref = createWebViewRef();
     expect(ref.current).toBeNull();
-    ref.goBack();
-    expect(await ref.evaluate('1')).toBeUndefined();
-    expect(await ref.getUrl()).toBe('');
-    expect(await ref.get('scrollView.bounces')).toBeUndefined();
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(await ref.current?.get('scrollView.bounces')).toBeUndefined();
 
     const root = createRoot();
     await act(async () =>
       root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
     );
-    expect(ref.current).not.toBeNull();
-    ref.goBack();
+    ref.current?.goBack();
     expect(mockNavigate).toHaveBeenCalledWith('back');
-    expect(await ref.evaluate('1')).toEqual({ a: 1 });
-    expect(await ref.getUrl()).toBe('https://example.com/native');
-    expect(await ref.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
-    expect(await ref.call('clearCache', [true])).toEqual({ call: 'clearCache', args: '[true]' });
+    expect(await ref.current?.evaluate('1')).toEqual({ a: 1 });
+    expect(await ref.current?.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
+    expect(await ref.current?.call('clearCache', [true])).toEqual({ call: 'clearCache', args: '[true]' });
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
   });

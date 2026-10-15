@@ -31,7 +31,6 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private static let decisions = Set([
     "webView:decidePolicyForNavigationAction:decisionHandler:",
     "webView:decidePolicyForNavigationResponse:decisionHandler:",
-    "webView:didReceiveAuthenticationChallenge:completionHandler:",
     "webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:",
     "webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:",
     "webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:",
