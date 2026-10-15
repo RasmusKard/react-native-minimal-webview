@@ -156,7 +156,7 @@ type Root<Known> = Known & Record<string, SettingValue | undefined>;
  * WebKit settings by Objective-C property name, applied with Key-Value Coding, so any public property works, including
  * ones this package has never heard of: `{ scrollView: { bounces: false }, webView: { allowsBackForwardNavigationGestures: true } }`.
  * A value must fit the property's type (enums and option sets by raw value; `websiteDataStore` takes `'default'` or
- * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with `ref.get('scrollView.bounces')`.
+ * `'nonPersistent'`); otherwise the key is skipped with a warning. Read one back with the ref's `get('scrollView.bounces')`.
  */
 export type IOSSettings = {
   /** `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page reloads). */
@@ -175,7 +175,7 @@ export type IOSSettings = {
  * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
  * newer SDK or androidx.webkit adds: `{ settings: { textZoom: 120, algorithmicDarkeningAllowed: true }, webView: { overScrollMode: 2 } }`.
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning.
- * Read one back with `ref.get('settings.textZoom')`.
+ * Read one back with the ref's `get('settings.textZoom')`.
  */
 export type AndroidSettings = {
   /** `WebSettings` setters, then static `WebSettingsCompat` ones. */
@@ -300,8 +300,8 @@ export type WebViewRef = {
   ): Promise<unknown>;
 };
 
-/** What `createWebViewRef()` returns: a `WebViewRef` that outlives the WebViews mounted with it. */
-export type WebViewRefObject = WebViewRef & {
+/** What `createWebViewRef()` returns: a ref that outlives the WebViews mounted with it. */
+export type WebViewRefObject = {
   /** The mounted WebView's ref, or null while none is mounted. */
   readonly current: WebViewRef | null;
   /** The mounted WebView's navigation state, read synchronously; the initial state while none is mounted. */

@@ -170,13 +170,6 @@ function createAdapter(): Adapter {
     get current() {
       return attached;
     },
-    goBack: () => attached?.goBack(),
-    goForward: () => attached?.goForward(),
-    reload: () => attached?.reload(),
-    stopLoading: () => attached?.stopLoading(),
-    evaluate: async (script) => await attached?.evaluate(script),
-    get: async (key) => await attached?.get(key),
-    call: async (method, args, options) => await attached?.call(method, args, options),
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
@@ -207,9 +200,8 @@ function createAdapter(): Adapter {
 }
 
 /**
- * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. It
- * forwards the methods to whichever WebView is mounted with it (no-ops while none is), and keeps its subscribers across
- * remounts.
+ * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. Its
+ * `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
  */
 export function createWebViewRef(): WebViewRefObject {
   const adapter = createAdapter();
@@ -327,7 +319,7 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
 /**
  * Puts `handle` in a callback or plain ref. Any ref object also gets the navigation state through its adapter, which a
- * createWebViewRef one is, so it forwards the methods too.
+ * createWebViewRef one is, so its `current` comes from the adapter too.
  */
 function useAttach(
   ref: Ref<WebViewRef> | undefined,

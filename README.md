@@ -64,7 +64,7 @@ export const webView = createWebViewRef();
 
 function onInboxNotification() {
   // The committed url of the mounted WebView, read synchronously; '' while none is mounted.
-  if (webView.getState().url.startsWith('https://example.com/inbox')) webView.reload();
+  if (webView.getState().url.startsWith('https://example.com/inbox')) webView.current?.reload();
 }
 
 export function Browser() {
@@ -72,14 +72,13 @@ export function Browser() {
 }
 ```
 
-It works with `useWebViewState` too, and has the ref methods, forwarded to the WebView mounted with it (no-ops while none is: `evaluate` resolves
-`undefined`), plus:
+It works with `useWebViewState` too, and has:
 
+- `current`: the mounted WebView's ref, with the ref methods, or `null` while none is mounted.
 - `getState()`: the navigation state, synchronously. When the WebView unmounts it resets to the initial state, so a
   stale `url` never looks valid.
 - `subscribe(listener)`: called on every change, including a WebView mounting or unmounting. Subscribers stay across
   remounts. Returns the unsubscribe function.
-- `current`: the mounted WebView's ref, or `null` while none is mounted.
 
 Give each mounted WebView its own ref. If two are mounted with the same one, the last mounted wins (with a warning in
 development) until it unmounts.
@@ -299,9 +298,9 @@ await ref.current?.call('webView.clearCache', [true]);         // a public metho
 statics), `cookieManager` or `webStorage`:
 
 ```ts
-await ref.call('webView.clearCache', [true]);
-await ref.call('cookieManager.removeAllCookies', [null]);
-await ref.call('webStorage.deleteAllData');
+await ref.current?.call('webView.clearCache', [true]);
+await ref.current?.call('cookieManager.removeAllCookies', [null]);
+await ref.current?.call('webStorage.deleteAllData');
 ```
 
 iOS: an Objective-C selector on a settings root, `websiteDataStore` or `httpCookieStore`, the arguments set by the
@@ -317,14 +316,14 @@ needs the handler's shape in `options.completion`:
 | `'error'` | `(NSError *)` | `null`, or rejects with the error |
 
 ```ts
-await ref.call(
+await ref.current?.call(
   'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
   [{ set: [WK.WebsiteDataType.cookies, WK.WebsiteDataType.localStorage] }, { date: 0 }],
   { completion: 'void' }
 );
-const pdf = await ref.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
-const png = await ref.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
-await ref.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
+const pdf = await ref.current?.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
+const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
+await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
 ```
 
 Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,

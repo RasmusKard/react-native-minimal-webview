@@ -150,7 +150,7 @@ export default function App() {
             {...extraProps}
           />
         </Remountable>
-        {error ? <ErrorScreen error={error} onRetry={() => ref.reload()} /> : null}
+        {error ? <ErrorScreen error={error} onRetry={() => ref.current?.reload()} /> : null}
       </View>
       <Text testID="harness-request" style={styles.state}>
         {driverRequest}
@@ -160,7 +160,7 @@ export default function App() {
         {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
       </Text>
       <ScrollView horizontal style={styles.buttons}>
-        <Button title="back" onPress={() => ref.goBack()} />
+        <Button title="back" onPress={() => ref.current?.goBack()} />
         <Button title="home" onPress={() => setSource({ uri: `${PAGES}/?t=${Date.now()}` })} />
         {Object.keys(SUITES).map((name) => (
           <Button key={name} title={name} onPress={() => run(name)} />
