@@ -7,8 +7,6 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultContract
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
@@ -18,7 +16,6 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
-import expo.modules.kotlin.types.Enumerable
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Serializable
@@ -67,24 +64,6 @@ class MinimalWebViewModule : Module() {
       WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
     }
 
-    // The WebView provider and the features this package uses (false: update Android System WebView).
-    // Computed on first access and fixed after: a WebView update restarts the process.
-    Constant("androidWebViewInfo") {
-      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
-      val provider = WebViewCompat.getCurrentWebViewPackage(context)
-      mapOf(
-        "version" to (provider?.versionName ?: ""),
-        "provider" to (provider?.packageName ?: ""),
-        "available" to (provider != null),
-        "features" to listOf(
-          WebViewFeature.NAVIGATION_LISTENER,
-          WebViewFeature.WEB_MESSAGE_LISTENER,
-          WebViewFeature.DOCUMENT_START_SCRIPT,
-          WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD
-        ).associateWith { WebViewFeature.isFeatureSupported(it) }
-      )
-    }
-
     View(MinimalWebView::class) {
       Events("onNavigationState", "onBridge", "onNativeEvent", "onError", "onProcessGone", "onNavigation")
 
@@ -131,7 +110,6 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
         view.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
-      AsyncFunction("getUrl") { view: MinimalWebView -> view.url }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
         view.evaluate(script) { result ->
@@ -177,12 +155,6 @@ data class WebViewSource(
 
 data class InjectedScript(
   @Field val code: String? = null,
-  @Field("when") val time: InjectionTime? = null,
   @Field val mainFrameOnly: Boolean? = null
 ) : Record
-
-enum class InjectionTime(val value: String) : Enumerable {
-  START("start"),
-  END("end")
-}
 
