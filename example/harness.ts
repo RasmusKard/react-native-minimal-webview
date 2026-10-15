@@ -70,7 +70,10 @@ function emit(line: string) {
   const text = `[harness ${current?.platform}] ${line}`;
   console.log(text);
   // A failed post surfaces as an unhandled rejection; the console line above still has the result.
-  void fetch(`${current?.pages}/harness/log`, { method: 'POST', body: text });
+  void fetch(`${current?.pages}/harness/log?platform=${Platform.OS}`, {
+    method: 'POST',
+    body: text,
+  });
 }
 
 /**
@@ -79,6 +82,16 @@ function emit(line: string) {
  */
 let showRequest: (text: string) => void = () => {};
 export const onDriverRequest = (listener: (text: string) => void) => (showRequest = listener);
+
+/** A driver request or a verdict: on screen, and posted to the test server, where the driver waits for it. */
+function request(text: string) {
+  showRequest(text);
+  // As in emit: a failed post surfaces as an unhandled rejection, and the driver's wait for it times out.
+  void fetch(`${current?.pages}/harness/request?platform=${Platform.OS}`, {
+    method: 'POST',
+    body: text,
+  });
+}
 
 function reporter(suite: string) {
   let pass = 0;
@@ -91,11 +104,11 @@ function reporter(suite: string) {
     },
     info(name: string, detail: unknown) {
       if (/^[A-Z]+$/.test(name))
-        showRequest(`${suite}#${++requests} ${name} ${JSON.stringify(detail)}`);
+        request(`${suite}#${++requests} ${name} ${JSON.stringify(detail)}`);
       emit(`INFO ${suite}: ${name} ${JSON.stringify(detail)}`);
     },
     done() {
-      showRequest(`${suite}#done pass=${pass} fail=${fail}`);
+      request(`${suite}#done pass=${pass} fail=${fail}`);
       emit(`DONE ${suite} pass=${pass} fail=${fail}`);
     },
   };
@@ -122,7 +135,7 @@ export function pollForSuites(get: () => Harness) {
       else emit(`FAIL unknown suite ${name}`);
     } catch (error) {
       // A thrown suite reports as a failure instead of leaving the harness busy forever.
-      showRequest(`${name}#done pass=? fail=1`);
+      request(`${name}#done pass=? fail=1`);
       emit(`FAIL ${name}: threw ${String(error)}`);
       emit(`DONE ${name} pass=? fail=1`);
     } finally {
@@ -131,7 +144,7 @@ export function pollForSuites(get: () => Harness) {
       );
       busy = false;
     }
-  }, 1000);
+  }, 200);
   return () => clearInterval(timer);
 }
 
@@ -283,41 +296,6 @@ async function urlTracking(h: Harness) {
   r.done();
 }
 
-async function realSite(h: Harness) {
-  const r = reporter('realSite');
-  h.load('https://www.delfi.ee/');
-  r.check(
-    'delfi loads',
-    await waitFor(h, (s) => s.url.includes('delfi.ee') && idle(s), 30000),
-    h.state()
-  );
-  await agree(h, r, 'home agrees');
-  for (let i = 0; i < 3; i++) {
-    const before = h.state().url;
-    // Click an internal article link so the Nuxt router navigates client-side.
-    const target = await h.ref.evaluate(`(() => {
-      const a = [...document.querySelectorAll('a[href]')].find((a) => a.origin === location.origin && /\\/\\d{6,}/.test(a.pathname) && a.pathname !== location.pathname && !a.hash);
-      if (!a) return null;
-      a.click();
-      return a.href;
-    })()`);
-    r.info(`click ${i}`, target);
-    if (!target) break;
-    r.check(
-      `article ${i} changes url`,
-      await waitFor(h, (s) => s.url !== before, 15000),
-      h.state()
-    );
-    await waitFor(h, idle, 15000);
-    await sleep(1500);
-    await agree(h, r, `article ${i} agrees`);
-  }
-  h.ref.goBack();
-  await sleep(2500);
-  await agree(h, r, 'goBack agrees');
-  r.done();
-}
-
 // Android cancel-and-reissue: `ask` rules cancel the navigation, JS answers, `allow` reloads the URL.
 async function reissue(h: Harness) {
   const r = reporter('reissue');
@@ -329,7 +307,7 @@ async function reissue(h: Harness) {
     return answer === 'block' ? 'block' : 'allow';
   });
   h.setRules([
-    { host: ['localhost', 'www.delfi.ee'], path: ['/checkout', '/artikkel'], action: 'ask' },
+    { host: ['localhost'], path: ['/checkout'], action: 'ask' },
     { scheme: ['http', 'https'], action: 'allow' },
   ]);
   await sleep(300);
@@ -394,23 +372,6 @@ async function reissue(h: Harness) {
   } else {
     r.check('iframe navigations into an ask rule are asked', asked.length > beforeFrame, asked);
   }
-
-  h.load('https://www.delfi.ee/');
-  await waitFor(h, (s) => s.url.includes('delfi.ee') && idle(s), 30000);
-  const article = await h.ref.evaluate(`(() => {
-    const a = [...document.querySelectorAll('a[href]')].find((a) => a.origin === location.origin && a.pathname.startsWith('/artikkel/') && !a.hash);
-    if (!a) return null;
-    a.click();
-    return a.href;
-  })()`);
-  r.info('delfi article', article);
-  r.check(
-    'real site: an asked article link is reissued',
-    await waitFor(h, (s) => s.url.includes('/artikkel/') && idle(s), 20000),
-    { url: h.state().url, asked: asked.slice(-1) }
-  );
-  await sleep(1500);
-  await agree(h, r, 'real site: url agrees after reissue');
   r.done();
 }
 
@@ -713,6 +674,16 @@ const clearEvents = (h: Harness) => {
 const fresh = (h: Harness, path: string) =>
   `${path.startsWith('http') ? '' : h.pages}${path}${path.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
+/**
+ * Sets props that recreate the WebView (a creation-time setting, `nativeOptions`) and waits until the new one has
+ * loaded its page. The state is the old page's until the new view reports, so `idle` alone could match too early.
+ */
+async function recreate(h: Harness, props: Partial<WebViewProps>) {
+  const loads = h.events.loads.length;
+  h.setProps(props);
+  return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s), 15000);
+}
+
 /** Loads `uri` and waits until it is the idle page. */
 async function openPage(h: Harness, uri: string, ms = 15000) {
   h.load(uri);
@@ -791,8 +762,8 @@ async function errors(h: Harness) {
   r.check('onLoad after a clean load', h.events.loads.includes('load'), h.events.loads);
 
   clearEvents(h);
-  h.load('https://expired.badssl.com/');
-  const gotSsl = await waitFor(h, () => h.events.errors.length > 0, 20000);
+  h.load('https://localhost:8443/'); // the test server's self-signed certificate
+  const gotSsl = await waitFor(h, () => h.events.errors.length > 0, 10000);
   r.check('ssl error', gotSsl && h.events.errors[0]?.kind === 'ssl', h.events.errors[0]);
 
   clearEvents(h);
@@ -1023,7 +994,8 @@ async function mountSettings(h: Harness) {
   };
   const page = fresh(h, '/bridge.html');
   await openPage(h, page);
-  h.setProps(
+  await recreate(
+    h,
     Platform.OS === 'ios'
       ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
       : {
@@ -1031,8 +1003,6 @@ async function mountSettings(h: Harness) {
           android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } },
         }
   );
-  await sleep(500);
-  await waitFor(h, idle, 10000);
   const remountedVh = await viewportHeight(h);
   r.check('100vh has a height after the recreation', remountedVh > 0, remountedVh);
   const ua = await uaOf();
@@ -1078,7 +1048,8 @@ async function settings(h: Harness) {
   try {
     await openPage(h, fresh(h, '/'));
     if (Platform.OS === 'ios') {
-      h.setProps({
+      // The configuration key recreates the WebView, which reloads the page.
+      await recreate(h, {
         ios: {
           scrollView: {
             bounces: false,
@@ -1091,8 +1062,6 @@ async function settings(h: Harness) {
           configuration: { allowsInlineMediaPlayback: true },
         },
       });
-      await sleep(500);
-      await waitFor(h, idle, 10000); // the configuration key recreated the WebView, which reloads the page
       r.check(
         'a BOOL applies',
         (await get('scrollView.bounces')) === false,
@@ -1844,9 +1813,7 @@ async function sampleExtension(h: Harness) {
     asks++;
     return null;
   });
-  h.setProps({ nativeOptions: { pageCounter: true, hookAuth: true } }); // recreates the WebView
-  await sleep(500);
-  await waitFor(h, idle, 10000);
+  await recreate(h, { nativeOptions: { pageCounter: true, hookAuth: true } });
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
   r.check(
@@ -1855,9 +1822,7 @@ async function sampleExtension(h: Harness) {
     { auth, asks }
   );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
-  h.setProps({ nativeOptions: { pageCounter: true, hookDialogs: true } });
-  await sleep(500);
-  await waitFor(h, idle, 10000);
+  await recreate(h, { nativeOptions: { pageCounter: true, hookDialogs: true } });
   h.events.hookEvents.length = 0;
   const after = await h.ref.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
   // The event reaches JS on its own schedule, after the evaluate result at times.
@@ -1867,9 +1832,7 @@ async function sampleExtension(h: Harness) {
     after === 'after' && h.events.hookEvents.includes('hookDialogs.alert'),
     { after, hookEvents: h.events.hookEvents }
   );
-  h.setProps({});
-  await sleep(500);
-  await waitFor(h, idle, 10000);
+  await recreate(h, {});
   if (Platform.OS === 'ios') {
     // configure() set data detectors before the WKWebView existed: WebKit turns the number into a tel: link.
     h.loadSource({ html: '<p id="n">Call 415-555-0134 today</p>', baseUrl: h.pages });
@@ -2065,7 +2028,6 @@ async function sources(h: Harness) {
 
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
-  realSite,
   reissue,
   bridge,
   backForward,

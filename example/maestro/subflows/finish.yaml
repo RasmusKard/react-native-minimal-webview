@@ -1,5 +1,5 @@
 appId: expo.modules.minimalwebview.example
 ---
-# Waits for the harness's verdict, then fails the flow unless every check passed.
-- extendedWaitUntil: { visible: { id: harness-request, text: '${SUITE}#done .*' }, timeout: 280000 }
-- assertVisible: { id: harness-request, text: '${SUITE}#done pass=\d+ fail=0' }
+# Waits for the harness's verdict, then fails the flow unless every check passed. The test server's log has the checks.
+- runScript: ../scripts/verdict.js
+- assertTrue: ${output.verdict.startsWith(SUITE + '#done ') && output.verdict.endsWith(' fail=0')}

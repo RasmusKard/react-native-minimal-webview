@@ -508,14 +508,16 @@ npm test                                   # TS unit tests (bridge protocol, cre
 npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
-cd example && npm run test-pages           # local test pages on :8090
+cd example && npm run test-pages           # local test pages on :8090 (and :8443, https with a self-signed certificate)
 npx expo run:android | npx expo run:ios
 example/maestro/run.sh android emulator-5554          # on-device suites through Maestro (all, or name some)
-example/maestro/run.sh ios <simulator udid> ptr dialogs
+example/maestro/run.sh ios <simulator udid> ptr dialogs   # the two platforms can run at the same time
 ```
 
 The on-device suites (`example/harness.ts`) run inside the example app and make every WebView assertion there.
 [Maestro](https://maestro.dev) only drives them: each flow in `example/maestro/` starts a suite, performs the
-gestures, taps, dialog presses and renderer kills the suite asks for (shown on screen as `<suite>#<n> <REQUEST>`),
-and fails unless the suite ends with `fail=0`. A suite can also be started by hand with
-`curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'`. Renderer kills on Android need `adb root`.
+gestures, taps, dialog presses and renderer kills the suite asks for (`<suite>#<n> <REQUEST>`, on screen and posted
+to the test pages server), and fails unless the suite ends with `fail=0`. Maestro waits for those on the server, not
+on the screen, and the app stays up between suites (the harness resets itself after each one), so a run launches it
+once. A suite can also be started by hand with `curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'`.
+On Android, `run.sh` does the `adb root` (for renderer kills) and the `adb reverse` ports itself.
