@@ -888,7 +888,13 @@ async function crash(h: Harness) {
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
   };
+  // A setting the page can see, to check after recovery.
+  const userAgent = () =>
+    until(async () => (await h.ref.evaluate('navigator.userAgent').catch(errorCode)) === 'Crash/1');
+  h.setProps({ userAgent: 'Crash/1' });
+  await sleep(500);
   await openPage(h, page);
+  r.check('a setting applies before a crash', !!(await userAgent()));
   clearEvents(h);
   const firstKillAt = Date.now();
   const loadsBefore = h.events.loads.length;
@@ -918,28 +924,9 @@ async function crash(h: Harness) {
     (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4
   );
   // Android builds a new WebView on recovery: its settings must be applied again.
-  const scrollbar =
-    Platform.OS === 'ios'
-      ? 'scrollView.showsVerticalScrollIndicator'
-      : 'webView.verticalScrollBarEnabled';
-  h.setProps(
-    Platform.OS === 'ios'
-      ? { ios: { scrollView: { showsVerticalScrollIndicator: false } } }
-      : { android: { webView: { verticalScrollBarEnabled: false } } }
-  );
-  await sleep(500);
-  r.check(
-    'a setting applies before a crash',
-    (await h.ref.get(scrollbar).catch(errorCode)) === false
-  );
-  await kill(2);
-  await sleep(1000);
-  r.check(
-    'the setting is still applied after recovery',
-    (await h.ref.get(scrollbar).catch(errorCode)) === false
-  );
+  r.check('the setting is still applied after recovery', !!(await userAgent()));
 
-  for (const n of [3]) {
+  for (const n of [2, 3]) {
     await kill(n);
   }
   const fourth = await kill(4);
@@ -1077,7 +1064,7 @@ async function mountSettings(h: Harness) {
   r.done();
 }
 
-/** `ios` / `android` settings by name: applied live, read back with `get`, rejected with a warning when wrong. */
+/** `ios` / `android` settings by name: applied live, seen by the page, rejected with a warning when wrong; get and call. */
 async function settings(h: Harness) {
   const r = reporter('settings');
   const warnings: string[] = [];
@@ -1086,49 +1073,36 @@ async function settings(h: Harness) {
     warnings.push(args.map(String).join(' '));
     warn(...args);
   };
-  const get = (key: string) => h.ref.get(key).catch(errorCode);
   const warned = (text: string) => warnings.some((line) => line.includes(text));
+  const page = (expression: string) => h.ref.evaluate(expression).catch(errorCode);
+  const get = (key: string) => h.ref.get(key).catch(errorCode);
+  // An 8px span's computed size: the minimum font size setting raises it.
+  const fontSize = () =>
+    page(`(() => {
+      const s = document.createElement('span'); s.style.fontSize = '8px'; s.textContent = 'x'; document.body.append(s);
+      const size = getComputedStyle(s).fontSize; s.remove(); return size;
+    })()`);
   try {
     await openPage(h, fresh(h, '/'));
     if (Platform.OS === 'ios') {
+      const configuration = { applicationNameForUserAgent: 'Settings/1' };
+      const preferences = { minimumFontSize: 30 };
       // The configuration key recreates the WebView, which reloads the page.
       await recreate(h, {
         ios: {
-          scrollView: {
-            bounces: false,
-            contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never,
-            contentInset: { top: 5, left: 0, bottom: 0, right: 0 },
-            nope: 1,
-          },
-          webView: { allowsBackForwardNavigationGestures: true, _private: 1, URL: 'x' },
-          preferences: { minimumFontSize: 12 },
-          configuration: { allowsInlineMediaPlayback: true },
+          configuration,
+          preferences,
+          scrollView: { nope: 1 },
+          webView: { _private: 1, URL: 'x' },
         },
       });
+      const userAgent = await page('navigator.userAgent');
       r.check(
-        'a BOOL applies',
-        (await get('scrollView.bounces')) === false,
-        await get('scrollView.bounces')
+        'a configuration key recreates the WebView and applies',
+        String(userAgent).endsWith(' Settings/1'),
+        userAgent
       );
-      r.check(
-        'an enum applies by raw value',
-        (await get('scrollView.contentInsetAdjustmentBehavior')) ===
-          WK.ContentInsetAdjustmentBehavior.never
-      );
-      const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
-      r.check(
-        'a struct applies and reads back',
-        inset?.top === 5 && inset.left === 0 && inset.bottom === 0 && inset.right === 0,
-        inset
-      );
-      r.check(
-        'a WKWebView property applies',
-        (await get('webView.allowsBackForwardNavigationGestures')) === true
-      );
-      r.check(
-        'a WKPreferences property applies',
-        (await get('preferences.minimumFontSize')) === 12
-      );
+      r.check('a WKPreferences number applies', (await fontSize()) === '30px', await fontSize());
       r.check(
         'an unknown property warns',
         warned('ios.scrollView.nope: no such property'),
@@ -1136,22 +1110,81 @@ async function settings(h: Harness) {
       );
       r.check('a private property warns', warned('ios.webView._private: private'), warnings);
       r.check('a read-only property warns', warned('ios.webView.URL: read-only'), warnings);
+      // The same configuration from here on, so this is the same WebView.
+      h.setProps({ ios: { configuration, preferences: { minimumFontSize: 'big' as never } } });
+      await sleep(500);
       r.check(
-        'a configuration key recreates the WebView and applies',
-        (await get('configuration.allowsInlineMediaPlayback')) === true
+        'a value of the wrong type warns',
+        warned('ios.preferences.minimumFontSize:') && warned("can't take"),
+        warnings
+      );
+      r.check('and leaves the property alone', (await fontSize()) === '30px', await fontSize());
+      await openPage(h, fresh(h, '/ptr.html?mode=long'));
+      h.setProps({
+        ios: {
+          configuration,
+          scrollView: {
+            contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never,
+            contentOffset: { x: 0, y: 30 },
+          },
+        },
+      });
+      await sleep(500);
+      r.check(
+        'a UIScrollView struct applies',
+        (await page('scrollY')) === 30,
+        await page('scrollY')
+      );
+      const width = (await page('innerWidth')) as number;
+      h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
+      await sleep(500);
+      const zoomed = (await page('innerWidth')) as number;
+      r.check('a WKWebView number applies', Math.abs(zoomed * 2 - width) <= 2, { width, zoomed });
+      h.setProps({
+        ios: {
+          configuration,
+          webpagePreferences: { preferredContentMode: WK.ContentMode.desktop },
+        },
+      });
+      await sleep(500);
+      await openPage(h, fresh(h, '/'));
+      const desktop = await page('navigator.userAgent');
+      r.check(
+        'a WKWebpagePreferences enum applies from the next navigation',
+        String(desktop).includes('Macintosh'),
+        desktop
+      );
+      // get reads a property back; call: a void completion handler, valueError with NSData and UIImage, value, a
+      // struct and a BOOL, refusals.
+      h.setProps({
+        ios: {
+          configuration,
+          scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
+        },
+      });
+      await sleep(500);
+      r.check('get reads a BOOL', (await get('scrollView.bounces')) === false);
+      const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
+      r.check(
+        'get reads a struct',
+        inset?.top === 5 && inset.left === 0 && inset.bottom === 0 && inset.right === 0,
+        inset
+      );
+      r.check(
+        'get reads a configuration property',
+        (await get('configuration.applicationNameForUserAgent')) === 'Settings/1'
       );
       r.check(
         'get rejects for an unknown property',
         (await get('scrollView.nope')) === 'ERR_NATIVE'
       );
-      // call: a void completion handler, valueError with NSData and UIImage, value, a struct and a BOOL, refusals.
       const call = (
         method: string,
         args?: unknown[],
         options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
       ) => h.ref.call(method, args, options).catch(errorCode);
-      await h.ref.evaluate(`(document.cookie = 'mrw=1; path=/')`);
-      const before = await h.ref.evaluate('document.cookie');
+      await page(`(document.cookie = 'mrw=1; path=/')`);
+      const before = await page('document.cookie');
       const cleared = await call(
         'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
         [{ set: [WK.WebsiteDataType.cookies] }, { date: 0 }],
@@ -1161,7 +1194,7 @@ async function settings(h: Harness) {
         'call clears site data (a void completion handler)',
         String(before).includes('mrw=1') &&
           cleared === null &&
-          (await h.ref.evaluate('document.cookie')) === '',
+          (await page('document.cookie')) === '',
         { before, cleared }
       );
       const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null], {
@@ -1186,13 +1219,11 @@ async function settings(h: Harness) {
         { completion: 'value' }
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
-      await h.ref.evaluate(`sessionStorage.setItem('mrw', '1')`);
+      await page(`sessionStorage.setItem('mrw', '1')`);
       const session = await call(
         'webView.fetchDataOfTypes:completionHandler:',
         [WK.WebViewDataType.sessionStorage],
-        {
-          completion: 'valueError',
-        }
+        { completion: 'valueError' }
       );
       const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
         completion: 'error',
@@ -1225,54 +1256,25 @@ async function settings(h: Harness) {
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'ERR_NATIVE'
       );
-      // The same configuration, so this is the same WebView.
-      h.setProps({
-        ios: {
-          configuration: { allowsInlineMediaPlayback: true },
-          scrollView: { bounces: 'yes' as never },
-        },
-      });
-      await sleep(500);
-      r.check(
-        'a value of the wrong type warns',
-        warned('ios.scrollView.bounces:') && warned("can't take"),
-        warnings
-      );
-      r.check('and leaves the property alone', (await get('scrollView.bounces')) === false);
     } else {
+      const payment = () => page(`typeof PaymentRequest`);
+      const paymentBefore = await payment();
       h.setProps({
         android: {
-          settings: {
-            textZoom: 120,
-            algorithmicDarkeningAllowed: true,
-            paymentRequestEnabled: true,
-            nope: 1,
-          },
-          webView: {
-            overScrollMode: 2,
-            verticalScrollBarEnabled: false,
-            _private: 1,
-            webViewClient: null,
-          },
+          settings: { minimumFontSize: 30, paymentRequestEnabled: true, nope: 1 },
+          webView: { networkAvailable: false, _private: 1, webViewClient: null },
         },
       });
       await sleep(500);
-      r.check(
-        'a WebSettings setter applies',
-        (await get('settings.textZoom')) === 120,
-        await get('settings.textZoom')
-      );
-      r.check(
-        'a WebSettingsCompat setter applies',
-        (await get('settings.algorithmicDarkeningAllowed')) === true
-      );
+      r.check('a WebSettings setter applies', (await fontSize()) === '30px', await fontSize());
+      r.check('a WebView setter applies', (await page('navigator.onLine')) === false);
+      await openPage(h, fresh(h, '/'));
+      const paymentAfter = await payment();
       r.check(
         'a setter only WebSettingsCompat has applies (through reflection on androidx, R8 included)',
-        (await get('settings.paymentRequestEnabled')) === true,
-        await get('settings.paymentRequestEnabled')
+        paymentBefore === 'undefined' && paymentAfter === 'function',
+        { paymentBefore, paymentAfter }
       );
-      r.check('a WebView setter applies', (await get('webView.overScrollMode')) === 2);
-      r.check('an is-getter reads back', (await get('webView.verticalScrollBarEnabled')) === false);
       r.check(
         'an unknown setter warns',
         warned('android.settings.nope: no public setter'),
@@ -1288,46 +1290,49 @@ async function settings(h: Harness) {
         warned('android.webView.webViewClient: owned by the core'),
         warnings
       );
+      // The renderer process keeps navigator.onLine for later WebViews: put it back.
+      h.setProps({
+        android: {
+          settings: { minimumFontSize: 'big' as never },
+          webView: { networkAvailable: true },
+        },
+      });
+      await sleep(500);
+      r.check(
+        'a value of the wrong type warns',
+        warned('android.settings.minimumFontSize: no public setter takes a String'),
+        warnings
+      );
+      r.check('and leaves the setting alone', (await fontSize()) === '30px', await fontSize());
+      r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
+      // get reads a setting back; call runs a public method of a root.
+      r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
+      r.check(
+        'get reads a WebSettingsCompat getter',
+        (await get('settings.paymentRequestEnabled')) === true
+      );
+      r.check('get reads an is-getter', (await get('webView.verticalScrollBarEnabled')) === true);
       r.check('get rejects for an unknown key', (await get('settings.nope')) === 'ERR_NATIVE');
-      r.check(
-        'call runs a WebView method',
-        (await h.ref.call('webView.clearCache', [true]).catch(errorCode)) === null
-      );
-      r.check(
-        'call returns the result',
-        (await h.ref.call('webView.getTitle').catch(errorCode)) === 'Test pages'
-      );
+      const call = (method: string, args?: unknown[]) => h.ref.call(method, args).catch(errorCode);
+      r.check('call runs a WebView method', (await call('webView.clearCache', [true])) === null);
+      r.check('call returns the result', (await call('webView.getTitle')) === 'Test pages');
       r.check(
         'call rejects for a core-owned method',
-        (await h.ref.call('webView.destroy').catch(errorCode)) === 'ERR_NATIVE'
+        (await call('webView.destroy')) === 'ERR_NATIVE'
       );
-      await h.ref.evaluate(`(document.cookie = 'mrw=1; path=/')`);
-      const before = await h.ref.evaluate('document.cookie');
-      const removed = await h.ref.call('cookieManager.removeAllCookies', [null]).catch(errorCode);
+      await page(`(document.cookie = 'mrw=1; path=/')`);
+      const before = await page('document.cookie');
+      const removed = await call('cookieManager.removeAllCookies', [null]);
       await sleep(500);
       r.check(
         'call clears cookies through cookieManager',
         String(before).includes('mrw=1') &&
           removed === null &&
-          (await h.ref.evaluate('document.cookie')) === '',
+          (await page('document.cookie')) === '',
         { before, removed }
       );
-      r.check(
-        'call reaches webStorage',
-        (await h.ref.call('webStorage.deleteAllData').catch(errorCode)) === null
-      );
-      r.check(
-        'call rejects an unknown root',
-        (await h.ref.call('clearCache', [true]).catch(errorCode)) === 'ERR_NATIVE'
-      );
-      h.setProps({ android: { settings: { textZoom: 'big' as never } } });
-      await sleep(500);
-      r.check(
-        'a value of the wrong type warns',
-        warned('android.settings.textZoom: no public setter takes a String'),
-        warnings
-      );
-      r.check('and leaves the setting alone', (await get('settings.textZoom')) === 120);
+      r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
+      r.check('call rejects an unknown root', (await call('clearCache', [true])) === 'ERR_NATIVE');
     }
   } finally {
     console.warn = warn;
