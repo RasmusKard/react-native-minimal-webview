@@ -474,11 +474,7 @@ async function bridge(h: Harness) {
   h.load(`${page}&next=1`);
   r.check('navigation rejects calls in flight', (await inFlight) === 'navigated');
   const gone = await pending;
-  r.check(
-    'navigation rejects an evaluate in flight',
-    gone === (Platform.OS === 'android' ? 'navigated' : 'ERR_EVALUATE'),
-    gone
-  );
+  r.check('navigation rejects an evaluate in flight', gone === 'navigated', gone);
   await waitFor(h, (s) => s.url.includes('next=1') && idle(s));
   await sleep(500);
   r.check(
