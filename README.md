@@ -85,18 +85,19 @@ development) until it unmounts.
 
 ## Navigation rules
 
-Rules are an ordered list, and the first match wins. Every field a rule sets must match. `scheme`, `host` and `path`
-are lists, and one entry matching is enough:
+Rules are an ordered list, and the first match wins. Every field a rule sets must match. `scheme`, `host`, `path` and
+`query` are lists, and one entry matching is enough:
 
 | Field | Matches |
 |---|---|
 | `scheme` | Exact, case-insensitive: `['tel', 'mailto']` |
 | `host` | Exact, or `*.example.com` for subdomains only (not `example.com` itself). Case, port, userinfo and a trailing dot are ignored |
 | `path` | A plain prefix of the percent-encoded path: `/checkout` also matches `/checkouts` |
+| `query` | A query parameter, percent-encoded as in the URL and case-sensitive: `gad_source` matches one with that name and any value, `utm_term=google` only that exact value |
 | `mainFrame`, `newWindow`, `userInitiated` | true or false |
 
 **Actions:**
-- `allow`: load in place.
+- `allow`: load in place. On iOS that includes a tapped link to a URL that an installed app claims as a universal link, which WebKit would otherwise open in that app; an `external` rule hands such a URL to the app.
 - `block`: cancel.
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
 - `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once.

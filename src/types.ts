@@ -33,6 +33,11 @@ export type NavigationRule = {
   host?: string[];
   /** Plain prefixes of the URL path: `['/checkout']` also matches `/checkouts`. */
   path?: string[];
+  /**
+   * Query parameters, percent-encoded as in the URL and case-sensitive: `gad_source` matches a parameter with that
+   * name, whatever its value; `utm_term=google` matches only that exact value.
+   */
+  query?: string[];
   mainFrame?: boolean;
   newWindow?: boolean;
   /** A user gesture started it (Android `hasGesture()`, iOS `.linkActivated`). */

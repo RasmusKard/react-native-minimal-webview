@@ -5,15 +5,15 @@ import WebKit
 /// `ask`, called exactly once, and blocked after 1 s or when the WebView goes away.
 extension MinimalWebView {
   func decideNavigation(_ action: WKNavigationAction, in webView: WKWebView, decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
-    guard let target = action.request.url else { return decide(.allow) }
+    guard let target = action.request.url else { return decide(allowInPlace) }
     // New windows are decided in createWebViewWith; history steps, reloads and our own loads skip the rules,
     // as on Android (shouldOverrideUrlLoading is not called for them).
-    if action.targetFrame == nil { return decide(.allow) }
+    if action.targetFrame == nil { return decide(allowInPlace) }
     let mainFrame = action.targetFrame?.isMainFrame ?? true
     let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
     if own || action.navigationType == .backForward || action.navigationType == .reload {
       if own { programmaticUrl = nil }
-      return decide(.allow)
+      return decide(allowInPlace)
     }
     let request = NavigationRules.Request(
       url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: action.navigationType == .linkActivated
@@ -23,7 +23,7 @@ extension MinimalWebView {
     let dropped = action.shouldPerformDownload && !download
     run(request) { [weak self] allowed in
       if allowed, dropped { self?.openDownload(target) }
-      decide(allowed && !dropped ? (download ? .download : .allow) : .cancel)
+      decide(allowed && !dropped ? (download ? .download : allowInPlace) : .cancel)
     }
   }
 
@@ -121,3 +121,7 @@ extension MinimalWebView {
 }
 
 private let askTimeout: TimeInterval = 1
+
+/// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (iOS 9+), as Firefox for iOS uses it: `.allow`
+/// would hand a tapped link to another host to an installed app that claims it as a universal link.
+private let allowInPlace = WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2) ?? .allow
