@@ -37,8 +37,10 @@ and a full run takes nearly twice as long.
 
 Before a run:
 1. In `example/`, start the test pages server with `npm run test-pages` (port 8090, and 8443 for https) and Metro with
-   `npx expo start --clear`. Restart Metro with `--clear` after any JS edit in `src/` or `example/`; otherwise it
-   can serve a stale bundle and old harness code runs.
+   `npx expo start --clear`. Metro serves edits in `src/` and `example/` within seconds (it watches the repo root),
+   and each run starts with a fresh app launch, so no restart is needed after a JS edit. Don't edit JS during a run:
+   Fast Refresh pushes it into the running app mid-suite. Restart with `--clear` only after changing the Metro or
+   Babel config or dependencies.
 2. Install the app:
    - Android: `cd example/android && ./gradlew app:installDebug`
    - iOS: `cd example/ios && pod install`, then `xcodebuild -workspace reactnativeminimalwebviewexample.xcworkspace -scheme
