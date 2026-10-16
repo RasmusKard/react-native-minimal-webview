@@ -25,7 +25,9 @@ The package's own defaults are plain keys that yours override: no script-opened 
 (`ios.configuration.mediaTypesRequiringUserActionForPlayback`, `android.settings.mediaPlaybackRequiresUserGesture`) and
 debugging in `__DEV__` only (`ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled`, which is
 process-wide). Android also restores a page from the back-forward cache on back and forward, as WebKit does
-(`android.settings.backForwardCacheEnabled`, on with WebView 146 and newer).
+(`android.settings.backForwardCacheEnabled`, on with WebView 146 and newer), and downloads no favicons
+(`android.settings.downloadFaviconsEnabled`, where the WebView has the setting; a hook client that overrides
+`onReceivedIcon` turns it back on).
 
 - **The keys autocomplete**, with their type and `@since`, from the SDK headers (`src/platform.generated.ts`), and the
   platforms' enums and constants come as `WK` (`WK.DataDetectorTypes.link`, `WK.ContentMode.desktop`) and `Android`

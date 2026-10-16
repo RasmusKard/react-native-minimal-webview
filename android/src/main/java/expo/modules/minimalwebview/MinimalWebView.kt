@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
@@ -132,6 +133,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     if (hasNavigationListener && WebViewFeature.isFeatureSupported(WebViewFeature.BACK_FORWARD_CACHE)) {
       WebSettingsCompat.setBackForwardCacheEnabled(settings, true)
     }
+    // No favicon requests: nothing shows them. attachHooks turns them back on for a hook that takes onReceivedIcon.
+    if (WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)) {
+      WebSettingsCompat.setDownloadFaviconsEnabled(settings, false)
+    }
   }
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
@@ -188,6 +193,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private fun attachHooks() {
     detachers = MinimalWebViewHooks.attach.mapNotNull { (name, hook) ->
       if (options.containsKey(name)) hook(webView, HookContext(name, this)) else null
+    }
+    // A hook that takes favicons gets them downloaded again (configure() turns that off).
+    if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
+      WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
+    ) {
+      WebSettingsCompat.setDownloadFaviconsEnabled(webView.settings, true)
     }
   }
 
