@@ -313,7 +313,7 @@ async function reissue(h: Harness) {
     return answer === 'block' ? 'block' : 'allow';
   });
   h.setRules([
-    { host: ['localhost'], path: ['/checkout'], action: 'ask' },
+    { host: ['localhost', '127.0.0.1'], path: ['/checkout', '/headers'], action: 'ask' },
     { scheme: ['http', 'https'], action: 'allow' },
   ]);
   await sleep(300);
@@ -378,6 +378,22 @@ async function reissue(h: Harness) {
   } else {
     r.check('iframe navigations into an ask rule are asked', asked.length > beforeFrame, asked);
   }
+
+  // The page goes as the referrer: in full to its own origin, only its origin to another.
+  const referrerTo = async (target: string) => {
+    const from = fresh(h, '/nav.html');
+    await openPage(h, from);
+    await h.ref.current?.evaluate(`location.href = '${target}'`);
+    await waitFor(h, (s) => s.url === target && idle(s), 5000);
+    const headers = (await h.ref.current?.evaluate(
+      `JSON.parse(document.getElementById('headers').textContent)`
+    )) as { referer?: string } | undefined;
+    return { from, referer: headers?.referer };
+  };
+  const same = await referrerTo(`${h.pages}/headers?r=same`);
+  r.check('an allowed navigation keeps the referrer', same.referer === same.from, same);
+  const cross = await referrerTo('http://127.0.0.1:8090/headers?r=cross');
+  r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
   r.done();
 }
 
@@ -819,6 +835,26 @@ async function errors(h: Harness) {
     state: h.state(),
   });
   r.check('the reload reports no new error', h.events.httpErrors.length === 1, h.events.httpErrors);
+
+  // Page-initiated, then through a redirect: on Android these reach the SSL check through shouldOverrideUrlLoading.
+  for (const [name, to, failed] of [
+    ['ssl error from the page', `'https://localhost:8443/link'`, 'https://localhost:8443/link'],
+    [
+      'ssl error after a redirect',
+      `'/redirect?to=https://localhost:8443/redirected'`,
+      'https://localhost:8443/redirected',
+    ],
+  ]) {
+    await openPage(h, fresh(h, '/'));
+    clearEvents(h);
+    await h.ref.current?.evaluate(`location.href = ${to}`);
+    const got = await waitFor(h, () => h.events.errors.length > 0, 10000);
+    r.check(
+      name,
+      got && h.events.errors[0]?.kind === 'ssl' && h.events.errors[0]?.url === failed,
+      h.events.errors[0]
+    );
+  }
   r.done();
 }
 
