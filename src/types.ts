@@ -189,7 +189,7 @@ export type AndroidSettings = {
   webView?: Root<AndroidSettingKeys['webView']>;
 };
 
-/** An event a native hook sent with `emit` or `ask` (README: Native hooks). */
+/** An event a native hook sent with `emit` or `ask` (docs/native-hooks.md). */
 export type NativeEvent = { name: string; payload: Record<string, unknown> };
 
 /** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
@@ -215,7 +215,7 @@ type OwnProps = {
   onOpenExternal?: (url: string) => void;
   /** Read when the WebView is created: a change recreates it (the page reloads). */
   bridge?: Bridge;
-  /** What the native hooks get as their options (README: Native hooks). Read when the WebView is created, like `bridge`. */
+  /** What the native hooks get as their options (docs/native-hooks.md). Read when the WebView is created, like `bridge`. */
   nativeOptions?: Record<string, unknown>;
   /**
    * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
@@ -289,7 +289,7 @@ export type WebViewRef = {
    */
   get(key: string): Promise<unknown>;
   /**
-   * Calls a platform method, `root.method`, and resolves with its result through JSON (README: Platform settings).
+   * Calls a platform method, `root.method`, and resolves with its result through JSON (docs/platform-settings.md).
    * Android: a public method of `webView` (then `WebViewCompat`'s statics), `cookieManager` or `webStorage`:
    * `call('webView.clearCache', [true])`, `call('cookieManager.removeAllCookies', [null])`. iOS: an Objective-C
    * selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`, the arguments set by the

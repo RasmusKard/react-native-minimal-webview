@@ -30,4 +30,4 @@ jobs:
           && ./rules
 
   # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites
-  # (example/harness.ts), which need an emulator and a simulator: see README "Development".
+  # (example/harness.ts), which need an emulator and a simulator: see docs/development.md.
