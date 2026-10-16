@@ -313,7 +313,7 @@ async function reissue(h: Harness) {
     return answer === 'block' ? 'block' : 'allow';
   });
   h.setRules([
-    { host: ['localhost'], path: ['/checkout'], action: 'ask' },
+    { host: ['localhost', '127.0.0.1'], path: ['/checkout', '/headers'], action: 'ask' },
     { scheme: ['http', 'https'], action: 'allow' },
   ]);
   await sleep(300);
@@ -378,6 +378,22 @@ async function reissue(h: Harness) {
   } else {
     r.check('iframe navigations into an ask rule are asked', asked.length > beforeFrame, asked);
   }
+
+  // The page goes as the referrer: in full to its own origin, only its origin to another.
+  const referrerTo = async (target: string) => {
+    const from = fresh(h, '/nav.html');
+    await openPage(h, from);
+    await h.ref.current?.evaluate(`location.href = '${target}'`);
+    await waitFor(h, (s) => s.url === target && idle(s), 5000);
+    const headers = (await h.ref.current?.evaluate(
+      `JSON.parse(document.getElementById('headers').textContent)`
+    )) as { referer?: string } | undefined;
+    return { from, referer: headers?.referer };
+  };
+  const same = await referrerTo(`${h.pages}/headers?r=same`);
+  r.check('an allowed navigation keeps the referrer', same.referer === same.from, same);
+  const cross = await referrerTo('http://127.0.0.1:8090/headers?r=cross');
+  r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
   r.done();
 }
 

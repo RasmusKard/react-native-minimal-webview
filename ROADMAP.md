@@ -15,8 +15,9 @@ Possible future work, not commitments.
 
 ## Known limits, left as they are
 
-- **Android navigation rules:** the reissued `ask` load loses the referrer and the gesture flag, POST skips the rules,
-  and http(s) iframes aren't decided ([platform differences](docs/navigation-rules.md#platform-differences)).
+- **Android navigation rules:** the reissued `ask` load loses the page's referrer policy and the gesture flag, POST
+  skips the rules, and http(s) iframes aren't decided
+  ([platform differences](docs/navigation-rules.md#platform-differences)).
 - **iOS `onProcessGone.didCrash` is always true**, because WebKit doesn't report a reason.
 - **Android WebView older than 146** (no `NAVIGATION_LISTENER`; tested with 133 on a Google APIs API 36 image):
   `pendingUrl` isn't reported, an SSL error on a back/forward load isn't reported, `100vh` is 0 after crash recovery,
