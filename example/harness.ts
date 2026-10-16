@@ -41,7 +41,7 @@ export type Harness = {
   setPermission: (
     handler: ((request: PermissionRequestEvent) => Promise<boolean>) | undefined
   ) => void;
-  /** Extra WebView props, replacing the previous extras. */
+  /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
   setProps: (props: Partial<WebViewProps>) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
   events: {

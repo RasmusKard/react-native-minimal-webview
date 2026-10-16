@@ -4,19 +4,19 @@ appId: expo.modules.minimalwebview.example
 - runFlow: { file: await.yaml }
 - runFlow:
     when: { platform: iOS, true: "${KIND == 'full'}" }
-    commands: [ swipe: { start: "50%, 29%", end: "50%, 80%", duration: 900 } ]
+    commands: [ swipe: { start: "50%, 29%", end: "50%, 80%", duration: 900, waitToSettleTimeoutMs: 200 } ]
 - runFlow:
     when: { platform: iOS, true: "${KIND == 'short'}" }
-    commands: [ swipe: { start: "50%, 51%", end: "50%, 63%", duration: 400 } ]
+    commands: [ swipe: { start: "50%, 51%", end: "50%, 63%", duration: 400, waitToSettleTimeoutMs: 200 } ]
 - runFlow:
     when: { platform: iOS, true: "${KIND == 'inner'}" }
-    commands: [ swipe: { start: "50%, 34%", end: "50%, 86%", duration: 900 } ]
+    commands: [ swipe: { start: "50%, 34%", end: "50%, 86%", duration: 900, waitToSettleTimeoutMs: 200 } ]
 - runFlow:
     when: { platform: Android, true: "${KIND == 'full'}" }
-    commands: [ swipe: { start: "50%, 25%", end: "50%, 74%", duration: 500 } ]
+    commands: [ swipe: { start: "50%, 25%", end: "50%, 74%", duration: 500, waitToSettleTimeoutMs: 200 } ]
 - runFlow:
     when: { platform: Android, true: "${KIND == 'short'}" }
-    commands: [ swipe: { start: "50%, 42%", end: "50%, 53%", duration: 300 } ]
+    commands: [ swipe: { start: "50%, 42%", end: "50%, 53%", duration: 300, waitToSettleTimeoutMs: 200 } ]
 - runFlow:
     when: { platform: Android, true: "${KIND == 'inner'}" }
-    commands: [ swipe: { start: "50%, 32%", end: "50%, 74%", duration: 500 } ]
+    commands: [ swipe: { start: "50%, 32%", end: "50%, 74%", duration: 500, waitToSettleTimeoutMs: 200 } ]

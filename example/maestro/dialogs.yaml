@@ -3,12 +3,17 @@ name: dialogs
 env:
   SUITE: dialogs
 ---
-# alert, confirm, prompt. A dialog hides the screen behind it from accessibility, so wait for its OK button rather
-# than the request marker.
+# alert, confirm, prompt. Each press reads the screen only once the harness has asked for it, so the query lands while
+# the page is blocked in the dialog: a regression check for iOS, where that hung XCTest for 60 s while the blocked
+# WebView was in the accessibility tree. The dialog hides the screen behind it, so wait for its OK button.
 - runFlow: subflows/launch.yaml
-- repeat:
-    times: 3
-    commands:
-      - extendedWaitUntil: { visible: OK, timeout: 30000 }
-      - tapOn: { text: OK, retryTapIfNoChange: false }
+- runFlow: { file: subflows/await.yaml, env: { N: 1 } }
+- extendedWaitUntil: { visible: OK, timeout: 30000 }
+- tapOn: { text: OK, retryTapIfNoChange: false, waitToSettleTimeoutMs: 200 }
+- runFlow: { file: subflows/await.yaml, env: { N: 2 } }
+- extendedWaitUntil: { visible: OK, timeout: 30000 }
+- tapOn: { text: OK, retryTapIfNoChange: false, waitToSettleTimeoutMs: 200 }
+- runFlow: { file: subflows/await.yaml, env: { N: 3 } }
+- extendedWaitUntil: { visible: OK, timeout: 30000 }
+- tapOn: { text: OK, retryTapIfNoChange: false, waitToSettleTimeoutMs: 200 }
 - runFlow: subflows/finish.yaml
