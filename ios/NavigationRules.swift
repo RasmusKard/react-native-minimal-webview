@@ -42,7 +42,8 @@ enum NavigationRules {
     if host?.isEmpty == true { host = nil }
     let rawPath = components?.percentEncodedPath ?? ""
     let path = rawPath.isEmpty || components?.host == nil && !rawPath.hasPrefix("/") ? "/" : rawPath
-    guard let index = rules.firstIndex(where: { matches($0, scheme, host, path, request) }) else {
+    let params = components?.percentEncodedQuery?.split(separator: "&").map(String.init) ?? []
+    guard let index = rules.firstIndex(where: { matches($0, scheme, host, path, params, request) }) else {
       return Decision(action: "block", rule: nil)
     }
     return Decision(action: rules[index]["action"] as? String ?? "block", rule: index)
@@ -53,14 +54,22 @@ enum NavigationRules {
     value.map { ($0 as? [Any])?.map { "\($0)" } ?? [] }
   }
 
-  private static func matches(_ rule: [String: Any], _ scheme: String, _ host: String?, _ path: String, _ request: Request) -> Bool {
+  private static func matches(
+    _ rule: [String: Any], _ scheme: String, _ host: String?, _ path: String, _ params: [String], _ request: Request
+  ) -> Bool {
     if let schemes = list(rule["scheme"]), !schemes.contains(where: { $0.lowercased() == scheme }) { return false }
     if let hosts = list(rule["host"]) {
       guard let host, hosts.contains(where: { hostMatches($0.lowercased(), host) }) else { return false }
     }
     if let paths = list(rule["path"]), !paths.contains(where: { path.hasPrefix($0) }) { return false }
+    if let queries = list(rule["query"]), !queries.contains(where: { paramMatches($0, params) }) { return false }
     return flag(rule["mainFrame"], request.mainFrame) && flag(rule["newWindow"], request.newWindow)
       && flag(rule["userInitiated"], request.userInitiated)
+  }
+
+  /// `name=value` matches that exact parameter; `name` matches a parameter with that name, whatever its value.
+  private static func paramMatches(_ entry: String, _ params: [String]) -> Bool {
+    params.contains { param in entry.contains("=") ? param == entry : param.prefix(while: { $0 != "=" }) == entry }
   }
 
   private static func flag(_ value: Any?, _ actual: Bool) -> Bool {
