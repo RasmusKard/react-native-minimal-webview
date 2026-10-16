@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Native hooks: how an app or a package reaches the WebView this package creates, with no protocol to implement.
  * A hook is registered under the `nativeOptions` key that enables it, from an Expo module's `OnCreate` (before the
  * first WebView is created), and runs for each WebView whose `nativeOptions` has that key, on the main thread.
- * README "Native hooks" has the rules for the clients and the events.
+ * docs/native-hooks.md has the rules for the clients and the events.
  */
 object MinimalWebViewHooks {
   /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
@@ -38,7 +38,7 @@ interface WebViewContext {
 
   /**
    * Clients for the WebView, in order; add them in `attach`. A callback goes to the core, to the first client that
-   * overrides it, or to every one, by the rules in README "Native hooks".
+   * overrides it, or to every one, by the rules in docs/native-hooks.md.
    */
   val clients: MutableList<WebViewClient>
   val chromeClients: MutableList<WebChromeClient>
