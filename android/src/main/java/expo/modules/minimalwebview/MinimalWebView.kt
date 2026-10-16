@@ -12,6 +12,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
@@ -125,6 +126,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     // Pinch-zoom (an accessibility basic; pages opt out with a viewport meta), without the legacy +/- buttons.
     settings.builtInZoomControls = true
     settings.displayZoomControls = false
+    // Back and forward restore the page instead of reloading it, as WebKit does. `android.settings` applies after this.
+    // Not without NavigationListener: WebView 133 sends onPageStarted for a restored page but no onPageFinished.
+    if (hasNavigationListener && WebViewFeature.isFeatureSupported(WebViewFeature.BACK_FORWARD_CACHE)) {
+      WebSettingsCompat.setBackForwardCacheEnabled(settings, true)
+    }
   }
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */

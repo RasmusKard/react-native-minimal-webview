@@ -24,7 +24,8 @@ The package's own defaults are plain keys that yours override: no script-opened 
 (`javaScriptCanOpenWindowsAutomatically`, in `ios.preferences` and `android.settings`), playback only on a gesture
 (`ios.configuration.mediaTypesRequiringUserActionForPlayback`, `android.settings.mediaPlaybackRequiresUserGesture`) and
 debugging in `__DEV__` only (`ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled`, which is
-process-wide).
+process-wide). Android also restores a page from the back-forward cache on back and forward, as WebKit does
+(`android.settings.backForwardCacheEnabled`, on with WebView 146 and newer).
 
 - **The keys autocomplete**, with their type and `@since`, from the SDK headers (`src/platform.generated.ts`), and the
   platforms' enums and constants come as `WK` (`WK.DataDetectorTypes.link`, `WK.ContentMode.desktop`) and `Android`
