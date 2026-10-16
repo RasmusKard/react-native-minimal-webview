@@ -3,7 +3,7 @@ import WebKit
 /// Native hooks: how an app or a package reaches the WKWebView this package creates, with no protocol to implement.
 /// A hook is registered under the `nativeOptions` key that enables it, from an Expo module's `OnCreate` (before the
 /// first WebView is created), and runs for each WebView whose `nativeOptions` has that key, on the main thread.
-/// README "Native hooks" has the rules for the delegates and the events.
+/// docs/native-hooks.md has the rules for the delegates and the events.
 public enum MinimalWebViewHooks {
   /// The class each WebView is made from; a subclass can override what WKWebView lets it.
   public static var webViewClass: WKWebView.Type = WKWebView.self
@@ -19,7 +19,7 @@ public protocol WebViewContext: AnyObject {
   /// The `nativeOptions` prop: whatever the app passed for its hooks.
   var options: [String: Any] { get }
   /// Delegates for the WKWebView, in order; set them in `attach`. A callback goes to the core, to the first delegate
-  /// that responds, or to every one, by the rules in README "Native hooks".
+  /// that responds, or to every one, by the rules in docs/native-hooks.md.
   var navigationDelegates: [WKNavigationDelegate] { get set }
   var uiDelegates: [WKUIDelegate] { get set }
   /// Sends `onNativeEvent({ name: "<hook>.<name>", payload })` to JS.

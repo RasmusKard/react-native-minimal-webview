@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The core's clients forward every platform callback to the hook clients (README "Native hooks"), and Android can't do
+ * The core's clients forward every platform callback to the hook clients (docs/native-hooks.md), and Android can't do
  * that dynamically: each callback is an override in MinimalWebViewClients.kt. One a newer SDK adds, or one that was
  * missed, fails here by name.
  */
