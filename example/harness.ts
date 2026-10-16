@@ -177,6 +177,17 @@ const waitFor = async (h: Harness, predicate: (s: NavigationState) => boolean, m
   (await until(() => predicate(h.state()), ms, 50)) === true;
 
 const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+/** Allows every `ask`, with `rules` ahead of a catch-all http(s) allow; returns the asked URLs. */
+const allowAsks = async (h: Harness, rules: NavigationRule[]) => {
+  const asked: string[] = [];
+  h.setAsk((request) => {
+    asked.push(request.url);
+    return 'allow';
+  });
+  h.setRules([...rules, { scheme: ['http', 'https'], action: 'allow' }]);
+  await sleep(300);
+  return asked;
+};
 /** The height of a 100vh element: 0 when the WebView loaded the page before it had a size. */
 const viewportHeight = async (h: Harness) =>
   (await h.ref.current?.evaluate(
@@ -1064,16 +1075,7 @@ async function mountSettings(h: Harness) {
     'the bridge works after the remount',
     (await h.bridge.call('sum', { a: 3, b: 4 }).catch(errorCode)) === 7
   );
-  const asked: string[] = [];
-  h.setAsk((request) => {
-    asked.push(request.url);
-    return 'allow';
-  });
-  h.setRules([
-    { path: ['/checkout'], action: 'ask' },
-    { scheme: ['http', 'https'], action: 'allow' },
-  ]);
-  await sleep(300);
+  const asked = await allowAsks(h, [{ path: ['/checkout'], action: 'ask' }]);
   await openPage(h, fresh(h, '/nav.html'));
   await click(h, 'checkout');
   const reached = await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000);
@@ -2080,17 +2082,10 @@ async function bfcache(h: Harness) {
   await travel('forward', () => h.ref.current?.goForward(), second, 'second', false);
 
   // The rules still decide navigations the restored page starts.
-  const asked: string[] = [];
-  h.setAsk((request) => {
-    asked.push(request.url);
-    return 'allow';
-  });
-  h.setRules([
+  const asked = await allowAsks(h, [
     { path: ['/checkout'], action: 'ask' },
     { path: ['/blocked'], action: 'block' },
-    { scheme: ['http', 'https'], action: 'allow' },
   ]);
-  await sleep(300);
   await h.ref.current?.evaluate(`location.href = '/blocked/page'`);
   await sleep(1000);
   r.check('a block rule holds on the restored page', h.state().url === second, h.state());
