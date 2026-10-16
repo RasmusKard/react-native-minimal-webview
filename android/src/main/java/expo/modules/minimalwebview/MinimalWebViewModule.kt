@@ -7,7 +7,10 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
+import androidx.webkit.Profile
+import androidx.webkit.ProfileStore
 import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import androidx.webkit.WebViewOutcomeReceiver
 import androidx.webkit.WebViewStartUpConfig
 import androidx.webkit.WebViewStartUpResult
@@ -78,6 +81,17 @@ class MinimalWebViewModule : Module() {
         }
       })
     }
+
+    // Opens a connection (DNS, TCP, TLS) to the URL's origin in the default profile, for a load that follows. Best
+    // effort: nothing on a WebView without the profile API. ProfileStore wants the UI thread, and starts WebView there.
+    AsyncFunction("preconnect") { url: String ->
+      if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return@AsyncFunction
+      val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
+      when {
+        WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
+        WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
+      }
+    }.runOnQueue(Queues.MAIN)
 
     // The platform's default user agent (`WebView.defaultUserAgent` in JS), for apps that append to it.
     Constant("defaultUserAgent") {

@@ -132,7 +132,11 @@ type NativeMethods = {
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
 const nativeModule = () =>
-  requireNativeModule<{ defaultUserAgent: string; warmUp(): void }>('MinimalWebView');
+  requireNativeModule<{
+    defaultUserAgent: string;
+    warmUp(): void;
+    preconnect(url: string): Promise<void>;
+  }>('MinimalWebView');
 
 const INITIAL_STATE: NavigationState = {
   url: '',
@@ -464,6 +468,13 @@ Object.defineProperty(WebView, 'defaultUserAgent', {
  */
 WebView.warmUp = (): void => {
   if (Platform.OS === 'android') nativeModule().warmUp();
+};
+/**
+ * Android: opens a connection to `url`'s origin (DNS, TCP, TLS) for a load that follows. Starts WebView if nothing has
+ * yet. No-op on iOS.
+ */
+WebView.preconnect = (url: string): void => {
+  if (Platform.OS === 'android') void nativeModule().preconnect(url);
 };
 
 /**

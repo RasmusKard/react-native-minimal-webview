@@ -39,6 +39,13 @@ so the first WebView mounts faster. Call it at app start when a WebView shows so
 already starts WebView at the app's first `fetch` (its cookie jar is WebView's `CookieManager`), so an app that fetches
 early gets part of this anyway.
 
+`WebView.preconnect(url)`, Android only (a no-op on iOS): opens a connection to `url`'s origin (DNS, TCP, TLS) in
+WebView's default profile, for a load that follows (`Profile.enqueuePreconnect`, else `Profile.preconnect`; nothing
+on a WebView without them). It starts WebView on the UI thread if nothing has yet, so call it after `warmUp()` has had
+time or once a WebView is mounted. Called 1.5 s before loading https://www.delfi.ee/, the page's first byte came after
+111 ms instead of 683 ms (median of 12, WebView 149 on an emulator, debug build). Prefetch and prerender aren't wrapped:
+reach them through `ProfileStore` in a [native hook](native-hooks.md).
+
 ## Loading and error screens
 
 There is no `renderLoading` or `renderError`: the navigation state and `onError` give the same screens, under your own
