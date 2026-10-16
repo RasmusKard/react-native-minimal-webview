@@ -5,7 +5,7 @@
 | `source` | `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `headers` go on the first request only. `body` makes it a form-urlencoded POST (Android sends no `headers` with it); `reload()` and crash recovery send it again. A `file://` uri loads with read access to its directory; Android needs `android.settings.allowFileAccess: true` |
 | `ios`, `android` | Any WebKit property or Android setter, by name. See [Platform settings](platform-settings.md) |
 | `userAgent` | Replaces the user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). To append to the default one instead: `ios.configuration.applicationNameForUserAgent`, and on Android `android.settings.userAgentString` from `WebView.defaultUserAgent` plus your suffix |
-| `injectedScripts` | `[{ code, mainFrameOnly? }]`, run at document start, before the page's scripts; code for the parsed DOM goes in `addEventListener('DOMContentLoaded', …)`. Changes apply from the next navigation |
+| `injectedScripts` | `[{ code, mainFrameOnly? }]`, run at document start, before the page's scripts, in the main frame only unless `mainFrameOnly: false`; code for the parsed DOM goes in `addEventListener('DOMContentLoaded', …)`. Changes apply from the next navigation |
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See [Navigation rules](navigation-rules.md) |
 | `bridge` | `createBridge(...)`, see [The bridge](bridge.md). Read when the WebView is created: a change recreates it |
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
