@@ -30,6 +30,22 @@ throw or rejection rejects with code `ERR_EVALUATE`, and a navigation before the
 result is whatever the page's own JS returns, so treat it as page data. On Android it comes back through a global that
 pages see, `window.nativeEvaluateResult` (see [Security defaults](security.md)).
 
+## Starting early
+
+`WebView.warmUp()`, Android only (a no-op on iOS): starts WebView in the background (`WebViewCompat.startUpWebView`),
+so the first WebView mounts faster. Call it at app start when a WebView shows soon after. With the first WebView mounted
+1 s after app start, its constructor blocked the UI thread for 24 ms instead of 72 ms, and its first request went out
+50 ms sooner (WebView 149, release build). Called right before the mount it gains less. React Native's networking
+already starts WebView at the app's first `fetch` (its cookie jar is WebView's `CookieManager`), so an app that fetches
+early gets part of this anyway.
+
+`WebView.preconnect(url)`, Android only (a no-op on iOS): opens a connection to `url`'s origin (DNS, TCP, TLS) in
+WebView's default profile, for a load that follows (`Profile.enqueuePreconnect`, else `Profile.preconnect`; nothing
+on a WebView without them). It starts WebView on the UI thread if nothing has yet, so call it after `warmUp()` has had
+time or once a WebView is mounted. Called 1.5 s before loading https://www.delfi.ee/, the page's first byte came after
+111 ms instead of 683 ms (median of 12, WebView 149 on an emulator, debug build). Prefetch and prerender aren't wrapped:
+reach them through `ProfileStore` in a [native hook](native-hooks.md).
+
 ## Loading and error screens
 
 There is no `renderLoading` or `renderError`: the navigation state and `onError` give the same screens, under your own

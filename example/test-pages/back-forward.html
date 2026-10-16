@@ -5,10 +5,12 @@
 <h1>Back-forward</h1>
 <p>Records each pageshow (persisted: restored from the back-forward cache) and answers bridge calls.</p>
 <script>
+  document.title = new URLSearchParams(location.search).get('title') ?? document.title;
   window.shows = [];
   addEventListener('pageshow', (event) => window.shows.push(event.persisted));
   if (window.nativeBridge) {
     nativeBridge.handle('sum', ({ a, b }) => a + b);
+    nativeBridge.handle('slow', ({ ms }) => new Promise((resolve) => setTimeout(() => resolve('late'), ms)));
     nativeBridge.on('nativeEvent', (payload) => (window.lastEvent = payload));
   }
 </script>

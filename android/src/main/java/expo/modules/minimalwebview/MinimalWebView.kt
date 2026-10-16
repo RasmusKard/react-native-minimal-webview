@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
@@ -12,6 +13,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
@@ -102,6 +104,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+    webViewCreated = true
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
@@ -125,6 +128,15 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     // Pinch-zoom (an accessibility basic; pages opt out with a viewport meta), without the legacy +/- buttons.
     settings.builtInZoomControls = true
     settings.displayZoomControls = false
+    // Back and forward restore the page instead of reloading it, as WebKit does. `android.settings` applies after this.
+    // Not without NavigationListener: WebView 133 sends onPageStarted for a restored page but no onPageFinished.
+    if (hasNavigationListener && WebViewFeature.isFeatureSupported(WebViewFeature.BACK_FORWARD_CACHE)) {
+      WebSettingsCompat.setBackForwardCacheEnabled(settings, true)
+    }
+    // No favicon requests: nothing shows them. attachHooks turns them back on for a hook that takes onReceivedIcon.
+    if (WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)) {
+      WebSettingsCompat.setDownloadFaviconsEnabled(settings, false)
+    }
   }
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
@@ -181,6 +193,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private fun attachHooks() {
     detachers = MinimalWebViewHooks.attach.mapNotNull { (name, hook) ->
       if (options.containsKey(name)) hook(webView, HookContext(name, this)) else null
+    }
+    // A hook that takes favicons gets them downloaded again (configure() turns that off).
+    if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
+      WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
+    ) {
+      WebSettingsCompat.setDownloadFaviconsEnabled(webView.settings, true)
     }
   }
 
@@ -336,6 +354,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 }
 
 internal const val TAG = "MinimalWebView"
+
+/** Whether this process has made a WebView, so WebView is started. */
+@Volatile internal var webViewCreated = false
 
 internal fun failed(message: String, error: Exception): Boolean {
   Log.w(TAG, message, error)

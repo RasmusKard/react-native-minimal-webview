@@ -7,6 +7,14 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
+import androidx.webkit.Profile
+import androidx.webkit.ProfileStore
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+import androidx.webkit.WebViewOutcomeReceiver
+import androidx.webkit.WebViewStartUpConfig
+import androidx.webkit.WebViewStartUpResult
+import androidx.webkit.WebViewStartupException
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultContract
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
@@ -54,10 +62,36 @@ class MinimalWebViewModule : Module() {
       fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> chooserOpen = false }
     }
 
-    // Cookies live in memory until flushed; persist them before the process can be killed.
+    // Cookies live in memory until flushed; persist them before the process can be killed. Only once a WebView was
+    // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
     OnActivityEntersBackground {
-      CookieManager.getInstance().flush()
+      if (webViewCreated) CookieManager.getInstance().flush()
     }
+
+    // Starts WebView (loading its code, starting Chromium) ahead of the first WebView, off the UI thread where the
+    // device's WebView supports it. Best effort: an error only means the first WebView starts it as before.
+    Function("warmUp") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val config = WebViewStartUpConfig.Builder { Thread(it, "WebViewWarmUp").start() }.build()
+      WebViewCompat.startUpWebView(context, config, object : WebViewOutcomeReceiver<WebViewStartUpResult, WebViewStartupException> {
+        override fun onResult(result: WebViewStartUpResult) = Unit
+
+        override fun onError(error: WebViewStartupException) {
+          Log.w(TAG, "WebView warm-up failed", error)
+        }
+      })
+    }
+
+    // Opens a connection (DNS, TCP, TLS) to the URL's origin in the default profile, for a load that follows. Best
+    // effort: nothing on a WebView without the profile API. ProfileStore wants the UI thread, and starts WebView there.
+    AsyncFunction("preconnect") { url: String ->
+      if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return@AsyncFunction
+      val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
+      when {
+        WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
+        WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
+      }
+    }.runOnQueue(Queues.MAIN)
 
     // The platform's default user agent (`WebView.defaultUserAgent` in JS), for apps that append to it.
     Constant("defaultUserAgent") {
