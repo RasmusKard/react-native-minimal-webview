@@ -42,7 +42,7 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 
 ## Platform differences
 
-- **`ask` on Android.** Android can't pause a navigation, so `ask` cancels it, asks, and reissues it with `loadUrl` on `allow`. The reissued load loses the referrer and the gesture flag, and its redirect chain restarts. `ask` works only for the main frame on Android; for iframes it falls back to `block`. iOS holds the navigation and asks for any frame.
+- **`ask` on Android.** Android can't pause a navigation, so `ask` cancels it, asks, and reissues it with `loadUrl` on `allow`. The reissued load sends the page as the referrer under WebView's default policy (the page's own referrer policy is lost), loses the gesture flag, and its redirect chain restarts. `ask` works only for the main frame on Android; for iframes it falls back to `block`. iOS holds the navigation and asks for any frame.
 - **POST on Android.** The rules never run for POST requests: form posts and payment redirects always load. A form POST to `target=_blank` can't be captured, so it doesn't load; iOS loads it in place.
 - **iframes on Android.** Android only decides iframe navigations to non-http(s) schemes (`tel:`, `intent:` and so on). Rules for http(s) iframes, the `mainFrame: false` ones, apply only on iOS.
 - **`userInitiated`.** On iOS it's true only for a tapped link (`.linkActivated`). A `location.href` change or `window.open` from a click handler is false on iOS but true on Android (`hasGesture()`).
