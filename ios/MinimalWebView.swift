@@ -74,7 +74,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // allowed). RN's messages are delivered only while the page still has it.
   var bridgeOrigin: String?
   // The JS dialog on screen, and how to complete it if it has to go away. WebKit requires exactly one completion.
-  var dialog: (controller: UIAlertController, cancel: () -> Void)?
+  // While one is up the page is blocked, and an accessibility query into it (XCTest's) hangs for 60 s: hide it.
+  var dialog: (controller: UIAlertController, cancel: () -> Void)? {
+    didSet { webView?.accessibilityElementsHidden = dialog != nil }
+  }
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
