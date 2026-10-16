@@ -108,7 +108,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {/* The README's error screen recipe: an overlay the app owns, cleared when the next load starts. */}
+      {/* The error screen recipe in docs/props.md: an overlay the app owns, cleared when the next load starts. */}
       <View style={styles.webview}>
         <Remountable>
           <WebView

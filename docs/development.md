@@ -1,0 +1,61 @@
+# Development
+
+```sh
+npm install && (cd example && npm install)
+npm test                                   # TS unit tests (bridge protocol, createBridge, origin matchers)
+npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+```
+
+The TS, Kotlin and Swift matchers share their test cases: `src/__tests__/vectors/`.
+
+## On-device suites
+
+The suites (`SUITES` in `example/harness.ts`) run inside the example app and make every WebView assertion there.
+[Maestro](https://maestro.dev) only drives them: a flow in `example/maestro/` starts a suite, performs the gestures,
+taps, dialog presses and renderer kills it asks for (`<suite>#<n> <REQUEST>`, on screen and posted to the test pages
+server), and fails unless the suite ends with `fail=0`.
+
+Before a run:
+1. In `example/`, start the test pages server with `npm run test-pages` (port 8090, and 8443 for https with a
+   self-signed certificate) and Metro with `npx expo start --clear`. Metro serves edits in `src/` and `example/` within
+   seconds (it watches the repo root), and each run starts with a fresh app launch, so no restart is needed after a JS
+   edit. Don't edit JS during a run: Fast Refresh pushes it into the running app mid-suite. Restart with `--clear` only
+   after changing the Metro or Babel config or dependencies.
+2. Install the app. The first `npx expo run:android` or `npx expo run:ios` in `example/` generates the native project;
+   after that:
+   - Android: `cd example/android && ./gradlew app:installDebug`
+   - iOS: `cd example/ios && pod install`, then `xcodebuild -workspace minimalrnwebviewexample.xcworkspace -scheme
+     minimalrnwebviewexample -configuration Debug -destination 'id=<udid>' -derivedDataPath build build`, then
+     `xcrun simctl install <udid> build/Build/Products/Debug-iphonesimulator/minimalrnwebviewexample.app`
+3. iOS only: keep the app running on one simulator at a time. Every iOS instance polls the same harness queue.
+
+`example/maestro/run.sh` runs the suites, all in one Maestro session:
+
+```bash
+example/maestro/run.sh android emulator-5556                    # every suite in run.sh's list for the platform
+example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the named suites
+```
+
+- Each suite gets its own `[Passed]`/`[Failed]` line, and the failed checks print at the end. A failure doesn't stop
+  the rest. The script exits non-zero if any suite failed.
+- The app launches once per run and stays up: the harness resets itself after each suite, and Maestro waits on the
+  test server, not the screen. The next suite relaunches the app only after a failed or cut-off one.
+- On Android, `run.sh` does `adb root` (for renderer kills) and the `adb reverse` ports itself.
+- A full run takes about 3 minutes per platform, also with Android and iOS running at the same time (each platform has
+  its own harness queue). Start the second ~10 s after the first: once, two Maestro CLIs starting in the same second
+  killed Android's device server.
+- Debug output for failed runs is in `~/.maestro/tests`. The test pages server prints every check, with timestamps.
+- A suite can also be started by hand: `curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'`.
+
+Android emulators: use Google APIs system images (`google_apis`), never Play Store ones (`google_apis_playstore`). On
+a Play Store image the Play Store updates Android System WebView in the background soon after boot, so a run silently
+tests a newer WebView than the image ships. Start the emulator with `-gpu host`. With the default (`auto`) it can come
+up rendering in software (`adb shell dumpsys SurfaceFlinger | grep GLES` names SwiftShader), and a full run takes
+nearly twice as long.
+
+To add a suite: add it to `SUITES` in `example/harness.ts` and to the platform lists in `run.sh`. If it needs
+gestures, taps, dialogs or renderer kills, add a `<suite>.yaml` flow in `example/maestro/`. Otherwise `run.sh` wraps
+the generic `suite.yaml` for it. A suite must leave nothing behind that `reset()` in `harness.ts` doesn't undo, and
+must not depend on a site outside the test pages server.

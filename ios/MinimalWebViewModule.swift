@@ -36,7 +36,7 @@ public class MinimalWebViewModule: Module {
         }
       }
       // `{ get: 'scrollView.bounces' }` reads a property; `{ call: 'webView.selector:', args, completion }` calls a
-      // method (README: Platform settings). Both resolve with the JSON of the result. `args` is a JSON string so a null
+      // method (docs/platform-settings.md). Both resolve with the JSON of the result. `args` is a JSON string so a null
       // argument survives the conversion.
       AsyncFunction("native") { (view: MinimalWebView, request: [String: Any], promise: Promise) in
         guard let webView = view.webView else { return promise.reject("ERR_NATIVE", "No WebView") }
