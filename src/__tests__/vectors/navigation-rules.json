@@ -1,5 +1,5 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host and path are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`.",
   "rulesets": {
     "app": [
       {
@@ -61,6 +61,19 @@
       {
         "scheme": "tel",
         "action": "external"
+      },
+      {
+        "action": "allow"
+      }
+    ],
+    "query": [
+      {
+        "query": ["gad_source", "utm_term=google"],
+        "action": "external"
+      },
+      {
+        "query": ["a%20b=c%2Fd"],
+        "action": "block"
       },
       {
         "action": "allow"
@@ -559,6 +572,127 @@
       "expect": {
         "action": "allow",
         "rule": 1
+      }
+    },
+    {
+      "name": "query: a name matches the parameter whatever its value",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/a?gclid=x&gad_source=1"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "query: a name matches the parameter without a value",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?gad_source"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "query: name=value matches that exact parameter",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?utm_term=google"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "query: name=value does not match a longer value",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?utm_term=google_ads"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "query: a name does not match a longer name",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?gad_sources=1"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "query: a name does not match a value",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?q=gad_source"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "query: parameters are case-sensitive",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?GAD_SOURCE=1"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "query: the fragment is not the query",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/#gad_source=1"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "query: entries compare with the percent-encoded parameter",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?a%20b=c%2Fd"
+      },
+      "expect": {
+        "action": "block",
+        "rule": 1
+      }
+    },
+    {
+      "name": "query: empty parameters are skipped",
+      "rules": "query",
+      "request": {
+        "url": "https://example.com/?&&gad_source=1&"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
+      }
+    },
+    {
+      "name": "query: a URL without an authority has a query too",
+      "rules": "query",
+      "request": {
+        "url": "myapp:open?gad_source=1"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
       }
     }
   ]
