@@ -819,6 +819,26 @@ async function errors(h: Harness) {
     state: h.state(),
   });
   r.check('the reload reports no new error', h.events.httpErrors.length === 1, h.events.httpErrors);
+
+  // Page-initiated, then through a redirect: on Android these reach the SSL check through shouldOverrideUrlLoading.
+  for (const [name, to, failed] of [
+    ['ssl error from the page', `'https://localhost:8443/link'`, 'https://localhost:8443/link'],
+    [
+      'ssl error after a redirect',
+      `'/redirect?to=https://localhost:8443/redirected'`,
+      'https://localhost:8443/redirected',
+    ],
+  ]) {
+    await openPage(h, fresh(h, '/'));
+    clearEvents(h);
+    await h.ref.current?.evaluate(`location.href = ${to}`);
+    const got = await waitFor(h, () => h.events.errors.length > 0, 10000);
+    r.check(
+      name,
+      got && h.events.errors[0]?.kind === 'ssl' && h.events.errors[0]?.url === failed,
+      h.events.errors[0]
+    );
+  }
   r.done();
 }
 
