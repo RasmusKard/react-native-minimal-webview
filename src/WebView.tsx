@@ -131,7 +131,12 @@ type NativeMethods = {
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
-const nativeModule = () => requireNativeModule<{ defaultUserAgent: string }>('MinimalWebView');
+const nativeModule = () =>
+  requireNativeModule<{
+    defaultUserAgent: string;
+    warmUp(): void;
+    preconnect(url: string): Promise<void>;
+  }>('MinimalWebView');
 
 const INITIAL_STATE: NavigationState = {
   url: '',
@@ -457,6 +462,20 @@ export declare namespace WebView {
 Object.defineProperty(WebView, 'defaultUserAgent', {
   get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });
+/**
+ * Android: starts WebView (its code and Chromium) in the background, so that the first WebView mounts faster and blocks
+ * the UI thread less. Call it at app start when a WebView will show soon after. No-op on iOS.
+ */
+WebView.warmUp = (): void => {
+  if (Platform.OS === 'android') nativeModule().warmUp();
+};
+/**
+ * Android: opens a connection to `url`'s origin (DNS, TCP, TLS) for a load that follows. Starts WebView if nothing has
+ * yet. No-op on iOS.
+ */
+WebView.preconnect = (url: string): void => {
+  if (Platform.OS === 'android') void nativeModule().preconnect(url);
+};
 
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one); re-renders

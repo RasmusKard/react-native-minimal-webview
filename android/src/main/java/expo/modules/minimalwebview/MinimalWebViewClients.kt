@@ -33,6 +33,13 @@ import androidx.webkit.Page
 // (else the core, or WebView's default), an observation callback to the core and then to every client that overrides it.
 
 internal class Listener(private val owner: MinimalWebView, private val newDocument: () -> Unit) : NavigationListener {
+  /** Pages that fired their load event and are still alive (current or in the back-forward cache). */
+  private val loadedPages = mutableSetOf<Page>()
+
+  override fun onPageDeleted(page: Page) {
+    loadedPages -= page
+  }
+
   override fun onNavigationStarted(navigation: Navigation) {
     if (navigation.isSameDocument) return
     owner.cancelFileChooser()
@@ -52,7 +59,8 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
     if (navigation.didCommit() && !navigation.isSameDocument) newDocument()
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
-      if (!navigation.didCommit()) {
+      // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
+      if (!navigation.didCommit() || navigation.page in loadedPages) {
         owner.loading = false
         owner.pageFinished(navigation.url)
       }
@@ -61,6 +69,7 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
   }
 
   override fun onPageLoadEvent(page: Page) {
+    loadedPages += page
     owner.loading = false
     owner.pageFinished(page.url)
     owner.stateChanged()
