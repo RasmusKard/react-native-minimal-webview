@@ -13,7 +13,7 @@
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload` | See [Page requests](page-requests.md). They can be added and removed at any time |
 | `nativeOptions`, `onNativeEvent` | What your [native hooks](native-hooks.md) get, and what they send. `nativeOptions` is read when the WebView is created, like `bridge` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
-| `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled |
+| `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
 | `onHttpError` | `{ url, statusCode, description }`: the main frame got an HTTP error status (400+), and the site's own error page shows |
 | `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |

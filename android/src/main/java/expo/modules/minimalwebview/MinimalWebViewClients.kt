@@ -81,10 +81,18 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebViewClient) -> Unit) =
     owner.clients.toList().forEach { if (it.overrides(name, *types)) block(it) }
 
+  // Without NavigationListener: the last main-frame URL allowed to load (a page's navigation or a redirect), which
+  // onReceivedSslError can't otherwise tell from a subresource.
+  private var allowedMainFrameUrl: String? = null
+
   // Not called for POST, the initial loadUrl, or reissued loads; called again for their redirects.
-  override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-    deciding("shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java)?.shouldOverrideUrlLoading(view, request)
-      ?: navigation.decide(NavigationRules.Request(request.url.toString(), request.isForMainFrame, false, request.hasGesture()))
+  override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+    val url = request.url.toString()
+    val override = deciding("shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java)?.shouldOverrideUrlLoading(view, request)
+      ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture()))
+    if (!override && request.isForMainFrame) allowedMainFrameUrl = url
+    return override
+  }
 
   // Without NavigationListener (WebView older than 146): a main-frame document starts loading here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
@@ -148,8 +156,10 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     val hook = deciding("onReceivedSslError", WEB_VIEW, SslErrorHandler::class.java, SslError::class.java)
     if (hook != null) return hook.onReceivedSslError(view, handler, sslError)
     handler.cancel()
-    // Also called for subresources (an ad image): only the main frame's URL is a page error.
-    if (sslError.url == (owner.pendingUrl ?: owner.url)) {
+    // Also called for subresources (an ad image): only the main frame's URL is a page error. Without NavigationListener
+    // there's no pendingUrl: view.url shows a loadUrl in progress (back/forward stays unreported).
+    val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, allowedMainFrameUrl)
+    if (sslError.url in mainFrame) {
       owner.reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
     }
   }

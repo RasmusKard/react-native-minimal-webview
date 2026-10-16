@@ -50,7 +50,7 @@ internal class MinimalWebViewNavigation(
   private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) =
     onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
 
-  // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the referrer and gesture flag.
+  // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the gesture flag and the redirect chain.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
     if (!request.mainFrame) {
       Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
@@ -62,11 +62,12 @@ internal class MinimalWebViewNavigation(
       notifyNavigation(request, "block", rule)
       return
     }
+    val referrer = webView.url
     val id = owner.askWithId("core.navigationRequest", fields(request)) { answer ->
       val action = answer as? String ?: "block"
       if (action == "allow") {
         askedAndAllowed += request.url
-        webView.loadUrl(request.url)
+        reissue(request.url, referrer)
       }
       val opened = action != "external" || openExternal(request.url)
       notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
@@ -74,6 +75,10 @@ internal class MinimalWebViewNavigation(
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
     owner.postDelayed({ owner.answer(id, null) }, ASK_TIMEOUT_MS)
   }
+
+  // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its
+  // default policy to it (origin only cross-origin, none from https to http); the page's own referrer policy is lost.
+  private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
   /**
    * A download nothing handled (no `onDownload`): an http(s) one opens externally, reported like an `external`
@@ -149,7 +154,7 @@ internal class MinimalWebViewNavigation(
 
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val target = request.url.toString()
-        if (!done && !decide(NavigationRules.Request(target, true, true, isUserGesture))) webView.loadUrl(target)
+        if (!done && !decide(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
         finish()
         return true
       }
