@@ -1562,18 +1562,17 @@ async function navigation(h: Harness) {
 }
 
 /**
- * injectedScripts: run before page scripts, a DOMContentLoaded listener once the DOM is parsed, mainFrameOnly skips
- * iframes, changes apply next load.
+ * injectedScripts: run before page scripts, a DOMContentLoaded listener once the DOM is parsed, main frame only unless
+ * mainFrameOnly is false, changes apply next load.
  */
 async function injection(h: Harness) {
   const r = reporter('injection');
   h.setProps({
     injectedScripts: [
-      { code: 'window.__injectedStart = true;' },
-      { code: 'window.__mainOnly = true; window.__marker = "one";', mainFrameOnly: true },
+      { code: 'window.__injectedStart = true;', mainFrameOnly: false },
+      { code: 'window.__mainOnly = true; window.__marker = "one";' },
       {
         code: `addEventListener('DOMContentLoaded', () => (window.__injectedEnd = !!document.getElementById('end')));`,
-        mainFrameOnly: true,
       },
     ],
   });
@@ -1589,9 +1588,9 @@ async function injection(h: Harness) {
     const w = document.querySelector('iframe').contentWindow;
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
-  r.check('a script without mainFrameOnly runs in iframes', frame.start, frame);
+  r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
   r.check(
-    'a mainFrameOnly script runs in the main frame and skips iframes',
+    'a script runs in the main frame only by default',
     frame.top && !frame.mainOnly,
     frame
   );
