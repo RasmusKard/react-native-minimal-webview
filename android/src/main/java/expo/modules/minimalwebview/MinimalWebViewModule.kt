@@ -7,6 +7,11 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewOutcomeReceiver
+import androidx.webkit.WebViewStartUpConfig
+import androidx.webkit.WebViewStartUpResult
+import androidx.webkit.WebViewStartupException
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultContract
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
@@ -54,9 +59,24 @@ class MinimalWebViewModule : Module() {
       fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> chooserOpen = false }
     }
 
-    // Cookies live in memory until flushed; persist them before the process can be killed.
+    // Cookies live in memory until flushed; persist them before the process can be killed. Only once a WebView was
+    // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
     OnActivityEntersBackground {
-      CookieManager.getInstance().flush()
+      if (webViewCreated) CookieManager.getInstance().flush()
+    }
+
+    // Starts WebView (loading its code, starting Chromium) ahead of the first WebView, off the UI thread where the
+    // device's WebView supports it. Best effort: an error only means the first WebView starts it as before.
+    Function("warmUp") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val config = WebViewStartUpConfig.Builder { Thread(it, "WebViewWarmUp").start() }.build()
+      WebViewCompat.startUpWebView(context, config, object : WebViewOutcomeReceiver<WebViewStartUpResult, WebViewStartupException> {
+        override fun onResult(result: WebViewStartUpResult) = Unit
+
+        override fun onError(error: WebViewStartupException) {
+          Log.w(TAG, "WebView warm-up failed", error)
+        }
+      })
     }
 
     // The platform's default user agent (`WebView.defaultUserAgent` in JS), for apps that append to it.

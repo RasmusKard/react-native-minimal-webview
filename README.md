@@ -32,7 +32,7 @@ export function Browser() {
 - [Navigation state](docs/navigation-state.md): `useWebViewState`, and `createWebViewRef` for code outside React
 - [Navigation rules](docs/navigation-rules.md): which URLs load in place, open externally or are blocked
 - [The bridge](docs/bridge.md): calls and events between React Native and the page
-- [Props and ref methods](docs/props.md): every prop, `evaluate`, loading and error screens
+- [Props and ref methods](docs/props.md): every prop, `evaluate`, `WebView.warmUp`, loading and error screens
 - [Platform settings](docs/platform-settings.md): any WebKit or Android setting by name, and `get` and `call`
 - [Page requests](docs/page-requests.md): file chooser, fullscreen video, permissions and downloads, with recipes
 - [Native hooks](docs/native-hooks.md): your own Swift and Kotlin, with the real `WKWebView` or `WebView`

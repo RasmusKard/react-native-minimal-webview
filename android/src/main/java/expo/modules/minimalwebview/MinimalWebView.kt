@@ -103,6 +103,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+    webViewCreated = true
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
@@ -342,6 +343,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 }
 
 internal const val TAG = "MinimalWebView"
+
+/** Whether this process has made a WebView, so WebView is started. */
+@Volatile internal var webViewCreated = false
 
 internal fun failed(message: String, error: Exception): Boolean {
   Log.w(TAG, message, error)
