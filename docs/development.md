@@ -29,7 +29,8 @@ Before a run:
    - iOS: `cd example/ios && pod install`, then `xcodebuild -workspace minimalrnwebviewexample.xcworkspace -scheme
      minimalrnwebviewexample -configuration Debug -destination 'id=<udid>' -derivedDataPath build build`, then
      `xcrun simctl install <udid> build/Build/Products/Debug-iphonesimulator/minimalrnwebviewexample.app`
-3. iOS only: keep the app running on one simulator at a time. Every iOS instance polls the same harness queue.
+3. Keep the app running on one device per platform at a time. Every instance of a platform polls the same harness
+   queue.
 
 `example/maestro/run.sh` runs the suites, all in one Maestro session:
 
