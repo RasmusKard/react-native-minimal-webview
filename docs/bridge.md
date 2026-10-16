@@ -48,7 +48,7 @@ to every page and every iframe.
 
 ```tsx
 const rnwMessages = {
-  mainFrameOnly: true, // after the bridge's own script, so `window.nativeBridge` already exists
+  // Runs after the bridge's own script, so `window.nativeBridge` already exists.
   code: `if (window.nativeBridge) {
     window.ReactNativeWebView = { postMessage: (data) => window.nativeBridge.emit('rnw', String(data)) };
     window.nativeBridge.on('rnw', (data) =>
@@ -71,7 +71,6 @@ per frame:
 
 ```tsx
 const scroll = {
-  mainFrameOnly: true,
   code: `let queued = false;
   addEventListener('scroll', () => {
     if (queued) return;
