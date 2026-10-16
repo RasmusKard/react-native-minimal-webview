@@ -56,7 +56,7 @@ export type Harness = {
     pageCounts: { url: string; count: number }[];
     /** The names of the hooks' other events. */
     hookEvents: string[];
-    /** Whether the example's error screen (the README recipe) is mounted. */
+    /** Whether the example's error screen (the docs/props.md recipe) is mounted. */
     overlay: { error: boolean };
   };
 };
@@ -1322,7 +1322,7 @@ async function settings(h: Harness) {
   r.done();
 }
 
-/** The README's error screen recipe (the example's ErrorScreen): shown after a main-frame failure, gone on the next load. */
+/** The error screen recipe in docs/props.md (the example's ErrorScreen): shown after a main-frame failure, gone on the next load. */
 async function overlays(h: Harness) {
   const r = reporter('overlays');
   clearEvents(h);
