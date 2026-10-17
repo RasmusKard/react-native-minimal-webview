@@ -88,11 +88,11 @@ final class PlatformSettings {
   }
 
   /// Selector prefixes `call` refuses: what the ref and the core own (every load, navigation, script, download and
-  /// delegate selector), private API, and the plumbing that would reach either (KVC, performSelector).
+  /// delegate selector), private API, the plumbing that would reach either (KVC, performSelector) and reference counting.
   private static let refused = [
     "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
     "setNavigationDelegate", "setUIDelegate", "setValue", "setValuesForKeys", "valueForKey", "dictionaryWithValuesForKeys",
-    "performSelector", "dealloc",
+    "performSelector", "retain", "release", "autorelease", "dealloc",
   ]
   static let roots = "configuration, preferences, webpagePreferences, webView, scrollView, websiteDataStore or httpCookieStore"
 
