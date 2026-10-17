@@ -367,12 +367,17 @@ function creationKey(props: WebViewProps) {
   const bridge = props.bridge;
   let id = bridge && bridgeIds.get(bridge);
   if (bridge && id === undefined) bridgeIds.set(bridge, (id = ++lastBridgeId));
-  return JSON.stringify([
-    id ?? 0,
-    props.nativeOptions,
-    Platform.OS === 'ios' ? props.ios?.configuration : undefined,
-  ]);
+  return JSON.stringify(
+    [id ?? 0, props.nativeOptions, Platform.OS === 'ios' ? props.ios?.configuration : undefined],
+    sortedKeys
+  );
 }
+
+/** A JSON.stringify replacer: the same options in another key order are the same key. */
+const sortedKeys = (_: string, value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).sort())
+    : value;
 
 /** `style`, `testID`, the accessibility props and the other ViewProps, for the native view. */
 function viewPropsOf(props: WebViewProps): ViewProps {
