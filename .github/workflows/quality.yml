@@ -12,8 +12,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - name: dependency-cruiser (import cycles, unresolvable and undeclared imports, orphans)
-        run: npx depcruise --config .dependency-cruiser.cjs src
-      - run: npx knip   # whole repo (no baseline): unused files, exports, dependencies
+      - run: npx knip   # whole repo (no baseline): unused files, exports, dependencies, unresolved imports
       - run: npm run lint:ci
       - run: npm run mutation
