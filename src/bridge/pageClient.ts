@@ -5,7 +5,7 @@
 // page through `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android). Messages follow
 // ./protocol.ts, and answers to either side's calls travel as ordinary messages. The build compiles ./endpoint.ts in
 // with it.
-import { createEndpoint } from './endpoint';
+import { createEndpoint, parseOrigin } from './endpoint';
 import type { BridgeMessage as Message } from './protocol';
 
 type PageWindow = Window & {
@@ -21,24 +21,9 @@ type PageWindow = Window & {
 
 /** Installs only on an allowed origin (Android origin-rule format), matching what native accepts. */
 export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigins: string[]) {
-  // As OriginRules.swift: src/__tests__/vectors/origin-rules.json.
-  const parse = (text: string) => {
-    const m =
-      /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(
-        text.toLowerCase()
-      );
-    return (
-      m && {
-        scheme: m[1],
-        wildcard: !!m[2],
-        host: m[3]!,
-        port: +(m[4] ?? (m[1] === 'https' ? 443 : 80)),
-      }
-    );
-  };
-  const origin = parse(w.location.origin);
+  const origin = parseOrigin(w.location.origin);
   const allowed = allowedOrigins.some((rule) => {
-    const r = parse(rule);
+    const r = parseOrigin(rule);
     if (!r || !origin || origin.wildcard) return rule === '*';
     const host = r.wildcard ? origin.host.endsWith(`.${r.host}`) : origin.host === r.host;
     return host && r.scheme === origin.scheme && r.port === origin.port;

@@ -1,7 +1,27 @@
 // One side of the bridge, the same in RN (createBridge.ts) and in the page (pageClient.ts): calls with timeouts,
-// handlers and events. The transport, the `ready` handshake and the document tokens are each side's own. The page
-// client is compiled with this file into one script (.github/scripts/build-page-client.mjs), so it imports only types.
+// handlers and events, and the origin-rule parser. The transport, the `ready` handshake and the document tokens are
+// each side's own. The page client is compiled with this file into one script (.github/scripts/build-page-client.mjs),
+// so it imports only types.
 import type { BridgeError, BridgeMessage } from './protocol';
+
+/**
+ * An origin rule (`http(s)://host[:port]`, `http(s)://*.host[:port]`) or a `location.origin`, parsed; null for anything
+ * else, `*` included. As OriginRules.swift: src/__tests__/vectors/origin-rules.json.
+ */
+export const parseOrigin = (text: string) => {
+  const m =
+    /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(
+      text.toLowerCase()
+    );
+  return (
+    m && {
+      scheme: m[1],
+      wildcard: !!m[2],
+      host: m[3]!,
+      port: +(m[4] ?? (m[1] === 'https' ? 443 : 80)),
+    }
+  );
+};
 
 type Pending = {
   resolve(value: unknown): void;
