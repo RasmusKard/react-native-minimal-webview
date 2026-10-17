@@ -103,20 +103,20 @@ describe('errors', () => {
 describe('nativeOptions and bridge', () => {
   it('recreate the native view when they change, and keep it otherwise', async () => {
     const root = createRoot();
-    const show = (mode: 'a' | 'b') =>
+    const show = (nativeOptions: Record<string, unknown>) =>
       act(async () =>
         root.render(
-          <WebView source={{ uri: 'https://example.com' }} nativeOptions={{ sample: { mode } }} />
+          <WebView source={{ uri: 'https://example.com' }} nativeOptions={nativeOptions} />
         )
       );
     mockMount.mockClear();
-    await show('a');
-    await show('a');
+    await show({ sample: { mode: 'a' }, other: 1 });
+    await show({ other: 1, sample: { mode: 'a' } }); // the same options in another key order
     expect(mockMount).toHaveBeenCalledTimes(1);
-    await show('b');
+    await show({ sample: { mode: 'b' }, other: 1 });
     expect(mockMount).toHaveBeenCalledTimes(2);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.nativeOptions).toEqual({ sample: { mode: 'b' } });
+    expect(native?.nativeOptions).toEqual({ sample: { mode: 'b' }, other: 1 });
   });
 });
 
@@ -348,7 +348,10 @@ describe('navigation state across remounts', () => {
     expect(mockNavigate).toHaveBeenCalledWith('back');
     expect(await ref.current?.evaluate('1')).toEqual({ a: 1 });
     expect(await ref.current?.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
-    expect(await ref.current?.call('clearCache', [true])).toEqual({ call: 'clearCache', args: '[true]' });
+    expect(await ref.current?.call('clearCache', [true])).toEqual({
+      call: 'clearCache',
+      args: '[true]',
+    });
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
   });
@@ -383,6 +386,25 @@ describe('navigation state across remounts', () => {
     await show(null);
     expect(listener).toHaveBeenCalled();
     expect(ref.getState()).toEqual(at(''));
+  });
+
+  it('a nativeOptions change starts the state over, until the new view emits', async () => {
+    const ref = createWebViewRef();
+    const root = createRoot();
+    const show = (mode: string) =>
+      act(async () =>
+        root.render(
+          <WebView ref={ref} source={{ uri: 'https://example.com' }} nativeOptions={{ mode }} />
+        )
+      );
+    await show('a');
+    await fireState(root, at('https://example.com/a'));
+    expect(ref.getState().url).toBe('https://example.com/a');
+    await show('b');
+    expect(ref.current).not.toBeNull();
+    expect(ref.getState()).toEqual(at(''));
+    await fireState(root, at('https://example.com/b'));
+    expect(ref.getState().url).toBe('https://example.com/b');
   });
 
   it('a second WebView with the same ref replaces the first, with a warning; the first unmounting leaves it', async () => {
