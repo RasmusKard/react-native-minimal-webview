@@ -10,6 +10,7 @@
   addEventListener('pageshow', (event) => window.shows.push(event.persisted));
   if (window.nativeBridge) {
     nativeBridge.handle('sum', ({ a, b }) => a + b);
+    nativeBridge.handle('slow', ({ ms }) => new Promise((resolve) => setTimeout(() => resolve('late'), ms)));
     nativeBridge.on('nativeEvent', (payload) => (window.lastEvent = payload));
   }
 </script>

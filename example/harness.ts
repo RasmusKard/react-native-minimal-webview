@@ -2081,6 +2081,28 @@ async function bfcache(h: Harness) {
   await travel('back', () => h.ref.current?.goBack(), first, 'first', true);
   await travel('forward', () => h.ref.current?.goForward(), second, 'second', false);
 
+  // A call still unanswered when its page goes into the cache rejects at once; the answer the page sends once restored
+  // is dropped.
+  const inFlight = h.bridge.call('slow', { ms: 1500 }).then(
+    (value) => ({ value, ms: Date.now() - left }),
+    (error: unknown) => ({ code: errorCode(error), ms: Date.now() - left })
+  );
+  await sleep(200);
+  const left = Date.now();
+  h.ref.current?.goBack();
+  const settled = await inFlight;
+  r.check(
+    'a call in flight when the page is left rejects with navigated',
+    'code' in settled && settled.code === 'navigated' && settled.ms < 1000,
+    settled
+  );
+  await waitFor(h, (s) => s.url === first && idle(s));
+  h.ref.current?.goForward();
+  await waitFor(h, (s) => s.url === second && idle(s));
+  await sleep(2000); // the restored page's timer fires and it answers the old call
+  const after = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
+  r.check('the bridge works after the late answer', after === 2, after);
+
   // The rules still decide navigations the restored page starts.
   const asked = await allowAsks(h, [
     { path: ['/checkout'], action: 'ask' },
