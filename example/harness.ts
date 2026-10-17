@@ -177,6 +177,17 @@ const waitFor = async (h: Harness, predicate: (s: NavigationState) => boolean, m
   (await until(() => predicate(h.state()), ms, 50)) === true;
 
 const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+/** Allows every `ask`, with `rules` ahead of a catch-all http(s) allow; returns the asked URLs. */
+const allowAsks = async (h: Harness, rules: NavigationRule[]) => {
+  const asked: string[] = [];
+  h.setAsk((request) => {
+    asked.push(request.url);
+    return 'allow';
+  });
+  h.setRules([...rules, { scheme: ['http', 'https'], action: 'allow' }]);
+  await sleep(300);
+  return asked;
+};
 /** The height of a 100vh element: 0 when the WebView loaded the page before it had a size. */
 const viewportHeight = async (h: Harness) =>
   (await h.ref.current?.evaluate(
@@ -1064,16 +1075,7 @@ async function mountSettings(h: Harness) {
     'the bridge works after the remount',
     (await h.bridge.call('sum', { a: 3, b: 4 }).catch(errorCode)) === 7
   );
-  const asked: string[] = [];
-  h.setAsk((request) => {
-    asked.push(request.url);
-    return 'allow';
-  });
-  h.setRules([
-    { path: ['/checkout'], action: 'ask' },
-    { scheme: ['http', 'https'], action: 'allow' },
-  ]);
-  await sleep(300);
+  const asked = await allowAsks(h, [{ path: ['/checkout'], action: 'ask' }]);
   await openPage(h, fresh(h, '/nav.html'));
   await click(h, 'checkout');
   const reached = await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000);
@@ -1560,18 +1562,17 @@ async function navigation(h: Harness) {
 }
 
 /**
- * injectedScripts: run before page scripts, a DOMContentLoaded listener once the DOM is parsed, mainFrameOnly skips
- * iframes, changes apply next load.
+ * injectedScripts: run before page scripts, a DOMContentLoaded listener once the DOM is parsed, main frame only unless
+ * mainFrameOnly is false, changes apply next load.
  */
 async function injection(h: Harness) {
   const r = reporter('injection');
   h.setProps({
     injectedScripts: [
-      { code: 'window.__injectedStart = true;' },
-      { code: 'window.__mainOnly = true; window.__marker = "one";', mainFrameOnly: true },
+      { code: 'window.__injectedStart = true;', mainFrameOnly: false },
+      { code: 'window.__mainOnly = true; window.__marker = "one";' },
       {
         code: `addEventListener('DOMContentLoaded', () => (window.__injectedEnd = !!document.getElementById('end')));`,
-        mainFrameOnly: true,
       },
     ],
   });
@@ -1587,9 +1588,9 @@ async function injection(h: Harness) {
     const w = document.querySelector('iframe').contentWindow;
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
-  r.check('a script without mainFrameOnly runs in iframes', frame.start, frame);
+  r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
   r.check(
-    'a mainFrameOnly script runs in the main frame and skips iframes',
+    'a script runs in the main frame only by default',
     frame.top && !frame.mainOnly,
     frame
   );
@@ -2028,6 +2029,98 @@ async function backForward(h: Harness) {
   r.done();
 }
 
+/**
+ * Back and forward restored from the back-forward cache (WebKit always, Android by default): the restore itself, the
+ * navigation state, one onLoadStart/onLoad/onLoadEnd per restore, the bridge both ways, and the rules on the restored
+ * page.
+ */
+async function bfcache(h: Harness) {
+  const r = reporter('bfcache');
+  await openPage(h, fresh(h, '/')); // so the first page has one before it
+  const first = fresh(h, '/back-forward.html?title=first');
+  await openPage(h, first);
+  const second = fresh(h, '/back-forward.html?title=second');
+  await openPage(h, second);
+
+  const travel = async (name: string, go: () => void, url: string, title: string, back: boolean) => {
+    clearEvents(h);
+    go();
+    await waitFor(h, (s) => s.url === url && idle(s));
+    await sleep(500); // a late state or load event would come now
+    const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
+    r.check(`${name}: the page is restored from the cache`, shows?.[1] === true, shows);
+    const s = h.state();
+    r.check(
+      `${name}: the state is the restored page's`,
+      s.url === url && s.title === title && s.canGoBack && s.canGoForward === back,
+      s
+    );
+    r.check(
+      `${name}: one load start and end`,
+      JSON.stringify(h.events.loads) === '["start","load","end"]',
+      h.events.loads
+    );
+    const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
+    r.check(`${name}: RN -> page call`, sum === 5, sum);
+    h.bridge.emit('nativeEvent', { n: 7 });
+    await until(
+      async () =>
+        ((await h.ref.current?.evaluate('window.lastEvent')) as { n?: number } | null)?.n === 7,
+      3000
+    );
+    const event = await h.ref.current?.evaluate('window.lastEvent');
+    r.check(`${name}: RN -> page event`, (event as { n?: number } | null)?.n === 7, event);
+    await h.ref.current?.evaluate('window.lastEvent = null');
+    const echo = await pageCall(h, 'echo', { url });
+    r.check(
+      `${name}: page -> RN call`,
+      (echo.result as { url?: string } | undefined)?.url === url,
+      echo
+    );
+  };
+  await travel('back', () => h.ref.current?.goBack(), first, 'first', true);
+  await travel('forward', () => h.ref.current?.goForward(), second, 'second', false);
+
+  // A call still unanswered when its page goes into the cache rejects at once; the answer the page sends once restored
+  // is dropped.
+  const inFlight = h.bridge.call('slow', { ms: 1500 }).then(
+    (value) => ({ value, ms: Date.now() - left }),
+    (error: unknown) => ({ code: errorCode(error), ms: Date.now() - left })
+  );
+  await sleep(200);
+  const left = Date.now();
+  h.ref.current?.goBack();
+  const settled = await inFlight;
+  r.check(
+    'a call in flight when the page is left rejects with navigated',
+    'code' in settled && settled.code === 'navigated' && settled.ms < 1000,
+    settled
+  );
+  await waitFor(h, (s) => s.url === first && idle(s));
+  h.ref.current?.goForward();
+  await waitFor(h, (s) => s.url === second && idle(s));
+  await sleep(2000); // the restored page's timer fires and it answers the old call
+  const after = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
+  r.check('the bridge works after the late answer', after === 2, after);
+
+  // The rules still decide navigations the restored page starts.
+  const asked = await allowAsks(h, [
+    { path: ['/checkout'], action: 'ask' },
+    { path: ['/blocked'], action: 'block' },
+  ]);
+  await h.ref.current?.evaluate(`location.href = '/blocked/page'`);
+  await sleep(1000);
+  r.check('a block rule holds on the restored page', h.state().url === second, h.state());
+  await h.ref.current?.evaluate(`location.href = '/checkout/pay?bf=1'`);
+  r.check(
+    'an ask rule asks on the restored page and allow loads it',
+    (await waitFor(h, (s) => s.url.endsWith('/checkout/pay?bf=1') && idle(s), 5000)) &&
+      asked.length === 1,
+    { asked, state: h.state() }
+  );
+  r.done();
+}
+
 /** `source.body` (a form POST, sent again by reload) and a `file://` source with its own assets. */
 async function sources(h: Harness) {
   const r = reporter('sources');
@@ -2077,6 +2170,7 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   reissue,
   bridge,
   backForward,
+  bfcache,
   ptr,
   upload,
   errors,

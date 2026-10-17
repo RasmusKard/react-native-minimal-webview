@@ -103,6 +103,7 @@ export type ProcessGoneEvent = {
  */
 export type InjectedScript = {
   code: string;
+  /** Default true: the main frame only. `false` runs it in every frame, iframes included. */
   mainFrameOnly?: boolean;
 };
 
