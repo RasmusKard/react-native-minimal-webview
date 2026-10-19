@@ -264,9 +264,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     scripts.newDocument()
   }
 
-  internal fun pageFinished(url: String) {
-    refresher.pageFinished()
-  }
+  internal fun pageFinished() = refresher.pageFinished()
 
   /** Answers every pending ask with null (block, cancel). */
   private fun failAsks() {

@@ -1,5 +1,5 @@
 import type { Bridge, BridgeOptions } from '../types';
-import { bridgeError, createEndpoint } from './endpoint';
+import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, isBridgeError, parseBridgeMessage } from './protocol';
 
@@ -23,13 +23,10 @@ export const CONNECTION = Symbol('bridgeConnection');
 
 const MAX_QUEUE = 1000;
 
-/** `*`, `http(s)://host[:port]` or `http(s)://*.host[:port]`: addWebMessageListener's rules minus custom schemes. */
-const ORIGIN_RULE =
-  /^(\*|https?:\/\/(\*\.(?!\[))?([a-z0-9_-]+(\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(:\d{1,5})?)$/i;
-
 /** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
 export function createBridge(options: BridgeOptions): Bridge {
-  const invalid = options.allowedOrigins.filter((rule) => !ORIGIN_RULE.test(rule));
+  // `*` or what the page client parses: addWebMessageListener's rules minus custom schemes.
+  const invalid = options.allowedOrigins.filter((rule) => rule !== '*' && !parseOrigin(rule));
   if (invalid.length) {
     throw new Error(
       `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`

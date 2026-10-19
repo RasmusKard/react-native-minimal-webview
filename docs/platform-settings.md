@@ -84,6 +84,7 @@ Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NS
 a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
 is `null`. Refused with `ERR_NATIVE`: what the core owns (on iOS every selector that loads, navigates, runs a script,
 starts a download or sets a delegate; on Android the loads, clients, `destroy` and `evaluateJavascript`), private
-(`_`) selectors and KVC, an unknown selector, a wrong argument count and an argument that doesn't fit the signature.
+(`_`) selectors, KVC and reference counting, an unknown selector, a wrong argument count and an argument that doesn't
+fit the signature.
 Two things the signature can't check are undefined behaviour and crash the app: a wrong completion shape, and an
 object argument of the wrong class. For a method that takes an object, write a [native hook](native-hooks.md).
