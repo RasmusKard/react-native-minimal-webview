@@ -5,11 +5,11 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
-import android.view.ViewGroup
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -44,29 +44,27 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
   /** Replaced when the render process dies; the hooks are attached to each one. */
-  var webView = createWebView()
+  internal var webView = createWebView()
     private set
 
   // Props, applied together in applyProps()
-  var source: WebViewSource? = null
-  var navigationRules: List<Map<String, Any?>>? = null
-  var bridgeScript: String? = null
-  var bridgeOrigins: List<String>? = null
+  internal var source: WebViewSource? = null
+  internal var navigationRules: List<Map<String, Any?>>? = null
+  internal var bridgeScript: String? = null
+  internal var bridgeOrigins: List<String>? = null
   /** The `nativeOptions` prop, for the hooks. */
   override var options: Map<String, Any?> = emptyMap()
-  var injectedScripts: List<InjectedScript>? = null
+  internal var injectedScripts: List<InjectedScript>? = null
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
-  var settings: Map<String, Any?>? = null
+  internal var settings: Map<String, Any?>? = null
   internal val platformSettings = PlatformSettings(this)
-  var pullToRefresh = false
+  internal var pullToRefresh = false
   private val refresher = PullToRefresh(this)
-  /** What [mount] last wrapped the WebView with; null before the first mount. */
-  private var mountedPullToRefresh: Boolean? = null
   /**
    * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
    * `openExternal` is there when JS handles `external` navigations (onOpenExternal); native only reports them.
    */
-  var requestHandlers: Set<String> = emptySet()
+  internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
 
   // The hooks' clients (WebViewContext) and the core's page requests. The clients (MinimalWebViewClients.kt) route each
@@ -81,6 +79,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val downloads = Downloads(this)
   /** What the attach hooks returned, run before their WebView goes away. */
   private var detachers: List<() -> Unit> = emptyList()
+  /** Whether the first WebView is set up: the first prop batch does it. */
   private var mounted = false
 
   // Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until answered through `answer`
@@ -101,7 +100,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
 
-  private val crashTimes = ArrayDeque<Long>()
+  /** From a render process death until [recover] builds the new WebView: whether it loads, and the dead one's history. */
+  private var pendingRecovery: Recovery? = null
+  private class Recovery(val reload: Boolean, val history: Bundle?)
   private var destroyed = false
 
   // The core's deferred work. Not View.post: a detached view (unmounted, or a covered screen) holds that until it is
@@ -109,7 +110,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val mainHandler = Handler(Looper.getMainLooper())
 
   init {
-    addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
+    addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. failAsks() last: it runs
     // the asks' callbacks (hook and Chromium code), and a throw there must not skip the core's own resets.
     document.register { cancelFileChooser() }
@@ -156,22 +158,33 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   /** Called once per prop batch. `source` loads last so everything else is ready first. */
-  fun applyProps() {
-    applySettings()
-    // The first prop batch: the hooks get their options with it.
-    if (!mounted) {
-      mount()
-      attachHooks()
-    } else if (mountedPullToRefresh != pullToRefresh) {
-      mount()
+  internal fun applyProps() {
+    // The first prop batch sets up the first WebView: the hooks get their options with it.
+    if (mounted) {
+      applySettings()
+      scripts.update()
+    } else {
+      setUp()
     }
-    scripts.apply()
+    refresher.layout.isEnabled = pullToRefresh
     val next = source ?: return
     if (next == loadedSource) return
     loadedSource = next
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes.clear()
     load(next)
+  }
+
+  /** Readies a new WebView, the first or the one after a crash, in one order: settings, layout, hooks, scripts. */
+  private fun setUp() {
+    mounted = true
+    applySettings(force = true)
+    // addView(view) alone would give the view WRAP_CONTENT, and Chromium then resolves CSS vh to 0.
+    refresher.content.addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    // React Native ignores requestLayout: a WebView added after it laid this view out (a crash) needs its own pass.
+    if (isLaidOut) measureAndLayout()
+    attachHooks()
+    scripts.install()
   }
 
   private fun load(source: WebViewSource) {
@@ -189,9 +202,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     if (showsSource(source, url)) source?.let(::load) else if (url.isNotEmpty()) webView.loadUrl(url)
   }
 
-  fun reload() {
+  internal fun reload() {
+    // The app's (or the user's) retry: the crash-loop guard starts over.
+    crashTimes.clear()
     when {
-      // Nothing loaded: the crash-loop guard gave up (recover), and this is the app's retry.
+      // The renderer died and the new WebView isn't built yet: build it now, and load.
+      pendingRecovery != null -> recover(reload = true)
+      // Nothing loaded: the crash-loop guard gave up (processGone), and this is the app's retry.
       webView.url == null -> loadAgain()
       // WebView's reload declines a POST's form resubmission: send the source again.
       source?.body != null && showsSource(source, url) -> source?.let(::load)
@@ -229,18 +246,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     chromeClients.clear()
   }
 
-  /** Puts the WebView inside the pull-to-refresh layout, when enabled. */
-  private fun mount() {
-    removeAllViews()
-    (webView.parent as? ViewGroup)?.removeView(webView)
-    mounted = true
-    mountedPullToRefresh = pullToRefresh
-    // The refresher's addView(view) would give the view WRAP_CONTENT, and Chromium then resolves CSS vh to 0.
-    webView.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-    val content = if (pullToRefresh) refresher.wrap(webView) else webView
-    addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-  }
-
   override fun emit(name: String, payload: Map<String, Any?>) = onNativeEvent(mapOf("name" to name, "payload" to payload))
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
@@ -256,7 +261,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   /** JS's answer to an `ask`. */
-  fun answer(askId: Int, value: Any?) {
+  internal fun answer(askId: Int, value: Any?) {
     pendingAsks.remove(askId)?.invoke(value)
   }
 
@@ -287,41 +292,61 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** Cancels every pending ask. At destroy JS isn't told: it aborts its own handlers at unmount. */
   private fun failAsks(reason: End) = pendingAsks.keys.toList().forEach { cancelAsk(it, tell = reason != End.CLOSING) }
 
-  fun bridgePost(message: String) = scripts.post(message)
+  internal fun bridgePost(message: String) = scripts.post(message)
 
-  fun evaluate(script: String, onResult: (Result<String>) -> Unit) = scripts.evaluate(script, onResult)
+  internal fun evaluate(script: String, onResult: (Result<String>) -> Unit) = scripts.evaluate(script, onResult)
 
-  /** The render process died: a WebView cannot be reused after that, so build a new one and reload. */
-  internal fun recover(didCrash: Boolean) {
+  /**
+   * The render process died. The WebView can't be reused: it goes now, after saving its history. The new one is built
+   * at once if the view can be seen, else once it can (Android's guidance: not in the background).
+   */
+  internal fun processGone(didCrash: Boolean) {
     if (destroyed) return
-    val now = SystemClock.elapsedRealtime()
-    crashTimes.addLast(now)
-    while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
     // A POST source on screen isn't sent again unasked (a payment form, say): the app's reload() does that.
-    val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW && !(source?.body != null && showsSource(source, url))
+    val reload = crashAllowsReload(crashTimes, SystemClock.elapsedRealtime()) && !(source?.body != null && showsSource(source, url))
     document.end(End.CRASHED)
     detachHooks()
-    val old = webView
-    webView = createWebView()
-    applySettings(force = true)
-    scripts.reinstall()
-    mount()
-    attachHooks()
-    old.destroy()
-    if (recovered) {
-      loadAgain()
-    } else {
-      // Nothing will load to end the load the crash cut off. `url` stays: reload() loads it.
-      loading = false
-      pendingUrl = null
-      progress = 0.0
-    }
-    onProcessGone(mapOf("didCrash" to didCrash, "recovered" to recovered))
-    stateChanged() // after onProcessGone: JS ends the cut-off load as failed, and the new WebView has no history
+    val dead = webView
+    val history = Bundle().takeIf { reload && dead.saveState(it) != null }
+    refresher.content.removeView(dead)
+    dead.destroy()
+    pendingRecovery = Recovery(reload, history)
+    // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
+    loading = false
+    pendingUrl = null
+    progress = 0.0
+    refresher.pageFinished()
+    onProcessGone(mapOf("didCrash" to didCrash, "recovered" to reload))
+    if (canRecover()) recover() else waiting += this
+    stateChanged() // after onProcessGone: JS ends the cut-off load as failed
   }
 
-  fun destroy() {
+  private fun canRecover() = isAttachedToWindow && !inBackground
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    if (canRecover()) recover()
+  }
+
+  /**
+   * Builds the WebView that replaces the dead one and brings its history back, or else loads its page again. With
+   * [reload] (the app's retry) it loads also when the crash-loop guard or a POST source held the reload back.
+   */
+  private fun recover(reload: Boolean = false) {
+    val recovery = pendingRecovery ?: return
+    pendingRecovery = null
+    waiting -= this
+    webView = createWebView()
+    setUp()
+    val restored = recovery.history?.let { webView.restoreState(it) } != null
+    if (!restored && (recovery.reload || reload)) loadAgain()
+    stateChanged()
+  }
+
+  internal fun destroy() {
     destroyed = true
+    pendingRecovery = null
+    waiting -= this
     document.end(End.CLOSING)
     detachHooks()
     downloads.detach()
@@ -360,6 +385,20 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     lastEmitted = state
     onNavigationState(state)
   }
+
+  internal companion object {
+    // The app's WebViews share one renderer, so the crash-loop guard counts its deaths for the whole process.
+    private val crashTimes = ArrayDeque<Long>()
+    /** The views whose renderer died while they couldn't be seen. */
+    private val waiting = mutableSetOf<MinimalWebView>()
+
+    /** Whether the app is in the background (the module observes it); coming back recovers the waiting views. */
+    var inBackground = false
+      set(value) {
+        field = value
+        waiting.filter { it.canRecover() }.forEach { it.recover() }
+      }
+  }
 }
 
 internal const val TAG = "MinimalWebView"
@@ -383,7 +422,19 @@ internal fun showsSource(source: WebViewSource?, url: String): Boolean {
   return page.trimEnd('/') == url.trimEnd('/')
 }
 
+/**
+ * Records a render process death at [now] in [times] and says whether to reload after it: not after more than
+ * [MAX_CRASHES_PER_WINDOW] in [CRASH_WINDOW_MS]. Every WebView on the renderer hears of its death, so one within
+ * [SAME_CRASH_MS] of the last is that same death.
+ */
+internal fun crashAllowsReload(times: ArrayDeque<Long>, now: Long): Boolean {
+  if (times.isEmpty() || now - times.last() > SAME_CRASH_MS) times.addLast(now)
+  while (times.first() < now - CRASH_WINDOW_MS) times.removeFirst()
+  return times.size <= MAX_CRASHES_PER_WINDOW
+}
+
 // ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
 private const val MAX_CRASHES_PER_WINDOW = 3
 private const val CRASH_WINDOW_MS = 60_000L
+private const val SAME_CRASH_MS = 1_000L
 private const val FRAME_MS = 16L
