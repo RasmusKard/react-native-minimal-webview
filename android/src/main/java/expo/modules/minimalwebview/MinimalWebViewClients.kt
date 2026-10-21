@@ -104,6 +104,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   }
 
   // Without NavigationListener (WebView older than 146): a main-frame document starts loading here.
+  // shortcut: ends the Document at load start, so a main-frame load that never commits (a download, a cancel) ends it
+  // too; drop when WebView 146 is the floor
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
       owner.newDocument()
@@ -201,7 +203,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
     // Returning true keeps the app alive; a stale WebView (already replaced) needs nothing more.
-    if (view === owner.webView) owner.post { owner.recover(detail.didCrash()) }
+    if (view === owner.webView) owner.mainHandler.post { owner.recover(detail.didCrash()) }
     observing("onRenderProcessGone", WEB_VIEW, RenderProcessGoneDetail::class.java) { it.onRenderProcessGone(view, detail) }
     return true
   }
