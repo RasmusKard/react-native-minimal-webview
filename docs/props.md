@@ -9,7 +9,7 @@
 | `navigationRules`, `onNavigationRequest`, `onNavigation`, `onOpenExternal` | See [Navigation rules](navigation-rules.md) |
 | `bridge` | `createBridge(...)`, see [The bridge](bridge.md). Read when the WebView is created: a change recreates it |
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
-| `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the first load waits for it), and the WebView's cookie changes back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
+| `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the load waits for it), and the WebView's cookie changes, deletions included, back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload` | See [Page requests](page-requests.md). They can be added and removed at any time |
 | `nativeOptions`, `onNativeEvent` | What your [native hooks](native-hooks.md) get, and what they send. `nativeOptions` is read when the WebView is created, like `bridge` |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
