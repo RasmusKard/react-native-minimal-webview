@@ -14,7 +14,7 @@ The page asks for things only the app can answer. Each request works without its
 permission the page's request fails anyway (`NotReadableError`, geolocation code 2 or 3). On iOS, `true` skips WebKit's
 own prompt. Android's WebView keeps a location answer until the page changes.
 
-An unanswered request is cancelled when its page is replaced (navigation, reload, unmount). Until then, a handler that
+An unanswered request is cancelled when its page is replaced (navigation, reload, crash, unmount). Until then, a handler that
 never settles blocks that page's further requests of the same kind.
 
 A [native hook](native-hooks.md) whose delegate or client takes the same platform callback comes before these props.

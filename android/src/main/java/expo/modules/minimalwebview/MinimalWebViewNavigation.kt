@@ -21,7 +21,14 @@ internal class MinimalWebViewNavigation(
   // URLs an `ask` allowed in the current navigation chain: their redirects back to them are not asked again.
   private val askedAndAllowed = mutableSetOf<String>()
 
-  fun newDocument() = askedAndAllowed.clear()
+  // New windows still waiting for their first URL (createWindow): their finish closures, which remove themselves.
+  private val children = mutableSetOf<() -> Boolean>()
+
+  /** The Document ended: its allowed asks and its new windows are over. */
+  fun documentEnded() {
+    askedAndAllowed.clear()
+    children.toList().forEach { it() }
+  }
 
   /** Returns true to cancel the navigation (shouldOverrideUrlLoading's meaning). */
   fun decide(request: NavigationRules.Request): Boolean {
@@ -142,25 +149,23 @@ internal class MinimalWebViewNavigation(
   // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed.
   fun createWindow(isUserGesture: Boolean, resultMsg: Message): Boolean {
     val child = WebView(owner.context)
-    var done = false
-    fun finish() {
-      if (done) return
-      done = true
-      owner.post { child.destroy() }
+    // Finishes once, whichever comes first: the first URL, the timeout, a crash, the Document's end.
+    val finish = object : () -> Boolean {
+      override fun invoke() = children.remove(this).also { if (it) owner.post { child.destroy() } }
     }
+    children += finish
     child.webViewClient = object : WebViewClient() {
       // A renderer crash in the throwaway window must not take the app down.
       override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail) = true.also { finish() }
 
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val target = request.url.toString()
-        if (!done && !decide(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
-        finish()
+        if (finish() && !decide(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
         return true
       }
     }
     // window.open('') or about:blank never navigates: give up on it.
-    owner.postDelayed(::finish, NEW_WINDOW_TIMEOUT_MS)
+    owner.postDelayed({ finish() }, NEW_WINDOW_TIMEOUT_MS)
     (resultMsg.obj as WebView.WebViewTransport).webView = child
     resultMsg.sendToTarget()
     return true

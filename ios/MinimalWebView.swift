@@ -54,6 +54,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var programmaticUrl: URL?
   /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
   var pendingAsks: [Int: (Any?) -> Void] = [:]
+  let document = DocumentScope()
   /// The enabled hooks' contexts, for the life of the WKWebView: a hook may keep a weak reference to its own.
   var hookContexts: [String: HookContext] = [:]
   var nextAskId = 0
@@ -82,6 +83,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
+    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. `closing` runs from deinit,
+    // where a weak self is already nil and an unowned one traps; the scope dies with the view, so unsafe is safe.
+    document.register { [unowned(unsafe) self] _ in self.failPendingAsks() }
+    document.register { [unowned(unsafe) self] _ in self.failEvaluations() }
+    document.register { [unowned(unsafe) self] reason in
+      self.bridgeOrigin = nil
+      // JS queues bridge messages until the next page is ready; at unmount it rejects what is in flight itself.
+      if reason != .closing, self.bridgeScript != nil { self.onBridge(["navigated": true]) }
+    }
+    document.register { [unowned(unsafe) self] _ in self.askedAndAllowed.removeAll() }
+    document.register { [unowned(unsafe) self] _ in self.dismissDialog() }
+    // The spinner belongs to a load, and a crash ends the load without a delegate callback.
+    document.register { [unowned(unsafe) self] reason in if reason == .crashed { self.refresher.loadEnded() } }
   }
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.
@@ -241,15 +255,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func tearDown() {
+    document.end(.closing)
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
     hookContexts = [:]
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
-    failPendingAsks()
-    failEvaluations()
-    dismissDialog()
     observations.removeAll()
     webView?.configuration.userContentController.removeAllScriptMessageHandlers()
     webView?.stopLoading()
@@ -382,14 +394,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     forward { $0.webView?(webView, didCommit: navigation) }
-    // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
-    // challenge holds its own page's response, so that page can't commit while it waits.
-    failPendingAsks()
-    failEvaluations()
-    bridgeOrigin = nil
-    // A new document: JS queues bridge messages until the page is ready again.
-    if bridgeScript != nil { onBridge(["navigated": true]) }
-    askedAndAllowed.removeAll()
+    document.end(.committed)
     programmaticUrl = nil
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
@@ -424,12 +429,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let now = Date()
     crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
     let recovered = crashTimes.count <= maxCrashesPerWindow
-    dismissDialog()
-    // The page that asked is gone, as on Android (recover): fail its asks and evaluate calls now rather than at the
-    // reload's commit, and deliver nothing until the reloaded page posts.
-    failPendingAsks()
-    failEvaluations()
-    bridgeOrigin = nil
+    document.end(.crashed)
     // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
     // (or the failed or committed URL) rather than jumping back to the source. An html or POST source loads again.
     if recovered {

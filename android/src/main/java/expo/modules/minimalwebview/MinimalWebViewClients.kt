@@ -104,6 +104,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   }
 
   // Without NavigationListener (WebView older than 146): a main-frame document starts loading here.
+  // shortcut: ends the Document at load start, so a main-frame load that never commits (a download, a cancel) ends it
+  // too; drop when WebView 146 is the floor
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
       owner.newDocument()

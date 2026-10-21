@@ -19,6 +19,7 @@ import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
+import expo.modules.minimalwebview.DocumentScope.End
 import expo.modules.minimalwebview.requests.DownloadInfo
 import expo.modules.minimalwebview.requests.Downloads
 import expo.modules.minimalwebview.requests.FileUpload
@@ -36,6 +37,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   // Declared before webView: createWebView() reads them during construction.
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
+  internal val document = DocumentScope()
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
@@ -101,6 +103,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   init {
     addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end.
+    document.register { failAsks() }
+    document.register { cancelFileChooser() }
+    document.register { navigation.documentEnded() }
+    document.register { scripts.documentEnded(it) }
+    document.register { fullscreen.documentEnded(it) }
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
@@ -252,17 +260,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   internal fun cancelFileChooser() = fileChooser?.onReceiveValue(null)
 
-  /** A new main-frame document: asks and evaluations for the old one are over, and the bridge waits for `ready`. */
-  internal fun newDocument() {
-    // A page request (permission, HTTP auth) or navigation `ask` belongs to the document that made it. An HTTP auth
-    // challenge holds its own page's response, so that page can't commit while it waits.
-    // ponytail: without NavigationListener the chooser is cancelled only here, at commit; enough on WebView 133, which
-    // keeps the frame. Cancel in load/reload/shouldOverrideUrlLoading too if an older WebView stays blocked.
-    cancelFileChooser()
-    failAsks()
-    navigation.newDocument()
-    scripts.newDocument()
-  }
+  /** A new main-frame document: what belonged to the old one ends. */
+  internal fun newDocument() = document.end(End.COMMITTED)
 
   internal fun pageFinished() = refresher.pageFinished()
 
@@ -271,13 +270,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     val waiting = pendingAsks.values.toList()
     pendingAsks.clear()
     waiting.forEach { it(null) }
-  }
-
-  /** Answers every pending ask with null and forgets the bridge's reply proxy. */
-  private fun failPending() {
-    cancelFileChooser()
-    failAsks()
-    scripts.failPending()
   }
 
   fun bridgePost(message: String) = scripts.post(message)
@@ -295,7 +287,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     // Chromium reports the baseUrl canonicalized (`https://example.com` commits as `https://example.com/`).
     val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }?.trimEnd('/')
     val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl && !onPostSource }
-    failPending()
+    document.end(End.CRASHED)
     detachHooks()
     val old = webView
     webView = createWebView()
@@ -311,10 +303,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   fun destroy() {
+    document.end(End.CLOSING)
     detachHooks()
-    fullscreen.detach()
     downloads.detach()
-    failPending()
     webView.stopLoading()
     webView.destroy()
   }

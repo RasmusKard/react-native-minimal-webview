@@ -53,7 +53,7 @@ extension MinimalWebView: WKUIDelegate {
     if !permissions.requestMediaCapture(origin: origin, type: type, decide: decisionHandler) { decisionHandler(.prompt) }
   }
 
-  /// Dismisses the dialog on screen, if any, completing it as cancelled (teardown, crash).
+  /// Dismisses the dialog on screen, if any, completing it as cancelled (the Document ended).
   func dismissDialog() {
     guard let current = dialog else { return }
     dialog = nil
