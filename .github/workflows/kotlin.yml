@@ -17,7 +17,8 @@ concurrency:   # a new push cancels the run for the previous one
   cancel-in-progress: true
 
 jobs:
-  # The Kotlin rule matchers against the shared cases in src/__tests__/vectors/ (navigation and origin rules).
+  # The Kotlin unit tests: the navigation rule matcher against the shared cases in src/__tests__/vectors/, and the
+  # DocumentScope, hook override and client coverage tests. Android matches origins itself (addWebMessageListener).
   kotlin-rules:
     runs-on: ubuntu-latest
     steps:

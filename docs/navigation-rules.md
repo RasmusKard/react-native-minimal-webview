@@ -9,10 +9,13 @@ the first match wins:
   navigationRules={[
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
-    { action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
+    { mainFrame: true, action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
   ]}
 />
 ```
+
+`mainFrame: true` on the last rule keeps a subframe's own non-http(s) navigation (an ad iframe's app link) from
+opening another app: no rule matches it, so it is blocked.
 
 Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lists, and one entry matching is enough:
 
