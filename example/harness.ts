@@ -1608,6 +1608,16 @@ async function navigation(h: Harness) {
     external
   );
   await openPage(h, fresh(h, '/nav.html'));
+  // A new window would load in the main frame, so a non-http(s) one is blocked before the rules (here the newWindow
+  // `external` rule would match).
+  const opener = h.state().url;
+  await h.ref.current?.evaluate(`(window.open('data:text/html,opened'), true)`);
+  const dataWindow = () =>
+    h.events.navigations.find((n) => n.newWindow && n.url.startsWith('data:'));
+  await waitFor(h, () => dataWindow() !== undefined, 5000);
+  await sleep(500);
+  r.check('a new window to a data: URL is blocked', dataWindow()?.action === 'block', dataWindow());
+  r.check('the page stays after the blocked data: window', h.state().url === opener, h.state());
   // Android decides only navigations that start inside a frame with a user gesture, not the frame's initial src load:
   // a real tap on a link inside the iframe.
   if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
