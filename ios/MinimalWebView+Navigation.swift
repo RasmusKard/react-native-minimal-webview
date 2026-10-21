@@ -71,7 +71,7 @@ extension MinimalWebView {
       return
     }
     let id = register { [weak self] answer in
-      // The view can be gone (teardown flushes pending asks from deinit): the decision handler must still be called.
+      // The view can be gone: the decision handler must still be called.
       guard let self else { return completion(false) }
       let action = answer as? String ?? "block"
       if action == "allow" { self.askedAndAllowed.insert(request.url) }

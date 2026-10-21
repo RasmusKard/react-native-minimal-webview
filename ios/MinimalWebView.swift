@@ -20,14 +20,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var settings: [String: Any] = [:]
   let platformSettings = PlatformSettings()
   var pullToRefresh = false
-  private lazy var refresher = PullToRefresh { [weak self] in self?.reload() }
+  /// On the scroll view while `pullToRefresh` is set: a pull reloads.
+  private lazy var refreshControl: UIRefreshControl = {
+    let control = UIRefreshControl()
+    control.addAction(UIAction { [weak self] _ in self?.reload() }, for: .valueChanged)
+    return control
+  }()
   var sharedCookies = false
   private let cookies = SharedCookies()
   var navigationRules: [[String: Any]]?
   var injectedScripts: [InjectedScript] = []
-  private var installedScripts: NSArray?
+  var installedScripts: NSArray?
   /// The user scripts installScripts added: the others in the content controller are a hook's.
-  private var ownScripts: [WKUserScript] = []
+  var ownScripts: [WKUserScript] = []
   /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes. `openExternal`
   /// is there when JS handles `external` navigations (onOpenExternal); native only reports them.
   var requestHandlers: Set<String> = []
@@ -38,7 +43,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var observations: [NSKeyValueObservation] = []
   // The page requests the core answers, and the WKWebView's delegate: it forwards each callback to this view or to
   // the hooks' delegates (DelegateProxy).
-  private(set) lazy var permissions = Permissions(view: self)
   private(set) lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
   /// What the attach hooks returned, run in tearDown.
@@ -47,7 +51,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
   private(set) var url = ""
   private var pendingUrl: String?
-  private var refreshScheduled = false
   /// An html source never reaches the back-forward list (WebKit hides substitute-data loads from session history):
   /// while the item that was current at its commit stays current, the html page is what is on screen.
   private var htmlNavigation: WKNavigation?
@@ -67,11 +70,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// WKWebView itself keeps the previous page, so `url` and reload() use this.
   private(set) var failedUrl: String?
   private var lastEmitted: NSDictionary?
-  private var emitScheduled = false
+  private var updateScheduled = false
   private var crashTimes: [Date] = []
   /// `evaluate` calls waiting for their result, by id, until a new document or a dead web process rejects them.
-  private var evaluations: [Int: (Result<String, EvaluateError>) -> Void] = [:]
-  private var nextEvaluation = 0
+  var evaluations: [Int: (Result<String, EvaluateError>) -> Void] = [:]
+  var nextEvaluation = 0
 
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
   // allowed). RN's messages are delivered only while the page still has it.
@@ -85,19 +88,20 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
-    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. `closing` runs from deinit,
-    // where a weak self is already nil and an unowned one traps; the scope dies with the view, so unsafe is safe.
-    document.register { [unowned(unsafe) self] _ in self.failPendingAsks() }
-    document.register { [unowned(unsafe) self] _ in self.failEvaluations() }
-    document.register { [unowned(unsafe) self] reason in
-      self.bridgeOrigin = nil
+    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. `closing` comes from
+    // invalidate, at unmount; in the deinit fallback self is already nil and these do nothing.
+    document.register { [weak self] _ in self?.failPendingAsks() }
+    document.register { [weak self] _ in self?.failEvaluations() }
+    document.register { [weak self] reason in
+      guard let self else { return }
+      bridgeOrigin = nil
       // JS queues bridge messages until the next page is ready; at unmount it rejects what is in flight itself.
-      if reason != .closing, self.bridgeScript != nil { self.onBridge(["navigated": true]) }
+      if reason != .closing, bridgeScript != nil { onBridge(["navigated": true]) }
     }
-    document.register { [unowned(unsafe) self] _ in self.askedAndAllowed.removeAll() }
-    document.register { [unowned(unsafe) self] _ in self.dismissDialog() }
+    document.register { [weak self] _ in self?.askedAndAllowed.removeAll() }
+    document.register { [weak self] _ in self?.dismissDialog() }
     // The spinner belongs to a load, and a crash ends the load without a delegate callback.
-    document.register { [unowned(unsafe) self] reason in if reason == .crashed { self.refresher.loadEnded() } }
+    document.register { [weak self] reason in if reason == .crashed { self?.refreshControl.endRefreshing() } }
   }
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.
@@ -108,7 +112,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       installScripts(webView.configuration.userContentController)
     }
     report(platformSettings.apply(settings, webView: webView))
-    refresher.set(pullToRefresh, on: webView.scrollView)
+    let refresh = pullToRefresh ? refreshControl : nil
+    if webView.scrollView.refreshControl !== refresh { webView.scrollView.refreshControl = refresh }
     cookies.set(sharedCookies)
     // Records aren't Equatable: compare their dictionaries.
     guard let next = source, loadedSource != next.toDictionary() as NSDictionary else { return }
@@ -177,32 +182,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// The `evaluate` ref method. The page encodes the value, as on Android: what JSON can't encode (a function, a
-  /// cycle) gives "null". A new document rejects what is still waiting with `navigated`, as on Android: WebKit settles
-  /// a call whose page went away seconds later or never.
-  func evaluate(_ script: String, onResult: @escaping (Result<String, EvaluateError>) -> Void) {
-    guard let webView else { return onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: "No WebView"))) }
-    let id = nextEvaluation
-    nextEvaluation += 1
-    evaluations[id] = onResult
-    let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
-    webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { [weak self] result in
-      // Already rejected when its page went away.
-      guard let onResult = self?.evaluations.removeValue(forKey: id) else { return }
-      switch result {
-      case .success(let value): onResult(.success(value as? String ?? "null"))
-      case .failure(let error): onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: error.localizedDescription)))
-      }
-    }
-  }
-
-  /// The page the waiting `evaluate` calls run in is gone.
-  private func failEvaluations() {
-    let waiting = evaluations.values
-    evaluations = [:]
-    waiting.forEach { $0(.failure(EvaluateError(code: "navigated", message: "the page navigated before the script finished"))) }
-  }
-
   func reload() {
     if onPostSource, let source {
       load(source)
@@ -229,17 +208,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.navigationDelegate = proxy
     webView.uiDelegate = proxy
     addSubview(webView)
-    let changed = { [weak self] in self?.stateChanged() }
+    let update = { [weak self] in self?.scheduleUpdate() }
     observations = [
-      webView.observe(\.url) { [weak self] _, _ in self?.refreshSoon() },
-      // At once as well: a load that starts and fails within one pass must still reach JS as loading true -> false.
-      webView.observe(\.isLoading) { [weak self] _, _ in
-        self?.stateChanged()
-        self?.refreshSoon()
-      },
-      webView.observe(\.title) { _, _ in changed() },
-      webView.observe(\.estimatedProgress) { _, _ in changed() }
-    ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
+      webView.observe(\.url) { _, _ in update() },
+      webView.observe(\.isLoading) { _, _ in update() },
+      webView.observe(\.title) { _, _ in update() },
+      webView.observe(\.estimatedProgress) { _, _ in update() }
+    ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in update() } }
     self.webView = webView
     cookies.didCreate(webView)
     // The live settings before the hooks, as on Android: what a hook sets wins over the package's defaults.
@@ -249,25 +224,22 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// The bridge's page client first, then the app's scripts in order, then the hooks' own. Changes take effect from the
-  /// next navigation.
-  private func installScripts(_ controller: WKUserContentController) {
-    // WebKit can only remove every script: take the hooks' out and add them back after the core's.
-    let hooks = controller.userScripts.filter { script in !ownScripts.contains { $0 === script } }
-    controller.removeAllUserScripts()
-    ownScripts = []
-    if let bridgeScript {
-      ownScripts.append(WKUserScript(source: bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
-    }
-    for script in injectedScripts {
-      guard let code = script.code else { continue }
-      ownScripts.append(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.mainFrameOnly ?? true, in: .page))
-    }
-    (ownScripts + hooks).forEach { controller.addUserScript($0) }
-    installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
+  /// React Native calls `invalidate` on this view (the Fabric component view; Expo's are never recycled) at every
+  /// unmount. Expo's Swift-visible header doesn't declare it, so Swift can't `override` it: declared here, it wins at
+  /// runtime, and it calls the inherited one as `super` would.
+  @objc func invalidate() {
+    tearDown()
+    // Expo's (React Native 0.82+) resets its size-update guard; React Native's UIView default does nothing.
+    let selector = #selector(invalidate)
+    typealias Invalidate = @convention(c) (AnyObject, Selector) -> Void
+    guard class_respondsToSelector(ExpoView.self, selector),
+      let inherited = class_getMethodImplementation(ExpoView.self, selector) else { return }
+    unsafeBitCast(inherited, to: Invalidate.self)(self, selector)
   }
 
+  /// Once: from invalidate, or from deinit if that never ran.
   private func tearDown() {
+    guard let webView else { return }
     document.end(.closing)
     cookies.detach()
     detachers.forEach { $0() }
@@ -276,28 +248,18 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
     observations.removeAll()
-    webView?.configuration.userContentController.removeAllScriptMessageHandlers()
-    webView?.stopLoading()
+    webView.configuration.userContentController.removeAllScriptMessageHandlers()
+    webView.stopLoading()
     // Audio and video otherwise keep playing after unmount (react-native-webview #2449, PR #3234).
-    webView?.pauseAllMediaPlayback()
-    webView?.removeFromSuperview()
-    webView = nil
+    webView.pauseAllMediaPlayback()
+    webView.removeFromSuperview()
+    self.webView = nil
     htmlCommit = nil
   }
 
   deinit {
     // deinit is nonisolated; the view is released on the main thread, as UIKit views are.
     MainActor.assumeIsolated { tearDown() }
-  }
-
-  /// WebKit's `url` KVO fires before the delegate callbacks: read the state one main-queue turn later, once per turn.
-  private func refreshSoon() {
-    guard !refreshScheduled else { return }
-    refreshScheduled = true
-    DispatchQueue.main.async { [weak self] in
-      self?.refreshScheduled = false
-      self?.refreshUrls()
-    }
   }
 
   /// The page on screen: the back-forward list's current item is created on commit and updated by
@@ -312,19 +274,21 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // WebKit's `url` is the active URL: a pending or provisional load shows here first.
     let active = webView.url?.absoluteString
     pendingUrl = webView.isLoading && active != committed ? active : nil
-    stateChanged()
   }
 
-  // Changes within one run loop pass are combined into one event, except the start of a load, which goes out at once:
-  // a load that starts and fails within one pass must still reach JS as loading true -> false. The end of a load
-  // waits for the pass, because WebKit clears isLoading before it reports the failure (onLoad must see the error).
-  private func stateChanged() {
-    if let webView, webView.isLoading, lastEmitted?["loading"] as? Bool != true { return emitState() }
-    guard !emitScheduled else { return }
-    emitScheduled = true
+  /// WebKit's KVO fires before the delegate callbacks: the state is read and emitted one main-queue turn later, once
+  /// per turn, so changes within one pass are combined into one event. The start of a load goes out at once as well: a
+  /// load that starts and fails within one pass must still reach JS as loading true -> false. The end of a load waits
+  /// for the pass, because WebKit clears isLoading before it reports the failure (onLoad must see the error).
+  private func scheduleUpdate() {
+    if let webView, webView.isLoading, lastEmitted?["loading"] as? Bool != true { emitState() }
+    guard !updateScheduled else { return }
+    updateScheduled = true
     DispatchQueue.main.async { [weak self] in
-      self?.emitScheduled = false
-      self?.emitState()
+      guard let self else { return }
+      updateScheduled = false
+      refreshUrls()
+      emitState()
     }
   }
 
@@ -411,7 +375,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
-    refreshSoon()
+    scheduleUpdate()
     forward { $0.webView?(webView, didCommit: navigation) }
   }
 
@@ -430,8 +394,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// A load finished, or failed with `error`: the core's bookkeeping, then the hook delegates' callback.
   private func loadEnded(_ webView: WKWebView, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
     if let error { failed(error) }
-    refresher.loadEnded()
-    refreshSoon()
+    // The spinner stops, or it would ignore the next pull.
+    refreshControl.endRefreshing()
+    scheduleUpdate()
     forward(callback)
   }
 
@@ -492,9 +457,4 @@ extension MinimalWebView: WebViewContext {
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
     onNativeEvent(["name": name, "payload": payload, "askId": register(onAnswer)])
   }
-}
-
-struct EvaluateError: Error {
-  let code: String
-  let message: String
 }
