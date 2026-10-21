@@ -4,6 +4,7 @@ import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import expo.modules.minimalwebview.DocumentScope.End
 import org.json.JSONArray
 
 /** Scripts in the page: the bridge transport, `injectedScripts` and `evaluate`. */
@@ -86,16 +87,12 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     replyProxy?.postMessage(message)
   }
 
-  fun newDocument() {
+  /** The Document ended: its evaluations fail and its reply proxy is gone. JS queues bridge messages until the next
+   * page is ready; at unmount it rejects what is in flight itself. */
+  fun documentEnded(reason: End) {
     failEvaluations()
-    // A new document: the old reply proxy is gone; JS queues bridge messages until the page is ready again.
     replyProxy = null
-    if (owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
-  }
-
-  fun failPending() {
-    replyProxy = null
-    failEvaluations()
+    if (reason != End.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
   }
 
   /** `evaluate` results come back through one global in every frame (`*`, before the first document); only the main
