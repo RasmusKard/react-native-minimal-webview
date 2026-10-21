@@ -957,6 +957,40 @@ async function crash(h: Harness) {
     ),
     h.state()
   );
+  if (Platform.OS === 'ios') {
+    // A page other than the source reloads its history entry in place: back still goes to the page before it, and
+    // forward from there to it. This is the second of the crash loop's kills.
+    const second = fresh(h, '/bridge.html');
+    const loads = h.events.loads.length;
+    await h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`);
+    await waitFor(
+      h,
+      (s) => h.events.loads.slice(loads).includes('end') && s.url === second && idle(s),
+      15000
+    );
+    const reloads = h.events.loads.length;
+    const killed = await kill(2);
+    r.check(
+      'a second page reloads in place, canGoBack unchanged',
+      killed?.recovered === true &&
+        (await waitFor(
+          h,
+          (s) =>
+            h.events.loads.slice(reloads).includes('end') &&
+            s.url === second &&
+            idle(s) &&
+            s.canGoBack,
+          15000
+        )),
+      h.state()
+    );
+    h.ref.current?.goBack();
+    r.check(
+      'back after recovery goes to the page before it, with forward kept',
+      await waitFor(h, (s) => s.url === page && idle(s) && s.canGoForward, 15000),
+      h.state()
+    );
+  }
   // Android attaches the hooks to the new WebView; iOS keeps the delegates: the sample's page counter still counts.
   r.check(
     'the hooks are attached after recovery',
@@ -973,7 +1007,7 @@ async function crash(h: Harness) {
   // Android builds a new WebView on recovery: its settings must be applied again.
   r.check('the setting is still applied after recovery', !!(await userAgent()));
 
-  for (const n of [2, 3]) {
+  for (const n of Platform.OS === 'ios' ? [3] : [2, 3]) {
     await kill(n);
   }
   // The 4th kill cuts off a slow load: with no reload to end it, the core must.
