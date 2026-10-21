@@ -11,7 +11,7 @@
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
 | `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the load waits for it), and the WebView's cookie changes, deletions included, back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload` | See [Page requests](page-requests.md). They can be added and removed at any time |
-| `nativeOptions`, `onNativeEvent` | What your [native hooks](native-hooks.md) get, and what they send. `nativeOptions` is read when the WebView is created, like `bridge` |
+| `nativeOptions`, `onNativeEvent` | What your [native hooks](native-hooks.md) get, and what they send. Its keys pick the hooks when the WebView is created; a changed value reaches its hook live |
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
 | `onHttpError` | `{ url, statusCode, description }`: the main frame got an HTTP error status (400+), and the site's own error page shows |
