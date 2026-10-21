@@ -12,7 +12,7 @@ public class MinimalWebViewModule: Module {
       Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
-      Prop("nativeOptions") { (view: MinimalWebView, options: [String: Any]?) in view.options = options ?? [:] }
+      Prop("nativeOptions") { (view: MinimalWebView, options: [String: Any]?) in view.nativeOptions = options ?? [:] }
       // JSON, so a null (reset this key) survives: the dictionary conversion drops nulls.
       Prop("settings") { (view: MinimalWebView, json: String?) in
         let data = json?.data(using: .utf8) ?? Data()
@@ -62,6 +62,19 @@ public class MinimalWebViewModule: Module {
       // JS's answer to an `ask` (a page request, a navigation request or a hook's).
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
         view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
+      }
+      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `native`'s.
+      AsyncFunction("hook") { (view: MinimalWebView, name: String, method: String, args: String, promise: Promise) in
+        guard let handler = view.hookHandler(name, method) else {
+          return promise.reject("hook_not_handled", "no attached hook `\(name)` handles `\(method)`")
+        }
+        handler((try? JSONSerialization.jsonObject(with: Data(args.utf8))) as? [Any] ?? []) { value in
+          do {
+            promise.resolve(try PlatformSettings.json { MRWJsonable(value) })
+          } catch {
+            promise.reject("ERR_NATIVE", (error as? PlatformError)?.message ?? error.localizedDescription)
+          }
+        }
       }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".

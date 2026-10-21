@@ -799,12 +799,14 @@ const fresh = (h: Harness, path: string) =>
   `${path.startsWith('http') ? '' : h.pages}${path}${path.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
 /**
- * Sets props that recreate the WebView (a creation-time setting, `nativeOptions`) and waits until the new one has
- * loaded its page. The state is the old page's until the new view reports, so `idle` alone could match too early.
+ * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
+ * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
+ * that don't recreate it (`nativeOptions`, whose keys pick the hooks only when it is created), it remounts too.
  */
-async function recreate(h: Harness, props: Partial<WebViewProps>) {
+async function recreate(h: Harness, props: Partial<WebViewProps>, remount = false) {
   const loads = h.events.loads.length;
   h.setProps(props);
+  if (remount) h.remount();
   return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s), 15000);
 }
 
@@ -1197,7 +1199,7 @@ async function dialogs(h: Harness) {
 
 /**
  * A creation-time setting changed while mounted recreates the WebView (iOS: an `ios.configuration` key; Android has
- * none, so `nativeOptions` stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
+ * none, so a remount stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
  */
 async function mountSettings(h: Harness) {
   const r = reporter('mountSettings');
@@ -1211,10 +1213,8 @@ async function mountSettings(h: Harness) {
     h,
     Platform.OS === 'ios'
       ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
-      : {
-          nativeOptions: { pageCounter: true, remounted: true },
-          android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } },
-        }
+      : { android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } } },
+    Platform.OS === 'android'
   );
   const remountedVh = await viewportHeight(h);
   r.check('100vh has a height after the recreation', remountedVh > 0, remountedVh);
@@ -2101,6 +2101,38 @@ async function sampleExtension(h: Harness) {
   );
   const inPage = (await h.ref.current?.evaluate('window.__pageCount')) as number;
   r.check('its native side reaches the page', inPage === event?.count, { inPage, event });
+  r.check(
+    'its onDocumentEnd handler hears the old page end',
+    h.events.hookEvents.includes('pageCounter.documentEnd'),
+    h.events.hookEvents
+  );
+  const count = await h.ref.current?.hook('pageCounter', 'count').catch(errorCode);
+  r.check('ref.hook resolves with the reply of its handler', count === inPage, { count, inPage });
+  const unhandled = [
+    await h.ref.current?.hook('pageCounter', 'nope').catch(errorCode),
+    await h.ref.current?.hook('noSuchHook', 'count').catch(errorCode),
+  ];
+  r.check(
+    'ref.hook rejects with hook_not_handled when no attached hook handles the method',
+    unhandled.every((code) => code === 'hook_not_handled'),
+    unhandled
+  );
+  // A changed value reaches the attached hook (onOptionsChange), which stamps the page under the new name.
+  const url = h.state().url;
+  const loads = h.events.loads.length;
+  await h.ref.current?.evaluate('window.__kept = true');
+  h.setProps({ nativeOptions: { pageCounter: { global: '__liveCount' } } });
+  const live = await until(
+    async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
+    3000
+  );
+  const kept = await h.ref.current?.evaluate('window.__kept');
+  r.check(
+    'a nativeOptions change reaches its hook live, without recreating the WebView or reloading the page',
+    !!live && kept === true && h.state().url === url && h.events.loads.length === loads,
+    { live, kept, url: h.state().url, newLoads: h.events.loads.length - loads }
+  );
+  h.setProps({});
   if (Platform.OS === 'ios') {
     h.load(`${h.pages}/redirect?to=${encodeURIComponent('/spa.html?from=hook')}`);
     await waitFor(h, (s) => s.url.includes('from=hook') && idle(s));
@@ -2117,12 +2149,12 @@ async function sampleExtension(h: Harness) {
     );
   }
   // HTTP auth, which the core declines: the hook's delegate (client) answers it.
-  await recreate(h, { nativeOptions: { pageCounter: true, hookAuth: true } });
+  await recreate(h, { nativeOptions: { pageCounter: true, hookAuth: true } }, true);
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
   r.check('its delegate answers HTTP auth', auth === 'authorized', auth);
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
-  await recreate(h, { nativeOptions: { pageCounter: true, hookDialogs: true } });
+  await recreate(h, { nativeOptions: { pageCounter: true, hookDialogs: true } }, true);
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
   // The event reaches JS on its own schedule, after the evaluate result at times.
@@ -2132,7 +2164,7 @@ async function sampleExtension(h: Harness) {
     after === 'after' && h.events.hookEvents.includes('hookDialogs.alert'),
     { after, hookEvents: h.events.hookEvents }
   );
-  await recreate(h, {});
+  await recreate(h, {}, true);
   if (Platform.OS === 'ios') {
     // configure() set data detectors before the WKWebView existed: WebKit turns the number into a tel: link.
     h.loadSource({ html: '<p id="n">Call 415-555-0134 today</p>', baseUrl: h.pages });

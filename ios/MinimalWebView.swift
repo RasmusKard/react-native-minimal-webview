@@ -9,13 +9,15 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
 
-  // Props, applied together in applyProps(). The bridge, the hook options and the `configuration` settings are fixed
-  // at mount: they are read once, when the WKWebView is created.
+  // Props, applied together in applyProps(). The bridge, the hooks that attach and the `configuration` settings are
+  // fixed at mount: they are read once, when the WKWebView is created.
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
-  /// The `nativeOptions` prop, for the hooks.
-  var options: [String: Any] = [:]
+  /// The `nativeOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange).
+  var nativeOptions: [String: Any] = [:] {
+    didSet { if webView != nil { optionsChanged(from: oldValue) } }
+  }
   /// The `ios` prop: WebKit properties by name, applied by PlatformSettings.
   var settings: [String: Any] = [:]
   let platformSettings = PlatformSettings()
@@ -60,8 +62,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
   var pendingAsks: [Int: (Any?) -> Void] = [:]
   let document = DocumentScope()
-  /// The enabled hooks' contexts, for the life of the WKWebView: a hook may keep its own.
-  var hookContexts: [String: HookContext] = [:]
+  /// The enabled hooks' contexts in registration order, for the life of the WKWebView: a hook may keep its own.
+  var hookContexts: [HookContext] = []
   var nextAskId = 0
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
   var askedAndAllowed: [Bool: Set<String>] = [:]
@@ -103,6 +105,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     document.register { [weak self] _ in self?.dismissDialog() }
     // The spinner belongs to a load, and a crash ends the load without a delegate callback.
     document.register { [weak self] reason in if reason == .crashed { self?.refreshControl.endRefreshing() } }
+    // The hooks' own handlers, on their contexts: the scope has no unregister.
+    document.register { [weak self] reason in self?.hookContexts.forEach { $0.documentEnded(reason) } }
   }
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.
@@ -200,7 +204,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The creation-time settings (`ios.configuration`) and the configure hooks go first and the bridge after them,
     // so nothing they set displaces the content controller the bridge is installed in.
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
-    for (name, hook) in MinimalWebViewHooks.configure where options[name] != nil { hook(configuration, hookContext(name)) }
+    hookContexts = MinimalWebViewHooks.hooks.filter { enables(nativeOptions[$0.key]) }.map { HookContext($0, self) }
+    for context in hookContexts { context.hook.configure?(configuration, context) }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
@@ -221,9 +226,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     cookies.didCreate(webView)
     // The live settings before the hooks, as on Android: what a hook sets wins over the package's defaults.
     report(platformSettings.apply(settings, webView: webView))
-    detachers = MinimalWebViewHooks.attach.compactMap { name, hook in
-      options[name] != nil ? hook(webView, hookContext(name)) : nil
-    }
+    detachers = hookContexts.compactMap { $0.hook.attach(webView, $0) }
   }
 
   /// React Native calls `invalidate` on this view (the Fabric component view; Expo's are never recycled) at every
@@ -246,7 +249,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
-    hookContexts = [:]
+    hookContexts = []
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
     observations.removeAll()
@@ -426,12 +429,23 @@ private let crashWindow: TimeInterval = 60
 
 /// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
 /// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
-extension MinimalWebView: WebViewContext {
-  func hookContext(_ name: String) -> HookContext {
-    if let context = hookContexts[name] { return context }
-    let context = HookContext(name, self)
-    hookContexts[name] = context
-    return context
+extension MinimalWebView {
+  /// Tells each attached hook whose value changed. A key that was not there when the WKWebView was made attaches nothing.
+  private func optionsChanged(from old: [String: Any]) {
+    for key in Set(old.keys).union(nativeOptions.keys) {
+      let value = nativeOptions[key]
+      if let was = old[key], let value, (was as AnyObject as? NSObject)?.isEqual(value) == true { continue }
+      if let context = hookContexts.first(where: { $0.key == key }) {
+        context.optionsChanged(value)
+      } else if !enables(old[key]), enables(value) {
+        emit("core.warning", ["message": "nativeOptions.\(key): added after the WebView was created, so no hook attaches for it"])
+      }
+    }
+  }
+
+  /// The handler a hook registered with `context.handle` for `method`, if it is attached.
+  func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {
+    hookContexts.first { $0.key == key }?.handlers[method]
   }
 
   var navigationDelegates: [WKNavigationDelegate] {

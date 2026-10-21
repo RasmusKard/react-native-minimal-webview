@@ -29,7 +29,7 @@ import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
-class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext), WebViewContext {
+class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
   private val onNativeEvent by EventDispatcher<Map<String, Any?>>()
@@ -37,23 +37,34 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private val onProcessGone by EventDispatcher<Map<String, Any?>>()
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
-  // Declared before webView: createWebView() reads them during construction.
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
   internal val document = DocumentScope()
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
-  /** Replaced when the render process dies; the hooks are attached to each one. */
-  internal var webView = createWebView()
-    private set
+  private var current: WebView? = null
+  /**
+   * Made at first use, which is the first prop batch, so that the configure hooks see `nativeOptions`. Replaced when
+   * the render process dies; the hooks are attached to each one.
+   */
+  internal var webView: WebView
+    get() = current ?: createWebView().also { current = it }
+    private set(value) {
+      current = value
+    }
 
   // Props, applied together in applyProps()
   internal var source: WebViewSource? = null
   internal var navigationRules: List<Map<String, Any?>>? = null
   internal var bridgeScript: String? = null
   internal var bridgeOrigins: List<String>? = null
-  /** The `nativeOptions` prop, for the hooks. */
-  override var options: Map<String, Any?> = emptyMap()
+  /** The `nativeOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange). */
+  internal var nativeOptions: Map<String, Any?> = emptyMap()
+    set(value) {
+      val old = field
+      field = value
+      if (hookKeys != null) optionsChanged(old)
+    }
   internal var injectedScripts: List<InjectedScript>? = null
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
   internal var settings: Map<String, Any?>? = null
@@ -70,16 +81,19 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   // The hooks' clients (WebViewContext) and the core's page requests. The clients (MinimalWebViewClients.kt) route each
   // callback by the rule in WebViewContext. The page requests ask JS only for the requests in requestHandlers.
   // Copy-on-write: Chromium reads it from its IO thread (shouldInterceptRequest) while attach and detach write it.
-  override val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
-  override val chromeClients = mutableListOf<WebChromeClient>()
-  override val activity: Activity? get() = appContext.currentActivity
+  val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
+  val chromeClients = mutableListOf<WebChromeClient>()
+  val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   internal val downloads = Downloads(this)
+  /** The `nativeOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
+  private var hookKeys: Set<String>? = null
+  /** The hooks' contexts for the current WebView, in registration order. */
+  private var hookContexts: List<HookContext> = emptyList()
   /** What the attach hooks returned, run before their WebView goes away. */
-  private var detachers: List<() -> Unit> = emptyList()
-  /** Whether the first WebView is set up: the first prop batch does it. */
+  private var detachers: List<(End) -> Unit> = emptyList()
   private var mounted = false
 
   // Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until answered through `answer`
@@ -119,9 +133,15 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
     document.register { failAsks(it) }
+    // The hooks' own handlers, per attach: the scope has no unregister, and a crash attaches the hooks again.
+    document.register { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+    val keys = hookKeys ?: nativeOptions.filterValues(::enables).keys.also { hookKeys = it }
+    hookContexts = MinimalWebViewHooks.hooks.filter { it.key in keys }.map { HookContext(it, this) }
+    // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
+    hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
@@ -228,9 +248,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
 
   private fun attachHooks() {
-    detachers = MinimalWebViewHooks.attach.mapNotNull { (name, hook) ->
-      if (options.containsKey(name)) hook(webView, HookContext(name, this)) else null
-    }
+    detachers = hookContexts.mapNotNull { it.hook.attach(webView, it) }
     // A hook that takes favicons gets them downloaded again (configure() turns that off).
     if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
       WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
@@ -240,15 +258,35 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun detachHooks() {
-    detachers.forEach { it() }
+    // Only destroy() and recover() detach, and destroy() sets `destroyed` first.
+    val reason = if (destroyed) End.CLOSING else End.CRASHED
+    detachers.forEach { it(reason) }
     detachers = emptyList()
+    hookContexts = emptyList()
     clients.clear()
     chromeClients.clear()
   }
 
-  override fun emit(name: String, payload: Map<String, Any?>) = onNativeEvent(mapOf("name" to name, "payload" to payload))
+  /** Tells each attached hook whose value changed. A key that was not there when the WebView was made attaches nothing. */
+  private fun optionsChanged(old: Map<String, Any?>) {
+    for (key in old.keys + nativeOptions.keys) {
+      val value = nativeOptions[key]
+      if (old[key] == value) continue
+      val context = hookContexts.find { it.key == key }
+      if (context != null) {
+        context.optionsChanged(value)
+      } else if (!enables(old[key]) && enables(value)) {
+        warn("nativeOptions.$key: added after the WebView was created, so no hook attaches for it")
+      }
+    }
+  }
 
-  override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
+  /** The handler a hook registered with `context.handle` for [method], if it is attached. */
+  internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key }?.handlers?.get(method)
+
+  fun emit(name: String, payload: Map<String, Any?>) = onNativeEvent(mapOf("name" to name, "payload" to payload))
+
+  fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
     askWithId(name, payload, onAnswer)
   }
 
