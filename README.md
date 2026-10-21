@@ -7,8 +7,8 @@ architecture only.
 - **One committed URL, owned by native:** `useWebViewState(ref)` gives the page on screen, a pending load, the title,
   progress and history.
 - **A promise bridge** between React Native and the page, restricted to the origins you allow.
-- **Page requests just work:** file chooser, fullscreen video, permissions and downloads each have a default, and a
-  prop takes one over.
+- **Page requests just work** without a prop: the file chooser and permissions take an answer from a prop, fullscreen
+  video and downloads tell one afterwards, and JS dialogs and HTTP auth go to a native hook.
 - **Every platform setting by name,** without a change to this package: `ios={{ scrollView: { bounces: false } }}`,
   `android={{ settings: { textZoom: 120 } }}`.
 - **The app owns device APIs:** no OS permission prompts or pickers of its own, no config plugin, and no dependency on
@@ -34,7 +34,7 @@ export function Browser() {
 - [The bridge](docs/bridge.md): calls and events between React Native and the page
 - [Props and ref methods](docs/props.md): every prop, `evaluate`, `WebView.warmUp` and `preconnect`, loading and error screens
 - [Platform settings](docs/platform-settings.md): any WebKit or Android setting by name, and `get` and `call`
-- [Page requests](docs/page-requests.md): file chooser, fullscreen video, permissions and downloads, with recipes
+- [Page requests](docs/page-requests.md): file chooser, fullscreen video, permissions, downloads and JS dialogs, with recipes
 - [Native hooks](docs/native-hooks.md): your own Swift and Kotlin, with the real `WKWebView` or `WebView`
 - [Security defaults](docs/security.md)
 - [Development](docs/development.md): unit tests and the on-device suites
