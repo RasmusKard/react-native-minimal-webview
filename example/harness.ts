@@ -957,6 +957,40 @@ async function crash(h: Harness) {
     ),
     h.state()
   );
+  if (Platform.OS === 'ios') {
+    // A page other than the source reloads its history entry in place: back still goes to the page before it, and
+    // forward from there to it. This is the second of the crash loop's kills.
+    const second = fresh(h, '/bridge.html');
+    const loads = h.events.loads.length;
+    await h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`);
+    await waitFor(
+      h,
+      (s) => h.events.loads.slice(loads).includes('end') && s.url === second && idle(s),
+      15000
+    );
+    const reloads = h.events.loads.length;
+    const killed = await kill(2);
+    r.check(
+      'a second page reloads in place, canGoBack unchanged',
+      killed?.recovered === true &&
+        (await waitFor(
+          h,
+          (s) =>
+            h.events.loads.slice(reloads).includes('end') &&
+            s.url === second &&
+            idle(s) &&
+            s.canGoBack,
+          15000
+        )),
+      h.state()
+    );
+    h.ref.current?.goBack();
+    r.check(
+      'back after recovery goes to the page before it, with forward kept',
+      await waitFor(h, (s) => s.url === page && idle(s) && s.canGoForward, 15000),
+      h.state()
+    );
+  }
   // Android attaches the hooks to the new WebView; iOS keeps the delegates: the sample's page counter still counts.
   r.check(
     'the hooks are attached after recovery',
@@ -973,9 +1007,17 @@ async function crash(h: Harness) {
   // Android builds a new WebView on recovery: its settings must be applied again.
   r.check('the setting is still applied after recovery', !!(await userAgent()));
 
-  for (const n of [2, 3]) {
+  for (const n of Platform.OS === 'ios' ? [3] : [2, 3]) {
     await kill(n);
   }
+  // The 4th kill cuts off a slow load: with no reload to end it, the core must.
+  await until(
+    async () =>
+      (await h.ref.current?.evaluate('document.readyState').catch(errorCode)) === 'complete'
+  );
+  const slowStarts = h.events.loads.length;
+  await h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, '/slow?ms=10000'))}`);
+  await waitFor(h, () => h.events.loads.slice(slowStarts).includes('start'));
   const fourth = await kill(4);
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
   const elapsed = Date.now() - firstKillAt;
@@ -986,6 +1028,22 @@ async function crash(h: Harness) {
       fourth
     );
   else r.info('crash loop check skipped: the 4 crashes took', elapsed);
+  r.check(
+    'a crash during a load ends it (loading: false)',
+    await waitFor(h, (s) => !s.loading, 5000),
+    h.state()
+  );
+  const retryLoads = h.events.loads.length;
+  h.ref.current?.reload();
+  r.check(
+    'reload() brings the page back after giving up',
+    (await waitFor(
+      h,
+      (s) => s.url === page && idle(s) && h.events.loads.slice(retryLoads).includes('end'),
+      15000
+    )) && (await h.ref.current?.evaluate('location.href').catch(errorCode)) === page,
+    h.state()
+  );
   r.check(
     'loading a new source works after giving up',
     await openPage(h, fresh(h, '/')),
@@ -1012,6 +1070,22 @@ async function crash(h: Harness) {
     h.events.gone.at(-1)
   );
   r.check('the html source is shown again after recovery', await shown(), await marker());
+
+  // A POST source on screen isn't sent again unasked (a payment form): recovery stops, and reload() sends it.
+  const post = fresh(h, '/post');
+  const body = `amount=9.99&t=${Date.now()}`;
+  h.loadSource({ uri: post, body });
+  await waitFor(h, (s) => s.url === post && idle(s));
+  const postGone = await kill(7);
+  r.check('a POST source is not sent again on recovery', postGone?.recovered === false, postGone);
+  const postLoads = h.events.loads.length;
+  h.ref.current?.reload();
+  await waitFor(h, (s) => idle(s) && h.events.loads.slice(postLoads).includes('end'), 15000);
+  r.check(
+    'reload() sends the POST source after a crash',
+    (await text(h, 'body')) === body,
+    h.state()
+  );
   r.done();
 }
 
@@ -1860,13 +1934,34 @@ async function fullscreen(h: Harness) {
   const active = async () =>
     (await h.ref.current?.evaluate('document.fullscreenElement !== null')) === true;
   const becomes = async (want: boolean) => !!(await until(async () => (await active()) === want));
-  r.info('TAP', await tapPoint(h, 'fullscreen'));
+  const lines = await pageLog(h, async () => r.info('TAP', await tapPoint(h, 'fullscreen')));
   const entered = await becomes(true);
-  r.check('fullscreen works without onFullscreenChange', entered);
+  r.check('fullscreen works without onFullscreenChange', entered, lines);
   if (entered) {
     r.info('BACK', 'leave');
     r.check('back leaves it', await becomes(false));
   }
+
+  // A renderer crash ends the Document: the fullscreen view, the back handler and the hidden bars go without
+  // Chromium's onHideCustomView, which a dead renderer never sends. Last, because recovery replaces the WebView.
+  h.setProps({});
+  await sleep(300);
+  r.info('TAP', await tapPoint(h, 'fullscreen'));
+  await waitFor(h, () => h.events.fullscreen.at(-1) === true, 10000);
+  const [gone, loads] = [h.events.gone.length, h.events.loads.length];
+  r.info('KILL', 'in fullscreen');
+  await waitFor(h, () => h.events.gone.length > gone, 15000);
+  r.check(
+    'a crash leaves fullscreen',
+    await waitFor(h, () => h.events.fullscreen.at(-1) === false, 5000),
+    h.events.fullscreen
+  );
+  // The recovery load: the state reads idle until it starts, so wait for its end event, as the crash suite does.
+  await waitFor(
+    h,
+    (s) => h.events.loads.slice(loads).includes('end') && s.url.includes('/media.html') && idle(s),
+    15000
+  );
   r.done();
 }
 

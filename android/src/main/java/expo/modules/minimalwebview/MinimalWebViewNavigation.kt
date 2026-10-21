@@ -21,7 +21,17 @@ internal class MinimalWebViewNavigation(
   // URLs an `ask` allowed in the current navigation chain: their redirects back to them are not asked again.
   private val askedAndAllowed = mutableSetOf<String>()
 
-  fun newDocument() = askedAndAllowed.clear()
+  // New windows still waiting for their first URL (createWindow).
+  private val children = mutableSetOf<WebView>()
+
+  /** The Document ended: its allowed asks and its new windows are over. */
+  fun documentEnded() {
+    askedAndAllowed.clear()
+    // Not on a child's stack (a commit, a crash, destroy): destroy them now. Cleared first, so a finish() finds none.
+    val ended = children.toList()
+    children.clear()
+    ended.forEach { it.destroy() }
+  }
 
   /** Returns true to cancel the navigation (shouldOverrideUrlLoading's meaning). */
   fun decide(request: NavigationRules.Request): Boolean {
@@ -73,7 +83,7 @@ internal class MinimalWebViewNavigation(
       notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
     }
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
-    owner.postDelayed({ owner.answer(id, null) }, ASK_TIMEOUT_MS)
+    owner.mainHandler.postDelayed({ owner.answer(id, null) }, ASK_TIMEOUT_MS)
   }
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its
@@ -142,25 +152,26 @@ internal class MinimalWebViewNavigation(
   // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed.
   fun createWindow(isUserGesture: Boolean, resultMsg: Message): Boolean {
     val child = WebView(owner.context)
-    var done = false
-    fun finish() {
-      if (done) return
-      done = true
-      owner.post { child.destroy() }
-    }
+    // It only catches a URL: none of the page's access, and no JS of its own.
+    child.settings.allowFileAccess = false
+    child.settings.allowContentAccess = false
+    child.settings.javaScriptEnabled = false
+    children += child
+    // Finishes once, whichever comes first: the first URL, the timeout, a crash, the Document's end (documentEnded).
+    // Destroyed later: this may run inside the child's own callback.
+    fun finish() = children.remove(child).also { if (it) owner.mainHandler.post { child.destroy() } }
     child.webViewClient = object : WebViewClient() {
       // A renderer crash in the throwaway window must not take the app down.
       override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail) = true.also { finish() }
 
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val target = request.url.toString()
-        if (!done && !decide(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
-        finish()
+        if (finish() && !decide(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
         return true
       }
     }
     // window.open('') or about:blank never navigates: give up on it.
-    owner.postDelayed(::finish, NEW_WINDOW_TIMEOUT_MS)
+    owner.mainHandler.postDelayed({ finish() }, NEW_WINDOW_TIMEOUT_MS)
     (resultMsg.obj as WebView.WebViewTransport).webView = child
     resultMsg.sendToTarget()
     return true

@@ -53,7 +53,7 @@ extension MinimalWebView: WKUIDelegate {
     if !permissions.requestMediaCapture(origin: origin, type: type, decide: decisionHandler) { decisionHandler(.prompt) }
   }
 
-  /// Dismisses the dialog on screen, if any, completing it as cancelled (teardown, crash).
+  /// Dismisses the dialog on screen, if any, completing it as cancelled (the Document ended).
   func dismissDialog() {
     guard let current = dialog else { return }
     dialog = nil
@@ -68,8 +68,12 @@ extension MinimalWebView: WKUIDelegate {
     }
   }
 
+  /// From the top of this view's window. A controller still presenting (one being dismissed) or itself being presented
+  /// can't present: UIKit only logs it and the page would stay blocked, so the dialog is cancelled instead.
   private func showDialog(_ alert: UIAlertController, cancel: @escaping () -> Void) {
-    guard dialog == nil, window != nil, let presenter = appContext?.utilities?.currentViewController() else {
+    var top = window?.rootViewController
+    while let next = top?.presentedViewController, !next.isBeingDismissed { top = next }
+    guard dialog == nil, let presenter = top, presenter.presentedViewController == nil, !presenter.isBeingPresented else {
       return cancel()
     }
     dialog = (alert, cancel)

@@ -5,7 +5,7 @@ npm install && (cd example && npm install)
 npm test                                   # TS unit tests (bridge protocol, createBridge, origin matchers)
 npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin rule and origin matchers
-xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 ```
 
 The TS, Kotlin and Swift matchers share their test cases: `src/__tests__/vectors/`.
