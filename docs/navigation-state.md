@@ -19,7 +19,7 @@ re-renders with each change.
 - `pendingUrl` is a main-frame load in progress, which may still fail or be blocked.
 - Iframes never change either.
 - On Android with a WebView older than 146 (no `NAVIGATION_LISTENER`; Huawei and Fire OS devices ship their own
-  WebView builds), `pendingUrl` stays `null` and `url` changes only when a load commits.
+  WebView builds), `pendingUrl` stays `null`. `url` still follows commits and SPA navigation.
 
 The hook follows the WebView when it remounts (a new `key`, a conditional render). While no WebView is mounted with
 the ref, the state is the initial one (`url: ''`), so a stale `url` never looks valid.

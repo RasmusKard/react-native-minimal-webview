@@ -41,7 +41,8 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 - With no rules, http(s) loads in place, `file:` is blocked, and every other scheme opens externally from the main frame and is blocked from a subframe.
 - With rules but no match, the result is `block`.
 - `about:`, `blob:`, `data:` and `javascript:` always load in place.
-- The `source` load, reloads and back/forward skip the rules.
+- The `source` load, reloads and back/forward skip the rules. A redirect of the `source` load doesn't: it is decided like
+  any other navigation (on Android, a reload's or back/forward's redirect too).
 
 ## New windows
 

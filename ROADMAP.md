@@ -10,7 +10,6 @@ Possible future work, not commitments.
 ## User space (a recipe or an optional extension)
 
 - **Incognito (non-persistent storage) on Android.** iOS has `ios.configuration.websiteDataStore: 'nonPersistent'`.
-- **`clearCache` / `clearHistory`:** a built-in extension, like `sharedCookies`.
 - **iOS keyboard props** as an extension. The keyboard accessory one needs swizzling.
 
 ## Known limits, left as they are

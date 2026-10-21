@@ -47,3 +47,17 @@ and swiftc tests drive all three ends with fake registrants.
 - Downloads outlive Documents by design and are not cancelled at teardown. `onPermissionRequestCanceled` leaving the
   core's own permission ask open is a separate fix: it must also stop the ask's `grant`/`deny` from reaching the
   cancelled request, since Chromium's `PermissionRequest` throws once its native side is gone.
+
+## Corrections (2026-10-21)
+
+- **The permission-cancel follow-up:** Chromium's `PermissionRequest` doesn't throw once its native side is gone.
+  `AwPermissionRequest.grant()` and `deny()` throw only off the UI thread or on a second call; with the native side
+  gone they are no-ops, and the core answers once, on the main thread. What an uncancelled ask still costs is a stale
+  entry and the app's handler running (maybe an OS prompt) for a request nobody wants.
+- **`closing` on iOS:** `invalidate` doesn't stop at a Fabric wrapper. `MinimalWebView` is the Fabric component view,
+  and React Native calls `invalidate` on it at unmount (Expo views are never recycled); only the Swift-visible header
+  doesn't declare it. So `closing` could move from `deinit` to an `@objc invalidate` override. Not done yet.
+- **Child WebViews:** this change didn't fix "`destroy()` left child WebViews to a timer". `View.post` on a detached view
+  never runs, so a child was still left undestroyed at unmount. Fixed later: every Document end destroys the children
+  directly, and the deferred work posts through a main-thread `Handler`.
+- **`crashTimes`** is per view, spanning WebView instances (a source change clears it), not per WebView instance.
