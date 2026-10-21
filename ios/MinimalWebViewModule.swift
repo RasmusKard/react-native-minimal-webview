@@ -30,7 +30,7 @@ public class MinimalWebViewModule: Module {
         switch action {
         case "back": view.webView?.goBack()
         case "forward": view.webView?.goForward()
-        case "reload": view.reload()
+        case "reload": view.retry()
         case "stop": view.webView?.stopLoading()
         default: break
         }
