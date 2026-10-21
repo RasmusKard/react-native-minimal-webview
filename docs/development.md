@@ -37,7 +37,7 @@ Before a run:
 `example/maestro/run.sh` runs the suites, all in one Maestro session:
 
 ```bash
-example/maestro/run.sh android emulator-5556                    # every suite in run.sh's list for the platform
+example/maestro/run.sh android emulator-5556                    # every suite in SUITES (each skips what its platform lacks)
 example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the named suites
 ```
 
@@ -63,7 +63,8 @@ Reference emulators: `mrw-api37` (Google APIs, API 37, WebView 149) is the one e
 146 (ROADMAP), and the harness reports them as `INFO ... known limit (WebView <146): <check>` instead of passing or
 failing them.
 
-To add a suite: add it to `SUITES` in `example/harness.ts` and to the platform lists in `run.sh`. If it needs
-gestures, taps, dialogs or renderer kills, add a `<suite>.yaml` flow in `example/maestro/`. Otherwise `run.sh` wraps
+To add a suite: add it to `SUITES` in `example/harness.ts` (`run.sh` reads its keys). A suite that doesn't apply to a
+platform reports `skipped` there and ends. If it needs gestures, taps, dialogs or renderer kills, add a `<suite>.yaml`
+flow in `example/maestro/`. Otherwise `run.sh` wraps
 the generic `suite.yaml` for it. A suite must leave nothing behind that `reset()` in `harness.ts` doesn't undo, and
 must not depend on a site outside the test pages server.

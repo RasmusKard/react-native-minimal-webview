@@ -5,7 +5,6 @@
 <script src="/common.js"></script>
 <style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
 <h1>Media, uploads, downloads</h1>
-<video id="video" controls playsinline width="100%" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
 <label>any file <input id="file" type="file" onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
 <label>images, multiple <input id="images" type="file" accept="image/*" multiple onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
 <label>camera capture <input id="capture" type="file" accept="image/*" capture="environment" onchange="log('picked', [...this.files].map((f) => f.name + ':' + f.size))" /></label>
