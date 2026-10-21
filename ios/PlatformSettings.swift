@@ -53,7 +53,7 @@ final class PlatformSettings {
     return rejected
   }
 
-  /// `root.key` through KVC, as JSON. Throws an `EvaluateError`-like reason when it can't.
+  /// `root.key` through KVC, as JSON. Throws a `PlatformError` with the reason when it can't.
   func get(_ path: String, webView: WKWebView) throws -> String {
     guard let dot = path.firstIndex(of: ".") else { throw PlatformError("use root.key") }
     let rootName = String(path[..<dot])
@@ -64,8 +64,7 @@ final class PlatformSettings {
     guard !key.hasPrefix("_"), !key.contains("."), class_getProperty(type(of: object), key) != nil else {
       throw PlatformError("no such property \(path)")
     }
-    let data = try JSONSerialization.data(withJSONObject: MRWJsonable(object.value(forKey: key)), options: .fragmentsAllowed)
-    return String(decoding: data, as: UTF8.self)
+    return try Self.json { MRWJsonable(object.value(forKey: key)) }
   }
 
   /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
@@ -80,19 +79,37 @@ final class PlatformSettings {
       throw PlatformError("\(selector) is owned by the core, or private")
     }
     MRWInvoke(object, NSSelectorFromString(selector), args, completion) { result, error in
-      guard error == nil, let result, let data = try? JSONSerialization.data(withJSONObject: result, options: .fragmentsAllowed) else {
-        return resolve(nil, error ?? "the result is not JSON")
+      guard error == nil, let result else { return resolve(nil, error ?? "the result is not JSON") }
+      do {
+        let json = try Self.json { result }
+        resolve(json, nil)
+      } catch let failure {
+        resolve(nil, (failure as? PlatformError)?.message ?? failure.localizedDescription)
       }
-      resolve(String(decoding: data, as: UTF8.self), nil)
     }
   }
 
+  /// `value()` as JSON text. It runs inside MRWCatchException: a getter that raises, or a NaN that JSONSerialization
+  /// raises for, throws here instead of crashing the app.
+  private static func json(_ value: () -> Any) throws -> String {
+    var data: Data?
+    let raised = MRWCatchException {
+      data = try? JSONSerialization.data(withJSONObject: value(), options: .fragmentsAllowed)
+    }
+    if let raised { throw PlatformError(raised) }
+    guard let data else { throw PlatformError("the result is not JSON") }
+    return String(decoding: data, as: UTF8.self)
+  }
+
   /// Selector prefixes `call` refuses: what the ref and the core own (every load, navigation, script, download and
-  /// delegate selector), private API, the plumbing that would reach either (KVC, performSelector) and reference counting.
+  /// delegate selector), private API, the plumbing that would reach either (KVC, KVO, performSelector), object
+  /// lifecycle (init, copy, new: a re-initialized live object, or a +1 result MRWInvoke would leak) and reference
+  /// counting. `mutable` covers `mutableCopy` and KVC's `mutableArrayValueForKey:` and its kin.
   private static let refused = [
     "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
-    "setNavigationDelegate", "setUIDelegate", "setValue", "setValuesForKeys", "valueForKey", "dictionaryWithValuesForKeys",
-    "performSelector", "retain", "release", "autorelease", "dealloc",
+    "setNavigationDelegate", "setUIDelegate", "setDelegate", "setValue", "setValuesForKeys", "valueForKey",
+    "dictionaryWithValuesForKeys", "mutable", "willChange", "didChange", "performSelector", "init", "copy", "new",
+    "retain", "release", "autorelease", "dealloc",
   ]
   static let roots = "configuration, preferences, webpagePreferences, webView, scrollView, websiteDataStore or httpCookieStore"
 
