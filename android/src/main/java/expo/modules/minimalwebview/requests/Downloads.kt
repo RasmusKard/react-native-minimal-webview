@@ -23,8 +23,7 @@ internal data class DownloadInfo(
   val url: String,
   val userAgent: String,
   val contentDisposition: String,
-  val mimeType: String,
-  val contentLength: Long
+  val mimeType: String
 )
 
 /**
@@ -35,7 +34,7 @@ internal data class DownloadInfo(
  * the core opens it externally. Nothing here may crash the app: the page controls the URL.
  */
 internal class Downloads(private val owner: MinimalWebView) {
-  private val io = Executors.newCachedThreadPool()
+  private val io = Executors.newSingleThreadExecutor()
 
   /** Returns true when the app's prop takes the download. */
   fun onDownloadStart(download: DownloadInfo): Boolean {
@@ -56,7 +55,20 @@ internal class Downloads(private val owner: MinimalWebView) {
       client.newCall(request).execute().use { response ->
         if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
         val body = response.body ?: throw IOException("no response body")
-        body.byteStream().use { input -> file.outputStream().use { input.copyTo(it) } }
+        if (body.contentLength() > MAX_BYTES) throw IOException(TOO_LARGE)
+        body.byteStream().use { input ->
+          file.outputStream().use { output ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var total = 0L
+            while (true) {
+              val read = input.read(buffer)
+              if (read < 0) break
+              total += read
+              if (total > MAX_BYTES) throw IOException(TOO_LARGE)
+              output.write(buffer, 0, read)
+            }
+          }
+        }
         download.mimeType.ifEmpty { response.header("Content-Type")?.substringBefore(';') ?: "application/octet-stream" }
       }
     }
@@ -89,6 +101,7 @@ internal class Downloads(private val owner: MinimalWebView) {
       } catch (e: JSONException) {
         e
       }
+      if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
       owner.webView.post {
         when (result) {
           is String -> owner.emit(
@@ -105,6 +118,7 @@ internal class Downloads(private val owner: MinimalWebView) {
   private fun readBlob(url: String, name: String) {
     val script = """
       fetch(${JSONObject.quote(url)}).then((r) => r.blob()).then((b) => new Promise((ok, fail) => {
+        if (b.size > $MAX_BYTES) return fail(new Error(${JSONObject.quote(TOO_LARGE)}));
         const reader = new FileReader(); reader.onload = () => ok(reader.result); reader.onerror = () => fail(reader.error);
         reader.readAsDataURL(b);
       }))
@@ -134,6 +148,11 @@ internal class Downloads(private val owner: MinimalWebView) {
   }
 
   private companion object {
+    // The page picks the file: a blob: passes whole through the app's memory several times (a data: URL, then its
+    // bytes), and an http(s) one fills the cache, so above this a download fails instead of the app being killed.
+    const val MAX_BYTES = 100L * 1024 * 1024
+    const val TOO_LARGE = "larger than 100 MB"
+
     /**
      * Follows redirects (http to https too); each hop reads the WebView's cookies for its own host and stores what the
      * server sets back into them, as React Native's fetch does. A redirect from https to http is refused, as Chrome
