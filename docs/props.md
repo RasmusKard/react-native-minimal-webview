@@ -12,9 +12,9 @@
 | `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the load waits for it), and the WebView's cookie changes, deletions included, back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload` | See [Page requests](page-requests.md). They can be added and removed at any time |
 | `nativeOptions`, `onNativeEvent` | What your [native hooks](native-hooks.md) get, and what they send. Its keys pick the hooks when the WebView is created; a changed value reaches its hook live |
-| `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
-| `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
-| `onHttpError` | `{ url, statusCode, description }`: the main frame got an HTTP error status (400+), and the site's own error page shows |
+| `onNavigationStateChange` | Every change to the [navigation state](navigation-state.md) |
+| `onLoadStart`, `onLoadEnd` | The navigation state when `loading` goes true, and when it goes false. `onLoadEnd`'s `state.outcome` says how the load ended: `finished`, `failed` (a network or SSL error, or a crash cut it off) or `cancelled` (it never showed a page: a stop before the response, a download, a 204, a redirect the rules blocked, a load a newer one replaced). An HTTP error status (404) is `finished`: the site's page shows. A stop after the page arrived is `cancelled` on iOS and `finished` on Android. On Android with a WebView older than 146, a load that never commits fires neither event |
+| `onError` | Main-frame errors only. `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed (`outcome: 'failed'`). SSL errors are always cancelled. `{ kind: 'http', url, statusCode }`: the response had an HTTP error status (400+), and the site's own error page shows. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
 | `onProcessGone` | `{ didCrash, recovered }`. With `recovered: true` the core reloads the page. Android builds a new WebView with the back/forward history restored, and not before the app is in the foreground and the view is on screen. It doesn't send a POST `source` again unasked (`recovered: false`; `reload()` sends it), and after more than 3 crashes in 60 s it stops reloading, until the next `source` change or `reload()`. Android's WebViews share one renderer: each one reports its death, and the 3 count for the app, not per view |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |
 
@@ -27,8 +27,9 @@ in the [navigation state](navigation-state.md).
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back
 through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A
 throw or rejection rejects with code `ERR_EVALUATE`, a navigation or crash before the script finishes with `navigated`,
-and on Android a WebView without `WEB_MESSAGE_LISTENER` with `unavailable`. Before the WebView is mounted, `evaluate`,
-`get` and `call` resolve `undefined`, as the other ref methods do nothing. The result is whatever the page's own JS
+and on Android a WebView without `WEB_MESSAGE_LISTENER` with `unavailable`. On a ref handle that outlived its WebView
+(kept from before an unmount), `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and the other ref
+methods do nothing. The result is whatever the page's own JS
 returns, so treat it as page data. On Android it comes back through a global that pages see, `window.nativeEvaluateResult` (see [Security defaults](security.md)).
 
 ## Starting early
@@ -56,7 +57,13 @@ layout.
 const { loading } = useWebViewState(ref);
 const [error, setError] = useState<WebViewErrorEvent | null>(null);
 <View style={{ flex: 1 }}>
-  <WebView ref={ref} source={source} onError={setError} onLoadStart={() => setError(null)} style={{ flex: 1 }} />
+  <WebView
+    ref={ref}
+    source={source}
+    onError={(e) => e.kind !== 'http' && setError(e)}
+    onLoadStart={() => setError(null)}
+    style={{ flex: 1 }}
+  />
   {error ? (
     <OfflineScreen style={StyleSheet.absoluteFill} error={error} onRetry={() => ref.current?.reload()} />
   ) : loading ? (
@@ -65,4 +72,4 @@ const [error, setError] = useState<WebViewErrorEvent | null>(null);
 </View>
 ```
 
-An HTTP error status (404, 503) is not a failed load: `onHttpError` fires instead.
+An HTTP error status (404, 503) is not a failed load: the site's own page shows, so the recipe skips `kind: 'http'`.

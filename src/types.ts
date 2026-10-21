@@ -77,25 +77,21 @@ export type NavigationState = {
   progress: number;
   canGoBack: boolean;
   canGoForward: boolean;
-  /** How the last main-frame load ended; null while none has. */
+  /**
+   * How the last main-frame load ended, null while one is loading (and before the first). `cancelled`: it never
+   * showed a page (a stop, a download, a 204, a redirect the rules blocked, a load a newer one replaced). An HTTP error
+   * status (404) still shows the site's page: `finished`, with an `http` error on `onError`.
+   */
   outcome: 'finished' | 'failed' | 'cancelled' | null;
 };
 
-/** A main-frame load that failed: no page arrived. */
-export type WebViewErrorEvent = {
-  kind: 'network' | 'ssl';
-  url: string;
-  /** Platform error code. */
-  code: number;
-  description: string;
-};
-
-/** A main-frame response with an HTTP error status (400+). The site's own error page still shows. */
-export type WebViewHttpErrorEvent = {
-  url: string;
-  statusCode: number;
-  description: string;
-};
+/**
+ * A main-frame error. `network` and `ssl`: the load failed, no page arrived (`code` is the platform's error code).
+ * `http`: the response had an HTTP error status (400+), and the site's own error page shows.
+ */
+export type WebViewErrorEvent =
+  | { kind: 'network' | 'ssl'; url: string; code: number; description: string }
+  | { kind: 'http'; url: string; statusCode: number };
 
 export type ProcessGoneEvent = {
   didCrash: boolean;
@@ -325,11 +321,10 @@ type OwnProps = {
   /** Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;
   onError?: (event: WebViewErrorEvent) => void;
-  onHttpError?: (event: WebViewHttpErrorEvent) => void;
   onProcessGone?: (event: ProcessGoneEvent) => void;
-  /** JS-only aliases derived from `loading`. */
+  /** `loading` went true. */
   onLoadStart?: (state: NavigationState) => void;
-  onLoad?: (state: NavigationState) => void;
+  /** `loading` went false: `state.outcome` says how the load ended. */
   onLoadEnd?: (state: NavigationState) => void;
 };
 
@@ -347,8 +342,8 @@ export type WebViewRef = {
   /**
    * Runs an expression in the page's main frame and awaits it. Resolves with its value through JSON (`null` for what
    * JSON can't encode). Rejects with `ERR_EVALUATE` when it throws or rejects, `navigated` on a new page, or
-   * `unavailable` (Android) when the WebView lacks the features it needs. Before the WebView is mounted it resolves
-   * `undefined`, as `get` and `call` do.
+   * `unavailable` when the WebView lacks the features it needs (Android) or is gone (the handle outlived it), as `get`,
+   * `call` and `hook` do.
    */
   evaluate(script: string): Promise<unknown>;
   /**

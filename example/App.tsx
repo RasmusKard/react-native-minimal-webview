@@ -25,6 +25,8 @@ import { isPageCounterEvent } from 'sample-extension';
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
 const PAGES = 'http://localhost:8090';
+/** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
+type LoadFailure = Exclude<WebViewErrorEvent, { kind: 'http' }>;
 /**
  * The example's creation-time settings. A suite's extra `ios` keeps them unless it sets its own `configuration`:
  * dropping them would recreate the WebView, and with it start the crash-loop guard over.
@@ -35,9 +37,9 @@ let remount = () => {};
 // Event logs the harness reads and clears. They live outside React: nothing renders them.
 const events: Harness['events'] = {
   errors: [],
-  httpErrors: [],
   gone: [],
   loads: [],
+  outcomes: [],
   navigations: [],
   downloads: [],
   downloadFailures: [],
@@ -64,7 +66,7 @@ export default function App() {
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
   const [driverRequest, setDriverRequest] = useState('');
-  const [error, setError] = useState<WebViewErrorEvent | null>(null);
+  const [error, setError] = useState<LoadFailure | null>(null);
   useEffect(() => {
     onDriverRequest(setDriverRequest);
   }, []);
@@ -156,17 +158,18 @@ export default function App() {
             }}
             onError={(event) => {
               events.errors.push(event);
-              setError(event);
+              if (event.kind !== 'http') setError(event);
             }}
-            onHttpError={(event) => events.httpErrors.push(event)}
             onProcessGone={(event) => events.gone.push(event)}
             onNavigation={(event) => events.navigations.push(event)}
             onLoadStart={() => {
               events.loads.push('start');
               setError(null);
             }}
-            onLoad={() => events.loads.push('load')}
-            onLoadEnd={() => events.loads.push('end')}
+            onLoadEnd={({ outcome }) => {
+              events.loads.push('end');
+              events.outcomes.push(outcome);
+            }}
             {...extraProps}
             ios={{ configuration: IOS_CONFIGURATION, ...extraProps.ios }}
           />
@@ -192,7 +195,7 @@ export default function App() {
 }
 
 /** The example's error screen; records whether it is mounted so the harness can check the recipe. */
-function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void }) {
+function ErrorScreen(props: { error: LoadFailure; onRetry: () => void }) {
   useEffect(() => {
     events.overlay.error = true;
     return () => {

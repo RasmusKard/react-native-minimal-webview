@@ -13,6 +13,7 @@ import {
 import { Platform, type ViewProps } from 'react-native';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
+import { bridgeError } from './bridge/endpoint';
 import type {
   Bridge,
   NativeEvent as HookEventBody,
@@ -56,8 +57,11 @@ const NAVIGATION_KEYS = keysOf<NavigationEvent>({
 const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: true });
 
 /** Native reports every main-frame error as one event; `code` is the HTTP status for `http`. */
-type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
-  kind: WebViewErrorEvent['kind'] | 'http';
+type NativeErrorEvent = {
+  kind: WebViewErrorEvent['kind'];
+  url: string;
+  code: number;
+  description: string;
 };
 
 /** A page's message comes with its origin, as native verified it (`location.origin` form). */
@@ -99,10 +103,8 @@ const OWN = [
   'onNavigation',
   'onNavigationStateChange',
   'onError',
-  'onHttpError',
   'onProcessGone',
   'onLoadStart',
-  'onLoad',
   'onLoadEnd',
   ...Object.values(REQUESTS),
   'children',
@@ -141,8 +143,8 @@ type NativeMethods = {
   bridgePost(message: string): Promise<void>;
   /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
   answer(askId: number, answer: { value: unknown }): Promise<void>;
-  /** The JSON-encoded result, or null. */
-  evaluate(script: string): Promise<string | null>;
+  /** The JSON-encoded result. */
+  evaluate(script: string): Promise<string>;
   /**
    * `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. `args` is
    * JSON too, so that a `null` argument survives the native dictionary conversion.
@@ -263,27 +265,30 @@ function WebViewInstance({ ref, ...props }: Props) {
   const attachmentRef = useRef<Attachment>(undefined);
   const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
 
-  // Methods called before the native view exists are no-ops, like a browser tab that is still opening.
+  // A handle can outlive its native view (one captured before an unmount): navigation is then a no-op, and what
+  // answers rejects with `unavailable`.
   const [handle] = useState((): WebViewRef => {
-    const parsed = (json: string | null | undefined) =>
-      json ? (JSON.parse(json) as unknown) : undefined;
+    const parsed = (json: string) => JSON.parse(json) as unknown;
+    const gone = (): never => {
+      throw bridgeError({ code: 'unavailable', message: 'the WebView is gone' });
+    };
     return {
       goBack: () => void native.current?.navigate('back'),
       goForward: () => void native.current?.navigate('forward'),
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
-      evaluate: async (script) => parsed(await native.current?.evaluate(script)),
-      get: async (key) => parsed(await native.current?.native({ get: key })),
+      evaluate: async (script) => parsed(await (native.current?.evaluate(script) ?? gone())),
+      get: async (key) => parsed(await (native.current?.native({ get: key }) ?? gone())),
       call: async (method, args = [], options) =>
         parsed(
-          await native.current?.native({
+          await (native.current?.native({
             call: method,
             args: JSON.stringify(args),
             completion: options?.completion,
-          })
+          }) ?? gone())
         ),
       hook: async (name, method, args = []) =>
-        parsed(await native.current?.hook(name, method, JSON.stringify(args))),
+        parsed(await (native.current?.hook(name, method, JSON.stringify(args)) ?? gone())),
     };
   });
   useAttach(ref, handle, lastRef, attachmentRef);
@@ -473,39 +478,26 @@ function platformSettings(props: WebViewProps): NativeSettings {
   };
 }
 
-/** Load events. The current load's main-frame error: onLoad fires only without one. */
+/** Load events: onLoadStart and onLoadEnd are the edges of `loading`; native sets the ended load's `outcome`. */
 function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment | undefined>) {
   const lastRef = useRef(INITIAL_STATE);
-  const errorRef = useRef<WebViewErrorEvent | null>(null);
 
   const onNavigationState = ({ nativeEvent: state }: NativeEvent<NavigationState>) => {
     const was = lastRef.current.loading;
     lastRef.current = state;
     attachmentRef.current?.update(state);
     props.onNavigationStateChange?.(state);
-    if (!was && state.loading) {
-      errorRef.current = null;
-      props.onLoadStart?.(state);
-    }
-    if (was && !state.loading) {
-      if (!errorRef.current) props.onLoad?.(state);
-      props.onLoadEnd?.(state);
-    }
+    if (!was && state.loading) props.onLoadStart?.(state);
+    if (was && !state.loading) props.onLoadEnd?.(state);
   };
 
-  // An HTTP status (404, 503) still shows the site's own error page: only network and SSL failures count as a failed
-  // load (no onLoad).
+  // An HTTP error's description is the platform's own text (an empty HTTP/2 reason phrase on Android): not passed on.
   const onError = ({
     nativeEvent: { kind, url, code, description },
-  }: NativeEvent<NativeErrorEvent>) => {
-    if (kind === 'http') {
-      props.onHttpError?.({ url, statusCode: code, description });
-      return;
-    }
-    const failure = { kind, url, code, description };
-    errorRef.current = failure;
-    props.onError?.(failure);
-  };
+  }: NativeEvent<NativeErrorEvent>) =>
+    props.onError?.(
+      kind === 'http' ? { kind, url, statusCode: code } : { kind, url, code, description }
+    );
 
   return { onNavigationState, onError, lastRef };
 }

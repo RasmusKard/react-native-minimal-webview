@@ -12,7 +12,6 @@ import type {
   ProcessGoneEvent,
   PermissionRequestEvent,
   WebViewErrorEvent,
-  WebViewHttpErrorEvent,
   NavigationState,
   WebViewProps,
   WebViewRefObject,
@@ -48,9 +47,11 @@ export type Harness = {
   /** What the WebView reported, in order. Suites clear what they read. */
   events: {
     errors: WebViewErrorEvent[];
-    httpErrors: WebViewHttpErrorEvent[];
     gone: ProcessGoneEvent[];
+    /** `start` and `end`, from onLoadStart and onLoadEnd. */
     loads: string[];
+    /** Each onLoadEnd's `outcome`. */
+    outcomes: NavigationState['outcome'][];
     navigations: NavigationEvent[];
     downloads: Download[];
     downloadFailures: DownloadFailure[];
@@ -861,12 +862,19 @@ const tapPoint = async (h: Harness, id: string, frame?: string) =>
   ).join(' ');
 
 /**
- * Main-frame errors only, the URL after a failure, onLoad vs onLoadEnd, the error screen recipe in docs/props.md (the
- * example's ErrorScreen), and reload recovering.
+ * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the error screen recipe in
+ * docs/props.md (the example's ErrorScreen), and reload recovering.
  */
 async function errors(h: Harness) {
   const r = reporter('errors');
   await openPage(h, fresh(h, '/'));
+  /** Runs `act`, then waits for the next load to end: its outcome, or 'no end' after `ms`. */
+  const outcomeOf = async (act: () => unknown, ms = 10000) => {
+    const n = h.events.outcomes.length;
+    await act();
+    await until(() => h.events.outcomes.length > n, ms, 50);
+    return h.events.outcomes.length > n ? h.events.outcomes[n] : 'no end';
+  };
 
   clearEvents(h);
   const unreachable = 'http://localhost:8099/nothing'; // nothing listens there
@@ -878,9 +886,9 @@ async function errors(h: Harness) {
   r.check('network error', gotNetwork && network?.kind === 'network', network);
   r.check('url is the failed url', h.state().url === unreachable, h.state());
   r.check(
-    'onLoadEnd without onLoad after a failure',
-    h.events.loads.includes('end') && !h.events.loads.includes('load'),
-    h.events.loads
+    'a failed load ends once, as failed',
+    JSON.stringify(h.events.outcomes) === '["failed"]',
+    { loads: h.events.loads, outcomes: h.events.outcomes }
   );
   r.check(
     'the error screen is shown after a failure',
@@ -888,11 +896,16 @@ async function errors(h: Harness) {
   );
 
   clearEvents(h);
-  h.load(fresh(h, '/status/404'));
-  await waitFor(h, () => h.events.httpErrors.length > 0, 10000);
-  const http = h.events.httpErrors[0];
-  r.check('http error with the status code', http?.statusCode === 404, http);
-  r.check('an http error is not an onError', h.events.errors.length === 0, h.events.errors);
+  const notFound = await outcomeOf(() => h.load(fresh(h, '/status/404')));
+  await waitFor(h, () => h.events.errors.length > 0, 3000);
+  const http = h.events.errors[0];
+  r.check(
+    'http error with the status code',
+    http?.kind === 'http' && http.statusCode === 404,
+    http
+  );
+  r.check('an http error is the only error', h.events.errors.length === 1, h.events.errors);
+  r.check('a 404 page ends as finished', notFound === 'finished', notFound);
   r.check(
     'the error screen goes away on the next load',
     await waitFor(h, () => !h.events.overlay.error, 3000)
@@ -901,12 +914,51 @@ async function errors(h: Harness) {
   clearEvents(h);
   await openPage(h, fresh(h, '/subresource-404.html'));
   await sleep(1000);
+  r.check('subresource 404s are not reported', h.events.errors.length === 0, h.events.errors);
   r.check(
-    'subresource 404s are not reported',
-    h.events.httpErrors.length === 0,
-    h.events.httpErrors
+    'a clean load ends as finished',
+    JSON.stringify(h.events.outcomes) === '["finished"]',
+    h.events.outcomes
   );
-  r.check('onLoad after a clean load', h.events.loads.includes('load'), h.events.loads);
+
+  // Loads that never show a page end as cancelled. Android before 146 reports nothing for them: they never commit.
+  const stopped = await outcomeOf(async () => {
+    h.load(fresh(h, '/slow?ms=3000'));
+    await waitFor(h, (s) => s.loading, 3000);
+    h.ref.current?.stopLoading();
+  }, 5000);
+  await checkUnlessOldWebView(
+    h,
+    r,
+    'a stopped load ends as cancelled',
+    stopped === 'cancelled',
+    stopped
+  );
+  const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
+  await checkUnlessOldWebView(
+    h,
+    r,
+    'a 204 ends as cancelled',
+    noContent === 'cancelled',
+    noContent
+  );
+  h.setRules([
+    { path: ['/blocked'], action: 'block' },
+    { scheme: ['http', 'https'], action: 'allow' },
+  ]);
+  await sleep(300);
+  const blocked = await outcomeOf(
+    () => h.ref.current?.evaluate(`location.href = '/redirect?to=/blocked'`),
+    5000
+  );
+  await checkUnlessOldWebView(
+    h,
+    r,
+    'a redirect the rules block ends as cancelled',
+    blocked === 'cancelled',
+    blocked
+  );
+  h.setRules(undefined);
 
   clearEvents(h);
   h.load('https://localhost:8443/'); // the test server's self-signed certificate
@@ -916,16 +968,21 @@ async function errors(h: Harness) {
   clearEvents(h);
   const flaky = `${h.pages}/flaky?key=${Date.now()}`;
   h.load(flaky);
-  await waitFor(h, () => h.events.httpErrors.length > 0 && idle(h.state()), 10000);
-  r.check('503 reported', h.events.httpErrors[0]?.statusCode === 503, h.events.httpErrors[0]);
-  h.events.loads.length = 0;
+  await waitFor(h, () => h.events.errors.length > 0 && idle(h.state()), 10000);
+  const unavailable = h.events.errors[0];
+  r.check(
+    '503 reported',
+    unavailable?.kind === 'http' && unavailable.statusCode === 503,
+    unavailable
+  );
+  h.events.outcomes.length = 0;
   h.ref.current?.reload();
-  const reloaded = await waitFor(h, () => h.events.loads.includes('load'), 10000);
+  const reloaded = await waitFor(h, () => h.events.outcomes.includes('finished'), 10000);
   r.check('reload after an error loads the page', reloaded && h.state().url === flaky, {
-    loads: h.events.loads,
+    outcomes: h.events.outcomes,
     state: h.state(),
   });
-  r.check('the reload reports no new error', h.events.httpErrors.length === 1, h.events.httpErrors);
+  r.check('the reload reports no new error', h.events.errors.length === 1, h.events.errors);
 
   // Page-initiated, then through a redirect: on Android these reach the SSL check through shouldOverrideUrlLoading.
   for (const [name, to, failed] of [
@@ -1802,10 +1859,21 @@ async function downloadsSuite(h: Harness) {
     // Android fetches it again and the server then redirects to another host; iOS keeps WebKit's first response.
     ['moved', 'moved.txt', Platform.OS === 'android' ? 'downloaded moved.txt' : 'first response'],
   ] as const) {
-    const before = h.events.downloads.length;
+    const [before, outcomes] = [h.events.downloads.length, h.events.outcomes.length];
     await click(h, id);
     const done = await waitFor(h, () => h.events.downloads.length > before, 20000);
     const download = h.events.downloads[before];
+    // Android before 146 reports no load for it: it never commits.
+    if (id === 'attachment') {
+      await waitFor(h, () => h.events.outcomes.length > outcomes, 2000);
+      await checkUnlessOldWebView(
+        h,
+        r,
+        'the attachment load ends as cancelled',
+        h.events.outcomes.length === outcomes + 1 && h.events.outcomes[outcomes] === 'cancelled',
+        h.events.outcomes.slice(outcomes)
+      );
+    }
     // Android's DownloadListener does not pass the link's `download` attribute: data:/blob: names are guessed.
     const nameOk =
       Platform.OS === 'android' && (id === 'blob' || id === 'data')
@@ -2251,7 +2319,7 @@ async function network(h: Harness) {
 
 /**
  * Back and forward restored from the back-forward cache (WebKit always, Android by default): the restore itself, the
- * navigation state, one onLoadStart/onLoad/onLoadEnd per restore, the bridge both ways, and the rules on the restored
+ * navigation state, one onLoadStart/onLoadEnd per restore, the bridge both ways, and the rules on the restored
  * page.
  */
 async function bfcache(h: Harness) {
@@ -2288,9 +2356,10 @@ async function bfcache(h: Harness) {
       s
     );
     r.check(
-      `${name}: one load start and end`,
-      JSON.stringify(h.events.loads) === '["start","load","end"]',
-      h.events.loads
+      `${name}: one load start and end, finished`,
+      JSON.stringify(h.events.loads) === '["start","end"]' &&
+        JSON.stringify(h.events.outcomes) === '["finished"]',
+      { loads: h.events.loads, outcomes: h.events.outcomes }
     );
     const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
     r.check(`${name}: RN -> page call`, sum === 5, sum);

@@ -37,7 +37,7 @@ jest.mock('expo', () => {
 async function render(props: Partial<WebViewProps>) {
   const root = createRoot();
   await act(async () =>
-    root.render(<WebView source={{ uri: 'https://example.com' }} onLoad={() => {}} {...props} />)
+    root.render(<WebView source={{ uri: 'https://example.com' }} onLoadEnd={() => {}} {...props} />)
   );
   const native = root.container.queryAll((node) => node.type === 'MinimalWebView');
   return { native: native[0]?.props };
@@ -49,56 +49,102 @@ describe('WebView', () => {
   it('forwards ViewProps to the native view, but not its own props', async () => {
     const { native } = await render(viewProps);
     expect(native).toMatchObject(viewProps);
-    expect(native).not.toHaveProperty('onLoad');
+    expect(native).not.toHaveProperty('onLoadEnd');
   });
 });
 
-describe('errors', () => {
-  async function renderErrors() {
-    const onError = jest.fn();
-    const onHttpError = jest.fn();
+const state = (loading: boolean, outcome: NavigationState['outcome'] = null): NavigationState => ({
+  url: 'https://example.com/',
+  pendingUrl: null,
+  title: '',
+  loading,
+  progress: 0,
+  canGoBack: false,
+  canGoForward: false,
+  outcome,
+});
+
+describe('load events and errors', () => {
+  async function renderLoads() {
+    const seen: string[] = [];
     const root = createRoot();
     await act(async () =>
       root.render(
         <WebView
           source={{ uri: 'https://example.com' }}
-          onError={onError}
-          onHttpError={onHttpError}
+          onError={(event) => seen.push(`error:${event.kind}`)}
+          onLoadStart={() => seen.push('start')}
+          onLoadEnd={({ outcome }) => seen.push(`end:${String(outcome)}`)}
         />
       )
     );
-    const fire = (nativeEvent: Record<string, unknown>) =>
-      act(async () => {
-        const [native] = root.container.queryAll((node) => node.type === 'MinimalWebView');
-        const props = native?.props as
-          { onError: (event: { nativeEvent: Record<string, unknown> }) => void } | undefined;
-        props?.onError({ nativeEvent });
-      });
-    return { onError, onHttpError, fire };
+    const props = () =>
+      root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
+        onError: (event: { nativeEvent: Record<string, unknown> }) => void;
+        onNavigationState: (event: { nativeEvent: NavigationState }) => void;
+      };
+    const fireState = (nativeEvent: NavigationState) =>
+      act(async () => props().onNavigationState({ nativeEvent }));
+    const fireError = (nativeEvent: Record<string, unknown>) =>
+      act(async () => props().onError({ nativeEvent }));
+    return { seen, fireState, fireError };
   }
 
-  it('reports an HTTP status to onHttpError only', async () => {
-    const { onError, onHttpError, fire } = await renderErrors();
-    await fire({ kind: 'http', url: 'https://example.com/x', code: 404, description: 'Not Found' });
-    expect(onHttpError).toHaveBeenCalledWith({
-      url: 'https://example.com/x',
-      statusCode: 404,
-      description: 'Not Found',
-    });
-    expect(onError).not.toHaveBeenCalled();
+  it('fires start and end on the edges of loading, with the outcome native set', async () => {
+    const { seen, fireState } = await renderLoads();
+    await fireState(state(true));
+    await fireState({ ...state(true), progress: 0.5 });
+    await fireState(state(false, 'finished'));
+    await fireState({ ...state(false, 'finished'), title: 'Title' });
+    expect(seen).toEqual(['start', 'end:finished']);
   });
 
-  it('reports a failed load to onError only', async () => {
-    const { onError, onHttpError, fire } = await renderErrors();
+  it('an error before the end still gives one end', async () => {
+    const { seen, fireState, fireError } = await renderLoads();
+    await fireState(state(true));
+    await fireError({
+      kind: 'network',
+      url: 'https://x.invalid/',
+      code: -1003,
+      description: 'dns',
+    });
+    await fireState(state(false, 'failed'));
+    expect(seen).toEqual(['start', 'error:network', 'end:failed']);
+  });
+
+  it('reports an HTTP status as an http error with its status code, without a description', async () => {
+    const onError = jest.fn();
+    const { native } = await render({ onError });
+    await act(async () =>
+      (native as { onError: (event: unknown) => void }).onError({
+        nativeEvent: {
+          kind: 'http',
+          url: 'https://example.com/x',
+          code: 404,
+          description: 'Not Found',
+        },
+      })
+    );
+    expect(onError).toHaveBeenCalledWith({
+      kind: 'http',
+      url: 'https://example.com/x',
+      statusCode: 404,
+    });
+  });
+
+  it('reports a failed load as it came', async () => {
+    const onError = jest.fn();
+    const { native } = await render({ onError });
     const failure = {
       kind: 'network',
       url: 'https://example.com/',
       code: -1009,
       description: 'offline',
     };
-    await fire(failure);
+    await act(async () =>
+      (native as { onError: (event: unknown) => void }).onError({ nativeEvent: failure })
+    );
     expect(onError).toHaveBeenCalledWith(failure);
-    expect(onHttpError).not.toHaveBeenCalled();
   });
 });
 
@@ -488,8 +534,16 @@ describe('navigation state across remounts', () => {
       call: 'clearCache',
       args: '[true]',
     });
+    const stale = ref.current;
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
+    for (const call of [
+      () => stale?.evaluate('1'),
+      () => stale?.get('scrollView.bounces'),
+      () => stale?.call('clearCache'),
+      () => stale?.hook('sample', 'count'),
+    ])
+      await expect(call()).rejects.toMatchObject({ code: 'unavailable' });
   });
 
   it('getState and subscribe follow attach, detach and re-attach; detach resets to the initial state', async () => {

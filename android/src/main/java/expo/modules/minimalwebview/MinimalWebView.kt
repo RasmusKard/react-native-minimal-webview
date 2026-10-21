@@ -111,6 +111,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal var title = ""
   internal var loading = false
   internal var progress = 0.0
+  /** How the current load ends so far, "finished", "failed" or "cancelled"; JS sees it only once `loading` is false. */
+  internal var outcome: String? = null
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
 
@@ -352,13 +354,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     dead.destroy()
     pendingRecovery = Recovery(reload, history)
     // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
+    if (loading) outcome = "failed"
     loading = false
     pendingUrl = null
     progress = 0.0
     refresher.pageFinished()
     onProcessGone(mapOf("didCrash" to didCrash, "recovered" to reload))
     if (canRecover()) recover() else waiting += this
-    stateChanged() // after onProcessGone: JS ends the cut-off load as failed
+    stateChanged() // after onProcessGone: the cut-off load ends as failed
   }
 
   private fun canRecover() = isAttachedToWindow && !inBackground
@@ -395,6 +398,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {
+    // A network or SSL error fails the load in progress; one with no load JS saw start (an SSL error before 146) doesn't.
+    if (kind != "http" && loading) outcome = "failed"
     onError(mapOf("kind" to kind, "url" to url, "code" to code, "description" to description))
   }
 
@@ -419,7 +424,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       "loading" to loading,
       "progress" to progress,
       "canGoBack" to webView.canGoBack(),
-      "canGoForward" to webView.canGoForward()
+      "canGoForward" to webView.canGoForward(),
+      "outcome" to if (loading) null else outcome
     )
     if (state == lastEmitted) return
     lastEmitted = state
