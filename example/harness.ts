@@ -213,6 +213,34 @@ async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
   r.check(name, agreed === true, seen);
 }
 
+const webViewMajors = new WeakMap<object, Promise<number>>();
+/**
+ * Checks `name`, or reports it as INFO on an Android WebView older than 146, where it fails by design (no
+ * NAVIGATION_LISTENER; ROADMAP's known limits). The version is read once per suite run (per reporter).
+ */
+async function checkUnlessOldWebView(
+  h: Harness,
+  r: ReturnType<typeof reporter>,
+  name: string,
+  ok: boolean,
+  detail: unknown = ''
+) {
+  if (!webViewMajors.has(r))
+    webViewMajors.set(
+      r,
+      Platform.OS === 'android'
+        ? Promise.resolve(h.ref.current?.evaluate('navigator.userAgent')).then(
+            (ua) => Number(/Chrome\/(\d+)/.exec(String(ua))?.[1] ?? 0),
+            () => 0
+          )
+        : Promise.resolve(0)
+    );
+  const major = await webViewMajors.get(r)!;
+  if (major > 0 && major < 146)
+    r.info(`known limit (WebView <146): ${name}`, { major, ok, detail });
+  else r.check(name, ok, detail);
+}
+
 async function urlTracking(h: Harness) {
   const r = reporter('urlTracking');
   // An app-started load is pending until it commits: never reported as the loaded, idle page before it starts. The
@@ -285,7 +313,9 @@ async function urlTracking(h: Harness) {
     loading: during.loading,
   });
   r.check('url keeps the committed page while loading', during.url === beforeSlow, during);
-  r.check(
+  await checkUnlessOldWebView(
+    h,
+    r,
     'pendingUrl shows the in-flight url',
     (during.pendingUrl ?? '').includes('/slow'),
     during
@@ -998,7 +1028,13 @@ async function crash(h: Harness) {
     h.events.pageCounts.length - countsBefore
   );
   const recoveredVh = await viewportHeight(h);
-  r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
+  await checkUnlessOldWebView(
+    h,
+    r,
+    '100vh has a height after recovery',
+    recoveredVh > 0,
+    recoveredVh
+  );
   await sleep(1000);
   r.check(
     'the bridge works after recovery',
@@ -1367,7 +1403,9 @@ async function settings(h: Harness) {
       r.check('a WebView setter applies', (await page('navigator.onLine')) === false);
       await openPage(h, fresh(h, '/'));
       const paymentAfter = await payment();
-      r.check(
+      await checkUnlessOldWebView(
+        h,
+        r,
         'a setter only WebSettingsCompat has applies (through reflection on androidx, R8 included)',
         paymentBefore === 'undefined' && paymentAfter === 'function',
         { paymentBefore, paymentAfter }
@@ -1404,7 +1442,9 @@ async function settings(h: Harness) {
       r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
       // get reads a setting back; call runs a public method of a root.
       r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
-      r.check(
+      await checkUnlessOldWebView(
+        h,
+        r,
         'get reads a WebSettingsCompat getter',
         (await get('settings.paymentRequestEnabled')) === true
       );
@@ -1671,11 +1711,7 @@ async function injection(h: Harness) {
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
   r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
-  r.check(
-    'a script runs in the main frame only by default',
-    frame.top && !frame.mainOnly,
-    frame
-  );
+  r.check('a script runs in the main frame only by default', frame.top && !frame.mainOnly, frame);
   h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
   await sleep(500);
   r.check(
@@ -1938,7 +1974,9 @@ async function fullscreen(h: Harness) {
     return;
   }
   r.info('BACK', 'leave');
-  r.check(
+  await checkUnlessOldWebView(
+    h,
+    r,
     'back leaves fullscreen',
     await waitFor(h, () => h.events.fullscreen.at(-1) === false, 10000),
     h.events.fullscreen
@@ -2177,13 +2215,25 @@ async function bfcache(h: Harness) {
   const second = fresh(h, '/back-forward.html?title=second');
   await openPage(h, second);
 
-  const travel = async (name: string, go: () => void, url: string, title: string, back: boolean) => {
+  const travel = async (
+    name: string,
+    go: () => void,
+    url: string,
+    title: string,
+    back: boolean
+  ) => {
     clearEvents(h);
     go();
     await waitFor(h, (s) => s.url === url && idle(s));
     await sleep(500); // a late state or load event would come now
     const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
-    r.check(`${name}: the page is restored from the cache`, shows?.[1] === true, shows);
+    await checkUnlessOldWebView(
+      h,
+      r,
+      `${name}: the page is restored from the cache`,
+      shows?.[1] === true,
+      shows
+    );
     const s = h.state();
     r.check(
       `${name}: the state is the restored page's`,

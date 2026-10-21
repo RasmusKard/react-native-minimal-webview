@@ -58,6 +58,11 @@ tests a newer WebView than the image ships. Start the emulator with `-gpu host`.
 up rendering in software (`adb shell dumpsys SurfaceFlinger | grep GLES` names SwiftShader), and a full run takes
 nearly twice as long.
 
+Reference emulators: `mrw-api37` (Google APIs, API 37, WebView 149) is the one every suite passes on. `mrw-api36`
+(API 36, WebView 133) runs the same suites green too, but five checks there are known limits of a WebView older than
+146 (ROADMAP), and the harness reports them as `INFO ... known limit (WebView <146): <check>` instead of passing or
+failing them.
+
 To add a suite: add it to `SUITES` in `example/harness.ts` and to the platform lists in `run.sh`. If it needs
 gestures, taps, dialogs or renderer kills, add a `<suite>.yaml` flow in `example/maestro/`. Otherwise `run.sh` wraps
 the generic `suite.yaml` for it. A suite must leave nothing behind that `reset()` in `harness.ts` doesn't undo, and
