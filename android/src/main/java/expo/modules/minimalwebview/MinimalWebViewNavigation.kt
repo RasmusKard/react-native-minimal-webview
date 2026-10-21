@@ -18,7 +18,7 @@ internal class MinimalWebViewNavigation(
 ) {
   private val webView get() = owner.webView
 
-  // URLs an `ask` allowed in the current navigation chain: their redirects back to them are not asked again.
+  // URLs an `ask` allowed in this Document: a redirect back to one is not asked again (a later tap on it is).
   private val askedAndAllowed = mutableSetOf<String>()
 
   // New windows still waiting for their first URL (createWindow).
@@ -35,11 +35,10 @@ internal class MinimalWebViewNavigation(
 
   /** Returns true to cancel the navigation (shouldOverrideUrlLoading's meaning). */
   fun decide(request: NavigationRules.Request): Boolean {
-    val decision = NavigationRules.decide(owner.navigationRules, request)
-    if (decision.action == "ask" && request.url in askedAndAllowed) {
-      notifyNavigation(request, "allow", decision.rule)
-      return false
-    }
+    // `ask` works only for the main frame: Android can't hold a navigation, so it is cancelled and reissued.
+    val canAsk = request.mainFrame && "navigationRequest" in owner.requestHandlers
+    val asked = if (request.isRedirect) askedAndAllowed else emptySet()
+    val decision = NavigationRules.decide(owner.navigationRules, request, asked, canAsk)
     // An external link that cannot be opened is reported as blocked.
     val action = when (decision.action) {
       "ask" -> return true.also { ask(request, decision.rule) }
@@ -62,25 +61,15 @@ internal class MinimalWebViewNavigation(
 
   // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the gesture flag and the redirect chain.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
-    if (!request.mainFrame) {
-      Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
-      notifyNavigation(request, "block", rule)
-      return
-    }
-    // Without an onNavigationRequest prop nobody could allow it.
-    if ("navigationRequest" !in owner.requestHandlers) {
-      notifyNavigation(request, "block", rule)
-      return
-    }
     val referrer = webView.url
     val id = owner.askWithId("core.navigationRequest", fields(request)) { answer ->
-      val action = answer as? String ?: "block"
+      val action = NavigationRules.answer(answer)
       if (action == "allow") {
         askedAndAllowed += request.url
         reissue(request.url, referrer)
       }
       val opened = action != "external" || openExternal(request.url)
-      notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
+      notifyNavigation(request, if (opened) action else "block", rule)
     }
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
     owner.mainHandler.postDelayed({ owner.cancelAsk(id) }, ASK_TIMEOUT_MS)
@@ -146,7 +135,8 @@ internal class MinimalWebViewNavigation(
     val fallback = intent.getStringExtra("browser_fallback_url")?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
       ?: return failed("no app opens $url", error)
     if (!decide(NavigationRules.Request(fallback, true, false, false))) webView.loadUrl(fallback)
-    return true
+    // Nothing opened externally: the intent is reported as blocked, the fallback by its own decision.
+    return false
   }
 
   // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed.
@@ -180,4 +170,3 @@ internal class MinimalWebViewNavigation(
 
 private const val ASK_TIMEOUT_MS = 1000L
 private const val NEW_WINDOW_TIMEOUT_MS = 5000L
-private val ACTIONS = setOf("allow", "block", "external")

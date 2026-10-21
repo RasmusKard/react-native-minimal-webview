@@ -1,5 +1,5 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to an internal scheme (about, blob, data, javascript) or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false, asked [] (URLs an `ask` already allowed) and canAsk true (something can answer an `ask`). `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to an internal scheme (about, blob, data, javascript) or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules (null or []), http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks; a rule action other than allow, block, external or ask blocks; (4) an `ask` blocks when canAsk is false, else allows when the URL is in asked. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path, or any path of a URL without an authority (`myapp:/abs`), counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`. `answers`: an `ask` answer of allow, block or external stands; anything else blocks.",
   "rulesets": {
     "app": [
       {
@@ -73,6 +73,21 @@
       },
       {
         "query": ["a%20b=c%2Fd"],
+        "action": "block"
+      },
+      {
+        "action": "allow"
+      }
+    ],
+    "empty": [],
+    "unknownAction": [
+      {
+        "action": "deny"
+      }
+    ],
+    "paths": [
+      {
+        "path": ["/abs", "/etc"],
         "action": "block"
       },
       {
@@ -777,6 +792,154 @@
         "action": "external",
         "rule": 0
       }
+    },
+    {
+      "name": "empty rules are the same as none",
+      "rules": "empty",
+      "request": {
+        "url": "tel:+3725551234"
+      },
+      "expect": {
+        "action": "external",
+        "rule": null
+      }
+    },
+    {
+      "name": "an unknown action blocks",
+      "rules": "unknownAction",
+      "request": {
+        "url": "https://example.com/"
+      },
+      "expect": {
+        "action": "block",
+        "rule": 0
+      }
+    },
+    {
+      "name": "path: a URL without an authority has the path /",
+      "rules": "paths",
+      "request": {
+        "url": "myapp:/abs/path"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 1
+      }
+    },
+    {
+      "name": "path: an empty authority keeps the path",
+      "rules": "paths",
+      "request": {
+        "url": "file:///etc/hosts"
+      },
+      "expect": {
+        "action": "block",
+        "rule": 0
+      }
+    },
+    {
+      "name": "ask: a URL an ask allowed is allowed",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkout/pay",
+        "asked": ["https://shop.example.com/checkout/pay"]
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 1
+      }
+    },
+    {
+      "name": "ask: another allowed URL doesn't count",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkout/pay",
+        "asked": ["https://shop.example.com/checkout"]
+      },
+      "expect": {
+        "action": "ask",
+        "rule": 1
+      }
+    },
+    {
+      "name": "ask: nothing can answer it, so it blocks",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkout/pay",
+        "canAsk": false
+      },
+      "expect": {
+        "action": "block",
+        "rule": 1
+      }
+    },
+    {
+      "name": "ask: canAsk false blocks an allowed URL too",
+      "rules": "app",
+      "request": {
+        "url": "https://shop.example.com/checkout/pay",
+        "asked": ["https://shop.example.com/checkout/pay"],
+        "canAsk": false
+      },
+      "expect": {
+        "action": "block",
+        "rule": 1
+      }
+    },
+    {
+      "name": "ask: asked and canAsk leave allow alone",
+      "rules": "app",
+      "request": {
+        "url": "https://example.com/news",
+        "asked": ["https://example.com/news"],
+        "canAsk": false
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "ask: asked leaves block alone",
+      "rules": "catchAll",
+      "request": {
+        "url": "https://example.com/",
+        "asked": ["https://example.com/"]
+      },
+      "expect": {
+        "action": "block",
+        "rule": 0
+      }
+    }
+  ],
+  "answers": [
+    {
+      "answer": "allow",
+      "action": "allow"
+    },
+    {
+      "answer": "block",
+      "action": "block"
+    },
+    {
+      "answer": "external",
+      "action": "external"
+    },
+    {
+      "answer": "ask",
+      "action": "block"
+    },
+    {
+      "answer": "Allow",
+      "action": "block"
+    },
+    {
+      "answer": null,
+      "action": "block"
+    },
+    {
+      "answer": 1,
+      "action": "block"
     }
   ]
 }
