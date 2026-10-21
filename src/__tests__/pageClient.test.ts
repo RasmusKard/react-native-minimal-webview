@@ -9,7 +9,7 @@ type NativeBridge = {
 
 /** A page on an allowed origin with the Android transport: records what the page sends and its pageshow listener. */
 function page(readyState = 'complete') {
-  const sent: { kind: string; id?: string; doc?: string; params?: unknown }[] = [];
+  const sent: { kind: string; id?: string; doc?: string; value?: unknown }[] = [];
   let onDomReady: (() => void) | undefined;
   let onPageShow: ((event: { persisted: boolean }) => void) | undefined;
   const w = {
@@ -82,11 +82,11 @@ describe('page client messages from native', () => {
     await bridge.__receive(
       JSON.stringify({ id: 'n1', doc, kind: 'call', method: 'double', params: 4 })
     );
-    expect(sent.at(-1)).toMatchObject({ kind: 'result', id: 'n1', doc, params: 8 });
+    expect(sent.at(-1)).toMatchObject({ kind: 'result', id: 'n1', doc, value: 8 });
 
     const call = bridge.call('echo', 1);
     const id = sent.at(-1)!.id!;
-    await bridge.__receive(JSON.stringify({ id, doc, kind: 'result', params: 'ok' }));
+    await bridge.__receive(JSON.stringify({ id, doc, kind: 'result', value: 'ok' }));
     await expect(call).resolves.toBe('ok');
   });
 
@@ -100,7 +100,7 @@ describe('page client messages from native', () => {
     await bridge.__receive(
       JSON.stringify({ id: 'n1', doc: 'other', kind: 'call', method: 'double', params: 4 })
     );
-    await bridge.__receive(JSON.stringify({ id, doc: 'other', kind: 'result', params: 'stale' }));
+    await bridge.__receive(JSON.stringify({ id, doc: 'other', kind: 'result', value: 'stale' }));
     expect(sent.map((m) => [m.kind, m.doc])).toEqual([
       ['ready', doc],
       ['call', doc],

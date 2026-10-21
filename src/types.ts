@@ -107,21 +107,57 @@ export type InjectedScript = {
   mainFrameOnly?: boolean;
 };
 
-export type BridgeHandler = (params: unknown) => unknown;
+/**
+ * Who sent a call or event: the page's origin as `location.origin` writes it (`https://example.com:8443`), checked by
+ * native code, not taken from the page. Every allowed origin gets the same trust; a handler scopes itself with this.
+ */
+export type BridgeSender = { origin: string };
 
-/** A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. */
-export type Bridge = {
-  /** Answers `nativeBridge.call(method, params)` from the page. Returns an unsubscribe function. */
-  handle(method: string, handler: BridgeHandler): () => void;
+export type BridgeHandler<Params = unknown, Result = unknown> = (
+  params: Params,
+  sender: BridgeSender
+) => Result | Promise<Result>;
+
+/** What a bridge call rejects with: an `Error` whose `code` says why. */
+export type BridgeCallError = Error & { code: BridgeErrorCode };
+
+/**
+ * The methods either side may call, for `createBridge<Methods>`: `{ share: { params: { url: string }; result: boolean } }`.
+ * A `type`, not an `interface` (an interface has no index signature, so it doesn't satisfy `Record`).
+ */
+export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
+/** The events either side may emit, for `createBridge<Methods, Events>`: `{ themeChanged: 'light' | 'dark' }`. */
+export type BridgeEventMap = Record<string, unknown>;
+
+/**
+ * A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. The type arguments
+ * type method names, params, results and payloads (`createBridge<Methods, Events>`); without them all are `unknown`.
+ */
+export type Bridge<
+  Methods extends BridgeMethodMap = BridgeMethodMap,
+  Events extends BridgeEventMap = BridgeEventMap,
+> = {
+  /** Answers `nativeBridge.call(method, params)` from the page; `sender` is the caller's. Returns an unsubscribe function. */
+  handle<M extends keyof Methods & string>(
+    method: M,
+    handler: BridgeHandler<Methods[M]['params'], Methods[M]['result']>
+  ): () => void;
   /**
-   * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown, with an
-   * `Error` whose `code` is a {@link BridgeErrorCode}.
+   * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown with a
+   * {@link BridgeCallError}. `timeoutMs` overrides the bridge's for this call; `0` or `Infinity` means none.
    */
-  call(method: string, params?: unknown): Promise<unknown>;
+  call<M extends keyof Methods & string>(
+    method: M,
+    params?: Methods[M]['params'],
+    options?: { timeoutMs?: number }
+  ): Promise<Methods[M]['result']>;
   /** Fires an event the page listens to with `nativeBridge.on`. */
-  emit(event: string, payload?: unknown): void;
+  emit<E extends keyof Events & string>(event: E, payload?: Events[E]): void;
   /** Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function. */
-  on(event: string, listener: (payload: unknown) => void): () => void;
+  on<E extends keyof Events & string>(
+    event: E,
+    listener: (payload: Events[E], sender: BridgeSender) => void
+  ): () => void;
 };
 
 export type BridgeOptions = {
