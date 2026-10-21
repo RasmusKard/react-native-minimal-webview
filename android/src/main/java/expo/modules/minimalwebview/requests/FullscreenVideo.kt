@@ -7,6 +7,7 @@ import android.webkit.WebChromeClient.CustomViewCallback
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -22,6 +23,9 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
   private var shown: Pair<View, CustomViewCallback>? = null
   private var backdrop: FrameLayout? = null
   private var backCallback: OnBackPressedCallback? = null
+  // The app's bars before fullscreen, restored on exit: an immersive app keeps its bars hidden.
+  private var barsShownBefore = 0
+  private var barsBehaviorBefore: Int? = null
 
   /** Returns false when there is no window to cover; the caller then tells WebView the view is hidden. */
   fun onShowCustomView(view: View, callback: CustomViewCallback): Boolean {
@@ -39,6 +43,11 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
       }.also { component.onBackPressedDispatcher.addCallback(it) }
     }
     controller()?.apply {
+      val insets = ViewCompat.getRootWindowInsets(owner.webView)
+      barsShownBefore = listOf(WindowInsetsCompat.Type.statusBars(), WindowInsetsCompat.Type.navigationBars())
+        .filter { insets?.isVisible(it) ?: true }
+        .fold(0) { mask, type -> mask or type }
+      barsBehaviorBefore = systemBarsBehavior
       hide(WindowInsetsCompat.Type.systemBars())
       systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
@@ -61,7 +70,10 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
     backdrop?.let { (it.parent as? ViewGroup)?.removeView(it) }
     backdrop?.removeAllViews()
     backdrop = null
-    controller()?.show(WindowInsetsCompat.Type.systemBars())
+    controller()?.apply {
+      show(barsShownBefore)
+      barsBehaviorBefore?.let { systemBarsBehavior = it }
+    }
     backCallback?.remove()
     backCallback = null
     report(false)

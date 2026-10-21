@@ -2,6 +2,7 @@ package expo.modules.minimalwebview
 
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
+import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.minimalwebview.DocumentScope.End
@@ -59,6 +60,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, _, isMainFrame, proxy ->
       // Main frame only, like iOS. The origin rules already filtered the sender.
       if (!isMainFrame) return@addWebMessageListener
+      // An ArrayBuffer has no string data (`data` throws); iOS drops a non-string message too.
+      if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
       replyProxy = proxy
       onBridge(mapOf("message" to message.data))
     }

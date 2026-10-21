@@ -26,7 +26,9 @@ Android it is fetched again with the page's cookies and user agent into the cach
 body, the `headers` prop and HTTP auth credentials don't go with an Android fetch, so such a download can fail
 or save the wrong file (a login page). The result is `{ uri, filename, mimeType, url }` with a `file://` `uri`, or
 `{ filename, url, reason }` when it failed: `'uri' in result` tells them apart. `url` is the server URL the file came
-from; `null` when the page generated it (`data:` or `blob:` URL).
+from; `null` when the page generated it (`data:` or `blob:` URL). The file is the app's: the core never deletes it.
+The page controls the file, its name and its MIME type, and Android's fetch sends the host's cookies whatever their
+SameSite, so don't open a download as trusted. On Android a download above 100 MB fails.
 
 ## Recipes
 
