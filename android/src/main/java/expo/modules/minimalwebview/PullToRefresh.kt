@@ -2,7 +2,8 @@ package expo.modules.minimalwebview
 
 import android.content.Context
 import android.view.MotionEvent
-import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
@@ -12,18 +13,19 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
  * scrolled.
  */
 internal class PullToRefresh(private val owner: MinimalWebView) {
-  private var layout: SwipeRefreshLayout? = null
   // The page's answer for the current touch; null while it is pending, which holds the pull off. The down event itself
   // must see false: SwipeRefreshLayout only tracks a gesture whose down event it accepted.
   private var innerScrolled: Boolean? = false
   private var touches = 0
 
-  /** A layout that holds [content] (the WebView). */
-  fun wrap(content: View): View = Layout(content.context).apply {
-    addView(content)
+  /** Holds the WebView. SwipeRefreshLayout keeps its first child as its target for good, so a crash swaps the WebView here. */
+  val content = FrameLayout(owner.context)
+
+  /** Always around [content]; the prop sets `isEnabled`. */
+  val layout: SwipeRefreshLayout = Layout(owner.context).apply {
+    addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     setOnRefreshListener { owner.reload() }
     setOnChildScrollUpCallback { _, _ -> owner.webView.canScrollVertically(-1) || innerScrolled != false }
-    layout = this
   }
 
   private fun checkInnerScroller(x: Float, y: Float) {
@@ -33,17 +35,19 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
       if (touch == touches) innerScrolled = result == "true"
     }
     // A busy page answers late: don't hold the pull off for longer than this.
-    owner.webView.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
+    owner.mainHandler.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
   }
 
   /** A load ended: the spinner stops, or it would ignore the next pull. */
   fun pageFinished() {
-    layout?.isRefreshing = false
+    layout.isRefreshing = false
     innerScrolled = false
   }
 
   private inner class Layout(context: Context) : SwipeRefreshLayout(context) {
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+      // Off: no pull, and no question to the page on every touch.
+      if (!isEnabled) return false
       if (event.actionMasked != MotionEvent.ACTION_DOWN) return super.onInterceptTouchEvent(event)
       innerScrolled = false
       val intercepted = super.onInterceptTouchEvent(event)
