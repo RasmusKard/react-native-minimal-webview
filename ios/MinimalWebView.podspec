@@ -12,7 +12,8 @@ Pod::Spec.new do |s|
   s.platforms      = {
     :ios => '16.4'
   }
-  s.source         = { git: package['repository'] }
+  repository = package['repository']
+  s.source         = { git: repository.is_a?(Hash) ? repository['url'] : repository } # npm pkg fix makes it a Hash
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

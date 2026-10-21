@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ['*'] }
+  # React Native and Expo majors are manual SDK moves (docs/development.md); the rest comes grouped, once a month.
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: monthly }
+    groups:
+      npm: { patterns: ['*'] }
+    ignore:
+      - dependency-name: react-native
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: expo
+        update-types: [version-update:semver-major]
+  - package-ecosystem: npm
+    directory: /example
+    schedule: { interval: monthly }
+    groups:
+      npm: { patterns: ['*'] }
+    ignore:
+      - dependency-name: react-native
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: expo
+        update-types: [version-update:semver-major]
