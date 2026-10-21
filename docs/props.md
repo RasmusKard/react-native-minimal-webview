@@ -26,7 +26,7 @@ in the [navigation state](navigation-state.md).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back
 through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A
-throw or rejection rejects with code `ERR_EVALUATE`, and a navigation before the script finishes with `navigated`. The
+throw or rejection rejects with code `ERR_EVALUATE`, and a navigation or crash before the script finishes with `navigated`. The
 result is whatever the page's own JS returns, so treat it as page data. On Android it comes back through a global that
 pages see, `window.nativeEvaluateResult` (see [Security defaults](security.md)).
 

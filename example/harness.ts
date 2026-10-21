@@ -1852,13 +1852,34 @@ async function fullscreen(h: Harness) {
   const active = async () =>
     (await h.ref.current?.evaluate('document.fullscreenElement !== null')) === true;
   const becomes = async (want: boolean) => !!(await until(async () => (await active()) === want));
-  r.info('TAP', await tapPoint(h, 'fullscreen'));
+  const lines = await pageLog(h, async () => r.info('TAP', await tapPoint(h, 'fullscreen')));
   const entered = await becomes(true);
-  r.check('fullscreen works without onFullscreenChange', entered);
+  r.check('fullscreen works without onFullscreenChange', entered, lines);
   if (entered) {
     r.info('BACK', 'leave');
     r.check('back leaves it', await becomes(false));
   }
+
+  // A renderer crash ends the Document: the fullscreen view, the back handler and the hidden bars go without
+  // Chromium's onHideCustomView, which a dead renderer never sends. Last, because recovery replaces the WebView.
+  h.setProps({});
+  await sleep(300);
+  r.info('TAP', await tapPoint(h, 'fullscreen'));
+  await waitFor(h, () => h.events.fullscreen.at(-1) === true, 10000);
+  const [gone, loads] = [h.events.gone.length, h.events.loads.length];
+  r.info('KILL', 'in fullscreen');
+  await waitFor(h, () => h.events.gone.length > gone, 15000);
+  r.check(
+    'a crash leaves fullscreen',
+    await waitFor(h, () => h.events.fullscreen.at(-1) === false, 5000),
+    h.events.fullscreen
+  );
+  // The recovery load: the state reads idle until it starts, so wait for its end event, as the crash suite does.
+  await waitFor(
+    h,
+    (s) => h.events.loads.slice(loads).includes('end') && s.url.includes('/media.html') && idle(s),
+    15000
+  );
   r.done();
 }
 
