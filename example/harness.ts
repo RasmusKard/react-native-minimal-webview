@@ -1993,6 +1993,21 @@ async function network(h: Harness) {
     native.includes('fromPage='),
     native.slice(0, 200)
   );
+  // A cookie the page deletes (a logout) leaves native too, so the next source load doesn't bring it back.
+  await h.ref.current?.evaluate(
+    "document.cookie = 'fromPage=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'"
+  );
+  await until(
+    async () =>
+      !(await fetch(`${h.pages}/cookies`).then((res) => res.text())).includes('fromPage='),
+    5000
+  );
+  await openPage(h, fresh(h, '/cookies'));
+  r.check(
+    'a cookie the page deletes stays deleted after the next source load',
+    !(await text(h, 'cookies')).includes('fromPage='),
+    await text(h, 'cookies')
+  );
 
   if (Platform.OS === 'android') {
     await openPage(h, fresh(h, '/media.html'));
