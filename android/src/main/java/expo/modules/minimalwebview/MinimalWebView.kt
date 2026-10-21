@@ -116,8 +116,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
-    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
-      val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty(), contentLength)
+    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+      val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
       if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
