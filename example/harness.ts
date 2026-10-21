@@ -497,6 +497,10 @@ async function bridge(h: Harness) {
     thrown.every((c) => c === 'ERR_EVALUATE'),
     thrown
   );
+  const boom = await evaluate(`(() => { throw new Error('boom') })()`)?.catch(
+    (error: unknown) => (error as Error).message
+  );
+  r.check("evaluate rejects with the thrown error's message", String(boom).includes('boom'), boom);
 
   r.check('RN -> page call', (await h.bridge.call('sum', { a: 2, b: 3 })) === 5);
   r.check('RN -> page awaits a page Promise', (await h.bridge.call('pageSlow')) === 'late');
@@ -566,6 +570,15 @@ async function bridge(h: Harness) {
   );
   const blocked = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('calls to a disallowed page time out', blocked === 'timeout', blocked);
+
+  if (Platform.OS === 'ios') {
+    // The Document ends at unmount, from invalidate: deinit, the fallback, can no longer reject (its self is nil).
+    const unmounted = evaluate('new Promise(() => {})')?.catch(errorCode);
+    await sleep(200);
+    h.remount();
+    const closed = await Promise.race([unmounted, sleep(3000).then(() => 'still pending')]);
+    r.check('unmount rejects an evaluate in flight', closed === 'navigated', closed);
+  }
   r.done();
 }
 
