@@ -187,8 +187,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
+  /// The ref's reload: an explicit retry starts the crash-loop guard over, like a new source. Recovery uses reload().
+  func retry() {
+    crashTimes = []
+    reload()
+  }
+
   func reload() {
-    crashTimes = [] // an explicit retry starts the crash-loop guard over, like a new source
     if onPostSource, let source {
       load(source)
     } else if let failedUrl, let target = URL(string: failedUrl) {

@@ -345,8 +345,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     document.end(End.CRASHED)
     detachHooks()
     val dead = webView
-    // A restored entry doesn't carry source.headers, so a source page that needs them reloads through load(source).
-    val restorable = !(showsSource(source, url) && !source?.headers.isNullOrEmpty())
+    // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
+    val restorable = !showsSource(source, url)
     val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
     refresher.content.removeView(dead)
     dead.destroy()
@@ -476,5 +476,5 @@ internal fun crashAllowsReload(times: ArrayDeque<Long>, now: Long): Boolean {
 // ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
 private const val MAX_CRASHES_PER_WINDOW = 3
 private const val CRASH_WINDOW_MS = 60_000L
-private const val SAME_CRASH_MS = 1_000L
+private const val SAME_CRASH_MS = 100L
 private const val FRAME_MS = 16L

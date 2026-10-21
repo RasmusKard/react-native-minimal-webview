@@ -10,11 +10,11 @@ class CrashLoopTest {
     val times = ArrayDeque<Long>()
     val cases = listOf(
       0L to true,
-      200L to true, // another WebView's report of the same death
+      50L to true, // another WebView's report of the same death
       5_000L to true,
       10_000L to true,
       15_000L to false, // the 4th in 60 s
-      15_500L to false, // the same 4th death, reported again
+      15_050L to false, // the same 4th death, reported again
       80_000L to true // the earlier deaths are out of the window
     )
     for ((now, expected) in cases) assertEquals("at $now", expected, crashAllowsReload(times, now))
