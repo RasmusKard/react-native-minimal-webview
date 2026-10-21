@@ -4,18 +4,12 @@ plugins {
 }
 
 group = 'expo.modules.minimalwebview'
-version = '0.1.0'
 
 android {
   namespace "expo.modules.minimalwebview"
   defaultConfig {
     minSdkVersion 29
-    versionCode 1
-    versionName "0.1.0"
     consumerProguardFiles 'consumer-rules.pro'
-  }
-  lintOptions {
-    abortOnError false
   }
 }
 

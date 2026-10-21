@@ -1,0 +1,21 @@
+name: mutation
+on:
+  pull_request:
+    paths: ['src/bridge/**', 'src/__tests__/**', 'stryker.config.json']
+
+permissions: { contents: read }
+
+concurrency: # a new push cancels the run for the previous one
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Stryker on the bridge files in stryker.config.json; fails below a mutation score of 80.
+  stryker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run mutation

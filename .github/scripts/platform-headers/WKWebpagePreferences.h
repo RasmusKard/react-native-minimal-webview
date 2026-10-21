@@ -1,4 +1,4 @@
-// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKWebpagePreferences.h
+// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKWebpagePreferences.h, iphonesimulator SDK 27.1
 typedef NS_ENUM(NSInteger, WKContentMode) {
     WKContentModeRecommended,
     WKContentModeMobile,

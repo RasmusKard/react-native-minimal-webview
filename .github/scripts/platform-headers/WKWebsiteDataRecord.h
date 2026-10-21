@@ -1,4 +1,4 @@
-// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKWebsiteDataRecord.h
+// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKWebsiteDataRecord.h, iphonesimulator SDK 27.1
 WK_EXTERN NSString * const WKWebsiteDataTypeFetchCache API_AVAILABLE(macos(10.13.4), ios(11.3));
 WK_EXTERN NSString * const WKWebsiteDataTypeDiskCache API_AVAILABLE(macos(10.11), ios(9.0));
 WK_EXTERN NSString * const WKWebsiteDataTypeMemoryCache API_AVAILABLE(macos(10.11), ios(9.0));

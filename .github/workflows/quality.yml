@@ -1,5 +1,9 @@
 name: quality
-on: pull_request
+on:
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+
+permissions: { contents: read }
 
 concurrency:   # a new push cancels the run for the previous one
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,5 +17,4 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx knip   # all but example/ (no baseline): unused files, exports, dependencies, unresolved imports
-      - run: npm run lint:ci
-      - run: npm run mutation
+      - run: npm run lint

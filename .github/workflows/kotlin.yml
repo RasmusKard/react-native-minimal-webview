@@ -1,6 +1,7 @@
 name: kotlin
 on:
   pull_request:
+    paths-ignore: ['**.md', 'docs/**']
   # Only to refresh the Gradle cache that every PR starts from (a PR's own cache stays with that PR), so only when the
   # dependencies change. An older main cache still saves most of the downloads.
   push:
@@ -11,6 +12,8 @@ on:
       - android/build.gradle
       - example/modules/sample-extension/android/build.gradle
       - .github/workflows/kotlin.yml
+
+permissions: { contents: read }
 
 concurrency:   # a new push cancels the run for the previous one
   group: ${{ github.workflow }}-${{ github.ref }}
