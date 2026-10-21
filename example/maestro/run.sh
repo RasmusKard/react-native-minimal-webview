@@ -8,9 +8,8 @@
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
-ANDROID_SUITES="urlTracking navigation reissue bridge backForward bfcache injection errors crash mountSettings settings overlays upload downloads permissions fullscreen ua dialogs sampleExtension ptr network sources"
-IOS_SUITES="urlTracking navigation reissue bridge backForward bfcache injection errors crash mountSettings settings overlays downloads permissions ua dialogs sampleExtension ptr network sources"
-[ $# -eq 0 ] && { [ "$PLATFORM" = android ] && set -- $ANDROID_SUITES || set -- $IOS_SUITES; }
+# No suites named: every key of SUITES in harness.ts, in order (suites that don't apply to a platform skip themselves).
+[ $# -eq 0 ] && set -- $(sed -n '/^export const SUITES/,/^};/s/^  \([A-Za-z]*\).*/\1/p' ../harness.ts)
 if [ "$PLATFORM" = android ]; then
   # Root for the crash suite's renderer kills (it restarts adbd, so before the reverses), then the device's localhost
   # ports to Metro and the test server (http, and https for the SSL check).

@@ -29,7 +29,6 @@ const ROOT = __dirname;
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
-  '.mp4': 'video/mp4',
   '.txt': 'text/plain',
 };
 
@@ -192,13 +191,15 @@ function handle(req, res) {
     );
   } else if (url.pathname === '/driver/kill') {
     // For the crash suite's UI-test driver (Maestro has no shell): kill the page's renderer process.
-    // Android needs `adb root`; on iOS this kills every simulator's WebContent process.
+    // Android needs `adb root`. iOS: the WebContent processes whose parent is the simulator's launchd_sim, whose
+    // command line names `Devices/<udid>` (WebContent's own doesn't).
     const device = q.get('device') ?? '';
     if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
+    const launchd = `pgrep -d, -f 'launchd_sim .*/Devices/${device}'`;
     const [cmd, args] =
       q.get('platform') === 'android'
         ? ['adb', [...(device ? ['-s', device] : []), 'shell', 'pkill -9 -f sandboxed_process']]
-        : ['pkill', ['-9', '-f', 'CoreSimulator.*com.apple.WebKit.WebContent']];
+        : ['sh', ['-c', `pkill -9 -P "$(${launchd})" -f com.apple.WebKit.WebContent`]];
     execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
   } else if (url.pathname === '/harness/next') {
     const suite = queued.get(platform) ?? '';

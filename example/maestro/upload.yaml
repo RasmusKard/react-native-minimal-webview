@@ -5,22 +5,25 @@ env:
 ---
 # Android file chooser: real taps on the page's file input (WebView opens choosers only on a gesture). Six answered by
 # onFileRequest (one never, then one on the next page), two that open the system chooser (back cancels it once it
-# covers the app), one onFileRequest again.
+# covers the app), one onFileRequest again. (iOS skips itself.)
 - runFlow: subflows/launch.yaml
-- repeat:
-    times: 6
+- runFlow:
+    when: { platform: Android }
     commands:
-      - evalScript: ${output.n = (output.n || 0) + 1}
-      - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+      - repeat:
+          times: 6
+          commands:
+            - evalScript: ${output.n = (output.n || 0) + 1}
+            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+            - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
+      - repeat:
+          times: 2
+          commands:
+            - evalScript: ${output.n = output.n + 1}
+            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+            - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
+            - extendedWaitUntil: { notVisible: { id: harness-request }, timeout: 10000 }
+            - back
+      - runFlow: { file: subflows/await.yaml, env: { N: 9 } }
       - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
-- repeat:
-    times: 2
-    commands:
-      - evalScript: ${output.n = output.n + 1}
-      - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
-      - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
-      - extendedWaitUntil: { notVisible: { id: harness-request }, timeout: 10000 }
-      - back
-- runFlow: { file: subflows/await.yaml, env: { N: 9 } }
-- tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
 - runFlow: subflows/finish.yaml

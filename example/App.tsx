@@ -11,7 +11,15 @@ import {
   createWebViewRef,
 } from 'react-native-minimal-webview';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Button,
+  type HostInstance,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { isPageCounterEvent } from 'sample-extension';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
@@ -39,6 +47,7 @@ const events: Harness['events'] = {
   overlay: { error: false },
 };
 const pageEvents: unknown[] = [];
+const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
 
 /** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
@@ -60,6 +69,7 @@ export default function App() {
     onDriverRequest(setDriverRequest);
   }, []);
   const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
+  const webViewBox = useRef<HostInstance>(null);
   const bridge = useMemo(() => {
     const b = createBridge({ allowedOrigins: [PAGES], timeoutMs: 3000 });
     b.handle('echo', (params) => params);
@@ -81,6 +91,7 @@ export default function App() {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
+    webViewOffset,
     // Read live: the harness keeps one harness object per suite, so a closure over `state` would stay stale.
     state: () => ref.getState(),
     remount: () => remount(),
@@ -109,7 +120,12 @@ export default function App() {
   return (
     <View style={styles.container}>
       {/* The error screen recipe in docs/props.md: an overlay the app owns, cleared when the next load starts. */}
-      <View style={styles.webview}>
+      <View
+        ref={webViewBox}
+        style={styles.webview}
+        onLayout={() =>
+          webViewBox.current?.measureInWindow((x, y) => Object.assign(webViewOffset, { x, y }))
+        }>
         <Remountable>
           <WebView
             ref={ref}
