@@ -480,6 +480,14 @@ async function bridge(h: Harness) {
   r.check('page -> RN missing method', notFound.error === 'not_found', notFound);
   const slow = await pageCall(h, 'slow', null);
   r.check('page -> RN call times out', slow.error === 'timeout', slow);
+  const unhandle = h.bridge.handle('sender', (_, sender) => sender);
+  const sender = await pageCall(h, 'sender', null);
+  unhandle();
+  r.check(
+    "page -> RN handler gets the caller's origin from native",
+    (sender.result as { origin?: string } | undefined)?.origin === h.pages,
+    sender
+  );
 
   h.bridge.emit('nativeEvent', { n: 1 });
   const logged = await until(

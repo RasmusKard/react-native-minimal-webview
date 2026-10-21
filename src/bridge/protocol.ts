@@ -3,14 +3,11 @@
 const ERROR_CODES = [
   'timeout',
   'not_found', // no handler for the method
-  'handler_error', // the handler threw or rejected
-  'invalid', // malformed message
+  'handler_error', // the handler threw or rejected; also any code from the page that isn't listed here
   'navigated', // the page navigated or the view went away while the call was pending
   'unavailable', // the platform lacks the needed WebView features
 ] as const;
 export type BridgeErrorCode = (typeof ERROR_CODES)[number];
-
-export type BridgeError = { code: BridgeErrorCode; message: string };
 
 /**
  * `ready`: the page's DOM is parsed (DOMContentLoaded), so its scripts have registered handlers. RN holds its calls and
@@ -24,11 +21,11 @@ export type BridgeError = { code: BridgeErrorCode; message: string };
  * whatever document is current (iOS checks only the origin), so a message posted as a same-origin navigation commits
  * would otherwise reach the new page. Messages are built without it; `send` adds it.
  */
-export type BridgeMessage = { id: string; doc?: string } & (
+export type BridgeMessage = { doc?: string } & (
   | { kind: 'ready' }
-  | { kind: 'call'; method: string; params?: unknown }
-  | { kind: 'result'; params?: unknown }
-  | { kind: 'error'; error: BridgeError }
+  | { kind: 'call'; id: string; method: string; params?: unknown }
+  | { kind: 'result'; id: string; value?: unknown }
+  | { kind: 'error'; id: string; error: { code: BridgeErrorCode; message: string } }
   | { kind: 'event'; method: string; params?: unknown }
 );
 
@@ -36,47 +33,43 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 /**
- * Parses a message from the page, which always carries `doc`.
- * Returns it, or a `BridgeError` saying why it was rejected. Never throws.
+ * Parses a message from the page, which always carries `doc`. Returns it, or the reason it was rejected. Never throws.
+ * An error `code` that isn't a {@link BridgeErrorCode} becomes `handler_error`: the page's handler failed somehow.
  */
-export function parseBridgeMessage(raw: string): (BridgeMessage & { doc: string }) | BridgeError {
+export function parseBridgeMessage(raw: string): (BridgeMessage & { doc: string }) | string {
   let value: unknown;
   try {
     value = JSON.parse(raw);
   } catch {
-    return { code: 'invalid', message: 'not JSON' };
+    return 'not JSON';
   }
-  if (!isObject(value) || typeof value['id'] !== 'string' || typeof value['doc'] !== 'string') {
-    return { code: 'invalid', message: 'missing id or doc' };
-  }
-  const problem = kindProblem(value);
-  return problem
-    ? { code: 'invalid', message: problem }
-    : (value as BridgeMessage & { doc: string });
+  if (!isObject(value) || typeof value['doc'] !== 'string') return 'missing doc';
+  return kindProblem(value) ?? (value as BridgeMessage & { doc: string });
 }
 
 function kindProblem(value: Record<string, unknown>): string | null {
+  const hasId = typeof value['id'] === 'string';
+  const hasMethod = typeof value['method'] === 'string' && value['method'] !== '';
   switch (value['kind']) {
     case 'ready':
-    case 'result':
       return null;
-    case 'call':
     case 'event':
-      return typeof value['method'] === 'string' && value['method'] !== ''
-        ? null
-        : 'missing method';
-    case 'error': {
-      const error = value['error'];
-      const ok =
-        isObject(error) &&
-        (ERROR_CODES as readonly unknown[]).includes(error['code']) &&
-        typeof error['message'] === 'string';
-      return ok ? null : 'malformed error';
-    }
+      return hasMethod ? null : 'missing method';
+    case 'call':
+      return hasId && hasMethod ? null : 'missing id or method';
+    case 'result':
+      return hasId ? null : 'missing id';
+    case 'error':
+      return !hasId ? 'missing id' : normalizeError(value['error']) ? null : 'malformed error';
     default:
       return 'unknown kind';
   }
 }
 
-export const isBridgeError = (value: BridgeMessage | BridgeError): value is BridgeError =>
-  !('kind' in value);
+/** Whether `error` is `{ code, message }`, both strings; an unlisted code is replaced in place. */
+function normalizeError(error: unknown) {
+  if (!isObject(error) || typeof error['code'] !== 'string' || typeof error['message'] !== 'string')
+    return false;
+  if (!(ERROR_CODES as readonly string[]).includes(error['code'])) error['code'] = 'handler_error';
+  return true;
+}
