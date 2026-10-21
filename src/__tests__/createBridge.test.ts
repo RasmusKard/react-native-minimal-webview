@@ -82,6 +82,47 @@ describe('createBridge', () => {
     await expect(result).rejects.toMatchObject({ code: 'timeout' });
   });
 
+  it('takes a per-call timeout, 0 or Infinity for none, clamped to what setTimeout takes', async () => {
+    jest.useFakeTimers();
+    const { bridge, sent, fromPage } = setup(500);
+    fromPage({ id: '', kind: 'ready' });
+    const short = bridge.call('a', undefined, { timeoutMs: 100 });
+    const none = bridge.call('b', undefined, { timeoutMs: 0 });
+    const infinite = bridge.call('c', undefined, { timeoutMs: Infinity });
+    const huge = bridge.call('d', undefined, { timeoutMs: 2 ** 40 });
+    jest.advanceTimersByTime(100);
+    await expect(short).rejects.toMatchObject({ code: 'timeout' });
+    jest.advanceTimersByTime(60_000);
+    for (const [i, call] of [none, infinite, huge].entries()) {
+      fromPage({ id: sent[i + 1]!.id, kind: 'result', params: i });
+      await expect(call).resolves.toBe(i);
+    }
+    await expect(bridge.call('e', undefined, { timeoutMs: NaN })).rejects.toThrow(/timeoutMs/);
+  });
+
+  it('rejects a bad bridge-wide timeout up front', () => {
+    for (const timeoutMs of [NaN, -1, -Infinity])
+      expect(() => createBridge({ allowedOrigins: ['*'], timeoutMs })).toThrow(/timeoutMs/);
+    expect(() => createBridge({ allowedOrigins: ['*'], timeoutMs: Infinity })).not.toThrow();
+  });
+
+  it('throws when attached to a second WebView, and can be attached again after detach', () => {
+    const { connection } = setup();
+    expect(() => connection.attach(() => {})).toThrow(/already attached/);
+    connection.detach();
+    expect(() => connection.attach(() => {})).not.toThrow();
+  });
+
+  it("does not remove a newer handler when an older one's unsubscribe runs", async () => {
+    const { bridge, sent, fromPage } = setup();
+    const offOld = bridge.handle('m', () => 'old');
+    bridge.handle('m', () => 'new');
+    offOld();
+    fromPage({ id: 'p1', kind: 'call', method: 'm' });
+    await flush();
+    expect(sent).toMatchObject([{ id: 'p1', kind: 'result', params: 'new' }]);
+  });
+
   it('rejects calls in flight when a new page becomes ready', async () => {
     const { bridge, fromPage } = setup();
     fromPage({ id: '', kind: 'ready' });
@@ -115,7 +156,7 @@ describe('createBridge', () => {
         id: 'p2',
         doc: 'd1',
         kind: 'error',
-        error: { code: 'handler_error', message: 'Error: boom' },
+        error: { code: 'handler_error', message: 'boom' },
       },
       {
         id: 'p3',

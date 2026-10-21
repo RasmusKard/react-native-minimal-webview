@@ -5,7 +5,7 @@ A promise bridge between React Native and the page, for the origins you allow.
 ```tsx
 const bridge = useMemo(() => createBridge({ allowedOrigins: ['https://example.com', 'https://*.example.com'] }), []);
 useEffect(
-  () => bridge.handle('share', async ({ url }) => { await Share.share({ url, message }); return true }), // the unsubscribe
+  () => bridge.handle('share', async (params) => { await Share.share({ url: (params as { url: string }).url, message }); return true }), // the unsubscribe
   [bridge, message]
 );
 
@@ -14,13 +14,14 @@ await bridge.call('getCartCount');   // a method the page registered
 bridge.emit('themeChanged', 'dark');
 ```
 
-Make the bridge once (`useMemo`, or at module level): a new one recreates the WebView. Register a handler in an effect,
-with the values it uses in the deps; `handle` returns the unsubscribe.
+Make the bridge once (`useMemo`): a new one recreates the WebView. One bridge serves one mounted WebView at a time;
+attaching it to a second throws. Register a handler in an effect, with the values it uses in the deps; `handle` returns
+the unsubscribe.
 
 In the page:
 
 ```js
-await window.nativeBridge.call('share', { url: location.href });
+await window.nativeBridge.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
 window.nativeBridge.handle('getCartCount', () => cart.length);
 window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 ```
