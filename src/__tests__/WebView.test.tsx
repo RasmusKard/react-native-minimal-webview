@@ -388,6 +388,25 @@ describe('navigation state across remounts', () => {
     expect(ref.getState()).toEqual(at(''));
   });
 
+  it('a nativeOptions change starts the state over, until the new view emits', async () => {
+    const ref = createWebViewRef();
+    const root = createRoot();
+    const show = (mode: string) =>
+      act(async () =>
+        root.render(
+          <WebView ref={ref} source={{ uri: 'https://example.com' }} nativeOptions={{ mode }} />
+        )
+      );
+    await show('a');
+    await fireState(root, at('https://example.com/a'));
+    expect(ref.getState().url).toBe('https://example.com/a');
+    await show('b');
+    expect(ref.current).not.toBeNull();
+    expect(ref.getState()).toEqual(at(''));
+    await fireState(root, at('https://example.com/b'));
+    expect(ref.getState().url).toBe('https://example.com/b');
+  });
+
   it('a second WebView with the same ref replaces the first, with a warning; the first unmounting leaves it', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const ref = createWebViewRef();
