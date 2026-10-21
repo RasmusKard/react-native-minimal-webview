@@ -31,7 +31,8 @@ MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             //
 - **`nativeOptions`** enables hooks: a hook runs for a WebView whose `nativeOptions` has its key, and `context.options`
   is the whole prop, so the key's value can configure it. Read when the WebView is created, like `bridge`: a change
   recreates it. Keys are global, and a later registration under the same key silently replaces the earlier one: a
-  package should prefix its keys with its name (`myPackage.pageCounter`).
+  package should prefix its keys with its name (`myPackage.pageCounter`). `core` is reserved: the package's own events
+  are `core.…`, so a hook under it would have its events taken for them.
 - **Delegates and clients.** A decision callback the core doesn't implement goes to the first of your delegates
   (clients) that does; an observation callback, to every one that does (on iOS `didStartProvisionalNavigation`,
   `didReceiveServerRedirectForProvisionalNavigation` and `webViewDidClose`; any other iOS one goes to the first). A
@@ -40,15 +41,20 @@ MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             //
   `shouldOverrideUrlLoading`, HTTP auth, SSL errors, permissions, geolocation, fullscreen, a new window and the file
   chooser. An observation callback the core implements reaches the core first, then every one of yours. So a client
   that overrides `shouldOverrideUrlLoading` switches the navigation rules off for that WebView, and one that overrides
-  `onPageFinished` is just told. Android's `shouldInterceptRequest` runs on a background thread, as always. A client
-  may extend `WebViewClientCompat`: overriding its `onReceivedError`, `onSafeBrowsingHit` or
+  `onPageFinished` is just told. On iOS, a delegate that takes the response policy
+  (`decidePolicyForNavigationResponse`) also switches off `onHttpError`, `onDownload` and opening a download no one
+  takes externally. Android's `shouldInterceptRequest` runs on a background thread, as always. A client may extend
+  `WebViewClientCompat`: overriding its `onReceivedError`, `onSafeBrowsingHit` or
   `shouldOverrideUrlLoading(WebView, String)` variant counts as overriding the platform callback that forwards to it.
 - **Events.** `context.emit(name, payload)` sends `onNativeEvent({ name: '<hook>.<name>', payload })`: the hook's key
   is the prefix, so names never collide with the package's (`core.`) or another hook's. `context.ask(name, payload) { answer in … }`
-  waits for the handler's return value (a promise is awaited; a throw or no handler answers null). On iOS a context
-  kept after its WebView went away does nothing, and its `ask` answers null.
-- **Lifecycle.** `configure` runs after the `ios.configuration` settings and before the bridge, so replacing the
-  user content controller is fine, and user scripts you add stay, after the package's. `attach` runs once the WebView
+  waits for the handler's return value (a promise is awaited; a throw or no handler answers null). The answer comes as
+  the platform's JSON types: a number as `Double` (Kotlin) or `NSNumber` (Swift), an object as `Map` or `NSDictionary`,
+  `null` or `undefined` as null or nil. `ask` has no timeout: one still open when the Document ends is answered null.
+  On iOS a context kept after its WebView went away does nothing, and its `ask` answers null.
+- **Lifecycle.** `configure` is iOS only (Android has none: use `attach`, or `android` settings). It runs after the
+  `ios.configuration` settings and before the bridge, so replacing the user content controller is fine, and user
+  scripts you add stay, after the package's. `attach` runs once the WebView
   exists and its settings are applied, so what it sets wins over the settings the WebView was created with (on Android
   also for the new WebView after a renderer crash); the closure it returns runs when that WebView goes away.
   Everything runs on the main thread. Set delegates in `attach`: WebKit reads what a delegate responds to when it is

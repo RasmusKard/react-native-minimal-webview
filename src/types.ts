@@ -13,8 +13,9 @@ import type {
 /**
  * `headers` go on the first request only, not on later navigations. `body` makes the request a POST with that
  * form-urlencoded body (`a=1&b=2`): iOS sends `headers` with it and sets `Content-Type` when they don't; Android's
- * `postUrl` sends neither. `reload()` and crash recovery send the POST again. A `file://` uri loads with read access
- * to its directory on iOS; Android needs `android.settings.allowFileAccess`.
+ * `postUrl` sends neither. `reload()` sends the POST again; crash recovery doesn't (`onProcessGone` reports
+ * `recovered: false`). A `file://` uri loads with read access to its directory on iOS; Android needs
+ * `android.settings.allowFileAccess`.
  */
 export type WebViewSource =
   | { uri: string; headers?: Record<string, string>; body?: string }
@@ -24,7 +25,7 @@ export type NavigationAction = 'allow' | 'block' | 'external';
 
 /**
  * One navigation rule. Every field that is set must match; the first matching rule wins.
- * With no rules, http(s) loads in place and other schemes open externally from the main frame (a subframe is blocked). With rules and no match, the result is `block`.
+ * With no rules, http(s) loads in place, `file:` is blocked, and other schemes open externally from the main frame (a subframe is blocked). With rules and no match, the result is `block`.
  */
 export type NavigationRule = {
   /** Exact, case-insensitive: `['tel', 'mailto']`. */
@@ -55,7 +56,10 @@ export type NavigationRequest = {
 
 export type NavigationEvent = NavigationRequest & {
   action: NavigationAction;
-  /** Index of the matching rule in `navigationRules`, or null when the default or a native hook decided. */
+  /**
+   * Index of the matching rule in `navigationRules`, or null when no rule did (a default, or a download opened
+   * externally). A navigation a native hook decides is not reported.
+   */
   rule: number | null;
 };
 
@@ -143,7 +147,10 @@ export type FileRequest = { accept: string[]; multiple: boolean; capture: boolea
 
 /** `geolocation` and `protectedMedia` (the device id DRM playback needs) are Android only. */
 export type PermissionResource = 'camera' | 'microphone' | 'geolocation' | 'protectedMedia';
-/** `origin` is the requesting page's, as `location.origin` writes it. Only the main frame asks. */
+/**
+ * `origin` is the requesting page's, as `location.origin` writes it. Only the main frame asks (on Android, which doesn't
+ * name the frame, any frame of the top page's origin).
+ */
 export type PermissionRequestEvent = { origin: string; resources: PermissionResource[] };
 
 /**
@@ -234,11 +241,12 @@ type OwnProps = {
   pullToRefresh?: boolean;
   /**
    * iOS: copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, and the WebView's
-   * cookie changes back as they happen. Android needs nothing: `CookieManager` is shared app-wide.
+   * cookie changes, deletions included, back as they happen. Android needs nothing: `CookieManager` is shared app-wide.
    */
   sharedCookies?: boolean;
-  // Page requests: each works without its prop, as described. Passing one takes the request over. They can be added or
-  // removed at any time. A native hook that takes the same platform callback comes first.
+  // Page requests: each works without its prop, as described. `onFileRequest` and `onPermissionRequest` answer theirs;
+  // `onFullscreenChange` and `onDownload` are told afterwards. They can be added or removed at any time. A native hook
+  // that takes the same platform callback comes first.
   /**
    * `<input type="file">` on Android: return `file://` or `content://` URIs, or null to cancel. Without it, the system
    * file chooser opens (it ignores `capture`). iOS always shows WebKit's picker.
@@ -286,8 +294,9 @@ export type WebViewRef = {
   stopLoading(): void;
   /**
    * Runs an expression in the page's main frame and awaits it. Resolves with its value through JSON (`null` for what
-   * JSON can't encode). Rejects with `ERR_EVALUATE` when it throws or rejects (or, on iOS, before the WebView exists),
-   * `navigated` on a new page, or `unavailable` (Android) when the WebView lacks the features it needs.
+   * JSON can't encode). Rejects with `ERR_EVALUATE` when it throws or rejects, `navigated` on a new page, or
+   * `unavailable` (Android) when the WebView lacks the features it needs. Before the WebView is mounted it resolves
+   * `undefined`, as `get` and `call` do.
    */
   evaluate(script: string): Promise<unknown>;
   /**
@@ -298,7 +307,8 @@ export type WebViewRef = {
   get(key: string): Promise<unknown>;
   /**
    * Calls a platform method, `root.method`, and resolves with its result through JSON (docs/platform-settings.md).
-   * Android: a public method of `webView` (then `WebViewCompat`'s statics), `cookieManager` or `webStorage`:
+   * Android: a public method of `settings` (then `WebSettingsCompat`'s statics), `webView` (then `WebViewCompat`'s),
+   * `cookieManager` or `webStorage`:
    * `call('webView.clearCache', [true])`, `call('cookieManager.removeAllCookies', [null])`. iOS: an Objective-C
    * selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`, the arguments set by the
    * method's signature (`call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true])`); a selector that
