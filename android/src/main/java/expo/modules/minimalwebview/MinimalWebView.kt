@@ -307,7 +307,9 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     document.end(End.CRASHED)
     detachHooks()
     val dead = webView
-    val history = Bundle().takeIf { reload && dead.saveState(it) != null }
+    // A restored entry doesn't carry source.headers, so a source page that needs them reloads through load(source).
+    val restorable = !(showsSource(source, url) && !source?.headers.isNullOrEmpty())
+    val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
     refresher.content.removeView(dead)
     dead.destroy()
     pendingRecovery = Recovery(reload, history)

@@ -184,6 +184,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func reload() {
+    crashTimes = [] // an explicit retry starts the crash-loop guard over, like a new source
     if onPostSource, let source {
       load(source)
     } else if let failedUrl, let target = URL(string: failedUrl) {
