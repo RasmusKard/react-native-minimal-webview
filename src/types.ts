@@ -115,9 +115,10 @@ export type Bridge = {
   handle(method: string, handler: BridgeHandler): () => void;
   /**
    * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown, with an
-   * `Error` whose `code` is a {@link BridgeErrorCode}.
+   * `Error` whose `code` is a {@link BridgeErrorCode}. `timeoutMs` overrides the bridge's for this call; `0` or
+   * `Infinity` means none.
    */
-  call(method: string, params?: unknown): Promise<unknown>;
+  call(method: string, params?: unknown, options?: { timeoutMs?: number }): Promise<unknown>;
   /** Fires an event the page listens to with `nativeBridge.on`. */
   emit(event: string, payload?: unknown): void;
   /** Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function. */

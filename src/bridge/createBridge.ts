@@ -33,6 +33,11 @@ export function createBridge(options: BridgeOptions): Bridge {
     );
   }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (!(timeoutMs >= 0)) {
+    throw new Error(
+      `createBridge: timeoutMs must be 0 or more (0 or Infinity for none), not ${timeoutMs}`
+    );
+  }
   let post: ((message: string) => void) | null = null;
   let ready = false;
   // The token of the document that last said `ready` (protocol.ts `doc`): what RN sends is for that document only.
@@ -100,6 +105,11 @@ export function createBridge(options: BridgeOptions): Bridge {
     allowedOrigins: options.allowedOrigins,
     script: `(${PAGE_CLIENT})(window, ${Number(timeoutMs)}, ${JSON.stringify(options.allowedOrigins)});`,
     attach(next) {
+      // Two WebViews would steal each other's replies, and either one's detach would cut off the other.
+      if (post)
+        throw new Error(
+          'createBridge: this bridge is already attached to a mounted WebView; give each WebView its own bridge'
+        );
       post = next;
     },
     detach() {
@@ -130,10 +140,10 @@ export function createBridge(options: BridgeOptions): Bridge {
 
   return {
     handle: endpoint.handle,
-    call(method, params) {
+    call(method, params, callOptions) {
       if (unavailable)
         return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
-      return endpoint.call(method, params);
+      return endpoint.call(method, params, callOptions);
     },
     emit: endpoint.emit,
     on: endpoint.on,

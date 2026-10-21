@@ -26,7 +26,7 @@ export const parseOrigin = (text: string) => {
 type Pending = {
   resolve(value: unknown): void;
   reject(error: Error): void;
-  timer: ReturnType<typeof setTimeout>;
+  timer: ReturnType<typeof setTimeout> | undefined;
   /** Posted to a document, not just queued for the next one (RN). */
   sent: boolean;
 };
@@ -48,15 +48,26 @@ export function createEndpoint(
 
   return {
     pending,
-    call(method: string, params?: unknown) {
+    /** `timeoutMs` overrides the endpoint's for this call; `0` or `Infinity` means none. */
+    call(method: string, params?: unknown, options?: { timeoutMs?: number }) {
+      const ms = options?.timeoutMs ?? timeoutMs;
+      if (!(ms >= 0))
+        return Promise.reject(new RangeError(`${method}: timeoutMs must be 0 or more, not ${ms}`));
       const id = `${idPrefix}${++nextId}`;
       return new Promise<unknown>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          reject(
-            bridgeError({ code: 'timeout', message: `${method} timed out after ${timeoutMs} ms` })
-          );
-        }, timeoutMs);
+        // Clamped: setTimeout fires at once for a delay above 2^31-1.
+        const timer =
+          ms > 0 && ms < Infinity
+            ? setTimeout(
+                () => {
+                  pending.delete(id);
+                  reject(
+                    bridgeError({ code: 'timeout', message: `${method} timed out after ${ms} ms` })
+                  );
+                },
+                Math.min(ms, 2 ** 31 - 1)
+              )
+            : undefined;
         pending.set(id, { resolve, reject, timer, sent: false });
         send({ id, kind: 'call', method, params });
       });
@@ -66,7 +77,9 @@ export function createEndpoint(
     },
     handle(method: string, handler: (params: unknown) => unknown) {
       handlers.set(method, handler);
-      return () => handlers.delete(method);
+      return () => {
+        if (handlers.get(method) === handler) handlers.delete(method);
+      };
     },
     on(event: string, listener: (payload: unknown) => void) {
       const set = listeners.get(event) ?? new Set();
@@ -94,7 +107,7 @@ export function createEndpoint(
           try {
             reply({ id, kind: 'result', params: await handler(message.params) });
           } catch (error) {
-            fail('handler_error', String(error));
+            fail('handler_error', error instanceof Error ? error.message : String(error));
           }
           return;
         }
