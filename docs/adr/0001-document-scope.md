@@ -45,4 +45,5 @@ and swiftc tests drive all three ends with fake registrants.
 - Per-WebView-instance state (hooks, script handles and listeners, `crashTimes`, the cookie observer, Android's refresh
   layout) stays in `recover()`, `destroy()` and `tearDown()`, which call the scope first.
 - Downloads outlive Documents by design and are not cancelled at teardown. `onPermissionRequestCanceled` leaving the
-  core's own permission ask open is a separate one-line fix.
+  core's own permission ask open is a separate fix: it must also stop the ask's `grant`/`deny` from reaching the
+  cancelled request, since Chromium's `PermissionRequest` throws once its native side is gone.
