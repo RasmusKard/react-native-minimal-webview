@@ -11,6 +11,9 @@ object NavigationRules {
 
   fun decide(rules: List<Map<String, Any?>>?, request: Request): Decision {
     val scheme = request.url.substringBefore(':', "").lowercase()
+    // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
+    // navigate the top frame to (data:, blob:, file:), so a new window may only be http(s), whatever the rules say.
+    if (request.newWindow && scheme != "http" && scheme != "https") return Decision("block", null)
     if (scheme in internalSchemes) return Decision("allow", null)
     if (rules.isNullOrEmpty()) {
       val action = when (scheme) {

@@ -25,6 +25,9 @@ enum NavigationRules {
   static func decide(_ rules: [[String: Any]]?, _ request: Request) -> Decision {
     let scheme = request.url.split(separator: ":", maxSplits: 1).count > 1
       ? String(request.url.prefix { $0 != ":" }).lowercased() : ""
+    // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
+    // navigate the top frame to (data:, blob:, file:), so a new window may only be http(s), whatever the rules say.
+    if request.newWindow, scheme != "http", scheme != "https" { return Decision(action: "block", rule: nil) }
     if internalSchemes.contains(scheme) { return Decision(action: "allow", rule: nil) }
     guard let rules, !rules.isEmpty else {
       switch scheme {
