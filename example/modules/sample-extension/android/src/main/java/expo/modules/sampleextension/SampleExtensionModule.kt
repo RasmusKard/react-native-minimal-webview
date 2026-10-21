@@ -31,10 +31,13 @@ class SampleExtensionModule : Module() {
   }
 }
 
-/** Answers every HTTP basic or digest challenge itself. */
+/** The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx, through `adb reverse`). */
+private val AUTH_HOSTS = setOf("localhost")
+
+/** Answers HTTP basic or digest challenges from AUTH_HOSTS itself, and cancels the rest. */
 private class HookAuth : WebViewClient() {
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) =
-    handler.proceed("u", "p")
+    if (host in AUTH_HOSTS) handler.proceed("u", "p") else handler.cancel()
 }
 
 /** Answers every alert itself and reports it, instead of the core's dialog. */

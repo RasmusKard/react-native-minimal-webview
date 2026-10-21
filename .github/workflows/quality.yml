@@ -12,6 +12,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npx knip   # whole repo (no baseline): unused files, exports, dependencies, unresolved imports
+      - run: npx knip   # all but example/ (no baseline): unused files, exports, dependencies, unresolved imports
       - run: npm run lint:ci
       - run: npm run mutation

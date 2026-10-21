@@ -17,7 +17,9 @@ architecture only.
 **Requirements:** iOS 16.4, Android API 29+ (`minSdkVersion 29`, for example with `expo-build-properties`), and Expo
 SDK 53+ (React Native 0.79+, React 19) with the new architecture. A bare React Native app works too, once it has the
 `expo` package through `npx install-expo-modules@latest`. On Android, the bridge, `injectedScripts` and `evaluate`
-need [Android System WebView 101+](docs/bridge.md#android-system-webview).
+need [Android System WebView 101+](docs/bridge.md#android-system-webview). The floor is checked by a build and a
+smoke run on SDK 53 and 55; the on-device suites run on SDK 58. SDK 53 apps on a current Xcode need React Native's
+`fmt` pod built as C++17 (a Podfile `post_install` hook), which is React Native's issue, not this package's.
 
 ```tsx
 import { WebView } from 'react-native-minimal-webview';

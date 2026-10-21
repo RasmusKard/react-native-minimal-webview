@@ -25,16 +25,24 @@ public class SampleExtensionModule: Module {
   }
 }
 
-/// Answers every HTTP basic or digest challenge itself.
+/// The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx).
+private let authHosts: Set<String> = ["localhost"]
+
+/// Answers HTTP basic or digest challenges from authHosts itself, and cancels the rest.
 private final class HookAuth: NSObject, WKNavigationDelegate {
   func webView(
     _ webView: WKWebView,
     didReceive challenge: URLAuthenticationChallenge,
     completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
   ) {
-    let method = challenge.protectionSpace.authenticationMethod
+    let space = challenge.protectionSpace
+    let method = space.authenticationMethod
     guard method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest else {
       return completionHandler(.performDefaultHandling, nil)
+    }
+    // Plain http only to the loopback test server, which no network sees.
+    guard authHosts.contains(space.host), space.receivesCredentialSecurely || space.host == "localhost" else {
+      return completionHandler(.cancelAuthenticationChallenge, nil)
     }
     completionHandler(.useCredential, URLCredential(user: "u", password: "p", persistence: .forSession))
   }
