@@ -649,6 +649,11 @@ async function ptr(h: Harness) {
   await h.ref.current?.evaluate(`document.getElementById('scroller').scrollTop = 400`);
   const inner = await pullStays('inner', `document.getElementById('scroller').scrollTop`);
   r.check('a pull inside a scrolled inner scroller does not reload', inner === 'stayed', inner);
+  // Off, the layout stays around the WebView and takes no pull. The next setProps turns it back on (the app's
+  // default), and the failing reload's pull below needs it on.
+  h.setProps({ pullToRefresh: false });
+  await open('long');
+  r.check('no pull to refresh while the prop is off', !(await pull('full')));
 
   // A reload that fails must end the refresh, or the control stays refreshing and ignores the next pull.
   // The example's error screen would cover the WebView and take the next pull: keep its onError out of the way.
@@ -1030,40 +1035,39 @@ async function crash(h: Harness) {
     ),
     h.state()
   );
-  if (Platform.OS === 'ios') {
-    // A page other than the source reloads its history entry in place: back still goes to the page before it, and
-    // forward from there to it. This is the second of the crash loop's kills.
-    const second = fresh(h, '/bridge.html');
-    const loads = h.events.loads.length;
-    await h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`);
-    await waitFor(
-      h,
-      (s) => h.events.loads.slice(loads).includes('end') && s.url === second && idle(s),
-      15000
-    );
-    const reloads = h.events.loads.length;
-    const killed = await kill(2);
-    r.check(
-      'a second page reloads in place, canGoBack unchanged',
-      killed?.recovered === true &&
-        (await waitFor(
-          h,
-          (s) =>
-            h.events.loads.slice(reloads).includes('end') &&
-            s.url === second &&
-            idle(s) &&
-            s.canGoBack,
-          15000
-        )),
-      h.state()
-    );
-    h.ref.current?.goBack();
-    r.check(
-      'back after recovery goes to the page before it, with forward kept',
-      await waitFor(h, (s) => s.url === page && idle(s) && s.canGoForward, 15000),
-      h.state()
-    );
-  }
+  // A page other than the source reloads its history entry in place: back still goes to the page before it, and
+  // forward from there to it (Android restores the dead WebView's history into the new one). This is the second of
+  // the crash loop's kills.
+  const second = fresh(h, '/bridge.html');
+  const loads = h.events.loads.length;
+  await h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`);
+  await waitFor(
+    h,
+    (s) => h.events.loads.slice(loads).includes('end') && s.url === second && idle(s),
+    15000
+  );
+  const reloads = h.events.loads.length;
+  const killed = await kill(2);
+  r.check(
+    'a second page reloads in place, canGoBack unchanged',
+    killed?.recovered === true &&
+      (await waitFor(
+        h,
+        (s) =>
+          h.events.loads.slice(reloads).includes('end') &&
+          s.url === second &&
+          idle(s) &&
+          s.canGoBack,
+        15000
+      )),
+    h.state()
+  );
+  h.ref.current?.goBack();
+  r.check(
+    'back after recovery goes to the page before it, with forward kept',
+    await waitFor(h, (s) => s.url === page && idle(s) && s.canGoForward, 15000),
+    h.state()
+  );
   // Android attaches the hooks to the new WebView; iOS keeps the delegates: the sample's page counter still counts.
   r.check(
     'the hooks are attached after recovery',
@@ -1086,9 +1090,7 @@ async function crash(h: Harness) {
   // Android builds a new WebView on recovery: its settings must be applied again.
   r.check('the setting is still applied after recovery', !!(await userAgent()));
 
-  for (const n of Platform.OS === 'ios' ? [3] : [2, 3]) {
-    await kill(n);
-  }
+  await kill(3);
   // The 4th kill cuts off a slow load: with no reload to end it, the core must.
   await until(
     async () =>
