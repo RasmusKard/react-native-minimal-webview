@@ -4,10 +4,16 @@
   "description": "A minimal, extensible WebView for React Native (Expo Modules)",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "react-native": "./src/index.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "build",
-    "!build/bridge/pageClient.js*",
-    "!build/bridge/pageClient.d.ts*",
     "src",
     "!src/**/__tests__",
     "ios",
@@ -21,14 +27,11 @@
     "build": "tsc",
     "clean": "rm -rf build",
     "test": "jest",
-    "prepare": "rm -rf build && tsc",
-    "open:ios": "xed example/ios",
-    "open:android": "open -a 'Android Studio' example/android",
-    "lint:ci": "eslint -c eslint.ci.config.mjs --quiet src",
+    "lint": "eslint src example .github",
+    "prepare": "npm run clean && npm run build",
     "mutation": "stryker run",
     "build:page-client": "node .github/scripts/build-page-client.mjs",
-    "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
-    "check:pack": "npm run prepare && node .github/scripts/check-pack.mjs"
+    "gen:platform-types": "node .github/scripts/gen-platform-types.mts"
   },
   "keywords": [
     "react-native",
@@ -50,21 +53,19 @@
     "@types/jest": "^30.0.0",
     "@types/node": "22.20.5",
     "@types/react": "~19.3.0",
-    "babel-preset-expo": "~58.0.11",
     "eslint": "~9.39.4",
     "eslint-config-universe": "^15.0.3",
     "eslint-plugin-sonarjs": "4.2.2",
-    "expo": "~58.0.6",
-    "expo-modules-core": "58.0.14",
+    "expo": "~58.0.17",
+    "globals": "^16.5.0",
     "jest": "^30.0.0",
-    "jest-expo": "~58.0.8",
+    "jest-expo": "~58.0.12",
     "knip": "6.40.0",
     "prettier": "^3.0.0",
     "react": "19.3.0",
-    "react-native": "0.88.0-rc.3",
+    "react-native": "0.88.0",
     "test-renderer": "1.3.0",
-    "typescript": "~6.0.3",
-    "typescript-eslint": "8.71.1"
+    "typescript": "~6.0.3"
   },
   "jest": {
     "preset": "jest-expo",

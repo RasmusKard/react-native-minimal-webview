@@ -299,10 +299,7 @@ export type AndroidSettingKeys = {
     useWideViewPort?: boolean;
     /** @since 3 */
     userAgentString?: string;
-    /**
-     * `WebSettingsCompat`, WebView feature `ATTRIBUTION_REGISTRATION_BEHAVIOR`
-     * @deprecated in androidx.webkit
-     */
+    /** `WebSettingsCompat`, WebView feature `ATTRIBUTION_REGISTRATION_BEHAVIOR` */
     attributionRegistrationBehavior?: number;
     /** `WebSettingsCompat`, WebView feature `BACK_FORWARD_CACHE` */
     backForwardCacheEnabled?: boolean;
@@ -574,13 +571,9 @@ export const Android = {
     SCHEME_TEL: 'tel:',
   },
   WebSettingsCompat: {
-    /** @deprecated */
     ATTRIBUTION_BEHAVIOR_APP_SOURCE_AND_APP_TRIGGER: 3,
-    /** @deprecated */
     ATTRIBUTION_BEHAVIOR_APP_SOURCE_AND_WEB_TRIGGER: 1,
-    /** @deprecated */
     ATTRIBUTION_BEHAVIOR_DISABLED: 0,
-    /** @deprecated */
     ATTRIBUTION_BEHAVIOR_WEB_SOURCE_AND_WEB_TRIGGER: 2,
     /** @deprecated */
     DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING: 2,
@@ -594,10 +587,6 @@ export const Android = {
     FORCE_DARK_OFF: 0,
     /** @deprecated */
     FORCE_DARK_ON: 2,
-    HYPERLINK_CONTEXT_MENU_DISABLED: 0,
-    HYPERLINK_CONTEXT_MENU_ITEM_COPY_LINK_ADDRESS: 1,
-    HYPERLINK_CONTEXT_MENU_ITEM_COPY_LINK_TEXT: 2,
-    HYPERLINK_CONTEXT_MENU_ITEM_OPEN_LINK: 4,
     SPECULATIVE_LOADING_DISABLED: 0,
     SPECULATIVE_LOADING_PRERENDER_ENABLED: 1,
     WEB_AUTHENTICATION_SUPPORT_FOR_APP: 1,

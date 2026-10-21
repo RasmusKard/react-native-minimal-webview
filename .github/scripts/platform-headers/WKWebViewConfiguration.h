@@ -1,4 +1,4 @@
-// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKWebViewConfiguration.h
+// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKWebViewConfiguration.h, iphonesimulator SDK 27.1
 #if TARGET_OS_IPHONE
 #else
 #endif

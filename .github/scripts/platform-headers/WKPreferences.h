@@ -1,4 +1,4 @@
-// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKPreferences.h
+// Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKPreferences.h, iphonesimulator SDK 27.1
 @interface WKPreferences : NSObject <NSSecureCoding>
 @property (nonatomic) CGFloat minimumFontSize;
 @property (nonatomic) BOOL javaScriptCanOpenWindowsAutomatically;

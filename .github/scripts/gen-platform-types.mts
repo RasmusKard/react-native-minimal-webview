@@ -1,9 +1,9 @@
 // Generates src/platform.generated.ts: the iOS and Android settings keys as TypeScript types, and the platforms'
 // constants, from the vendored SDK extracts in platform-headers/. Run after editing it:
 // node .github/scripts/gen-platform-types.mts (`--check` fails if the output is stale).
-// `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and androidx main: the explicit
-// step after an SDK upgrade. It keeps only the declarations this script reads (the iOS doc comments are Apple's).
-// A generated member list repeats by nature, so .jscpd.json leaves *.generated.ts out of the duplicate check.
+// `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and the API file of the
+// androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade. It
+// keeps only the declarations this script reads (the iOS doc comments are Apple's).
 // The WK constant names are the header names with their common prefix stripped: an SDK rename renames a constant.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -34,11 +34,14 @@ const ANDROID_CLASSES = ['WebSettings', 'WebView', 'CookieManager'];
 /** One `<class>` block of api-versions.xml. */
 const classBlock = (api: string, name: string) =>
   api.match(new RegExp(`\t<class name="${name}" [^]*?</class>\n`))?.[0] ?? '';
-const ANDROIDX_API =
-  'https://raw.githubusercontent.com/androidx/androidx/androidx-main/webkit/webkit/api/current.txt';
+const ANDROIDX_API_DIR =
+  'https://api.github.com/repos/androidx/androidx/contents/webkit/webkit/api?ref=androidx-main';
 
 async function importInputs() {
   const sdk = execFileSync('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-path'])
+    .toString()
+    .trim();
+  const sdkVersion = execFileSync('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version'])
     .toString()
     .trim();
   const frameworks = `${sdk}/System/Library/Frameworks`;
@@ -67,7 +70,7 @@ async function importInputs() {
     const name = path.slice(path.lastIndexOf('/') + 1);
     writeFileSync(
       new URL(name, inputs),
-      `// Extract of ${path.slice(sdk.length)}\n${lines.join('\n')}\n`
+      `// Extract of ${path.slice(sdk.length)}, iphonesimulator SDK ${sdkVersion}\n${lines.join('\n')}\n`
     );
   }
   const home = process.env['ANDROID_HOME'] ?? `${process.env['HOME']}/Library/Android/sdk`;
@@ -94,9 +97,21 @@ async function importInputs() {
     ...ANDROID_CLASSES.map((c) => `android.webkit.${c}`),
   ]);
   writeFileSync(new URL('android-webkit-constants.txt', inputs), constants);
+  // androidx freezes a minor's API at its first beta or rc (api/1.17.0-rc01.txt): the last such file of the pinned minor.
+  const [, version, minor] = readFileSync(
+    new URL('../../android/build.gradle', import.meta.url),
+    'utf8'
+  ).match(/androidx\.webkit:webkit:((\d+\.\d+)\.\d+)/)!;
+  const listing = await fetch(ANDROIDX_API_DIR);
+  if (!listing.ok) throw new Error(`${ANDROIDX_API_DIR}: ${listing.status}`);
+  const file = ((await listing.json()) as { name: string; download_url: string }[])
+    .filter((f) => f.name.startsWith(`${minor}.0-`))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .at(-1);
+  if (!file) throw new Error(`no androidx.webkit API file for ${minor} in ${ANDROIDX_API_DIR}`);
   writeFileSync(
     new URL('androidx-webkit-api.txt', inputs),
-    await (await fetch(ANDROIDX_API)).text()
+    `// androidx.webkit ${version}: webkit/webkit/api/${file.name}\n${await (await fetch(file.download_url)).text()}`
   );
 }
 
