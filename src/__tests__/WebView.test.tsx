@@ -467,8 +467,8 @@ describe('navigation state across remounts', () => {
       native.onNavigation({ nativeEvent: { ...navigation, ...target } });
       native.onProcessGone({ nativeEvent: { didCrash: true, recovered: true, ...target } });
     });
-    expect(onNavigation.mock.calls[0][0]).toStrictEqual(navigation);
-    expect(onProcessGone.mock.calls[0][0]).toStrictEqual({ didCrash: true, recovered: true });
+    expect(onNavigation).toHaveBeenCalledWith(navigation);
+    expect(onProcessGone).toHaveBeenCalledWith({ didCrash: true, recovered: true });
   });
 
   it("createWebViewRef's current is the mounted WebView's ref, and null while none is", async () => {
