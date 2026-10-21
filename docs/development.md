@@ -3,7 +3,7 @@
 ```sh
 npm install && (cd example && npm install)
 npm test                                   # TS unit tests (bridge protocol, createBridge, origin matcher, WebView, native contract, page client)
-npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
+npm run lint && npm run prepare            # ESLint on src, example and .github; then a clean build
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 ```
