@@ -976,6 +976,14 @@ async function crash(h: Harness) {
   for (const n of [2, 3]) {
     await kill(n);
   }
+  // The 4th kill cuts off a slow load: with no reload to end it, the core must.
+  await until(
+    async () =>
+      (await h.ref.current?.evaluate('document.readyState').catch(errorCode)) === 'complete'
+  );
+  const slowStarts = h.events.loads.length;
+  await h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, '/slow?ms=10000'))}`);
+  await waitFor(h, () => h.events.loads.slice(slowStarts).includes('start'));
   const fourth = await kill(4);
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
   const elapsed = Date.now() - firstKillAt;
@@ -986,6 +994,22 @@ async function crash(h: Harness) {
       fourth
     );
   else r.info('crash loop check skipped: the 4 crashes took', elapsed);
+  r.check(
+    'a crash during a load ends it (loading: false)',
+    await waitFor(h, (s) => !s.loading, 5000),
+    h.state()
+  );
+  const retryLoads = h.events.loads.length;
+  h.ref.current?.reload();
+  r.check(
+    'reload() brings the page back after giving up',
+    (await waitFor(
+      h,
+      (s) => s.url === page && idle(s) && h.events.loads.slice(retryLoads).includes('end'),
+      15000
+    )) && (await h.ref.current?.evaluate('location.href').catch(errorCode)) === page,
+    h.state()
+  );
   r.check(
     'loading a new source works after giving up',
     await openPage(h, fresh(h, '/')),
@@ -1012,6 +1036,22 @@ async function crash(h: Harness) {
     h.events.gone.at(-1)
   );
   r.check('the html source is shown again after recovery', await shown(), await marker());
+
+  // A POST source on screen isn't sent again unasked (a payment form): recovery stops, and reload() sends it.
+  const post = fresh(h, '/post');
+  const body = `amount=9.99&t=${Date.now()}`;
+  h.loadSource({ uri: post, body });
+  await waitFor(h, (s) => s.url === post && idle(s));
+  const postGone = await kill(7);
+  r.check('a POST source is not sent again on recovery', postGone?.recovered === false, postGone);
+  const postLoads = h.events.loads.length;
+  h.ref.current?.reload();
+  await waitFor(h, (s) => idle(s) && h.events.loads.slice(postLoads).includes('end'), 15000);
+  r.check(
+    'reload() sends the POST source after a crash',
+    (await text(h, 'body')) === body,
+    h.state()
+  );
   r.done();
 }
 
