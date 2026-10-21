@@ -1,14 +1,14 @@
 import WebKit
 
 /// Bridge transport: page -> RN through a WKScriptMessageHandler, RN -> page through callAsyncJavaScript. Native only
-/// moves the text; the protocol (calls, results, events) is the page client's and createBridge's.
+/// moves the text, with the sender's verified origin; the protocol (calls, results, events) is the page client's and createBridge's.
 extension MinimalWebView {
   func bridgeReceive(_ message: WKScriptMessage) {
     let origin = OriginRules.origin(of: message.frameInfo.securityOrigin)
     guard message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin), let text = message.body as? String else { return }
     // `*` allows every document, opaque ones too (whose location.origin is "null"): nothing to compare.
     bridgeOrigin = bridgeOrigins.contains("*") ? "*" : origin
-    onBridge(["message": text])
+    onBridge(["message": text, "origin": origin])
   }
 
   /// Delivers a message from RN to the page. Only to the allowed document that last posted (its page client says

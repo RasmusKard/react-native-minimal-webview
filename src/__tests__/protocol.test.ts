@@ -1,48 +1,61 @@
-import { isBridgeError, parseBridgeMessage } from '../bridge/protocol';
+import { parseBridgeMessage } from '../bridge/protocol';
 
 const parse = (value: unknown) => parseBridgeMessage(JSON.stringify(value));
 
 describe('parseBridgeMessage', () => {
   it.each([
-    { doc: 'd', id: '', kind: 'ready' },
+    { doc: 'd', kind: 'ready' },
     { doc: 'd', id: '1', kind: 'call', method: 'share', params: { url: 'https://x.ee' } },
-    { doc: 'd', id: '1', kind: 'result', params: null },
+    { doc: 'd', id: '1', kind: 'result', value: null },
     { doc: 'd', id: '1', kind: 'result' },
     { doc: 'd', id: '1', kind: 'error', error: { code: 'timeout', message: 'slow' } },
-    { doc: 'd', id: '', kind: 'event', method: 'scrolled' },
+    { doc: 'd', kind: 'event', method: 'scrolled' },
   ])('accepts %j', (message) => {
     expect(parse(message)).toEqual(message);
   });
 
+  it('turns an error code it does not list into handler_error', () => {
+    const error = { code: 'E_QUOTA', message: 'full' };
+    expect(parse({ doc: 'd', id: '1', kind: 'error', error })).toEqual({
+      doc: 'd',
+      id: '1',
+      kind: 'error',
+      error: { code: 'handler_error', message: 'full' },
+    });
+  });
+
   it.each([
-    ['not JSON', '{', 'invalid'],
-    ['a non-object', '42', 'invalid'],
-    ['a missing doc', JSON.stringify({ id: '', kind: 'ready' }), 'invalid'],
-    ['a missing id', JSON.stringify({ doc: 'd', kind: 'ready' }), 'invalid'],
-    ['an unknown kind', JSON.stringify({ doc: 'd', id: '1', kind: 'ping' }), 'invalid'],
-    ['a call without method', JSON.stringify({ doc: 'd', id: '1', kind: 'call' }), 'invalid'],
+    ['not JSON', '{', 'not JSON'],
+    ['a non-object', '42', 'missing doc'],
+    ['a missing doc', JSON.stringify({ kind: 'ready' }), 'missing doc'],
+    ['an unknown kind', JSON.stringify({ doc: 'd', id: '1', kind: 'ping' }), 'unknown kind'],
     [
-      'an empty method',
-      JSON.stringify({ doc: 'd', id: '1', kind: 'event', method: '' }),
-      'invalid',
+      'a call without id',
+      JSON.stringify({ doc: 'd', kind: 'call', method: 'm' }),
+      'missing id or method',
     ],
     [
-      'an unknown error code',
-      JSON.stringify({
-        doc: 'd',
-        id: '1',
-        kind: 'error',
-        error: { code: 'boom', message: '' },
-      }),
-      'invalid',
+      'a call without method',
+      JSON.stringify({ doc: 'd', id: '1', kind: 'call' }),
+      'missing id or method',
+    ],
+    ['a result without id', JSON.stringify({ doc: 'd', kind: 'result' }), 'missing id'],
+    [
+      'an empty event name',
+      JSON.stringify({ doc: 'd', kind: 'event', method: '' }),
+      'missing method',
+    ],
+    [
+      'a non-string error code',
+      JSON.stringify({ doc: 'd', id: '1', kind: 'error', error: { code: 1, message: '' } }),
+      'malformed error',
     ],
     [
       'an error without message',
       JSON.stringify({ doc: 'd', id: '1', kind: 'error', error: { code: 'timeout' } }),
-      'invalid',
+      'malformed error',
     ],
-  ])('rejects %s', (_name, raw, code) => {
-    const result = parseBridgeMessage(raw);
-    expect(isBridgeError(result) && result.code).toBe(code);
+  ])('rejects %s', (_name, raw, reason) => {
+    expect(parseBridgeMessage(raw)).toBe(reason);
   });
 });

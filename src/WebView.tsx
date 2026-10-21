@@ -34,7 +34,9 @@ type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
   kind: WebViewErrorEvent['kind'] | 'http';
 };
 
-type BridgeEvent = { message?: string; unavailable?: boolean; navigated?: boolean };
+/** A page's message comes with its origin, as native verified it (`location.origin` form). */
+type BridgeEvent =
+  { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
 /** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
 type HookEvent = HookEventBody & { askId?: number };
@@ -269,8 +271,8 @@ function WebViewInstance({ ref, ...props }: Props) {
   }, [connection]);
 
   const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {
-    if (nativeEvent.message !== undefined) connection?.receive(nativeEvent.message);
-    else if (nativeEvent.navigated) connection?.navigated();
+    if ('message' in nativeEvent) connection?.receive(nativeEvent.message, nativeEvent.origin);
+    else if ('navigated' in nativeEvent) connection?.navigated();
     else connection?.markUnavailable();
   };
 
