@@ -130,6 +130,8 @@ type NativeMethods = {
     args?: string;
     completion?: string;
   }): Promise<string>;
+  /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `native`. */
+  hook(name: string, method: string, args: string): Promise<string>;
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
@@ -256,6 +258,8 @@ function WebViewInstance({ ref, ...props }: Props) {
             completion: options?.completion,
           })
         ),
+      hook: async (name, method, args = []) =>
+        parsed(await native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
   useAttach(ref, handle, lastRef, attachmentRef);
@@ -328,7 +332,7 @@ function WebViewInstance({ ref, ...props }: Props) {
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      nativeOptions={props.nativeOptions}
+      nativeOptions={props.nativeOptions && withoutNulls(props.nativeOptions)}
       requestHandlers={requestHandlers}
       onNavigation={onNavigation}
       onNavigationState={onNavigationState}
@@ -377,19 +381,24 @@ const bridgeIds = new WeakMap<object, number>();
 let lastBridgeId = 0;
 
 /**
- * What native sets up once, when it creates the WebView: the bridge, the hooks' options and the creation-time
- * settings (`ios.configuration`). As WebViewInstance's `key`, a change recreates the WebView, like a new `key` on the
- * component would: the page reloads from `source`, and the navigation state starts from the initial one.
+ * What native sets up once, when it creates the WebView: the bridge and the creation-time settings
+ * (`ios.configuration`). As WebViewInstance's `key`, a change recreates the WebView, like a new `key` on the component
+ * would: the page reloads from `source`, and the navigation state starts from the initial one. `nativeOptions` is not
+ * in it: native passes a changed value to its hook live.
  */
 function creationKey(props: WebViewProps) {
   const bridge = props.bridge;
   let id = bridge && bridgeIds.get(bridge);
   if (bridge && id === undefined) bridgeIds.set(bridge, (id = ++lastBridgeId));
   return JSON.stringify(
-    [id ?? 0, props.nativeOptions, Platform.OS === 'ios' ? props.ios?.configuration : undefined],
+    [id ?? 0, Platform.OS === 'ios' ? props.ios?.configuration : undefined],
     sortedKeys
   );
 }
+
+/** A null or undefined value is no value: the hook is off, and for an attached one the key is removed. */
+const withoutNulls = (options: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(options).filter(([, value]) => value != null));
 
 /** A JSON.stringify replacer: the same options in another key order are the same key. */
 const sortedKeys = (_: string, value: unknown) =>
