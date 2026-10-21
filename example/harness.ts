@@ -1268,6 +1268,10 @@ async function settings(h: Harness) {
         (await call('webView._nope', [])) === 'ERR_NATIVE'
       );
       r.check(
+        'call refuses init, and the WebView still works',
+        (await call('webView.init', [])) === 'ERR_NATIVE' && (await page('1+1')) === 2
+      );
+      r.check(
         'call rejects an unknown selector',
         (await call('webView.nope:', [1])) === 'ERR_NATIVE'
       );
@@ -1339,6 +1343,10 @@ async function settings(h: Harness) {
       r.check(
         'call rejects for a core-owned method',
         (await call('webView.destroy')) === 'ERR_NATIVE'
+      );
+      r.check(
+        'get refuses a core-owned method, and the WebView still works',
+        (await get('webView.destroy')) === 'ERR_NATIVE' && (await page('1+1')) === 2
       );
       await page(`(document.cookie = 'mrw=1; path=/')`);
       const before = await page('document.cookie');

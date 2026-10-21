@@ -82,8 +82,11 @@ await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200
 
 Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,
 a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
-is `null`. Refused with `ERR_NATIVE`: what the core owns (on iOS every selector that loads, navigates, runs a script,
-starts a download or sets a delegate; on Android the loads, clients, `destroy` and `evaluateJavascript`), private
-(`_`) selectors and KVC, an unknown selector, a wrong argument count and an argument that doesn't fit the signature.
+is `null`. Refused with `ERR_NATIVE`: on iOS every selector that loads, navigates, runs a script, starts a download
+or sets a delegate, and private (`_`), KVC, KVO (`willChange…`, `didChange…`), `performSelector`, `init…`, `copy…`,
+`mutable…`, `new…` and reference-counting selectors; on Android, in `call` and `get`, the loads, navigations, clients,
+JavaScript interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
+`resumeTimers` and `evaluateJavascript`. So are an unknown selector, a wrong argument count, an argument that doesn't
+fit the signature, a method or getter that raises, and on iOS a result JSON can't carry (a NaN).
 Two things the signature can't check are undefined behaviour and crash the app: a wrong completion shape, and an
 object argument of the wrong class. For a method that takes an object, write a [native hook](native-hooks.md).

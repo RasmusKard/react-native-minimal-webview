@@ -99,7 +99,7 @@ static BOOL MRWSetArgument(NSInvocation *invocation, NSUInteger index, const cha
 
 #define MRW_GET(ctype, box) { ctype v; [invocation getReturnValue:&v]; return (box); }
 
-/// The invocation's return value as JSON; null for void and for what JSON can't carry.
+/// The invocation's return value as an object for `MRWJsonable`; null for void and for what JSON can't carry.
 static id MRWReturnValue(NSInvocation *invocation) {
   const char *type = invocation.methodSignature.methodReturnType;
   switch (type[0]) {
@@ -115,12 +115,12 @@ static id MRWReturnValue(NSInvocation *invocation) {
     case 'Q': MRW_GET(unsigned long long, @(v))
     case 'f': MRW_GET(float, @(v))
     case 'd': MRW_GET(double, @(v))
-    case '@': { __unsafe_unretained id v = nil; [invocation getReturnValue:&v]; return MRWJsonable(v); }
+    case '@': { __unsafe_unretained id v = nil; [invocation getReturnValue:&v]; return v; }
     case '{':
-      if (strcmp(type, @encode(UIEdgeInsets)) == 0) MRW_GET(UIEdgeInsets, MRWJsonable([NSValue valueWithUIEdgeInsets:v]))
-      if (strcmp(type, @encode(CGPoint)) == 0) MRW_GET(CGPoint, MRWJsonable([NSValue valueWithCGPoint:v]))
-      if (strcmp(type, @encode(CGSize)) == 0) MRW_GET(CGSize, MRWJsonable([NSValue valueWithCGSize:v]))
-      if (strcmp(type, @encode(CGRect)) == 0) MRW_GET(CGRect, MRWJsonable([NSValue valueWithCGRect:v]))
+      if (strcmp(type, @encode(UIEdgeInsets)) == 0) MRW_GET(UIEdgeInsets, [NSValue valueWithUIEdgeInsets:v])
+      if (strcmp(type, @encode(CGPoint)) == 0) MRW_GET(CGPoint, [NSValue valueWithCGPoint:v])
+      if (strcmp(type, @encode(CGSize)) == 0) MRW_GET(CGSize, [NSValue valueWithCGSize:v])
+      if (strcmp(type, @encode(CGRect)) == 0) MRW_GET(CGRect, [NSValue valueWithCGRect:v])
       return NSNull.null;
     default: return NSNull.null;
   }
@@ -129,9 +129,9 @@ static id MRWReturnValue(NSInvocation *invocation) {
 /// A completion block of the shape `completion` names, resolving `resolve`; nil for an unknown shape.
 static id MRWBlock(NSString *completion, void (^resolve)(id, NSString *)) {
   if ([completion isEqualToString:@"void"]) return [^{ resolve(NSNull.null, nil); } copy];
-  if ([completion isEqualToString:@"value"]) return [^(id value) { resolve(MRWJsonable(value), nil); } copy];
+  if ([completion isEqualToString:@"value"]) return [^(id value) { resolve(value, nil); } copy];
   if ([completion isEqualToString:@"valueError"]) {
-    return [^(id value, NSError *error) { resolve(MRWJsonable(value), error.localizedDescription); } copy];
+    return [^(id value, NSError *error) { resolve(value, error.localizedDescription); } copy];
   }
   if ([completion isEqualToString:@"error"]) return [^(NSError *error) { resolve(NSNull.null, error.localizedDescription); } copy];
   return nil;
@@ -148,11 +148,14 @@ void MRWInvoke(id target, SEL selector, NSArray *args, NSString *completion, voi
     return resolve(nil, [NSString stringWithFormat:@"%@ takes %lu arguments, got %lu", name, (unsigned long)expected, (unsigned long)args.count]);
   }
   // The method may call its block before returning, or raise after calling it: the first settlement counts.
+  // The result is made JSON here, inside the catch: walking a KVC proxy or a raising getter rejects.
   __block BOOL settled = NO;
   void (^once)(id, NSString *) = ^(id result, NSString *error) {
     if (settled) return;
     settled = YES;
-    resolve(result, error);
+    __block id json = nil;
+    NSString *raised = MRWCatchException(^{ json = MRWJsonable(result); });
+    resolve(raised ? nil : json, error ?: raised);
   };
   id block = takesBlock ? MRWBlock(completion, once) : nil;
   if (takesBlock && !block) return once(nil, @"the method takes a completion handler: pass its shape as `completion` (void, value, valueError or error)");

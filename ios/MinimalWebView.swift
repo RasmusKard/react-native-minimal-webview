@@ -319,10 +319,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     onNavigationState(state as? [String: Any] ?? [:])
   }
 
-  private func pageFinished(_ webView: WKWebView) {
-    refresher.loadEnded()
-  }
-
   /// An observation callback the core implements: every hook delegate that implements it gets it after the core.
   private func forward(_ callback: (WKNavigationDelegate) -> Void) {
     proxy.navigationDelegates.forEach(callback)
@@ -416,7 +412,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// A load finished, or failed with `error`: the core's bookkeeping, then the hook delegates' callback.
   private func loadEnded(_ webView: WKWebView, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
     if let error { failed(error) }
-    pageFinished(webView)
+    refresher.loadEnded()
     refreshSoon()
     forward(callback)
   }

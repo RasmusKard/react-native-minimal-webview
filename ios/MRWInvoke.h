@@ -8,8 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// with why it couldn't. A selector whose last argument is a block gets one of the shape `completion` names: `void`
 /// `(void)`, `value` `(id)`, `valueError` `(id, NSError *)` or `error` `(NSError *)`; the block resolves, with the
 /// error's description as the error. Rejects, never raises, for an unknown selector, a wrong
-/// argument count, an argument that doesn't fit or an exception the method raises. A wrong block shape or an object
-/// argument of the wrong class is undefined behaviour.
+/// argument count, an argument that doesn't fit or an exception the method, or making its result JSON, raises. A wrong
+/// block shape or an object argument of the wrong class is undefined behaviour.
 FOUNDATION_EXPORT void MRWInvoke(id target, SEL selector, NSArray *args, NSString *_Nullable completion,
                                  void (^resolve)(id _Nullable result, NSString *_Nullable error));
 

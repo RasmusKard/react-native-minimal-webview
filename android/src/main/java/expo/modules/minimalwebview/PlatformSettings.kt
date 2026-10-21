@@ -53,13 +53,15 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     return rejected
   }
 
-  /** `root.key`: the getter's value (`getKey`, `isKey` or `key()`), as JSON. Throws with the reason when it can't. */
+  /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws with the reason. */
   fun get(path: String): String {
     val (targets, key) = resolve(path)
+    if (key in OWNED) throw problem("$key is owned by the core")
     val capital = key.replaceFirstChar { it.uppercaseChar() }
     for (target in targets) {
       for (method in target.cls.methods) {
-        if (method.name !in listOf("get$capital", "is$capital", key)) continue
+        val getter = method.name == "get$capital" || method.name == "is$capital"
+        if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
         val args = arguments(method, target, emptyList()) ?: continue
         return toJson(invoke(method, target, args))
       }
@@ -170,11 +172,15 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
   private companion object {
     val NONE = Any()
 
-    /** Methods the core owns: its clients, listeners and loads; the page's JS goes through `evaluate` and the bridge. */
+    /**
+     * Methods the core owns: its clients, listeners, scripts, loads and navigations, and the WebView's lifetime and timers;
+     * the page's JS goes through `evaluate` and the bridge.
+     */
     val OWNED = setOf(
       "setWebViewClient", "setWebChromeClient", "setDownloadListener", "addJavascriptInterface",
-      "removeJavascriptInterface", "destroy", "loadUrl", "loadData", "loadDataWithBaseURL", "postUrl",
-      "evaluateJavascript"
+      "removeJavascriptInterface", "addWebMessageListener", "removeWebMessageListener", "addDocumentStartJavaScript",
+      "destroy", "removeAllViews", "pauseTimers", "resumeTimers", "loadUrl", "loadData", "loadDataWithBaseURL",
+      "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript"
     )
 
     /** A getter's or method's result as JSON: primitives, strings, lists and maps of them; anything else is null. */
