@@ -13,7 +13,6 @@ import {
 import { Platform, type ViewProps } from 'react-native';
 
 import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
-import { WK } from './platform.generated';
 import type {
   Bridge,
   NativeEvent as HookEventBody,
@@ -28,6 +27,33 @@ import type {
 } from './types';
 
 type NativeEvent<T> = { nativeEvent: T };
+
+/**
+ * A type's documented keys, to pick from its native event: React Native adds its own (`target`, the view's tag). A
+ * `Record`, so that a key missing here, or not in the type, fails to compile.
+ */
+const keysOf = <T,>(keys: Record<keyof T, true>) => Object.keys(keys) as (keyof T)[];
+const pick = <T,>(event: T, keys: (keyof T)[]) =>
+  Object.fromEntries(keys.map((key) => [key, event[key]])) as T;
+const STATE_KEYS = keysOf<NavigationState>({
+  url: true,
+  pendingUrl: true,
+  title: true,
+  loading: true,
+  progress: true,
+  canGoBack: true,
+  canGoForward: true,
+  outcome: true,
+});
+const NAVIGATION_KEYS = keysOf<NavigationEvent>({
+  url: true,
+  mainFrame: true,
+  newWindow: true,
+  userInitiated: true,
+  action: true,
+  rule: true,
+});
+const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: true });
 
 /** Native reports every main-frame error as one event; `code` is the HTTP status for `http`. */
 type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
@@ -85,9 +111,6 @@ type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OW
 // A prop missing from OWN fails to compile here, by name.
 const OWN_SET: Set<string> &
   ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
-
-/** `WKAudiovisualMediaTypeAudio | Video`; WebKit's `.all` is NSUIntegerMax, which JSON can't carry exactly. */
-const MEDIA_ALL = WK.AudiovisualMediaTypes.all;
 
 type NativeSettings = Record<string, Record<string, SettingValue | undefined>>;
 
@@ -150,6 +173,7 @@ const INITIAL_STATE: NavigationState = {
   progress: 0,
   canGoBack: false,
   canGoForward: false,
+  outcome: null,
 };
 
 type Attachment = { update(state: NavigationState): void; detach(): void };
@@ -316,8 +340,9 @@ function WebViewInstance({ ref, ...props }: Props) {
   };
 
   const onNavigation = ({ nativeEvent }: NativeEvent<NavigationEvent>) => {
-    if (nativeEvent.action === 'external') props.onOpenExternal?.(nativeEvent.url);
-    props.onNavigation?.(nativeEvent);
+    const event = pick(nativeEvent, NAVIGATION_KEYS);
+    if (event.action === 'external') props.onOpenExternal?.(event.url);
+    props.onNavigation?.(event);
   };
 
   return (
@@ -335,11 +360,15 @@ function WebViewInstance({ ref, ...props }: Props) {
       nativeOptions={props.nativeOptions && withoutNulls(props.nativeOptions)}
       requestHandlers={requestHandlers}
       onNavigation={onNavigation}
-      onNavigationState={onNavigationState}
+      onNavigationState={({ nativeEvent }) =>
+        onNavigationState({ nativeEvent: pick(nativeEvent, STATE_KEYS) })
+      }
       onBridge={onBridge}
       onNativeEvent={onNativeEvent}
       onError={onError}
-      onProcessGone={({ nativeEvent }) => props.onProcessGone?.(nativeEvent)}
+      onProcessGone={({ nativeEvent }) =>
+        props.onProcessGone?.(pick(nativeEvent, PROCESS_GONE_KEYS))
+      }
     />
   );
 }
@@ -412,19 +441,18 @@ function viewPropsOf(props: WebViewProps): ViewProps {
 }
 
 /**
- * The platform's settings for native: the package's defaults (playback on a gesture, no script-opened windows,
- * debugging in `__DEV__`, no custom user agent), the app's `ios` or `android` roots over them, and `userAgent` on
- * top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
+ * The platform's settings for native: the package's defaults (inline media on iOS, debugging in `__DEV__`, no custom
+ * user agent), the app's `ios` or `android` roots over them, and `userAgent` on top. An unset `userAgent` resets its key
+ * to the default, so removing the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
   const set = (value: string | undefined, key: string) =>
     value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
-    const { configuration, preferences, webView, ...rest } = props.ios ?? {};
+    const { configuration, webView, ...rest } = props.ios ?? {};
     return {
       ...rest,
-      configuration: { mediaTypesRequiringUserActionForPlayback: MEDIA_ALL, ...configuration },
-      preferences: { javaScriptCanOpenWindowsAutomatically: false, ...preferences },
+      configuration: { allowsInlineMediaPlayback: true, ...configuration },
       webView: {
         customUserAgent: null,
         inspectable: __DEV__,
@@ -438,8 +466,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
   return {
     settings: {
       userAgentString: null,
-      mediaPlaybackRequiresUserGesture: true,
-      javaScriptCanOpenWindowsAutomatically: false,
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },

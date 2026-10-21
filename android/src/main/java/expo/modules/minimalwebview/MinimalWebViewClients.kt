@@ -60,7 +60,7 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
-      if (!navigation.didCommit() || navigation.page in loadedPages) {
+      if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) {
         owner.loading = false
         owner.pageFinished()
       }

@@ -145,7 +145,7 @@ export default function App() {
             onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
             onDownload={(result) =>
-              'uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result)
+              result.ok ? events.downloads.push(result) : events.downloadFailures.push(result)
             }
             onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
             android={{

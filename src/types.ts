@@ -77,6 +77,8 @@ export type NavigationState = {
   progress: number;
   canGoBack: boolean;
   canGoForward: boolean;
+  /** How the last main-frame load ended; null while none has. */
+  outcome: 'finished' | 'failed' | 'cancelled' | null;
 };
 
 /** A main-frame load that failed: no page arrived. */
@@ -186,13 +188,19 @@ export type PermissionRequestEvent = { origin: string; resources: PermissionReso
  * A finished download: `uri` is a `file://` in the app's cache (iOS: the temporary directory). `url` is the server URL
  * the file came from; `null` when the page generated it (`data:` or `blob:` URL).
  */
-export type Download = { uri: string; filename: string; mimeType: string; url: string | null };
+export type Download = {
+  ok: true;
+  uri: string;
+  filename: string;
+  mimeType: string;
+  url: string | null;
+};
 
 /**
  * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error). `url` as in {@link Download}.
- * `'uri' in result` tells it from a {@link Download}.
+ * `ok` tells it from a {@link Download}.
  */
-export type DownloadFailure = { filename: string; url: string | null; reason: string };
+export type DownloadFailure = { ok: false; filename: string; url: string | null; reason: string };
 
 /** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
 export type SettingValue =

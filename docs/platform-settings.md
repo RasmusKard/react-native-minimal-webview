@@ -22,13 +22,14 @@ const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.
 
 The package's own defaults are plain keys that yours override. JS sends these with your settings:
 
-- No script-opened windows: `ios.preferences.javaScriptCanOpenWindowsAutomatically`,
-  `android.settings.javaScriptCanOpenWindowsAutomatically` (`false`).
-- Playback only on a gesture: `ios.configuration.mediaTypesRequiringUserActionForPlayback` (all),
-  `android.settings.mediaPlaybackRequiresUserGesture` (`true`).
+- Inline video on iOS: `ios.configuration.allowsInlineMediaPlayback` (`true`), so a `<video playsinline>` doesn't open
+  fullscreen.
 - Debugging in `__DEV__` only: `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` (process-wide).
 - No custom user agent: `ios.webView.customUserAgent`, `android.settings.userAgentString` (`null`), unless `userAgent`
   is set.
+
+Script-opened windows (`javaScriptCanOpenWindowsAutomatically`) and playback without a gesture are already off by the
+platforms' own defaults.
 
 Android also sets these natively, once for each new WebView (the first, and the one after a renderer crash):
 
@@ -56,8 +57,8 @@ How the keys work:
   compat feature this device's WebView lacks. Nothing in this channel can crash the app.
 - **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a change recreates the
   WebView (the page reloads), as a change of `bridge` does. A key you remove goes back to the package's
-  default when JS sends one (the first list above); any other key keeps its value until you set it or the WebView is
-  recreated.
+  default when JS sends one (the first list above: debugging and the user agent); any other key keeps its value until
+  you set it or the WebView is recreated.
 - **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and
   `httpCookieStore` are roots too, on Android `cookieManager` and `webStorage`.
 

@@ -1,5 +1,5 @@
 import { type RefObject, act, createRef, useState } from 'react';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
 import { WebView, createWebViewRef, useWebViewState } from '../WebView';
@@ -160,8 +160,7 @@ describe('platform settings', () => {
 
   it('are the defaults alone without props (jest runs as iOS)', async () => {
     expect(await settingsOf({})).toEqual({
-      configuration: { mediaTypesRequiringUserActionForPlayback: 3 },
-      preferences: { javaScriptCanOpenWindowsAutomatically: false },
+      configuration: { allowsInlineMediaPlayback: true },
       webView: { customUserAgent: null, inspectable: true },
     });
   });
@@ -171,7 +170,7 @@ describe('platform settings', () => {
       userAgent: 'Agent/1',
       ios: {
         configuration: {
-          allowsInlineMediaPlayback: true,
+          allowsInlineMediaPlayback: false,
           mediaTypesRequiringUserActionForPlayback: 0,
         },
         preferences: { javaScriptCanOpenWindowsAutomatically: true },
@@ -185,8 +184,8 @@ describe('platform settings', () => {
     });
     expect(settings).toEqual({
       configuration: {
+        allowsInlineMediaPlayback: false,
         mediaTypesRequiringUserActionForPlayback: 0,
-        allowsInlineMediaPlayback: true,
       },
       preferences: { javaScriptCanOpenWindowsAutomatically: true },
       webView: {
@@ -198,7 +197,8 @@ describe('platform settings', () => {
     });
   });
 
-  it('recreate the native view for a changed configuration key, with the new settings', async () => {
+  /** Renders one ios.configuration value, then another, counting the native mounts. */
+  const changeConfiguration = async () => {
     const root = createRoot();
     const show = (name: string) =>
       act(async () =>
@@ -212,12 +212,49 @@ describe('platform settings', () => {
     mockMount.mockClear();
     await show('App/1');
     await show('App/2');
+    return root;
+  };
+
+  it('recreate the native view for a changed configuration key, with the new settings', async () => {
+    const root = await changeConfiguration();
     expect(mockMount).toHaveBeenCalledTimes(2);
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
       settings: string;
     };
     const settings = JSON.parse(native.settings) as { configuration: Record<string, unknown> };
     expect(settings.configuration.applicationNameForUserAgent).toBe('App/2');
+  });
+
+  describe('on Android', () => {
+    beforeEach(() => jest.replaceProperty(Platform, 'OS', 'android'));
+    afterEach(() => jest.restoreAllMocks());
+
+    it('are the defaults alone without props', async () => {
+      expect(await settingsOf({})).toEqual({
+        settings: { userAgentString: null },
+        webView: { webContentsDebuggingEnabled: true },
+      });
+    });
+
+    it('put userAgent over the app keys, and the app keys over the defaults', async () => {
+      const settings = await settingsOf({
+        userAgent: 'Agent/1',
+        android: {
+          settings: { userAgentString: 'Overridden/0', textZoom: 120 },
+          webView: { webContentsDebuggingEnabled: false, overScrollMode: 2 },
+        },
+        ios: { webView: { inspectable: false } },
+      });
+      expect(settings).toEqual({
+        settings: { userAgentString: 'Agent/1', textZoom: 120 },
+        webView: { webContentsDebuggingEnabled: false, overScrollMode: 2 },
+      });
+    });
+
+    it('keep the native view when an ios.configuration key changes', async () => {
+      await changeConfiguration();
+      expect(mockMount).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('logs native warnings', async () => {
@@ -386,6 +423,7 @@ describe('navigation state across remounts', () => {
     progress: 0,
     canGoBack: false,
     canGoForward: false,
+    outcome: null,
   });
   const fireState = (root: ReturnType<typeof createRoot>, state: NavigationState, index = 0) =>
     act(async () => {
@@ -394,6 +432,44 @@ describe('navigation state across remounts', () => {
         native?.props as { onNavigationState: (event: { nativeEvent: NavigationState }) => void }
       ).onNavigationState({ nativeEvent: state });
     });
+
+  it("passes on the documented keys only, not React Native's own", async () => {
+    const ref = createWebViewRef();
+    const onNavigation = jest.fn();
+    const onProcessGone = jest.fn();
+    const root = createRoot();
+    await act(async () =>
+      root.render(
+        <WebView
+          ref={ref}
+          source={{ uri: 'https://example.com' }}
+          onNavigation={onNavigation}
+          onProcessGone={onProcessGone}
+        />
+      )
+    );
+    const target = { target: 42 };
+    await fireState(root, { ...at('https://example.com/a'), ...target } as NavigationState);
+    expect(ref.getState()).toStrictEqual(at('https://example.com/a'));
+    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
+      onNavigation: (event: { nativeEvent: object }) => void;
+      onProcessGone: (event: { nativeEvent: object }) => void;
+    };
+    const navigation = {
+      url: 'https://example.com/b',
+      mainFrame: true,
+      newWindow: false,
+      userInitiated: true,
+      action: 'allow',
+      rule: null,
+    };
+    await act(async () => {
+      native.onNavigation({ nativeEvent: { ...navigation, ...target } });
+      native.onProcessGone({ nativeEvent: { didCrash: true, recovered: true, ...target } });
+    });
+    expect(onNavigation.mock.calls[0][0]).toStrictEqual(navigation);
+    expect(onProcessGone.mock.calls[0][0]).toStrictEqual({ didCrash: true, recovered: true });
+  });
 
   it("createWebViewRef's current is the mounted WebView's ref, and null while none is", async () => {
     const ref = createWebViewRef();
