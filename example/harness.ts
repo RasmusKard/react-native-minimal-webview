@@ -1703,7 +1703,8 @@ async function injection(h: Harness) {
   r.done();
 }
 
-/** Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename. */
+/** Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
+ * on Android a blob above the size cap fails. */
 async function downloadsSuite(h: Harness) {
   const r = reporter('downloads');
   await openPage(h, fresh(h, '/media.html'));
@@ -1749,6 +1750,22 @@ async function downloadsSuite(h: Harness) {
       `${id} download url is ${url === null ? 'null' : 'the full server URL'}`,
       download?.url === url,
       download?.url
+    );
+  }
+
+  if (Platform.OS === 'android') {
+    // Above Android's 100 MB cap a blob: download fails before the page reads it. The blob is made only here.
+    const failures = h.events.downloadFailures.length;
+    await h.ref.current?.evaluate(
+      "(() => { const a = document.createElement('a'); a.id = 'bigblob'; a.download = 'big.bin'; a.href = URL.createObjectURL(new Blob([new Uint8Array(101 * 1024 * 1024)])); document.body.append(a); })()"
+    );
+    await click(h, 'bigblob');
+    const failed = await waitFor(h, () => h.events.downloadFailures.length > failures, 20000);
+    const failure = h.events.downloadFailures[failures];
+    r.check(
+      'a blob above the size cap reports a failure with a reason',
+      failed && failure?.reason.includes('larger than') === true,
+      failure
     );
   }
 
