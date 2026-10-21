@@ -46,9 +46,9 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 ## New windows
 
 There is never a second WebView: a new window (`target=_blank`, `window.open`) that the rules allow loads in place, so
-`window.opener` is unavailable. Only http(s) targets reach the rules. Any other scheme (`data:`, `blob:`,
-`javascript:`, `file:`, `tel:` and so on) is blocked, whatever the rules say, because the new window would load in the
-main frame. On Android a new window that doesn't navigate within 5 s (`window.open('')`) is dropped.
+`window.opener` is unavailable. A new window to `data:`, `blob:`, `javascript:`, `about:` or `file:` is blocked,
+whatever the rules say, because it would load in the main frame; every other scheme goes through the rules as usual
+(`mailto:` and `tel:` open externally by default). On Android a new window that doesn't navigate within 5 s (`window.open('')`) is dropped.
 
 ## Platform differences
 
