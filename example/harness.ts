@@ -480,6 +480,14 @@ async function bridge(h: Harness) {
   r.check('page -> RN missing method', notFound.error === 'not_found', notFound);
   const slow = await pageCall(h, 'slow', null);
   r.check('page -> RN call times out', slow.error === 'timeout', slow);
+  const unhandle = h.bridge.handle('sender', (_, sender) => sender);
+  const sender = await pageCall(h, 'sender', null);
+  unhandle();
+  r.check(
+    "page -> RN handler gets the caller's origin from native",
+    (sender.result as { origin?: string } | undefined)?.origin === h.pages,
+    sender
+  );
 
   h.bridge.emit('nativeEvent', { n: 1 });
   const logged = await until(
@@ -1671,11 +1679,7 @@ async function injection(h: Harness) {
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
   r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
-  r.check(
-    'a script runs in the main frame only by default',
-    frame.top && !frame.mainOnly,
-    frame
-  );
+  r.check('a script runs in the main frame only by default', frame.top && !frame.mainOnly, frame);
   h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
   await sleep(500);
   r.check(
@@ -2177,7 +2181,13 @@ async function bfcache(h: Harness) {
   const second = fresh(h, '/back-forward.html?title=second');
   await openPage(h, second);
 
-  const travel = async (name: string, go: () => void, url: string, title: string, back: boolean) => {
+  const travel = async (
+    name: string,
+    go: () => void,
+    url: string,
+    title: string,
+    back: boolean
+  ) => {
     clearEvents(h);
     go();
     await waitFor(h, (s) => s.url === url && idle(s));

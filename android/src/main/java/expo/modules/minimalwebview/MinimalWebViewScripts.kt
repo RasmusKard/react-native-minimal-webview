@@ -57,13 +57,13 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   }
 
   private fun addBridge(script: String, origins: Set<String>) {
-    WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, _, isMainFrame, proxy ->
-      // Main frame only, like iOS. The origin rules already filtered the sender.
+    WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, sourceOrigin, isMainFrame, proxy ->
+      // Main frame only, like iOS. The origin rules already filtered the sender; its origin goes to the handlers.
       if (!isMainFrame) return@addWebMessageListener
       // An ArrayBuffer has no string data (`data` throws); iOS drops a non-string message too.
       if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
       replyProxy = proxy
-      onBridge(mapOf("message" to message.data))
+      onBridge(mapOf("message" to message.data, "origin" to sourceOrigin.toString()))
     }
     // Runs before the page's own scripts, after the transport object exists.
     WebViewCompat.addDocumentStartJavaScript(webView, script, origins)

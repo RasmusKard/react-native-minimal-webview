@@ -8,7 +8,7 @@ function setup(timeoutMs = 1000) {
   const sent: BridgeMessage[] = [];
   connection.attach((text) => sent.push(JSON.parse(text) as BridgeMessage));
   const fromPage = (message: object) =>
-    connection.receive(JSON.stringify({ doc: 'd1', ...message }));
+    connection.receive(JSON.stringify({ doc: 'd1', ...message }), 'https://example.com');
   return { bridge, connection, sent, fromPage };
 }
 
@@ -63,6 +63,25 @@ describe('createBridge', () => {
     const result = bridge.call('sum', { a: 1 });
     fromPage({ id: sent[0]!.id, kind: 'result', params: 3 });
     await expect(result).resolves.toBe(3);
+  });
+
+  it("passes the caller's origin, as native gave it, to handlers and listeners", async () => {
+    const { bridge, connection, sent } = setup();
+    const senders: unknown[] = [];
+    bridge.handle('who', (_, sender) => senders.push(sender));
+    bridge.on('hi', (_, sender) => senders.push(sender));
+    const call = { id: 'p1', doc: 'd1', kind: 'call', method: 'who', origin: 'https://evil.test' };
+    connection.receive(JSON.stringify(call), 'https://example.com:8443');
+    connection.receive(
+      JSON.stringify({ id: '', doc: 'd1', kind: 'event', method: 'hi' }),
+      'https://a.example.com'
+    );
+    await flush();
+    expect(senders).toEqual([
+      { origin: 'https://example.com:8443' },
+      { origin: 'https://a.example.com' },
+    ]);
+    expect(sent[0]).toMatchObject({ id: 'p1', kind: 'result' });
   });
 
   it('rejects a call with the page error', async () => {
@@ -261,7 +280,7 @@ describe('createBridge', () => {
     const seen: unknown[] = [];
     bridge.on('x', (payload) => seen.push(payload));
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    connection.receive('{"v":1,"kind":"event","method":"x"}');
+    connection.receive('{"v":1,"kind":"event","method":"x"}', 'https://example.com');
     expect(seen).toEqual([]);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -289,7 +308,7 @@ describe('createBridge document token', () => {
   it('drops a page message without a token', () => {
     const { bridge, sent, connection } = setup();
     bridge.emit('hello');
-    connection.receive(JSON.stringify({ id: '', kind: 'ready' }));
+    connection.receive(JSON.stringify({ id: '', kind: 'ready' }), 'https://example.com');
     expect(sent).toEqual([]);
   });
 });
