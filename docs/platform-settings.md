@@ -55,7 +55,7 @@ How the keys work:
   (underscore) one is refused. Anything else is skipped with a warning naming the key and the reason, including a
   compat feature this device's WebView lacks. Nothing in this channel can crash the app.
 - **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a change recreates the
-  WebView (the page reloads), as a change of `bridge` or `nativeOptions` does. A key you remove goes back to the package's
+  WebView (the page reloads), as a change of `bridge` does. A key you remove goes back to the package's
   default when JS sends one (the first list above); any other key keeps its value until you set it or the WebView is
   recreated.
 - **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and

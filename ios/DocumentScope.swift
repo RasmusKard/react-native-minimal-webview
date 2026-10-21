@@ -1,7 +1,7 @@
 /// The lifetime of a Document (GLOSSARY.md): what belongs to the main-frame page on screen registers once, and the view
-/// reports each end. ADR 0001.
-final class DocumentScope {
-  enum End { case committed, crashed, closing }
+/// reports each end. ADR 0001. Public for `End`, which hooks get.
+public final class DocumentScope {
+  public enum End { case committed, crashed, closing }
 
   private var registrants: [(End) -> Void] = []
 

@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.app.Activity
 import android.content.Context
 import android.os.Looper
+import android.util.Log
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -17,29 +18,65 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Native hooks: how an app or a package reaches the WebView this package creates, with no protocol to implement.
  * A hook is registered under the `nativeOptions` key that enables it, from an Expo module's `OnCreate` (before the
- * first WebView is created), and runs for each WebView whose `nativeOptions` has that key, on the main thread.
- * docs/native-hooks.md has the rules for the clients and the events.
+ * first WebView is created), and runs for each WebView created with a value for that key other than null or false,
+ * on the main thread. docs/native-hooks.md has the rules for the clients and the events.
  */
 object MinimalWebViewHooks {
   /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
   var webViewFactory: (Context) -> WebView = { WebView(it) }
 
+  internal class Hook(
+    val key: String,
+    val configure: ((WebView, WebViewContext) -> Unit)?,
+    val attach: (WebView, WebViewContext) -> ((DocumentScope.End) -> Unit)?
+  )
+
+  /** In registration order: the order the hooks are configured and attached in, so which client comes first. */
+  internal val hooks = mutableListOf<Hook>()
+
   /**
-   * Runs for each new WebView (the first, and the one that replaces it after the render process dies) once it has its
-   * clients and is in the view hierarchy. Returns what to run when it goes away, or null.
+   * Registers the hook for [key]. For each new WebView (the first, and the one that replaces it after the render
+   * process dies) [configure] runs as soon as it is made, before the package sets it up (`WebViewCompat.setProfile`
+   * goes here), and [attach] once it has its clients and is in the view hierarchy. `attach` returns what to run when
+   * that WebView goes away, which gets `CRASHED` or `CLOSING`, or null. A second registration under a key replaces the
+   * first, with a warning.
    */
-  val attach = mutableMapOf<String, (WebView, WebViewContext) -> (() -> Unit)?>()
+  fun register(
+    key: String,
+    configure: ((WebView, WebViewContext) -> Unit)? = null,
+    attach: (WebView, WebViewContext) -> ((DocumentScope.End) -> Unit)?
+  ) {
+    // The package's own events are `core.…`: a hook under it would have its events taken for them.
+    if (key == "core") {
+      Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
+      return
+    }
+    val hook = Hook(key, configure, attach)
+    val index = hooks.indexOfFirst { it.key == key }
+    if (index < 0) {
+      hooks += hook
+    } else {
+      Log.w(TAG, "a second hook registered under `$key` replaces the first")
+      hooks[index] = hook
+    }
+  }
 }
+
+/** Whether a `nativeOptions` value enables its hook. */
+internal fun enables(value: Any?) = value != null && value != false
 
 /** One WebView instance, as a hook sees it. */
 interface WebViewContext {
-  /** The `nativeOptions` prop: whatever the app passed for its hooks. */
-  val options: Map<String, Any?>
+  /** This hook's `nativeOptions` value; after a change, the new one. */
+  val options: Any?
   val activity: Activity?
+
+  /** The committed URL, the one the navigation state reports; empty before the first commit. */
+  val url: String
 
   /**
    * Clients for the WebView, in order; add them in `attach`. A callback goes to the core, to the first client that
-   * overrides it, or to every one, by the rules in docs/native-hooks.md.
+   * overrides it, or to every one, by the rule in docs/native-hooks.md.
    */
   val clients: MutableList<WebViewClient>
   val chromeClients: MutableList<WebChromeClient>
@@ -49,14 +86,59 @@ interface WebViewContext {
 
   /** Sends the event and waits for JS's answer, the handler's return value; null when the view or its page goes away. */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
+
+  /** Runs [handler] with this hook's new `nativeOptions` value each time it changes; null when the key is removed. */
+  fun onOptionsChange(handler: (Any?) -> Unit)
+
+  /** Runs [handler] at each end of the Document (GLOSSARY.md): a new page committed, a crash, or the view closing. */
+  fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
+
+  /**
+   * Answers JS's `ref.hook("<hook>", method, args)`. [handler] gets the arguments as the platform's JSON types and
+   * calls `reply` once, with a value JSON can encode. A later handler for the same method replaces this one.
+   */
+  fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
 }
 
-/** A hook's view of the WebView: the core's context with the hook's name on its events. */
-internal class HookContext(private val name: String, private val view: MinimalWebView) : WebViewContext by view {
-  override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("${this.name}.$name", payload) }
+/**
+ * A hook's view of the WebView, one per hook and WebView: the core's context with the hook's key on its events. The
+ * handlers live here, so the WebView after a crash gets the ones its `attach` registers again.
+ */
+internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view: MinimalWebView) : WebViewContext {
+  val key get() = hook.key
+  private var current: Any? = view.nativeOptions[hook.key]
+  override val options get() = current
+  override val activity get() = view.activity
+  override val url get() = view.url
+  override val clients get() = view.clients
+  override val chromeClients get() = view.chromeClients
+  private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
+  private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
+
+  override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { view.ask("${this.name}.$name", payload, onAnswer) }
+    onMain { view.ask("$key.$name", payload, onAnswer) }
+
+  override fun onOptionsChange(handler: (Any?) -> Unit) {
+    optionsHandlers += handler
+  }
+
+  override fun onDocumentEnd(handler: (DocumentScope.End) -> Unit) {
+    documentEndHandlers += handler
+  }
+
+  override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
+    handlers[method] = handler
+  }
+
+  fun optionsChanged(value: Any?) {
+    current = value
+    optionsHandlers.forEach { it(value) }
+  }
+
+  fun documentEnded(reason: DocumentScope.End) = documentEndHandlers.forEach { it(reason) }
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {

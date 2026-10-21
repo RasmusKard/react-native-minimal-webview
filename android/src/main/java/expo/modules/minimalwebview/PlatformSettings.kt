@@ -169,7 +169,7 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
 
   private fun problem(reason: String) = IllegalArgumentException(reason)
 
-  private companion object {
+  internal companion object {
     val NONE = Any()
 
     /**

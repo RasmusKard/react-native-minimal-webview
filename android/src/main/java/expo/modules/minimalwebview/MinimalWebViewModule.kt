@@ -111,7 +111,7 @@ class MinimalWebViewModule : Module() {
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
-      Prop("nativeOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.options = options.orEmpty() }
+      Prop("nativeOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.nativeOptions = options.orEmpty() }
       // JSON, so a null (reset this key) survives: the map conversion drops nulls on iOS, and this keeps both the same.
       Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
       Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
@@ -151,6 +151,12 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
         view.answer(askId, answer["value"])
+      }.runOnQueue(Queues.MAIN)
+      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `native`'s.
+      AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
+        val handler = view.hookHandler(name, method)
+          ?: return@AsyncFunction promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
+        handler(fromJson(JSONArray(args)) as List<Any?>) { promise.resolve(PlatformSettings.toJson(it)) }
       }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->

@@ -7,23 +7,34 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.minimalwebview.DocumentScope
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
+import org.json.JSONObject
 
 class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      MinimalWebViewHooks.attach["pageCounter"] = { _, context ->
-        context.clients += PageCounter(context)
+      MinimalWebViewHooks.register("pageCounter") { webView, context ->
+        val counter = PageCounter(context)
+        context.clients += counter
+        // A live option: the page gets the count under the new name at once, without a reload.
+        context.onOptionsChange { counter.stamp(webView) }
+        // JS's `ref.hook('pageCounter', 'count')`.
+        context.handle("count") { _, reply -> reply(counter.count) }
+        context.onDocumentEnd { reason ->
+          if (reason != DocumentScope.End.CLOSING) context.emit("documentEnd", mapOf("reason" to reason.name.lowercase()))
+        }
         null
       }
-      // Decision callbacks the core implements: these clients take them over, and the app's props are not asked.
-      MinimalWebViewHooks.attach["hookAuth"] = { _, context ->
+      // Fixtures for the harness: decision callbacks the core implements, which these clients take over, so the
+      // app's props are not asked.
+      MinimalWebViewHooks.register("hookAuth") { _, context ->
         context.clients += HookAuth()
         null
       }
-      MinimalWebViewHooks.attach["hookDialogs"] = { _, context ->
+      MinimalWebViewHooks.register("hookDialogs") { _, context ->
         context.chromeClients += HookDialogs(context)
         null
       }
@@ -51,18 +62,25 @@ private class HookDialogs(private val context: WebViewContext) : WebChromeClient
 
 /**
  * Counts page loads through two client callbacks: `onPageFinished`, which the core implements and fans out, and
- * `onPageCommitVisible`, which it doesn't and forwards.
+ * `onPageCommitVisible`, which it doesn't and forwards. Its option, `true` or `{ global: name }`, names the page's
+ * global that gets the count (`__pageCount` by default).
  */
 private class PageCounter(private val context: WebViewContext) : WebViewClient() {
-  private var count = 0
+  var count = 0
+    private set
 
   override fun onPageFinished(view: WebView, url: String?) {
     count += 1
-    view.evaluateJavascript("window.__pageCount = $count", null)
+    stamp(view)
     context.emit("pageLoaded", mapOf("url" to url.orEmpty(), "count" to count))
   }
 
   override fun onPageCommitVisible(view: WebView, url: String?) {
     context.emit("commitVisible", mapOf("url" to url.orEmpty()))
+  }
+
+  fun stamp(view: WebView) {
+    val global = (context.options as? Map<*, *>)?.get("global") as? String ?: "__pageCount"
+    view.evaluateJavascript("window[${JSONObject.quote(global)}] = $count", null)
   }
 }

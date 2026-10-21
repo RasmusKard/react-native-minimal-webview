@@ -6,18 +6,26 @@ public class SampleExtensionModule: Module {
   public func definition() -> ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      // A creation-time setting: WebKit reads data detectors only from the configuration.
-      MinimalWebViewHooks.configure["pageCounter"] = { configuration, _ in configuration.dataDetectorTypes = .phoneNumber }
-      MinimalWebViewHooks.attach["pageCounter"] = { _, context in
-        context.navigationDelegates.append(PageCounter(context: context))
+      // configure: a creation-time setting; WebKit reads data detectors only from the configuration.
+      MinimalWebViewHooks.register("pageCounter", configure: { configuration, _ in
+        configuration.dataDetectorTypes = .phoneNumber
+      }) { webView, context in
+        let counter = PageCounter(context: context)
+        context.navigationDelegates.append(counter)
+        // A live option: the page gets the count under the new name at once, without a reload.
+        context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
+        // JS's `ref.hook('pageCounter', 'count')`.
+        context.handle("count") { _, reply in reply(counter.count) }
+        context.onDocumentEnd { [weak context] reason in context?.emit("documentEnd", ["reason": "\(reason)"]) }
         return nil
       }
-      // Decision callbacks the core implements: these delegates take them over, and the app's props are not asked.
-      MinimalWebViewHooks.attach["hookAuth"] = { _, context in
+      // Fixtures for the harness: decision callbacks the core implements, which these delegates take over, so the
+      // app's props are not asked.
+      MinimalWebViewHooks.register("hookAuth") { _, context in
         context.navigationDelegates.append(HookAuth())
         return nil
       }
-      MinimalWebViewHooks.attach["hookDialogs"] = { _, context in
+      MinimalWebViewHooks.register("hookDialogs") { _, context in
         context.uiDelegates.append(HookDialogs(context: context))
         return nil
       }
@@ -68,10 +76,11 @@ private final class HookDialogs: NSObject, WKUIDelegate {
 }
 
 /// Counts page loads through two delegate callbacks: `didFinish`, which the core implements and fans out, and
-/// `didReceiveServerRedirect`, which it doesn't and forwards.
+/// `didReceiveServerRedirect`, which it doesn't and forwards. Its option, `true` or `{ global: name }`, names the
+/// page's global that gets the count (`__pageCount` by default).
 private final class PageCounter: NSObject, WKNavigationDelegate {
   private weak var context: WebViewContext?
-  private var count = 0
+  private(set) var count = 0
 
   init(context: WebViewContext) {
     self.context = context
@@ -79,11 +88,16 @@ private final class PageCounter: NSObject, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     count += 1
-    webView.evaluateJavaScript("window.__pageCount = \(count)")
+    stamp(webView)
     context?.emit("pageLoaded", ["url": webView.url?.absoluteString ?? "", "count": count])
   }
 
   func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
     context?.emit("redirect", ["url": webView.url?.absoluteString ?? ""])
+  }
+
+  func stamp(_ webView: WKWebView) {
+    let global = (context?.options as? [String: Any])?["global"] as? String ?? "__pageCount"
+    webView.callAsyncJavaScript("window[name] = count", arguments: ["name": global, "count": count], in: nil, in: .page)
   }
 }

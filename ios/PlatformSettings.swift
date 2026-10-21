@@ -91,7 +91,7 @@ final class PlatformSettings {
 
   /// `value()` as JSON text. It runs inside MRWCatchException: a getter that raises, or a NaN that JSONSerialization
   /// raises for, throws here instead of crashing the app.
-  private static func json(_ value: () -> Any) throws -> String {
+  static func json(_ value: () -> Any) throws -> String {
     var data: Data?
     let raised = MRWCatchException {
       data = try? JSONSerialization.data(withJSONObject: value(), options: .fragmentsAllowed)
