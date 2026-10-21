@@ -80,7 +80,7 @@ extension MinimalWebView {
     onNativeEvent(["name": "core.navigationRequest", "payload": request.payload, "askId": id])
     // Unanswered after the timeout: block.
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
-      self?.pendingAsks.removeValue(forKey: id)?(nil)
+      self?.cancelAsk(id)
     }
   }
 
@@ -102,11 +102,17 @@ extension MinimalWebView {
     return nextAskId
   }
 
-  /// Answers every pending ask with nil (block): the WebView or its page is going away.
-  func failPendingAsks() {
-    let waiting = pendingAsks.values
-    pendingAsks.removeAll()
-    waiting.forEach { $0(nil) }
+  /// Native gives up on an ask: its callback gets nil, and JS aborts the handler's signal unless `tell` is false.
+  func cancelAsk(_ id: Int, tell: Bool = true) {
+    guard let onAnswer = pendingAsks.removeValue(forKey: id) else { return }
+    if tell { onNativeEvent(["name": "core.askCancelled", "payload": ["askId": id]]) }
+    onAnswer(nil)
+  }
+
+  /// Cancels every pending ask: the WebView or its page is going away. At close (from deinit) JS isn't told: it aborts
+  /// its own handlers at unmount.
+  func failPendingAsks(_ reason: DocumentScope.End) {
+    pendingAsks.keys.forEach { cancelAsk($0, tell: reason != .closing) }
   }
 
   /// Equal URLs, treating an empty path as "/": WebKit turns `https://example.com` into `https://example.com/`.

@@ -17,8 +17,11 @@ answers it (the file chooser, permissions), a prop is told afterwards (fullscree
 permission the page's request fails anyway (`NotReadableError`, geolocation code 2 or 3). On iOS, `true` skips WebKit's
 own prompt. Android's WebView keeps a location answer until the page changes.
 
-An unanswered request is cancelled when its page is replaced (navigation, reload, crash, unmount). Until then, a handler that
-never settles blocks that page's further requests of the same kind.
+An unanswered request is cancelled when its page is replaced (navigation, reload, crash, unmount) or, on Android, when
+Chromium withdraws it (`onPermissionRequestCanceled`, the geolocation prompt hidden). The handler's second argument, an
+`AbortSignal`, then aborts and its late answer is dropped: close the UI it opened, stop the work. `onNavigationRequest`
+gets one too, aborted at its 1 s timeout. Until then, a handler that never settles blocks that page's further requests
+of the same kind.
 
 A [native hook](native-hooks.md) whose delegate or client takes the same platform callback comes before these props.
 

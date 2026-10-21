@@ -1912,13 +1912,18 @@ async function permissionsSuite(h: Harness) {
     }
   );
 
-  // A handler that never settles: the next page cancels its request (deny) and asks the app again.
+  // A handler that never settles: the next page cancels its request (deny), aborts its signal and asks the app again.
   await openPage(h, fresh(h, '/device.html'));
   let release: (value: boolean) => void = () => {};
-  h.setPermission((request) => {
-    asked.push(request);
-    return new Promise<boolean>((resolve) => (release = resolve));
+  let abortedAt = 0;
+  h.setProps({
+    onPermissionRequest: (request, signal) => {
+      asked.push(request);
+      signal.addEventListener('abort', () => (abortedAt = Date.now()));
+      return new Promise<boolean>((resolve) => (release = resolve));
+    },
   });
+  await sleep(300);
   askedBefore = asked.length;
   await click(h, 'camera');
   await until(() => asked.length > askedBefore, 10000, 200);
@@ -1927,8 +1932,16 @@ async function permissionsSuite(h: Harness) {
     asked.length === askedBefore + 1,
     asked.length - askedBefore
   );
-  h.setPermission(handler);
+  h.setProps({});
+  await sleep(300);
+  const navigatedAt = Date.now();
   await openPage(h, fresh(h, '/device.html'));
+  await until(() => abortedAt, 2000);
+  r.check(
+    "navigating away aborts the held handler's signal within 2 s",
+    abortedAt > 0 && abortedAt - navigatedAt < 2000,
+    abortedAt ? abortedAt - navigatedAt : 'not aborted'
+  );
   answer = false;
   const again = await press('camera');
   r.check(

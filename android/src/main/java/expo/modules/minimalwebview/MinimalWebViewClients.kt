@@ -312,11 +312,13 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
 
   override fun onGeolocationPermissionsHidePrompt() {
     super.onGeolocationPermissionsHidePrompt()
+    owner.permissions.onGeolocationPromptHidden()
     observing("onGeolocationPermissionsHidePrompt") { it.onGeolocationPermissionsHidePrompt() }
   }
 
   override fun onPermissionRequestCanceled(request: PermissionRequest) {
     super.onPermissionRequestCanceled(request)
+    owner.permissions.onPermissionRequestCanceled(request)
     observing("onPermissionRequestCanceled", PermissionRequest::class.java) { it.onPermissionRequestCanceled(request) }
   }
 
