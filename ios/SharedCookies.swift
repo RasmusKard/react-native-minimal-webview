@@ -2,16 +2,20 @@ import WebKit
 
 /// Shares login cookies between the WebView and native requests (URLSession, fetch) when the `sharedCookies` prop is
 /// set: HTTPCookieStorage is copied into the WebView before each `source` load, and the WebView's cookie changes
-/// (including ones set by XHR and fetch) are copied back as they happen. (Android needs nothing: CookieManager is
-/// already shared app-wide.)
+/// (including ones set by XHR and fetch, and deletions) are copied back as they happen. (Android needs nothing:
+/// CookieManager is already shared app-wide.)
 final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   private weak var store: WKHTTPCookieStore?
   private var enabled = false
   private var copyScheduled = false
+  /// The WebView's cookies at the last copy: one gone from it since is deleted from native too.
+  private var copied: [HTTPCookie] = []
 
   func didCreate(_ webView: WKWebView) {
     store?.remove(self)
     store = webView.configuration.websiteDataStore.httpCookieStore
+    // Another store may not hold what the last one did: missing from it is not deleted.
+    copied = []
     if enabled { store?.add(self) }
   }
 
@@ -39,10 +43,17 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
     guard !copyScheduled else { return }
     copyScheduled = true
     DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
       // Cleared before the read: a change after it schedules the next copy.
-      self?.copyScheduled = false
-      self?.store?.getAllCookies { cookies in
+      self.copyScheduled = false
+      self.store?.getAllCookies { [weak self] cookies in
+        guard let self else { return }
+        let key = { (cookie: HTTPCookie) in [cookie.name, cookie.domain, cookie.path] }
+        let present = Set(cookies.map(key))
+        // Deleted or expired in the WebView (a logout): native drops it too. Cookies only native set stay.
+        self.copied.filter { !present.contains(key($0)) }.forEach(HTTPCookieStorage.shared.deleteCookie)
         cookies.forEach(HTTPCookieStorage.shared.setCookie)
+        self.copied = cookies
       }
     }
   }
