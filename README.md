@@ -15,7 +15,7 @@ architecture only.
   expo-camera or similar packages.
 
 **Requirements:** iOS 16.4, Android API 29+ (`minSdkVersion 29`, for example with `expo-build-properties`), and Expo
-SDK 53+ (React Native 0.79+, React 19) with the new architecture. A bare React Native app works too, once it has the
+SDK 58+ (React Native 0.88+, React 19) with the new architecture. A bare React Native app works too, once it has the
 `expo` package through `npx install-expo-modules@latest`. On Android, the bridge, `injectedScripts` and `evaluate`
 need [Android System WebView 101+](docs/bridge.md#android-system-webview).
 
