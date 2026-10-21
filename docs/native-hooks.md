@@ -44,8 +44,8 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   implements it, and the core steps aside; every other callback reaches the core first, then every hook that
   implements it. The decisions are `DelegateProxy.decisions` (iOS) and the `deciding(` calls in
   `MinimalWebViewClients.kt` (Android). So a client that overrides `shouldOverrideUrlLoading` switches the navigation
-  rules off for that WebView, and a delegate that takes the response policy also switches off `onHttpError`,
-  `onDownload` and opening an untaken download externally. On iOS, an observation callback that neither the core nor
+  rules off for that WebView, and a delegate that takes the response policy also switches off `onError`'s `http`
+  errors, `onDownload` and opening an untaken download externally. On iOS, an observation callback that neither the core nor
   `DelegateProxy` implements goes to the first delegate only. Android's `shouldInterceptRequest` runs on a background
   thread. Overriding `WebViewClientCompat`'s `onReceivedError`, `onSafeBrowsingHit` or
   `shouldOverrideUrlLoading(WebView, String)` variant counts as overriding the callback that forwards to it.

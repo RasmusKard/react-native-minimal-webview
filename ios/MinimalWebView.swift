@@ -72,6 +72,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// After a failed main-frame load `url` is the failed URL (as on Android, which commits an error page);
   /// WKWebView itself keeps the previous page, so `url` and reload() use this.
   private(set) var failedUrl: String?
+  /// How the last load ended, "finished", "failed" or "cancelled"; JS sees it only while nothing loads.
+  private var outcome: String?
   private var lastEmitted: NSDictionary?
   private var updateScheduled = false
   private var crashTimes: [Date] = []
@@ -289,7 +291,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// WebKit's KVO fires before the delegate callbacks: the state is read and emitted one main-queue turn later, once
   /// per turn, so changes within one pass are combined into one event. The start of a load goes out at once as well: a
   /// load that starts and fails within one pass must still reach JS as loading true -> false. The end of a load waits
-  /// for the pass, because WebKit clears isLoading before it reports the failure (onLoad must see the error).
+  /// for the pass, because WebKit clears isLoading before it reports the failure (the error and outcome go first).
   private func scheduleUpdate() {
     if let webView, webView.isLoading, lastEmitted?["loading"] as? Bool != true { emitState() }
     guard !updateScheduled else { return }
@@ -311,7 +313,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       "loading": webView.isLoading,
       "progress": webView.estimatedProgress,
       "canGoBack": webView.canGoBack,
-      "canGoForward": webView.canGoForward
+      "canGoForward": webView.canGoForward,
+      "outcome": webView.isLoading ? NSNull() : outcome as Any? ?? NSNull()
     ]
     guard state != lastEmitted else { return }
     lastEmitted = state
@@ -323,17 +326,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     proxy.navigationDelegates.forEach(callback)
   }
 
-  /// Main-frame failures only. Superseded navigations (cancelled) and policy cancels (frame load interrupted) are not errors.
-  private func failed(_ error: Error) {
+  /// Main-frame failures only. Superseded navigations (cancelled) and policy cancels (frame load interrupted: a
+  /// download, a 204, a blocked redirect) are not errors. Returns whether it was one.
+  private func failed(_ error: Error) -> Bool {
     let nsError = error as NSError
     let cancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     let interrupted = nsError.domain == "WebKitErrorDomain" && nsError.code == 102
-    guard !cancelled, !interrupted else { return }
+    guard !cancelled, !interrupted else { return false }
     let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
       ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
     let ssl = nsError.domain == NSURLErrorDomain && (NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed).contains(nsError.code)
     failedUrl = failing
     onError(["kind": ssl ? "ssl" : "network", "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
+    return true
   }
 
   // MARK: WKNavigationDelegate
@@ -403,7 +408,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   /// A load finished, or failed with `error`: the core's bookkeeping, then the hook delegates' callback.
   private func loadEnded(_ webView: WKWebView, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
-    if let error { failed(error) }
+    outcome = error.map { failed($0) ? "failed" : "cancelled" } ?? "finished"
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
     scheduleUpdate()
@@ -418,6 +423,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // A POST source on screen isn't sent again unasked (a browser asks first): the app's reload() can.
     let recovered = crashTimes.count <= maxCrashesPerWindow && !onPostSource
     document.end(.crashed)
+    if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered {
       // The source again, with its headers (an html one isn't in the history), also when nothing has committed yet.
       // Any other page: reload() relaunches the process with the back-forward list's item, so history stays.
