@@ -8,7 +8,7 @@ function setup(timeoutMs = 1000) {
   const sent: BridgeMessage[] = [];
   connection.attach((text) => sent.push(JSON.parse(text) as BridgeMessage));
   const fromPage = (message: object) =>
-    connection.receive(JSON.stringify({ doc: 'd1', ...message }));
+    connection.receive(JSON.stringify({ doc: 'd1', ...message }), 'https://example.com');
   return { bridge, connection, sent, fromPage };
 }
 
@@ -65,6 +65,25 @@ describe('createBridge', () => {
     await expect(result).resolves.toBe(3);
   });
 
+  it("passes the caller's origin, as native gave it, to handlers and listeners", async () => {
+    const { bridge, connection, sent } = setup();
+    const senders: unknown[] = [];
+    bridge.handle('who', (_, sender) => senders.push(sender));
+    bridge.on('hi', (_, sender) => senders.push(sender));
+    const call = { id: 'p1', doc: 'd1', kind: 'call', method: 'who', origin: 'https://evil.test' };
+    connection.receive(JSON.stringify(call), 'https://example.com:8443');
+    connection.receive(
+      JSON.stringify({ id: '', doc: 'd1', kind: 'event', method: 'hi' }),
+      'https://a.example.com'
+    );
+    await flush();
+    expect(senders).toEqual([
+      { origin: 'https://example.com:8443' },
+      { origin: 'https://a.example.com' },
+    ]);
+    expect(sent[0]).toMatchObject({ id: 'p1', kind: 'result' });
+  });
+
   it('rejects a call with the page error', async () => {
     const { bridge, sent, fromPage } = setup();
     fromPage({ id: '', kind: 'ready' });
@@ -80,6 +99,47 @@ describe('createBridge', () => {
     const result = bridge.call('slow');
     jest.advanceTimersByTime(500);
     await expect(result).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('takes a per-call timeout, 0 or Infinity for none, clamped to what setTimeout takes', async () => {
+    jest.useFakeTimers();
+    const { bridge, sent, fromPage } = setup(500);
+    fromPage({ id: '', kind: 'ready' });
+    const short = bridge.call('a', undefined, { timeoutMs: 100 });
+    const none = bridge.call('b', undefined, { timeoutMs: 0 });
+    const infinite = bridge.call('c', undefined, { timeoutMs: Infinity });
+    const huge = bridge.call('d', undefined, { timeoutMs: 2 ** 40 });
+    jest.advanceTimersByTime(100);
+    await expect(short).rejects.toMatchObject({ code: 'timeout' });
+    jest.advanceTimersByTime(60_000);
+    for (const [i, call] of [none, infinite, huge].entries()) {
+      fromPage({ id: sent[i + 1]!.id, kind: 'result', params: i });
+      await expect(call).resolves.toBe(i);
+    }
+    await expect(bridge.call('e', undefined, { timeoutMs: NaN })).rejects.toThrow(/timeoutMs/);
+  });
+
+  it('rejects a bad bridge-wide timeout up front', () => {
+    for (const timeoutMs of [NaN, -1, -Infinity])
+      expect(() => createBridge({ allowedOrigins: ['*'], timeoutMs })).toThrow(/timeoutMs/);
+    expect(() => createBridge({ allowedOrigins: ['*'], timeoutMs: Infinity })).not.toThrow();
+  });
+
+  it('throws when attached to a second WebView, and can be attached again after detach', () => {
+    const { connection } = setup();
+    expect(() => connection.attach(() => {})).toThrow(/already attached/);
+    connection.detach();
+    expect(() => connection.attach(() => {})).not.toThrow();
+  });
+
+  it("does not remove a newer handler when an older one's unsubscribe runs", async () => {
+    const { bridge, sent, fromPage } = setup();
+    const offOld = bridge.handle('m', () => 'old');
+    bridge.handle('m', () => 'new');
+    offOld();
+    fromPage({ id: 'p1', kind: 'call', method: 'm' });
+    await flush();
+    expect(sent).toMatchObject([{ id: 'p1', kind: 'result', params: 'new' }]);
   });
 
   it('rejects calls in flight when a new page becomes ready', async () => {
@@ -115,7 +175,7 @@ describe('createBridge', () => {
         id: 'p2',
         doc: 'd1',
         kind: 'error',
-        error: { code: 'handler_error', message: 'Error: boom' },
+        error: { code: 'handler_error', message: 'boom' },
       },
       {
         id: 'p3',
@@ -220,7 +280,7 @@ describe('createBridge', () => {
     const seen: unknown[] = [];
     bridge.on('x', (payload) => seen.push(payload));
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    connection.receive('{"v":1,"kind":"event","method":"x"}');
+    connection.receive('{"v":1,"kind":"event","method":"x"}', 'https://example.com');
     expect(seen).toEqual([]);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -248,7 +308,7 @@ describe('createBridge document token', () => {
   it('drops a page message without a token', () => {
     const { bridge, sent, connection } = setup();
     bridge.emit('hello');
-    connection.receive(JSON.stringify({ id: '', kind: 'ready' }));
+    connection.receive(JSON.stringify({ id: '', kind: 'ready' }), 'https://example.com');
     expect(sent).toEqual([]);
   });
 });

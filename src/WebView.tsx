@@ -34,7 +34,9 @@ type NativeErrorEvent = Omit<WebViewErrorEvent, 'kind'> & {
   kind: WebViewErrorEvent['kind'] | 'http';
 };
 
-type BridgeEvent = { message?: string; unavailable?: boolean; navigated?: boolean };
+/** A page's message comes with its origin, as native verified it (`location.origin` form). */
+type BridgeEvent =
+  { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
 /** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
 type HookEvent = HookEventBody & { askId?: number };
@@ -223,7 +225,14 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
       return fallback;
     });
 
-export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef> }) {
+type Props = WebViewProps & { ref?: Ref<WebViewRef> };
+
+export function WebView(props: Props) {
+  return <WebViewInstance key={creationKey(props)} {...props} />;
+}
+
+/** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
+function WebViewInstance({ ref, ...props }: Props) {
   const native = useRef<NativeMethods>(null);
   const attachmentRef = useRef<Attachment>(undefined);
   const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
@@ -262,8 +271,8 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
   }, [connection]);
 
   const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {
-    if (nativeEvent.message !== undefined) connection?.receive(nativeEvent.message);
-    else if (nativeEvent.navigated) connection?.navigated();
+    if ('message' in nativeEvent) connection?.receive(nativeEvent.message, nativeEvent.origin);
+    else if ('navigated' in nativeEvent) connection?.navigated();
     else connection?.markUnavailable();
   };
 
@@ -299,7 +308,6 @@ export function WebView({ ref, ...props }: WebViewProps & { ref?: Ref<WebViewRef
 
   return (
     <NativeWebView
-      key={creationKey(props)}
       {...viewPropsOf(props)}
       ref={native}
       source={props.source}
@@ -360,8 +368,8 @@ let lastBridgeId = 0;
 
 /**
  * What native sets up once, when it creates the WebView: the bridge, the hooks' options and the creation-time
- * settings (`ios.configuration`). As the native view's `key`, a change recreates the WebView, like a new `key` on the
- * component would: the page reloads from `source`.
+ * settings (`ios.configuration`). As WebViewInstance's `key`, a change recreates the WebView, like a new `key` on the
+ * component would: the page reloads from `source`, and the navigation state starts from the initial one.
  */
 function creationKey(props: WebViewProps) {
   const bridge = props.bridge;

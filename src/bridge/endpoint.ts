@@ -26,7 +26,7 @@ export const parseOrigin = (text: string) => {
 type Pending = {
   resolve(value: unknown): void;
   reject(error: Error): void;
-  timer: ReturnType<typeof setTimeout>;
+  timer: ReturnType<typeof setTimeout> | undefined;
   /** Posted to a document, not just queued for the next one (RN). */
   sent: boolean;
 };
@@ -35,28 +35,42 @@ type Pending = {
 export const bridgeError = ({ code, message }: BridgeError) =>
   Object.assign(new Error(message), { code });
 
-/** `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id. */
-export function createEndpoint(
+/**
+ * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id. `Sender` is
+ * what handlers and listeners get beside the params: RN's `{ origin }`, nothing in the page.
+ */
+export function createEndpoint<Sender = void>(
   send: (message: BridgeMessage) => void,
   timeoutMs: number,
   idPrefix: string
 ) {
-  const handlers = new Map<string, (params: unknown) => unknown>();
-  const listeners = new Map<string, Set<(payload: unknown) => void>>();
+  const handlers = new Map<string, (params: unknown, sender: Sender) => unknown>();
+  const listeners = new Map<string, Set<(payload: unknown, sender: Sender) => void>>();
   const pending = new Map<string, Pending>();
   let nextId = 0;
 
   return {
     pending,
-    call(method: string, params?: unknown) {
+    /** `timeoutMs` overrides the endpoint's for this call; `0` or `Infinity` means none. */
+    call(method: string, params?: unknown, options?: { timeoutMs?: number }) {
+      const ms = options?.timeoutMs ?? timeoutMs;
+      if (!(ms >= 0))
+        return Promise.reject(new RangeError(`${method}: timeoutMs must be 0 or more, not ${ms}`));
       const id = `${idPrefix}${++nextId}`;
       return new Promise<unknown>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          reject(
-            bridgeError({ code: 'timeout', message: `${method} timed out after ${timeoutMs} ms` })
-          );
-        }, timeoutMs);
+        // Clamped: setTimeout fires at once for a delay above 2^31-1.
+        const timer =
+          ms > 0 && ms < Infinity
+            ? setTimeout(
+                () => {
+                  pending.delete(id);
+                  reject(
+                    bridgeError({ code: 'timeout', message: `${method} timed out after ${ms} ms` })
+                  );
+                },
+                Math.min(ms, 2 ** 31 - 1)
+              )
+            : undefined;
         pending.set(id, { resolve, reject, timer, sent: false });
         send({ id, kind: 'call', method, params });
       });
@@ -64,11 +78,13 @@ export function createEndpoint(
     emit(event: string, payload?: unknown) {
       send({ id: '', kind: 'event', method: event, params: payload });
     },
-    handle(method: string, handler: (params: unknown) => unknown) {
+    handle(method: string, handler: (params: unknown, sender: Sender) => unknown) {
       handlers.set(method, handler);
-      return () => handlers.delete(method);
+      return () => {
+        if (handlers.get(method) === handler) handlers.delete(method);
+      };
     },
-    on(event: string, listener: (payload: unknown) => void) {
+    on(event: string, listener: (payload: unknown, sender: Sender) => void) {
       const set = listeners.get(event) ?? new Set();
       listeners.set(event, set.add(listener));
       return () => set.delete(listener);
@@ -83,7 +99,7 @@ export function createEndpoint(
       }
     },
     /** A message from the other side: settles a call, fires an event, or answers a call through `reply`. */
-    async receive(message: BridgeMessage, reply: (message: BridgeMessage) => void) {
+    async receive(message: BridgeMessage, reply: (message: BridgeMessage) => void, sender: Sender) {
       switch (message.kind) {
         case 'call': {
           const { id, method } = message;
@@ -92,14 +108,14 @@ export function createEndpoint(
           const handler = handlers.get(method);
           if (!handler) return fail('not_found', `no handler for ${method}`);
           try {
-            reply({ id, kind: 'result', params: await handler(message.params) });
+            reply({ id, kind: 'result', params: await handler(message.params, sender) });
           } catch (error) {
-            fail('handler_error', String(error));
+            fail('handler_error', error instanceof Error ? error.message : String(error));
           }
           return;
         }
         case 'event':
-          listeners.get(message.method)?.forEach((listener) => listener(message.params));
+          listeners.get(message.method)?.forEach((listener) => listener(message.params, sender));
           return;
         case 'result':
         case 'error': {

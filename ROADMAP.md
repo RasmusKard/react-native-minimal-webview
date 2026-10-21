@@ -10,7 +10,6 @@ Possible future work, not commitments.
 ## User space (a recipe or an optional extension)
 
 - **Incognito (non-persistent storage) on Android.** iOS has `ios.configuration.websiteDataStore: 'nonPersistent'`.
-- **`clearCache` / `clearHistory`:** a built-in extension, like `sharedCookies`.
 - **iOS keyboard props** as an extension. The keyboard accessory one needs swizzling.
 
 ## Known limits, left as they are
@@ -21,10 +20,9 @@ Possible future work, not commitments.
 - **iOS `onProcessGone.didCrash` is always true**, because WebKit doesn't report a reason.
 - **Android WebView older than 146** (no `NAVIGATION_LISTENER`; tested with 133 on a Google APIs API 36 image):
   `pendingUrl` isn't reported, an SSL error on a back/forward load isn't reported, `100vh` is 0 after crash recovery,
-  back doesn't leave fullscreen video, an open file chooser is cancelled only when the next page commits, and the
-  back-forward cache stays off (WebView 133 reports no page finish for a restored page). The
-  `urlTracking`, `crash`, `fullscreen` and `bfcache` suites fail those checks there, and `settings` fails its `WebSettingsCompat`
-  check (the payment request setting isn't supported).
+  back doesn't leave fullscreen video, an open file chooser is cancelled only when the next page commits, the
+  back-forward cache stays off (WebView 133 reports no page finish for a restored page), and the `WebSettingsCompat`
+  payment request setting isn't supported.
 - **Android System WebView older than 101** (91 on the API 29 Google APIs image) has no `DOCUMENT_START_SCRIPT`: no bridge and no
   injected scripts.
 

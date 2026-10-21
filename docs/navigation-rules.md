@@ -9,10 +9,13 @@ the first match wins:
   navigationRules={[
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' },
-    { action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
+    { mainFrame: true, action: 'external' }, // everything else: other sites, tel: and mailto: links, new windows
   ]}
 />
 ```
+
+`mainFrame: true` on the last rule keeps a subframe's own non-http(s) navigation (an ad iframe's app link) from
+opening another app: no rule matches it, so it is blocked.
 
 Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lists, and one entry matching is enough:
 
@@ -37,8 +40,16 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 
 - With no rules, http(s) loads in place, `file:` is blocked, and every other scheme opens externally from the main frame and is blocked from a subframe.
 - With rules but no match, the result is `block`.
-- `about:`, `blob:`, `data:` and `javascript:` always load.
-- The `source` load, reloads and back/forward skip the rules.
+- `about:`, `blob:`, `data:` and `javascript:` always load in place.
+- The `source` load, reloads and back/forward skip the rules. A redirect of the `source` load doesn't: it is decided like
+  any other navigation (on Android, a reload's or back/forward's redirect too).
+
+## New windows
+
+There is never a second WebView: a new window (`target=_blank`, `window.open`) that the rules allow loads in place, so
+`window.opener` is unavailable. A new window to `data:`, `blob:`, `javascript:`, `about:` or `file:` is blocked,
+whatever the rules say, because it would load in the main frame; every other scheme goes through the rules as usual
+(`mailto:` and `tel:` open externally by default). On Android a new window that doesn't navigate within 5 s (`window.open('')`) is dropped.
 
 ## Platform differences
 

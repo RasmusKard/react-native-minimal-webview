@@ -1,5 +1,5 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (1) about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false. `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to an internal scheme (about, blob, data, javascript) or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules, http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`.",
   "rulesets": {
     "app": [
       {
@@ -210,11 +210,94 @@
       "name": "internal: data skips rules",
       "rules": "app",
       "request": {
+        "url": "data:text/html,<p>x</p>"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: data blocks",
+      "rules": "app",
+      "request": {
         "url": "data:text/html,<p>x</p>",
         "newWindow": true
       },
       "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: blob blocks",
+      "rules": "app",
+      "request": {
+        "url": "blob:https://example.com/0f9e7c",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: javascript blocks",
+      "rules": "app",
+      "request": {
+        "url": "javascript:alert(1)",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: file blocks even under a catch-all allow",
+      "rules": "notAList",
+      "request": {
+        "url": "file:///etc/hosts",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: data blocks with no rules",
+      "rules": null,
+      "request": {
+        "url": "data:text/html,<p>x</p>",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: https still goes through the rules",
+      "rules": "notAList",
+      "request": {
+        "url": "https://ads.test/click",
+        "newWindow": true
+      },
+      "expect": {
         "action": "allow",
+        "rule": 1
+      }
+    },
+    {
+      "name": "new window: mailto goes through the rules (external by default)",
+      "rules": null,
+      "request": {
+        "url": "mailto:a@b.test",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "external",
         "rule": null
       }
     },

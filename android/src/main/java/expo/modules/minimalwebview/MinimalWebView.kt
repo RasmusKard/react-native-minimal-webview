@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.ViewGroup
@@ -100,15 +102,21 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var emitScheduled = false
 
   private val crashTimes = ArrayDeque<Long>()
+  private var destroyed = false
+
+  // The core's deferred work. Not View.post: a detached view (unmounted, or a covered screen) holds that until it is
+  // attached again.
+  internal val mainHandler = Handler(Looper.getMainLooper())
 
   init {
     addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end.
-    document.register { failAsks() }
+    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. failAsks() last: it runs
+    // the asks' callbacks (hook and Chromium code), and a throw there must not skip the core's own resets.
     document.register { cancelFileChooser() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
+    document.register { failAsks() }
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
@@ -116,8 +124,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
-    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
-      val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty(), contentLength)
+    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+      val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
       if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
@@ -176,15 +184,19 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     }
   }
 
-  /**
-   * The committed page is the POST `source`: it can't be fetched again by URL (WebView's reload declines the form
-   * resubmission), so reload and crash recovery load the source instead, as for an html one.
-   */
-  private val onPostSource: Boolean
-    get() = source?.let { it.body != null && it.uri?.trimEnd('/') == url.trimEnd('/') } == true
+  /** Loads the page on screen again: the `source` when that is the page (its headers, html or POST), else its URL. */
+  private fun loadAgain() {
+    if (showsSource(source, url)) source?.let(::load) else if (url.isNotEmpty()) webView.loadUrl(url)
+  }
 
   fun reload() {
-    if (onPostSource) source?.let(::load) else webView.reload()
+    when {
+      // Nothing loaded: the crash-loop guard gave up (recover), and this is the app's retry.
+      webView.url == null -> loadAgain()
+      // WebView's reload declines a POST's form resubmission: send the source again.
+      source?.body != null && showsSource(source, url) -> source?.let(::load)
+      else -> webView.reload()
+    }
   }
 
   /**
@@ -278,15 +290,12 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   /** The render process died: a WebView cannot be reused after that, so build a new one and reload. */
   internal fun recover(didCrash: Boolean) {
+    if (destroyed) return
     val now = SystemClock.elapsedRealtime()
     crashTimes.addLast(now)
     while (crashTimes.first() < now - CRASH_WINDOW_MS) crashTimes.removeFirst()
-    val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW
-    // An html source's page has no URL to fetch (`url` is its baseUrl or about:blank) and a POST source's can't be
-    // fetched by URL: load the source again, as on iOS.
-    // Chromium reports the baseUrl canonicalized (`https://example.com` commits as `https://example.com/`).
-    val htmlUrl = source?.takeIf { it.html != null }?.let { it.baseUrl ?: "about:blank" }?.trimEnd('/')
-    val lastUrl = url.takeIf { it.isNotEmpty() && it.trimEnd('/') != htmlUrl && !onPostSource }
+    // A POST source on screen isn't sent again unasked (a payment form, say): the app's reload() does that.
+    val recovered = crashTimes.size <= MAX_CRASHES_PER_WINDOW && !(source?.body != null && showsSource(source, url))
     document.end(End.CRASHED)
     detachHooks()
     val old = webView
@@ -297,12 +306,19 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     attachHooks()
     old.destroy()
     if (recovered) {
-      if (lastUrl != null) webView.loadUrl(lastUrl) else source?.let(::load)
+      loadAgain()
+    } else {
+      // Nothing will load to end the load the crash cut off. `url` stays: reload() loads it.
+      loading = false
+      pendingUrl = null
+      progress = 0.0
     }
     onProcessGone(mapOf("didCrash" to didCrash, "recovered" to recovered))
+    stateChanged() // after onProcessGone: JS ends the cut-off load as failed, and the new WebView has no history
   }
 
   fun destroy() {
+    destroyed = true
     document.end(End.CLOSING)
     detachHooks()
     downloads.detach()
@@ -320,13 +336,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     if (loading != lastEmitted?.get("loading")) return emitState()
     if (emitScheduled) return
     emitScheduled = true
-    postOnAnimation {
+    mainHandler.postDelayed({
       emitScheduled = false
       emitState()
-    }
+    }, FRAME_MS)
   }
 
   private fun emitState() {
+    if (destroyed) return
     val state = mapOf(
       "url" to url,
       "pendingUrl" to pendingUrl,
@@ -352,6 +369,18 @@ internal fun failed(message: String, error: Exception): Boolean {
   return false
 }
 
+/**
+ * Whether the committed [url] is the [source]'s page (or nothing has committed yet). An html source's page is its
+ * baseUrl or about:blank. Chromium canonicalizes (`https://example.com` commits as `https://example.com/`).
+ */
+internal fun showsSource(source: WebViewSource?, url: String): Boolean {
+  if (source == null) return false
+  if (url.isEmpty()) return true
+  val page = source.uri ?: source.baseUrl ?: "about:blank"
+  return page.trimEnd('/') == url.trimEnd('/')
+}
+
 // ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
 private const val MAX_CRASHES_PER_WINDOW = 3
 private const val CRASH_WINDOW_MS = 60_000L
+private const val FRAME_MS = 16L

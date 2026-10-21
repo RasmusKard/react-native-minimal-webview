@@ -203,7 +203,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
     // Returning true keeps the app alive; a stale WebView (already replaced) needs nothing more.
-    if (view === owner.webView) owner.post { owner.recover(detail.didCrash()) }
+    if (view === owner.webView) owner.mainHandler.post { owner.recover(detail.didCrash()) }
     observing("onRenderProcessGone", WEB_VIEW, RenderProcessGoneDetail::class.java) { it.onRenderProcessGone(view, detail) }
     return true
   }

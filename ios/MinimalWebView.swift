@@ -26,6 +26,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var navigationRules: [[String: Any]]?
   var injectedScripts: [InjectedScript] = []
   private var installedScripts: NSArray?
+  /// The user scripts installScripts added: the others in the content controller are a hook's.
+  private var ownScripts: [WKUserScript] = []
   /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes. `openExternal`
   /// is there when JS handles `external` navigations (onOpenExternal); native only reports them.
   var requestHandlers: Set<String> = []
@@ -55,7 +57,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
   var pendingAsks: [Int: (Any?) -> Void] = [:]
   let document = DocumentScope()
-  /// The enabled hooks' contexts, for the life of the WKWebView: a hook may keep a weak reference to its own.
+  /// The enabled hooks' contexts, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [String: HookContext] = [:]
   var nextAskId = 0
   var askedAndAllowed: Set<String> = []
@@ -68,7 +70,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var emitScheduled = false
   private var crashTimes: [Date] = []
   /// `evaluate` calls waiting for their result, by id, until a new document or a dead web process rejects them.
-  private var evaluations: [Int: (Result<String, Error>) -> Void] = [:]
+  private var evaluations: [Int: (Result<String, EvaluateError>) -> Void] = [:]
   private var nextEvaluation = 0
 
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
@@ -145,12 +147,16 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// The committed page is the POST `source`: it can't be fetched again by URL, so reload and crash recovery load the
-  /// source instead, as for an html one.
-  private var onPostSource: Bool {
-    guard let source, source.body != nil, let uri = source.uri.flatMap(URL.init), let page = URL(string: url) else { return false }
-    return Self.sameURL(page, uri)
+  /// The page on screen (`url`) is the `source`: its URL, or an html source whose commit no other commit or failed load
+  /// has followed.
+  private var onSource: Bool {
+    guard let source else { return false }
+    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failedUrl == nil }
+    return URL(string: url).map { Self.sameURL($0, uri) } ?? false
   }
+
+  /// The page on screen is the POST `source`: it can't be fetched again by URL, so reload loads the source instead.
+  private var onPostSource: Bool { source?.body != nil && onSource }
 
   /// Settings keys that could not be applied, as warnings: JS logs them with console.warn.
   private func report(_ rejected: [[String: String]]) {
@@ -174,7 +180,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The `evaluate` ref method. The page encodes the value, as on Android: what JSON can't encode (a function, a
   /// cycle) gives "null". A new document rejects what is still waiting with `navigated`, as on Android: WebKit settles
   /// a call whose page went away seconds later or never.
-  func evaluate(_ script: String, onResult: @escaping (Result<String, Error>) -> Void) {
+  func evaluate(_ script: String, onResult: @escaping (Result<String, EvaluateError>) -> Void) {
     guard let webView else { return onResult(.failure(EvaluateError(code: "ERR_EVALUATE", message: "No WebView"))) }
     let id = nextEvaluation
     nextEvaluation += 1
@@ -236,21 +242,28 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in changed() } }
     self.webView = webView
     cookies.didCreate(webView)
+    // The live settings before the hooks, as on Android: what a hook sets wins over the package's defaults.
+    report(platformSettings.apply(settings, webView: webView))
     detachers = MinimalWebViewHooks.attach.compactMap { name, hook in
       options[name] != nil ? hook(webView, hookContext(name)) : nil
     }
   }
 
-  /// The bridge's page client first, then the app's scripts in order. Changes take effect from the next navigation.
+  /// The bridge's page client first, then the app's scripts in order, then the hooks' own. Changes take effect from the
+  /// next navigation.
   private func installScripts(_ controller: WKUserContentController) {
+    // WebKit can only remove every script: take the hooks' out and add them back after the core's.
+    let hooks = controller.userScripts.filter { script in !ownScripts.contains { $0 === script } }
     controller.removeAllUserScripts()
+    ownScripts = []
     if let bridgeScript {
-      controller.addUserScript(WKUserScript(source: bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
+      ownScripts.append(WKUserScript(source: bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
     }
     for script in injectedScripts {
       guard let code = script.code else { continue }
-      controller.addUserScript(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.mainFrameOnly ?? true, in: .page))
+      ownScripts.append(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.mainFrameOnly ?? true, in: .page))
     }
+    (ownScripts + hooks).forEach { controller.addUserScript($0) }
     installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
   }
 
@@ -393,13 +406,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-    forward { $0.webView?(webView, didCommit: navigation) }
     document.end(.committed)
     programmaticUrl = nil
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
     refreshSoon()
+    forward { $0.webView?(webView, didCommit: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -425,22 +438,18 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
   /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is always true on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    forward { $0.webViewWebContentProcessDidTerminate?(webView) }
     let now = Date()
     crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
-    let recovered = crashTimes.count <= maxCrashesPerWindow
+    // A POST source on screen isn't sent again unasked (a browser asks first): the app's reload() can.
+    let recovered = crashTimes.count <= maxCrashesPerWindow && !onPostSource
     document.end(.crashed)
-    // WebKit can clear `url` after the process dies while the back-forward list keeps the page: reload that page
-    // (or the failed or committed URL) rather than jumping back to the source. An html or POST source loads again.
     if recovered {
-      let page = htmlCommit != nil || onPostSource ? nil : failedUrl.flatMap(URL.init) ?? webView.backForwardList.currentItem?.url ?? URL(string: url)
-      if let page, page.scheme == "http" || page.scheme == "https" {
-        loadProgrammatic(URLRequest(url: page))
-      } else if let source {
-        load(source)
-      }
+      // The source again, with its headers (an html one isn't in the history), also when nothing has committed yet.
+      // Any other page: reload() relaunches the process with the back-forward list's item, so history stays.
+      if onSource || webView.backForwardList.currentItem == nil, let source { load(source) } else { reload() }
     }
     onProcessGone(["didCrash": true, "recovered": recovered])
+    forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }
 
