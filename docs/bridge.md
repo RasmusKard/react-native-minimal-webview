@@ -16,7 +16,16 @@ bridge.emit('themeChanged', 'dark');
 
 Make the bridge once (`useMemo`): a new one recreates the WebView. One bridge serves one mounted WebView at a time;
 attaching it to a second throws. Register a handler in an effect, with the values it uses in the deps; `handle` returns
-the unsubscribe.
+the unsubscribe. A handler gets `(params, sender)` and an `on` listener `(payload, sender)`. `sender.origin` is the
+calling page's origin as `location.origin` writes it (`https://shop.example.com:8443`), read by native code, not taken
+from the page's message:
+
+```tsx
+bridge.handle('getToken', (_, { origin }) => {
+  if (origin !== 'https://example.com') throw new Error('not for this origin');
+  return token;
+});
+```
 
 In the page:
 
@@ -28,10 +37,10 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 
 **How it behaves:**
 - **Errors are structured:** `{ code, message }`. The codes are `timeout`, `not_found`, `handler_error`, `navigated`, `unavailable` (see [Android System WebView](#android-system-webview)) and `invalid`.
-- **Limits:** calls time out after 10 s by default (`createBridge({ timeoutMs })`). Messages have no size limit.
+- **Limits:** calls time out after 10 s by default (`createBridge({ timeoutMs })`); one call can set its own with `{ timeoutMs }`, from either side (`bridge.call(method, params, { timeoutMs })`, `nativeBridge.call(…)`), where `0` or `Infinity` means none. Messages have no size limit.
 - **Page load:** calls and events from React Native wait until the page's DOM is parsed (`DOMContentLoaded`), so handlers and listeners registered by its synchronous or deferred scripts are in place. A page's own calls work earlier, and are answered at once.
 - **One document:** every message is for one document, and never reaches the next page, even on the same origin. Calls in flight are rejected with `navigated` when the page navigates, its renderer crashes or the WebView unmounts (a page's own calls also when it comes back from the back-forward cache); events are dropped. The other side may already have handled such a call, so retry only calls that are safe to repeat.
-- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443.
+- **Origins:** pages outside `allowedOrigins` get no `window.nativeBridge`, and nothing is delivered to them. Only the main frame takes part. Every allowed origin gets the same trust: any of them can call any handler, so a handler that is only for some origins checks `sender.origin`. The document token is for correctness, not security: the page's own client drops a message that isn't for its document, and an allowed page can rebind that client. A rule is `*` (any origin, opaque ones too), `https://example.com[:port]`, `https://*.example.com[:port]` (subdomains only, not `example.com`) or an IP literal such as `http://[::1]:8080`; http or https only, no path, ASCII (punycode) hosts. Case is ignored, and a missing port means 80 or 443.
 - **Transports:** iOS uses a `WKScriptMessageHandler` plus `callAsyncJavaScript`; Android uses `addWebMessageListener` with origin rules.
 
 ## Android System WebView

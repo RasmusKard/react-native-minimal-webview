@@ -107,11 +107,17 @@ export type InjectedScript = {
   mainFrameOnly?: boolean;
 };
 
-export type BridgeHandler = (params: unknown) => unknown;
+/**
+ * Who sent a call or event: the page's origin as `location.origin` writes it (`https://example.com:8443`), checked by
+ * native code, not taken from the page. Every allowed origin gets the same trust; a handler scopes itself with this.
+ */
+export type BridgeSender = { origin: string };
+
+export type BridgeHandler = (params: unknown, sender: BridgeSender) => unknown;
 
 /** A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. */
 export type Bridge = {
-  /** Answers `nativeBridge.call(method, params)` from the page. Returns an unsubscribe function. */
+  /** Answers `nativeBridge.call(method, params)` from the page; `sender` is the caller's. Returns an unsubscribe function. */
   handle(method: string, handler: BridgeHandler): () => void;
   /**
    * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown, with an
@@ -122,7 +128,7 @@ export type Bridge = {
   /** Fires an event the page listens to with `nativeBridge.on`. */
   emit(event: string, payload?: unknown): void;
   /** Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function. */
-  on(event: string, listener: (payload: unknown) => void): () => void;
+  on(event: string, listener: (payload: unknown, sender: BridgeSender) => void): () => void;
 };
 
 export type BridgeOptions = {
