@@ -55,27 +55,22 @@ extension MinimalWebView {
 
   /// Applies the rules (and `ask`) to a request and reports the outcome; `completion` gets whether to load it here.
   private func run(_ request: NavigationRules.Request, completion: @escaping (Bool) -> Void) {
-    let decision = NavigationRules.decide(navigationRules, request)
-    // A URL an `ask` allowed is not asked again until the next main-frame commit (redirect loops).
-    if decision.action == "ask", askedAndAllowed.contains(request.url) {
-      finish(request, "allow", decision.rule, completion)
-      return
-    }
+    // A URL an `ask` allowed is not asked again until the next main-frame commit (redirect loops). Without an
+    // onNavigationRequest prop nobody could allow it.
+    let decision = NavigationRules.decide(
+      navigationRules, request, asked: askedAndAllowed[request.mainFrame] ?? [],
+      canAsk: requestHandlers.contains("navigationRequest")
+    )
     guard decision.action == "ask" else {
       finish(request, decision.action, decision.rule, completion)
-      return
-    }
-    // Without an onNavigationRequest prop nobody could allow it.
-    guard requestHandlers.contains("navigationRequest") else {
-      finish(request, "block", decision.rule, completion)
       return
     }
     let id = register { [weak self] answer in
       // The view can be gone (teardown flushes pending asks from deinit): the decision handler must still be called.
       guard let self else { return completion(false) }
-      let action = answer as? String ?? "block"
-      if action == "allow" { self.askedAndAllowed.insert(request.url) }
-      self.finish(request, ["allow", "block", "external"].contains(action) ? action : "block", decision.rule, completion)
+      let action = NavigationRules.answer(answer)
+      if action == "allow" { self.askedAndAllowed[request.mainFrame, default: []].insert(request.url) }
+      self.finish(request, action, decision.rule, completion)
     }
     onNativeEvent(["name": "core.navigationRequest", "payload": request.payload, "askId": id])
     // Unanswered after the timeout: block.

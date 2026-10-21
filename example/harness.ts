@@ -1674,6 +1674,25 @@ async function navigation(h: Harness) {
   );
   await openPage(h, fresh(h, '/nav.html'));
 
+  // An `ask` may answer `external`; any other answer (here one untyped JS could give) blocks.
+  const askedPage = h.state().url;
+  const decided = (path: string) =>
+    waitFor(h, () => lastNavigation()?.url.endsWith(path) === true, 3000);
+  h.setAsk(() => 'external');
+  await h.ref.current?.evaluate(`location.href = '/checkout/external'`);
+  await decided('/checkout/external');
+  r.check(
+    'an ask answered external goes to onOpenExternal',
+    lastNavigation()?.action === 'external' &&
+      external.some((url) => url.endsWith('/checkout/external')),
+    { navigation: lastNavigation(), external }
+  );
+  h.setAsk(() => 'deny' as unknown as 'block');
+  await h.ref.current?.evaluate(`location.href = '/checkout/invalid'`);
+  await decided('/checkout/invalid');
+  r.check('an invalid ask answer blocks', lastNavigation()?.action === 'block', lastNavigation());
+  r.check('the page stays after both', h.state().url === askedPage, h.state());
+
   // Without onOpenExternal native opens externals itself, and reports `block` when nothing can open the URL.
   h.setProps({});
   h.setRules([{ scheme: ['nosuchapp'], action: 'external' }]);
@@ -1703,6 +1722,9 @@ async function navigation(h: Harness) {
       await waitFor(h, (s) => s.url === fallback && idle(s), 8000),
       h.state()
     );
+    // Nothing opened externally, so the intent: is reported as blocked; the fallback reports its own allow.
+    const intent = h.events.navigations.find((n) => n.url.startsWith('intent:'));
+    r.check('the intent: itself is reported as block', intent?.action === 'block', intent);
   }
   r.done();
 }

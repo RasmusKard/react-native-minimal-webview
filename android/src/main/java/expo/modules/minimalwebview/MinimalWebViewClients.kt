@@ -98,7 +98,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
     val url = request.url.toString()
     val override = deciding("shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java)?.shouldOverrideUrlLoading(view, request)
-      ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture()))
+      ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture(), request.isRedirect))
     if (!override && request.isForMainFrame) allowedMainFrameUrl = url
     return override
   }
