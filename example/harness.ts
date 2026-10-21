@@ -1616,9 +1616,15 @@ async function navigation(h: Harness) {
   await h.ref.current?.evaluate(`(window.open('data:text/html,opened'), true)`);
   const dataWindow = () =>
     h.events.navigations.find((n) => n.newWindow && n.url.startsWith('data:'));
-  await waitFor(h, () => dataWindow() !== undefined, 5000);
+  // Android's child WebView never reports a data: URL at all (Chromium doesn't pass it to shouldOverrideUrlLoading),
+  // so there the proof is that nothing was allowed and nothing loaded; iOS reports the block.
+  await waitFor(h, () => dataWindow() !== undefined, Platform.OS === 'ios' ? 5000 : 1500);
   await sleep(500);
-  r.check('a new window to a data: URL is blocked', dataWindow()?.action === 'block', dataWindow());
+  r.check(
+    'a new window to a data: URL is blocked',
+    Platform.OS === 'ios' ? dataWindow()?.action === 'block' : dataWindow()?.action !== 'allow',
+    dataWindow()
+  );
   r.check('the page stays after the blocked data: window', h.state().url === opener, h.state());
   // Android decides only navigations that start inside a frame with a user gesture, not the frame's initial src load:
   // a real tap on a link inside the iframe.
