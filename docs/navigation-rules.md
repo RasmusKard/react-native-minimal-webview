@@ -40,8 +40,15 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 
 - With no rules, http(s) loads in place, `file:` is blocked, and every other scheme opens externally from the main frame and is blocked from a subframe.
 - With rules but no match, the result is `block`.
-- `about:`, `blob:`, `data:` and `javascript:` always load.
+- `about:`, `blob:`, `data:` and `javascript:` always load in place.
 - The `source` load, reloads and back/forward skip the rules.
+
+## New windows
+
+There is never a second WebView: a new window (`target=_blank`, `window.open`) that the rules allow loads in place, so
+`window.opener` is unavailable. Only http(s) targets reach the rules. Any other scheme (`data:`, `blob:`,
+`javascript:`, `file:`, `tel:` and so on) is blocked, whatever the rules say, because the new window would load in the
+main frame. On Android a new window that doesn't navigate within 5 s (`window.open('')`) is dropped.
 
 ## Platform differences
 
