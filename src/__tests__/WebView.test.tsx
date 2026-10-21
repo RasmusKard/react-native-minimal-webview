@@ -8,8 +8,8 @@ import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
 const mockMount = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate` and `native`
-// methods; `native` echoes its request as JSON.
+// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `native` and `hook`
+// methods; `native` and `hook` echo their request as JSON.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
@@ -25,6 +25,8 @@ jest.mock('expo', () => {
           navigate: mockNavigate,
           evaluate: async () => '{"a":1}',
           native: async (request: unknown) => JSON.stringify(request),
+          hook: async (name: string, method: string, args: string) =>
+            JSON.stringify({ name, method, args }),
         }));
         return createElement('MinimalWebView', props);
       },
@@ -100,8 +102,11 @@ describe('errors', () => {
   });
 });
 
-describe('nativeOptions and bridge', () => {
-  it('recreate the native view when they change, and keep it otherwise', async () => {
+describe('nativeOptions', () => {
+  const nativeOf = (root: ReturnType<typeof createRoot>) =>
+    root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
+
+  it('a change reaches the same native view: native passes it to the hooks live', async () => {
     const root = createRoot();
     const show = (nativeOptions: Record<string, unknown>) =>
       act(async () =>
@@ -111,12 +116,38 @@ describe('nativeOptions and bridge', () => {
       );
     mockMount.mockClear();
     await show({ sample: { mode: 'a' }, other: 1 });
-    await show({ other: 1, sample: { mode: 'a' } }); // the same options in another key order
-    expect(mockMount).toHaveBeenCalledTimes(1);
     await show({ sample: { mode: 'b' }, other: 1 });
-    expect(mockMount).toHaveBeenCalledTimes(2);
-    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-    expect(native?.nativeOptions).toEqual({ sample: { mode: 'b' }, other: 1 });
+    expect(mockMount).toHaveBeenCalledTimes(1);
+    expect(nativeOf(root)?.nativeOptions).toEqual({ sample: { mode: 'b' }, other: 1 });
+  });
+
+  it('null and undefined values are not sent: the key is off, or removed', async () => {
+    const root = createRoot();
+    await act(async () =>
+      root.render(
+        <WebView
+          source={{ uri: 'https://example.com' }}
+          nativeOptions={{ on: true, off: false, gone: null, unset: undefined }}
+        />
+      )
+    );
+    expect(nativeOf(root)?.nativeOptions).toEqual({ on: true, off: false });
+    expect(Object.keys(nativeOf(root)?.nativeOptions as object)).toEqual(['on', 'off']);
+  });
+});
+
+describe('ref.hook', () => {
+  it('sends the arguments as JSON and parses the reply', async () => {
+    const ref = createRef<WebViewRef>();
+    await act(async () =>
+      createRoot().render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+    expect(await ref.current?.hook('sample', 'count', [1, null])).toEqual({
+      name: 'sample',
+      method: 'count',
+      args: '[1,null]',
+    });
+    expect(await ref.current?.hook('sample', 'count')).toMatchObject({ args: '[]' });
   });
 });
 
@@ -388,13 +419,17 @@ describe('navigation state across remounts', () => {
     expect(ref.getState()).toEqual(at(''));
   });
 
-  it('a nativeOptions change starts the state over, until the new view emits', async () => {
+  it('a creation-time setting change starts the state over, until the new view emits', async () => {
     const ref = createWebViewRef();
     const root = createRoot();
-    const show = (mode: string) =>
+    const show = (name: string) =>
       act(async () =>
         root.render(
-          <WebView ref={ref} source={{ uri: 'https://example.com' }} nativeOptions={{ mode }} />
+          <WebView
+            ref={ref}
+            source={{ uri: 'https://example.com' }}
+            ios={{ configuration: { applicationNameForUserAgent: name } }}
+          />
         )
       );
     await show('a');

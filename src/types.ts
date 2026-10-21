@@ -230,7 +230,11 @@ type OwnProps = {
   onOpenExternal?: (url: string) => void;
   /** Read when the WebView is created: a change recreates it (the page reloads). */
   bridge?: Bridge;
-  /** What the native hooks get as their options (docs/native-hooks.md). Read when the WebView is created, like `bridge`. */
+  /**
+   * Each native hook's value by its key (docs/native-hooks.md). A key whose value is not null, undefined or false when
+   * the WebView is created attaches its hook. A later change reaches that hook live, without recreating the WebView;
+   * a key added later attaches nothing (a warning says so).
+   */
   nativeOptions?: Record<string, unknown>;
   /**
    * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
@@ -321,6 +325,11 @@ export type WebViewRef = {
     args?: unknown[],
     options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
   ): Promise<unknown>;
+  /**
+   * Calls the `method` handler the native hook `name` registered with `context.handle` (docs/native-hooks.md), and
+   * resolves with its reply through JSON. Rejects with `hook_not_handled` when no attached hook `name` handles `method`.
+   */
+  hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };
 
 /** What `createWebViewRef()` returns: a ref that outlives the WebViews mounted with it. */
