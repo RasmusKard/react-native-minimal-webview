@@ -15,7 +15,7 @@
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
 | `onHttpError` | `{ url, statusCode, description }`: the main frame got an HTTP error status (400+), and the site's own error page shows |
-| `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page; after more than 3 crashes in 60 s it stops reloading until the next `source` change |
+| `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page (`recovered: true`). It doesn't send a POST `source` again unasked (`recovered: false`), and after more than 3 crashes in 60 s it stops reloading, until the next `source` change or `reload()` |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |
 
 ## Ref methods
@@ -26,7 +26,7 @@ in the [navigation state](navigation-state.md).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back
 through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A
-throw or rejection rejects with code `ERR_EVALUATE`, and a navigation before the script finishes with `navigated`. The
+throw or rejection rejects with code `ERR_EVALUATE`, and a navigation or crash before the script finishes with `navigated`. The
 result is whatever the page's own JS returns, so treat it as page data. On Android it comes back through a global that
 pages see, `window.nativeEvaluateResult` (see [Security defaults](security.md)).
 

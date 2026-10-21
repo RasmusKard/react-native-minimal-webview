@@ -2,6 +2,7 @@ package expo.modules.minimalwebview
 
 import android.app.Activity
 import android.content.Context
+import android.os.Looper
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -51,11 +52,16 @@ interface WebViewContext {
 }
 
 /** A hook's view of the WebView: the core's context with the hook's name on its events. */
-internal class HookContext(private val name: String, private val view: WebViewContext) : WebViewContext by view {
-  override fun emit(name: String, payload: Map<String, Any?>) = view.emit("${this.name}.$name", payload)
+internal class HookContext(private val name: String, private val view: MinimalWebView) : WebViewContext by view {
+  override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("${this.name}.$name", payload) }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    view.ask("${this.name}.$name", payload, onAnswer)
+    onMain { view.ask("${this.name}.$name", payload, onAnswer) }
+
+  // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
+  private fun onMain(block: () -> Unit) {
+    if (Looper.myLooper() == Looper.getMainLooper()) block() else view.mainHandler.post { block() }
+  }
 }
 
 // Concurrent: shouldInterceptRequest asks on Chromium's IO thread while the main thread fills it.

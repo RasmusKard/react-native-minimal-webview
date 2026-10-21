@@ -70,8 +70,7 @@ public class MinimalWebViewModule: Module {
         view.evaluate(script) { result in
           switch result {
           case .success(let json): promise.resolve(json)
-          case .failure(let error as EvaluateError): promise.reject(error.code, error.message)
-          case .failure(let error): promise.reject("ERR_EVALUATE", error.localizedDescription)
+          case .failure(let error): promise.reject(error.code, error.message)
           }
         }
       }

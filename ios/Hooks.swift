@@ -10,7 +10,8 @@ public enum MinimalWebViewHooks {
   /// Runs before the WKWebView exists, with the configuration it is created from: after the `ios.configuration`
   /// settings, before the bridge and the scripts are installed (so replacing the user content controller is fine).
   public static var configure: [String: (WKWebViewConfiguration, WebViewContext) -> Void] = [:]
-  /// Runs once the WKWebView exists. Return what to run when the view goes away, or nil.
+  /// Runs once the WKWebView exists and the live `ios` settings are applied. Return what to run when the view goes
+  /// away, or nil.
   public static var attach: [String: (WKWebView, WebViewContext) -> (() -> Void)?] = [:]
 }
 
@@ -28,33 +29,35 @@ public protocol WebViewContext: AnyObject {
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
 }
 
-/// A hook's view of the WebView: the core's context with the hook's name on its events. The view owns it.
+/// A hook's view of the WebView: the core's context with the hook's name on its events. The view owns it. A hook can
+/// outlive the view (an async callback, a detach closure run from its deinit): then the context does nothing.
 final class HookContext: WebViewContext {
   private let name: String
-  private unowned let view: MinimalWebView
+  private weak var view: MinimalWebView?
 
   init(_ name: String, _ view: MinimalWebView) {
     self.name = name
     self.view = view
   }
 
-  var options: [String: Any] { view.options }
+  var options: [String: Any] { view?.options ?? [:] }
 
   var navigationDelegates: [WKNavigationDelegate] {
-    get { view.navigationDelegates }
-    set { view.navigationDelegates = newValue }
+    get { view?.navigationDelegates ?? [] }
+    set { view?.navigationDelegates = newValue }
   }
 
   var uiDelegates: [WKUIDelegate] {
-    get { view.uiDelegates }
-    set { view.uiDelegates = newValue }
+    get { view?.uiDelegates ?? [] }
+    set { view?.uiDelegates = newValue }
   }
 
   func emit(_ event: String, _ payload: [String: Any]) {
-    view.emit("\(name).\(event)", payload)
+    view?.emit("\(name).\(event)", payload)
   }
 
   func ask(_ event: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
+    guard let view else { return onAnswer(nil) }
     view.ask("\(name).\(event)", payload, onAnswer)
   }
 }

@@ -1,7 +1,7 @@
-// Runs the shared navigation and origin rule cases against NavigationRules.swift and OriginRules.swift. Not part of the
-// pod (see the podspec).
-//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o /tmp/rules \
-//     && /tmp/rules
+// Runs the shared navigation and origin rule cases against NavigationRules.swift and OriginRules.swift, and the
+// DocumentScope dispatch cases. Not part of the pod (see the podspec).
+//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift \
+//     -o /tmp/rules && /tmp/rules
 import Foundation
 
 func fail(_ message: String) -> Never {
@@ -65,4 +65,25 @@ for (scheme, host, port, expected) in [
   print("FAIL origin(\(scheme), \(host), \(port)): expected \(expected), got \(OriginRules.origin(scheme, host, port))")
 }
 print("\(originCases.count - originFailures)/\(originCases.count) origin rule cases pass")
-exit(failures + originFailures == 0 ? 0 : 1)
+
+// DocumentScope: every registrant hears each end once, in registration order; one added after an end hears the next.
+var scopeFailures = 0
+let scope = DocumentScope()
+var heard: [String] = []
+scope.register { heard.append("a:\($0)") }
+scope.register { heard.append("b:\($0)") }
+scope.end(.committed)
+scope.end(.crashed)
+if heard != ["a:committed", "b:committed", "a:crashed", "b:crashed"] {
+  scopeFailures += 1
+  print("FAIL document scope order: \(heard)")
+}
+var late: [DocumentScope.End] = []
+scope.register { late.append($0) }
+scope.end(.closing)
+if late != [.closing] {
+  scopeFailures += 1
+  print("FAIL document scope late registrant: \(late)")
+}
+print("\(2 - scopeFailures)/2 document scope cases pass")
+exit(failures + originFailures + scopeFailures == 0 ? 0 : 1)

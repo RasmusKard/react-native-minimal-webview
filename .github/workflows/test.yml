@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: >-
-          swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/Tests/main.swift -o rules
+          swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift -o rules
           && ./rules
 
   # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites

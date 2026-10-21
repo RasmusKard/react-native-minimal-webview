@@ -10,6 +10,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import expo.modules.minimalwebview.DocumentScope.End
 import expo.modules.minimalwebview.MinimalWebView
 
 /**
@@ -72,5 +73,8 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
 
   private fun controller() = owner.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
-  fun detach() = exit()
+  /** The Document ended: its fullscreen view goes. A crash leaves no renderer to tell; at unmount WebView is told. */
+  fun documentEnded(reason: End) {
+    if (reason == End.CLOSING) exit() else removeView()
+  }
 }

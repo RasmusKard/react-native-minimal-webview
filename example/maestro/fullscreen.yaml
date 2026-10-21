@@ -4,7 +4,7 @@ env:
   SUITE: fullscreen
 ---
 # Android: tap the page's fullscreen button where the harness says, then back leaves fullscreen; twice, the second time
-# without onFullscreenChange. (iOS skips itself.)
+# without onFullscreenChange; then a renderer kill in fullscreen. (iOS skips itself.)
 - runFlow: subflows/launch.yaml
 - runFlow:
     when: { platform: Android }
@@ -17,4 +17,8 @@ env:
       - runFlow: subflows/tap-request-point.yaml
       - runFlow: { file: subflows/await.yaml, env: { N: 4 } }
       - back
+      - runFlow: { file: subflows/await.yaml, env: { N: 5 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 6 } }
+      - runScript: scripts/kill.js
 - runFlow: subflows/finish.yaml
