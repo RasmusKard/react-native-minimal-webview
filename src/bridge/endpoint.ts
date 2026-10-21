@@ -2,7 +2,7 @@
 // handlers and events, and the origin-rule parser. The transport, the `ready` handshake and the document tokens are
 // each side's own. The page client is compiled with this file into one script (.github/scripts/build-page-client.mjs),
 // so it imports only types.
-import type { BridgeError, BridgeMessage } from './protocol';
+import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
 /**
  * An origin rule (`http(s)://host[:port]`, `http(s)://*.host[:port]`) or a `location.origin`, parsed; null for anything
@@ -31,8 +31,8 @@ type Pending = {
   sent: boolean;
 };
 
-/** An `Error` whose `code` is a {@link BridgeError} code. */
-export const bridgeError = ({ code, message }: BridgeError) =>
+/** A `BridgeCallError` (types.ts): what a call rejects with. */
+export const bridgeError = ({ code, message }: { code: BridgeErrorCode; message: string }) =>
   Object.assign(new Error(message), { code });
 
 /**
@@ -76,7 +76,7 @@ export function createEndpoint<Sender = void>(
       });
     },
     emit(event: string, payload?: unknown) {
-      send({ id: '', kind: 'event', method: event, params: payload });
+      send({ kind: 'event', method: event, params: payload });
     },
     handle(method: string, handler: (params: unknown, sender: Sender) => unknown) {
       handlers.set(method, handler);
@@ -90,7 +90,7 @@ export function createEndpoint<Sender = void>(
       return () => set.delete(listener);
     },
     /** Rejects the calls in flight, or only those `only` picks. */
-    rejectPending(code: BridgeError['code'], message: string, only?: (call: Pending) => boolean) {
+    rejectPending(code: BridgeErrorCode, message: string, only?: (call: Pending) => boolean) {
       for (const [id, call] of pending) {
         if (only && !only(call)) continue;
         clearTimeout(call.timer);
@@ -103,12 +103,12 @@ export function createEndpoint<Sender = void>(
       switch (message.kind) {
         case 'call': {
           const { id, method } = message;
-          const fail = (code: BridgeError['code'], text: string) =>
+          const fail = (code: BridgeErrorCode, text: string) =>
             reply({ id, kind: 'error', error: { code, message: text } });
           const handler = handlers.get(method);
           if (!handler) return fail('not_found', `no handler for ${method}`);
           try {
-            reply({ id, kind: 'result', params: await handler(message.params, sender) });
+            reply({ id, kind: 'result', value: await handler(message.params, sender) });
           } catch (error) {
             fail('handler_error', error instanceof Error ? error.message : String(error));
           }
@@ -123,7 +123,7 @@ export function createEndpoint<Sender = void>(
           if (!call) return;
           pending.delete(message.id);
           clearTimeout(call.timer);
-          if (message.kind === 'result') call.resolve(message.params);
+          if (message.kind === 'result') call.resolve(message.value);
           else call.reject(bridgeError(message.error));
         }
       }
