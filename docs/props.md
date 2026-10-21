@@ -15,7 +15,7 @@
 | `onNavigationStateChange`, `onLoadStart`, `onLoad`, `onLoadEnd` | `onLoad` doesn't fire for a failed load |
 | `onError` | `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed. Main-frame errors only. SSL errors are always cancelled. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
 | `onHttpError` | `{ url, statusCode, description }`: the main frame got an HTTP error status (400+), and the site's own error page shows |
-| `onProcessGone` | `{ didCrash, recovered }`. The core has already reloaded the page (`recovered: true`). It doesn't send a POST `source` again unasked (`recovered: false`; `reload()` sends it), and after more than 3 crashes in 60 s it stops reloading, until the next `source` change or `reload()` |
+| `onProcessGone` | `{ didCrash, recovered }`. With `recovered: true` the core reloads the page. Android builds a new WebView with the back/forward history restored, and not before the app is in the foreground and the view is on screen. It doesn't send a POST `source` again unasked (`recovered: false`; `reload()` sends it), and after more than 3 crashes in 60 s it stops reloading, until the next `source` change or `reload()`. Android's WebViews share one renderer: each one reports its death, and the 3 count for the app, not per view |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |
 
 ## Ref methods

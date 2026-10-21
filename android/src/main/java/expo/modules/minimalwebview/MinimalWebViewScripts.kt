@@ -18,24 +18,17 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private val scriptHandlers = mutableListOf<ScriptHandler>()
   private val evaluations = mutableMapOf<Int, (Result<String>) -> Unit>()
   private var nextEvaluation = 0
-  private var installed = false
 
-  /** The evaluate channel and the bridge go in once, from the first props: JS fixes `bridge` at mount. */
-  fun apply() {
-    if (!installed) {
-      installed = true
-      installEvaluate()
-      installBridge()
-    }
-    installScripts()
-  }
-
-  /** A new WebView (after a crash) has nothing installed yet. */
-  fun reinstall() {
+  /** Everything, into a new WebView (the first, or the one after a crash). The evaluate channel and the bridge go in
+   * only here: JS fixes `bridge` at mount. */
+  fun install() {
     installEvaluate()
     installBridge()
     installScripts(force = true)
   }
+
+  /** A later prop batch: only `injectedScripts` can change. */
+  fun update() = installScripts()
 
   private fun installBridge() {
     val script = owner.bridgeScript ?: return
@@ -161,6 +154,6 @@ $script
 }
 
 /** Why an `evaluate` failed; [code] is the JS error code (`ERR_EVALUATE`, `navigated`, `unavailable`). */
-class EvaluateError(val code: String, message: String) : Exception(message)
+internal class EvaluateError(val code: String, message: String) : Exception(message)
 
 private const val EVALUATE = "nativeEvaluateResult"

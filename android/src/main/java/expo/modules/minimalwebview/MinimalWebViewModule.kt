@@ -66,6 +66,12 @@ class MinimalWebViewModule : Module() {
     // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
     OnActivityEntersBackground {
       if (webViewCreated) CookieManager.getInstance().flush()
+      MinimalWebView.inBackground = true
+    }
+
+    // A WebView whose renderer died in the background is rebuilt now.
+    OnActivityEntersForeground {
+      MinimalWebView.inBackground = false
     }
 
     // Starts WebView (loading its code, starting Chromium) ahead of the first WebView, off the UI thread where the
@@ -139,6 +145,8 @@ class MinimalWebViewModule : Module() {
         } catch (e: IllegalArgumentException) {
           promise.reject("ERR_NATIVE", e.message, e)
         }
+        // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
+        view.stateChanged()
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->

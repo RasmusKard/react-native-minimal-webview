@@ -4,6 +4,7 @@ plugins {
 }
 
 group = 'expo.modules.minimalwebview'
+version = '0.1.0' // expo-autolinking requires it; versionCode/versionName are not needed for a library
 
 android {
   namespace "expo.modules.minimalwebview"
