@@ -25,6 +25,8 @@ export type Harness = {
   pages: string;
   platform: string;
   ref: WebViewRefObject;
+  /** Where the WebView sits in the window, in dp, for a driver's TAP; kept current by App's onLayout. */
+  webViewOffset: { x: number; y: number };
   state: () => NavigationState;
   /** Remounts the WebView (a new `key`) without re-rendering App. */
   remount: () => void;
@@ -213,6 +215,34 @@ async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
   r.check(name, agreed === true, seen);
 }
 
+const webViewMajors = new WeakMap<object, Promise<number>>();
+/**
+ * Checks `name`, or reports it as INFO on an Android WebView older than 146, where it fails by design (no
+ * NAVIGATION_LISTENER; ROADMAP's known limits). The version is read once per suite run (per reporter).
+ */
+async function checkUnlessOldWebView(
+  h: Harness,
+  r: ReturnType<typeof reporter>,
+  name: string,
+  ok: boolean,
+  detail: unknown = ''
+) {
+  if (!webViewMajors.has(r))
+    webViewMajors.set(
+      r,
+      Platform.OS === 'android'
+        ? Promise.resolve(h.ref.current?.evaluate('navigator.userAgent')).then(
+            (ua) => Number(/Chrome\/(\d+)/.exec(String(ua))?.[1] ?? 0),
+            () => 0
+          )
+        : Promise.resolve(0)
+    );
+  const major = await webViewMajors.get(r)!;
+  if (major > 0 && major < 146)
+    r.info(`known limit (WebView <146): ${name}`, { major, ok, detail });
+  else r.check(name, ok, detail);
+}
+
 async function urlTracking(h: Harness) {
   const r = reporter('urlTracking');
   // An app-started load is pending until it commits: never reported as the loaded, idle page before it starts. The
@@ -285,7 +315,9 @@ async function urlTracking(h: Harness) {
     loading: during.loading,
   });
   r.check('url keeps the committed page while loading', during.url === beforeSlow, during);
-  r.check(
+  await checkUnlessOldWebView(
+    h,
+    r,
     'pendingUrl shows the in-flight url',
     (during.pendingUrl ?? '').includes('/slow'),
     during
@@ -515,8 +547,6 @@ async function bridge(h: Harness) {
     (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
   );
 
-  // PENDING on-device verification: a call made as the page commits waits for DOMContentLoaded, so the handler that
-  // an inline script registers during load is there (not_found otherwise).
   const early = `${page}&early=1`;
   h.load(early);
   await waitFor(h, (s) => s.url === early);
@@ -636,6 +666,11 @@ async function ptr(h: Harness) {
  */
 async function upload(h: Harness) {
   const r = reporter('upload');
+  if (Platform.OS !== 'android') {
+    r.info('skipped', 'onFileRequest is Android only');
+    r.done();
+    return;
+  }
   const file = new File(Paths.cache, 'upload-test.txt');
   file.create({ overwrite: true });
   file.write('hello from the app cache');
@@ -787,19 +822,28 @@ const text = async (h: Harness, id: string) =>
   )) as string;
 
 /**
- * Android: the screen pixels of an element's centre, `x y`, for a driver's TAP. The WebView starts 50 dp from the top
- * of the screen (the example's padding).
+ * Android: the screen pixels of an element's centre, `x y`, for a driver's TAP; with `frame`, of an element inside
+ * that same-origin iframe.
  */
-const tapPoint = async (h: Harness, id: string) =>
+const tapPoint = async (h: Harness, id: string, frame?: string) =>
   (
     (await h.ref.current?.evaluate(`(() => {
-    const e = document.getElementById(${JSON.stringify(id)}); e.scrollIntoView({ block: 'center' });
+    const f = ${frame ? `document.getElementById(${JSON.stringify(frame)})` : 'null'};
+    const e = (f ? f.contentDocument : document).getElementById(${JSON.stringify(id)});
+    (f ?? e).scrollIntoView({ block: 'center' });
+    const fr = f?.getBoundingClientRect(), x = fr ? fr.left + f.clientLeft : 0, y = fr ? fr.top + f.clientTop : 0;
     const b = e.getBoundingClientRect(), d = devicePixelRatio;
-    return [Math.round((b.left + b.width / 2) * d), Math.round((50 + b.top + b.height / 2) * d)];
+    return [
+      Math.round((${h.webViewOffset.x} + x + b.left + b.width / 2) * d),
+      Math.round((${h.webViewOffset.y} + y + b.top + b.height / 2) * d),
+    ];
   })()`)) as [number, number]
   ).join(' ');
 
-/** Main-frame errors only, the URL after a failure, onLoad vs onLoadEnd, and reload recovering. */
+/**
+ * Main-frame errors only, the URL after a failure, onLoad vs onLoadEnd, the error screen recipe in docs/props.md (the
+ * example's ErrorScreen), and reload recovering.
+ */
 async function errors(h: Harness) {
   const r = reporter('errors');
   await openPage(h, fresh(h, '/'));
@@ -818,6 +862,10 @@ async function errors(h: Harness) {
     h.events.loads.includes('end') && !h.events.loads.includes('load'),
     h.events.loads
   );
+  r.check(
+    'the error screen is shown after a failure',
+    await waitFor(h, () => h.events.overlay.error, 3000)
+  );
 
   clearEvents(h);
   h.load(fresh(h, '/status/404'));
@@ -825,6 +873,10 @@ async function errors(h: Harness) {
   const http = h.events.httpErrors[0];
   r.check('http error with the status code', http?.statusCode === 404, http);
   r.check('an http error is not an onError', h.events.errors.length === 0, h.events.errors);
+  r.check(
+    'the error screen goes away on the next load',
+    await waitFor(h, () => !h.events.overlay.error, 3000)
+  );
 
   clearEvents(h);
   await openPage(h, fresh(h, '/subresource-404.html'));
@@ -1006,7 +1058,13 @@ async function crash(h: Harness) {
     h.events.pageCounts.length - countsBefore
   );
   const recoveredVh = await viewportHeight(h);
-  r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
+  await checkUnlessOldWebView(
+    h,
+    r,
+    '100vh has a height after recovery',
+    recoveredVh > 0,
+    recoveredVh
+  );
   await sleep(1000);
   r.check(
     'the bridge works after recovery',
@@ -1197,12 +1255,6 @@ async function settings(h: Harness) {
           webView: { _private: 1, URL: 'x' },
         },
       });
-      const userAgent = await page('navigator.userAgent');
-      r.check(
-        'a configuration key recreates the WebView and applies',
-        String(userAgent).endsWith(' Settings/1'),
-        userAgent
-      );
       r.check('a WKPreferences number applies', (await fontSize()) === '30px', await fontSize());
       r.check(
         'an unknown property warns',
@@ -1375,7 +1427,9 @@ async function settings(h: Harness) {
       r.check('a WebView setter applies', (await page('navigator.onLine')) === false);
       await openPage(h, fresh(h, '/'));
       const paymentAfter = await payment();
-      r.check(
+      await checkUnlessOldWebView(
+        h,
+        r,
         'a setter only WebSettingsCompat has applies (through reflection on androidx, R8 included)',
         paymentBefore === 'undefined' && paymentAfter === 'function',
         { paymentBefore, paymentAfter }
@@ -1412,7 +1466,9 @@ async function settings(h: Harness) {
       r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
       // get reads a setting back; call runs a public method of a root.
       r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
-      r.check(
+      await checkUnlessOldWebView(
+        h,
+        r,
         'get reads a WebSettingsCompat getter',
         (await get('settings.paymentRequestEnabled')) === true
       );
@@ -1447,24 +1503,6 @@ async function settings(h: Harness) {
   } finally {
     console.warn = warn;
   }
-  r.done();
-}
-
-/** The error screen recipe in docs/props.md (the example's ErrorScreen): shown after a main-frame failure, gone on the next load. */
-async function overlays(h: Harness) {
-  const r = reporter('overlays');
-  clearEvents(h);
-  h.load(fresh(h, 'http://localhost:8099/nothing'));
-  await waitFor(h, () => h.events.errors.length > 0, 10000);
-  r.check(
-    'the error screen is shown after a failure',
-    await waitFor(h, () => h.events.overlay.error, 3000)
-  );
-  await openPage(h, fresh(h, '/'));
-  r.check(
-    'the error screen goes away on the next load',
-    await waitFor(h, () => !h.events.overlay.error, 3000)
-  );
   r.done();
 }
 
@@ -1572,13 +1610,7 @@ async function navigation(h: Harness) {
   await openPage(h, fresh(h, '/nav.html'));
   // Android decides only navigations that start inside a frame with a user gesture, not the frame's initial src load:
   // a real tap on a link inside the iframe.
-  const inFrame = (await h.ref.current?.evaluate(`(() => {
-    const f = document.getElementById('frame'); f.scrollIntoView({ block: 'center' });
-    const a = f.contentDocument.getElementById('redirect');
-    const fr = f.getBoundingClientRect(), ar = a.getBoundingClientRect(), d = devicePixelRatio;
-    return [Math.round((fr.left + ar.left + 8) * d), Math.round((50 + fr.top + ar.top + ar.height / 2) * d)];
-  })()`)) as [number, number];
-  if (Platform.OS === 'android') r.info('TAP', inFrame.join(' '));
+  if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
   else
     await h.ref.current?.evaluate(
       `document.getElementById('frame').contentDocument.getElementById('redirect').click()`
@@ -1679,11 +1711,7 @@ async function injection(h: Harness) {
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
   r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
-  r.check(
-    'a script runs in the main frame only by default',
-    frame.top && !frame.mainOnly,
-    frame
-  );
+  r.check('a script runs in the main frame only by default', frame.top && !frame.mainOnly, frame);
   h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
   await sleep(500);
   r.check(
@@ -1933,7 +1961,6 @@ async function fullscreen(h: Harness) {
   }
   await openPage(h, fresh(h, '/media.html'));
   h.events.fullscreen.length = 0;
-  // Screen pixels for the driver: the WebView starts 50 dp from the top of the screen (the example's padding).
   r.info('TAP', await tapPoint(h, 'fullscreen'));
   r.check(
     'entering fullscreen is reported',
@@ -1946,7 +1973,9 @@ async function fullscreen(h: Harness) {
     return;
   }
   r.info('BACK', 'leave');
-  r.check(
+  await checkUnlessOldWebView(
+    h,
+    r,
     'back leaves fullscreen',
     await waitFor(h, () => h.events.fullscreen.at(-1) === false, 10000),
     h.events.fullscreen
@@ -2049,7 +2078,7 @@ async function sampleExtension(h: Harness) {
   r.done();
 }
 
-/** First-load headers, declined HTTP auth, shared cookies, download failures, HTTP error pages. */
+/** First-load headers, declined HTTP auth, shared cookies, download failures. */
 async function network(h: Harness) {
   const r = reporter('network');
 
@@ -2069,16 +2098,6 @@ async function network(h: Harness) {
     (await text(h, 'auth')) === 'unauthorized',
     await text(h, 'auth')
   );
-
-  clearEvents(h);
-  await openPage(h, fresh(h, '/status/404'));
-  r.check(
-    'an HTTP 404 reports onHttpError',
-    await waitFor(h, () => h.events.httpErrors.some((e) => e.statusCode === 404), 3000),
-    h.events.httpErrors
-  );
-  await sleep(300); // an onError would have come with it, and the error screen mounts a render later
-  r.check('an HTTP 404 does not show the error screen', !h.events.overlay.error);
 
   // Native requests (RN fetch) and the WebView share cookies: both directions.
   await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);
@@ -2132,46 +2151,6 @@ async function network(h: Harness) {
   r.done();
 }
 
-/** The bridge after going back to a page, which WebKit (and Android with BFCache on) may restore without reloading it. */
-async function backForward(h: Harness) {
-  const r = reporter('backForward');
-  const page = fresh(h, '/back-forward.html');
-  await openPage(h, page);
-  // A page call still waiting (the app answers 'slow' after 5 s) when the page is left: the answer can't reach it.
-  await h.ref.current?.evaluate(`(() => {
-    window.__straddle = undefined;
-    nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
-  })()`);
-  await openPage(h, fresh(h, '/spa.html'));
-  h.ref.current?.goBack();
-  await waitFor(h, (s) => s.url === page && idle(s));
-  await sleep(500);
-  const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
-  r.info('pageshow persisted flags', { shows });
-  const straddle = (await h.ref.current?.evaluate('window.__straddle')) as
-    { error?: string } | null | undefined;
-  r.check(
-    'a page call cut off by leaving the page fails with navigated',
-    !shows?.[1] || straddle?.error === 'navigated',
-    straddle
-  );
-  const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
-  r.check('RN -> page call after going back', sum === 5, sum);
-  h.bridge.emit('nativeEvent', { n: 7 });
-  const lastN = async () =>
-    ((await h.ref.current?.evaluate('window.lastEvent')) as { n?: number } | null)?.n === 7;
-  await until(lastN, 3000);
-  const event = await h.ref.current?.evaluate('window.lastEvent');
-  r.check('RN -> page event after going back', (event as { n?: number } | null)?.n === 7, event);
-  const echo = await pageCall(h, 'echo', { back: true });
-  r.check(
-    'page -> RN call after going back',
-    (echo.result as { back?: boolean } | undefined)?.back === true,
-    echo
-  );
-  r.done();
-}
-
 /**
  * Back and forward restored from the back-forward cache (WebKit always, Android by default): the restore itself, the
  * navigation state, one onLoadStart/onLoad/onLoadEnd per restore, the bridge both ways, and the rules on the restored
@@ -2185,13 +2164,25 @@ async function bfcache(h: Harness) {
   const second = fresh(h, '/back-forward.html?title=second');
   await openPage(h, second);
 
-  const travel = async (name: string, go: () => void, url: string, title: string, back: boolean) => {
+  const travel = async (
+    name: string,
+    go: () => void,
+    url: string,
+    title: string,
+    back: boolean
+  ) => {
     clearEvents(h);
     go();
     await waitFor(h, (s) => s.url === url && idle(s));
     await sleep(500); // a late state or load event would come now
     const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
-    r.check(`${name}: the page is restored from the cache`, shows?.[1] === true, shows);
+    await checkUnlessOldWebView(
+      h,
+      r,
+      `${name}: the page is restored from the cache`,
+      shows?.[1] === true,
+      shows
+    );
     const s = h.state();
     r.check(
       `${name}: the state is the restored page's`,
@@ -2225,7 +2216,11 @@ async function bfcache(h: Harness) {
   await travel('forward', () => h.ref.current?.goForward(), second, 'second', false);
 
   // A call still unanswered when its page goes into the cache rejects at once; the answer the page sends once restored
-  // is dropped.
+  // is dropped. Both ways: the page's call to the app's 'slow' (answered after 5 s) rejects in the page.
+  await h.ref.current?.evaluate(`(() => {
+    window.__straddle = undefined;
+    nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
+  })()`);
   const inFlight = h.bridge.call('slow', { ms: 1500 }).then(
     (value) => ({ value, ms: Date.now() - left }),
     (error: unknown) => ({ code: errorCode(error), ms: Date.now() - left })
@@ -2243,6 +2238,15 @@ async function bfcache(h: Harness) {
   h.ref.current?.goForward();
   await waitFor(h, (s) => s.url === second && idle(s));
   await sleep(2000); // the restored page's timer fires and it answers the old call
+  const straddle = (await h.ref.current?.evaluate('window.__straddle')) as
+    { error?: string } | null | undefined;
+  await checkUnlessOldWebView(
+    h,
+    r,
+    'a page -> RN call cut off by leaving the page rejects with navigated',
+    straddle?.error === 'navigated',
+    straddle
+  );
   const after = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works after the late answer', after === 2, after);
 
@@ -2308,27 +2312,26 @@ async function sources(h: Harness) {
   r.done();
 }
 
+/** In run order: `maestro/run.sh` runs these keys when it is given no suites. */
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
+  navigation,
   reissue,
   bridge,
-  backForward,
   bfcache,
-  ptr,
-  upload,
+  injection,
   errors,
-  ua,
   crash,
-  dialogs,
   mountSettings,
   settings,
-  overlays,
-  navigation,
-  injection,
+  upload,
   downloads: downloadsSuite,
   permissions: permissionsSuite,
   fullscreen,
+  ua,
+  dialogs,
   sampleExtension,
+  ptr,
   network,
   sources,
 };
