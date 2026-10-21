@@ -41,7 +41,9 @@ extension MinimalWebView: WKUIDelegate {
     showDialog(alert) { completionHandler(nil) }
   }
 
-  /// Camera and microphone, main frame only: a hook decides (onPermissionRequest); without one, WebKit's own prompt.
+  /// Camera and microphone, main frame only. WebKit asks the OS itself (the app provides the Info.plist strings). With
+  /// `onPermissionRequest` the app decides: true grants without WebKit's own prompt, false denies. Without the prop
+  /// WebKit prompts.
   func webView(
     _ webView: WKWebView,
     requestMediaCapturePermissionFor origin: WKSecurityOrigin,
@@ -50,7 +52,15 @@ extension MinimalWebView: WKUIDelegate {
     decisionHandler: @escaping @MainActor (WKPermissionDecision) -> Void
   ) {
     guard frame.isMainFrame else { return decisionHandler(.deny) }
-    if !permissions.requestMediaCapture(origin: origin, type: type, decide: decisionHandler) { decisionHandler(.prompt) }
+    guard requestHandlers.contains("permissionRequest") else { return decisionHandler(.prompt) }
+    let resources: [String] = switch type {
+    case .camera: ["camera"]
+    case .microphone: ["microphone"]
+    default: ["camera", "microphone"]
+    }
+    ask("core.permissionRequest", ["origin": OriginRules.origin(of: origin), "resources": resources]) { answer in
+      decisionHandler(answer as? Bool == true ? .grant : .deny)
+    }
   }
 
   /// Dismisses the dialog on screen, if any, completing it as cancelled (the Document ended).

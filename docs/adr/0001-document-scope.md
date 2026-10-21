@@ -22,9 +22,8 @@ and swiftc tests drive all three ends with fake registrants.
   app backgrounding. A failed load ends the Document on Android only, where an error page commits.
 - `crashed`: the renderer died, reload or not. Everything `committed` does, plus crash-only cleanup. The bridge rejects
   posted calls with `navigated` at once rather than at the reload's commit or the 10 s timeout: a behaviour change.
-- `closing`: `OnViewDestroys` on Android. `deinit` on iOS, because Expo 58's Swift view API has no destroy hook and
-  React Native's `invalidate` stops at Expo's Fabric wrapper. Risk: anything retaining the view delays `closing` past
-  unmount.
+- `closing`: `OnViewDestroys` on Android. `invalidate` on iOS, at unmount (see Corrections); `deinit` tears down the
+  WebView if that never ran, but its registrants see no view.
 
 ## Considered and rejected
 
@@ -56,7 +55,8 @@ and swiftc tests drive all three ends with fake registrants.
   entry and the app's handler running (maybe an OS prompt) for a request nobody wants.
 - **`closing` on iOS:** `invalidate` doesn't stop at a Fabric wrapper. `MinimalWebView` is the Fabric component view,
   and React Native calls `invalidate` on it at unmount (Expo views are never recycled); only the Swift-visible header
-  doesn't declare it. So `closing` could move from `deinit` to an `@objc invalidate` override. Not done yet.
+  doesn't declare it. So `closing` moved from `deinit` to an `@objc invalidate` that calls the inherited one
+  (2026-10-22), and the registrants hold the view weakly instead of `unowned(unsafe)`.
 - **Child WebViews:** this change didn't fix "`destroy()` left child WebViews to a timer". `View.post` on a detached view
   never runs, so a child was still left undestroyed at unmount. Fixed later: every Document end destroys the children
   directly, and the deferred work posts through a main-thread `Handler`.
