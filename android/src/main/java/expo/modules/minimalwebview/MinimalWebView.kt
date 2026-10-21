@@ -84,7 +84,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var mounted = false
 
   // Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until answered through `answer`
-  // or failed with null by a new document, a crash or destroy.
+  // or cancelled (null, and `core.askCancelled` to JS) by a new document, a crash, destroy, a timeout or the platform.
   private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextAskId = 0
 
@@ -116,7 +116,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
-    document.register { failAsks() }
+    document.register { failAsks(it) }
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
@@ -260,6 +260,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
     pendingAsks.remove(askId)?.invoke(value)
   }
 
+  /** Native gives up on an ask: its callback gets null, and JS aborts the handler's signal unless [tell] is false. */
+  internal fun cancelAsk(askId: Int, tell: Boolean = true) {
+    val onAnswer = pendingAsks.remove(askId) ?: return
+    if (tell) emit("core.askCancelled", mapOf("askId" to askId))
+    onAnswer(null)
+  }
+
   /** Wraps the file chooser's [callback] so it is answered once: by its handler, or by [cancelFileChooser]. */
   internal fun holdFileChooser(callback: ValueCallback<Array<Uri>>): ValueCallback<Array<Uri>> =
     object : ValueCallback<Array<Uri>> {
@@ -277,12 +284,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   internal fun pageFinished() = refresher.pageFinished()
 
-  /** Answers every pending ask with null (block, cancel). */
-  private fun failAsks() {
-    val waiting = pendingAsks.values.toList()
-    pendingAsks.clear()
-    waiting.forEach { it(null) }
-  }
+  /** Cancels every pending ask. At destroy JS isn't told: it aborts its own handlers at unmount. */
+  private fun failAsks(reason: End) = pendingAsks.keys.toList().forEach { cancelAsk(it, tell = reason != End.CLOSING) }
 
   fun bridgePost(message: String) = scripts.post(message)
 

@@ -87,7 +87,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     clipsToBounds = true
     // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. `closing` runs from deinit,
     // where a weak self is already nil and an unowned one traps; the scope dies with the view, so unsafe is safe.
-    document.register { [unowned(unsafe) self] _ in self.failPendingAsks() }
+    document.register { [unowned(unsafe) self] reason in self.failPendingAsks(reason) }
     document.register { [unowned(unsafe) self] _ in self.failEvaluations() }
     document.register { [unowned(unsafe) self] reason in
       self.bridgeOrigin = nil

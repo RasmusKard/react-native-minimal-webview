@@ -83,7 +83,7 @@ internal class MinimalWebViewNavigation(
       notifyNavigation(request, if (action in ACTIONS && opened) action else "block", rule)
     }
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
-    owner.mainHandler.postDelayed({ owner.answer(id, null) }, ASK_TIMEOUT_MS)
+    owner.mainHandler.postDelayed({ owner.cancelAsk(id) }, ASK_TIMEOUT_MS)
   }
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its

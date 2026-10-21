@@ -43,11 +43,12 @@ test('the native view gets exactly the native props and events, and JS calls exa
 
 test('the page requests JS routes are the ones native asks for or gates on', () => {
   const requests = names(ts.match(/const REQUESTS = \{([^}]*)\}/)?.[1] ?? '', /^\s*(\w+):/gm);
-  const asked = names(natives, /"core\.(\w+)"/g).filter((name) => name !== 'warning');
+  const told = ['warning', 'askCancelled'];
+  const asked = names(natives, /"core\.(\w+)"/g).filter((name) => !told.includes(name));
   const gated = names(
     natives,
     /"(\w+)" !?in owner\.requestHandlers|requestHandlers\.contains\("(\w+)"\)/g
   );
   expect([...new Set([...asked, ...gated])].sort()).toEqual(requests);
-  expect(ts).toContain('`${CORE}warning`');
+  told.forEach((name) => expect(ts).toContain(`\`\${CORE}${name}\``));
 });

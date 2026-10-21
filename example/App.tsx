@@ -125,7 +125,7 @@ export default function App() {
                 events.pageCounts.push(event.payload);
               else events.hookEvents.push(event.name);
             }}
-            onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+            onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
             onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
             onDownload={(result) =>

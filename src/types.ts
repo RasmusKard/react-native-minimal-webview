@@ -222,9 +222,13 @@ type OwnProps = {
   userAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
-  /** Called only for `ask` rules. Times out after 1 s, then `block`. Without this prop, `ask` is `block`. */
+  /**
+   * Called only for `ask` rules. Times out after 1 s, then `block`, and `signal` aborts. Without this prop, `ask` is
+   * `block`.
+   */
   onNavigationRequest?: (
-    request: NavigationRequest
+    request: NavigationRequest,
+    signal: AbortSignal
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
@@ -234,9 +238,9 @@ type OwnProps = {
   nativeOptions?: Record<string, unknown>;
   /**
    * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
-   * a throw answers null.
+   * a throw answers null. `signal` is set only for an `ask`, and aborts when native stops waiting for the answer.
    */
-  onNativeEvent?: (event: NativeEvent) => unknown;
+  onNativeEvent?: (event: NativeEvent, signal?: AbortSignal) => unknown;
   /** Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android. */
   pullToRefresh?: boolean;
   /**
@@ -246,12 +250,16 @@ type OwnProps = {
   sharedCookies?: boolean;
   // Page requests: each works without its prop, as described. `onFileRequest` and `onPermissionRequest` answer theirs;
   // `onFullscreenChange` and `onDownload` are told afterwards. They can be added or removed at any time. A native hook
-  // that takes the same platform callback comes first.
+  // that takes the same platform callback comes first. An answering prop's `signal` aborts when native stops waiting
+  // (the page moved on, crashed or unmounted, or the platform withdrew the request); its answer is then dropped.
   /**
    * `<input type="file">` on Android: return `file://` or `content://` URIs, or null to cancel. Without it, the system
    * file chooser opens (it ignores `capture`). iOS always shows WebKit's picker.
    */
-  onFileRequest?: (request: FileRequest) => string[] | null | Promise<string[] | null>;
+  onFileRequest?: (
+    request: FileRequest,
+    signal: AbortSignal
+  ) => string[] | null | Promise<string[] | null>;
   /**
    * Android: the page entered or left fullscreen (`active`). Fullscreen works without it: the page's view covers the
    * window, the system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
@@ -262,7 +270,10 @@ type OwnProps = {
    * ask the OS first (expo-camera, expo-location), or the page's request fails anyway. Without it: Android denies; iOS
    * shows WebKit's own prompt, and location always does.
    */
-  onPermissionRequest?: (request: PermissionRequestEvent) => boolean | Promise<boolean>;
+  onPermissionRequest?: (
+    request: PermissionRequestEvent,
+    signal: AbortSignal
+  ) => boolean | Promise<boolean>;
   /**
    * A download finished ({@link Download}, a file in the app's cache) or failed ({@link DownloadFailure}). Without it,
    * an http(s) download opens externally (`onOpenExternal` or the system browser, without the page's session), and a
