@@ -62,7 +62,7 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
       if (!navigation.didCommit() || navigation.page in loadedPages) {
         owner.loading = false
-        owner.pageFinished(navigation.url)
+        owner.pageFinished()
       }
     }
     owner.stateChanged()
@@ -71,7 +71,7 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
   override fun onPageLoadEvent(page: Page) {
     loadedPages += page
     owner.loading = false
-    owner.pageFinished(page.url)
+    owner.pageFinished()
     owner.stateChanged()
   }
 }
@@ -116,7 +116,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun onPageFinished(view: WebView, url: String?) {
     if (!owner.hasNavigationListener) {
       owner.loading = false
-      owner.pageFinished(url ?: "")
+      owner.pageFinished()
       owner.stateChanged()
     }
     observing("onPageFinished", WEB_VIEW, STRING) { it.onPageFinished(view, url) }
