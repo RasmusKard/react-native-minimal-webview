@@ -58,7 +58,7 @@ extension MinimalWebView: WKUIDelegate {
     case .microphone: ["microphone"]
     default: ["camera", "microphone"]
     }
-    ask("core.permissionRequest", ["origin": OriginRules.origin(of: origin), "resources": resources]) { answer in
+    asks.ask("core.permissionRequest", ["origin": OriginRules.origin(of: origin), "resources": resources]) { answer in
       decisionHandler(answer as? Bool == true ? .grant : .deny)
     }
   }

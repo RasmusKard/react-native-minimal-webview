@@ -126,3 +126,24 @@ passed in, so a JVM test runs the loop against a local server. The package build
 
 - Keep OkHttp through `react-android`: no code, but tied to a React Native networking class and its OkHttp.
 - OkHttp with an own `CookieJar`: about as long, and keeps the dependency.
+
+## The view is the aggregate root
+
+`MinimalWebView` holds, on each platform, what has one owner by nature: the Expo surface (Expo binds the props, the
+events and the module's functions to the view instance), the platform WebView's life, crash recovery, the Document scope
+and its ends, the navigation state, the hook plumbing (contexts, detachers, the hooks' delegate and client lists) and on
+iOS the one core `WKNavigationDelegate` behind `DelegateProxy`, since WebKit has one delegate slot per kind. Decided
+2026-10-23: a feature with state of its own owns it in its own class (Kotlin's Navigation, Scripts and `requests/`;
+Swift's `Downloads`, `SharedCookies` and `DelegateProxy`; `DocumentScope`, `Asks` and `PlatformSettings` on both) and
+takes the view only for props, events and the current WebView, which a crash replaces on Android. Swift's `+Feature`
+files are one type split by file: an extension can't hold stored properties, so their state stays on the view,
+`internal` where another file needs it. So the two view classes are the one place the size checks don't apply
+(detekt's `TooManyFunctions`, SwiftLint's `type_body_length` and `file_length`, disabled there with this section as
+the reason); every other class and file keeps the global thresholds.
+
+### Considered and rejected
+
+- The core's page requests written against the hook seam (`WebViewContext` instead of the view): 4 of the 6 additions
+  they would need are core-only (the `core.` event prefix, the `requestHandlers` gate, the file chooser launcher, an
+  awaited `evaluate`) and would become a hidden half of the context. The other two, a cancellable `ask` and the
+  download listener slot, wait for a hook that needs them.

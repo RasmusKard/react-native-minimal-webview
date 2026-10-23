@@ -15,15 +15,18 @@
 - Ref: `get` and `call` refuse more. Android: `destroy`, navigations, listeners and other core-owned methods, and `get` takes only a getter or a non-void method. iOS: `init`, `copy`, `new` and `mutable` selectors, KVO and `setDelegate`.
 - Rules: a new window to an internal scheme (`data:`, `blob:`, `javascript:`, `about:`) or `file:` is blocked whatever the rules say. `mailto:` and `tel:` still go through the rules.
 - Bridge: `attach` to a second mounted WebView throws.
+- Bridge: `Bridge` has a `[CONNECTION]` key that only `createBridge` sets, so a hand-made or mock `Bridge` no longer type-checks (it connected nothing to the WebView). The emitted types name `BridgeConnection`.
 - Bridge: handlers and listeners get a second `{ origin }` argument, the sender's origin as the native side verified it. The `onBridge` native event carries `origin`.
 - Bridge: `handler_error` messages no longer start with `Error: `.
 - Bridge: the `BridgeError` type is gone: a call rejects with a `BridgeCallError`, and `invalid` is no longer a `BridgeErrorCode`.
 - Settings: iOS `allowsInlineMediaPlayback` defaults to `true`.
 - Settings: JS no longer sends the platforms' own defaults for `javaScriptCanOpenWindowsAutomatically` and gesture-only playback, so such a key you remove keeps its value until the WebView is recreated.
 - Hooks: `nativeOptions` is `hookOptions`, `onNativeEvent` is `onHookEvent`, and the `NativeEvent` type is `HookEvent<N, P>` (`N` and `P` type the name and payload).
-- Hooks: `MinimalWebViewHooks.register(key, configure:, attach:)` replaces the `configure` and `attach` maps. `context.options` is the hook's own `hookOptions` value, not every hook's, a `false` value attaches no hook, and Android's detach closure gets the reason (`CRASHED` or `CLOSING`).
+- Hooks: `MinimalWebViewHooks.register(key, configure:, attach:)` replaces the `configure` and `attach` maps. `context.options` is the hook's own `hookOptions` value, not every hook's, and a `false` value attaches no hook.
+- Hooks (Android): `context.activity` is gone: use `appContext.currentActivity` in the hook's own module. The closure `attach` returns takes no reason: read it in `onDocumentEnd`, which runs just before.
 - Hooks (iOS): commit and crash callbacks reach hooks after the core, and observation callbacks reach every hook, as on Android.
 - Hooks (Android): a client that overrides a deprecated variant the platform forwards to (`shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`, the 4-argument `onReceivedError`, `onConsoleMessage(String, Int, String)`) counts as overriding the callback, so it now gets it and takes its decision: its `shouldOverrideUrlLoading` switches the navigation rules off.
+- Native (Android): the view class `MinimalWebView`, `NavigationRules` and the `WebViewSource` and `InjectedScript` records are `internal`, as on iOS, so Kotlin outside the package that names them no longer compiles. Hooks keep `MinimalWebViewHooks`, `WebViewContext` and `DocumentScope`.
 - Native: the view's `native` function is split into `get(path)` and `call(path, argsJson, completion)`.
 - Package: an `exports` map: only `minimal-rn-webview` and `minimal-rn-webview/package.json` resolve.
 
@@ -58,5 +61,6 @@
 - Android fullscreen video restores the app's system bars.
 - The Android bridge listener ignores non-string messages.
 - iOS `get`/`call` result conversion can't crash.
+- Hooks: a kept context's `ask` after the view closed answers null at once; it could stay unanswered.
 - The navigation state, `onNavigation` and `onProcessGone` events no longer carry React Native's `target` key.
 - LICENSE names the right copyright holder.

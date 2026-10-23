@@ -8,19 +8,20 @@ npm run lint && npm run prepare            # ESLint on src, example and .github 
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
-(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, crash-loop guard
-xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, crash-loop guard, platform settings
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
 ```
 
-The code's shape, as reports rather than checks: the native thresholds are starting points that today's code exceeds.
+The code's shape, as checks: each tool fails on any finding (detekt by default, SwiftLint and Periphery with `strict`).
+Lower a threshold when the code passes a lower one; raise one only with a reason written down.
 detekt, swiftlint, periphery and cloc are CLIs (Homebrew), not npm dependencies.
 
 ```sh
 detekt --input android/src/main --config detekt.yml   # Kotlin complexity and unused private code (the rules are in detekt.yml)
 swiftlint lint                                        # Swift complexity (.swiftlint.yml)
 periphery scan                                        # unused Swift (.periphery.yml); builds the example app itself (needs example/ios, see below), ~40 s
-npx stryker run --mutate src/WebView.tsx              # WebView.test.tsx's mutation score, under the 80% gate today
+npx stryker run --mutate src/WebView.tsx,src/refStore.ts   # WebView.test.tsx's mutation score, under the 80% gate today
 cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
 ```
 
