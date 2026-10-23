@@ -2,14 +2,39 @@ package expo.modules.minimalwebview
 
 /** The structured navigation rules. Semantics and cases: src/__tests__/vectors/navigation-rules.json (shared with Swift). */
 object NavigationRules {
-  data class Request(val url: String, val mainFrame: Boolean, val newWindow: Boolean, val userInitiated: Boolean)
+  data class Request(
+    val url: String,
+    val mainFrame: Boolean,
+    val newWindow: Boolean,
+    val userInitiated: Boolean,
+    val isRedirect: Boolean = false
+  )
 
   /** [action] is allow, block, external or ask; [rule] is the matching rule's index, null when a default decided. */
   data class Decision(val action: String, val rule: Int?)
 
   private val internalSchemes = setOf("about", "blob", "data", "javascript")
+  private val actions = setOf("allow", "block", "external", "ask")
+  private val answers = setOf("allow", "block", "external")
 
-  fun decide(rules: List<Map<String, Any?>>?, request: Request): Decision {
+  /**
+   * The rules' decision, gated for `ask`: blocked when nothing can answer it ([canAsk] false), allowed when its URL is
+   * in [asked] (URLs an `ask` already allowed). An unknown rule action blocks.
+   */
+  fun decide(rules: List<Map<String, Any?>>?, request: Request, asked: Set<String> = emptySet(), canAsk: Boolean = true): Decision {
+    val decision = match(rules, request)
+    return when {
+      decision.action != "ask" -> decision
+      !canAsk -> Decision("block", decision.rule)
+      request.url in asked -> Decision("allow", decision.rule)
+      else -> decision
+    }
+  }
+
+  /** An `ask` answer: allow, block or external; anything else (null on a timeout) blocks. */
+  fun answer(value: Any?): String = (value as? String)?.takeIf { it in answers } ?: "block"
+
+  private fun match(rules: List<Map<String, Any?>>?, request: Request): Decision {
     val scheme = request.url.substringBefore(':', "").lowercase()
     // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
     // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
@@ -26,7 +51,7 @@ object NavigationRules {
     }
     val (host, path, params) = parts(request.url)
     val index = rules.indexOfFirst { matches(it, scheme, host, path, params, request) }
-    return if (index < 0) Decision("block", null) else Decision(rules[index]["action"] as? String ?: "block", index)
+    return if (index < 0) Decision("block", null) else Decision((rules[index]["action"] as? String)?.takeIf { it in actions } ?: "block", index)
   }
 
   // scheme ":" ["//" authority] path ["?" query]. java.net.URI rejects URLs Chromium accepts (a raw `|` in the query,

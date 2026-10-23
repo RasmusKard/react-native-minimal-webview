@@ -50,7 +50,8 @@ MinimalWebViewHooks.attach["pageCounter"] = { webView, context ->             //
   is the prefix, so names never collide with the package's (`core.`) or another hook's. `context.ask(name, payload) { answer in … }`
   waits for the handler's return value (a promise is awaited; a throw or no handler answers null). The answer comes as
   the platform's JSON types: a number as `Double` (Kotlin) or `NSNumber` (Swift), an object as `Map` or `NSDictionary`,
-  `null` or `undefined` as null or nil. `ask` has no timeout: one still open when the Document ends is answered null.
+  `null` or `undefined` as null or nil. `ask` has no timeout: one still open when the Document ends is answered null,
+  and the `signal` JS passes as `onNativeEvent(event, signal)` (only for an `ask`) aborts, as it does at unmount.
   On iOS a context kept after its WebView went away does nothing, and its `ask` answers null.
 - **Lifecycle.** `configure` is iOS only (Android has none: use `attach`, or `android` settings). It runs after the
   `ios.configuration` settings and before the bridge, so replacing the user content controller is fine, and user

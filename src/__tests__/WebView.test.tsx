@@ -248,13 +248,16 @@ describe('page requests', () => {
     const onDownload = jest.fn();
     const { fire } = await renderRequests({ onFileRequest, onFullscreenChange, onDownload });
     await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 1);
-    expect(onFileRequest).toHaveBeenCalledWith({ accept: [], multiple: false, capture: false });
+    expect(onFileRequest).toHaveBeenCalledWith(
+      { accept: [], multiple: false, capture: false },
+      expect.any(AbortSignal)
+    );
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
     await fire('core.fullscreenChange', { active: true });
-    expect(onFullscreenChange).toHaveBeenCalledWith({ active: true });
+    expect(onFullscreenChange).toHaveBeenCalledWith({ active: true }, undefined);
     const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
     await fire('core.download', failure);
-    expect(onDownload).toHaveBeenCalledWith(failure);
+    expect(onDownload).toHaveBeenCalledWith(failure, undefined);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
 
@@ -277,7 +280,7 @@ describe('page requests', () => {
       userInitiated: true,
     };
     await fire('core.navigationRequest', request, 1);
-    expect(onNavigationRequest).toHaveBeenCalledWith(request);
+    expect(onNavigationRequest).toHaveBeenCalledWith(request, expect.any(AbortSignal));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
     await fire('core.navigationRequest', request, 2);
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
@@ -309,11 +312,37 @@ describe('page requests', () => {
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     expect(onNativeEvent).not.toHaveBeenCalled();
     await fire('pageCounter.pick', { a: 1 }, 4);
-    expect(onNativeEvent).toHaveBeenCalledWith({ name: 'pageCounter.pick', payload: { a: 1 } });
+    expect(onNativeEvent).toHaveBeenCalledWith(
+      { name: 'pageCounter.pick', payload: { a: 1 } },
+      expect.any(AbortSignal)
+    );
     expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pageCounter.pick!' });
     await fire('pageCounter.note', { b: 2 });
+    expect(onNativeEvent).toHaveBeenLastCalledWith(
+      { name: 'pageCounter.note', payload: { b: 2 } },
+      undefined
+    );
     expect(mockAnswer).toHaveBeenCalledTimes(3);
     error.mockRestore();
+  });
+
+  it('aborts the signal of an ask native cancels, and drops its late answer', async () => {
+    let release = (_: boolean) => {};
+    let signal: AbortSignal | undefined;
+    const { fire } = await renderRequests({
+      onPermissionRequest: (_, s) => {
+        signal = s;
+        return new Promise<boolean>((resolve) => (release = resolve));
+      },
+    });
+    const asked = fire('core.permissionRequest', { origin: 'https://a.example', resources: [] }, 5);
+    await fire('core.askCancelled', { askId: 6 });
+    expect(signal?.aborted).toBe(false);
+    await fire('core.askCancelled', { askId: 5 });
+    expect(signal?.aborted).toBe(true);
+    release(true);
+    await asked;
+    expect(mockAnswer).not.toHaveBeenCalled();
   });
 });
 

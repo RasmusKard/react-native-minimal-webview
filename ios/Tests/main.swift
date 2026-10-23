@@ -13,7 +13,8 @@ let path = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "ios/Tes
 guard let data = FileManager.default.contents(atPath: path),
   let vectors = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
   let rulesets = vectors["rulesets"] as? [String: [[String: Any]]],
-  let cases = vectors["cases"] as? [[String: Any]]
+  let cases = vectors["cases"] as? [[String: Any]],
+  let answers = vectors["answers"] as? [[String: Any]]
 else { fail("cannot read \(path)") }
 
 var failures = 0
@@ -31,7 +32,9 @@ for testCase in cases {
       mainFrame: request["mainFrame"] as? Bool ?? true,
       newWindow: request["newWindow"] as? Bool ?? false,
       userInitiated: request["userInitiated"] as? Bool ?? false
-    )
+    ),
+    asked: Set(request["asked"] as? [String] ?? []),
+    canAsk: request["canAsk"] as? Bool ?? true
   )
   let expected = NavigationRules.Decision(action: action, rule: expect["rule"] as? Int)
   if decision != expected {
@@ -39,7 +42,15 @@ for testCase in cases {
     print("FAIL \(name): expected \(expected), got \(decision)")
   }
 }
-print("\(cases.count - failures)/\(cases.count) navigation rule cases pass")
+for entry in answers {
+  guard let expected = entry["action"] as? String else { fail("malformed answer \(entry)") }
+  let actual = NavigationRules.answer(entry["answer"])
+  if actual != expected {
+    failures += 1
+    print("FAIL answer \(entry["answer"] ?? "missing"): expected \(expected), got \(actual)")
+  }
+}
+print("\(cases.count + answers.count - failures)/\(cases.count + answers.count) navigation rule cases pass")
 
 let originPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "ios/Tests/vectors/origin-rules.json"
 guard let originData = FileManager.default.contents(atPath: originPath),

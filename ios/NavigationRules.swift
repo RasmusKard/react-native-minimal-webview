@@ -21,8 +21,24 @@ enum NavigationRules {
   }
 
   private static let internalSchemes: Set<String> = ["about", "blob", "data", "javascript"]
+  private static let actions: Set<String> = ["allow", "block", "external", "ask"]
+  private static let answers: Set<String> = ["allow", "block", "external"]
 
-  static func decide(_ rules: [[String: Any]]?, _ request: Request) -> Decision {
+  /// The rules' decision, gated for `ask`: blocked when nothing can answer it (`canAsk` false), allowed when its URL is
+  /// in `asked` (URLs an `ask` already allowed). An unknown rule action blocks.
+  static func decide(_ rules: [[String: Any]]?, _ request: Request, asked: Set<String> = [], canAsk: Bool = true) -> Decision {
+    let decision = match(rules, request)
+    guard decision.action == "ask" else { return decision }
+    if !canAsk { return Decision(action: "block", rule: decision.rule) }
+    return asked.contains(request.url) ? Decision(action: "allow", rule: decision.rule) : decision
+  }
+
+  /// An `ask` answer: allow, block or external; anything else (nil on a timeout) blocks.
+  static func answer(_ value: Any?) -> String {
+    (value as? String).flatMap { answers.contains($0) ? $0 : nil } ?? "block"
+  }
+
+  private static func match(_ rules: [[String: Any]]?, _ request: Request) -> Decision {
     let scheme = request.url.split(separator: ":", maxSplits: 1).count > 1
       ? String(request.url.prefix { $0 != ":" }).lowercased() : ""
     // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
@@ -44,12 +60,14 @@ enum NavigationRules {
     if host?.hasSuffix(".") == true { host?.removeLast() }
     if host?.isEmpty == true { host = nil }
     let rawPath = components?.percentEncodedPath ?? ""
-    let path = rawPath.isEmpty || components?.host == nil && !rawPath.hasPrefix("/") ? "/" : rawPath
+    // No authority (`myapp:/abs`, `myapp:open`): the path is "/", as in Kotlin. `file:///x` has an empty one, not none.
+    let path = rawPath.isEmpty || components?.host == nil ? "/" : rawPath
     let params = components?.percentEncodedQuery?.split(separator: "&").map(String.init) ?? []
     guard let index = rules.firstIndex(where: { matches($0, scheme, host, path, params, request) }) else {
       return Decision(action: "block", rule: nil)
     }
-    return Decision(action: rules[index]["action"] as? String ?? "block", rule: index)
+    let action = rules[index]["action"] as? String
+    return Decision(action: action.flatMap { actions.contains($0) ? $0 : nil } ?? "block", rule: index)
   }
 
   /// nil when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing.

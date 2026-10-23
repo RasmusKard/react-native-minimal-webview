@@ -23,23 +23,23 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 |---|---|
 | `scheme` | Exact, case-insensitive: `['tel', 'mailto']` |
 | `host` | Exact, or `*.example.com` for subdomains only (not `example.com` itself). Case, port, userinfo and a trailing dot are ignored |
-| `path` | A plain prefix of the percent-encoded path: `/checkout` also matches `/checkouts` |
+| `path` | A plain prefix of the percent-encoded path: `/checkout` also matches `/checkouts`. A URL without an authority (`myapp:/open`) has the path `/` |
 | `query` | A query parameter, percent-encoded as in the URL and case-sensitive: `gad_source` matches one with that name and any value, `utm_term=google` only that exact value |
 | `mainFrame`, `newWindow`, `userInitiated` | true or false. A new window is a main-frame navigation |
 
 ## Actions
 
-- `allow`: load in place. On iOS that includes a tapped universal link, which WebKit would otherwise open in the app that claims it; an `external` rule hands it to the app.
+- `allow`: load in place. On iOS that includes a tapped universal link, which WebKit would otherwise open in the app that claims it; an `external` rule hands it to the app ([ADR 0003](adr/0003-universal-links-stay-in-place.md)).
 - `block`: cancel.
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
-- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late or missing answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once. A URL that `ask` allowed isn't asked again until the next page commits, so a redirect loop can't ask forever.
+- `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late, missing or other answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once. Until the next page commits, a URL that `ask` allowed is allowed without asking when a redirect comes back to it (Android) or when the same kind of frame, main or sub, goes to it again (iOS), so a redirect loop can't ask forever.
 
 `onNavigation` reports every decision: `{ url, action, mainFrame, newWindow, userInitiated, rule }`.
 
 ## Defaults
 
-- With no rules, http(s) loads in place, `file:` is blocked, and every other scheme opens externally from the main frame and is blocked from a subframe.
-- With rules but no match, the result is `block`.
+- With no rules, http(s) loads in place, `file:` is blocked, and every other scheme opens externally from the main frame and is blocked from a subframe. An empty list (`[]`) is the same as none.
+- With rules but no match, the result is `block`, as it is for a matching rule whose `action` isn't one of the four.
 - `about:`, `blob:`, `data:` and `javascript:` always load in place.
 - The `source` load, reloads and back/forward skip the rules. A redirect of the `source` load doesn't: it is decided like
   any other navigation (on Android, a reload's or back/forward's redirect too).
@@ -50,6 +50,7 @@ There is never a second WebView: a new window (`target=_blank`, `window.open`) t
 `window.opener` is unavailable. A new window to `data:`, `blob:`, `javascript:`, `about:` or `file:` is blocked,
 whatever the rules say, because it would load in the main frame; every other scheme goes through the rules as usual
 (`mailto:` and `tel:` open externally by default). On Android a new window that doesn't navigate within 5 s (`window.open('')`) is dropped.
+Why, and what to do for real popups: [ADR 0002](adr/0002-new-windows-in-place.md).
 
 ## Platform differences
 
@@ -57,4 +58,4 @@ whatever the rules say, because it would load in the main frame; every other sch
 - **POST on Android.** The rules never run for POST requests: form posts and payment redirects always load. A form POST to `target=_blank` can't be captured, so it doesn't load; iOS loads it in place.
 - **iframes on Android.** Android only decides iframe navigations to non-http(s) schemes (`tel:`, `intent:` and so on). Rules for http(s) iframes, the `mainFrame: false` ones, apply only on iOS.
 - **`userInitiated`.** On iOS it's true only for a tapped link (`.linkActivated`). A `location.href` change or `window.open` from a click handler is false on iOS but true on Android (`hasGesture()`).
-- **`intent:` links (Android).** They're sanitised: browsable only, with no explicit component or selector. If no app handles one, its `S.browser_fallback_url` loads instead.
+- **`intent:` links (Android).** They're sanitised: browsable only, with no explicit component or selector. If no app handles one, its `S.browser_fallback_url` goes through the rules and loads if they allow it; the `intent:` itself is reported as `block`.

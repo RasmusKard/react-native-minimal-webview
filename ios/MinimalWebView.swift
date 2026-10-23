@@ -60,7 +60,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The enabled hooks' contexts, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [String: HookContext] = [:]
   var nextAskId = 0
-  var askedAndAllowed: Set<String> = []
+  /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
+  var askedAndAllowed: [Bool: Set<String>] = [:]
   /// A `source` load is being prepared (shared cookies): loads wait until it is done.
   private var preparing = false
   /// After a failed main-frame load `url` is the failed URL (as on Android, which commits an error page);
@@ -87,7 +88,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     clipsToBounds = true
     // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. `closing` runs from deinit,
     // where a weak self is already nil and an unowned one traps; the scope dies with the view, so unsafe is safe.
-    document.register { [unowned(unsafe) self] _ in self.failPendingAsks() }
+    document.register { [unowned(unsafe) self] reason in self.failPendingAsks(reason) }
     document.register { [unowned(unsafe) self] _ in self.failEvaluations() }
     document.register { [unowned(unsafe) self] reason in
       self.bridgeOrigin = nil
