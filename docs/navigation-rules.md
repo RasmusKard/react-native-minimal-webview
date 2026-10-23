@@ -29,7 +29,7 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 
 ## Actions
 
-- `allow`: load in place. On iOS that includes a tapped universal link, which WebKit would otherwise open in the app that claims it; an `external` rule hands it to the app ([ADR 0003](adr/0003-universal-links-stay-in-place.md)).
+- `allow`: load in place. On iOS that includes a tapped universal link, which WebKit would otherwise open in the app that claims it; an `external` rule hands it to the app ([Universal links stay in place](decisions.md#universal-links-stay-in-place)).
 - `block`: cancel.
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
 - `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late, missing or other answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once. Until the next page commits, a URL that `ask` allowed is allowed without asking when a redirect comes back to it (Android) or when the same kind of frame, main or sub, goes to it again (iOS), so a redirect loop can't ask forever.
@@ -50,7 +50,7 @@ There is never a second WebView: a new window (`target=_blank`, `window.open`) t
 `window.opener` is unavailable. A new window to `data:`, `blob:`, `javascript:`, `about:` or `file:` is blocked,
 whatever the rules say, because it would load in the main frame; every other scheme goes through the rules as usual
 (`mailto:` and `tel:` open externally by default). On Android a new window that doesn't navigate within 5 s (`window.open('')`) is dropped.
-Why, and what to do for real popups: [ADR 0002](adr/0002-new-windows-in-place.md).
+Why, and what to do for real popups: [New windows load in place](decisions.md#new-windows-load-in-place).
 
 ## Platform differences
 

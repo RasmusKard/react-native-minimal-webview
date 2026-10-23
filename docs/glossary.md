@@ -1,15 +1,13 @@
-# react-native-minimal-webview
+# Glossary
 
 A React Native WebView whose native side owns the navigation state and the lifetime of everything a page asks for.
-
-## Language
 
 **Document**:
 The main-frame page a WebView shows now: it begins when a navigation commits, a back-forward-cache restore included,
 and ends at the next commit (on Android a failed load commits an error page; on iOS nothing commits and the Document
 lives on), a renderer crash, or the view closing. Asks, evaluations, the bridge reply target, the ask cache, the file
 chooser, the open JS dialog (iOS), fullscreen video (Android), the refresh spinner (iOS, on crash) and new-window child
-WebViews (Android) belong to one Document and end with it ([ADR 0001](docs/adr/0001-document-scope.md)).
+WebViews (Android) belong to one Document and end with it ([One document scope per platform](decisions.md#one-document-scope-per-platform)).
 _Avoid_: page, when its lifetime matters
 
 **Core**:
@@ -22,7 +20,7 @@ Swift or Kotlin in the app's own Expo module, registered under a key with `Minim
 the real `WKWebView` or `WebView` of every WebView created with a `hookOptions` value for its key. It adds delegates
 and clients to the core's lists (one that takes a decision callback takes it from the core) and talks to JS with
 `emit`, `ask` and `handle`
-([Native hooks](docs/native-hooks.md)). An extension is a package that ships hooks.
+([Native hooks](native-hooks.md)). An extension is a package that ships hooks.
 _Avoid_: plugin
 
 **Ask**:
@@ -36,7 +34,7 @@ _Avoid_: prompt, callback
 **Page request**:
 Something a page asks for that only the app can give: a file, fullscreen video, a permission, a download, a JS dialog,
 HTTP auth. Each works without a prop; a prop either answers it (an Ask) or is told afterwards (a `…Event`), and JS
-dialogs and HTTP auth only a native hook takes over ([Page requests](docs/page-requests.md)).
+dialogs and HTTP auth only a native hook takes over ([Page requests](page-requests.md)).
 
 **Settings root**:
 An object whose keys the `ios` and `android` props set by their platform names, and `get` and `call` read and call:

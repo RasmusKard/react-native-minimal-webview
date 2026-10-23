@@ -44,4 +44,6 @@ export function Browser() {
 - [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): the prop map, the defaults that
   differ, and recipes for what has no prop
 - [Development](docs/development.md): unit tests and the on-device suites
+- [Glossary](docs/glossary.md): the words the docs and the code use
+- [Decisions](docs/decisions.md): why things are the way they are, and what was rejected
 - [Roadmap](ROADMAP.md)
