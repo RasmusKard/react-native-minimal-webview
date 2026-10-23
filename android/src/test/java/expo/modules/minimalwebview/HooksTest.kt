@@ -1,8 +1,11 @@
 package expo.modules.minimalwebview
 
+import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.SafeBrowsingResponseCompat
@@ -28,6 +31,14 @@ class HooksTest {
   private class Finished : WebViewClient() {
     override fun onPageFinished(view: WebView, url: String?) {}
   }
+  private class PlainDeprecated : WebViewClient() {
+    @Deprecated("the platform's") override fun shouldOverrideUrlLoading(view: WebView, url: String) = true
+    @Deprecated("the platform's") override fun shouldInterceptRequest(view: WebView, url: String): WebResourceResponse? = null
+    @Deprecated("the platform's") override fun onReceivedError(view: WebView, errorCode: Int, description: String, failingUrl: String) {}
+  }
+  private class ChromeDeprecated : WebChromeClient() {
+    @Deprecated("the platform's") override fun onConsoleMessage(message: String, lineNumber: Int, sourceID: String) {}
+  }
 
   private val error = arrayOf(WebView::class.java, WebResourceRequest::class.java, WebResourceError::class.java)
   private val safeBrowsing = arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java)
@@ -38,6 +49,14 @@ class HooksTest {
     assertTrue(Finished::class.java.overrides("onPageFinished", WebView::class.java, String::class.java))
     assertFalse(Plain::class.java.overrides("onPageFinished", WebView::class.java, String::class.java))
     assertFalse(Plain::class.java.overrides("onReceivedError", *error))
+  }
+
+  @Test
+  fun `a plain subclass overrides a forwarded callback through its deprecated variant`() {
+    assertTrue(PlainDeprecated::class.java.overrides("shouldOverrideUrlLoading", *url))
+    assertTrue(PlainDeprecated::class.java.overrides("shouldInterceptRequest", *url))
+    assertTrue(PlainDeprecated::class.java.overrides("onReceivedError", *error))
+    assertTrue(ChromeDeprecated::class.java.overrides("onConsoleMessage", ConsoleMessage::class.java))
   }
 
   @Test
