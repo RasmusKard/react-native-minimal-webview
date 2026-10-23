@@ -57,7 +57,7 @@ const NAVIGATION_KEYS = keysOf<NavigationEvent>({
 const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: true });
 
 /** Native reports every main-frame error as one event; `code` is the HTTP status for `http`. */
-type NativeErrorEvent = {
+export type NativeErrorEvent = {
   kind: LoadErrorEvent['kind'];
   url: string;
   code: number;
@@ -65,11 +65,11 @@ type NativeErrorEvent = {
 };
 
 /** A page's message comes with its origin, as native verified it (`location.origin` form). */
-type BridgeEvent =
+export type BridgeEvent =
   { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
 /** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
-type AskableEvent = HookEvent & { askId?: number };
+export type AskableEvent = HookEvent & { askId?: number };
 
 /**
  * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
