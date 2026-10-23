@@ -64,5 +64,6 @@
 - The Android bridge listener ignores non-string messages.
 - iOS `get`/`call` result conversion can't crash.
 - Hooks: a kept context's `ask` after the view closed answers null at once; it could stay unanswered.
+- Rules (iOS): a URL that is only a scheme and a colon (`about:`, `myapp:`) is decided by that scheme, as on Android. It read as no scheme, so a bare `about:` went external instead of allowing, and a `scheme` rule never matched it.
 - The navigation state, `onNavigation` and `onProcessGone` events no longer carry React Native's `target` key.
 - LICENSE names the right copyright holder.

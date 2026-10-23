@@ -47,8 +47,7 @@ enum NavigationRules {
   }
 
   private static func match(_ rules: [[String: Any]]?, _ request: Request) -> Decision {
-    let scheme = request.url.split(separator: ":", maxSplits: 1).count > 1
-      ? String(request.url.prefix { $0 != ":" }).lowercased() : ""
+    let scheme = request.url.firstIndex(of: ":").map { request.url[..<$0].lowercased() } ?? ""
     // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
     // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
     if request.newWindow, internalSchemes.contains(scheme) || scheme == "file" { return Decision(action: "block", rule: nil) }

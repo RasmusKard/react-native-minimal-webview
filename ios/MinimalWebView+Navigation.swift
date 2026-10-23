@@ -4,7 +4,7 @@ import WebKit
 /// Navigation rules, `ask`, new windows and external opening. The decision handler is held while JS answers an
 /// `ask`, called exactly once, and blocked after 1 s or when the WebView goes away.
 extension MinimalWebView {
-  func decideNavigation(_ action: WKNavigationAction, in webView: WKWebView, decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+  func decideNavigation(_ action: WKNavigationAction, decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
     guard let target = action.request.url else { return decide(allowInPlace) }
     // New windows are decided in createWebViewWith; history steps, reloads and our own loads skip the rules,
     // as on Android (shouldOverrideUrlLoading is not called for them).
