@@ -1380,8 +1380,8 @@ async function settings(h: Harness) {
         String(desktop).includes('Macintosh'),
         desktop
       );
-      // get reads a property back; call: a void completion handler, valueError with NSData and UIImage, value, a
-      // struct and a BOOL, refusals.
+      // get reads a property back; call: an NSHTTPCookie both ways, a void completion handler, valueError with NSData
+      // and UIImage, value, a struct and a BOOL, refusals.
       h.setProps({
         ios: {
           configuration,
@@ -1409,6 +1409,30 @@ async function settings(h: Harness) {
         args?: unknown[],
         options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
       ) => h.ref.current?.call(method, args, options).catch(errorCode);
+      // The site data clear below removes this cookie.
+      const value = String(Date.now());
+      const setCookie = (cookie: Record<string, string>) =>
+        call('httpCookieStore.setCookie:completionHandler:', [{ cookie }], { completion: 'void' });
+      const stored = await setCookie({
+        Name: 'mrwCall',
+        Value: value,
+        Domain: 'localhost',
+        Path: '/',
+      });
+      const cookies = (await call('httpCookieStore.getAllCookies:', [], {
+        completion: 'value',
+      })) as { Name: string; Value: string }[] | string | undefined;
+      r.check(
+        'call takes { cookie } and resolves an NSHTTPCookie as its properties',
+        stored === null &&
+          Array.isArray(cookies) &&
+          cookies.some((c) => c.Name === 'mrwCall' && c.Value === value),
+        { stored, cookies }
+      );
+      r.check(
+        "call rejects a cookie that can't be made (no domain or path)",
+        (await setCookie({ Name: 'mrwCall', Value: value })) === 'native_error'
+      );
       await page(`(document.cookie = 'mrw=1; path=/')`);
       const before = await page('document.cookie');
       const cleared = await call(
