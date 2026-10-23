@@ -144,7 +144,7 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
-        view.answer(askId, answer["value"])
+        view.asks.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
       // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->

@@ -134,10 +134,10 @@ events and the module's functions to the view instance), the platform WebView's 
 and its ends, the navigation state, the hook plumbing (contexts, detachers, the hooks' delegate and client lists) and on
 iOS the one core `WKNavigationDelegate` behind `DelegateProxy`, since WebKit has one delegate slot per kind. Decided
 2026-10-23: a feature with state of its own owns it in its own class (Kotlin's Navigation, Scripts and `requests/`;
-Swift's `Downloads`, `SharedCookies` and `DelegateProxy`; `DocumentScope` and `PlatformSettings` on both) and takes the
-view only for props, events and the current WebView, which a crash replaces on Android. Swift's `+Feature` files are one
-type split by file: an extension can't hold stored properties, so their state stays on the view, `internal` where
-another file needs it.
+Swift's `Downloads`, `SharedCookies` and `DelegateProxy`; `DocumentScope`, `Asks` and `PlatformSettings` on both) and
+takes the view only for props, events and the current WebView, which a crash replaces on Android. Swift's `+Feature`
+files are one type split by file: an extension can't hold stored properties, so their state stays on the view,
+`internal` where another file needs it.
 
 ### Considered and rejected
 

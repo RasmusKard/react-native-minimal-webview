@@ -18,7 +18,7 @@ internal class FileUpload(private val owner: MinimalWebView) {
       "multiple" to (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE),
       "capture" to params.isCaptureEnabled
     )
-    owner.ask("core.fileRequest", request) { answer ->
+    owner.asks.ask("core.fileRequest", request) { answer ->
       val uris = (answer as? List<*>)?.mapNotNull { (it as? String)?.let(Uri::parse) }
       callback.onReceiveValue(uris?.toTypedArray())
     }

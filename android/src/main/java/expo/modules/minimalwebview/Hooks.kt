@@ -120,7 +120,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { view.ask("$key.$name", payload, onAnswer) }
+    onMain { view.asks.ask("$key.$name", payload, onAnswer) }
 
   override fun onOptionsChange(handler: (Any?) -> Unit) {
     optionsHandlers += handler

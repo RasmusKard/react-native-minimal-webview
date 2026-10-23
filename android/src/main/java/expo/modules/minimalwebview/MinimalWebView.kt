@@ -95,10 +95,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var detachers: List<(End) -> Unit> = emptyList()
   private var mounted = false
 
-  // Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until answered through `answer`
-  // or cancelled (null, and `core.askCancelled` to JS) by a new document, a crash, destroy, a timeout or the platform.
-  private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
-  private var nextAskId = 0
+  internal val asks = Asks { onHookEvent(it) }
 
   // The page's open file chooser (WebView allows one at a time). Chromium releases it only while its document is alive,
   // so a navigation away cancels it when it starts, not at commit; a later answer is dropped.
@@ -127,13 +124,13 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. failAsks() last: it runs
-    // the asks' callbacks (hook and Chromium code), and a throw there must not skip the core's own resets.
+    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. The asks last:
+    // their callbacks are hook and Chromium code, and a throw there must not skip the core's own resets.
     document.register { cancelFileChooser() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
-    document.register { failAsks(it) }
+    document.register { asks.documentEnded(it) }
     // The hooks' own handlers, per attach: the scope has no unregister, and a crash attaches the hooks again.
     document.register { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
@@ -300,30 +297,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 
-  fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
-    askWithId(name, payload, onAnswer)
-  }
-
-  /** [ask], returning the ask's id: [answer] with it, null to give up. */
-  internal fun askWithId(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
-    val id = ++nextAskId
-    pendingAsks[id] = onAnswer
-    onHookEvent(mapOf("name" to name, "payload" to payload, "askId" to id))
-    return id
-  }
-
-  /** JS's answer to an `ask`. */
-  internal fun answer(askId: Int, value: Any?) {
-    pendingAsks.remove(askId)?.invoke(value)
-  }
-
-  /** Native gives up on an ask: its callback gets null, and JS aborts the handler's signal unless [tell] is false. */
-  internal fun cancelAsk(askId: Int, tell: Boolean = true) {
-    val onAnswer = pendingAsks.remove(askId) ?: return
-    if (tell) emit("core.askCancelled", mapOf("askId" to askId))
-    onAnswer(null)
-  }
-
   /** Wraps the file chooser's [callback] so it is answered once: by its handler, or by [cancelFileChooser]. */
   internal fun holdFileChooser(callback: ValueCallback<Array<Uri>>): ValueCallback<Array<Uri>> =
     object : ValueCallback<Array<Uri>> {
@@ -340,9 +313,6 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal fun newDocument() = document.end(End.COMMITTED)
 
   internal fun pageFinished() = refresher.pageFinished()
-
-  /** Cancels every pending ask. At destroy JS isn't told: it aborts its own handlers at unmount. */
-  private fun failAsks(reason: End) = pendingAsks.keys.toList().forEach { cancelAsk(it, tell = reason != End.CLOSING) }
 
   internal fun bridgePost(message: String) = scripts.post(message)
 

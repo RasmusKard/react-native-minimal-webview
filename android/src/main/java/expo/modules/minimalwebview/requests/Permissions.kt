@@ -30,12 +30,12 @@ internal class Permissions(private val owner: MinimalWebView) {
   // Chromium gave up on the request: cancel its ask, removed first so that nothing answers the request. Answering one
   // Chromium already destroyed aborts the app on WebView 133 (an invalid JNI weak reference).
   fun onPermissionRequestCanceled(request: PermissionRequest) {
-    asks.remove(request)?.let { owner.cancelAsk(it) }
+    asks.remove(request)?.let { owner.asks.cancel(it) }
   }
 
   // Not told which prompt: every geolocation ask goes, unanswered like a cancelled request.
   fun onGeolocationPromptHidden() =
-    asks.keys.filterIsInstance<GeolocationPermissions.Callback>().forEach { key -> asks.remove(key)?.let { owner.cancelAsk(it) } }
+    asks.keys.filterIsInstance<GeolocationPermissions.Callback>().forEach { key -> asks.remove(key)?.let { owner.asks.cancel(it) } }
 
   /**
    * Asks the app, then runs [grant] or [deny]. False (the core denies) without the prop. Android reports the requesting
@@ -45,9 +45,9 @@ internal class Permissions(private val owner: MinimalWebView) {
     if ("permissionRequest" !in owner.requestHandlers) return false
     val value = originOf(origin)
     if (resources.isEmpty() || value != originOf(owner.webView.url)) return true.also { deny() }
-    asks[key] = owner.askWithId("core.permissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
+    asks[key] = owner.asks.ask("core.permissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
       // Not there: Chromium cancelled the request, and it takes no answer.
-      if (asks.remove(key) == null) return@askWithId
+      if (asks.remove(key) == null) return@ask
       if (answer == true) grant() else deny()
     }
     return true

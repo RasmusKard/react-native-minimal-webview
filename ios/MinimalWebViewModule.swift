@@ -52,7 +52,7 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
       // JS's answer to an `ask` (a page request, a navigation request or a hook's).
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
-        view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
+        view.asks.answer(askId, answer["value"] is NSNull ? nil : answer["value"])
       }
       // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { (view: MinimalWebView, name: String, method: String, args: String, promise: Promise) in

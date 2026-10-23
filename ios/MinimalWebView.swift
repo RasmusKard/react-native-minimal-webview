@@ -59,12 +59,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var htmlCommit: (url: String, item: WKBackForwardListItem?)?
   /// The URL this view loads itself (source, reload after an error, an allowed new window): it skips the rules.
   var programmaticUrl: URL?
-  /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
-  var pendingAsks: [Int: (Any?) -> Void] = [:]
+  private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
   let document = DocumentScope()
   /// The enabled hooks' contexts in registration order, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [HookContext] = []
-  var nextAskId = 0
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
   var askedAndAllowed: [Bool: Set<String>] = [:]
   /// A `source` load is being prepared (shared cookies): loads wait until it is done.
@@ -94,8 +92,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     super.init(appContext: appContext)
     clipsToBounds = true
     // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. `closing` comes from
-    // invalidate, at unmount; in the deinit fallback self is already nil and these do nothing (tearDown fails the asks).
-    document.register { [weak self] reason in self?.failPendingAsks(reason) }
+    // invalidate, at unmount; in the deinit fallback self is already nil and only the asks, held without the view, end:
+    // WebKit throws for a decision handler released uncalled.
+    document.register { [asks] in asks.documentEnded($0) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in
       guard let self else { return }
@@ -253,8 +252,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func tearDown() {
     guard let webView else { return }
     document.end(.closing)
-    // Again for deinit, where the registrant above can't: WebKit throws for a decision handler released uncalled.
-    failPendingAsks(.closing)
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
@@ -481,9 +478,5 @@ extension MinimalWebView {
 
   func emit(_ name: String, _ payload: [String: Any]) {
     onHookEvent(["name": name, "payload": payload])
-  }
-
-  func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
-    onHookEvent(["name": name, "payload": payload, "askId": register(onAnswer)])
   }
 }
