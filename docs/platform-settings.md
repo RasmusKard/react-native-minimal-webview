@@ -53,7 +53,7 @@ How the keys work:
   a `UIColor` is `#rrggbb` or `#rrggbbaa` (`underPageBackgroundColor`), an `NSURL` a string, and `websiteDataStore`
   `'default'` or `'nonPersistent'`.
 - **Only public API.** The settings channel uses only public API (the one private value in navigation is in
-  [ADR 0003](adr/0003-universal-links-stay-in-place.md)). A key must name a public property or setter that takes the value's type; a private
+  [Universal links stay in place](decisions.md#universal-links-stay-in-place)). A key must name a public property or setter that takes the value's type; a private
   (underscore) one is refused. Anything else is skipped with a warning naming the key and the reason, including a
   compat feature this device's WebView lacks. Nothing in this channel can crash the app.
 - **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a change recreates the

@@ -127,7 +127,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. failAsks() last: it runs
+    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. failAsks() last: it runs
     // the asks' callbacks (hook and Chromium code), and a throw there must not skip the core's own resets.
     document.register { cancelFileChooser() }
     document.register { navigation.documentEnded() }

@@ -1,8 +1,8 @@
 package expo.modules.minimalwebview
 
 /**
- * The lifetime of a Document (GLOSSARY.md): what belongs to the main-frame page on screen registers once, and the view
- * reports each end. ADR 0001. Public for [End], which hooks get.
+ * The lifetime of a Document (docs/glossary.md): what belongs to the main-frame page on screen registers once, and the view
+ * reports each end (docs/decisions.md). Public for [End], which hooks get.
  */
 class DocumentScope internal constructor() {
   enum class End { COMMITTED, CRASHED, CLOSING }
