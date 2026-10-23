@@ -1,9 +1,8 @@
 import ExpoModulesCore
 import WebKit
 
-// The aggregate root, by design (docs/decisions.md, "The view is the aggregate root"): its size isn't capped.
-// swiftlint:disable file_length
-// swiftlint:disable:next type_body_length
+// swiftlint:disable file_length - the aggregate root by design: docs/decisions.md, "The view is the aggregate root"
+// swiftlint:disable:next type_body_length - the aggregate root by design, as above
 class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigationState = EventDispatcher()
   let onBridge = EventDispatcher()
