@@ -81,6 +81,7 @@ internal class MinimalWebViewNavigation(
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its
   // default policy to it (origin only cross-origin, none from https to http); the page's own referrer policy is lost.
+  // loadUrl skips shouldOverrideUrlLoading, so the reissued URL isn't asked again (its redirects still go to decide).
   private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
   /**

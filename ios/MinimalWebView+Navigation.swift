@@ -57,6 +57,7 @@ extension MinimalWebView {
   private func run(_ request: NavigationRules.Request, completion: @escaping (Bool) -> Void) {
     // A URL an `ask` allowed is not asked again until the next main-frame commit (redirect loops). Without an
     // onNavigationRequest prop nobody could allow it.
+    // WebKit has no redirect flag, so a tap on that URL isn't asked again either; Android skips only redirects.
     let decision = NavigationRules.decide(
       navigationRules, request, asked: askedAndAllowed[request.mainFrame] ?? [],
       canAsk: requestHandlers.contains("navigationRequest")
