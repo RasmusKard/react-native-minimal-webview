@@ -13,7 +13,8 @@ xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.s
 npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
 ```
 
-The code's shape, as reports rather than checks: the native thresholds are starting points that today's code exceeds.
+The code's shape, as checks: each tool fails on any finding (detekt by default, SwiftLint and Periphery with `strict`).
+Lower a threshold when the code passes a lower one; raise one only with a reason written down.
 detekt, swiftlint, periphery and cloc are CLIs (Homebrew), not npm dependencies.
 
 ```sh

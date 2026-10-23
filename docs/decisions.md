@@ -137,7 +137,9 @@ iOS the one core `WKNavigationDelegate` behind `DelegateProxy`, since WebKit has
 Swift's `Downloads`, `SharedCookies` and `DelegateProxy`; `DocumentScope`, `Asks` and `PlatformSettings` on both) and
 takes the view only for props, events and the current WebView, which a crash replaces on Android. Swift's `+Feature`
 files are one type split by file: an extension can't hold stored properties, so their state stays on the view,
-`internal` where another file needs it.
+`internal` where another file needs it. So the two view classes are the one place the size checks don't apply
+(detekt's `TooManyFunctions`, SwiftLint's `type_body_length` and `file_length`, disabled there with this section as
+the reason); every other class and file keeps the global thresholds.
 
 ### Considered and rejected
 
