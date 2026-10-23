@@ -12,7 +12,8 @@ config.resolver.blockList = [
   // On windows the path will resolve with `\`. We need to escape it with `\\` for the RegExp.
   // expo and expo-modules-core too: a second copy of them breaks native module setup on Android.
   ...['react', 'react-native', 'expo', 'expo-modules-core'].map(
-    (name) => new RegExp(path.resolve('..', 'node_modules', name).replace(/\\/g, '\\\\') + '[/\\\\]')
+    (name) =>
+      new RegExp(path.resolve('..', 'node_modules', name).replace(/\\/g, '\\\\') + '[/\\\\]')
   ),
 ];
 

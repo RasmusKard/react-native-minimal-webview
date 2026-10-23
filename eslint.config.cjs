@@ -4,6 +4,10 @@ const universeWeb = require('eslint-config-universe/flat/web');
 const sonarjs = require('eslint-plugin-sonarjs');
 const globals = require('globals');
 
+// universe's TypeScript blocks match .ts and .tsx only; the .github/scripts are .mts.
+const withMts = (configs) =>
+  configs.map((c) => (c.files?.includes('**/*.ts') ? { ...c, files: [...c.files, '**/*.mts'] } : c));
+
 module.exports = defineConfig([
   {
     ignores: [
@@ -16,8 +20,9 @@ module.exports = defineConfig([
       '**/node_modules',
     ],
   },
-  ...universe,
-  ...universeWeb,
+  ...withMts(universe),
+  ...withMts(universeWeb),
+  { rules: { 'no-void': 'off' } }, // `void promise` marks a fire-and-forget call
   {
     ignores: ['example/**'], // the suite runner and test pages server are long by design
     plugins: { sonarjs },

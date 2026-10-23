@@ -2,8 +2,9 @@
 
 ```sh
 npm install && (cd example && npm install)
+npm run check                              # the next four lines in one: test, lint, knip, both type-checks, prepare
 npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client)
-npm run lint && npm run prepare            # ESLint on src, example and .github; then a clean build
+npm run lint && npm run prepare            # ESLint on src, example and .github (a warning fails it too); then a clean build
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
@@ -12,7 +13,18 @@ xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.s
 npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
 ```
 
-Two files are generated, and CI fails when either is stale (`--check`):
+The code's shape, as reports rather than checks: the native thresholds are starting points that today's code exceeds.
+detekt, swiftlint, periphery and cloc are CLIs (Homebrew), not npm dependencies.
+
+```sh
+detekt --input android/src/main --config detekt.yml   # Kotlin complexity and unused private code (the rules are in detekt.yml)
+swiftlint lint                                        # Swift complexity (.swiftlint.yml)
+periphery scan                                        # unused Swift (.periphery.yml); builds the example app itself (needs example/ios, see below), ~40 s
+npx stryker run --mutate src/WebView.tsx              # WebView.test.tsx's mutation score, under the 80% gate today
+cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
+```
+
+Two files are generated, and `npm test` fails when either is stale (its `pretest` runs both scripts with `--check`):
 - `src/bridge/pageClient.generated.ts`, from `pageClient.ts` and `endpoint.ts`: `npm run build:page-client` after
   editing either.
 - `src/platform.generated.ts`, the settings keys and the `WK` and `Android` constants, from the SDK extracts in
