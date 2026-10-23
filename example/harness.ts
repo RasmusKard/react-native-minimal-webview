@@ -2299,7 +2299,7 @@ async function sampleExtension(h: Harness) {
   const configured =
     Platform.OS === 'ios'
       ? "document.querySelector('#n a[href^=tel]') !== null"
-      : "getComputedStyle(document.getElementById('c')).fontSize === '14px'";
+      : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
   const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
   r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
   r.done();
