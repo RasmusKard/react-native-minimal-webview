@@ -2,8 +2,9 @@ import { type RefObject, act, createRef, useState } from 'react';
 import { Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
-import { WebView, createWebViewRef, useWebViewState } from '../WebView';
+import { WebView } from '../WebView';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
+import { createWebViewRef, useWebViewState } from '../refStore';
 import type { Bridge, NavigationState, WebViewProps, WebViewRef } from '../types';
 
 const mockAnswer = jest.fn();

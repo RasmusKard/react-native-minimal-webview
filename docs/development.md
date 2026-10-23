@@ -19,7 +19,7 @@ detekt, swiftlint, periphery and cloc are CLIs (Homebrew), not npm dependencies.
 detekt --input android/src/main --config detekt.yml   # Kotlin complexity and unused private code (the rules are in detekt.yml)
 swiftlint lint                                        # Swift complexity (.swiftlint.yml)
 periphery scan                                        # unused Swift (.periphery.yml); builds the example app itself (needs example/ios, see below), ~40 s
-npx stryker run --mutate src/WebView.tsx              # WebView.test.tsx's mutation score, under the 80% gate today
+npx stryker run --mutate src/WebView.tsx,src/refStore.ts   # WebView.test.tsx's mutation score, under the 80% gate today
 cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
 ```
 
