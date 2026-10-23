@@ -4,12 +4,10 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -97,10 +95,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal val asks = Asks { onHookEvent(it) }
 
-  // The page's open file chooser (WebView allows one at a time). Chromium releases it only while its document is alive,
-  // so a navigation away cancels it when it starts, not at commit; a later answer is dropped.
-  private var fileChooser: ValueCallback<Array<Uri>>? = null
-
   // Navigation state. Native owns the committed URL; JS is told. The clients (MinimalWebViewClients.kt) write it.
   internal var url = ""
   internal var pendingUrl: String? = null
@@ -126,7 +120,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. The asks last:
     // their callbacks are hook and Chromium code, and a throw there must not skip the core's own resets.
-    document.register { cancelFileChooser() }
+    document.register { fileUpload.cancel() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
@@ -297,18 +291,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key }?.handlers?.get(method)
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
-
-  /** Wraps the file chooser's [callback] so it is answered once: by its handler, or by [cancelFileChooser]. */
-  internal fun holdFileChooser(callback: ValueCallback<Array<Uri>>): ValueCallback<Array<Uri>> =
-    object : ValueCallback<Array<Uri>> {
-      override fun onReceiveValue(value: Array<Uri>?) {
-        if (fileChooser !== this) return
-        fileChooser = null
-        callback.onReceiveValue(value)
-      }
-    }.also { fileChooser = it }
-
-  internal fun cancelFileChooser() = fileChooser?.onReceiveValue(null)
 
   /** A new main-frame document: what belonged to the old one ends. */
   internal fun newDocument() = document.end(End.COMMITTED)

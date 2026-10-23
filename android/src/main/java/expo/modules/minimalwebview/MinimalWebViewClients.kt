@@ -43,7 +43,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
 
   override fun onNavigationStarted(navigation: Navigation) {
     if (navigation.isSameDocument) return
-    owner.cancelFileChooser()
+    owner.fileUpload.cancel()
     owner.pendingUrl = navigation.url
     owner.loading = true
     owner.outcome = null
@@ -239,13 +239,11 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
 
   // A hook client, else the app's prop (onFileRequest), else the system chooser (its intent ignores `capture`).
   override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-    val once = owner.holdFileChooser(callback)
+    val once = owner.fileUpload.hold(callback) // before the hook branch: a hook's chooser is held too
     deciding("onShowFileChooser", WEB_VIEW, ValueCallback::class.java, FileChooserParams::class.java)?.let {
       return it.onShowFileChooser(view, once, params)
     }
-    if (owner.fileUpload.onShowFileChooser(once, params)) return true
-    val module = owner.appContext.registry.getModule<MinimalWebViewModule>()
-    if (module == null) once.onReceiveValue(null) else module.openFileChooser(params.createIntent(), once::onReceiveValue)
+    owner.fileUpload.onShowFileChooser(once, params)
     return true
   }
 
