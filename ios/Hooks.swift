@@ -62,7 +62,7 @@ public protocol WebViewContext: AnyObject {
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
   /// Runs `handler` with this hook's new `hookOptions` value each time it changes; nil when the key is removed.
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
-  /// Runs `handler` at each end of the Document (GLOSSARY.md): a new page committed, a crash, or the view closing.
+  /// Runs `handler` at each end of the Document (docs/glossary.md): a new page committed, a crash, or the view closing.
   func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void)
   /// Answers JS's `ref.hook("<hook>", method, args)`. `handler` gets the arguments as the platform's JSON types and
   /// calls `reply` once, with a value JSON can encode. A later handler for the same method replaces this one.

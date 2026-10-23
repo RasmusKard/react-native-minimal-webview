@@ -112,9 +112,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     return override
   }
 
-  // Without NavigationListener (WebView older than 146): a main-frame document starts loading here.
-  // shortcut: ends the Document at load start, so a main-frame load that never commits (a download, a cancel) ends it
-  // too; drop when WebView 146 is the floor
+  // Without NavigationListener (WebView older than 146): a main-frame document commits here.
   // Chromium calls it at commit (for every app but old GMS), so a load that never commits (a stop, a download, a 204, a
   // blocked redirect) gets no load events and no outcome here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {

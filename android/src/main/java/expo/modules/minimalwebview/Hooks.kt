@@ -90,7 +90,7 @@ interface WebViewContext {
   /** Runs [handler] with this hook's new `hookOptions` value each time it changes; null when the key is removed. */
   fun onOptionsChange(handler: (Any?) -> Unit)
 
-  /** Runs [handler] at each end of the Document (GLOSSARY.md): a new page committed, a crash, or the view closing. */
+  /** Runs [handler] at each end of the Document (docs/glossary.md): a new page committed, a crash, or the view closing. */
   fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
 
   /**
