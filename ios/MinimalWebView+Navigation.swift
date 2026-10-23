@@ -72,7 +72,7 @@ extension MinimalWebView {
       if action == "allow" { self.askedAndAllowed[request.mainFrame, default: []].insert(request.url) }
       self.finish(request, action, decision.rule, completion)
     }
-    onNativeEvent(["name": "core.navigationRequest", "payload": request.payload, "askId": id])
+    onHookEvent(["name": "core.navigationRequest", "payload": request.payload, "askId": id])
     // Unanswered after the timeout: block.
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
       self?.cancelAsk(id)
@@ -100,7 +100,7 @@ extension MinimalWebView {
   /// Native gives up on an ask: its callback gets nil, and JS aborts the handler's signal unless `tell` is false.
   func cancelAsk(_ id: Int, tell: Bool = true) {
     guard let onAnswer = pendingAsks.removeValue(forKey: id) else { return }
-    if tell { onNativeEvent(["name": "core.askCancelled", "payload": ["askId": id]]) }
+    if tell { onHookEvent(["name": "core.askCancelled", "payload": ["askId": id]]) }
     onAnswer(nil)
   }
 
