@@ -391,7 +391,7 @@ export type WebViewRef = {
   /**
    * Calls the `method` handler the native hook `name` registered with `context.handle` (docs/native-hooks.md), and
    * resolves with its reply through JSON. Rejects with `hook_not_handled` when no attached hook `name` handles `method`,
-   * or (iOS) `native_error` when the reply can't cross as JSON.
+   * or `native_error` when the reply can't cross as JSON.
    */
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };

@@ -148,7 +148,7 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
         val handler = view.hookHandler(name, method)
           ?: return@AsyncFunction promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
-        handler(fromJson(JSONArray(args)) as List<Any?>) { promise.resolve(PlatformSettings.toJson(it)) }
+        handler(fromJson(JSONArray(args)) as List<Any?>) { native(promise) { PlatformSettings.toJson(it) } }
       }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->

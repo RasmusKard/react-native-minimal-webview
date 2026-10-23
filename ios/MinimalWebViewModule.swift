@@ -69,7 +69,7 @@ public class MinimalWebViewModule: Module {
       }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
-      // Rejects with script_error when there is no WKWebView yet, like the extension host's evaluate.
+      // Rejects with unavailable when there is no WKWebView yet.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         view.evaluate(script) { result in
           switch result {

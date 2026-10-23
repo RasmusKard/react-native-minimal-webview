@@ -26,7 +26,7 @@ extension MinimalWebView {
   /// cycle) gives "null". A new document rejects what is still waiting with `navigated`, as on Android: WebKit settles
   /// a call whose page went away seconds later or never.
   func evaluate(_ script: String, onResult: @escaping (Result<String, EvaluateError>) -> Void) {
-    guard let webView else { return onResult(.failure(EvaluateError(code: "script_error", message: "No WebView"))) }
+    guard let webView else { return onResult(.failure(EvaluateError(code: "unavailable", message: "No WebView"))) }
     let id = nextEvaluation
     nextEvaluation += 1
     evaluations[id] = onResult
