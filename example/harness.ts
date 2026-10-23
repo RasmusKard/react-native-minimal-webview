@@ -553,6 +553,19 @@ async function bridge(h: Harness) {
     (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
   );
 
+  // The new page's first message is a head script's call. Android ends the old Document (and drops its reply proxy) one
+  // main-thread hop after the commit: that has to come first, or the answer is lost and JS takes the page as loading.
+  const head = `${page}&head=1`;
+  await openPage(h, head);
+  const headCall = await until(() => h.ref.current?.evaluate('window.__head'), 5000);
+  r.check(
+    "a head script's call at document start is answered",
+    (headCall as { result?: { head?: boolean } } | undefined)?.result?.head === true,
+    headCall
+  );
+  const afterHead = await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode);
+  r.check("RN -> page calls work after a head script's call", afterHead === 4, afterHead);
+
   const early = `${page}&early=1`;
   h.load(early);
   await waitFor(h, (s) => s.url === early);
