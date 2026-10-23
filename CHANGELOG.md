@@ -22,7 +22,8 @@
 - Settings: iOS `allowsInlineMediaPlayback` defaults to `true`.
 - Settings: JS no longer sends the platforms' own defaults for `javaScriptCanOpenWindowsAutomatically` and gesture-only playback, so such a key you remove keeps its value until the WebView is recreated.
 - Hooks: `nativeOptions` is `hookOptions`, `onNativeEvent` is `onHookEvent`, and the `NativeEvent` type is `HookEvent<N, P>` (`N` and `P` type the name and payload).
-- Hooks: `MinimalWebViewHooks.register(key, configure:, attach:)` replaces the `configure` and `attach` maps. `context.options` is the hook's own `hookOptions` value, not every hook's, a `false` value attaches no hook, and Android's detach closure gets the reason (`CRASHED` or `CLOSING`).
+- Hooks: `MinimalWebViewHooks.register(key, configure:, attach:)` replaces the `configure` and `attach` maps. `context.options` is the hook's own `hookOptions` value, not every hook's, and a `false` value attaches no hook.
+- Hooks (Android): `context.activity` is gone: use `appContext.currentActivity` in the hook's own module. The closure `attach` returns takes no reason: read it in `onDocumentEnd`, which runs just before.
 - Hooks (iOS): commit and crash callbacks reach hooks after the core, and observation callbacks reach every hook, as on Android.
 - Hooks (Android): a client that overrides a deprecated variant the platform forwards to (`shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`, the 4-argument `onReceivedError`, `onConsoleMessage(String, Int, String)`) counts as overriding the callback, so it now gets it and takes its decision: its `shouldOverrideUrlLoading` switches the navigation rules off.
 - Native: the view's `native` function is split into `get(path)` and `call(path, argsJson, completion)`.

@@ -92,7 +92,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** The hooks' contexts for the current WebView, in registration order. */
   private var hookContexts: List<HookContext> = emptyList()
   /** What the attach hooks returned, run before their WebView goes away. */
-  private var detachers: List<(End) -> Unit> = emptyList()
+  private var detachers: List<() -> Unit> = emptyList()
   private var mounted = false
 
   internal val asks = Asks { onHookEvent(it) }
@@ -272,9 +272,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun detachHooks() {
-    // Only destroy() and recover() detach, and destroy() sets `destroyed` first.
-    val reason = if (destroyed) End.CLOSING else End.CRASHED
-    detachers.forEach { it(reason) }
+    detachers.forEach { it() }
     detachers = emptyList()
     hookContexts = emptyList()
     clients.clear()
