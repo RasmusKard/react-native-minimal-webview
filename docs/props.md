@@ -64,7 +64,7 @@ run time: an older WebView loses the features below, and nothing crashes. WebVie
 | WebView | Feature | Below it |
 |---|---|---|
 | 101 | `WEB_MESSAGE_LISTENER`, `DOCUMENT_START_SCRIPT` | Bridge calls reject with `unavailable`, `injectedScripts` don't run (each warns once per process), and `evaluate` rejects with `unavailable`, so `blob:` downloads fail. API 29+ devices with WebView updates on have it; the API 29 Google APIs emulator image ships 91 |
-| 146 | `NAVIGATION_LISTENER` | `pendingUrl` stays `null` (`url` still follows commits and SPA navigation). A load that never commits fires neither `onLoadStart` nor `onLoadEnd`. An SSL error on a back/forward load isn't reported. The back-forward cache stays off (WebView 133 reports no page finish for a restored page). Seen on WebView 133: `100vh` is 0 after crash recovery, back doesn't leave fullscreen video, an open file chooser is cancelled only when the next page commits, and the `paymentRequestEnabled` setting isn't supported |
+| 146 | `NAVIGATION_LISTENER` | `pendingUrl` stays `null` (`url` still follows commits and SPA navigation). A load that never commits fires neither `onLoadStart` nor `onLoadEnd`. An SSL error on a back/forward load isn't reported. The back-forward cache stays off (WebView 133 reports no page finish for a restored page). Seen on WebView 133: an open file chooser is cancelled only when the next page commits, and the `paymentRequestEnabled` setting isn't supported |
 
 Other features are checked one by one: `preconnect` does nothing without `Profile.enqueuePreconnect` or `preconnect`,
 favicon downloads stay on without `downloadFaviconsEnabled`, and an `android` setting this WebView lacks is skipped with

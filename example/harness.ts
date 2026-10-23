@@ -1132,13 +1132,7 @@ async function crash(h: Harness) {
     h.events.pageCounts.length - countsBefore
   );
   const recoveredVh = await viewportHeight(h);
-  await checkUnlessOldWebView(
-    h,
-    r,
-    '100vh has a height after recovery',
-    recoveredVh > 0,
-    recoveredVh
-  );
+  r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
   await sleep(1000);
   r.check(
     'the bridge works after recovery',
@@ -1147,16 +1141,24 @@ async function crash(h: Harness) {
   // Android builds a new WebView on recovery: its settings must be applied again.
   r.check('the setting is still applied after recovery', !!(await userAgent()));
 
+  const thirdLoads = h.events.loads.length;
   await kill(3);
-  // The 4th kill cuts off a slow load: with no reload to end it, the core must.
+  // The recovery reload ends first: before WebView 146 the state reads idle before it starts, and it would cut off
+  // the navigation below.
+  await waitFor(h, (s) => h.events.loads.slice(thirdLoads).includes('end') && idle(s), 15000);
+  // The 4th kill cuts off a slow load: with no reload to end it, the core must. Before WebView 146 the load starts at
+  // commit, after the delay, so the kill lands on the committed slow page instead.
   await until(
     async () =>
       (await h.ref.current?.evaluate('document.readyState').catch(errorCode)) === 'complete'
   );
   const slowStarts = h.events.loads.length;
-  await h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, '/slow?ms=10000'))}`);
+  await h.ref.current
+    ?.evaluate(`location.href = ${JSON.stringify(fresh(h, '/slow?ms=10000'))}`)
+    .catch(errorCode); // the navigation it starts can end its document first
   await waitFor(h, () => h.events.loads.slice(slowStarts).includes('start'));
   const fourth = await kill(4);
+  const onScreen = h.state().url; // the page on screen: the retry below brings it back
   // Only meaningful when all four crashes fell inside the 60 s window (slow reloads can stretch the test past it).
   const elapsed = Date.now() - firstKillAt;
   if (elapsed < 55000)
@@ -1177,9 +1179,9 @@ async function crash(h: Harness) {
     'reload() brings the page back after giving up',
     (await waitFor(
       h,
-      (s) => s.url === page && idle(s) && h.events.loads.slice(retryLoads).includes('end'),
+      (s) => s.url === onScreen && idle(s) && h.events.loads.slice(retryLoads).includes('end'),
       15000
-    )) && (await h.ref.current?.evaluate('location.href').catch(errorCode)) === page,
+    )) && (await h.ref.current?.evaluate('location.href').catch(errorCode)) === onScreen,
     h.state()
   );
   r.check(
@@ -2108,9 +2110,7 @@ async function fullscreen(h: Harness) {
     return;
   }
   r.info('BACK', 'leave');
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.check(
     'back leaves fullscreen',
     await waitFor(h, () => h.events.fullscreen.at(-1) === false, 10000),
     h.events.fullscreen
