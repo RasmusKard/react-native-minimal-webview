@@ -44,7 +44,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private var current: WebView? = null
   /**
    * Made at first use, which is the first prop batch, so that the configure hooks see `hookOptions`. Replaced when
-   * the render process dies; the hooks are attached to each one.
+   * the render process dies; the hooks are attached to each one. While [recovering] it is the destroyed one.
    */
   internal var webView: WebView
     get() = current ?: createWebView().also { current = it }
@@ -289,7 +289,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
-      } else if (!enables(old[key]) && enables(value)) {
+      } else if (key !in hookKeys.orEmpty() && !enables(old[key]) && enables(value)) {
         warn("hookOptions.$key: added after the WebView was created, so no hook attaches for it")
       }
     }

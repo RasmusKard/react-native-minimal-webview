@@ -123,6 +123,8 @@ class MinimalWebViewModule : Module() {
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
 
       AsyncFunction("navigate") { view: MinimalWebView, action: String ->
+        // While recovering, `webView` is the destroyed one: only reload acts, by building the new one.
+        if (view.recovering && action != "reload") return@AsyncFunction
         when (action) {
           "back" -> view.webView.goBack()
           "forward" -> view.webView.goForward()
@@ -146,6 +148,7 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
       // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
+        if (view.recovering) return@AsyncFunction promise.reject("unavailable", RECOVERING, null)
         val handler = view.hookHandler(name, method)
           ?: return@AsyncFunction promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
         try {
