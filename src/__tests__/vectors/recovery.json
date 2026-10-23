@@ -1,0 +1,43 @@
+{
+  "description": "Shared crash recovery cases for Kotlin (`showsSource` and `crashAllowsReload` in MinimalWebView.kt) and Swift (Recovery.swift). `source`: whether the committed `url` is the page of a `source` with this `uri`, which decides whether a crash reload or reload() loads the source again (its headers, its POST body) or the page's URL. They are equal up to trailing slashes: `/page` is `/page/`, and `https://example.com` is `https://example.com/` (the WebViews add the root path). Only that comparison: what an empty `url` (nothing committed) or an html source means is per platform. `crashGuard`: each case starts with no crashes. A crash at `at` ms reloads unless more than 3 crashes, it included, fall within the 60 s up to it, the 60 s inclusive; a crash that doesn't reload counts too. The crashes are more than 100 ms apart: Android counts the reports of one renderer death within 100 ms once.",
+  "source": [
+    { "name": "the same URL", "uri": "https://example.com/page", "url": "https://example.com/page", "shows": true },
+    { "name": "a trailing slash added", "uri": "https://example.com/page", "url": "https://example.com/page/", "shows": true },
+    { "name": "a trailing slash dropped", "uri": "https://example.com/page/", "url": "https://example.com/page", "shows": true },
+    { "name": "the root path the WebView adds", "uri": "https://example.com", "url": "https://example.com/", "shows": true },
+    { "name": "another path", "uri": "https://example.com/page", "url": "https://example.com/other", "shows": false },
+    { "name": "a longer path", "uri": "https://example.com/page", "url": "https://example.com/page/sub", "shows": false },
+    { "name": "a query", "uri": "https://example.com/page", "url": "https://example.com/page?x=1", "shows": false }
+  ],
+  "crashGuard": [
+    {
+      "name": "the 4th crash in 60 s doesn't reload, it counts too, and older crashes leave the window",
+      "crashes": [
+        { "at": 0, "reload": true },
+        { "at": 10000, "reload": true },
+        { "at": 20000, "reload": true },
+        { "at": 30000, "reload": false },
+        { "at": 65000, "reload": false },
+        { "at": 100000, "reload": true }
+      ]
+    },
+    {
+      "name": "a crash exactly 60 s back counts",
+      "crashes": [
+        { "at": 0, "reload": true },
+        { "at": 1000, "reload": true },
+        { "at": 2000, "reload": true },
+        { "at": 60000, "reload": false }
+      ]
+    },
+    {
+      "name": "a crash just over 60 s back doesn't",
+      "crashes": [
+        { "at": 0, "reload": true },
+        { "at": 1000, "reload": true },
+        { "at": 2000, "reload": true },
+        { "at": 60001, "reload": true }
+      ]
+    }
+  ]
+}
