@@ -4,7 +4,7 @@
 npm install && (cd example && npm install)
 npm run check                              # the next four lines in one: test, lint, knip, both type-checks, prepare
 npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client)
-npm run lint && npm run prepare            # ESLint on src, example and .github; then a clean build
+npm run lint && npm run prepare            # ESLint on src, example and .github (a warning fails it too); then a clean build
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet

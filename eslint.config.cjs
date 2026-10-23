@@ -22,6 +22,7 @@ module.exports = defineConfig([
   },
   ...withMts(universe),
   ...withMts(universeWeb),
+  { rules: { 'no-void': 'off' } }, // `void promise` marks a fire-and-forget call
   {
     ignores: ['example/**'], // the suite runner and test pages server are long by design
     plugins: { sonarjs },
