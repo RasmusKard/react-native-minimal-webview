@@ -112,3 +112,17 @@ per-host `external` rule, which opens the URL through the OS resolver on both pl
 
 - Hand-off by default (plain `.allow`): iOS and Android would split on the same rules, and no rule could keep a
   claimed host in place on iOS.
+
+## Android downloads fetch with HttpURLConnection
+
+Android's WebView hands a download over as a URL, so the core fetches it again with the WebView's cookies. That used
+React Native's OkHttp and its `ForwardingCookieHandler`, the package's only use of `com.facebook.react:react-android`.
+Decided 2026-10-23: `HttpURLConnection` with `CookieManager`, redirects followed by hand (`Downloads.kt`): each hop
+sends and stores its own URL's cookies, at most 20 redirects (OkHttp's limit), and a hop goes only to https or from
+http to http, which also refuses the http to https to http chain OkHttp's check let through. The cookie store is
+passed in, so a JVM test runs the loop against a local server. The package builds without `react-android`.
+
+### Considered and rejected
+
+- Keep OkHttp through `react-android`: no code, but tied to a React Native networking class and its OkHttp.
+- OkHttp with an own `CookieJar`: about as long, and keeps the dependency.
