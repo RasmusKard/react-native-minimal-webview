@@ -9,7 +9,7 @@ npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEm
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
 (cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, crash-loop guard, platform settings
-xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
 ```
 
@@ -32,9 +32,9 @@ Two files are generated, and `npm test` fails when either is stale (its `pretest
   `.github/scripts/platform-headers/`: `npm run gen:platform-types`. After an Xcode, Android SDK or androidx.webkit
   upgrade, `npm run gen:platform-types -- --import` refreshes the extracts from the installed SDKs first.
 
-The matchers share their test cases in `src/__tests__/vectors/`: the navigation cases run on Kotlin and Swift, the origin
-cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches origins itself
-(`addWebMessageListener`).
+The matchers and crash recovery share their test cases in `src/__tests__/vectors/`: the navigation and recovery cases run
+on Kotlin and Swift, the origin cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches
+origins itself (`addWebMessageListener`).
 
 ## On-device suites
 

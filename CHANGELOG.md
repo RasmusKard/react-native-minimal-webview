@@ -47,6 +47,7 @@
 - Bridge: the unsubscribe that `handle()` returns removes only its own handler.
 - Rules: until the next commit, a URL an `ask` allowed is allowed without asking again on a redirect back to it (Android) or for the same kind of frame (iOS). An `intent:` that falls back to its `browser_fallback_url` is reported as `block`.
 - Crash recovery (iOS): reloads in place and keeps the back-forward list. Only the ref's `reload()` and a `source` change reset the crash guard, not a recovery reload.
+- Crash recovery (iOS): a page whose URL differs from the `source` uri only in trailing slashes (`/page/` for `/page`) is the source's page, as on Android: a crash reloads the source with its headers, and a POST `source` there isn't sent again unasked. A crash exactly 60 s after an earlier one counts toward the crash guard's 3, as on Android.
 - Crash recovery (Android): the crash guard counts for the whole app, and the reports of one renderer death count once. Only the ref's `reload()` resets it, not pull-to-refresh or a `source` change. The new WebView keeps the history, and is built only once the app is in the foreground and the view on screen. Until then, `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and a new `source` loads on the new WebView.
 - Hooks (iOS): the hook context is weak, the hooks' user scripts survive the core's script reset, and live settings apply before hooks attach.
 - Hooks (iOS): `context.emit` and `context.ask` can be called from any thread, as on Android; they hop to the main thread.
