@@ -6,3 +6,4 @@ retain_objc_annotated: true  # @objc invalidate() is called by React Native thro
 report_include: ["ios/**"]
 relative_results: true
 disable_update_check: true
+strict: true                 # exit non-zero on any finding: the baseline is 0
