@@ -29,9 +29,10 @@ internal data class DownloadInfo(
 /**
  * Downloads, with the app's `onDownload`: http(s) is fetched again with the WebView's cookies and the page's user agent
  * (WebView hands over only the URL), data: is decoded, and blob: is read by the page. Each lands in its own app-cache
- * directory and emits `download {uri, filename, mimeType, url}`, as on iOS; a failed one emits `download {filename, url,
- * reason}`. `url` is the full http(s) URL, or null for data: and blob: (the page made the file itself). Without the prop
- * the core opens it externally. Nothing here may crash the app: the page controls the URL.
+ * directory and emits `download {ok: true, uri, filename, mimeType, url}`, as on iOS; a failed one emits
+ * `download {ok: false, filename, url, reason}`. `url` is the full http(s) URL, or null for data: and blob: (the page
+ * made the file itself). Without the prop the core opens it externally. Nothing here may crash the app: the page
+ * controls the URL.
  */
 internal class Downloads(private val owner: MinimalWebView) {
   private val io = Executors.newSingleThreadExecutor()
@@ -106,7 +107,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         when (result) {
           is String -> owner.emit(
             "core.download",
-            mapOf("uri" to Uri.fromFile(file).toString(), "filename" to name, "mimeType" to result, "url" to serverUrl(url))
+            mapOf("ok" to true, "uri" to Uri.fromFile(file).toString(), "filename" to name, "mimeType" to result, "url" to serverUrl(url))
           )
           is Exception -> failed(name, url, result)
         }
@@ -137,7 +138,7 @@ internal class Downloads(private val owner: MinimalWebView) {
 
   private fun failed(name: String, url: String, error: Exception) {
     Log.w(TAG, "download of $name failed", error)
-    owner.emit("core.download", mapOf("filename" to name, "url" to serverUrl(url), "reason" to (error.message ?: error.toString())))
+    owner.emit("core.download", mapOf("ok" to false, "filename" to name, "url" to serverUrl(url), "reason" to (error.message ?: error.toString())))
   }
 
   /** The download's server URL for the events; null when the page generated the file (data:, blob:). */
