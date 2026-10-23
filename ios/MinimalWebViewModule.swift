@@ -82,9 +82,9 @@ public class MinimalWebViewModule: Module {
   }
 }
 
-/// Runs `body` with the view's WKWebView; what it throws, or no WKWebView, rejects with `native_error`.
+/// Runs `body` with the view's WKWebView; what it throws rejects with `native_error`, no WKWebView with `unavailable`.
 private func native(_ view: MinimalWebView, _ promise: Promise, _ body: (WKWebView) throws -> Void) {
-  guard let webView = view.webView else { return promise.reject("native_error", "No WebView") }
+  guard let webView = view.webView else { return promise.reject("unavailable", "No WebView") }
   do {
     try body(webView)
   } catch {

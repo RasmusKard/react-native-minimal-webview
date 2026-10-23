@@ -324,10 +324,14 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
       : (_: unknown, signal?: AbortSignal) => props.onHookEvent?.({ name, payload }, signal);
-    const controller = new AbortController();
-    if (askId !== undefined) asks.set(askId, controller);
+    // Only an ask can be cancelled, so only an ask gets a signal.
+    let controller: AbortController | undefined;
+    if (askId !== undefined) {
+      controller = new AbortController();
+      asks.set(askId, controller);
+    }
     const value = await settle(
-      () => handler?.(payload, askId === undefined ? undefined : controller.signal),
+      () => handler?.(payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onHookEvent failed for ${name}`
@@ -335,7 +339,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     if (askId === undefined) return;
     asks.delete(askId);
     // Native already answered a cancelled ask with null; a late answer would find nothing.
-    if (!controller.signal.aborted) await answer(askId, value);
+    if (!controller?.signal.aborted) await answer(askId, value);
   };
 
   const onNavigation = ({ nativeEvent }: Native<NavigationEvent>) => {

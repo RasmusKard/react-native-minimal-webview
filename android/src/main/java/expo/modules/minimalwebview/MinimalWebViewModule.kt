@@ -123,20 +123,22 @@ class MinimalWebViewModule : Module() {
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
 
       AsyncFunction("navigate") { view: MinimalWebView, action: String ->
+        // While recovering, `webView` is the destroyed one: only reload acts, by building the new one.
+        if (view.recovering && action != "reload") return@AsyncFunction
         when (action) {
           "back" -> view.webView.goBack()
           "forward" -> view.webView.goForward()
-          "reload" -> view.reload()
+          "reload" -> view.retry()
           "stop" -> view.webView.stopLoading()
         }
       }.runOnQueue(Queues.MAIN)
       // `get('settings.textZoom')` and `call('webView.clearCache', '[true]', null)` resolve with the JSON of the result.
       // `argsJson` is a JSON string so a null argument survives the conversion; `completion` is iOS's.
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
-        native(promise) { view.platformSettings.get(path) }
+        native(view, promise) { view.platformSettings.get(path) }
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
-        native(promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) }
+        native(view, promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) }
         // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
@@ -146,9 +148,14 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
       // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
+        if (view.recovering) return@AsyncFunction promise.reject("unavailable", RECOVERING, null)
         val handler = view.hookHandler(name, method)
           ?: return@AsyncFunction promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
-        handler(fromJson(JSONArray(args)) as List<Any?>) { native(promise) { PlatformSettings.toJson(it) } }
+        try {
+          handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { PlatformSettings.toJson(it) } }
+        } catch (e: Exception) {
+          promise.reject("native_error", e.message, e)
+        }
       }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
@@ -160,12 +167,16 @@ class MinimalWebViewModule : Module() {
   }
 }
 
-/** Resolves with [body]'s JSON; anything it throws rejects with `native_error`. */
-private inline fun native(promise: Promise, body: () -> String) =
-  try {
-    promise.resolve(body())
-  } catch (e: Exception) {
-    promise.reject("native_error", e.message, e)
+/** Resolves with [body]'s JSON; anything it throws rejects with `native_error`, a dead WebView with `unavailable`. */
+private inline fun native(view: MinimalWebView, promise: Promise, body: () -> String) =
+  if (view.recovering) {
+    promise.reject("unavailable", RECOVERING, null)
+  } else {
+    try {
+      promise.resolve(body())
+    } catch (e: Exception) {
+      promise.reject("native_error", e.message, e)
+    }
   }
 
 /** The `settings` prop's JSON (always an object: JS builds it) as nested maps and lists, with JSON null as null. */

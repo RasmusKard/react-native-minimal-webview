@@ -94,7 +94,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     super.init(appContext: appContext)
     clipsToBounds = true
     // What belongs to the Document (GLOSSARY.md, ADR 0001), reset in this order at every end. `closing` comes from
-    // invalidate, at unmount; in the deinit fallback self is already nil and these do nothing.
+    // invalidate, at unmount; in the deinit fallback self is already nil and these do nothing (tearDown fails the asks).
     document.register { [weak self] reason in self?.failPendingAsks(reason) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in
@@ -257,6 +257,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func tearDown() {
     guard let webView else { return }
     document.end(.closing)
+    // Again for deinit, where the registrant above can't: WebKit throws for a decision handler released uncalled.
+    failPendingAsks(.closing)
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
