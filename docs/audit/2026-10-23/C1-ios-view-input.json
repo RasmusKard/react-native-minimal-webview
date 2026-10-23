@@ -1,0 +1,68 @@
+[
+ {
+  "id": "B1-2",
+  "file": "ios/MinimalWebView.swift",
+  "line": 133,
+  "quality": 1,
+  "claim": "The three deferred moves (sharedCookies, pull-to-refresh, download saving) add about +6, +38 and +38 package lines as in-package extensions and cost each consumer more than the library as recipes; none shrinks Core as the glossary defines it",
+  "recommendation": "keep",
+  "size": "S",
+  "confidence": "medium",
+  "report": "B1"
+ },
+ {
+  "id": "B1-3",
+  "file": "ios/MinimalWebView.swift",
+  "line": 71,
+  "quality": 1,
+  "claim": "S5 (before-load gate) is the one seam with a third-party use and an existing one-user implementation (preparing); sharedCookies would be its first user",
+  "recommendation": "add-seam",
+  "size": "M",
+  "confidence": "medium",
+  "report": "B1"
+ },
+ {
+  "id": "B1-8",
+  "file": "ios/MinimalWebView.swift",
+  "line": 376,
+  "quality": 1,
+  "claim": "On iOS a hook can already own download saving while onDownload is set, because didBecome is forwarded after the core assigns its delegate; native-hooks.md does not say so",
+  "recommendation": "document",
+  "size": "S",
+  "confidence": "medium",
+  "report": "B1"
+ },
+ {
+  "id": "B2-03",
+  "file": "ios/MinimalWebView.swift",
+  "line": 214,
+  "quality": 2,
+  "claim": "a hookOptions key no hook is registered under (typo, module not linked or not rebuilt) is silent on both platforms",
+  "recommendation": "simplify",
+  "size": "S",
+  "confidence": "high",
+  "report": "B2"
+ },
+ {
+  "id": "B3-08",
+  "file": "ios/MinimalWebView.swift",
+  "line": 424,
+  "quality": 3,
+  "claim": "iOS crash guard and sameURL/onSource are untested twins of tested Kotlin code and already differ (60 s boundary, trailing slash); a recovery.json vector pins both",
+  "recommendation": "test",
+  "size": "S",
+  "confidence": "high",
+  "report": "B3"
+ },
+ {
+  "id": "B4-13",
+  "file": "ios/MinimalWebView.swift",
+  "line": 4,
+  "quality": 4,
+  "claim": "type body 318: move the WKNavigationDelegate methods to a same-file extension (about 225); file length 489: keep with file_length warning 490",
+  "recommendation": "simplify",
+  "size": "S",
+  "confidence": "high",
+  "report": "B4"
+ }
+]

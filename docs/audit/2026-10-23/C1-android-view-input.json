@@ -1,0 +1,79 @@
+[
+ {
+  "id": "B1-4",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 142,
+  "quality": 1,
+  "claim": "A hook attaches only if its key is on at WebView creation, so a hook-backed live toggle must send an always-on value; the {enabled} pattern is not documented",
+  "recommendation": "document",
+  "size": "S",
+  "confidence": "high",
+  "report": "B1"
+ },
+ {
+  "id": "B2-07",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 31,
+  "quality": 2,
+  "claim": "Kotlin MinimalWebView (public clients, chromeClients, activity, emit, ask), NavigationRules and the Records are public; iOS's are internal; public emit bypasses the core key",
+  "recommendation": "simplify",
+  "size": "S",
+  "confidence": "medium",
+  "report": "B2"
+ },
+ {
+  "id": "B4-05",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 275,
+  "quality": 4,
+  "claim": "comment says only destroy() and recover() detach (processGone does, recover never); MinimalWebViewClients.kt:116-119 contradicts itself on when onPageStarted fires",
+  "recommendation": "document",
+  "size": "S",
+  "confidence": "high",
+  "report": "B4"
+ },
+ {
+  "id": "B4-15",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 31,
+  "quality": 4,
+  "claim": "20 view functions are the entry points 12 collaborators call; keep with thresholdInClasses 21 (19 after the file chooser moves)",
+  "recommendation": "keep",
+  "size": "S",
+  "confidence": "medium",
+  "report": "B4"
+ },
+ {
+  "id": "B5-4",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 98,
+  "quality": 5,
+  "claim": "the ask registry accreted on both views (Kotlin 7 members, Swift 2 properties and 3 functions, the Swift module writes pendingAsks); a pure class per platform makes the ask contract laptop-testable; A3 F8's private(set) doesn't compile across files",
+  "recommendation": "split",
+  "size": "M",
+  "confidence": "medium",
+  "report": "B5"
+ },
+ {
+  "id": "B5-6",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 327,
+  "quality": 5,
+  "claim": "the file chooser hold lives on the view and the client looks up the Module (MinimalWebViewClients.kt:249); FileUpload can own hold, cancel and the fallback",
+  "recommendation": "simplify",
+  "size": "S",
+  "confidence": "medium",
+  "report": "B5"
+ },
+ {
+  "id": "B5-7",
+  "file": "android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt",
+  "line": 83,
+  "quality": 5,
+  "claim": "Kotlin clients/chromeClients/activity/emit/ask are public with in-module users only; document/downloads have no outside user; DelegateProxy.core needs only NSObject; PlatformSettings uses only webView; Listener gets a redundant newDocument parameter",
+  "recommendation": "simplify",
+  "size": "S",
+  "confidence": "high",
+  "report": "B5"
+ }
+]
