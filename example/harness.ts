@@ -1191,7 +1191,7 @@ async function crash(h: Harness) {
     h.state()
   );
   r.check(
-    'a new source resets the crash-loop guard',
+    'a crash after reload() and a new source recovers',
     (await kill(5))?.recovered === true,
     h.events.gone.at(-1)
   );

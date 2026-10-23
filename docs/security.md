@@ -6,7 +6,7 @@
 - The bridge works only for allowed origins, main frame only.
 - `intent:` URLs are sanitised.
 - Camera, microphone, location and protected media are granted only when `onPermissionRequest` says so, to the main frame only. Without it, Android denies and iOS shows WebKit's prompt.
-- Download filenames are sanitised.
+- Download filenames are sanitised, and Android's download fetch refuses a redirect from https to http.
 - Debugging is on only in `__DEV__`.
 
 These are only defaults: [platform settings](platform-settings.md) such as `android.settings.allowFileAccess` or

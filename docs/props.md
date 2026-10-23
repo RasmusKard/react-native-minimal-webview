@@ -2,7 +2,7 @@
 
 | Prop | Notes |
 |---|---|
-| `source` | `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `headers` go on the first request only. `body` makes it a form-urlencoded POST (Android sends no `headers` with it); `reload()` sends it again, crash recovery doesn't (`onProcessGone` says `recovered: false`). A `file://` uri loads with read access to its directory; Android needs `android.settings.allowFileAccess: true` |
+| `source` | `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `headers` go on the first request only. `body` makes it a form-urlencoded POST (Android sends no `headers` with it); `reload()` sends it again, crash recovery doesn't (`onProcessGone` says `recovered: false`). A `file://` uri loads with read access to its directory; Android needs `android.settings.allowFileAccess: true`. A `source` equal to the loaded one, field by field, loads nothing, even after the page navigated away |
 | `ios`, `android` | Any WebKit property or Android setter, by name. See [Platform settings](platform-settings.md) |
 | `userAgent` | Replaces the user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). To append to the default one instead: `ios.configuration.applicationNameForUserAgent`, and on Android `android.settings.userAgentString` from `WebView.defaultUserAgent` plus your suffix |
 | `injectedScripts` | `[{ code, mainFrameOnly? }]`, run at document start, before the page's scripts, in the main frame only unless `mainFrameOnly: false`; code for the parsed DOM goes in `addEventListener('DOMContentLoaded', …)`. Changes apply from the next navigation |
@@ -15,14 +15,15 @@
 | `onNavigationStateChange` | Every change to the [navigation state](navigation-state.md) |
 | `onLoadStart`, `onLoadEnd` | The navigation state when `loading` goes true, and when it goes false. `onLoadEnd`'s `state.outcome` says how the load ended: `finished`, `failed` (a network or SSL error, or a crash cut it off) or `cancelled` (it never showed a page: a stop before the response, a download, a 204, a redirect the rules blocked, a load a newer one replaced). An HTTP error status (404) is `finished`: the site's page shows. A stop after the page arrived is `cancelled` on iOS and `finished` on Android. On Android with a WebView older than 146, a load that never commits fires neither event ([versions](#android-system-webview-versions)) |
 | `onError` | Main-frame errors only. `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed (`outcome: 'failed'`). SSL errors are always cancelled. `{ kind: 'http', url, statusCode }`: the response had an HTTP error status (400+), and the site's own error page shows. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported ([versions](#android-system-webview-versions)) |
-| `onProcessGone` | `{ didCrash, recovered }`. With `recovered: true` the core reloads the page. Android builds a new WebView with the back/forward history restored, and not before the app is in the foreground and the view is on screen. It doesn't send a POST `source` again unasked (`recovered: false`; `reload()` sends it), and after more than 3 crashes in 60 s it stops reloading, until the next `source` change or `reload()`. Android's WebViews share one renderer: each one reports its death, and the 3 count for the app, not per view |
+| `onProcessGone` | `{ didCrash, recovered }`. `didCrash` is false when the system killed the renderer for memory (Android); on iOS it is always true, since WebKit doesn't say. With `recovered: true` the core reloads the page. Android builds a new WebView, not before the app is in the foreground and the view is on screen, with the back/forward history restored unless the page on screen is the `source` or the reload was held back (the page then loads with no history). It doesn't send a POST `source` again unasked (`recovered: false`; `reload()` sends it), and after more than 3 crashes in 60 s it stops reloading, until the next `reload()` (on iOS also the next `source` change). Android's WebViews share one renderer: each one reports its death, and the 3 count for the app, not per view |
 | `style`, `testID`, `nativeID`, `accessibilityLabel` and the other `ViewProps` | Go to the native view |
 
 ## Ref methods
 
-`goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`, and
-`get(key)` and `call(method, args?, options?)` from [Platform settings](platform-settings.md). The committed `url` is
-in the [navigation state](navigation-state.md).
+`goBack`, `goForward`, `reload` (retries the failed URL after an error), `stopLoading`, `evaluate(expression)`,
+`get(key)` and `call(method, args?, options?)` from [Platform settings](platform-settings.md), and
+`hook(name, method, args?)` from [Native hooks](native-hooks.md). The committed `url` is in the
+[navigation state](navigation-state.md).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back
 through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A

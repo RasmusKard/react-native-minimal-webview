@@ -39,17 +39,21 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   `false` (JS doesn't send `null` and `undefined`). `context.options` is that value. A later change reaches the
   attached hook live, with no new WebView: its `onOptionsChange` handlers get the new value (null or nil when the key
   is removed), and `context.options` is it from then on. A key added after the WebView was created attaches nothing,
-  and a warning says so. A key that enables a hook when the WebView is created but has no hook registered under it (a
-  typo, or a module not linked or not rebuilt) warns then, so pass a one-platform hook's key on that platform only.
+  and a warning says so: to switch a hook on and off, enable its key from the start and put the switch in its value
+  (`{ enabled: false }`), or give the WebView a new React `key`. A key that enables a hook when the WebView is
+  created but has no hook registered under it (a typo, or a module not linked or not rebuilt) warns then, so pass a
+  one-platform hook's key on that platform only.
   On Android the WebView after a renderer crash gets the same hooks, with their current values.
-- **Delegates and clients.** A callback that returns a decision goes to the first hook delegate (client) that
-  implements it, and the core steps aside; every other callback reaches the core first, then every hook that
-  implements it. The decisions are `DelegateProxy.decisions` (iOS) and the `deciding(` calls in
+- **Delegates and clients.** Add yours to the context's lists, in order: `navigationDelegates` and `uiDelegates`
+  (iOS), `clients` and `chromeClients` (Android). A callback that returns a decision goes to the first hook delegate
+  (client) that implements it, and the core steps aside; every other callback reaches the core first, then every hook
+  that implements it. The decisions are `DelegateProxy.decisions` (iOS) and the `deciding(` calls in
   `MinimalWebViewClients.kt` (Android). So a client that overrides `shouldOverrideUrlLoading` switches the navigation
   rules off for that WebView, and a delegate that takes the response policy also switches off `onError`'s `http`
-  errors, `onDownload` and opening an untaken download externally. On iOS, an observation callback that neither the core nor
-  `DelegateProxy` implements goes to the first delegate only. Android's `shouldInterceptRequest` runs on a background
-  thread. Overriding a variant that the base class forwards a callback to counts as overriding the callback:
+  errors, `onDownload` and opening an untaken download externally. On iOS while `onDownload` is set, a delegate whose
+  `didBecome` sets `download.delegate` takes the download from the core, and `onDownload` gets nothing for it. On iOS,
+  an observation callback that neither the core nor `DelegateProxy` implements goes to the first delegate only.
+  Android's `shouldInterceptRequest` runs on a background thread. Overriding a variant that the base class forwards a callback to counts as overriding the callback:
   `WebViewClientCompat`'s `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and
   the platform's deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`,
   4-argument `onReceivedError` and `onConsoleMessage(String, Int, String)`.
@@ -57,9 +61,11 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   `context.ask(name, payload) { answer in … }` waits for the handler's return value (a promise is awaited; a throw or
   no handler answers null), with no timeout: one still open when the Document ends is answered null.
 - **Calls from JS.** `context.handle(method) { args, reply in … }` answers `ref.hook(key, method, args)`; call `reply`
-  once. One handler per method, the last one wins. The promise rejects with `hook_not_handled` when no attached hook
+  once. A handler that never replies leaves the promise pending: nothing settles it at the Document's end, a crash or
+  unmount. One handler per method, the last one wins. The promise rejects with `hook_not_handled` when no attached hook
   under the key handles the method. The arguments and the reply cross as JSON.
-- **Values** arrive as the platform's JSON types: a number as `Double` or `Int` (Kotlin) or `NSNumber` (Swift), an
+- **Values** arrive as the platform's JSON types: a number as `NSNumber` (Swift) or, in Kotlin, as `Double` in
+  `context.options` and an ask's answer and as `Int`, `Long` or `Double` in a `handle` handler's arguments, an
   object as `Map` or `NSDictionary`, `null` as null or nil (`NSNull` inside a Swift array).
 - **The page.** `context.url` is the committed URL, the one `useWebViewState` reports. `context.onDocumentEnd { reason in … }`
   runs at each end of the Document (`committed`, `crashed`, `closing`) after the core's own resets: per-page state

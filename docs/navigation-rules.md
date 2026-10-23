@@ -34,7 +34,8 @@ Every field a rule sets must match. `scheme`, `host`, `path` and `query` are lis
 - `external`: hand to the OS, or to `onOpenExternal` if you set it.
 - `ask`: call `onNavigationRequest`, which answers `allow`, `block` or `external` within 1 s. A late, missing or other answer counts as `block`, as does one still pending when another page commits. Without `onNavigationRequest`, `ask` blocks at once. Until the next page commits, a URL that `ask` allowed is allowed without asking when a redirect comes back to it (Android) or when the same kind of frame, main or sub, goes to it again (iOS), so a redirect loop can't ask forever.
 
-`onNavigation` reports every decision: `{ url, action, mainFrame, newWindow, userInitiated, rule }`.
+`onNavigation` reports every decision: `{ url, action, mainFrame, newWindow, userInitiated, rule }`. A navigation a
+[native hook](native-hooks.md) decides isn't reported.
 
 ## Defaults
 

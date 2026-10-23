@@ -8,7 +8,7 @@
 - Props: `onHttpError` is gone; `onError` gets `{ kind: 'http', url, statusCode }` too.
 - Props: `onDownload`'s result has `ok` (`true` for a `Download`, `false` for a `DownloadFailure`) to narrow on.
 - Props: `onProcessGone` no longer resends a POST `source` on its own. It reports `recovered: false`, and `reload()` sends it.
-- Types: `PermissionRequestEvent` is `PermissionRequest`, and `WebViewErrorEvent` and `WebViewHttpErrorEvent` are one `LoadErrorEvent`. Asks are `…Request`, notifications `…Event`.
+- Types: `PermissionRequestEvent` is `PermissionRequest`, and `WebViewErrorEvent` and `WebViewHttpErrorEvent` are one `LoadErrorEvent`. Asks are `…Request`, notifications `…Event`, except a hook's asks and events, both `HookEvent`, and `onDownload`'s `Download` and `DownloadFailure`.
 - Types: `WebViewProps` is an interface that extends `ViewProps` and includes `ref`.
 - Ref: error codes are lowercase: `ERR_EVALUATE` is `script_error`, `ERR_NATIVE` is `native_error`. Android's `get` and `call` reject any exception with `native_error`, not only a refused key.
 - Ref: a handle kept after its WebView unmounted rejects `evaluate`, `get`, `call` and `hook` with `unavailable` instead of resolving `undefined`. iOS `get` and `call` without a WKWebView reject with `unavailable`, not `native_error`.
@@ -48,7 +48,7 @@
 - Rules: until the next commit, a URL an `ask` allowed is allowed without asking again on a redirect back to it (Android) or for the same kind of frame (iOS). An `intent:` that falls back to its `browser_fallback_url` is reported as `block`.
 - Crash recovery (iOS): reloads in place and keeps the back-forward list. Only the ref's `reload()` and a `source` change reset the crash guard, not a recovery reload.
 - Crash recovery (iOS): a page whose URL differs from the `source` uri only in trailing slashes (`/page/` for `/page`) is the source's page, as on Android: a crash reloads the source with its headers, and a POST `source` there isn't sent again unasked. A crash exactly 60 s after an earlier one counts toward the crash guard's 3, as on Android.
-- Crash recovery (Android): the crash guard counts for the whole app, and the reports of one renderer death count once. Only the ref's `reload()` resets it, not pull-to-refresh or a `source` change. The new WebView keeps the history, and is built only once the app is in the foreground and the view on screen. Until then, `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and a new `source` loads on the new WebView.
+- Crash recovery (Android): the crash guard counts for the whole app, and the reports of one renderer death count once. Only the ref's `reload()` resets it, not pull-to-refresh or a `source` change. The new WebView keeps the history, unless the page on screen is the `source` or the reload was held back, and is built only once the app is in the foreground and the view on screen. Until then, `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and a new `source` loads on the new WebView.
 - Hooks (iOS): the hook context is weak, the hooks' user scripts survive the core's script reset, and live settings apply before hooks attach.
 - Hooks (iOS): `context.emit` and `context.ask` can be called from any thread, as on Android; they hop to the main thread.
 - iOS `evaluate` rejects with the thrown error's own message.

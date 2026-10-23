@@ -6,7 +6,7 @@ answers it (the file chooser, permissions), a prop is told afterwards (fullscree
 
 | The page | Default (no prop) | Prop | Typical packages |
 |---|---|---|---|
-| `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser; it ignores `capture` | `onFileRequest({ accept, multiple, capture })` (Android only) returns URIs, or `null` to cancel | expo-document-picker, expo-image-picker |
+| `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser, one at a time for the whole app (a request while one is open is cancelled, and if a chooser never returns a result, every later one is, until the app restarts); it ignores `capture` | `onFileRequest({ accept, multiple, capture })` (Android only) returns URIs, or `null` to cancel | expo-document-picker, expo-image-picker |
 | Fullscreen video | iOS: WebKit's. Android: the page's fullscreen view covers the WebView's window on black, system bars hide, and back exits | `onFullscreenChange({ active })` (Android only) | expo-screen-orientation |
 | Camera, microphone, (Android) location and protected media | Android: denied. iOS: WebKit's own prompt (location always prompts; FairPlay asks nothing) | `onPermissionRequest({ origin, resources })` answers `true` or `false`. Main frame only: other frames are denied without asking. Android doesn't name the frame, so there a frame of the top page's origin asks as the main frame. `protectedMedia` is the device id DRM (Widevine) playback needs | expo-camera, expo-audio, expo-location |
 | A download | http(s): opens externally (`onOpenExternal`, or the system browser, which fetches it without the page's session; reported to `onNavigation` as `external`). `data:` and `blob:`: dropped | `onDownload(result)`: a [file in the app's cache](#downloads) (`ok: true`), or a failure (`ok: false`) | expo-file-system, expo-sharing |
@@ -34,7 +34,8 @@ or save the wrong file (a login page). The result is `{ ok: true, uri, filename,
 `uri`, or `{ ok: false, filename, url, reason }` when it failed: `result.ok` tells them apart. `url` is the server URL the file came
 from; `null` when the page generated it (`data:` or `blob:` URL). The file is the app's: the core never deletes it.
 The page controls the file, its name and its MIME type, and Android's fetch sends the host's cookies whatever their
-SameSite, so don't open a download as trusted. On Android a download above 100 MB fails.
+SameSite, so don't open a download as trusted. On Android a download above 100 MB fails, and so does one whose
+redirects leave https: each hop goes to https, or from http to http.
 
 ## Recipes
 
