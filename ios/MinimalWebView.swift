@@ -165,7 +165,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var onSource: Bool {
     guard let source else { return false }
     guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failedUrl == nil }
-    return URL(string: url).map { Self.sameURL($0, uri) } ?? false
+    return Recovery.showsSource(uri.absoluteString, url)
   }
 
   /// The page on screen is the POST `source`: it can't be fetched again by URL, so reload loads the source instead.
@@ -423,10 +423,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
   /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is always true on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    let now = Date()
-    crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
     // A POST source on screen isn't sent again unasked (a browser asks first): the app's reload() can.
-    let recovered = crashTimes.count <= maxCrashesPerWindow && !onPostSource
+    let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     document.end(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered {
@@ -438,10 +436,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }
-
-// ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
-private let maxCrashesPerWindow = 3
-private let crashWindow: TimeInterval = 60
 
 /// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
 /// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
