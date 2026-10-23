@@ -131,7 +131,7 @@ type NativeProps = ViewProps &
     onProcessGone: ProcessGoneEvent;
   }>;
 
-type NativeMethods = {
+export type NativeMethods = {
   navigate(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>;
   bridgePost(message: string): Promise<void>;
   /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
