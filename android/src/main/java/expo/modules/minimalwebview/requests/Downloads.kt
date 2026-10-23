@@ -15,6 +15,8 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -57,19 +59,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
         val body = response.body ?: throw IOException("no response body")
         if (body.contentLength() > MAX_BYTES) throw IOException(TOO_LARGE)
-        body.byteStream().use { input ->
-          file.outputStream().use { output ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var total = 0L
-            while (true) {
-              val read = input.read(buffer)
-              if (read < 0) break
-              total += read
-              if (total > MAX_BYTES) throw IOException(TOO_LARGE)
-              output.write(buffer, 0, read)
-            }
-          }
-        }
+        body.byteStream().use { input -> file.outputStream().use { output -> copyCapped(input, output, MAX_BYTES) } }
         download.mimeType.ifEmpty { response.header("Content-Type")?.substringBefore(';') ?: "application/octet-stream" }
       }
     }
@@ -148,11 +138,24 @@ internal class Downloads(private val owner: MinimalWebView) {
     io.shutdown()
   }
 
-  private companion object {
+  internal companion object {
     // The page picks the file: a blob: passes whole through the app's memory several times (a data: URL, then its
     // bytes), and an http(s) one fills the cache, so above this a download fails instead of the app being killed.
     const val MAX_BYTES = 100L * 1024 * 1024
     const val TOO_LARGE = "larger than 100 MB"
+
+    /** Copies [input] to [output] and fails once more than [max] bytes came: the Content-Length can be missing or wrong. */
+    fun copyCapped(input: InputStream, output: OutputStream, max: Long) {
+      val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+      var total = 0L
+      while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > max) throw IOException(TOO_LARGE)
+        output.write(buffer, 0, read)
+      }
+    }
 
     /**
      * Follows redirects (http to https too); each hop reads the WebView's cookies for its own host and stores what the
