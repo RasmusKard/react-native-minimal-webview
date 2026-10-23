@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Message
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.ClientCertRequest
@@ -215,7 +216,9 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
     // Returning true keeps the app alive; a stale WebView (already replaced) needs nothing more.
-    if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash()) }
+    // Timed here: every WebView on the renderer hears of its death back to back, before any recovery runs.
+    val at = SystemClock.elapsedRealtime()
+    if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash(), at) }
     observing("onRenderProcessGone", WEB_VIEW, RenderProcessGoneDetail::class.java) { it.onRenderProcessGone(view, detail) }
     return true
   }

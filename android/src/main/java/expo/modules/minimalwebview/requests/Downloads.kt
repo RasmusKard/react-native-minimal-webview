@@ -103,7 +103,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         e
       }
       if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
-      owner.webView.post {
+      owner.mainHandler.post {
         when (result) {
           is String -> owner.emit(
             "core.download",

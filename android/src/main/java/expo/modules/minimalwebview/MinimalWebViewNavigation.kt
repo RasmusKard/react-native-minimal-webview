@@ -35,13 +35,17 @@ internal class MinimalWebViewNavigation(
 
   /** Returns true to cancel the navigation (shouldOverrideUrlLoading's meaning). */
   fun decide(request: NavigationRules.Request): Boolean {
-    // `ask` works only for the main frame: Android can't hold a navigation, so it is cancelled and reissued.
-    val canAsk = request.mainFrame && "navigationRequest" in owner.requestHandlers
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
-    val decision = NavigationRules.decide(owner.navigationRules, request, asked, canAsk)
+    val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requestHandlers)
     // An external link that cannot be opened is reported as blocked.
     val action = when (decision.action) {
-      "ask" -> return true.also { ask(request, decision.rule) }
+      "ask" -> if (request.mainFrame) {
+        return true.also { ask(request, decision.rule) }
+      } else {
+        // Android can't hold a navigation, so `ask` cancels and reissues it: a subframe's can't be reissued.
+        Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
+        "block"
+      }
       "external" -> if (openExternal(request.url)) "external" else "block"
       else -> decision.action
     }
