@@ -2,6 +2,7 @@
 
 ```sh
 npm install && (cd example && npm install)
+npm run check                              # the next four lines in one: test, lint, knip, both type-checks, prepare
 npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client)
 npm run lint && npm run prepare            # ESLint on src, example and .github; then a clean build
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
@@ -23,7 +24,7 @@ npx stryker run --mutate src/WebView.tsx,src/refStore.ts   # WebView.test.tsx's 
 cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
 ```
 
-Two files are generated, and CI fails when either is stale (`--check`):
+Two files are generated, and `npm test` fails when either is stale (its `pretest` runs both scripts with `--check`):
 - `src/bridge/pageClient.generated.ts`, from `pageClient.ts` and `endpoint.ts`: `npm run build:page-client` after
   editing either.
 - `src/platform.generated.ts`, the settings keys and the `WK` and `Android` constants, from the SDK extracts in
