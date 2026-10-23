@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { BridgeErrorCode } from './bridge/protocol';
@@ -77,23 +78,21 @@ export type NavigationState = {
   progress: number;
   canGoBack: boolean;
   canGoForward: boolean;
+  /**
+   * How the last main-frame load ended, null while one is loading (and before the first). `cancelled`: it never
+   * showed a page (a stop, a download, a 204, a redirect the rules blocked, a load a newer one replaced). An HTTP error
+   * status (404) still shows the site's page: `finished`, with an `http` error on `onError`.
+   */
+  outcome: 'finished' | 'failed' | 'cancelled' | null;
 };
 
-/** A main-frame load that failed: no page arrived. */
-export type WebViewErrorEvent = {
-  kind: 'network' | 'ssl';
-  url: string;
-  /** Platform error code. */
-  code: number;
-  description: string;
-};
-
-/** A main-frame response with an HTTP error status (400+). The site's own error page still shows. */
-export type WebViewHttpErrorEvent = {
-  url: string;
-  statusCode: number;
-  description: string;
-};
+/**
+ * A main-frame error. `network` and `ssl`: the load failed, no page arrived (`code` is the platform's error code).
+ * `http`: the response had an HTTP error status (400+), and the site's own error page shows.
+ */
+export type LoadErrorEvent =
+  | { kind: 'network' | 'ssl'; url: string; code: number; description: string }
+  | { kind: 'http'; url: string; statusCode: number };
 
 export type ProcessGoneEvent = {
   didCrash: boolean;
@@ -117,22 +116,51 @@ export type InjectedScript = {
  */
 export type BridgeSender = { origin: string };
 
-export type BridgeHandler = (params: unknown, sender: BridgeSender) => unknown;
+export type BridgeHandler<Params = unknown, Result = unknown> = (
+  params: Params,
+  sender: BridgeSender
+) => Result | Promise<Result>;
 
-/** A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. */
-export type Bridge = {
+/** What a bridge call rejects with: an `Error` whose `code` says why. */
+export type BridgeCallError = Error & { code: BridgeErrorCode };
+
+/**
+ * The methods either side may call, for `createBridge<Methods>`: `{ share: { params: { url: string }; result: boolean } }`.
+ * A `type`, not an `interface` (an interface has no index signature, so it doesn't satisfy `Record`).
+ */
+export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
+/** The events either side may emit, for `createBridge<Methods, Events>`: `{ themeChanged: 'light' | 'dark' }`. */
+export type BridgeEventMap = Record<string, unknown>;
+
+/**
+ * A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. The type arguments
+ * type method names, params, results and payloads (`createBridge<Methods, Events>`); without them all are `unknown`.
+ */
+export type Bridge<
+  Methods extends BridgeMethodMap = BridgeMethodMap,
+  Events extends BridgeEventMap = BridgeEventMap,
+> = {
   /** Answers `nativeBridge.call(method, params)` from the page; `sender` is the caller's. Returns an unsubscribe function. */
-  handle(method: string, handler: BridgeHandler): () => void;
+  handle<M extends keyof Methods & string>(
+    method: M,
+    handler: BridgeHandler<Methods[M]['params'], Methods[M]['result']>
+  ): () => void;
   /**
-   * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown, with an
-   * `Error` whose `code` is a {@link BridgeErrorCode}. `timeoutMs` overrides the bridge's for this call; `0` or
-   * `Infinity` means none.
+   * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown with a
+   * {@link BridgeCallError}. `timeoutMs` overrides the bridge's for this call; `0` or `Infinity` means none.
    */
-  call(method: string, params?: unknown, options?: { timeoutMs?: number }): Promise<unknown>;
+  call<M extends keyof Methods & string>(
+    method: M,
+    params?: Methods[M]['params'],
+    options?: { timeoutMs?: number }
+  ): Promise<Methods[M]['result']>;
   /** Fires an event the page listens to with `nativeBridge.on`. */
-  emit(event: string, payload?: unknown): void;
+  emit<E extends keyof Events & string>(event: E, payload?: Events[E]): void;
   /** Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function. */
-  on(event: string, listener: (payload: unknown, sender: BridgeSender) => void): () => void;
+  on<E extends keyof Events & string>(
+    event: E,
+    listener: (payload: Events[E], sender: BridgeSender) => void
+  ): () => void;
 };
 
 export type BridgeOptions = {
@@ -151,19 +179,25 @@ export type PermissionResource = 'camera' | 'microphone' | 'geolocation' | 'prot
  * `origin` is the requesting page's, as `location.origin` writes it. Only the main frame asks (on Android, which doesn't
  * name the frame, any frame of the top page's origin).
  */
-export type PermissionRequestEvent = { origin: string; resources: PermissionResource[] };
+export type PermissionRequest = { origin: string; resources: PermissionResource[] };
 
 /**
  * A finished download: `uri` is a `file://` in the app's cache (iOS: the temporary directory). `url` is the server URL
  * the file came from; `null` when the page generated it (`data:` or `blob:` URL).
  */
-export type Download = { uri: string; filename: string; mimeType: string; url: string | null };
+export type Download = {
+  ok: true;
+  uri: string;
+  filename: string;
+  mimeType: string;
+  url: string | null;
+};
 
 /**
  * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error). `url` as in {@link Download}.
- * `'uri' in result` tells it from a {@link Download}.
+ * `ok` tells it from a {@link Download}.
  */
-export type DownloadFailure = { filename: string; url: string | null; reason: string };
+export type DownloadFailure = { ok: false; filename: string; url: string | null; reason: string };
 
 /** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
 export type SettingValue =
@@ -204,11 +238,35 @@ export type AndroidSettings = {
   webView?: Root<AndroidSettingKeys['webView']>;
 };
 
-/** An event a native hook sent with `emit` or `ask` (docs/native-hooks.md). */
-export type NativeEvent = { name: string; payload: Record<string, unknown> };
+/**
+ * An event a native hook sent with `emit` or `ask` (docs/native-hooks.md). `N` and `P` type one hook's events:
+ * `HookEvent<'pageCounter.pageLoaded', { count: number }>`.
+ */
+export type HookEvent<N extends string = string, P = Record<string, unknown>> = {
+  name: N;
+  payload: P;
+};
 
-/** The WebView's own props. The rest of `WebViewProps` is React Native's `ViewProps`. */
-type OwnProps = {
+/** `onFullscreenChange`'s event (Android). */
+export type FullscreenChangeEvent = { active: boolean };
+
+/**
+ * Why a ref method rejected. `script_error`: `evaluate`'s script threw, rejected or didn't parse. `native_error`: the
+ * platform refused or failed a `get`, `call` or `hook`. `navigated`: the page went away before `evaluate` finished.
+ * `unavailable`: the WebView lacks the features it needs (Android), is gone, or is being rebuilt after its renderer
+ * died (Android, while the app is in the background). `hook_not_handled`: no attached hook handles the `hook` method.
+ */
+export type WebViewErrorCode =
+  'script_error' | 'native_error' | 'navigated' | 'unavailable' | 'hook_not_handled';
+
+/** What a ref method rejects with: an `Error` whose `code` says why. */
+export type CodedError = Error & { code: WebViewErrorCode };
+
+/**
+ * The WebView's props. The ones from React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility
+ * props, layout and touch events) go to the native view.
+ */
+export interface WebViewProps extends Omit<ViewProps, 'children'> {
   source: WebViewSource;
   /** Platform settings by name; see {@link IOSSettings}. The `userAgent` prop wins over the same key here. */
   ios?: IOSSettings;
@@ -222,21 +280,29 @@ type OwnProps = {
   userAgent?: string;
   injectedScripts?: InjectedScript[];
   navigationRules?: NavigationRule[];
-  /** Called only for `ask` rules. Times out after 1 s, then `block`. Without this prop, `ask` is `block`. */
+  /**
+   * Called only for `ask` rules. Times out after 1 s, then `block`, and `signal` aborts. Without this prop, `ask` is
+   * `block`.
+   */
   onNavigationRequest?: (
-    request: NavigationRequest
+    request: NavigationRequest,
+    signal: AbortSignal
   ) => NavigationAction | Promise<NavigationAction>;
   /** Opens `external` navigations. Default: the system browser or app for the URL. */
   onOpenExternal?: (url: string) => void;
   /** Read when the WebView is created: a change recreates it (the page reloads). */
   bridge?: Bridge;
-  /** What the native hooks get as their options (docs/native-hooks.md). Read when the WebView is created, like `bridge`. */
-  nativeOptions?: Record<string, unknown>;
+  /**
+   * Each native hook's value by its key (docs/native-hooks.md). A key whose value is not null, undefined or false when
+   * the WebView is created attaches its hook. A later change reaches that hook live, without recreating the WebView;
+   * a key added later attaches nothing (a warning says so).
+   */
+  hookOptions?: Record<string, unknown>;
   /**
    * An event from a native hook. For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or
-   * a throw answers null.
+   * a throw answers null. `signal` is set only for an `ask`, and aborts when native stops waiting for the answer.
    */
-  onNativeEvent?: (event: NativeEvent) => unknown;
+  onHookEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
   /** Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android. */
   pullToRefresh?: boolean;
   /**
@@ -246,23 +312,30 @@ type OwnProps = {
   sharedCookies?: boolean;
   // Page requests: each works without its prop, as described. `onFileRequest` and `onPermissionRequest` answer theirs;
   // `onFullscreenChange` and `onDownload` are told afterwards. They can be added or removed at any time. A native hook
-  // that takes the same platform callback comes first.
+  // that takes the same platform callback comes first. An answering prop's `signal` aborts when native stops waiting
+  // (the page moved on, crashed or unmounted, or the platform withdrew the request); its answer is then dropped.
   /**
    * `<input type="file">` on Android: return `file://` or `content://` URIs, or null to cancel. Without it, the system
    * file chooser opens (it ignores `capture`). iOS always shows WebKit's picker.
    */
-  onFileRequest?: (request: FileRequest) => string[] | null | Promise<string[] | null>;
+  onFileRequest?: (
+    request: FileRequest,
+    signal: AbortSignal
+  ) => string[] | null | Promise<string[] | null>;
   /**
    * Android: the page entered or left fullscreen (`active`). Fullscreen works without it: the page's view covers the
    * window, the system bars hide and back exits. iOS: WebKit's own fullscreen, not reported.
    */
-  onFullscreenChange?: (event: { active: boolean }) => void;
+  onFullscreenChange?: (event: FullscreenChangeEvent) => void;
   /**
    * Camera, microphone and, on Android, location and protected media (DRM) for the main frame. Answer true to grant:
    * ask the OS first (expo-camera, expo-location), or the page's request fails anyway. Without it: Android denies; iOS
    * shows WebKit's own prompt, and location always does.
    */
-  onPermissionRequest?: (request: PermissionRequestEvent) => boolean | Promise<boolean>;
+  onPermissionRequest?: (
+    request: PermissionRequest,
+    signal: AbortSignal
+  ) => boolean | Promise<boolean>;
   /**
    * A download finished ({@link Download}, a file in the app's cache) or failed ({@link DownloadFailure}). Without it,
    * an http(s) download opens externally (`onOpenExternal` or the system browser, without the page's session), and a
@@ -272,20 +345,14 @@ type OwnProps = {
   onNavigation?: (event: NavigationEvent) => void;
   /** Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;
-  onError?: (event: WebViewErrorEvent) => void;
-  onHttpError?: (event: WebViewHttpErrorEvent) => void;
+  onError?: (event: LoadErrorEvent) => void;
   onProcessGone?: (event: ProcessGoneEvent) => void;
-  /** JS-only aliases derived from `loading`. */
+  /** `loading` went true. */
   onLoadStart?: (state: NavigationState) => void;
-  onLoad?: (state: NavigationState) => void;
+  /** `loading` went false: `state.outcome` says how the load ended. */
   onLoadEnd?: (state: NavigationState) => void;
-};
-
-/**
- * Plus React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch events).
- * They go to the native view.
- */
-export type WebViewProps = OwnProps & Omit<ViewProps, keyof OwnProps | 'children'>;
+  ref?: Ref<WebViewRef>;
+}
 
 export type WebViewRef = {
   goBack(): void;
@@ -294,15 +361,15 @@ export type WebViewRef = {
   stopLoading(): void;
   /**
    * Runs an expression in the page's main frame and awaits it. Resolves with its value through JSON (`null` for what
-   * JSON can't encode). Rejects with `ERR_EVALUATE` when it throws or rejects, `navigated` on a new page, or
-   * `unavailable` (Android) when the WebView lacks the features it needs. Before the WebView is mounted it resolves
-   * `undefined`, as `get` and `call` do.
+   * JSON can't encode). Rejects with a {@link CodedError}: `script_error` when it throws or rejects, `navigated` on a
+   * new page, or `unavailable` when the WebView lacks the features it needs (Android) or is gone (the handle outlived
+   * it), as `get`, `call` and `hook` do.
    */
   evaluate(script: string): Promise<unknown>;
   /**
    * A platform setting read by name, through JSON: `get('scrollView.bounces')` on iOS, `get('settings.textZoom')` on
    * Android (the roots of {@link IOSSettings} and {@link AndroidSettings}; also `websiteDataStore` and `httpCookieStore` on
-   * iOS, `cookieManager` and `webStorage` on Android). Rejects with `ERR_NATIVE` for one it can't read.
+   * iOS, `cookieManager` and `webStorage` on Android). Rejects with `native_error` for one it can't read.
    */
   get(key: string): Promise<unknown>;
   /**
@@ -314,13 +381,19 @@ export type WebViewRef = {
    * method's signature (`call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true])`); a selector that
    * ends in a completion handler needs the handler's shape:
    * `call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' })`. A wrong
-   * shape crashes. What the core owns, and private selectors, reject with `ERR_NATIVE`.
+   * shape crashes. What the core owns, and private selectors, reject with `native_error`.
    */
   call(
     method: string,
     args?: unknown[],
     options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
   ): Promise<unknown>;
+  /**
+   * Calls the `method` handler the native hook `name` registered with `context.handle` (docs/native-hooks.md), and
+   * resolves with its reply through JSON. Rejects with `hook_not_handled` when no attached hook `name` handles `method`,
+   * or `native_error` when the reply can't cross as JSON.
+   */
+  hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };
 
 /** What `createWebViewRef()` returns: a ref that outlives the WebViews mounted with it. */

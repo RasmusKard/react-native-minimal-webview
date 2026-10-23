@@ -1,22 +1,32 @@
 import {
   type NavigationRule,
   type WebViewProps,
-  type WebViewErrorEvent,
+  type LoadErrorEvent,
   type WebViewSource,
   WebView,
   createBridge,
-  type PermissionRequestEvent,
+  type PermissionRequest,
   type FileRequest,
   useWebViewState,
   createWebViewRef,
 } from 'minimal-rn-webview';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Button,
+  type HostInstance,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { isPageCounterEvent } from 'sample-extension';
 
 import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
 
 const PAGES = 'http://localhost:8090';
+/** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
+type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
 /**
  * The example's creation-time settings. A suite's extra `ios` keeps them unless it sets its own `configuration`:
  * dropping them would recreate the WebView, and with it start the crash-loop guard over.
@@ -27,9 +37,9 @@ let remount = () => {};
 // Event logs the harness reads and clears. They live outside React: nothing renders them.
 const events: Harness['events'] = {
   errors: [],
-  httpErrors: [],
   gone: [],
   loads: [],
+  outcomes: [],
   navigations: [],
   downloads: [],
   downloadFailures: [],
@@ -39,6 +49,7 @@ const events: Harness['events'] = {
   overlay: { error: false },
 };
 const pageEvents: unknown[] = [];
+const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
 
 /** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
@@ -55,11 +66,12 @@ export default function App() {
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
   const [driverRequest, setDriverRequest] = useState('');
-  const [error, setError] = useState<WebViewErrorEvent | null>(null);
+  const [error, setError] = useState<LoadFailure | null>(null);
   useEffect(() => {
     onDriverRequest(setDriverRequest);
   }, []);
   const askRef = useRef<WebViewProps['onNavigationRequest']>(undefined);
+  const webViewBox = useRef<HostInstance>(null);
   const bridge = useMemo(() => {
     const b = createBridge({ allowedOrigins: [PAGES], timeoutMs: 3000 });
     b.handle('echo', (params) => params);
@@ -71,7 +83,7 @@ export default function App() {
     return b;
   }, []);
 
-  const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(
+  const permissionRef = useRef<((request: PermissionRequest) => Promise<boolean>) | undefined>(
     undefined
   );
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
@@ -81,6 +93,7 @@ export default function App() {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
+    webViewOffset,
     // Read live: the harness keeps one harness object per suite, so a closure over `state` would stay stale.
     state: () => ref.getState(),
     remount: () => remount(),
@@ -109,7 +122,12 @@ export default function App() {
   return (
     <View style={styles.container}>
       {/* The error screen recipe in docs/props.md: an overlay the app owns, cleared when the next load starts. */}
-      <View style={styles.webview}>
+      <View
+        ref={webViewBox}
+        style={styles.webview}
+        onLayout={() =>
+          webViewBox.current?.measureInWindow((x, y) => Object.assign(webViewOffset, { x, y }))
+        }>
         <Remountable>
           <WebView
             ref={ref}
@@ -119,17 +137,17 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            nativeOptions={{ pageCounter: true }}
-            onNativeEvent={(event) => {
+            hookOptions={{ pageCounter: true }}
+            onHookEvent={(event) => {
               if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
                 events.pageCounts.push(event.payload);
               else events.hookEvents.push(event.name);
             }}
-            onNavigationRequest={(request) => askRef.current?.(request) ?? 'block'}
+            onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
             onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
             onDownload={(result) =>
-              'uri' in result ? events.downloads.push(result) : events.downloadFailures.push(result)
+              result.ok ? events.downloads.push(result) : events.downloadFailures.push(result)
             }
             onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
             android={{
@@ -140,17 +158,18 @@ export default function App() {
             }}
             onError={(event) => {
               events.errors.push(event);
-              setError(event);
+              if (event.kind !== 'http') setError(event);
             }}
-            onHttpError={(event) => events.httpErrors.push(event)}
             onProcessGone={(event) => events.gone.push(event)}
             onNavigation={(event) => events.navigations.push(event)}
             onLoadStart={() => {
               events.loads.push('start');
               setError(null);
             }}
-            onLoad={() => events.loads.push('load')}
-            onLoadEnd={() => events.loads.push('end')}
+            onLoadEnd={({ outcome }) => {
+              events.loads.push('end');
+              events.outcomes.push(outcome);
+            }}
             {...extraProps}
             ios={{ configuration: IOS_CONFIGURATION, ...extraProps.ios }}
           />
@@ -176,7 +195,7 @@ export default function App() {
 }
 
 /** The example's error screen; records whether it is mounted so the harness can check the recipe. */
-function ErrorScreen(props: { error: WebViewErrorEvent; onRetry: () => void }) {
+function ErrorScreen(props: { error: LoadFailure; onRetry: () => void }) {
   useEffect(() => {
     events.overlay.error = true;
     return () => {

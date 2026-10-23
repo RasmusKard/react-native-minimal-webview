@@ -2,11 +2,22 @@
 
 ```sh
 npm install && (cd example && npm install)
-npm test                                   # TS unit tests (bridge protocol, createBridge, origin matcher, WebView, native contract, page client)
-npm run check:pack                         # clean build; fails if a packed build/ file imports one the package leaves out
-(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients
+npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client)
+npm run lint && npm run prepare            # ESLint on src, example and .github; then a clean build
+npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
+npx knip                                   # unused files, exports and dependencies (not example/)
+(cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, crash-loop guard
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
 ```
+
+Two files are generated, and CI fails when either is stale (`--check`):
+- `src/bridge/pageClient.generated.ts`, from `pageClient.ts` and `endpoint.ts`: `npm run build:page-client` after
+  editing either.
+- `src/platform.generated.ts`, the settings keys and the `WK` and `Android` constants, from the SDK extracts in
+  `.github/scripts/platform-headers/`: `npm run gen:platform-types`. After an Xcode, Android SDK or androidx.webkit
+  upgrade, `npm run gen:platform-types -- --import` refreshes the extracts from the installed SDKs first.
 
 The matchers share their test cases in `src/__tests__/vectors/`: the navigation cases run on Kotlin and Swift, the origin
 cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches origins itself
@@ -37,7 +48,7 @@ Before a run:
 `example/maestro/run.sh` runs the suites, all in one Maestro session:
 
 ```bash
-example/maestro/run.sh android emulator-5556                    # every suite in run.sh's list for the platform
+example/maestro/run.sh android emulator-5556                    # every suite in SUITES (each skips what its platform lacks)
 example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the named suites
 ```
 
@@ -58,12 +69,15 @@ tests a newer WebView than the image ships. Start the emulator with `-gpu host`.
 up rendering in software (`adb shell dumpsys SurfaceFlinger | grep GLES` names SwiftShader), and a full run takes
 nearly twice as long.
 
-Reference emulators: `mrw-api37` (Google APIs, API 37, WebView 149) is the one every suite passes on. `mrw-api36`
-(API 36, WebView 133) runs the same suites green too, but five checks there are known limits of a WebView older than
-146 (ROADMAP), and the harness reports them as `INFO ... known limit (WebView <146): <check>` instead of passing or
-failing them.
+Reference emulators: `mrw-api37` (Google APIs, API 37, WebView 149) is the one every suite passes on. On `mrw-api36`
+(API 36, WebView 133) some checks are known limits of a WebView older than 146
+([Android System WebView versions](props.md#android-system-webview-versions)), and the harness reports them as
+`INFO ... known limit (WebView <146): <check>` instead of passing or failing them. Two checks still fail there, on
+`main` too: `crash: reload() brings the page back after giving up` and `fullscreen: back leaves it` (the back key
+doesn't reach the page's fullscreen exit on that image).
 
-To add a suite: add it to `SUITES` in `example/harness.ts` and to the platform lists in `run.sh`. If it needs
-gestures, taps, dialogs or renderer kills, add a `<suite>.yaml` flow in `example/maestro/`. Otherwise `run.sh` wraps
+To add a suite: add it to `SUITES` in `example/harness.ts` (`run.sh` reads its keys). A suite that doesn't apply to a
+platform reports `skipped` there and ends. If it needs gestures, taps, dialogs or renderer kills, add a `<suite>.yaml`
+flow in `example/maestro/`. Otherwise `run.sh` wraps
 the generic `suite.yaml` for it. A suite must leave nothing behind that `reset()` in `harness.ts` doesn't undo, and
 must not depend on a site outside the test pages server.

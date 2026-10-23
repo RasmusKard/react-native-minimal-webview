@@ -22,20 +22,22 @@ const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.
 
 The package's own defaults are plain keys that yours override. JS sends these with your settings:
 
-- No script-opened windows: `ios.preferences.javaScriptCanOpenWindowsAutomatically`,
-  `android.settings.javaScriptCanOpenWindowsAutomatically` (`false`).
-- Playback only on a gesture: `ios.configuration.mediaTypesRequiringUserActionForPlayback` (all),
-  `android.settings.mediaPlaybackRequiresUserGesture` (`true`).
+- Inline video on iOS: `ios.configuration.allowsInlineMediaPlayback` (`true`), so a `<video playsinline>` doesn't open
+  fullscreen.
 - Debugging in `__DEV__` only: `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` (process-wide).
 - No custom user agent: `ios.webView.customUserAgent`, `android.settings.userAgentString` (`null`), unless `userAgent`
   is set.
+
+Script-opened windows (`javaScriptCanOpenWindowsAutomatically`) and playback without a gesture are already off by the
+platforms' own defaults.
 
 Android also sets these natively, once for each new WebView (the first, and the one after a renderer crash):
 
 - `javaScriptEnabled`, `domStorageEnabled` and `supportMultipleWindows` on (a new window reaches the navigation rules).
 - `allowFileAccess` and `allowContentAccess` off, `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`.
 - Pinch-zoom on, without the +/- buttons: `builtInZoomControls` on, `displayZoomControls` off.
-- `backForwardCacheEnabled` on, so back and forward restore the page as WebKit does (with WebView 146 and newer).
+- `backForwardCacheEnabled` on, so back and forward restore the page as WebKit does (with WebView 146 and newer, see
+  [Android System WebView versions](props.md#android-system-webview-versions)).
 - `downloadFaviconsEnabled` off, where the WebView has the setting (a hook client that overrides `onReceivedIcon` turns
   it back on).
 
@@ -50,20 +52,21 @@ How the keys work:
   ships. Enums and option sets are their raw numbers; iOS structs are objects (`contentInset: { top, left, bottom, right }`),
   a `UIColor` is `#rrggbb` or `#rrggbbaa` (`underPageBackgroundColor`), an `NSURL` a string, and `websiteDataStore`
   `'default'` or `'nonPersistent'`.
-- **Only public API.** A key must name a public property or setter that takes the value's type; a private
+- **Only public API.** The settings channel uses only public API (the one private value in navigation is in
+  [ADR 0003](adr/0003-universal-links-stay-in-place.md)). A key must name a public property or setter that takes the value's type; a private
   (underscore) one is refused. Anything else is skipped with a warning naming the key and the reason, including a
   compat feature this device's WebView lacks. Nothing in this channel can crash the app.
 - **Live, except `ios.configuration`**, which WebKit reads once when the WebView is created: a change recreates the
-  WebView (the page reloads), as a change of `bridge` or `nativeOptions` does. A key you remove goes back to the package's
-  default when JS sends one (the first list above); any other key keeps its value until you set it or the WebView is
-  recreated.
-- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and
+  WebView (the page reloads), as a change of `bridge` does. A key you remove goes back to the package's
+  default when JS sends one (the first list above: debugging and the user agent); any other key keeps its value until
+  you set it or the WebView is recreated.
+- **`get(key)`** reads a value back through JSON (`native_error` if it can't); on iOS `websiteDataStore` and
   `httpCookieStore` are roots too, on Android `cookieManager` and `webStorage`.
 
 ## call
 
 `call(method, args?, options?)` calls a platform method, `root.method`, and resolves with its result through JSON
-(`ERR_NATIVE` for one it refuses or that fails). Android: a public method of `settings` (then `WebSettingsCompat`'s
+(`native_error` for one it refuses or that fails). Android: a public method of `settings` (then `WebSettingsCompat`'s
 statics), `webView` (then `WebViewCompat`'s), `cookieManager` or `webStorage`:
 
 ```ts
@@ -101,7 +104,7 @@ await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200
 
 Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,
 a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
-is `null`. Refused with `ERR_NATIVE`: on iOS every selector that loads, navigates, runs a script, starts a download
+is `null`. Refused with `native_error`: on iOS every selector that loads, navigates, runs a script, starts a download
 or sets a delegate, and private (`_`), KVC, KVO (`willChange…`, `didChange…`), `performSelector`, `init…`, `copy…`,
 `mutable…`, `new…` and reference-counting selectors; on Android, in `call` and `get`, the loads, navigations, clients,
 JavaScript interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,

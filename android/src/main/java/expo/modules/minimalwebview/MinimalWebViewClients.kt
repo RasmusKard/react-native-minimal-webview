@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Message
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.ClientCertRequest
@@ -45,6 +46,7 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
     owner.cancelFileChooser()
     owner.pendingUrl = navigation.url
     owner.loading = true
+    owner.outcome = null
     owner.stateChanged()
   }
 
@@ -59,8 +61,15 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
     if (navigation.didCommit() && !navigation.isSameDocument) newDocument()
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
+      // A reported network or SSL error already made it "failed". Chromium's error page for an HTTP status (a 404 with
+      // an empty body) is the server's answer: "finished", as on iOS.
+      owner.outcome = owner.outcome ?: when {
+        !navigation.didCommit() -> "cancelled" // a stop, a download, a 204, a blocked redirect, a newer load
+        navigation.didCommitErrorPage() && navigation.statusCode < 400 -> "failed"
+        else -> "finished"
+      }
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
-      if (!navigation.didCommit() || navigation.page in loadedPages) {
+      if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) {
         owner.loading = false
         owner.pageFinished()
       }
@@ -98,7 +107,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
     val url = request.url.toString()
     val override = deciding("shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java)?.shouldOverrideUrlLoading(view, request)
-      ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture()))
+      ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture(), request.isRedirect))
     if (!override && request.isForMainFrame) allowedMainFrameUrl = url
     return override
   }
@@ -106,10 +115,13 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   // Without NavigationListener (WebView older than 146): a main-frame document starts loading here.
   // shortcut: ends the Document at load start, so a main-frame load that never commits (a download, a cancel) ends it
   // too; drop when WebView 146 is the floor
+  // Chromium calls it at commit (for every app but old GMS), so a load that never commits (a stop, a download, a 204, a
+  // blocked redirect) gets no load events and no outcome here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
       owner.newDocument()
       owner.loading = true
+      owner.outcome = null
       owner.stateChanged()
     }
     observing("onPageStarted", WEB_VIEW, STRING, Bitmap::class.java) { it.onPageStarted(view, url, favicon) }
@@ -117,6 +129,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onPageFinished(view: WebView, url: String?) {
     if (!owner.hasNavigationListener) {
+      owner.outcome = owner.outcome ?: "finished" // "failed" when a main-frame error came first
       owner.loading = false
       owner.pageFinished()
       owner.stateChanged()
@@ -203,7 +216,9 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
     // Returning true keeps the app alive; a stale WebView (already replaced) needs nothing more.
-    if (view === owner.webView) owner.mainHandler.post { owner.recover(detail.didCrash()) }
+    // Timed here: every WebView on the renderer hears of its death back to back, before any recovery runs.
+    val at = SystemClock.elapsedRealtime()
+    if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash(), at) }
     observing("onRenderProcessGone", WEB_VIEW, RenderProcessGoneDetail::class.java) { it.onRenderProcessGone(view, detail) }
     return true
   }
@@ -312,11 +327,13 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
 
   override fun onGeolocationPermissionsHidePrompt() {
     super.onGeolocationPermissionsHidePrompt()
+    owner.permissions.onGeolocationPromptHidden()
     observing("onGeolocationPermissionsHidePrompt") { it.onGeolocationPermissionsHidePrompt() }
   }
 
   override fun onPermissionRequestCanceled(request: PermissionRequest) {
     super.onPermissionRequestCanceled(request)
+    owner.permissions.onPermissionRequestCanceled(request)
     observing("onPermissionRequestCanceled", PermissionRequest::class.java) { it.onPermissionRequestCanceled(request) }
   }
 

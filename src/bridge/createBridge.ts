@@ -1,7 +1,7 @@
-import type { Bridge, BridgeOptions, BridgeSender } from '../types';
+import type { Bridge, BridgeEventMap, BridgeMethodMap, BridgeOptions, BridgeSender } from '../types';
 import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
-import { type BridgeMessage, isBridgeError, parseBridgeMessage } from './protocol';
+import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -24,8 +24,14 @@ export const CONNECTION = Symbol('bridgeConnection');
 
 const MAX_QUEUE = 1000;
 
-/** Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. */
-export function createBridge(options: BridgeOptions): Bridge {
+/**
+ * Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. The type
+ * arguments only type `call`, `handle`, `emit` and `on`; nothing checks them at runtime.
+ */
+export function createBridge<
+  Methods extends BridgeMethodMap = BridgeMethodMap,
+  Events extends BridgeEventMap = BridgeEventMap,
+>(options: BridgeOptions): Bridge<Methods, Events> {
   // `*` or what the page client parses: addWebMessageListener's rules minus custom schemes.
   const invalid = options.allowedOrigins.filter((rule) => rule !== '*' && !parseOrigin(rule));
   if (invalid.length) {
@@ -40,24 +46,23 @@ export function createBridge(options: BridgeOptions): Bridge {
     );
   }
   let post: ((message: string) => void) | null = null;
-  let ready = false;
+  // idle: no document committed since attach. loading: one committed and hasn't said `ready` yet.
+  let phase: 'idle' | 'loading' | 'ready' = 'idle';
   // The token of the document that last said `ready` (protocol.ts `doc`): what RN sends is for that document only.
   let doc: string | undefined;
   // Messages for the next document that says `ready`. Only the latest document's: see navigated().
   let queue: BridgeMessage[] = [];
-  // A document committed and hasn't said `ready` yet.
-  let awaitingReady = false;
   let unavailable = false;
 
   const deliver = (message: BridgeMessage) => {
     post?.(JSON.stringify({ ...message, doc }));
-    const call = endpoint.pending.get(message.id);
+    const call = message.kind === 'call' && endpoint.pending.get(message.id);
     if (call) call.sent = true;
   };
 
   const endpoint = createEndpoint<BridgeSender>(
     (message) => {
-      if (post && ready) deliver(message);
+      if (post && phase === 'ready') deliver(message);
       else {
         queue.push(message);
         // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call still times out
@@ -76,9 +81,8 @@ export function createBridge(options: BridgeOptions): Bridge {
 
   const receive = (text: string, origin: string) => {
     const message = parseBridgeMessage(text);
-    if (isBridgeError(message)) {
-      if (__DEV__)
-        console.warn(`[minimal-rn-webview] dropped a bridge message: ${message.message}`);
+    if (typeof message === 'string') {
+      if (__DEV__) console.warn(`[minimal-rn-webview] dropped a bridge message: ${message}`);
       return;
     }
     if (message.kind !== 'ready') {
@@ -92,8 +96,7 @@ export function createBridge(options: BridgeOptions): Bridge {
     }
     // A new document: calls posted to the previous one can no longer be answered. Queued ones are for this one.
     rejectSent('the page navigated');
-    ready = true;
-    awaitingReady = false;
+    phase = 'ready';
     doc = message.doc;
     const flushing = queue;
     queue = [];
@@ -115,8 +118,7 @@ export function createBridge(options: BridgeOptions): Bridge {
     },
     detach() {
       post = null;
-      ready = false;
-      awaitingReady = false;
+      phase = 'idle';
       queue = [];
       endpoint.rejectPending('navigated', 'the WebView went away');
     },
@@ -125,12 +127,11 @@ export function createBridge(options: BridgeOptions): Bridge {
       rejectSent('the page navigated');
       // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
       // carry over to an unrelated next one.
-      if (awaitingReady) {
+      if (phase === 'loading') {
         endpoint.rejectPending('navigated', 'the page navigated before the bridge was ready');
         queue = [];
       }
-      ready = false;
-      awaitingReady = true;
+      phase = 'loading';
     },
     markUnavailable() {
       unavailable = true;
@@ -149,5 +150,5 @@ export function createBridge(options: BridgeOptions): Bridge {
     emit: endpoint.emit,
     on: endpoint.on,
     [CONNECTION]: connection,
-  } as Bridge;
+  } as Bridge as Bridge<Methods, Events>;
 }
