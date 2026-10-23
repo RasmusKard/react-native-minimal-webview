@@ -33,7 +33,7 @@ import androidx.webkit.Page
 // the hooks' clients, or both, by the rule in WebViewContext: a decision callback to the first client that overrides it
 // (else the core, or WebView's default), an observation callback to the core and then to every client that overrides it.
 
-internal class Listener(private val owner: MinimalWebView, private val newDocument: () -> Unit) : NavigationListener {
+internal class Listener(private val owner: MinimalWebView) : NavigationListener {
   /** Pages that fired their load event and are still alive (current or in the back-forward cache). */
   private val loadedPages = mutableSetOf<Page>()
 
@@ -58,7 +58,7 @@ internal class Listener(private val owner: MinimalWebView, private val newDocume
   // A failed main-frame load commits an error page at the failed URL: `url` becomes that URL, as on iOS.
   override fun onNavigationCompleted(navigation: Navigation) {
     if (navigation.didCommit()) owner.url = navigation.url
-    if (navigation.didCommit() && !navigation.isSameDocument) newDocument()
+    if (navigation.didCommit() && !navigation.isSameDocument) owner.newDocument()
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
       // A reported network or SSL error already made it "failed". Chromium's error page for an HTTP status (a 404 with

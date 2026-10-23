@@ -26,6 +26,7 @@
 - Hooks (Android): `context.activity` is gone: use `appContext.currentActivity` in the hook's own module. The closure `attach` returns takes no reason: read it in `onDocumentEnd`, which runs just before.
 - Hooks (iOS): commit and crash callbacks reach hooks after the core, and observation callbacks reach every hook, as on Android.
 - Hooks (Android): a client that overrides a deprecated variant the platform forwards to (`shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`, the 4-argument `onReceivedError`, `onConsoleMessage(String, Int, String)`) counts as overriding the callback, so it now gets it and takes its decision: its `shouldOverrideUrlLoading` switches the navigation rules off.
+- Native (Android): the view class `MinimalWebView`, `NavigationRules` and the `WebViewSource` and `InjectedScript` records are `internal`, as on iOS, so Kotlin outside the package that names them no longer compiles. Hooks keep `MinimalWebViewHooks`, `WebViewContext` and `DocumentScope`.
 - Native: the view's `native` function is split into `get(path)` and `call(path, argsJson, completion)`.
 - Package: an `exports` map: only `minimal-rn-webview` and `minimal-rn-webview/package.json` resolve.
 

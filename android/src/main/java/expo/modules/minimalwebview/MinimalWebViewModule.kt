@@ -211,7 +211,7 @@ private object FileChooserContract : AppContextActivityResultContract<ChooserInt
 // Data classes, so the skip checks in applyProps compare them with ==. Every field is optional, as on iOS.
 
 /** `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `body` makes the request a form-urlencoded POST. */
-data class WebViewSource(
+internal data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
   @Field val body: String? = null,
@@ -219,7 +219,7 @@ data class WebViewSource(
   @Field val baseUrl: String? = null
 ) : Record
 
-data class InjectedScript(
+internal data class InjectedScript(
   @Field val code: String? = null,
   @Field val mainFrameOnly: Boolean? = null
 ) : Record

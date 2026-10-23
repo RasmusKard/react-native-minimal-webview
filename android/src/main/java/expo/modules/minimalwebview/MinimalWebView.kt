@@ -28,7 +28,7 @@ import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
-class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
+internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
   private val onHookEvent by EventDispatcher<Map<String, Any?>>()
@@ -37,7 +37,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
-  internal val document = DocumentScope()
+  private val document = DocumentScope()
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
@@ -86,7 +86,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
-  internal val downloads = Downloads(this)
+  private val downloads = Downloads(this)
   /** The `hookOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
   private var hookKeys: Set<String>? = null
   /** The hooks' contexts for the current WebView, in registration order. */
@@ -151,7 +151,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
       if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
-    if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
+    if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
   }
 
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used
