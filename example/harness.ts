@@ -99,7 +99,8 @@ function reporter(suite: string) {
   let requests = 0;
   return {
     check(name: string, ok: boolean, detail: unknown = '') {
-      ok ? pass++ : fail++;
+      if (ok) pass++;
+      else fail++;
       emit(`${ok ? 'PASS' : 'FAIL'} ${suite}: ${name} ${ok ? '' : JSON.stringify(detail)}`);
     },
     info(name: string, detail: unknown) {

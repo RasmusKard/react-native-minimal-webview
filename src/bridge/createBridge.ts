@@ -1,4 +1,10 @@
-import type { Bridge, BridgeEventMap, BridgeMethodMap, BridgeOptions, BridgeSender } from '../types';
+import type {
+  Bridge,
+  BridgeEventMap,
+  BridgeMethodMap,
+  BridgeOptions,
+  BridgeSender,
+} from '../types';
 import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
