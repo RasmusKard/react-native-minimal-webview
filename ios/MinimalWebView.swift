@@ -351,7 +351,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     decidePolicyFor navigationAction: WKNavigationAction,
     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
   ) {
-    decideNavigation(navigationAction, in: webView, decide: decisionHandler)
+    decideNavigation(navigationAction, decide: decisionHandler)
   }
 
   func webView(
@@ -398,19 +398,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    loadEnded(webView) { $0.webView?(webView, didFinish: navigation) }
+    loadEnded { $0.webView?(webView, didFinish: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadEnded(webView, error) { $0.webView?(webView, didFail: navigation, withError: error) }
+    loadEnded(error) { $0.webView?(webView, didFail: navigation, withError: error) }
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadEnded(webView, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    loadEnded(error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
   }
 
   /// A load finished, or failed with `error`: the core's bookkeeping, then the hook delegates' callback.
-  private func loadEnded(_ webView: WKWebView, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
+  private func loadEnded(_ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
     outcome = error.map { failed($0) ? "failed" : "cancelled" } ?? "finished"
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
