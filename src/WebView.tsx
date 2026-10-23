@@ -12,10 +12,9 @@ import {
 } from 'react';
 import { Platform, type ViewProps } from 'react-native';
 
-import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
+import { CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
 import type {
-  Bridge,
   HookEvent,
   LoadErrorEvent,
   NavigationEvent,
@@ -291,8 +290,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
 
   // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
-  const connection =
-    props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+  const connection = props.bridge?.[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
     connection.attach((message) => void native.current?.bridgePost(message));

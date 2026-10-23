@@ -5,7 +5,7 @@ import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-/** What `<WebView>` needs from a bridge; not part of the public type. */
+/** What `<WebView>` needs from a bridge: `Bridge`'s `[CONNECTION]`, a key the package doesn't export. */
 export type BridgeConnection = {
   allowedOrigins: string[];
   /** The page client to inject at document start. */

@@ -15,6 +15,7 @@
 - Ref: `get` and `call` refuse more. Android: `destroy`, navigations, listeners and other core-owned methods, and `get` takes only a getter or a non-void method. iOS: `init`, `copy`, `new` and `mutable` selectors, KVO and `setDelegate`.
 - Rules: a new window to an internal scheme (`data:`, `blob:`, `javascript:`, `about:`) or `file:` is blocked whatever the rules say. `mailto:` and `tel:` still go through the rules.
 - Bridge: `attach` to a second mounted WebView throws.
+- Bridge: `Bridge` has a `[CONNECTION]` key that only `createBridge` sets, so a hand-made or mock `Bridge` no longer type-checks (it connected nothing to the WebView). The emitted types name `BridgeConnection`.
 - Bridge: handlers and listeners get a second `{ origin }` argument, the sender's origin as the native side verified it. The `onBridge` native event carries `origin`.
 - Bridge: `handler_error` messages no longer start with `Error: `.
 - Bridge: the `BridgeError` type is gone: a call rejects with a `BridgeCallError`, and `invalid` is no longer a `BridgeErrorCode`.
