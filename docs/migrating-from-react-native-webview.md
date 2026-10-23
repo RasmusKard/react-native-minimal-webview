@@ -19,7 +19,7 @@ has a prop for is a platform setting by name here (`ios`, `android`, `get`, `cal
 | iOS content insets | `contentInsetAdjustmentBehavior: never`, no automatic indicator insets | UIKit's: `automatic`, and the indicator insets follow | `ios.scrollView.contentInsetAdjustmentBehavior` and `automaticallyAdjustsScrollIndicatorInsets` |
 | iOS directional lock | On | UIKit's: off | `ios.scrollView.directionalLockEnabled: true` |
 | Debugging | iOS off; Android on in debug builds | On in `__DEV__`, on both | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` |
-| iOS universal links | A tapped one opens the app that claims it | Loads in place ([ADR 0003](adr/0003-universal-links-stay-in-place.md)) | An `external` rule for the host |
+| iOS universal links | A tapped one opens the app that claims it | Loads in place ([Universal links stay in place](decisions.md#universal-links-stay-in-place)) | An `external` rule for the host |
 | Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | [`onDownload`](page-requests.md#downloads) and a recipe |
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
 | Messaging | Every page and every frame | Only `allowedOrigins`, main frame only | [Messages from iframes](#messages-from-iframes) |
@@ -211,7 +211,7 @@ The request has `url`, `mainFrame` (was `isTopFrame`), `newWindow` and `userInit
 rules (their redirects don't). To only watch navigations, `onNavigation` reports every decision and the rule that made it.
 
 `onOpenWindow`: a new window (`target=_blank`, `window.open`) is a navigation with `newWindow: true`. By default an
-allowed one loads in place ([ADR 0002](adr/0002-new-windows-in-place.md)); `{ newWindow: true, action: 'external' }`
+allowed one loads in place ([New windows load in place](decisions.md#new-windows-load-in-place)); `{ newWindow: true, action: 'external' }`
 opens it in the browser, and `{ newWindow: true, action: 'ask' }` gives it to `onNavigationRequest`.
 
 ## postMessage and onMessage
