@@ -32,7 +32,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
-  private val onNativeEvent by EventDispatcher<Map<String, Any?>>()
+  private val onHookEvent by EventDispatcher<Map<String, Any?>>()
   private val onError by EventDispatcher<Map<String, Any?>>()
   private val onProcessGone by EventDispatcher<Map<String, Any?>>()
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
@@ -44,7 +44,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   private var current: WebView? = null
   /**
-   * Made at first use, which is the first prop batch, so that the configure hooks see `nativeOptions`. Replaced when
+   * Made at first use, which is the first prop batch, so that the configure hooks see `hookOptions`. Replaced when
    * the render process dies; the hooks are attached to each one.
    */
   internal var webView: WebView
@@ -58,8 +58,8 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal var navigationRules: List<Map<String, Any?>>? = null
   internal var bridgeScript: String? = null
   internal var bridgeOrigins: List<String>? = null
-  /** The `nativeOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange). */
-  internal var nativeOptions: Map<String, Any?> = emptyMap()
+  /** The `hookOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange). */
+  internal var hookOptions: Map<String, Any?> = emptyMap()
     set(value) {
       val old = field
       field = value
@@ -88,7 +88,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   internal val downloads = Downloads(this)
-  /** The `nativeOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
+  /** The `hookOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
   private var hookKeys: Set<String>? = null
   /** The hooks' contexts for the current WebView, in registration order. */
   private var hookContexts: List<HookContext> = emptyList()
@@ -140,7 +140,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
-    val keys = hookKeys ?: nativeOptions.filterValues(::enables).keys.also { hookKeys = it }
+    val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
     hookContexts = MinimalWebViewHooks.hooks.filter { it.key in keys }.map { HookContext(it, this) }
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
@@ -271,14 +271,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   /** Tells each attached hook whose value changed. A key that was not there when the WebView was made attaches nothing. */
   private fun optionsChanged(old: Map<String, Any?>) {
-    for (key in old.keys + nativeOptions.keys) {
-      val value = nativeOptions[key]
+    for (key in old.keys + hookOptions.keys) {
+      val value = hookOptions[key]
       if (old[key] == value) continue
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
       } else if (!enables(old[key]) && enables(value)) {
-        warn("nativeOptions.$key: added after the WebView was created, so no hook attaches for it")
+        warn("hookOptions.$key: added after the WebView was created, so no hook attaches for it")
       }
     }
   }
@@ -286,7 +286,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   /** The handler a hook registered with `context.handle` for [method], if it is attached. */
   internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key }?.handlers?.get(method)
 
-  fun emit(name: String, payload: Map<String, Any?>) = onNativeEvent(mapOf("name" to name, "payload" to payload))
+  fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
     askWithId(name, payload, onAnswer)
@@ -296,7 +296,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal fun askWithId(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
     val id = ++nextAskId
     pendingAsks[id] = onAnswer
-    onNativeEvent(mapOf("name" to name, "payload" to payload, "askId" to id))
+    onHookEvent(mapOf("name" to name, "payload" to payload, "askId" to id))
     return id
   }
 

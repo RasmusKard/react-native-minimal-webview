@@ -19,6 +19,7 @@ import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultContract
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
 import expo.modules.kotlin.exception.Exceptions
+import expo.modules.kotlin.exception.toCodedException
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -105,13 +106,13 @@ class MinimalWebViewModule : Module() {
     }
 
     View(MinimalWebView::class) {
-      Events("onNavigationState", "onBridge", "onNativeEvent", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onHookEvent", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { view: MinimalWebView, source: WebViewSource? -> view.source = source }
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
-      Prop("nativeOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.nativeOptions = options.orEmpty() }
+      Prop("hookOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.hookOptions = options.orEmpty() }
       // JSON, so a null (reset this key) survives: the map conversion drops nulls on iOS, and this keeps both the same.
       Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
       Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
@@ -129,22 +130,13 @@ class MinimalWebViewModule : Module() {
           "stop" -> view.webView.stopLoading()
         }
       }.runOnQueue(Queues.MAIN)
-      // `{ get: 'settings.textZoom' }` or `{ call: 'webView.clearCache', args: '[true]' }`: the JSON of the result. `args` is
-      // a JSON string so a null argument survives the conversion.
-      AsyncFunction("native") { view: MinimalWebView, request: Map<String, Any?>, promise: Promise ->
-        val get = request["get"] as? String
-        val call = request["call"] as? String
-        try {
-          promise.resolve(
-            when {
-              get != null -> view.platformSettings.get(get)
-              call != null -> view.platformSettings.call(call, (request["args"] as? String)?.let { fromJson(JSONArray(it)) as List<Any?> } ?: emptyList())
-              else -> throw IllegalArgumentException("a request needs `get` or `call`")
-            }
-          )
-        } catch (e: IllegalArgumentException) {
-          promise.reject("ERR_NATIVE", e.message, e)
-        }
+      // `get('settings.textZoom')` and `call('webView.clearCache', '[true]', null)` resolve with the JSON of the result.
+      // `argsJson` is a JSON string so a null argument survives the conversion; `completion` is iOS's.
+      AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
+        native(promise) { view.platformSettings.get(path) }
+      }.runOnQueue(Queues.MAIN)
+      AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
+        native(promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) }
         // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
@@ -152,7 +144,7 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
         view.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
-      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `native`'s.
+      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
         val handler = view.hookHandler(name, method)
           ?: return@AsyncFunction promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
@@ -161,12 +153,20 @@ class MinimalWebViewModule : Module() {
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
         view.evaluate(script) { result ->
-          result.fold(promise::resolve) { error -> promise.reject((error as EvaluateError).code, error.message, null) }
+          result.fold(promise::resolve) { promise.reject(it.toCodedException()) }
         }
       }.runOnQueue(Queues.MAIN)
     }
   }
 }
+
+/** Resolves with [body]'s JSON; anything it throws rejects with `native_error`. */
+private inline fun native(promise: Promise, body: () -> String) =
+  try {
+    promise.resolve(body())
+  } catch (e: Exception) {
+    promise.reject("native_error", e.message, e)
+  }
 
 /** The `settings` prop's JSON (always an object: JS builds it) as nested maps and lists, with JSON null as null. */
 private fun parseSettings(json: String): Map<String, Any?> = JSONObject(json).toMap()

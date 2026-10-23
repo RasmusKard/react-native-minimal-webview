@@ -1,11 +1,11 @@
 import {
   type NavigationRule,
   type WebViewProps,
-  type WebViewErrorEvent,
+  type LoadErrorEvent,
   type WebViewSource,
   WebView,
   createBridge,
-  type PermissionRequestEvent,
+  type PermissionRequest,
   type FileRequest,
   useWebViewState,
   createWebViewRef,
@@ -26,7 +26,7 @@ import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness'
 
 const PAGES = 'http://localhost:8090';
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
-type LoadFailure = Exclude<WebViewErrorEvent, { kind: 'http' }>;
+type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
 /**
  * The example's creation-time settings. A suite's extra `ios` keeps them unless it sets its own `configuration`:
  * dropping them would recreate the WebView, and with it start the crash-loop guard over.
@@ -83,7 +83,7 @@ export default function App() {
     return b;
   }, []);
 
-  const permissionRef = useRef<((request: PermissionRequestEvent) => Promise<boolean>) | undefined>(
+  const permissionRef = useRef<((request: PermissionRequest) => Promise<boolean>) | undefined>(
     undefined
   );
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
@@ -137,8 +137,8 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            nativeOptions={{ pageCounter: true }}
-            onNativeEvent={(event) => {
+            hookOptions={{ pageCounter: true }}
+            onHookEvent={(event) => {
               if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
                 events.pageCounts.push(event.payload);
               else events.hookEvents.push(event.name);

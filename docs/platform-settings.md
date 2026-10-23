@@ -59,13 +59,13 @@ How the keys work:
   WebView (the page reloads), as a change of `bridge` does. A key you remove goes back to the package's
   default when JS sends one (the first list above: debugging and the user agent); any other key keeps its value until
   you set it or the WebView is recreated.
-- **`get(key)`** reads a value back through JSON (`ERR_NATIVE` if it can't); on iOS `websiteDataStore` and
+- **`get(key)`** reads a value back through JSON (`native_error` if it can't); on iOS `websiteDataStore` and
   `httpCookieStore` are roots too, on Android `cookieManager` and `webStorage`.
 
 ## call
 
 `call(method, args?, options?)` calls a platform method, `root.method`, and resolves with its result through JSON
-(`ERR_NATIVE` for one it refuses or that fails). Android: a public method of `settings` (then `WebSettingsCompat`'s
+(`native_error` for one it refuses or that fails). Android: a public method of `settings` (then `WebSettingsCompat`'s
 statics), `webView` (then `WebViewCompat`'s), `cookieManager` or `webStorage`:
 
 ```ts
@@ -103,7 +103,7 @@ await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200
 
 Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,
 a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
-is `null`. Refused with `ERR_NATIVE`: on iOS every selector that loads, navigates, runs a script, starts a download
+is `null`. Refused with `native_error`: on iOS every selector that loads, navigates, runs a script, starts a download
 or sets a delegate, and private (`_`), KVC, KVO (`willChange…`, `didChange…`), `performSelector`, `init…`, `copy…`,
 `mutable…`, `new…` and reference-counting selectors; on Android, in `call` and `get`, the loads, navigations, clients,
 JavaScript interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Native hooks: how an app or a package reaches the WebView this package creates, with no protocol to implement.
- * A hook is registered under the `nativeOptions` key that enables it, from an Expo module's `OnCreate` (before the
+ * A hook is registered under the `hookOptions` key that enables it, from an Expo module's `OnCreate` (before the
  * first WebView is created), and runs for each WebView created with a value for that key other than null or false,
  * on the main thread. docs/native-hooks.md has the rules for the clients and the events.
  */
@@ -62,12 +62,12 @@ object MinimalWebViewHooks {
   }
 }
 
-/** Whether a `nativeOptions` value enables its hook. */
+/** Whether a `hookOptions` value enables its hook. */
 internal fun enables(value: Any?) = value != null && value != false
 
 /** One WebView instance, as a hook sees it. */
 interface WebViewContext {
-  /** This hook's `nativeOptions` value; after a change, the new one. */
+  /** This hook's `hookOptions` value; after a change, the new one. */
   val options: Any?
   val activity: Activity?
 
@@ -81,13 +81,13 @@ interface WebViewContext {
   val clients: MutableList<WebViewClient>
   val chromeClients: MutableList<WebChromeClient>
 
-  /** Sends `onNativeEvent({ name: "<hook>.<name>", payload })` to JS. */
+  /** Sends `onHookEvent({ name: "<hook>.<name>", payload })` to JS. */
   fun emit(name: String, payload: Map<String, Any?>)
 
   /** Sends the event and waits for JS's answer, the handler's return value; null when the view or its page goes away. */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
-  /** Runs [handler] with this hook's new `nativeOptions` value each time it changes; null when the key is removed. */
+  /** Runs [handler] with this hook's new `hookOptions` value each time it changes; null when the key is removed. */
   fun onOptionsChange(handler: (Any?) -> Unit)
 
   /** Runs [handler] at each end of the Document (GLOSSARY.md): a new page committed, a crash, or the view closing. */
@@ -106,7 +106,7 @@ interface WebViewContext {
  */
 internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view: MinimalWebView) : WebViewContext {
   val key get() = hook.key
-  private var current: Any? = view.nativeOptions[hook.key]
+  private var current: Any? = view.hookOptions[hook.key]
   override val options get() = current
   override val activity get() = view.activity
   override val url get() = view.url

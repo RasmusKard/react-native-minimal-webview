@@ -16,18 +16,18 @@ import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
 import type {
   Bridge,
-  NativeEvent as HookEventBody,
+  HookEvent,
+  LoadErrorEvent,
   NavigationEvent,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
-  WebViewErrorEvent,
   WebViewProps,
   WebViewRef,
   WebViewRefObject,
 } from './types';
 
-type NativeEvent<T> = { nativeEvent: T };
+type Native<T> = { nativeEvent: T };
 
 /**
  * A type's documented keys, to pick from its native event: React Native adds its own (`target`, the view's tag). A
@@ -58,7 +58,7 @@ const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: 
 
 /** Native reports every main-frame error as one event; `code` is the HTTP status for `http`. */
 type NativeErrorEvent = {
-  kind: WebViewErrorEvent['kind'];
+  kind: LoadErrorEvent['kind'];
   url: string;
   code: number;
   description: string;
@@ -69,7 +69,7 @@ type BridgeEvent =
   { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
 /** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
-type HookEvent = HookEventBody & { askId?: number };
+type AskableEvent = HookEvent & { askId?: number };
 
 /**
  * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
@@ -84,7 +84,7 @@ const REQUESTS = {
   permissionRequest: 'onPermissionRequest',
   download: 'onDownload',
 } as const;
-/** The core's own events; everything else is a hook's, for `onNativeEvent`. */
+/** The core's own events; everything else is a hook's, for `onHookEvent`. */
 const CORE = 'core.';
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
@@ -98,8 +98,8 @@ const OWN = [
   'bridge',
   'pullToRefresh',
   'sharedCookies',
-  'nativeOptions',
-  'onNativeEvent',
+  'hookOptions',
+  'onHookEvent',
   'onNavigation',
   'onNavigationStateChange',
   'onError',
@@ -107,6 +107,7 @@ const OWN = [
   'onLoadStart',
   'onLoadEnd',
   ...Object.values(REQUESTS),
+  'ref',
   'children',
 ] as const satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
 type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OWN)[number]>;
@@ -128,14 +129,14 @@ type NativeProps = ViewProps &
     settings: string;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
-    nativeOptions: Record<string, unknown> | undefined;
+    hookOptions: Record<string, unknown> | undefined;
     requestHandlers: string[];
-    onNavigation: (event: NativeEvent<NavigationEvent>) => void;
-    onNavigationState: (event: NativeEvent<NavigationState>) => void;
-    onBridge: (event: NativeEvent<BridgeEvent>) => void;
-    onNativeEvent: (event: NativeEvent<HookEvent>) => void;
-    onError: (event: NativeEvent<NativeErrorEvent>) => void;
-    onProcessGone: (event: NativeEvent<ProcessGoneEvent>) => void;
+    onNavigation: (event: Native<NavigationEvent>) => void;
+    onNavigationState: (event: Native<NavigationState>) => void;
+    onBridge: (event: Native<BridgeEvent>) => void;
+    onHookEvent: (event: Native<AskableEvent>) => void;
+    onError: (event: Native<NativeErrorEvent>) => void;
+    onProcessGone: (event: Native<ProcessGoneEvent>) => void;
   };
 
 type NativeMethods = {
@@ -145,17 +146,14 @@ type NativeMethods = {
   answer(askId: number, answer: { value: unknown }): Promise<void>;
   /** The JSON-encoded result. */
   evaluate(script: string): Promise<string>;
+  /** Reads a platform setting: the JSON of its value. */
+  get(path: string): Promise<string>;
   /**
-   * `{ get }` reads a setting, `{ call, args, completion }` calls a platform method: the JSON of the result. `args` is
-   * JSON too, so that a `null` argument survives the native dictionary conversion.
+   * Calls a platform method: the JSON of its result. `argsJson` is JSON, so that a `null` argument survives the native
+   * conversion. `completion` is iOS's handler shape.
    */
-  native(request: {
-    get?: string;
-    call?: string;
-    args?: string;
-    completion?: string;
-  }): Promise<string>;
-  /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `native`. */
+  call(path: string, argsJson: string, completion: string | null): Promise<string>;
+  /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `call`. */
   hook(name: string, method: string, args: string): Promise<string>;
 };
 
@@ -253,14 +251,12 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
       return fallback;
     });
 
-type Props = WebViewProps & { ref?: Ref<WebViewRef> };
-
-export function WebView(props: Props) {
+export function WebView(props: WebViewProps) {
   return <WebViewInstance key={creationKey(props)} {...props} />;
 }
 
 /** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
-function WebViewInstance({ ref, ...props }: Props) {
+function WebViewInstance({ ref, ...props }: WebViewProps) {
   const native = useRef<NativeMethods>(null);
   const attachmentRef = useRef<Attachment>(undefined);
   const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
@@ -278,14 +274,11 @@ function WebViewInstance({ ref, ...props }: Props) {
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
       evaluate: async (script) => parsed(await (native.current?.evaluate(script) ?? gone())),
-      get: async (key) => parsed(await (native.current?.native({ get: key }) ?? gone())),
+      get: async (key) => parsed(await (native.current?.get(key) ?? gone())),
       call: async (method, args = [], options) =>
         parsed(
-          await (native.current?.native({
-            call: method,
-            args: JSON.stringify(args),
-            completion: options?.completion,
-          }) ?? gone())
+          await (native.current?.call(method, JSON.stringify(args), options?.completion ?? null) ??
+            gone())
         ),
       hook: async (name, method, args = []) =>
         parsed(await (native.current?.hook(name, method, JSON.stringify(args)) ?? gone())),
@@ -303,7 +296,7 @@ function WebViewInstance({ ref, ...props }: Props) {
     return () => connection.detach();
   }, [connection]);
 
-  const onBridge = ({ nativeEvent }: NativeEvent<BridgeEvent>) => {
+  const onBridge = ({ nativeEvent }: Native<BridgeEvent>) => {
     if ('message' in nativeEvent) connection?.receive(nativeEvent.message, nativeEvent.origin);
     else if ('navigated' in nativeEvent) connection?.navigated();
     else connection?.markUnavailable();
@@ -318,9 +311,7 @@ function WebViewInstance({ ref, ...props }: Props) {
   const [asks] = useState(() => new Map<number, AbortController>());
   useEffect(() => () => asks.forEach((controller) => controller.abort()), [asks]);
 
-  const onNativeEvent = async ({
-    nativeEvent: { name, payload, askId },
-  }: NativeEvent<HookEvent>) => {
+  const onHookEvent = async ({ nativeEvent: { name, payload, askId } }: Native<AskableEvent>) => {
     if (name === `${CORE}warning`)
       return console.warn(`[minimal-rn-webview] ${String(payload['message'])}`);
     if (name === `${CORE}askCancelled`) return asks.get(payload['askId'] as number)?.abort();
@@ -329,14 +320,14 @@ function WebViewInstance({ ref, ...props }: Props) {
       : undefined;
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
-      : (_: unknown, signal?: AbortSignal) => props.onNativeEvent?.({ name, payload }, signal);
+      : (_: unknown, signal?: AbortSignal) => props.onHookEvent?.({ name, payload }, signal);
     const controller = new AbortController();
     if (askId !== undefined) asks.set(askId, controller);
     const value = await settle(
       () => handler?.(payload, askId === undefined ? undefined : controller.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
-      request ? `${request} failed` : `onNativeEvent failed for ${name}`
+      request ? `${request} failed` : `onHookEvent failed for ${name}`
     );
     if (askId === undefined) return;
     asks.delete(askId);
@@ -344,7 +335,7 @@ function WebViewInstance({ ref, ...props }: Props) {
     if (!controller.signal.aborted) await answer(askId, value);
   };
 
-  const onNavigation = ({ nativeEvent }: NativeEvent<NavigationEvent>) => {
+  const onNavigation = ({ nativeEvent }: Native<NavigationEvent>) => {
     const event = pick(nativeEvent, NAVIGATION_KEYS);
     if (event.action === 'external') props.onOpenExternal?.(event.url);
     props.onNavigation?.(event);
@@ -362,14 +353,14 @@ function WebViewInstance({ ref, ...props }: Props) {
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      nativeOptions={props.nativeOptions && withoutNulls(props.nativeOptions)}
+      hookOptions={props.hookOptions && withoutNulls(props.hookOptions)}
       requestHandlers={requestHandlers}
       onNavigation={onNavigation}
       onNavigationState={({ nativeEvent }) =>
         onNavigationState({ nativeEvent: pick(nativeEvent, STATE_KEYS) })
       }
       onBridge={onBridge}
-      onNativeEvent={onNativeEvent}
+      onHookEvent={onHookEvent}
       onError={onError}
       onProcessGone={({ nativeEvent }) =>
         props.onProcessGone?.(pick(nativeEvent, PROCESS_GONE_KEYS))
@@ -417,7 +408,7 @@ let lastBridgeId = 0;
 /**
  * What native sets up once, when it creates the WebView: the bridge and the creation-time settings
  * (`ios.configuration`). As WebViewInstance's `key`, a change recreates the WebView, like a new `key` on the component
- * would: the page reloads from `source`, and the navigation state starts from the initial one. `nativeOptions` is not
+ * would: the page reloads from `source`, and the navigation state starts from the initial one. `hookOptions` is not
  * in it: native passes a changed value to its hook live.
  */
 function creationKey(props: WebViewProps) {
@@ -482,7 +473,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
 function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment | undefined>) {
   const lastRef = useRef(INITIAL_STATE);
 
-  const onNavigationState = ({ nativeEvent: state }: NativeEvent<NavigationState>) => {
+  const onNavigationState = ({ nativeEvent: state }: Native<NavigationState>) => {
     const was = lastRef.current.loading;
     lastRef.current = state;
     attachmentRef.current?.update(state);
@@ -492,9 +483,7 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
   };
 
   // An HTTP error's description is the platform's own text (an empty HTTP/2 reason phrase on Android): not passed on.
-  const onError = ({
-    nativeEvent: { kind, url, code, description },
-  }: NativeEvent<NativeErrorEvent>) =>
+  const onError = ({ nativeEvent: { kind, url, code, description } }: Native<NativeErrorEvent>) =>
     props.onError?.(
       kind === 'http' ? { kind, url, statusCode: code } : { kind, url, code, description }
     );

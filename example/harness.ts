@@ -10,8 +10,8 @@ import type {
   NavigationEvent,
   NavigationRule,
   ProcessGoneEvent,
-  PermissionRequestEvent,
-  WebViewErrorEvent,
+  PermissionRequest,
+  LoadErrorEvent,
   NavigationState,
   WebViewProps,
   WebViewRefObject,
@@ -39,14 +39,12 @@ export type Harness = {
   setFileRequest: (
     handler: ((request: FileRequest) => Promise<string[] | null>) | undefined
   ) => void;
-  setPermission: (
-    handler: ((request: PermissionRequestEvent) => Promise<boolean>) | undefined
-  ) => void;
+  setPermission: (handler: ((request: PermissionRequest) => Promise<boolean>) | undefined) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
   setProps: (props: Partial<WebViewProps>) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
   events: {
-    errors: WebViewErrorEvent[];
+    errors: LoadErrorEvent[];
     gone: ProcessGoneEvent[];
     /** `start` and `end`, from onLoadStart and onLoadEnd. */
     loads: string[];
@@ -494,8 +492,8 @@ async function bridge(h: Harness) {
     )
   );
   r.check(
-    'evaluate rejects ERR_EVALUATE on a throw, a rejection or a syntax error',
-    thrown.every((c) => c === 'ERR_EVALUATE'),
+    'evaluate rejects script_error on a throw, a rejection or a syntax error',
+    thrown.every((c) => c === 'script_error'),
     thrown
   );
   const boom = await evaluate(`(() => { throw new Error('boom') })()`)?.catch(
@@ -802,7 +800,7 @@ const fresh = (h: Harness, path: string) =>
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
  * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
- * that don't recreate it (`nativeOptions`, whose keys pick the hooks only when it is created), it remounts too.
+ * that don't recreate it (`hookOptions`, whose keys pick the hooks only when it is created), it remounts too.
  */
 async function recreate(h: Harness, props: Partial<WebViewProps>, remount = false) {
   const loads = h.events.loads.length;
@@ -1401,7 +1399,7 @@ async function settings(h: Harness) {
       );
       r.check(
         'get rejects for an unknown property',
-        (await get('scrollView.nope')) === 'ERR_NATIVE'
+        (await get('scrollView.nope')) === 'native_error'
       );
       const call = (
         method: string,
@@ -1467,23 +1465,23 @@ async function settings(h: Harness) {
       r.check('call takes a struct and a BOOL', offset?.y === 30, offset);
       r.check(
         'call refuses a core-owned selector',
-        (await call('webView.loadRequest:', [null])) === 'ERR_NATIVE'
+        (await call('webView.loadRequest:', [null])) === 'native_error'
       );
       r.check(
         'call refuses a private selector',
-        (await call('webView._nope', [])) === 'ERR_NATIVE'
+        (await call('webView._nope', [])) === 'native_error'
       );
       r.check(
         'call refuses init, and the WebView still works',
-        (await call('webView.init', [])) === 'ERR_NATIVE' && (await page('1+1')) === 2
+        (await call('webView.init', [])) === 'native_error' && (await page('1+1')) === 2
       );
       r.check(
         'call rejects an unknown selector',
-        (await call('webView.nope:', [1])) === 'ERR_NATIVE'
+        (await call('webView.nope:', [1])) === 'native_error'
       );
       r.check(
         'call rejects a wrong argument count',
-        (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'ERR_NATIVE'
+        (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'native_error'
       );
     } else {
       const payment = () => page(`typeof PaymentRequest`);
@@ -1545,18 +1543,18 @@ async function settings(h: Harness) {
         (await get('settings.paymentRequestEnabled')) === true
       );
       r.check('get reads an is-getter', (await get('webView.verticalScrollBarEnabled')) === true);
-      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'ERR_NATIVE');
+      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'native_error');
       const call = (method: string, args?: unknown[]) =>
         h.ref.current?.call(method, args).catch(errorCode);
       r.check('call runs a WebView method', (await call('webView.clearCache', [true])) === null);
       r.check('call returns the result', (await call('webView.getTitle')) === 'Test pages');
       r.check(
         'call rejects for a core-owned method',
-        (await call('webView.destroy')) === 'ERR_NATIVE'
+        (await call('webView.destroy')) === 'native_error'
       );
       r.check(
         'get refuses a core-owned method, and the WebView still works',
-        (await get('webView.destroy')) === 'ERR_NATIVE' && (await page('1+1')) === 2
+        (await get('webView.destroy')) === 'native_error' && (await page('1+1')) === 2
       );
       await page(`(document.cookie = 'mrw=1; path=/')`);
       const before = await page('document.cookie');
@@ -1570,7 +1568,10 @@ async function settings(h: Harness) {
         { before, removed }
       );
       r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
-      r.check('call rejects an unknown root', (await call('clearCache', [true])) === 'ERR_NATIVE');
+      r.check(
+        'call rejects an unknown root',
+        (await call('clearCache', [true])) === 'native_error'
+      );
     }
   } finally {
     console.warn = warn;
@@ -1954,9 +1955,9 @@ async function downloadsSuite(h: Harness) {
 /** Camera and location reach the page only when onPermissionRequest says yes, main frame only; the OS allows it here. */
 async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
-  const asked: PermissionRequestEvent[] = [];
+  const asked: PermissionRequest[] = [];
   let answer = false;
-  const handler = async (request: PermissionRequestEvent) => {
+  const handler = async (request: PermissionRequest) => {
     asked.push(request);
     return answer;
   };
@@ -2163,7 +2164,7 @@ async function sampleExtension(h: Harness) {
   await waitFor(h, () => h.events.pageCounts.at(-1)?.url === page, 5000);
   const event = h.events.pageCounts.at(-1);
   r.check(
-    'its delegate gets a callback the core implements too, and emits through onNativeEvent',
+    'its delegate gets a callback the core implements too, and emits through onHookEvent',
     h.events.pageCounts.length > before && event?.url === page,
     event
   );
@@ -2189,14 +2190,14 @@ async function sampleExtension(h: Harness) {
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
-  h.setProps({ nativeOptions: { pageCounter: { global: '__liveCount' } } });
+  h.setProps({ hookOptions: { pageCounter: { global: '__liveCount' } } });
   const live = await until(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
   );
   const kept = await h.ref.current?.evaluate('window.__kept');
   r.check(
-    'a nativeOptions change reaches its hook live, without recreating the WebView or reloading the page',
+    'a hookOptions change reaches its hook live, without recreating the WebView or reloading the page',
     !!live && kept === true && h.state().url === url && h.events.loads.length === loads,
     { live, kept, url: h.state().url, newLoads: h.events.loads.length - loads }
   );
@@ -2217,12 +2218,12 @@ async function sampleExtension(h: Harness) {
     );
   }
   // HTTP auth, which the core declines: the hook's delegate (client) answers it.
-  await recreate(h, { nativeOptions: { pageCounter: true, hookAuth: true } }, true);
+  await recreate(h, { hookOptions: { pageCounter: true, hookAuth: true } }, true);
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
   r.check('its delegate answers HTTP auth', auth === 'authorized', auth);
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
-  await recreate(h, { nativeOptions: { pageCounter: true, hookDialogs: true } }, true);
+  await recreate(h, { hookOptions: { pageCounter: true, hookDialogs: true } }, true);
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
   // The event reaches JS on its own schedule, after the evaluate result at times.

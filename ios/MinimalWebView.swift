@@ -4,7 +4,7 @@ import WebKit
 class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigationState = EventDispatcher()
   let onBridge = EventDispatcher()
-  let onNativeEvent = EventDispatcher()
+  let onHookEvent = EventDispatcher()
   let onError = EventDispatcher()
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
@@ -14,8 +14,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
-  /// The `nativeOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange).
-  var nativeOptions: [String: Any] = [:] {
+  /// The `hookOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange).
+  var hookOptions: [String: Any] = [:] {
     didSet { if webView != nil { optionsChanged(from: oldValue) } }
   }
   /// The `ios` prop: WebKit properties by name, applied by PlatformSettings.
@@ -211,7 +211,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The creation-time settings (`ios.configuration`) and the configure hooks go first and the bridge after them,
     // so nothing they set displaces the content controller the bridge is installed in.
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
-    hookContexts = MinimalWebViewHooks.hooks.filter { enables(nativeOptions[$0.key]) }.map { HookContext($0, self) }
+    hookContexts = MinimalWebViewHooks.hooks.filter { enables(hookOptions[$0.key]) }.map { HookContext($0, self) }
     for context in hookContexts { context.hook.configure?(configuration, context) }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
@@ -443,13 +443,13 @@ private let crashWindow: TimeInterval = 60
 extension MinimalWebView {
   /// Tells each attached hook whose value changed. A key that was not there when the WKWebView was made attaches nothing.
   private func optionsChanged(from old: [String: Any]) {
-    for key in Set(old.keys).union(nativeOptions.keys) {
-      let value = nativeOptions[key]
+    for key in Set(old.keys).union(hookOptions.keys) {
+      let value = hookOptions[key]
       if let was = old[key], let value, (was as AnyObject as? NSObject)?.isEqual(value) == true { continue }
       if let context = hookContexts.first(where: { $0.key == key }) {
         context.optionsChanged(value)
       } else if !enables(old[key]), enables(value) {
-        emit("core.warning", ["message": "nativeOptions.\(key): added after the WebView was created, so no hook attaches for it"])
+        emit("core.warning", ["message": "hookOptions.\(key): added after the WebView was created, so no hook attaches for it"])
       }
     }
   }
@@ -478,10 +478,10 @@ extension MinimalWebView {
   }
 
   func emit(_ name: String, _ payload: [String: Any]) {
-    onNativeEvent(["name": name, "payload": payload])
+    onHookEvent(["name": name, "payload": payload])
   }
 
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
-    onNativeEvent(["name": name, "payload": payload, "askId": register(onAnswer)])
+    onHookEvent(["name": name, "payload": payload, "askId": register(onAnswer)])
   }
 }

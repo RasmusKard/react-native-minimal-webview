@@ -6,7 +6,7 @@ implement: a hook gets the real `WKWebView` or `WebView` and its creation-time c
 delegates and clients. `example/modules/sample-extension` is a complete one.
 
 ```swift
-// iOS, in your module's OnCreate: a hook under the nativeOptions key that enables it
+// iOS, in your module's OnCreate: a hook under the hookOptions key that enables it
 MinimalWebViewHooks.register("myPackage.pageCounter", configure: { configuration, context in  // before the WKWebView exists
   configuration.dataDetectorTypes = .phoneNumber
 }) { webView, context in                                     // once it exists; return a detach closure or nil
@@ -28,14 +28,14 @@ MinimalWebViewHooks.register("myPackage.pageCounter") { webView, context ->  // 
 ```
 
 ```tsx
-<WebView nativeOptions={{ 'myPackage.pageCounter': { label: 'a' } }} onNativeEvent={({ name, payload }) => … } />
+<WebView hookOptions={{ 'myPackage.pageCounter': { label: 'a' } }} onHookEvent={({ name, payload }) => … } />
 await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's reply
 ```
 
 - **Registering.** `MinimalWebViewHooks.register(key, configure:, attach:)` from your module's `OnCreate`, before the
   first WebView. Hooks run in registration order. Keys are global: a second registration under a key replaces the
   first and logs a warning, so prefix yours with your package's name. `core` is reserved and refused.
-- **`nativeOptions`.** A hook attaches to a WebView created with a value for its key other than `null`, `undefined` or
+- **`hookOptions`.** A hook attaches to a WebView created with a value for its key other than `null`, `undefined` or
   `false` (JS doesn't send `null` and `undefined`). `context.options` is that value. A later change reaches the
   attached hook live, with no new WebView: its `onOptionsChange` handlers get the new value (null or nil when the key
   is removed), and `context.options` is it from then on. A key added after the WebView was created attaches nothing,
@@ -49,7 +49,7 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   `DelegateProxy` implements goes to the first delegate only. Android's `shouldInterceptRequest` runs on a background
   thread. Overriding `WebViewClientCompat`'s `onReceivedError`, `onSafeBrowsingHit` or
   `shouldOverrideUrlLoading(WebView, String)` variant counts as overriding the callback that forwards to it.
-- **Events.** `context.emit(name, payload)` sends `onNativeEvent({ name: '<key>.<name>', payload })`.
+- **Events.** `context.emit(name, payload)` sends `onHookEvent({ name: '<key>.<name>', payload })`.
   `context.ask(name, payload) { answer in … }` waits for the handler's return value (a promise is awaited; a throw or
   no handler answers null), with no timeout: one still open when the Document ends is answered null.
 - **Calls from JS.** `context.handle(method) { args, reply in … }` answers `ref.hook(key, method, args)`; call `reply`

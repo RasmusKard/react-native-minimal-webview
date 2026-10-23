@@ -8,8 +8,8 @@ import type { NavigationState, WebViewProps, WebViewRef } from '../types';
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
 const mockMount = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `native` and `hook`
-// methods; `native` and `hook` echo their request as JSON.
+// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `get`, `call` and
+// `hook` methods; `get`, `call` and `hook` echo their request as JSON.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
@@ -24,7 +24,9 @@ jest.mock('expo', () => {
           answer: mockAnswer,
           navigate: mockNavigate,
           evaluate: async () => '{"a":1}',
-          native: async (request: unknown) => JSON.stringify(request),
+          get: async (path: string) => JSON.stringify({ get: path }),
+          call: async (path: string, args: string, completion: string | null) =>
+            JSON.stringify({ call: path, args, completion }),
           hook: async (name: string, method: string, args: string) =>
             JSON.stringify({ name, method, args }),
         }));
@@ -148,23 +150,21 @@ describe('load events and errors', () => {
   });
 });
 
-describe('nativeOptions', () => {
+describe('hookOptions', () => {
   const nativeOf = (root: ReturnType<typeof createRoot>) =>
     root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
 
   it('a change reaches the same native view: native passes it to the hooks live', async () => {
     const root = createRoot();
-    const show = (nativeOptions: Record<string, unknown>) =>
+    const show = (hookOptions: Record<string, unknown>) =>
       act(async () =>
-        root.render(
-          <WebView source={{ uri: 'https://example.com' }} nativeOptions={nativeOptions} />
-        )
+        root.render(<WebView source={{ uri: 'https://example.com' }} hookOptions={hookOptions} />)
       );
     mockMount.mockClear();
     await show({ sample: { mode: 'a' }, other: 1 });
     await show({ sample: { mode: 'b' }, other: 1 });
     expect(mockMount).toHaveBeenCalledTimes(1);
-    expect(nativeOf(root)?.nativeOptions).toEqual({ sample: { mode: 'b' }, other: 1 });
+    expect(nativeOf(root)?.hookOptions).toEqual({ sample: { mode: 'b' }, other: 1 });
   });
 
   it('null and undefined values are not sent: the key is off, or removed', async () => {
@@ -173,13 +173,21 @@ describe('nativeOptions', () => {
       root.render(
         <WebView
           source={{ uri: 'https://example.com' }}
-          nativeOptions={{ on: true, off: false, gone: null, unset: undefined }}
+          hookOptions={{ on: true, off: false, gone: null, unset: undefined }}
         />
       )
     );
-    expect(nativeOf(root)?.nativeOptions).toEqual({ on: true, off: false });
-    expect(Object.keys(nativeOf(root)?.nativeOptions as object)).toEqual(['on', 'off']);
+    expect(nativeOf(root)?.hookOptions).toEqual({ on: true, off: false });
+    expect(Object.keys(nativeOf(root)?.hookOptions as object)).toEqual(['on', 'off']);
   });
+});
+
+it('takes a ref to a WebViewRef, and no other ref', () => {
+  const ref = createRef<WebViewRef>();
+  const element = <WebView source={{ uri: 'https://example.com' }} ref={ref} />;
+  // @ts-expect-error because the ref is a Text's, not a WebViewRef
+  const wrong = <WebView source={{ uri: 'https://example.com' }} ref={createRef<Text>()} />;
+  expect([element, wrong]).toHaveLength(2);
 });
 
 describe('ref.hook', () => {
@@ -308,10 +316,10 @@ describe('platform settings', () => {
     const root = createRoot();
     await act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} />));
     const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-      onNativeEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+      onHookEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
     };
     await act(() =>
-      native.onNativeEvent({
+      native.onHookEvent({
         nativeEvent: {
           name: 'core.warning',
           payload: { message: 'ios.scrollView.nope: no such property' },
@@ -335,10 +343,10 @@ describe('page requests', () => {
     const native = () =>
       root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
         requestHandlers: string[];
-        onNativeEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+        onHookEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
       };
     const fire: Fire = (name, payload, askId) =>
-      act(() => native().onNativeEvent({ nativeEvent: { name, payload, askId } }));
+      act(() => native().onHookEvent({ nativeEvent: { name, payload, askId } }));
     return { show, native, fire };
   }
 
@@ -403,14 +411,14 @@ describe('page requests', () => {
     error.mockRestore();
   });
 
-  it('answers null when the prop is gone or throws, and routes other names to onNativeEvent', async () => {
+  it('answers null when the prop is gone or throws, and routes other names to onHookEvent', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const onNativeEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
+    const onHookEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
     const { fire } = await renderRequests({
       onPermissionRequest: () => {
         throw new Error('no');
       },
-      onNativeEvent,
+      onHookEvent,
     });
     await fire(
       'core.permissionRequest',
@@ -424,15 +432,15 @@ describe('page requests', () => {
     );
     await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    expect(onNativeEvent).not.toHaveBeenCalled();
+    expect(onHookEvent).not.toHaveBeenCalled();
     await fire('pageCounter.pick', { a: 1 }, 4);
-    expect(onNativeEvent).toHaveBeenCalledWith(
+    expect(onHookEvent).toHaveBeenCalledWith(
       { name: 'pageCounter.pick', payload: { a: 1 } },
       expect.any(AbortSignal)
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pageCounter.pick!' });
     await fire('pageCounter.note', { b: 2 });
-    expect(onNativeEvent).toHaveBeenLastCalledWith(
+    expect(onHookEvent).toHaveBeenLastCalledWith(
       { name: 'pageCounter.note', payload: { b: 2 } },
       undefined
     );
@@ -533,7 +541,11 @@ describe('navigation state across remounts', () => {
     expect(await ref.current?.call('clearCache', [true])).toEqual({
       call: 'clearCache',
       args: '[true]',
+      completion: null,
     });
+    expect(
+      await ref.current?.call('webView.x:completionHandler:', [], { completion: 'error' })
+    ).toEqual({ call: 'webView.x:completionHandler:', args: '[]', completion: 'error' });
     const stale = ref.current;
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();

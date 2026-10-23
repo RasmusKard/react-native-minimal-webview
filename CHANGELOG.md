@@ -15,10 +15,16 @@
 - `onDownload`: a result has `ok` (`true` for a `Download`, `false` for a `DownloadFailure`) to narrow on.
 - iOS `allowsInlineMediaPlayback` defaults to `true`.
 - JS no longer sends the platforms' own defaults for `javaScriptCanOpenWindowsAutomatically` and gesture-only playback: such a key you remove keeps its value until the WebView is recreated.
+- Hooks: `nativeOptions` is `hookOptions`, `onNativeEvent` is `onHookEvent`, and the `NativeEvent` type is `HookEvent<N, P>` (`N` and `P` type the name and payload). Native hook code reads `context.options` as before.
+- Types: `PermissionRequestEvent` is `PermissionRequest`, `WebViewErrorEvent` is `LoadErrorEvent`. Asks are `…Request`, notifications `…Event`.
+- Ref error codes are lowercase: `ERR_EVALUATE` is `script_error`, `ERR_NATIVE` is `native_error`. Android's `get` and `call` reject any exception with `native_error`, not only a refused key.
+- `WebViewProps` is an interface that extends `ViewProps` and includes `ref`.
+- Native: the view's `native` function is split into `get(path)` and `call(path, argsJson, completion)`.
 
 ### Added
 
 - Bridge: per-call `{ timeoutMs }` (`0` or `Infinity` for none).
+- Types: `WebViewErrorCode` and `CodedError` for ref method rejections, and `FullscreenChangeEvent`.
 
 ### Changed
 

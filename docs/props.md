@@ -11,7 +11,7 @@
 | `pullToRefresh` | Pull down at the top of the page to reload: `UIRefreshControl`, or `SwipeRefreshLayout` (a pull inside a scrolled inner scroller, `overflow: auto`, scrolls it instead) |
 | `sharedCookies` | iOS: copies `HTTPCookieStorage` into the WebView before each `source` load (the load waits for it), and the WebView's cookie changes, deletions included, back as they happen. Android needs nothing: `CookieManager` is app-wide, flushed when the app backgrounds |
 | `onFileRequest`, `onFullscreenChange`, `onPermissionRequest`, `onDownload` | See [Page requests](page-requests.md). They can be added and removed at any time |
-| `nativeOptions`, `onNativeEvent` | What your [native hooks](native-hooks.md) get, and what they send. Its keys pick the hooks when the WebView is created; a changed value reaches its hook live |
+| `hookOptions`, `onHookEvent` | What your [native hooks](native-hooks.md) get, and what they send. Its keys pick the hooks when the WebView is created; a changed value reaches its hook live |
 | `onNavigationStateChange` | Every change to the [navigation state](navigation-state.md) |
 | `onLoadStart`, `onLoadEnd` | The navigation state when `loading` goes true, and when it goes false. `onLoadEnd`'s `state.outcome` says how the load ended: `finished`, `failed` (a network or SSL error, or a crash cut it off) or `cancelled` (it never showed a page: a stop before the response, a download, a 204, a redirect the rules blocked, a load a newer one replaced). An HTTP error status (404) is `finished`: the site's page shows. A stop after the page arrived is `cancelled` on iOS and `finished` on Android. On Android with a WebView older than 146, a load that never commits fires neither event |
 | `onError` | Main-frame errors only. `{ kind: 'network' \| 'ssl', url, code, description }`: the load failed (`outcome: 'failed'`). SSL errors are always cancelled. `{ kind: 'http', url, statusCode }`: the response had an HTTP error status (400+), and the site's own error page shows. On Android with a WebView older than 146, an SSL error on a back/forward load isn't reported |
@@ -26,11 +26,15 @@ in the [navigation state](navigation-state.md).
 
 `evaluate` runs an expression (not statements) in the main frame and awaits a returned Promise. The value comes back
 through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null` and a `Date` gives its ISO string. A
-throw or rejection rejects with code `ERR_EVALUATE`, a navigation or crash before the script finishes with `navigated`,
+throw or rejection rejects with code `script_error`, a navigation or crash before the script finishes with `navigated`,
 and on Android a WebView without `WEB_MESSAGE_LISTENER` with `unavailable`. On a ref handle that outlived its WebView
 (kept from before an unmount), `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and the other ref
 methods do nothing. The result is whatever the page's own JS
 returns, so treat it as page data. On Android it comes back through a global that pages see, `window.nativeEvaluateResult` (see [Security defaults](security.md)).
+
+A ref method rejects with a `CodedError`, an `Error` whose `code` is a `WebViewErrorCode`: `script_error` (`evaluate`),
+`native_error` (`get`, `call`, and on iOS a `hook` reply that isn't JSON), `navigated`, `unavailable` or
+`hook_not_handled` (`hook`).
 
 ## Starting early
 
@@ -55,7 +59,7 @@ layout.
 
 ```tsx
 const { loading } = useWebViewState(ref);
-const [error, setError] = useState<WebViewErrorEvent | null>(null);
+const [error, setError] = useState<LoadErrorEvent | null>(null);
 <View style={{ flex: 1 }}>
   <WebView
     ref={ref}
