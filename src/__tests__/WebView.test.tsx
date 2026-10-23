@@ -8,7 +8,7 @@ import type { Bridge, NavigationState, WebViewProps, WebViewRef } from '../types
 
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
-const mockBridgePost = jest.fn();
+const mockBridgePost = jest.fn<void, [json: string]>();
 const mockMount = jest.fn();
 // A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `bridgePost`, `evaluate`, `get`,
 // `call` and `hook` methods; `get`, `call` and `hook` echo their request as JSON.
@@ -204,7 +204,7 @@ describe('bridge', () => {
     act(async () =>
       (native as { onBridge: (event: { nativeEvent: object }) => void }).onBridge({ nativeEvent })
     );
-  const posted = () => JSON.parse(mockBridgePost.mock.lastCall?.[0] as string) as unknown;
+  const posted = () => JSON.parse(mockBridgePost.mock.lastCall?.[0] ?? '') as unknown;
 
   it("gives native the page client and origins, and answers a page's call with its origin", async () => {
     const bridge = newBridge();
