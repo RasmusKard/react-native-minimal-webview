@@ -81,8 +81,10 @@ iOS, `websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:` (belo
 
 iOS: an Objective-C selector on a settings root, `websiteDataStore` or `httpCookieStore`, the arguments set by the
 method's signature: booleans, numbers, strings, the four structs as objects, `null` for nil, and `{ set: [...] }`,
-`{ date: seconds }` or `{ data: base64 }` for an NSSet, NSDate or NSData. A selector that ends in a completion handler
-needs the handler's shape in `options.completion`:
+`{ date: seconds }`, `{ data: base64 }` or `{ cookie: properties }` for an NSSet, NSDate, NSData or NSHTTPCookie. A
+cookie's properties are `NSHTTPCookie`'s keys: `Name`, `Value`, `Domain` and `Path` (strings) are required, and
+`Max-Age` (seconds, as a string), `Secure`, `HttpOnly` and `SameSite` are some of the optional ones. A selector that
+ends in a completion handler needs the handler's shape in `options.completion`:
 
 | `completion` | The handler | Resolves with |
 |---|---|---|
@@ -100,15 +102,23 @@ await ref.current?.call(
 const pdf = await ref.current?.call('webView.createPDFWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
 const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64 PNG
 await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
+await ref.current?.call(
+  'httpCookieStore.setCookie:completionHandler:',
+  [{ cookie: { Name: 'session', Value: 'abc', Domain: 'example.com', Path: '/', 'Max-Age': '3600' } }],
+  { completion: 'void' }
+);
+const cookies = await ref.current?.call('httpCookieStore.getAllCookies:', [], { completion: 'value' }); // [{ Name, Value, Domain, … }]
 ```
 
 Results come back through JSON: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64,
-a `UIImage` as a base64 PNG, the four structs as objects, and arrays, sets and dictionaries of them; any other object
-is `null`. Refused with `native_error`: on iOS every selector that loads, navigates, runs a script, starts a download
-or sets a delegate, and private (`_`), KVC, KVO (`willChange…`, `didChange…`), `performSelector`, `init…`, `copy…`,
-`mutable…`, `new…` and reference-counting selectors; on Android, in `call` and `get`, the loads, navigations, clients,
-JavaScript interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
-`resumeTimers` and `evaluateJavascript`. So are an unknown selector, a wrong argument count, an argument that doesn't
-fit the signature, a method or getter that raises, and on iOS a result JSON can't carry (a NaN).
+a `UIImage` as a base64 PNG, the four structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds),
+and arrays, sets and dictionaries of them; any other object is `null`. Refused with `native_error`: on iOS every
+selector that loads, navigates, runs a script, starts a download or sets a delegate, and private (`_`), KVC, KVO
+(`willChange…`, `didChange…`), `performSelector`, `init…`, `copy…`, `mutable…`, `new…` and reference-counting
+selectors; on Android, in `call` and `get`, the loads, navigations, clients, JavaScript interfaces, web message
+listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers` and
+`evaluateJavascript`. So are an unknown selector, a wrong argument count, an argument that doesn't fit the signature
+(on iOS also a tag that can't make its object: `{ data }` that isn't base64, a `{ cookie }` without a required key), a
+method or getter that raises, and on iOS a result JSON can't carry (a NaN).
 Two things the signature can't check are undefined behaviour and crash the app: a wrong completion shape, and an
-object argument of the wrong class. For a method that takes an object, write a [native hook](native-hooks.md).
+object argument of the wrong class. For a method that takes another object, write a [native hook](native-hooks.md).

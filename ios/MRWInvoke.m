@@ -23,6 +23,7 @@ id MRWJsonable(id value) {
   if ([value isKindOfClass:NSDate.class]) return @([value timeIntervalSince1970]);
   if ([value isKindOfClass:NSData.class]) return [value base64EncodedStringWithOptions:0];
   if ([value isKindOfClass:UIImage.class]) return MRWJsonable(UIImagePNGRepresentation(value));
+  if ([value isKindOfClass:NSHTTPCookie.class]) return MRWJsonable([value properties]);
   if ([value isKindOfClass:NSArray.class] || [value isKindOfClass:NSSet.class]) {
     NSMutableArray *list = [NSMutableArray new];
     for (id item in value) [list addObject:MRWJsonable(item)];
@@ -37,14 +38,21 @@ id MRWJsonable(id value) {
   return NSNull.null;
 }
 
-/// A JSON argument for an `@` parameter: nil for null, the tagged objects as their class, the rest as is.
+/// A JSON argument for an `@` parameter: nil for null, the tagged objects as their class (nil for one that can't be
+/// made), the rest as is.
 static id MRWObject(id json) {
   if (json == NSNull.null) return nil;
   if (![json isKindOfClass:NSDictionary.class] || [json count] != 1) return json;
-  id set = json[@"set"], date = json[@"date"], data = json[@"data"];
+  id set = json[@"set"], date = json[@"date"], data = json[@"data"], cookie = json[@"cookie"];
   if ([set isKindOfClass:NSArray.class]) return [NSSet setWithArray:set];
   if ([date isKindOfClass:NSNumber.class]) return [NSDate dateWithTimeIntervalSince1970:[date doubleValue]];
   if ([data isKindOfClass:NSString.class]) return [[NSData alloc] initWithBase64EncodedString:data options:0];
+  if ([cookie isKindOfClass:NSDictionary.class]) {
+    // A `Path` that isn't a string raises instead of returning nil.
+    __block NSHTTPCookie *made = nil;
+    MRWCatchException(^{ made = [NSHTTPCookie cookieWithProperties:cookie]; });
+    return made;
+  }
   return json;
 }
 
@@ -83,6 +91,7 @@ static BOOL MRWSetArgument(NSInvocation *invocation, NSUInteger index, const cha
     case '@': {
       if (type[1] == '?') break;
       id object = MRWObject(value);
+      if (!object && value != NSNull.null) break;
       if (object) [keep addObject:object];
       MRW_SET(id, object)
     }
