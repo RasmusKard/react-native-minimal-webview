@@ -147,3 +147,38 @@ the reason); every other class and file keeps the global thresholds.
   they would need are core-only (the `core.` event prefix, the `requestHandlers` gate, the file chooser launcher, an
   awaited `evaluate`) and would become a hidden half of the context. The other two, a cancellable `ask` and the
   download listener slot, wait for a hook that needs them.
+
+## Shared cookies, pull-to-refresh and download saving stay in Core
+
+On 2026-10-22 three features were deferred as candidates to leave Core, to revisit once the hook seams they need had
+landed: shared cookies (iOS), pull-to-refresh and download saving. So were the seams: an Android content wrapper a hook
+can own (S2), Android download listeners on `WebViewContext` (S3), an iOS response-policy split (S4), a before-load
+gate (S5, of which `context.holdLoads()` was the first-load-only form), `context.reload()` (S6), and decision hooks that
+fall back to the core (`context.core`). Decided 2026-10-23: the three stay in Core, and the deferral is closed for
+them. Core is all of the package's native code, so an extension inside the package removes no line: the prop stays,
+and the seams and glue add about 6, 38 and 38 lines. A recipe in the app instead costs each app that wants the
+feature an Expo module of its own, about 90, 195 and 295 lines and a native rebuild, more than the feature costs the
+package.
+
+### What follows
+
+- A seam lands only for a named use, an extension that needs it. S3, S4, S5, `context.core` and a cancellable hook
+  `ask` (withdrawn when the platform withdraws its callback) wait for one. S2 and S6 are not added: no use needs native
+  UI around the WebView, and `ref.reload()` reloads from JS.
+- S5, when it comes, is per load, on both platforms, with a timeout for a `done` that never comes: a one-shot
+  `holdLoads()` doesn't fit cookies, which are copied before every `source` load. `context.core` comes on both
+  platforms or neither; on Android it needs a way past the routing of every decision. The cancellable `ask` comes with
+  S3 or S5.
+- A TS registry of hook types (an augmentable `HookTypes` behind `hookOptions`, `onHookEvent` and `ref.hook`) waits
+  for a first extension outside this repository; until then `HookEvent<N, P>` types one hook's events.
+
+### Considered and rejected
+
+- Each feature as an extension inside the package: no smaller, and each brings its own break. Shared cookies makes
+  `sharedCookies` a taken hook key and needs S5. Pull-to-refresh needs S2, S6 and a load-end observation, takes the
+  WebView out of the `SwipeRefreshLayout` it always sits in, and the vh=0 layout fix moves with it. Download saving
+  renames the pinned `core.download` event, orders itself against the app's hooks by Expo's module order, and its
+  `blob:` read loses the core `evaluate`'s checks.
+- Each as a recipe in the app: the module above, and for downloads against "don't touch Android's download listener"
+  ([Native hooks](native-hooks.md)). Shared cookies would still miss the first load, which nothing outside the core
+  can hold.

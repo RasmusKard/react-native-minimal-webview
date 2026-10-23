@@ -6,6 +6,9 @@ Possible future work, not commitments.
 
 - **Android `scrollEnabled`.** iOS has `ios.scrollView.scrollEnabled`; Android has no setter for it. Injected CSS
   `overflow: hidden` covers it today.
+- **Hook seams, each for a named use.** Android download listeners on the hook context, an iOS response-policy split,
+  a before-load gate, `context.core` and a cancellable hook `ask`; a TS registry of hook types with the first outside
+  extension ([why they wait](docs/decisions.md#shared-cookies-pull-to-refresh-and-download-saving-stay-in-core)).
 
 ## User space (a recipe or an optional extension)
 
