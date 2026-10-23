@@ -76,4 +76,5 @@ Q10 (1.5 for an integer setting) keeps today's truncation; lizard stays out.
   may count as unchanged (D11); the iOS crash reload may skip the shared-cookie copy (synthesis caveat).
 - iOS `dialogs` stalled once in wave 3 and passed on its rerun. mrw-api37 runs only with `-no-window` on this host
   (docs/development.md says so).
-- docs/development.md is true at the head: every command in it ran in the final checks.
+- docs/development.md is true at the head: its check commands ran in the final checks; the AVD and sample-extension
+  lines were run by the S-21 agent.
