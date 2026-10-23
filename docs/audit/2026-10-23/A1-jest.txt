@@ -1,0 +1,10 @@
+
+> minimal-rn-webview@0.1.0 test
+> jest --watchAll=false
+
+
+Test Suites: 7 passed, 7 total
+Tests:       199 passed, 199 total
+Snapshots:   0 total
+Time:        1.463 s, estimated 2 s
+Ran all test suites.

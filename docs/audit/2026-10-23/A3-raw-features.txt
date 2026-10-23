@@ -1,0 +1,107 @@
+# Heuristic: per feature, the files whose non-comment lines match the feature's identifiers (word regexes, so strings and same-named locals can match). Counts are files(lines). Used only to size how far a feature spreads, not as a call graph.
+# Files that mention each feature's identifiers (comments excluded). Kotlin | Swift | TS (WebView.tsx)
+# feature  =>  K: n files (names:lines)  S: n files  T: lines
+
+## file chooser / onFileRequest
+  Kotlin 4 files: MinimalWebView.kt(9); MinimalWebViewClients.kt(7); MinimalWebViewModule.kt(9); requests/FileUpload.kt(4)
+  Swift  0 files: 
+  TS     1 lines: WebView.tsx:84
+
+## permissions
+  Kotlin 3 files: MinimalWebView.kt(2); MinimalWebViewClients.kt(17); requests/Permissions.kt(9)
+  Swift  2 files: DelegateProxy.swift(1); MinimalWebView+Dialogs.swift(3)
+  TS     1 lines: WebView.tsx:86
+
+## fullscreen video
+  Kotlin 3 files: MinimalWebView.kt(3); MinimalWebViewClients.kt(7); requests/FullscreenVideo.kt(4)
+  Swift  0 files: 
+  TS     1 lines: WebView.tsx:85
+
+## downloads
+  Kotlin 4 files: MinimalWebView.kt(7); MinimalWebViewNavigation.kt(1); PlatformSettings.kt(1); requests/Downloads.kt(7)
+  Swift  3 files: Downloads.swift(9); MinimalWebView+Navigation.swift(3); MinimalWebView.swift(8)
+  TS     1 lines: WebView.tsx:87
+
+## pull-to-refresh
+  Kotlin 3 files: MinimalWebView.kt(9); MinimalWebViewModule.kt(1); PullToRefresh.kt(1)
+  Swift  2 files: MinimalWebView.swift(6); MinimalWebViewModule.swift(1)
+  TS     3 lines: WebView.tsx:101,123,357
+
+## shared cookies
+  Kotlin 0 files: 
+  Swift  3 files: MinimalWebView.swift(6); MinimalWebViewModule.swift(1); SharedCookies.swift(6)
+  TS     3 lines: WebView.tsx:102,126,358
+
+## ask machinery (ids, cancel, timeouts)
+  Kotlin 3 files: MinimalWebView.kt(12); MinimalWebViewNavigation.kt(3); requests/Permissions.kt(4)
+  Swift  5 files: DocumentScope.swift(1); Hooks.swift(1); MinimalWebView+Navigation.swift(12); MinimalWebView.swift(5); MinimalWebViewModule.swift(1)
+  TS     14 lines: WebView.tsx:74,149,308,309,314,317,320,328,329,330,331,339
+
+## crash recovery + guard
+  Kotlin 4 files: MinimalWebView.kt(26); MinimalWebViewClients.kt(3); MinimalWebViewModule.kt(5); MinimalWebViewNavigation.kt(1)
+  Swift  2 files: MinimalWebView.swift(11); MinimalWebViewModule.swift(1)
+  TS     5 lines: WebView.tsx:59,108,142,372,373
+
+## navigation state emit
+  Kotlin 3 files: MinimalWebView.kt(23); MinimalWebViewClients.kt(20); MinimalWebViewModule.kt(2)
+  Swift  2 files: MinimalWebView.swift(28); MinimalWebViewModule.swift(1)
+  TS     12 lines: WebView.tsx:41,49,106,138,179,265,366,367,480,483,487,498
+
+## bridge transport
+  Kotlin 3 files: MinimalWebView.kt(5); MinimalWebViewModule.kt(4); MinimalWebViewScripts.kt(12)
+  Swift  3 files: MinimalWebView+Scripts.swift(12); MinimalWebView.swift(8); MinimalWebViewModule.swift(4)
+  TS     16 lines: WebView.tsx:132,133,139,147,294,297,298,299,300,302,303,304
+
+## evaluate
+  Kotlin 4 files: MinimalWebView.kt(2); MinimalWebViewModule.kt(2); MinimalWebViewScripts.kt(19); requests/Downloads.kt(1)
+  Swift  3 files: MinimalWebView+Scripts.swift(12); MinimalWebView.swift(3); MinimalWebViewModule.swift(2)
+  TS     2 lines: WebView.tsx:151,279
+
+## platform settings (get/call/apply)
+  Kotlin 3 files: MinimalWebView.kt(5); MinimalWebViewModule.kt(3); PlatformSettings.kt(1)
+  Swift  3 files: MinimalWebView.swift(4); MinimalWebViewModule.swift(3); PlatformSettings.swift(2)
+  TS     7 lines: WebView.tsx:97,120,293,451,463,471,473
+
+## navigation rules + ask rule
+  Kotlin 6 files: MinimalWebView.kt(2); MinimalWebViewClients.kt(4); MinimalWebViewModule.kt(1); MinimalWebViewNavigation.kt(19); NavigationRules.kt(2); requests/Permissions.kt(3)
+  Swift  5 files: DelegateProxy.swift(1); MinimalWebView+Navigation.swift(21); MinimalWebView.swift(7); MinimalWebViewModule.swift(1); NavigationRules.swift(1)
+  TS     9 lines: WebView.tsx:51,82,83,98,123,336,346,347,359
+
+## hook plumbing
+  Kotlin 3 files: Hooks.kt(4); MinimalWebView.kt(21); MinimalWebViewModule.kt(2)
+  Swift  4 files: DelegateProxy.swift(7); Hooks.swift(14); MinimalWebView.swift(30); MinimalWebViewModule.swift(2)
+  TS     12 lines: WebView.tsx:103,104,134,140,160,286,287,317,326,337,363,370
+
+## JS dialogs
+  Kotlin 1 files: MinimalWebViewClients.kt(12)
+  Swift  3 files: DelegateProxy.swift(3); MinimalWebView+Dialogs.swift(13); MinimalWebView.swift(3)
+  TS     0 lines: 
+
+## injected scripts
+  Kotlin 3 files: MinimalWebView.kt(1); MinimalWebViewModule.kt(2); MinimalWebViewScripts.kt(10)
+  Swift  3 files: MinimalWebView+Scripts.swift(8); MinimalWebView.swift(6); MinimalWebViewModule.swift(2)
+  TS     3 lines: WebView.tsx:99,123,360
+
+## document scope
+  Kotlin 5 files: DocumentScope.kt(5); Hooks.kt(6); MinimalWebView.kt(14); MinimalWebViewScripts.kt(3); requests/FullscreenVideo.kt(3)
+  Swift  4 files: DocumentScope.swift(1); Hooks.swift(4); MinimalWebView+Navigation.swift(1); MinimalWebView.swift(11)
+  TS     0 lines: 
+
+## summary: feature | Kotlin files | Swift files | TS lines
+file chooser / onFileRequest               4   0    1
+permissions                                3   2    1
+fullscreen video                           3   0    1
+downloads                                  4   3    1
+pull-to-refresh                            3   2    3
+shared cookies                             0   3    3
+ask machinery (ids, cancel, timeouts)      3   5   14
+crash recovery + guard                     4   2    5
+navigation state emit                      3   2   12
+bridge transport                           3   3   16
+evaluate                                   4   3    2
+platform settings (get/call/apply)         3   3    7
+navigation rules + ask rule                6   5    9
+hook plumbing                              3   4   12
+JS dialogs                                 1   3    0
+injected scripts                           3   3    3
+document scope                             5   4    0

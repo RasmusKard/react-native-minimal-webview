@@ -1,0 +1,63 @@
+..............
+
+14 kotlin files were analyzed.
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:35:7: The function apply appears to be too complex based on Cyclomatic Complexity (complexity: 16). Defined complexity threshold for methods is set to '15' [CyclomaticComplexMethod]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:147:15: The function coerce appears to be too complex based on Cyclomatic Complexity (complexity: 24). Defined complexity threshold for methods is set to '15' [CyclomaticComplexMethod]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:35:7: The function apply appears to be too complex based on Cognitive Complexity (complexity: 15). Defined complexity threshold for methods is set to '15' [CognitiveComplexMethod]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/NavigationRules.kt:81:22: The function matches(rule: Map<String, Any?>, scheme: String, host: String?, path: String, params: List<String>, request: Request) has too many parameters. The current threshold is set to 6. [LongParameterList]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/requests/Downloads.kt:53:15: The function fetch appears to be too complex based on Cognitive Complexity (complexity: 23). Defined complexity threshold for methods is set to '15' [CognitiveComplexMethod]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt:31:7: Class 'MinimalWebView' with '20' functions detected. Defined threshold inside classes is set to '11' [TooManyFunctions]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16: The function definition is too long (77). The maximum length is 60. [LongMethod]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16: The function definition appears to be too complex based on Cyclomatic Complexity (complexity: 15). Defined complexity threshold for methods is set to '15' [CyclomaticComplexMethod]
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16: The function definition appears to be too complex based on Cognitive Complexity (complexity: 19). Defined complexity threshold for methods is set to '15' [CognitiveComplexMethod]
+
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt - 1h debt
+	[33mCyclomaticComplexMethod - 16/15 - [The function apply appears to be too complex based on Cyclomatic Complexity (com(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:35:7[0m
+	[33mCyclomaticComplexMethod - 24/15 - [The function coerce appears to be too complex based on Cyclomatic Complexity (co(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:147:15[0m
+	[33mCognitiveComplexMethod - 15/15 - [The function apply appears to be too complex based on Cognitive Complexity (comp(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:35:7[0m
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/NavigationRules.kt - 20min debt
+	[33mLongParameterList - 6/6 - [The function matches(rule: Map<String, Any?>, scheme: String, host: String?, pat(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/NavigationRules.kt:81:22[0m
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/requests/Downloads.kt - 20min debt
+	[33mCognitiveComplexMethod - 23/15 - [The function fetch appears to be too complex based on Cognitive Complexity (comp(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/requests/Downloads.kt:53:15[0m
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt - 20min debt
+	[33mTooManyFunctions - 20/11 - [Class 'MinimalWebView' with '20' functions detected. Defined threshold inside cl(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt:31:7[0m
+/Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt - 1h debt
+	[33mLongMethod - 77/60 - [The function definition is too long (77). The maximum length is 60.] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16[0m
+	[33mCyclomaticComplexMethod - 15/15 - [The function definition appears to be too complex based on Cyclomatic Complexity(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16[0m
+	[33mCognitiveComplexMethod - 19/15 - [The function definition appears to be too complex based on Cognitive Complexity (...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16[0m
+
+Overall debt: 3h
+
+complexity - 3h debt
+	[33mCyclomaticComplexMethod - 16/15 - [The function apply appears to be too complex based on Cyclomatic Complexity (com(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:35:7[0m
+	[33mCyclomaticComplexMethod - 24/15 - [The function coerce appears to be too complex based on Cyclomatic Complexity (co(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:147:15[0m
+	[33mCognitiveComplexMethod - 15/15 - [The function apply appears to be too complex based on Cognitive Complexity (comp(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt:35:7[0m
+	[33mLongParameterList - 6/6 - [The function matches(rule: Map<String, Any?>, scheme: String, host: String?, pat(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/NavigationRules.kt:81:22[0m
+	[33mCognitiveComplexMethod - 23/15 - [The function fetch appears to be too complex based on Cognitive Complexity (comp(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/requests/Downloads.kt:53:15[0m
+	[33mTooManyFunctions - 20/11 - [Class 'MinimalWebView' with '20' functions detected. Defined threshold inside cl(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebView.kt:31:7[0m
+	[33mLongMethod - 77/60 - [The function definition is too long (77). The maximum length is 60.] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16[0m
+	[33mCyclomaticComplexMethod - 15/15 - [The function definition appears to be too complex based on Cyclomatic Complexity(...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16[0m
+	[33mCognitiveComplexMethod - 19/15 - [The function definition appears to be too complex based on Cognitive Complexity (...)] at /Users/rasmus.kard/minimal-rn-webview/android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57:16[0m
+
+Overall debt: 3h
+
+Complexity Report:
+	- 2,373 lines of code (loc)
+	- 1,710 source lines of code (sloc)
+	- 1,306 logical lines of code (lloc)
+	- 381 comment lines of code (cloc)
+	- 608 cyclomatic complexity (mcc)
+	- 399 cognitive complexity
+	- 9 number of total code smells
+	- 22% comment source ratio
+	- 465 mcc per 1,000 lloc
+	- 6 code smells per 1,000 lloc
+
+Project Statistics:
+	- number of properties: 254
+	- number of functions: 193
+	- number of classes: 31
+	- number of packages: 2
+	- number of kt files: 14
+
+Analysis failed with 9 weighted issues.

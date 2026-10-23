@@ -1,0 +1,5 @@
+src/__tests__/createBridge.test.ts:17: warning: (anonymous) has 7 NLOC, 1 CCN, 65 token, 0 PARAM, 69 length, 0 ND
+ios/MinimalWebViewModule.swift:5: warning: definition has 64 NLOC, 11 CCN, 819 token, 0 PARAM, 78 length, 0 ND
+ios/PlatformSettings.swift:143: warning: coerce has 41 NLOC, 24 CCN, 463 token, 2 PARAM, 41 length, 0 ND
+android/src/main/java/expo/modules/minimalwebview/MinimalWebViewNavigation.kt:17: warning: (anonymous) has 13 NLOC, 1 CCN, 40 token, 0 PARAM, 157 length, 0 ND
+android/src/main/java/expo/modules/minimalwebview/MinimalWebViewModule.kt:57: warning: definition has 82 NLOC, 12 CCN, 905 token, 0 PARAM, 109 length, 0 ND

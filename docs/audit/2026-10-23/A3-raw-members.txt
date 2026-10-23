@@ -1,0 +1,455 @@
+# A3 raw data, generated at 333f05f by a read-only script (grep of `owner.<member>` / `view.<member>` per file, plus a word-grep for the Swift extension files, which use their members unqualified).
+# The Swift "member -> files" block is a plain word search: `webView`, `code`, `message`, `origin`, `register`, `ask`, `reload` rows include same-named locals, parameters and other types' members. Read it with the report's Swift table, which was checked by hand.
+# Kotlin `view` in MinimalWebViewClients.kt is android.webkit.WebView and is not counted; the clients reach the view only through `owner`.
+
+# KOTLIN: <viewname>.<member> occurrences per file (file:line:text), viewname = owner or view (MinimalWebView typed)
+# Clients.kt 'view' is android.webkit.WebView, not counted.
+
+== MinimalWebViewClients.kt  (receiver `owner`)
+MinimalWebViewClients.kt:46: owner.cancelFileChooser    | owner.cancelFileChooser()
+MinimalWebViewClients.kt:47: owner.pendingUrl    | owner.pendingUrl = navigation.url
+MinimalWebViewClients.kt:48: owner.loading    | owner.loading = true
+MinimalWebViewClients.kt:49: owner.outcome    | owner.outcome = null
+MinimalWebViewClients.kt:50: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:54: owner.pendingUrl    | owner.pendingUrl = navigation.url
+MinimalWebViewClients.kt:55: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:60: owner.url    | if (navigation.didCommit()) owner.url = navigation.url
+MinimalWebViewClients.kt:63: owner.pendingUrl    | owner.pendingUrl = null
+MinimalWebViewClients.kt:66: owner.outcome    | owner.outcome = owner.outcome ?: when {
+MinimalWebViewClients.kt:66: owner.outcome    | owner.outcome = owner.outcome ?: when {
+MinimalWebViewClients.kt:73: owner.loading    | owner.loading = false
+MinimalWebViewClients.kt:74: owner.pageFinished    | owner.pageFinished()
+MinimalWebViewClients.kt:77: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:82: owner.loading    | owner.loading = false
+MinimalWebViewClients.kt:83: owner.pageFinished    | owner.pageFinished()
+MinimalWebViewClients.kt:84: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:96: owner.clients    | private fun deciding(name: String, vararg types: Class<*>) = owner.clients.firstOrNull { it.overrides(name, *t
+MinimalWebViewClients.kt:100: owner.clients    | owner.clients.toList().forEach { if (it.overrides(name, *types)) block(it) }
+MinimalWebViewClients.kt:121: owner.hasNavigationListener    | if (!owner.hasNavigationListener) {
+MinimalWebViewClients.kt:122: owner.newDocument    | owner.newDocument()
+MinimalWebViewClients.kt:123: owner.loading    | owner.loading = true
+MinimalWebViewClients.kt:124: owner.outcome    | owner.outcome = null
+MinimalWebViewClients.kt:125: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:131: owner.hasNavigationListener    | if (!owner.hasNavigationListener) {
+MinimalWebViewClients.kt:132: owner.outcome    | owner.outcome = owner.outcome ?: "finished" // "failed" when a main-frame error came first
+MinimalWebViewClients.kt:132: owner.outcome    | owner.outcome = owner.outcome ?: "finished" // "failed" when a main-frame error came first
+MinimalWebViewClients.kt:133: owner.loading    | owner.loading = false
+MinimalWebViewClients.kt:134: owner.pageFinished    | owner.pageFinished()
+MinimalWebViewClients.kt:135: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:154: owner.reportError    | owner.reportError("network", request.url.toString(), error.errorCode, description)
+MinimalWebViewClients.kt:160: owner.reportError    | if (request.isForMainFrame) owner.reportError("http", request.url.toString(), response.statusCode, response.re
+MinimalWebViewClients.kt:171: owner.hasNavigationListener    | if (!owner.hasNavigationListener && url != null) {
+MinimalWebViewClients.kt:172: owner.url    | owner.url = url
+MinimalWebViewClients.kt:173: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:185: owner.hasNavigationListener    | val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, all
+MinimalWebViewClients.kt:185: owner.pendingUrl    | val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, all
+MinimalWebViewClients.kt:185: owner.url    | val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, all
+MinimalWebViewClients.kt:187: owner.reportError    | owner.reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
+MinimalWebViewClients.kt:221: owner.webView    | if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash(), at) }
+MinimalWebViewClients.kt:221: owner.mainHandler    | if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash(), at) }
+MinimalWebViewClients.kt:221: owner.processGone    | if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash(), at) }
+MinimalWebViewClients.kt:233: owner.chromeClients    | private fun deciding(name: String, vararg types: Class<*>) = owner.chromeClients.firstOrNull { it.overrides(na
+MinimalWebViewClients.kt:236: owner.chromeClients    | owner.chromeClients.toList().forEach { if (it.overrides(name, *types)) block(it) }
+MinimalWebViewClients.kt:244: owner.holdFileChooser    | val once = owner.holdFileChooser(callback)
+MinimalWebViewClients.kt:248: owner.fileUpload    | if (owner.fileUpload.onShowFileChooser(once, params)) return true
+MinimalWebViewClients.kt:249: owner.appContext    | val module = owner.appContext.registry.getModule<MinimalWebViewModule>()
+MinimalWebViewClients.kt:259: owner.permissions    | !owner.permissions.onPermissionRequest(request) -> request.deny()
+MinimalWebViewClients.kt:267: owner.permissions    | !owner.permissions.onGeolocationPrompt(origin, callback) -> callback.invoke(origin, false, false)
+MinimalWebViewClients.kt:275: owner.fullscreen    | !owner.fullscreen.onShowCustomView(view, callback) -> callback.onCustomViewHidden()
+MinimalWebViewClients.kt:281: owner.fullscreen    | if (hook != null) hook.onHideCustomView() else owner.fullscreen.onHideCustomView()
+MinimalWebViewClients.kt:285: owner.title    | owner.title = title ?: ""
+MinimalWebViewClients.kt:286: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:291: owner.progress    | owner.progress = newProgress / 100.0
+MinimalWebViewClients.kt:292: owner.stateChanged    | owner.stateChanged()
+MinimalWebViewClients.kt:330: owner.permissions    | owner.permissions.onGeolocationPromptHidden()
+MinimalWebViewClients.kt:336: owner.permissions    | owner.permissions.onPermissionRequestCanceled(request)
+
+== MinimalWebViewNavigation.kt  (receiver `owner`)
+MinimalWebViewNavigation.kt:19: owner.webView    | private val webView get() = owner.webView
+MinimalWebViewNavigation.kt:39: owner.navigationRules    | val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requ
+MinimalWebViewNavigation.kt:39: owner.requestHandlers    | val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requ
+MinimalWebViewNavigation.kt:69: owner.askWithId    | val id = owner.askWithId("core.navigationRequest", fields(request)) { answer ->
+MinimalWebViewNavigation.kt:79: owner.mainHandler    | owner.mainHandler.postDelayed({ owner.cancelAsk(id) }, ASK_TIMEOUT_MS)
+MinimalWebViewNavigation.kt:79: owner.cancelAsk    | owner.mainHandler.postDelayed({ owner.cancelAsk(id) }, ASK_TIMEOUT_MS)
+MinimalWebViewNavigation.kt:103: owner.requestHandlers    | if ("openExternal" in owner.requestHandlers) return true
+MinimalWebViewNavigation.kt:112: owner.context    | owner.context.startActivity(intent)
+MinimalWebViewNavigation.kt:148: owner.context    | val child = WebView(owner.context)
+MinimalWebViewNavigation.kt:156: owner.mainHandler    | fun finish() = children.remove(child).also { if (it) owner.mainHandler.post { child.destroy() } }
+MinimalWebViewNavigation.kt:168: owner.mainHandler    | owner.mainHandler.postDelayed({ finish() }, NEW_WINDOW_TIMEOUT_MS)
+
+== MinimalWebViewScripts.kt  (receiver `owner`)
+MinimalWebViewScripts.kt:14: owner.webView    | private val webView get() = owner.webView
+MinimalWebViewScripts.kt:35: owner.bridgeScript    | val script = owner.bridgeScript ?: return
+MinimalWebViewScripts.kt:41: owner.bridgeOrigins    | val origins = owner.bridgeOrigins.orEmpty().toSet()
+MinimalWebViewScripts.kt:68: owner.injectedScripts    | val scripts = owner.injectedScripts.orEmpty()
+MinimalWebViewScripts.kt:92: owner.bridgeScript    | if (reason != End.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
+MinimalWebViewScripts.kt:142: owner.context    | val provider = WebViewCompat.getCurrentWebViewPackage(owner.context)
+MinimalWebViewScripts.kt:143: owner.warn    | owner.warn(
+
+== PullToRefresh.kt  (receiver `owner`)
+PullToRefresh.kt:22: owner.context    | val content = FrameLayout(owner.context)
+PullToRefresh.kt:25: owner.context    | val layout: SwipeRefreshLayout = Layout(owner.context).apply {
+PullToRefresh.kt:27: owner.reload    | setOnRefreshListener { owner.reload() }
+PullToRefresh.kt:28: owner.webView    | setOnChildScrollUpCallback { _, _ -> owner.webView.canScrollVertically(-1) || innerScrolled != false }
+PullToRefresh.kt:33: owner.webView    | val density = owner.webView.resources.displayMetrics.density
+PullToRefresh.kt:34: owner.webView    | owner.webView.evaluateJavascript("($INNER_SCROLLED)(${x / density}, ${y / density})") { result ->
+PullToRefresh.kt:38: owner.mainHandler    | owner.mainHandler.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER
+PullToRefresh.kt:54: owner.webView    | if (owner.webView.canScrollVertically(-1)) {
+
+== PlatformSettings.kt  (receiver `owner`)
+PlatformSettings.kt:95: owner.webView    | Target(WebSettings::class.java, owner.webView.settings, null),
+PlatformSettings.kt:96: owner.webView    | Target(WebSettingsCompat::class.java, null, owner.webView.settings)
+PlatformSettings.kt:99: owner.webView    | Target(WebView::class.java, owner.webView, null),
+PlatformSettings.kt:100: owner.webView    | Target(WebViewCompat::class.java, null, owner.webView),
+PlatformSettings.kt:101: owner.webView    | Target(CookieManager::class.java, CookieManager.getInstance(), owner.webView)
+
+== requests/Downloads.kt  (receiver `owner`)
+requests/Downloads.kt:42: owner.requestHandlers    | if ("download" !in owner.requestHandlers) return false
+requests/Downloads.kt:93: owner.webView    | val file = File(owner.webView.context.cacheDir, "downloads/${System.nanoTime()}/$name")
+requests/Downloads.kt:106: owner.webView    | owner.webView.post {
+requests/Downloads.kt:108: owner.emit    | is String -> owner.emit(
+requests/Downloads.kt:127: owner.evaluate    | owner.evaluate(script) { result ->
+requests/Downloads.kt:141: owner.emit    | owner.emit("core.download", mapOf("ok" to false, "filename" to name, "url" to serverUrl(url), "reason" to (err
+
+== requests/FileUpload.kt  (receiver `owner`)
+requests/FileUpload.kt:15: owner.requestHandlers    | if ("fileRequest" !in owner.requestHandlers) return false
+requests/FileUpload.kt:21: owner.ask    | owner.ask("core.fileRequest", request) { answer ->
+
+== requests/FullscreenVideo.kt  (receiver `owner`)
+requests/FullscreenVideo.kt:33: owner.webView    | val window = owner.webView.rootView as? ViewGroup ?: return false
+requests/FullscreenVideo.kt:40: owner.activity    | backCallback = (owner.activity as? ComponentActivity)?.let { component ->
+requests/FullscreenVideo.kt:46: owner.webView    | val insets = ViewCompat.getRootWindowInsets(owner.webView)
+requests/FullscreenVideo.kt:83: owner.requestHandlers    | if ("fullscreenChange" in owner.requestHandlers) owner.emit("core.fullscreenChange", mapOf("active" to active)
+requests/FullscreenVideo.kt:83: owner.emit    | if ("fullscreenChange" in owner.requestHandlers) owner.emit("core.fullscreenChange", mapOf("active" to active)
+requests/FullscreenVideo.kt:86: owner.activity    | private fun controller() = owner.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+
+== requests/Permissions.kt  (receiver `owner`)
+requests/Permissions.kt:33: owner.cancelAsk    | asks.remove(request)?.let { owner.cancelAsk(it) }
+requests/Permissions.kt:38: owner.cancelAsk    | asks.keys.filterIsInstance<GeolocationPermissions.Callback>().forEach { key -> asks.remove(key)?.let { owner.c
+requests/Permissions.kt:45: owner.requestHandlers    | if ("permissionRequest" !in owner.requestHandlers) return false
+requests/Permissions.kt:47: owner.webView    | if (resources.isEmpty() || value != originOf(owner.webView.url)) return true.also { deny() }
+requests/Permissions.kt:48: owner.askWithId    | asks[key] = owner.askWithId("core.permissionRequest", mapOf("origin" to value, "resources" to resources)) { an
+
+== Hooks.kt  (receiver `view`)
+Hooks.kt:109: view.hookOptions    | private var current: Any? = view.hookOptions[hook.key]
+Hooks.kt:111: view.activity    | override val activity get() = view.activity
+Hooks.kt:112: view.url    | override val url get() = view.url
+Hooks.kt:113: view.clients    | override val clients get() = view.clients
+Hooks.kt:114: view.chromeClients    | override val chromeClients get() = view.chromeClients
+Hooks.kt:119: view.emit    | override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
+Hooks.kt:122: view.ask    | onMain { view.ask("$key.$name", payload, onAnswer) }
+Hooks.kt:145: view.mainHandler    | if (Looper.myLooper() == Looper.getMainLooper()) block() else view.mainHandler.post { block() }
+
+== MinimalWebViewModule.kt  (receiver `view`)
+MinimalWebViewModule.kt:111: view.source    | Prop("source") { view: MinimalWebView, source: WebViewSource? -> view.source = source }
+MinimalWebViewModule.kt:112: view.navigationRules    | Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rule
+MinimalWebViewModule.kt:113: view.bridgeScript    | Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
+MinimalWebViewModule.kt:114: view.bridgeOrigins    | Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
+MinimalWebViewModule.kt:115: view.hookOptions    | Prop("hookOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.hookOptions = options.orEmpty(
+MinimalWebViewModule.kt:117: view.settings    | Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
+MinimalWebViewModule.kt:118: view.pullToRefresh    | Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
+MinimalWebViewModule.kt:119: view.injectedScripts    | Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
+MinimalWebViewModule.kt:120: view.requestHandlers    | Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty()
+MinimalWebViewModule.kt:122: view.applyProps    | OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
+MinimalWebViewModule.kt:123: view.destroy    | OnViewDestroys { view: MinimalWebView -> view.destroy() }
+MinimalWebViewModule.kt:127: view.webView    | "back" -> view.webView.goBack()
+MinimalWebViewModule.kt:128: view.webView    | "forward" -> view.webView.goForward()
+MinimalWebViewModule.kt:129: view.retry    | "reload" -> view.retry()
+MinimalWebViewModule.kt:130: view.webView    | "stop" -> view.webView.stopLoading()
+MinimalWebViewModule.kt:136: view.platformSettings    | native(view, promise) { view.platformSettings.get(path) }
+MinimalWebViewModule.kt:139: view.platformSettings    | native(view, promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) }
+MinimalWebViewModule.kt:141: view.stateChanged    | view.stateChanged()
+MinimalWebViewModule.kt:143: view.bridgePost    | AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Q
+MinimalWebViewModule.kt:145: view.answer    | view.answer(askId, answer["value"])
+MinimalWebViewModule.kt:149: view.hookHandler    | val handler = view.hookHandler(name, method)
+MinimalWebViewModule.kt:159: view.evaluate    | view.evaluate(script) { result ->
+MinimalWebViewModule.kt:169: view.recovering    | if (view.recovering) {
+
+== Companion/static access
+MinimalWebViewModule.kt:70: MinimalWebView.inBackground    | MinimalWebView.inBackground = true
+MinimalWebViewModule.kt:75: MinimalWebView.inBackground    | MinimalWebView.inBackground = false
+
+== Constructor sites passing the whole view (`this`) in MinimalWebView.kt
+MinimalWebView.kt:41: private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
+MinimalWebView.kt:42: private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
+MinimalWebView.kt:70: internal val platformSettings = PlatformSettings(this)
+MinimalWebView.kt:72: private val refresher = PullToRefresh(this)
+MinimalWebView.kt:86: internal val fileUpload = FileUpload(this)
+MinimalWebView.kt:87: internal val fullscreen = FullscreenVideo(this)
+MinimalWebView.kt:88: internal val permissions = Permissions(this)
+MinimalWebView.kt:89: internal val downloads = Downloads(this)
+MinimalWebView.kt:143: hookContexts = MinimalWebViewHooks.hooks.filter { it.key in keys }.map { HookContext(it, this) }
+MinimalWebView.kt:148: view.webViewClient = Client(this, navigation)
+MinimalWebView.kt:149: view.webChromeClient = ChromeClient(this, navigation)
+MinimalWebView.kt:154: if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument)
+
+== Kotlin matrix: member -> files using it (count)
+webView                  9 files: MinimalWebViewClients.kt(1), MinimalWebViewNavigation.kt(1), MinimalWebViewScripts.kt(1), PullToRefresh.kt(4), PlatformSettings.kt(5), Downloads.kt(2), FullscreenVideo.kt(2), Permissions.kt(1), MinimalWebViewModule.kt(3)
+requestHandlers          6 files: MinimalWebViewNavigation.kt(2), Downloads.kt(1), FileUpload.kt(1), FullscreenVideo.kt(1), Permissions.kt(1), MinimalWebViewModule.kt(1)
+mainHandler              4 files: MinimalWebViewClients.kt(1), MinimalWebViewNavigation.kt(3), PullToRefresh.kt(1), Hooks.kt(1)
+context                  3 files: MinimalWebViewNavigation.kt(2), MinimalWebViewScripts.kt(1), PullToRefresh.kt(2)
+emit                     3 files: Downloads.kt(2), FullscreenVideo.kt(1), Hooks.kt(1)
+stateChanged             2 files: MinimalWebViewClients.kt(9), MinimalWebViewModule.kt(1)
+url                      2 files: MinimalWebViewClients.kt(3), Hooks.kt(1)
+clients                  2 files: MinimalWebViewClients.kt(2), Hooks.kt(1)
+chromeClients            2 files: MinimalWebViewClients.kt(2), Hooks.kt(1)
+navigationRules          2 files: MinimalWebViewNavigation.kt(1), MinimalWebViewModule.kt(1)
+askWithId                2 files: MinimalWebViewNavigation.kt(1), Permissions.kt(1)
+cancelAsk                2 files: MinimalWebViewNavigation.kt(1), Permissions.kt(2)
+bridgeScript             2 files: MinimalWebViewScripts.kt(2), MinimalWebViewModule.kt(1)
+bridgeOrigins            2 files: MinimalWebViewScripts.kt(1), MinimalWebViewModule.kt(1)
+injectedScripts          2 files: MinimalWebViewScripts.kt(1), MinimalWebViewModule.kt(1)
+evaluate                 2 files: Downloads.kt(1), MinimalWebViewModule.kt(1)
+ask                      2 files: FileUpload.kt(1), Hooks.kt(1)
+activity                 2 files: FullscreenVideo.kt(2), Hooks.kt(1)
+hookOptions              2 files: Hooks.kt(1), MinimalWebViewModule.kt(1)
+cancelFileChooser        1 files: MinimalWebViewClients.kt(1)
+pendingUrl               1 files: MinimalWebViewClients.kt(4)
+loading                  1 files: MinimalWebViewClients.kt(5)
+outcome                  1 files: MinimalWebViewClients.kt(6)
+pageFinished             1 files: MinimalWebViewClients.kt(3)
+hasNavigationListener    1 files: MinimalWebViewClients.kt(4)
+newDocument              1 files: MinimalWebViewClients.kt(1)
+reportError              1 files: MinimalWebViewClients.kt(3)
+processGone              1 files: MinimalWebViewClients.kt(1)
+holdFileChooser          1 files: MinimalWebViewClients.kt(1)
+fileUpload               1 files: MinimalWebViewClients.kt(1)
+appContext               1 files: MinimalWebViewClients.kt(1)
+permissions              1 files: MinimalWebViewClients.kt(4)
+fullscreen               1 files: MinimalWebViewClients.kt(2)
+title                    1 files: MinimalWebViewClients.kt(1)
+progress                 1 files: MinimalWebViewClients.kt(1)
+warn                     1 files: MinimalWebViewScripts.kt(1)
+reload                   1 files: PullToRefresh.kt(1)
+source                   1 files: MinimalWebViewModule.kt(1)
+settings                 1 files: MinimalWebViewModule.kt(1)
+pullToRefresh            1 files: MinimalWebViewModule.kt(1)
+applyProps               1 files: MinimalWebViewModule.kt(1)
+destroy                  1 files: MinimalWebViewModule.kt(1)
+retry                    1 files: MinimalWebViewModule.kt(1)
+platformSettings         1 files: MinimalWebViewModule.kt(2)
+bridgePost               1 files: MinimalWebViewModule.kt(1)
+answer                   1 files: MinimalWebViewModule.kt(1)
+hookHandler              1 files: MinimalWebViewModule.kt(1)
+recovering               1 files: MinimalWebViewModule.kt(1)
+
+== Kotlin: non-private members declared in MinimalWebView.kt and the number of OTHER files that use them
+MinimalWebView.kt:39: hasNavigationListener  used by 1 other files   | internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVI
+MinimalWebView.kt:40: document               used by 0 other files   | internal val document = DocumentScope()
+MinimalWebView.kt:49: webView                used by 9 other files   | internal var webView: WebView
+MinimalWebView.kt:56: source                 used by 1 other files   | internal var source: WebViewSource? = null
+MinimalWebView.kt:57: navigationRules        used by 2 other files   | internal var navigationRules: List<Map<String, Any?>>? = null
+MinimalWebView.kt:58: bridgeScript           used by 2 other files   | internal var bridgeScript: String? = null
+MinimalWebView.kt:59: bridgeOrigins          used by 2 other files   | internal var bridgeOrigins: List<String>? = null
+MinimalWebView.kt:61: hookOptions            used by 2 other files   | internal var hookOptions: Map<String, Any?> = emptyMap()
+MinimalWebView.kt:67: injectedScripts        used by 2 other files   | internal var injectedScripts: List<InjectedScript>? = null
+MinimalWebView.kt:69: settings               used by 1 other files   | internal var settings: Map<String, Any?>? = null
+MinimalWebView.kt:70: platformSettings       used by 1 other files   | internal val platformSettings = PlatformSettings(this)
+MinimalWebView.kt:71: pullToRefresh          used by 1 other files   | internal var pullToRefresh = false
+MinimalWebView.kt:77: requestHandlers        used by 6 other files   | internal var requestHandlers: Set<String> = emptySet()
+MinimalWebView.kt:83: clients                used by 2 other files   | val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
+MinimalWebView.kt:84: chromeClients          used by 2 other files   | val chromeClients = mutableListOf<WebChromeClient>()
+MinimalWebView.kt:85: activity               used by 2 other files   | val activity: Activity? get() = appContext.currentActivity
+MinimalWebView.kt:86: fileUpload             used by 1 other files   | internal val fileUpload = FileUpload(this)
+MinimalWebView.kt:87: fullscreen             used by 1 other files   | internal val fullscreen = FullscreenVideo(this)
+MinimalWebView.kt:88: permissions            used by 1 other files   | internal val permissions = Permissions(this)
+MinimalWebView.kt:89: downloads              used by 0 other files   | internal val downloads = Downloads(this)
+MinimalWebView.kt:108: url                    used by 2 other files   | internal var url = ""
+MinimalWebView.kt:109: pendingUrl             used by 1 other files   | internal var pendingUrl: String? = null
+MinimalWebView.kt:110: title                  used by 1 other files   | internal var title = ""
+MinimalWebView.kt:111: loading                used by 1 other files   | internal var loading = false
+MinimalWebView.kt:112: progress               used by 1 other files   | internal var progress = 0.0
+MinimalWebView.kt:114: outcome                used by 1 other files   | internal var outcome: String? = null
+MinimalWebView.kt:125: mainHandler            used by 4 other files   | internal val mainHandler = Handler(Looper.getMainLooper())
+MinimalWebView.kt:182: applyProps             used by 1 other files   | internal fun applyProps() {
+MinimalWebView.kt:236: retry                  used by 1 other files   | internal fun retry() {
+MinimalWebView.kt:241: reload                 used by 1 other files   | internal fun reload() {
+MinimalWebView.kt:262: warn                   used by 1 other files   | internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
+MinimalWebView.kt:299: hookHandler            used by 1 other files   | internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key 
+MinimalWebView.kt:301: emit                   used by 3 other files   | fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "pa
+MinimalWebView.kt:303: ask                    used by 2 other files   | fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
+MinimalWebView.kt:308: askWithId              used by 2 other files   | internal fun askWithId(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
+MinimalWebView.kt:316: answer                 used by 1 other files   | internal fun answer(askId: Int, value: Any?) {
+MinimalWebView.kt:321: cancelAsk              used by 2 other files   | internal fun cancelAsk(askId: Int, tell: Boolean = true) {
+MinimalWebView.kt:328: holdFileChooser        used by 1 other files   | internal fun holdFileChooser(callback: ValueCallback<Array<Uri>>): ValueCallback<Array<Uri
+MinimalWebView.kt:337: cancelFileChooser      used by 1 other files   | internal fun cancelFileChooser() = fileChooser?.onReceiveValue(null)
+MinimalWebView.kt:340: newDocument            used by 1 other files   | internal fun newDocument() = document.end(End.COMMITTED)
+MinimalWebView.kt:342: pageFinished           used by 1 other files   | internal fun pageFinished() = refresher.pageFinished()
+MinimalWebView.kt:347: bridgePost             used by 1 other files   | internal fun bridgePost(message: String) = scripts.post(message)
+MinimalWebView.kt:349: evaluate               used by 2 other files   | internal fun evaluate(script: String, onResult: (Result<String>) -> Unit) =
+MinimalWebView.kt:356: processGone            used by 1 other files   | internal fun processGone(didCrash: Boolean, at: Long) {
+MinimalWebView.kt:383: recovering             used by 1 other files   | internal val recovering get() = pendingRecovery != null
+MinimalWebView.kt:385: onAttachedToWindow     used by 0 other files   | override fun onAttachedToWindow() {
+MinimalWebView.kt:409: destroy                used by 1 other files   | internal fun destroy() {
+MinimalWebView.kt:420: reportError            used by 1 other files   | internal fun reportError(kind: String, url: String, code: Int, description: String) {
+MinimalWebView.kt:428: stateChanged           used by 2 other files   | internal fun stateChanged() {
+MinimalWebView.kt:488: page                   used by 0 other files   | val page = source.uri ?: source.baseUrl ?: "about:blank"
+
+
+# SWIFT
+
+== Swift: members declared (non-private or private(set)) in the view class files
+MinimalWebView.swift:5: onNavigationState      | let onNavigationState = EventDispatcher()
+MinimalWebView.swift:6: onBridge               | let onBridge = EventDispatcher()
+MinimalWebView.swift:7: onHookEvent            | let onHookEvent = EventDispatcher()
+MinimalWebView.swift:8: onError                | let onError = EventDispatcher()
+MinimalWebView.swift:9: onProcessGone          | let onProcessGone = EventDispatcher()
+MinimalWebView.swift:10: onNavigation           | let onNavigation = EventDispatcher()
+MinimalWebView.swift:14: source                 | var source: WebViewSource?
+MinimalWebView.swift:15: bridgeScript           | var bridgeScript: String?
+MinimalWebView.swift:16: bridgeOrigins          | var bridgeOrigins: [String] = []
+MinimalWebView.swift:18: hookOptions            | var hookOptions: [String: Any] = [:] {
+MinimalWebView.swift:22: settings               | var settings: [String: Any] = [:]
+MinimalWebView.swift:23: platformSettings       | let platformSettings = PlatformSettings()
+MinimalWebView.swift:24: pullToRefresh          | var pullToRefresh = false
+MinimalWebView.swift:31: sharedCookies          | var sharedCookies = false
+MinimalWebView.swift:33: navigationRules        | var navigationRules: [[String: Any]]?
+MinimalWebView.swift:34: injectedScripts        | var injectedScripts: [InjectedScript] = []
+MinimalWebView.swift:35: installedScripts       | var installedScripts: NSArray?
+MinimalWebView.swift:37: ownScripts             | var ownScripts: [WKUserScript] = []
+MinimalWebView.swift:40: requestHandlers        | var requestHandlers: Set<String> = []
+MinimalWebView.swift:61: programmaticUrl        | var programmaticUrl: URL?
+MinimalWebView.swift:63: pendingAsks            | var pendingAsks: [Int: (Any?) -> Void] = [:]
+MinimalWebView.swift:64: document               | let document = DocumentScope()
+MinimalWebView.swift:66: hookContexts           | var hookContexts: [HookContext] = []
+MinimalWebView.swift:67: nextAskId              | var nextAskId = 0
+MinimalWebView.swift:69: askedAndAllowed        | var askedAndAllowed: [Bool: Set<String>] = [:]
+MinimalWebView.swift:81: evaluations            | var evaluations: [Int: (Result<String, EvaluateError>) -> Void] = [:]
+MinimalWebView.swift:82: nextEvaluation         | var nextEvaluation = 0
+MinimalWebView.swift:86: bridgeOrigin           | var bridgeOrigin: String?
+MinimalWebView.swift:89: dialog                 | var dialog: (controller: UIAlertController, cancel: () -> Void)? {
+MinimalWebView.swift:115: applyProps             | func applyProps() {
+MinimalWebView.swift:183: loadProgrammatic       | func loadProgrammatic(_ request: URLRequest) {
+MinimalWebView.swift:193: retry                  | func retry() {
+MinimalWebView.swift:198: reload                 | func reload() {
+MinimalWebView.swift:242: invalidate             | @objc func invalidate() {
+MinimalWebView.swift:348: webView                | func webView(
+MinimalWebView.swift:422: webViewWebContentProcessDidTerminate | func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+MinimalWebView.swift:460: hookHandler            | func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) ->
+MinimalWebView.swift:464: navigationDelegates    | var navigationDelegates: [WKNavigationDelegate] {
+MinimalWebView.swift:473: uiDelegates            | var uiDelegates: [WKUIDelegate] {
+MinimalWebView.swift:482: emit                   | func emit(_ name: String, _ payload: [String: Any]) {
+MinimalWebView.swift:486: ask                    | func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
+MinimalWebView+Navigation.swift:7: decideNavigation       | func decideNavigation(_ action: WKNavigationAction, in webView: WKWebView, decide: @escapi
+MinimalWebView+Navigation.swift:32: openDownload           | func openDownload(_ url: URL) {
+MinimalWebView+Navigation.swift:94: register               | func register(_ onAnswer: @escaping (Any?) -> Void) -> Int {
+MinimalWebView+Navigation.swift:101: cancelAsk              | func cancelAsk(_ id: Int, tell: Bool = true) {
+MinimalWebView+Navigation.swift:109: failPendingAsks        | func failPendingAsks(_ reason: DocumentScope.End) {
+MinimalWebView+Navigation.swift:114: sameURL                | static func sameURL(_ a: URL, _ b: URL) -> Bool {
+MinimalWebView+Dialogs.swift:67: dismissDialog          | func dismissDialog() {
+MinimalWebView+Scripts.swift:9: installScripts         | func installScripts(_ controller: WKUserContentController) {
+MinimalWebView+Scripts.swift:28: evaluate               | func evaluate(_ script: String, onResult: @escaping (Result<String, EvaluateError>) -> Voi
+MinimalWebView+Scripts.swift:48: failEvaluations        | func failEvaluations() {
+MinimalWebView+Scripts.swift:54: bridgeReceive          | func bridgeReceive(_ message: WKScriptMessage) {
+MinimalWebView+Scripts.swift:65: bridgePost             | func bridgePost(_ text: String) {
+MinimalWebView+Scripts.swift:73: code                   | let code: String
+MinimalWebView+Scripts.swift:74: message                | let message: String
+MinimalWebView+Scripts.swift:85: userContentController  | func userContentController(_ controller: WKUserContentController, didReceive message: WKSc
+MinimalWebView+Scripts.swift:93: origin                 | static func origin(of security: WKSecurityOrigin) -> String {
+
+== Swift: member -> files (lines) that mention it; the 4 view-class files are the class itself
+onNavigationState      MinimalWebView.swift:5,323; MinimalWebViewModule.swift:10
+onBridge               MinimalWebView+Scripts.swift:59; MinimalWebView.swift:6,104; MinimalWebViewModule.swift:10
+onHookEvent            MinimalWebView+Navigation.swift:75,103; MinimalWebView.swift:7,483,487; MinimalWebViewModule.swift:10
+onError                MinimalWebView.swift:8,342,371; MinimalWebViewModule.swift:10
+onProcessGone          MinimalWebView.swift:9,434; MinimalWebViewModule.swift:10
+onNavigation           MinimalWebView+Navigation.swift:91; MinimalWebView.swift:10; MinimalWebViewModule.swift:10
+source                 MinimalWebView+Scripts.swift:15,19; MinimalWebView.swift:14,126,145,146,148,149; MinimalWebViewModule.swift:12
+bridgeScript           MinimalWebView+Scripts.swift:14,15; MinimalWebView.swift:15,104,216; MinimalWebViewModule.swift:13
+bridgeOrigins          MinimalWebView+Scripts.swift:56,58; MinimalWebView.swift:16; MinimalWebViewModule.swift:14
+hookOptions            Hooks.swift:85; MinimalWebView.swift:18,214,448,449,454; MinimalWebViewModule.swift:15
+settings               MinimalWebView.swift:22,121,213,235; MinimalWebViewModule.swift:17,19; PlatformSettings.swift:26,29
+platformSettings       MinimalWebView.swift:23,121,213,235; MinimalWebViewModule.swift:42,47
+pullToRefresh          MinimalWebView.swift:24,122; MinimalWebViewModule.swift:21
+sharedCookies          MinimalWebView.swift:31,124; MinimalWebViewModule.swift:22
+navigationRules        MinimalWebView+Navigation.swift:61; MinimalWebView.swift:33; MinimalWebViewModule.swift:23
+injectedScripts        MinimalWebView+Scripts.swift:17,22; MinimalWebView.swift:34,118; MinimalWebViewModule.swift:24
+installedScripts       MinimalWebView+Scripts.swift:22; MinimalWebView.swift:35,118
+ownScripts             MinimalWebView+Scripts.swift:11,13,15,19,21; MinimalWebView.swift:37
+requestHandlers        Downloads.swift:37; MinimalWebView+Dialogs.swift:55; MinimalWebView+Navigation.swift:62,84; MinimalWebView.swift:40; MinimalWebViewModule.swift:25
+programmaticUrl        MinimalWebView+Navigation.swift:13,15; MinimalWebView.swift:61,184,391
+pendingAsks            MinimalWebView+Navigation.swift:96,102,110; MinimalWebView.swift:63; MinimalWebViewModule.swift:55
+document               MinimalWebView.swift:64,98,99,100,106,107
+hookContexts           MinimalWebView.swift:66,111,214,215,236,261
+nextAskId              MinimalWebView+Navigation.swift:95,96,97; MinimalWebView.swift:67
+askedAndAllowed        MinimalWebView+Navigation.swift:61,72; MinimalWebView.swift:69,106
+evaluations            MinimalWebView+Scripts.swift:32,36,49,50; MinimalWebView.swift:81
+nextEvaluation         MinimalWebView+Scripts.swift:30,31; MinimalWebView.swift:82
+bridgeOrigin           MinimalWebView+Scripts.swift:58,66,68; MinimalWebView.swift:86,102
+dialog                 MinimalWebView+Dialogs.swift:68,69,76,86,89; MinimalWebView.swift:89,90
+applyProps             MinimalWebView.swift:115,141; MinimalWebViewModule.swift:27
+loadProgrammatic       MinimalWebView+Navigation.swift:51; MinimalWebView.swift:156,183,202
+retry                  MinimalWebView.swift:193; MinimalWebViewModule.swift:33
+reload                 MinimalWebView+Navigation.swift:14; MinimalWebView.swift:28,195,198,204,432; MinimalWebViewModule.swift:33; PlatformSettings.swift:109
+invalidate             MinimalWebView.swift:242,245
+webView                DelegateProxy.swift:31,32,35,36,39,40; MinimalWebView+Dialogs.swift:7,8,18,19,30,31; MinimalWebView+Navigation.swift:7,39,40; MinimalWebView+Scripts.swift:29,34,68; MinimalWebView.swift:19,44,90,116,117,119; MinimalWebViewModule.swift:31,32,34,42,46,47; PlatformSettings.swift:26,46,57,61,72,75; SharedCookies.swift:14,16,29,31
+webViewWebContentProcessDidTerminate MinimalWebView.swift:422,435
+hookHandler            MinimalWebView.swift:460; MinimalWebViewModule.swift:59
+navigationDelegates    DelegateProxy.swift:9,17,32,36; Hooks.swift:57,92,93,94; MinimalWebView.swift:262,328,464,465,467
+uiDelegates            DelegateProxy.swift:10,17,40; Hooks.swift:58,97,98,99; MinimalWebView.swift:263,473,474,476
+emit                   Downloads.swift:56,64; Hooks.swift:60,102,103; MinimalWebView.swift:176,454,482
+ask                    Hooks.swift:62,106,108; MinimalWebView+Dialogs.swift:61; MinimalWebView+Navigation.swift:64; MinimalWebView.swift:486; NavigationRules.swift:24,31
+decideNavigation       MinimalWebView+Navigation.swift:7; MinimalWebView.swift:353
+openDownload           MinimalWebView+Navigation.swift:25,32; MinimalWebView.swift:366
+register               DocumentScope.swift:8; Hooks.swift:25; MinimalWebView+Navigation.swift:68,94; MinimalWebView.swift:98,99,100,106,107,109
+cancelAsk              MinimalWebView+Navigation.swift:78,101,110
+failPendingAsks        MinimalWebView+Navigation.swift:109; MinimalWebView.swift:98,257
+sameURL                MinimalWebView+Navigation.swift:13,114; MinimalWebView.swift:167
+dismissDialog          MinimalWebView+Dialogs.swift:67; MinimalWebView.swift:107
+installScripts         MinimalWebView+Scripts.swift:9; MinimalWebView.swift:119,219
+evaluate               MinimalWebView+Scripts.swift:28; MinimalWebViewModule.swift:73,74
+failEvaluations        MinimalWebView+Scripts.swift:48; MinimalWebView.swift:99
+bridgeReceive          MinimalWebView+Scripts.swift:54,86
+bridgePost             MinimalWebView+Scripts.swift:65; MinimalWebViewModule.swift:52
+code                   MinimalWebView+Scripts.swift:18,19,29,42,51,73; MinimalWebView.swift:335,336,340,342,371; MinimalWebViewModule.swift:77,107
+message                MinimalWebView+Dialogs.swift:9,13,20,24,37; MinimalWebView+Scripts.swift:29,41,42,51,54,55; MinimalWebView.swift:176,454; MinimalWebViewModule.swift:52,66,77,91; PlatformSettings.swift:87,197,198
+userContentController  MinimalWebView+Scripts.swift:85; MinimalWebView.swift:119,217,219,265
+origin                 MinimalWebView+Dialogs.swift:49,61; MinimalWebView+Scripts.swift:55,56,58,59,67,68; OriginRules.swift:9,15,16
+
+== Swift: receiver-qualified uses in files outside the view class
+
+-- Hooks.swift (receiver view\??)
+Hooks.swift:85: view.hookOptions    | options = view.hookOptions[hook.key]
+Hooks.swift:90: view?.url    | var url: String { view?.url ?? "" }
+Hooks.swift:93: view?.navigationDelegates    | get { view?.navigationDelegates ?? [] }
+Hooks.swift:94: view?.navigationDelegates    | set { view?.navigationDelegates = newValue }
+Hooks.swift:98: view?.uiDelegates    | get { view?.uiDelegates ?? [] }
+Hooks.swift:99: view?.uiDelegates    | set { view?.uiDelegates = newValue }
+Hooks.swift:103: view?.emit    | view?.emit("\(key).\(event)", payload)
+Hooks.swift:108: view.ask    | view.ask("\(key).\(event)", payload, onAnswer)
+
+-- Downloads.swift (receiver view\??)
+Downloads.swift:37: view?.requestHandlers    | private var handled: Bool { view?.requestHandlers.contains("download") == true }
+Downloads.swift:56: view?.emit    | view?.emit("core.download", [
+Downloads.swift:64: view?.emit    | view?.emit("core.download", [
+
+-- DelegateProxy.swift (receiver core\??)
+DelegateProxy.swift:21: core?.responds    | super.responds(to: aSelector) || core?.responds(to: aSelector) == true || delegates.contains { $0.responds(to:
+DelegateProxy.swift:27: core.responds    | if let core, core.responds(to: aSelector) { return core }
+
+-- MinimalWebViewModule.swift (receiver view)
+MinimalWebViewModule.swift:12: view.source    | Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
+MinimalWebViewModule.swift:13: view.bridgeScript    | Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
+MinimalWebViewModule.swift:14: view.bridgeOrigins    | Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
+MinimalWebViewModule.swift:15: view.hookOptions    | Prop("hookOptions") { (view: MinimalWebView, options: [String: Any]?) in view.hookOptions = options ?? [:] }
+MinimalWebViewModule.swift:19: view.settings    | view.settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+MinimalWebViewModule.swift:21: view.pullToRefresh    | Prop("pullToRefresh") { (view: MinimalWebView, value: Bool?) in view.pullToRefresh = value ?? false }
+MinimalWebViewModule.swift:22: view.sharedCookies    | Prop("sharedCookies") { (view: MinimalWebView, value: Bool?) in view.sharedCookies = value ?? false }
+MinimalWebViewModule.swift:23: view.navigationRules    | Prop("navigationRules") { (view: MinimalWebView, rules: [[String: Any]]?) in view.navigationRules = rules }
+MinimalWebViewModule.swift:24: view.injectedScripts    | Prop("injectedScripts") { (view: MinimalWebView, value: [InjectedScript]?) in view.injectedScripts = value ?? 
+MinimalWebViewModule.swift:25: view.requestHandlers    | Prop("requestHandlers") { (view: MinimalWebView, value: [String]?) in view.requestHandlers = Set(value ?? []) 
+MinimalWebViewModule.swift:27: view.applyProps    | OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
+MinimalWebViewModule.swift:31: view.webView    | case "back": view.webView?.goBack()
+MinimalWebViewModule.swift:32: view.webView    | case "forward": view.webView?.goForward()
+MinimalWebViewModule.swift:33: view.retry    | case "reload": view.retry()
+MinimalWebViewModule.swift:34: view.webView    | case "stop": view.webView?.stopLoading()
+MinimalWebViewModule.swift:42: view.platformSettings    | native(view, promise) { webView in promise.resolve(try view.platformSettings.get(path, webView: webView)) }
+MinimalWebViewModule.swift:47: view.platformSettings    | try view.platformSettings.call(path, args: args, completion: completion, webView: webView) { json, error in
+MinimalWebViewModule.swift:52: view.bridgePost    | AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
+MinimalWebViewModule.swift:55: view.pendingAsks    | view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
+MinimalWebViewModule.swift:59: view.hookHandler    | guard let handler = view.hookHandler(name, method) else {
+MinimalWebViewModule.swift:74: view.evaluate    | view.evaluate(script) { result in
+MinimalWebViewModule.swift:87: view.webView    | guard let webView = view.webView else { return promise.reject("unavailable", "No WebView") }
+
+-- MinimalWebView+Scripts.swift (receiver view\??)
+MinimalWebView+Scripts.swift:86: view?.bridgeReceive    | view?.bridgeReceive(message)
