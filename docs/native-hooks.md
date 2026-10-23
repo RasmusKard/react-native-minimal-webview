@@ -47,8 +47,10 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   rules off for that WebView, and a delegate that takes the response policy also switches off `onError`'s `http`
   errors, `onDownload` and opening an untaken download externally. On iOS, an observation callback that neither the core nor
   `DelegateProxy` implements goes to the first delegate only. Android's `shouldInterceptRequest` runs on a background
-  thread. Overriding `WebViewClientCompat`'s `onReceivedError`, `onSafeBrowsingHit` or
-  `shouldOverrideUrlLoading(WebView, String)` variant counts as overriding the callback that forwards to it.
+  thread. Overriding a variant that the base class forwards a callback to counts as overriding the callback:
+  `WebViewClientCompat`'s `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and
+  the platform's deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`,
+  4-argument `onReceivedError` and `onConsoleMessage(String, Int, String)`.
 - **Events.** `context.emit(name, payload)` sends `onHookEvent({ name: '<key>.<name>', payload })`.
   `context.ask(name, payload) { answer in … }` waits for the handler's return value (a promise is awaited; a throw or
   no handler answers null), with no timeout: one still open when the Document ends is answered null.
