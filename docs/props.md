@@ -29,7 +29,8 @@ through JSON, so what JSON can't encode (a function, `NaN`, a cycle) gives `null
 throw or rejection rejects with code `script_error`, a navigation or crash before the script finishes with `navigated`,
 and on Android a WebView older than 101 with `unavailable` ([versions](#android-system-webview-versions)). On a ref handle that outlived its WebView
 (kept from before an unmount), `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and the other ref
-methods do nothing. The result is whatever the page's own JS
+methods do nothing. On Android they also reject with `unavailable` while a WebView whose renderer died waits to be
+rebuilt (in the background, or detached). The result is whatever the page's own JS
 returns, so treat it as page data. On Android it comes back through a global that pages see, `window.nativeEvaluateResult` (see [Security defaults](security.md)).
 
 A ref method rejects with a `CodedError`, an `Error` whose `code` is a `WebViewErrorCode`: `script_error` (`evaluate`),
