@@ -24,5 +24,4 @@ Possible future work, not commitments.
 ## Project
 
 - The on-device suites in CI.
-- Native linters (SwiftLint, detekt).
 - Release tooling and a changelog before outside use.
