@@ -49,8 +49,8 @@ internal object NavigationRules {
       }
       return Decision(action, null)
     }
-    val (host, path, params) = parts(request.url)
-    val index = rules.indexOfFirst { matches(it, scheme, host, path, params, request) }
+    val parts = parts(scheme, request.url)
+    val index = rules.indexOfFirst { matches(it, parts, request) }
     return if (index < 0) Decision("block", null) else Decision((rules[index]["action"] as? String)?.takeIf { it in actions } ?: "block", index)
   }
 
@@ -58,13 +58,15 @@ internal object NavigationRules {
   // `_` in a host), so the parts are split with a regex.
   private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)(?:\\?([^#]*))?")
 
-  /** Host, path and the query's `&`-separated parameters. */
-  private fun parts(url: String): Triple<String?, String, List<String>> {
-    val match = urlParts.find(url) ?: return Triple(null, "/", emptyList())
+  /** The scheme, host, path and the query's `&`-separated parameters that rules match. */
+  private data class Parts(val scheme: String, val host: String?, val path: String, val params: List<String>)
+
+  private fun parts(scheme: String, url: String): Parts {
+    val match = urlParts.find(url) ?: return Parts(scheme, null, "/", emptyList())
     val authority = match.groups[2]?.value
     val path = match.groupValues[3]
     val params = match.groups[4]?.value?.split('&')?.filter { it.isNotEmpty() }.orEmpty()
-    return Triple(hostOf(authority), if (authority != null && path.isNotEmpty()) path else "/", params)
+    return Parts(scheme, hostOf(authority), if (authority != null && path.isNotEmpty()) path else "/", params)
   }
 
   /** Host without userinfo, port or a trailing dot, lowercased; null when there is none. */
@@ -78,7 +80,8 @@ internal object NavigationRules {
   /** null when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing. */
   private fun list(value: Any?): List<String>? = value?.let { (it as? List<*>)?.map(Any?::toString).orEmpty() }
 
-  private fun matches(rule: Map<String, Any?>, scheme: String, host: String?, path: String, params: List<String>, request: Request): Boolean {
+  private fun matches(rule: Map<String, Any?>, parts: Parts, request: Request): Boolean {
+    val (scheme, host, path, params) = parts
     val schemes = list(rule["scheme"])
     val hosts = list(rule["host"])
     val paths = list(rule["path"])
