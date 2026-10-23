@@ -281,24 +281,34 @@ function WebViewInstance({ ref, ...props }: Props) {
 
   const requestHandlers = useRequestHandlers(props);
 
+  // One per ask in flight, by id: aborted when native stops waiting (`core.askCancelled`) or at unmount.
+  const [asks] = useState(() => new Map<number, AbortController>());
+  useEffect(() => () => asks.forEach((controller) => controller.abort()), [asks]);
+
   const onNativeEvent = async ({
     nativeEvent: { name, payload, askId },
   }: NativeEvent<HookEvent>) => {
     if (name === `${CORE}warning`)
       return console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
+    if (name === `${CORE}askCancelled`) return asks.get(payload['askId'] as number)?.abort();
     const request = name.startsWith(CORE)
       ? REQUESTS[name.slice(CORE.length) as keyof typeof REQUESTS]
       : undefined;
     const handler = request
-      ? (props[request] as ((payload: unknown) => unknown) | undefined)
-      : () => props.onNativeEvent?.({ name, payload });
+      ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
+      : (_: unknown, signal?: AbortSignal) => props.onNativeEvent?.({ name, payload }, signal);
+    const controller = new AbortController();
+    if (askId !== undefined) asks.set(askId, controller);
     const value = await settle(
-      () => handler?.(payload),
+      () => handler?.(payload, askId === undefined ? undefined : controller.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onNativeEvent failed for ${name}`
     );
-    if (askId !== undefined) await answer(askId, value);
+    if (askId === undefined) return;
+    asks.delete(askId);
+    // Native already answered a cancelled ask with null; a late answer would find nothing.
+    if (!controller.signal.aborted) await answer(askId, value);
   };
 
   const onNavigation = ({ nativeEvent }: NativeEvent<NavigationEvent>) => {
