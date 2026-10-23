@@ -14,11 +14,11 @@
 //                                  /harness/log, which this server prints
 //   /harness/await, /harness/verdict, /harness/idle, /harness/fresh  what the driver (Maestro) waits on: see harnessState
 // https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
+const { Buffer } = require('buffer');
 const { execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
-const { Buffer } = require('buffer');
 const os = require('os');
 const path = require('path');
 

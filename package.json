@@ -26,11 +26,13 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf build",
+    "pretest": "npm run build:page-client -- --check && npm run gen:platform-types -- --check",
     "test": "jest",
-    "lint": "eslint src example .github",
+    "lint": "eslint --max-warnings 0 src example .github",
     "prepare": "npm run clean && npm run build",
+    "check": "npm test && npm run lint && knip && tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && npm run prepare",
     "mutation": "stryker run",
-    "build:page-client": "node .github/scripts/build-page-client.mjs",
+    "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts"
   },
   "keywords": [

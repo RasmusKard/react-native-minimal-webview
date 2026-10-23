@@ -20,7 +20,10 @@ for (const name of ['pushState', 'replaceState']) {
 addEventListener('hashchange', showHref);
 addEventListener('popstate', showHref);
 addEventListener('DOMContentLoaded', () => {
-  document.body.insertAdjacentHTML('afterbegin', '<p><a href="/">home</a> · <code id="href"></code></p>');
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<p><a href="/">home</a> · <code id="href"></code></p>'
+  );
   document.body.insertAdjacentHTML('beforeend', '<h3>log</h3><pre id="log"></pre>');
   showHref();
 });

@@ -1,0 +1,18 @@
+# Complexity and unused-private-code rules only (run without --build-upon-default-config, so nothing else is active).
+complexity:
+  active: true
+  CyclomaticComplexMethod: { active: true, threshold: 15 }
+  CognitiveComplexMethod: { active: true, threshold: 15 }
+  LongMethod: { active: true, threshold: 60 }
+  LongParameterList: { active: true, functionThreshold: 6, constructorThreshold: 7 }
+  LargeClass: { active: true, threshold: 600 }
+  NestedBlockDepth: { active: true, threshold: 4 }
+  TooManyFunctions: { active: true, thresholdInFiles: 11, thresholdInClasses: 11, thresholdInInterfaces: 11, thresholdInObjects: 11, thresholdInEnums: 11, ignorePrivate: true, ignoreOverridden: true }
+  ComplexCondition: { active: true, threshold: 4 }
+style:
+  active: true
+  UnusedPrivateMember: { active: true }
+  UnusedPrivateProperty: { active: true }
+  UnusedParameter: { active: true }
+  UnusedPrivateClass: { active: true }
+  UnusedImports: { active: true }
