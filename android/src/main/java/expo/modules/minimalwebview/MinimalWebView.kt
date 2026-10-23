@@ -26,7 +26,7 @@ import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
-@Suppress("TooManyFunctions") // the aggregate root by design: docs/decisions.md, "The view is the aggregate root"
+@Suppress("TooManyFunctions") // because the view is the aggregate root by design, see docs/decisions.md
 internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
