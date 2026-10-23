@@ -208,8 +208,8 @@ onNavigationRequest={({ url, newWindow, userInitiated }) => (isTrusted(url) ? 'a
 
 The request has `url`, `mainFrame` (was `isTopFrame`), `newWindow` and `userInitiated` (in place of `navigationType`
 `click`); there is no `navigationType` or `mainDocumentURL`. The `source` load, reloads and back/forward skip the
-rules (their redirects don't). To only watch navigations, `onNavigation` reports every decision and the rule that made it
-(not one a native hook makes).
+rules; a redirect of the `source` load doesn't (on Android, nor does a reload's or back/forward's redirect). To only
+watch navigations, `onNavigation` reports every decision and the rule that made it (not one a native hook makes).
 
 `onOpenWindow`: a new window (`target=_blank`, `window.open`) is a navigation with `newWindow: true`. By default an
 allowed one loads in place ([New windows load in place](decisions.md#new-windows-load-in-place)); `{ newWindow: true, action: 'external' }`
