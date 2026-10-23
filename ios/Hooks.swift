@@ -1,7 +1,7 @@
 import WebKit
 
 /// Native hooks: how an app or a package reaches the WKWebView this package creates, with no protocol to implement.
-/// A hook is registered under the `nativeOptions` key that enables it, from an Expo module's `OnCreate` (before the
+/// A hook is registered under the `hookOptions` key that enables it, from an Expo module's `OnCreate` (before the
 /// first WebView is created), and runs for each WebView created with a value for that key other than null or false,
 /// on the main thread. docs/native-hooks.md has the rules for the delegates and the events.
 public enum MinimalWebViewHooks {
@@ -39,7 +39,7 @@ public enum MinimalWebViewHooks {
   }
 }
 
-/// Whether a `nativeOptions` value enables its hook.
+/// Whether a `hookOptions` value enables its hook.
 func enables(_ value: Any?) -> Bool {
   guard let value, !(value is NSNull) else { return false }
   // An identity check: `as? Bool` would take an NSNumber 0 for false too.
@@ -48,7 +48,7 @@ func enables(_ value: Any?) -> Bool {
 
 /// One WebView instance, as a hook sees it.
 public protocol WebViewContext: AnyObject {
-  /// This hook's `nativeOptions` value; after a change, the new one.
+  /// This hook's `hookOptions` value; after a change, the new one.
   var options: Any? { get }
   /// The committed URL, the one the navigation state reports; empty before the first commit.
   var url: String { get }
@@ -56,11 +56,11 @@ public protocol WebViewContext: AnyObject {
   /// that responds, or to every one, by the rule in docs/native-hooks.md.
   var navigationDelegates: [WKNavigationDelegate] { get set }
   var uiDelegates: [WKUIDelegate] { get set }
-  /// Sends `onNativeEvent({ name: "<hook>.<name>", payload })` to JS.
+  /// Sends `onHookEvent({ name: "<hook>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event and waits for JS's answer, the handler's return value; nil when the view or its page goes away.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
-  /// Runs `handler` with this hook's new `nativeOptions` value each time it changes; nil when the key is removed.
+  /// Runs `handler` with this hook's new `hookOptions` value each time it changes; nil when the key is removed.
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
   /// Runs `handler` at each end of the Document (GLOSSARY.md): a new page committed, a crash, or the view closing.
   func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void)
@@ -82,7 +82,7 @@ final class HookContext: WebViewContext {
   init(_ hook: MinimalWebViewHooks.Hook, _ view: MinimalWebView) {
     self.hook = hook
     self.view = view
-    options = view.nativeOptions[hook.key]
+    options = view.hookOptions[hook.key]
   }
 
   var key: String { hook.key }

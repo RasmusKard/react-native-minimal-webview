@@ -5,6 +5,7 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import expo.modules.kotlin.exception.CodedException
 import expo.modules.minimalwebview.DocumentScope.End
 import org.json.JSONArray
 
@@ -98,7 +99,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
       val reply = if (isMainFrame) runCatching { JSONArray(message.data) }.getOrNull() else null
       val onResult = reply?.let { evaluations.remove(it.optInt(0, -1)) } ?: return@addWebMessageListener
-      onResult(if (reply.length() > 2) failure("ERR_EVALUATE", reply.optString(2)) else Result.success(reply.optString(1, "null")))
+      onResult(if (reply.length() > 2) failure("script_error", reply.optString(2)) else Result.success(reply.optString(1, "null")))
     }
   }
 
@@ -121,7 +122,7 @@ $script
     webView.evaluateJavascript(code) {
       // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
       val why = if (it == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)"
-      if (it != "1") evaluations.remove(id)?.invoke(failure("ERR_EVALUATE", why))
+      if (it != "1") evaluations.remove(id)?.invoke(failure("script_error", why))
     }
   }
 
@@ -153,7 +154,7 @@ $script
   }
 }
 
-/** Why an `evaluate` failed; [code] is the JS error code (`ERR_EVALUATE`, `navigated`, `unavailable`). */
-internal class EvaluateError(val code: String, message: String) : Exception(message)
+/** Why an `evaluate` failed; its code is the JS error code (`script_error`, `navigated`, `unavailable`). */
+internal class EvaluateError(code: String, message: String) : CodedException(code, message, null)
 
 private const val EVALUATE = "nativeEvaluateResult"

@@ -11,13 +11,16 @@ export function Browser() {
 }
 ```
 
-`useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack` and `canGoForward`, and
-re-renders with each change.
+`useWebViewState(ref)` gives `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack`, `canGoForward` and
+`outcome`, and re-renders with each change.
 
 - `url` is the page on screen. It changes when a load commits and on SPA navigation (pushState, replaceState, hash).
   After a failed load it is the failed URL.
 - `pendingUrl` is a main-frame load in progress, which may still fail or be blocked.
-- Iframes never change either.
+- `outcome` is how the last load ended, `finished`, `failed` or `cancelled`, and `null` while one is loading (and
+  before the first). `onLoadEnd` gets it with the state. See [`onLoadStart`, `onLoadEnd`](props.md) for what counts as
+  which.
+- Iframes never change `url` or `pendingUrl`.
 - On Android with a WebView older than 146 (no `NAVIGATION_LISTENER`; Huawei and Fire OS devices ship their own
   WebView builds), `pendingUrl` stays `null`. `url` still follows commits and SPA navigation.
 

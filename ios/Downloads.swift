@@ -2,9 +2,10 @@ import WebKit
 
 /// Downloads through WKDownload (the page's session and cookies), with the app's `onDownload`: `Content-Disposition:
 /// attachment`, types WebKit cannot show, `<a download>` and blob: URLs. Files land in the app's temporary directory;
-/// each finished download emits `download {uri, filename, mimeType, url}` for the app to share or move (expo-sharing,
-/// expo-file-system), a failed one `download {filename, url, reason}`. `url` is the full http(s) URL, or null for data:
-/// and blob: (the page made the file itself). Without the prop the core opens them externally.
+/// each finished download emits `download {ok: true, uri, filename, mimeType, url}` for the app to share or move
+/// (expo-sharing, expo-file-system), a failed one `download {ok: false, filename, url, reason}`. `url` is the full
+/// http(s) URL, or null for data: and blob: (the page made the file itself). Without the prop the core opens them
+/// externally.
 final class Downloads: NSObject, WKDownloadDelegate {
   private weak var view: MinimalWebView?
   private var files: [ObjectIdentifier: (url: URL, mimeType: String)] = [:]
@@ -53,7 +54,7 @@ final class Downloads: NSObject, WKDownloadDelegate {
   func downloadDidFinish(_ download: WKDownload) {
     guard let file = files.removeValue(forKey: ObjectIdentifier(download)) else { return }
     view?.emit("core.download", [
-      "uri": file.url.absoluteString, "filename": file.url.lastPathComponent, "mimeType": file.mimeType,
+      "ok": true, "uri": file.url.absoluteString, "filename": file.url.lastPathComponent, "mimeType": file.mimeType,
       "url": serverUrl(download)
     ])
   }
@@ -61,7 +62,7 @@ final class Downloads: NSObject, WKDownloadDelegate {
   func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
     let file = files.removeValue(forKey: ObjectIdentifier(download))
     view?.emit("core.download", [
-      "filename": file?.url.lastPathComponent ?? "", "url": serverUrl(download),
+      "ok": false, "filename": file?.url.lastPathComponent ?? "", "url": serverUrl(download),
       "reason": error.localizedDescription
     ])
   }

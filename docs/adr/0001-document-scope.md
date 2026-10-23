@@ -60,4 +60,5 @@ and swiftc tests drive all three ends with fake registrants.
 - **Child WebViews:** this change didn't fix "`destroy()` left child WebViews to a timer". `View.post` on a detached view
   never runs, so a child was still left undestroyed at unmount. Fixed later: every Document end destroys the children
   directly, and the deferred work posts through a main-thread `Handler`.
-- **`crashTimes`** is per view, spanning WebView instances (a source change clears it), not per WebView instance.
+- **`crashTimes`** is not per WebView instance. On iOS it is per view, spanning WebView instances (a source change
+  clears it); on Android it is per process, since the app's WebViews share one renderer.

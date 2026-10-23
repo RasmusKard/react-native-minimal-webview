@@ -7,12 +7,12 @@ public class MinimalWebViewModule: Module {
 
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge", "onNativeEvent", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onHookEvent", "onError", "onProcessGone", "onNavigation")
 
       Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
-      Prop("nativeOptions") { (view: MinimalWebView, options: [String: Any]?) in view.nativeOptions = options ?? [:] }
+      Prop("hookOptions") { (view: MinimalWebView, options: [String: Any]?) in view.hookOptions = options ?? [:] }
       // JSON, so a null (reset this key) survives: the dictionary conversion drops nulls.
       Prop("settings") { (view: MinimalWebView, json: String?) in
         let data = json?.data(using: .utf8) ?? Data()
@@ -35,27 +35,18 @@ public class MinimalWebViewModule: Module {
         default: break
         }
       }
-      // `{ get: 'scrollView.bounces' }` reads a property; `{ call: 'webView.selector:', args, completion }` calls a
-      // method (docs/platform-settings.md). Both resolve with the JSON of the result. `args` is a JSON string so a null
+      // `get('scrollView.bounces')` reads a property; `call('webView.selector:', argsJson, completion)` calls a method
+      // (docs/platform-settings.md). Both resolve with the JSON of the result. `argsJson` is a JSON string so a null
       // argument survives the conversion.
-      AsyncFunction("native") { (view: MinimalWebView, request: [String: Any], promise: Promise) in
-        guard let webView = view.webView else { return promise.reject("ERR_NATIVE", "No WebView") }
-        do {
-          if let get = request["get"] as? String {
-            promise.resolve(try view.platformSettings.get(get, webView: webView))
-          } else if let call = request["call"] as? String {
-            let data = (request["args"] as? String)?.data(using: .utf8) ?? Data()
-            let args = (try? JSONSerialization.jsonObject(with: data)) as? [Any] ?? []
-            try view.platformSettings.call(call, args: args, completion: request["completion"] as? String, webView: webView) { json, error in
-              if let error { promise.reject("ERR_NATIVE", error) } else { promise.resolve(json) }
-            }
-          } else {
-            throw PlatformError("a request needs `get` or `call`")
+      AsyncFunction("get") { (view: MinimalWebView, path: String, promise: Promise) in
+        native(view, promise) { webView in promise.resolve(try view.platformSettings.get(path, webView: webView)) }
+      }
+      AsyncFunction("call") { (view: MinimalWebView, path: String, argsJson: String, completion: String?, promise: Promise) in
+        let args = (try? JSONSerialization.jsonObject(with: Data(argsJson.utf8))) as? [Any] ?? []
+        native(view, promise) { webView in
+          try view.platformSettings.call(path, args: args, completion: completion, webView: webView) { json, error in
+            if let error { promise.reject("native_error", error) } else { promise.resolve(json) }
           }
-        } catch let error as PlatformError {
-          promise.reject("ERR_NATIVE", error.message)
-        } catch {
-          promise.reject("ERR_NATIVE", error.localizedDescription)
         }
       }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
@@ -63,7 +54,7 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
         view.pendingAsks.removeValue(forKey: askId)?(answer["value"] is NSNull ? nil : answer["value"])
       }
-      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `native`'s.
+      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { (view: MinimalWebView, name: String, method: String, args: String, promise: Promise) in
         guard let handler = view.hookHandler(name, method) else {
           return promise.reject("hook_not_handled", "no attached hook `\(name)` handles `\(method)`")
@@ -72,13 +63,13 @@ public class MinimalWebViewModule: Module {
           do {
             promise.resolve(try PlatformSettings.json { MRWJsonable(value) })
           } catch {
-            promise.reject("ERR_NATIVE", (error as? PlatformError)?.message ?? error.localizedDescription)
+            promise.reject("native_error", (error as? PlatformError)?.message ?? error.localizedDescription)
           }
         }
       }
       // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
       // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
-      // Rejects with ERR_EVALUATE when there is no WKWebView yet, like the extension host's evaluate.
+      // Rejects with unavailable when there is no WKWebView yet.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         view.evaluate(script) { result in
           switch result {
@@ -88,6 +79,16 @@ public class MinimalWebViewModule: Module {
         }
       }
     }
+  }
+}
+
+/// Runs `body` with the view's WKWebView; what it throws, or no WKWebView, rejects with `native_error`.
+private func native(_ view: MinimalWebView, _ promise: Promise, _ body: (WKWebView) throws -> Void) {
+  guard let webView = view.webView else { return promise.reject("native_error", "No WebView") }
+  do {
+    try body(webView)
+  } catch {
+    promise.reject("native_error", (error as? PlatformError)?.message ?? error.localizedDescription)
   }
 }
 
