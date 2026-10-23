@@ -1,21 +1,11 @@
 import { requireNativeModule, requireNativeView } from 'expo';
-import {
-  type Ref,
-  type RefObject,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, type ViewProps } from 'react-native';
 
-import { type BridgeConnection, CONNECTION } from './bridge/createBridge';
+import { CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
+import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
-  Bridge,
   HookEvent,
   LoadErrorEvent,
   NavigationEvent,
@@ -24,7 +14,6 @@ import type {
   SettingValue,
   WebViewProps,
   WebViewRef,
-  WebViewRefObject,
 } from './types';
 
 type Native<T> = { nativeEvent: T };
@@ -168,83 +157,6 @@ const nativeModule = () =>
     preconnect(url: string): Promise<void>;
   }>('MinimalWebView');
 
-const INITIAL_STATE: NavigationState = {
-  url: '',
-  pendingUrl: null,
-  title: '',
-  loading: false,
-  progress: 0,
-  canGoBack: false,
-  canGoForward: false,
-  outcome: null,
-};
-
-type Attachment = { update(state: NavigationState): void; detach(): void };
-type Adapter = {
-  nav: WebViewRefObject;
-  attach(handle: WebViewRef, state: NavigationState): Attachment;
-};
-
-/** The navigation object behind each ref object: created by createWebViewRef, or made on first use for a plain ref. */
-const adapters = new WeakMap<object, Adapter>();
-
-function adapterFor(ref: object) {
-  let adapter = adapters.get(ref);
-  if (!adapter) adapters.set(ref, (adapter = createAdapter()));
-  return adapter;
-}
-
-function createAdapter(): Adapter {
-  let attached: WebViewRef | null = null;
-  let state = INITIAL_STATE;
-  const listeners = new Set<() => void>();
-  const set = (next: NavigationState) => {
-    state = next;
-    listeners.forEach((listener) => listener());
-  };
-  const nav: WebViewRefObject = {
-    get current() {
-      return attached;
-    },
-    getState: () => state,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => void listeners.delete(listener);
-    },
-  };
-  return {
-    nav,
-    // Last attached wins, like a React ref; an earlier instance's later updates and detach are ignored.
-    attach(handle, initial) {
-      if (__DEV__ && attached) {
-        console.warn(
-          '[react-native-minimal-webview] This ref is already attached to a mounted WebView; the new one replaces it. Give each WebView its own ref.'
-        );
-      }
-      attached = handle;
-      set(initial);
-      return {
-        update: (next) => attached === handle && set(next),
-        detach() {
-          if (attached !== handle) return;
-          attached = null;
-          set(INITIAL_STATE);
-        },
-      };
-    },
-  };
-}
-
-/**
- * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. Its
- * `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
- */
-export function createWebViewRef(): WebViewRefObject {
-  const adapter = createAdapter();
-  adapters.set(adapter.nav, adapter);
-  return adapter.nav;
-}
-
 /** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
 const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string) =>
   Promise.resolve()
@@ -291,8 +203,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
 
   // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
-  const connection =
-    props.bridge && (props.bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+  const connection = props.bridge?.[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
     connection.attach((message) => void native.current?.bridgePost(message));
@@ -376,29 +287,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   );
 }
 
-/**
- * Puts `handle` in a callback or plain ref. Any ref object also gets the navigation state through its adapter, which a
- * createWebViewRef one is, so its `current` comes from the adapter too.
- */
-function useAttach(
-  ref: Ref<WebViewRef> | undefined,
-  handle: WebViewRef,
-  lastRef: RefObject<NavigationState>,
-  attachmentRef: RefObject<Attachment | undefined>
-) {
-  const adapter = ref && typeof ref === 'object' ? adapterFor(ref) : undefined;
-  useImperativeHandle(adapter?.nav === ref ? undefined : ref, () => handle, [handle]);
-  useLayoutEffect(() => {
-    if (!adapter) return undefined;
-    const attached = adapter.attach(handle, lastRef.current);
-    attachmentRef.current = attached;
-    return () => {
-      attached.detach();
-      attachmentRef.current = undefined;
-    };
-  }, [adapter, handle, lastRef, attachmentRef]);
-}
-
 /** The page requests with a prop set, as a new array only when that set changes. */
 function useRequestHandlers(props: WebViewProps) {
   const key = Object.entries(REQUESTS)
@@ -464,7 +352,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
       },
     };
   }
-  if (Platform.OS !== 'android') return {};
   const { settings, webView } = props.android ?? {};
   return {
     settings: {
@@ -522,12 +409,3 @@ WebView.warmUp = (): void => {
 WebView.preconnect = (url: string): void => {
   if (Platform.OS === 'android') void nativeModule().preconnect(url);
 };
-
-/**
- * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one); re-renders
- * on every change, and follows a remount. The initial state while none is mounted.
- */
-export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {
-  const { nav } = adapterFor(ref);
-  return useSyncExternalStore(nav.subscribe, nav.getState);
-}

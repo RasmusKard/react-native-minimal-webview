@@ -38,7 +38,14 @@ function untyped(bridge: Bridge) {
   const result: Promise<unknown> = bridge.call('anything', { any: 'thing' });
   bridge.emit('anything', 1);
   bridge.on('anything', (payload: unknown) => payload);
-  return result;
+  // @ts-expect-error because only createBridge makes a Bridge: a hand-made one would connect nothing
+  const handMade: Bridge = {
+    handle: () => () => {},
+    call: async () => {},
+    emit() {},
+    on: () => () => {},
+  };
+  return [result, handMade];
 }
 
 it('types the bridge from its type arguments, and leaves an untyped one unknown', () => {
