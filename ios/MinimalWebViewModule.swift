@@ -26,15 +26,7 @@ public class MinimalWebViewModule: Module {
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
-      AsyncFunction("navigate") { (view: MinimalWebView, action: String) in
-        switch action {
-        case "back": view.webView?.goBack()
-        case "forward": view.webView?.goForward()
-        case "reload": view.retry()
-        case "stop": view.webView?.stopLoading()
-        default: break
-        }
-      }
+      AsyncFunction("navigate") { (view: MinimalWebView, action: String) in navigate(view, action) }
       // `get('scrollView.bounces')` reads a property; `call('webView.selector:', argsJson, completion)` calls a method
       // (docs/platform-settings.md). Both resolve with the JSON of the result. `argsJson` is a JSON string so a null
       // argument survives the conversion.
@@ -62,13 +54,27 @@ public class MinimalWebViewModule: Module {
       // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
       // Rejects with unavailable when there is no WKWebView yet.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
-        view.evaluate(script) { result in
-          switch result {
-          case .success(let json): promise.resolve(json)
-          case .failure(let error): promise.reject(error.code, error.message)
-          }
-        }
+        evaluate(view, script, promise)
       }
+    }
+  }
+}
+
+private func navigate(_ view: MinimalWebView, _ action: String) {
+  switch action {
+  case "back": view.webView?.goBack()
+  case "forward": view.webView?.goForward()
+  case "reload": view.retry()
+  case "stop": view.webView?.stopLoading()
+  default: break
+  }
+}
+
+private func evaluate(_ view: MinimalWebView, _ script: String, _ promise: Promise) {
+  view.evaluate(script) { result in
+    switch result {
+    case .success(let json): promise.resolve(json)
+    case .failure(let error): promise.reject(error.code, error.message)
     }
   }
 }
