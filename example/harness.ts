@@ -2186,6 +2186,7 @@ async function sampleExtension(h: Harness) {
   const r = reporter('sampleExtension');
   const before = h.events.pageCounts.length;
   h.events.hookEvents.length = 0;
+  const previous = h.state().url;
   const page = fresh(h, '/spa.html');
   await openPage(h, page);
   await waitFor(h, () => h.events.pageCounts.at(-1)?.url === page, 5000);
@@ -2197,10 +2198,11 @@ async function sampleExtension(h: Harness) {
   );
   const inPage = (await h.ref.current?.evaluate('window.__pageCount')) as number;
   r.check('its native side reaches the page', inPage === event?.count, { inPage, event });
+  const ended = h.events.documentEnds.at(-1);
   r.check(
-    'its onDocumentEnd handler hears the old page end',
-    h.events.documentEnds.at(-1)?.reason === 'committed',
-    h.events.documentEnds
+    'its onDocumentEnd handler hears the old page end, and context.url there is still that page',
+    ended?.reason === 'committed' && ended.url === previous,
+    { ended, previous }
   );
   const count = await h.ref.current?.hook('sample.pageCounter', 'count').catch(errorCode);
   r.check('ref.hook resolves with the reply of its handler', count === inPage, { count, inPage });

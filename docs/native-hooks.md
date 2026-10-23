@@ -67,7 +67,8 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
 - **Values** arrive as the platform's JSON types: a number as `NSNumber` (Swift) or, in Kotlin, as `Double` in
   `context.options` and an ask's answer and as `Int`, `Long` or `Double` in a `handle` handler's arguments, an
   object as `Map` or `NSDictionary`, `null` as null or nil (`NSNull` inside a Swift array).
-- **The page.** `context.url` is the committed URL, the one `useWebViewState` reports. `context.onDocumentEnd { reason in … }`
+- **The page.** `context.url` is the committed URL, the one `useWebViewState` reports; inside `onDocumentEnd` it is
+  still the page that ended. `context.onDocumentEnd { reason in … }`
   runs at each end of the Document (`committed`, `crashed`, `closing`) after the core's own resets: per-page state
   belongs there.
 - **Lifecycle.** iOS: `configure` runs after the `ios.configuration` settings and before the bridge, so replacing the
