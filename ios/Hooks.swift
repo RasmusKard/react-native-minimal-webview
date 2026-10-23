@@ -106,7 +106,7 @@ final class HookContext: WebViewContext {
   func ask(_ event: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
     onMain { [self] in
       guard let view else { return onAnswer(nil) }
-      view.ask("\(key).\(event)", payload, onAnswer)
+      view.asks.ask("\(key).\(event)", payload, onAnswer)
     }
   }
 

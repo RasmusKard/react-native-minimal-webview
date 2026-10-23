@@ -66,7 +66,7 @@ internal class MinimalWebViewNavigation(
   // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the gesture flag and the redirect chain.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
     val referrer = webView.url
-    val id = owner.askWithId("core.navigationRequest", fields(request)) { answer ->
+    val id = owner.asks.ask("core.navigationRequest", fields(request)) { answer ->
       val action = NavigationRules.answer(answer)
       if (action == "allow") {
         askedAndAllowed += request.url
@@ -76,7 +76,7 @@ internal class MinimalWebViewNavigation(
       notifyNavigation(request, if (opened) action else "block", rule)
     }
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
-    owner.mainHandler.postDelayed({ owner.cancelAsk(id) }, ASK_TIMEOUT_MS)
+    owner.mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
   }
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its

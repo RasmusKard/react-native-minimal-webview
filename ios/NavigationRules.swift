@@ -20,6 +20,14 @@ enum NavigationRules {
     let rule: Int?
   }
 
+  /// The scheme, host, path and the query's `&`-separated parameters that rules match.
+  private struct Parts {
+    let scheme: String
+    let host: String?
+    let path: String
+    let params: [String]
+  }
+
   private static let internalSchemes: Set<String> = ["about", "blob", "data", "javascript"]
   private static let actions: Set<String> = ["allow", "block", "external", "ask"]
   private static let answers: Set<String> = ["allow", "block", "external"]
@@ -63,7 +71,8 @@ enum NavigationRules {
     // No authority (`myapp:/abs`, `myapp:open`): the path is "/", as in Kotlin. `file:///x` has an empty one, not none.
     let path = rawPath.isEmpty || components?.host == nil ? "/" : rawPath
     let params = components?.percentEncodedQuery?.split(separator: "&").map(String.init) ?? []
-    guard let index = rules.firstIndex(where: { matches($0, scheme, host, path, params, request) }) else {
+    let parts = Parts(scheme: scheme, host: host, path: path, params: params)
+    guard let index = rules.firstIndex(where: { matches($0, parts, request) }) else {
       return Decision(action: "block", rule: nil)
     }
     let action = rules[index]["action"] as? String
@@ -75,15 +84,13 @@ enum NavigationRules {
     value.map { ($0 as? [Any])?.map { "\($0)" } ?? [] }
   }
 
-  private static func matches(
-    _ rule: [String: Any], _ scheme: String, _ host: String?, _ path: String, _ params: [String], _ request: Request
-  ) -> Bool {
-    if let schemes = list(rule["scheme"]), !schemes.contains(where: { $0.lowercased() == scheme }) { return false }
+  private static func matches(_ rule: [String: Any], _ parts: Parts, _ request: Request) -> Bool {
+    if let schemes = list(rule["scheme"]), !schemes.contains(where: { $0.lowercased() == parts.scheme }) { return false }
     if let hosts = list(rule["host"]) {
-      guard let host, hosts.contains(where: { hostMatches($0.lowercased(), host) }) else { return false }
+      guard let host = parts.host, hosts.contains(where: { hostMatches($0.lowercased(), host) }) else { return false }
     }
-    if let paths = list(rule["path"]), !paths.contains(where: { path.hasPrefix($0) }) { return false }
-    if let queries = list(rule["query"]), !queries.contains(where: { paramMatches($0, params) }) { return false }
+    if let paths = list(rule["path"]), !paths.contains(where: { parts.path.hasPrefix($0) }) { return false }
+    if let queries = list(rule["query"]), !queries.contains(where: { paramMatches($0, parts.params) }) { return false }
     return flag(rule["mainFrame"], request.mainFrame) && flag(rule["newWindow"], request.newWindow)
       && flag(rule["userInitiated"], request.userInitiated)
   }

@@ -1,10 +1,9 @@
-import { type BridgeConnection, CONNECTION, createBridge } from '../bridge/createBridge';
+import { CONNECTION, createBridge } from '../bridge/createBridge';
 import type { BridgeMessage } from '../bridge/protocol';
-import type { Bridge } from '../types';
 
 function setup(timeoutMs = 1000) {
   const bridge = createBridge({ allowedOrigins: ['https://example.com'], timeoutMs });
-  const connection = (bridge as Bridge & { [CONNECTION]: BridgeConnection })[CONNECTION];
+  const connection = bridge[CONNECTION];
   const sent: (BridgeMessage & { id?: string })[] = [];
   connection.attach((text) => sent.push(JSON.parse(text) as BridgeMessage & { id?: string }));
   const fromPage = (message: object) =>

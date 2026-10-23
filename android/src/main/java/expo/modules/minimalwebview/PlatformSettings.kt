@@ -29,14 +29,14 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
   private val applied = mutableMapOf<String, Any?>()
 
   /** A receiver (null for statics) and, for compat and CookieManager methods, the root object passed first. */
-  private class Target(val cls: Class<*>, val receiver: Any?, val leading: Any?)
+  internal class Target(val cls: Class<*>, val receiver: Any?, val leading: Any?)
 
   /** Applies [settings]; returns the rejected keys with their reasons. [force] re-applies everything (a new WebView). */
   fun apply(settings: Map<String, Any?>?, force: Boolean = false): List<Map<String, String>> {
     if (force) applied.clear()
     val rejected = mutableListOf<Map<String, String>>()
     for ((rootName, entries) in settings.orEmpty()) {
-      val targets = if (rootName == "settings" || rootName == "webView") targets(rootName) else null
+      val targets = targets(rootName)?.takeIf { rootName in listOf("settings", "webView") }
       if (targets == null || entries !is Map<*, *>) {
         rejected += mapOf("key" to rootName, "reason" to "unknown root: use settings or webView")
         continue
@@ -105,70 +105,6 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     else -> null
   }
 
-  private fun set(targets: List<Target>, key: String, value: Any?): String? {
-    if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
-    val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
-    if (setter in OWNED) return "owned by the core"
-    var seen = false
-    for (target in targets) {
-      for (method in target.cls.methods) {
-        if (method.name != setter) continue
-        seen = true
-        val args = arguments(method, target, listOf(value)) ?: continue
-        return try {
-          invoke(method, target, args)
-          null
-        } catch (e: IllegalArgumentException) {
-          e.message
-        }
-      }
-    }
-    return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
-  }
-
-  /** The method's arguments for [values], with the target's leading object first, or null when they don't fit. */
-  private fun arguments(method: Method, target: Target, values: List<Any?>): Array<Any?>? {
-    if (target.receiver == null && !Modifier.isStatic(method.modifiers)) return null
-    val types = method.parameterTypes
-    val leading = if (target.leading != null) listOf(target.leading) else emptyList()
-    if (types.size != leading.size + values.size) return null
-    if (leading.isNotEmpty() && !types[0].isInstance(target.leading)) return null
-    val args = arrayOfNulls<Any?>(types.size)
-    leading.forEachIndexed { i, value -> args[i] = value }
-    values.forEachIndexed { i, value ->
-      val coerced = coerce(value, types[leading.size + i])
-      if (coerced === NONE) return null
-      args[leading.size + i] = coerced
-    }
-    return args
-  }
-
-  /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double (or Int) and fit every numeric type. */
-  private fun coerce(value: Any?, type: Class<*>): Any? = when {
-    value == null -> if (type.isPrimitive) NONE else null
-    type == Boolean::class.javaPrimitiveType || type == Boolean::class.javaObjectType -> value as? Boolean ?: NONE
-    value is Boolean -> NONE
-    type == Int::class.javaPrimitiveType || type == Int::class.javaObjectType -> (value as? Number)?.toInt() ?: NONE
-    type == Long::class.javaPrimitiveType || type == Long::class.javaObjectType -> (value as? Number)?.toLong() ?: NONE
-    type == Float::class.javaPrimitiveType || type == Float::class.javaObjectType -> (value as? Number)?.toFloat() ?: NONE
-    type == Double::class.javaPrimitiveType || type == Double::class.javaObjectType -> (value as? Number)?.toDouble() ?: NONE
-    type == String::class.java || type == CharSequence::class.java -> value as? String ?: NONE
-    type.isInstance(value) -> value
-    else -> NONE
-  }
-
-  /** Invokes, unwrapping the target's own exception; a compat feature this WebView lacks reads as unsupported. */
-  private fun invoke(method: Method, target: Target, args: Array<Any?>): Any? = try {
-    method.invoke(target.receiver, *args)
-  } catch (e: InvocationTargetException) {
-    val cause = e.cause ?: e
-    throw problem(if (cause is UnsupportedOperationException) "not supported by this WebView" else "failed: $cause")
-  } catch (e: IllegalAccessException) {
-    throw problem("not accessible: ${e.message}")
-  }
-
-  private fun problem(reason: String) = IllegalArgumentException(reason)
-
   internal companion object {
     val NONE = Any()
 
@@ -182,6 +118,71 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
       "destroy", "removeAllViews", "pauseTimers", "resumeTimers", "loadUrl", "loadData", "loadDataWithBaseURL",
       "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript"
     )
+
+    /** Calls [key]'s setter on the first target that takes [value]; returns the problem, or null when it was set. */
+    fun set(targets: List<Target>, key: String, value: Any?): String? {
+      if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
+      val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
+      if (setter in OWNED) return "owned by the core"
+      var seen = false
+      for (target in targets) {
+        for (method in target.cls.methods) {
+          if (method.name != setter) continue
+          seen = true
+          val args = arguments(method, target, listOf(value)) ?: continue
+          return try {
+            invoke(method, target, args)
+            null
+          } catch (e: IllegalArgumentException) {
+            e.message
+          }
+        }
+      }
+      return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
+    }
+
+    /** The method's arguments for [values], with the target's leading object first, or null when they don't fit. */
+    private fun arguments(method: Method, target: Target, values: List<Any?>): Array<Any?>? {
+      if (target.receiver == null && !Modifier.isStatic(method.modifiers)) return null
+      val types = method.parameterTypes
+      val leading = if (target.leading != null) listOf(target.leading) else emptyList()
+      if (types.size != leading.size + values.size) return null
+      if (leading.isNotEmpty() && !types[0].isInstance(target.leading)) return null
+      val args = arrayOfNulls<Any?>(types.size)
+      leading.forEachIndexed { i, value -> args[i] = value }
+      values.forEachIndexed { i, value ->
+        val coerced = coerce(value, types[leading.size + i])
+        if (coerced === NONE) return null
+        args[leading.size + i] = coerced
+      }
+      return args
+    }
+
+    /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double (or Int) and fit every numeric type. */
+    private fun coerce(value: Any?, type: Class<*>): Any? {
+      if (value == null) return if (type.isPrimitive) NONE else null
+      return when (type.kotlin.javaObjectType) {
+        Boolean::class.javaObjectType -> value as? Boolean
+        Int::class.javaObjectType -> (value as? Number)?.toInt()
+        Long::class.javaObjectType -> (value as? Number)?.toLong()
+        Float::class.javaObjectType -> (value as? Number)?.toFloat()
+        Double::class.javaObjectType -> (value as? Number)?.toDouble()
+        String::class.java, CharSequence::class.java -> value as? String
+        else -> if (value !is Boolean && type.isInstance(value)) value else null
+      } ?: NONE
+    }
+
+    /** Invokes, unwrapping the target's own exception; a compat feature this WebView lacks reads as unsupported. */
+    private fun invoke(method: Method, target: Target, args: Array<Any?>): Any? = try {
+      method.invoke(target.receiver, *args)
+    } catch (e: InvocationTargetException) {
+      val cause = e.cause ?: e
+      throw problem(if (cause is UnsupportedOperationException) "not supported by this WebView" else "failed: $cause")
+    } catch (e: IllegalAccessException) {
+      throw problem("not accessible: ${e.message}")
+    }
+
+    private fun problem(reason: String) = IllegalArgumentException(reason)
 
     /** A getter's or method's result as JSON: primitives, strings, lists and maps of them; anything else is null. */
     fun toJson(value: Any?): String = when (value) {

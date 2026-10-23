@@ -23,7 +23,7 @@ MinimalWebViewHooks.register("myPackage.pageCounter", configure: { configuration
 // Android, in your module's OnCreate
 MinimalWebViewHooks.register("myPackage.pageCounter") { webView, context ->  // each WebView: the first, and any after a crash
   context.clients += PageCounter(context)                                   // a WebViewClient
-  null                                                                      // or { reason -> … }, run when it goes away
+  null                                                                      // or { … }, run when it goes away
 }
 ```
 
@@ -68,12 +68,12 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   user content controller is fine and user scripts you add stay, after the package's. Android: `configure` runs as
   soon as the WebView is made, before the package sets it up (`WebViewCompat.setProfile` goes here). `attach` runs once
   the WebView exists and its settings are applied, so what it sets wins over the settings it was created with. The
-  closure `attach` returns runs when that WebView goes away; on Android it gets `CRASHED` or `CLOSING`. Handlers
+  closure `attach` returns runs when that WebView goes away, after the `onDocumentEnd` that gives the reason. Handlers
   belong to one attach: Android attaches again after a crash, on a new WebView, and the new `attach` registers them
   again. `emit` and `ask` are callable from any thread; `configure`, `attach`, the handlers and the answers run on
   the main thread. Set delegates in `attach`: WebKit reads what a delegate responds to when it is assigned, and the
-  core re-assigns itself after each change to the lists. On iOS a context kept after its WebView went away does
-  nothing, and its `ask` answers nil.
+  core re-assigns itself after each change to the lists. A context kept after the view closed does nothing, and its
+  `ask` answers null at once.
 - **What not to touch:** the WebView's own delegate and client slots (use the lists), the bridge's script message
   handler and user scripts, and Android's download listener. `MinimalWebViewHooks.webViewClass` (iOS) and
   `webViewFactory` (Android) let a subclass override what the platform class allows.

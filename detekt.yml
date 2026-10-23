@@ -1,7 +1,7 @@
 # Complexity and unused-private-code rules only (run without --build-upon-default-config, so nothing else is active).
 complexity:
   active: true
-  CyclomaticComplexMethod: { active: true, threshold: 15 }
+  CyclomaticComplexMethod: { active: true, threshold: 15, ignoreSimpleWhenEntries: true }
   CognitiveComplexMethod: { active: true, threshold: 15 }
   LongMethod: { active: true, threshold: 60 }
   LongParameterList: { active: true, functionThreshold: 6, constructorThreshold: 7 }

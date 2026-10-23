@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import type { ViewProps } from 'react-native';
 
+import type { BridgeConnection, CONNECTION } from './bridge/createBridge';
 import type { BridgeErrorCode } from './bridge/protocol';
 import type {
   AndroidSettingKeys,
@@ -161,6 +162,8 @@ export type Bridge<
     event: E,
     listener: (payload: Events[E], sender: BridgeSender) => void
   ): () => void;
+  /** What `<WebView>` attaches to; only `createBridge` makes one. */
+  readonly [CONNECTION]: BridgeConnection;
 };
 
 export type BridgeOptions = {

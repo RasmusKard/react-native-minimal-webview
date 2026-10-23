@@ -152,12 +152,14 @@ const PAYLOADS: Record<'android' | 'ios', Row[]> = {
       emitSite: /onBridge\(/g,
       keys: [message, navigated, unavailable],
     },
+    // Not `Asks { onHookEvent(it) }`: its literals are in Asks.kt.
     {
       event: 'onHookEvent',
       file: 'MinimalWebView.kt',
-      emitSite: /onHookEvent\(/g,
-      keys: [hookEvent, askable],
+      emitSite: /onHookEvent\(mapOf/g,
+      keys: hookEvent,
     },
+    { event: 'onHookEvent', file: 'Asks.kt', emitSite: /send\(/g, keys: [hookEvent, askable] },
     {
       event: 'core.navigationRequest',
       file: 'MinimalWebViewNavigation.kt',
@@ -196,7 +198,7 @@ const PAYLOADS: Record<'android' | 'ios', Row[]> = {
     },
     {
       event: 'core.askCancelled',
-      file: 'MinimalWebView.kt',
+      file: 'Asks.kt',
       emitSite: /"core\.askCancelled",/g,
       keys: askCancelled,
     },
@@ -229,18 +231,14 @@ const PAYLOADS: Record<'android' | 'ios', Row[]> = {
       keys: message,
     },
     { event: 'onBridge', file: 'MinimalWebView.swift', emitSite: /onBridge\(/g, keys: navigated },
+    // Not `Asks { [weak self] in self?.onHookEvent($0) }`: its literals are in Asks.swift.
     {
       event: 'onHookEvent',
       file: 'MinimalWebView.swift',
-      emitSite: /onHookEvent\(/g,
-      keys: [hookEvent, askable],
+      emitSite: /onHookEvent\((?=\[)/g,
+      keys: hookEvent,
     },
-    {
-      event: 'onHookEvent',
-      file: 'MinimalWebView+Navigation.swift',
-      emitSite: /onHookEvent\(/g,
-      keys: [hookEvent, askable],
-    },
+    { event: 'onHookEvent', file: 'Asks.swift', emitSite: /send\(/g, keys: [hookEvent, askable] },
     {
       event: 'core.navigationRequest',
       file: 'NavigationRules.swift',
@@ -267,7 +265,7 @@ const PAYLOADS: Record<'android' | 'ios', Row[]> = {
     },
     {
       event: 'core.askCancelled',
-      file: 'MinimalWebView+Navigation.swift',
+      file: 'Asks.swift',
       emitSite: /"core\.askCancelled", "payload":/g,
       keys: askCancelled,
     },

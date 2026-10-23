@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-import android.app.Activity
 import android.content.Context
 import android.os.Looper
 import android.util.Log
@@ -29,7 +28,7 @@ object MinimalWebViewHooks {
   internal class Hook(
     val key: String,
     val configure: ((WebView, WebViewContext) -> Unit)?,
-    val attach: (WebView, WebViewContext) -> ((DocumentScope.End) -> Unit)?
+    val attach: (WebView, WebViewContext) -> (() -> Unit)?
   )
 
   /** In registration order: the order the hooks are configured and attached in, so which client comes first. */
@@ -39,13 +38,12 @@ object MinimalWebViewHooks {
    * Registers the hook for [key]. For each new WebView (the first, and the one that replaces it after the render
    * process dies) [configure] runs as soon as it is made, before the package sets it up (`WebViewCompat.setProfile`
    * goes here), and [attach] once it has its clients and is in the view hierarchy. `attach` returns what to run when
-   * that WebView goes away, which gets `CRASHED` or `CLOSING`, or null. A second registration under a key replaces the
-   * first, with a warning.
+   * that WebView goes away, or null. A second registration under a key replaces the first, with a warning.
    */
   fun register(
     key: String,
     configure: ((WebView, WebViewContext) -> Unit)? = null,
-    attach: (WebView, WebViewContext) -> ((DocumentScope.End) -> Unit)?
+    attach: (WebView, WebViewContext) -> (() -> Unit)?
   ) {
     // The package's own events are `core.…`: a hook under it would have its events taken for them.
     if (key == "core") {
@@ -70,7 +68,6 @@ internal fun enables(value: Any?) = value != null && value != false
 interface WebViewContext {
   /** This hook's `hookOptions` value; after a change, the new one. */
   val options: Any?
-  val activity: Activity?
 
   /** The committed URL, the one the navigation state reports; empty before the first commit. */
   val url: String
@@ -109,7 +106,6 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   val key get() = hook.key
   private var current: Any? = view.hookOptions[hook.key]
   override val options get() = current
-  override val activity get() = view.activity
   override val url get() = view.url
   override val clients get() = view.clients
   override val chromeClients get() = view.chromeClients
@@ -120,7 +116,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { view.ask("$key.$name", payload, onAnswer) }
+    onMain { view.asks.ask("$key.$name", payload, onAnswer) }
 
   override fun onOptionsChange(handler: (Any?) -> Unit) {
     optionsHandlers += handler

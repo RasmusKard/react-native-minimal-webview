@@ -65,17 +65,16 @@ extension MinimalWebView {
       finish(request, decision.action, decision.rule, completion)
       return
     }
-    let id = register { [weak self] answer in
+    let id = asks.ask("core.navigationRequest", request.payload) { [weak self] answer in
       // The view can be gone: the decision handler must still be called.
       guard let self else { return completion(false) }
       let action = NavigationRules.answer(answer)
       if action == "allow" { self.askedAndAllowed[request.mainFrame, default: []].insert(request.url) }
       self.finish(request, action, decision.rule, completion)
     }
-    onHookEvent(["name": "core.navigationRequest", "payload": request.payload, "askId": id])
     // Unanswered after the timeout: block.
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
-      self?.cancelAsk(id)
+      self?.asks.cancel(id)
     }
   }
 
@@ -89,25 +88,6 @@ extension MinimalWebView {
 
   private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
     onNavigation(request.payload.merging(["action": action, "rule": rule as Any? ?? NSNull()]) { $1 })
-  }
-
-  func register(_ onAnswer: @escaping (Any?) -> Void) -> Int {
-    nextAskId += 1
-    pendingAsks[nextAskId] = onAnswer
-    return nextAskId
-  }
-
-  /// Native gives up on an ask: its callback gets nil, and JS aborts the handler's signal unless `tell` is false.
-  func cancelAsk(_ id: Int, tell: Bool = true) {
-    guard let onAnswer = pendingAsks.removeValue(forKey: id) else { return }
-    if tell { onHookEvent(["name": "core.askCancelled", "payload": ["askId": id]]) }
-    onAnswer(nil)
-  }
-
-  /// Cancels every pending ask: the WebView or its page is going away. At close (from deinit) JS isn't told: it aborts
-  /// its own handlers at unmount.
-  func failPendingAsks(_ reason: DocumentScope.End) {
-    pendingAsks.keys.forEach { cancelAsk($0, tell: reason != .closing) }
   }
 
   /// Equal URLs, treating an empty path as "/": WebKit turns `https://example.com` into `https://example.com/`.
