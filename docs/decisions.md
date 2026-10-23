@@ -27,8 +27,10 @@ and swiftc tests drive all three ends with fake registrants.
 
 ### Considered and rejected
 
-- Before WebView 146, Android has no commit callback, so `onPageStarted` (load start) stays the commit signal, early by
-  the provisional window: a main-frame load that never commits ends the Document spuriously. `onPageCommitVisible` is a
+- Before WebView 146, Android has no commit callback of its own, so `onPageStarted` stays the commit signal. Chromium
+  calls it at commit (for every app but old GMS), so a main-frame load that never commits leaves the Document as it was
+  and fires no load events. Seen on WebView 133 (2026-10-23): 1 s into a navigation to a 3 s slow response, the state
+  still reads `loading: false` with the old `url` (`urlTracking`'s "during slow load"). `onPageCommitVisible` is a
   true commit signal but fires after the body starts, so an early page post, or a small page's `ready`, would lose its
   reply proxy to the late reset.
 - A protocol with three methods, or the scope calling each feature's existing reset methods in order: closures that
