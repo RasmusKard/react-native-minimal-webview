@@ -44,4 +44,12 @@ class AsksTest {
     asks.answer(second, "late")
     assertEquals(2, answers.size)
   }
+
+  @Test
+  fun `an ask after closing answers null at once and sends nothing`() {
+    asks.documentEnded(End.CLOSING)
+    ask()
+    assertEquals(listOf<Any?>(null), answers)
+    assertEquals(emptyList<Map<String, Any?>>(), sent)
+  }
 }

@@ -61,5 +61,6 @@
 - Android fullscreen video restores the app's system bars.
 - The Android bridge listener ignores non-string messages.
 - iOS `get`/`call` result conversion can't crash.
+- Hooks: a kept context's `ask` after the view closed answers null at once; it could stay unanswered.
 - The navigation state, `onNavigation` and `onProcessGone` events no longer carry React Native's `target` key.
 - LICENSE names the right copyright holder.

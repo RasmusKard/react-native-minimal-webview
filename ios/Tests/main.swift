@@ -131,5 +131,11 @@ if replies != ["yes", nil, nil, nil] || cancelled() != [timedOut, committed] {
   askFailures += 1
   print("FAIL ask at a Document end: \(replies), \(cancelled())")
 }
-print("\(3 - askFailures)/3 ask cases pass")
+let before = sent.count
+_ = ask()
+if replies != ["yes", nil, nil, nil, nil] || sent.count != before {
+  askFailures += 1
+  print("FAIL ask after closing: \(replies), \(sent.count - before) sent")
+}
+print("\(4 - askFailures)/4 ask cases pass")
 exit(failures + originFailures + scopeFailures + askFailures == 0 ? 0 : 1)

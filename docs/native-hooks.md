@@ -70,8 +70,8 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   belong to one attach: Android attaches again after a crash, on a new WebView, and the new `attach` registers them
   again. `emit` and `ask` are callable from any thread; `configure`, `attach`, the handlers and the answers run on
   the main thread. Set delegates in `attach`: WebKit reads what a delegate responds to when it is assigned, and the
-  core re-assigns itself after each change to the lists. On iOS a context kept after its WebView went away does
-  nothing, and its `ask` answers nil.
+  core re-assigns itself after each change to the lists. A context kept after the view closed does nothing, and its
+  `ask` answers null at once.
 - **What not to touch:** the WebView's own delegate and client slots (use the lists), the bridge's script message
   handler and user scripts, and Android's download listener. `MinimalWebViewHooks.webViewClass` (iOS) and
   `webViewFactory` (Android) let a subclass override what the platform class allows.

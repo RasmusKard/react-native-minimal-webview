@@ -10,9 +10,15 @@ import expo.modules.minimalwebview.DocumentScope.End
 internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   private val pending = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextId = 0
+  /** The view closed: JS is unmounted, and a hook may still hold its context. */
+  private var closed = false
 
-  /** Sends the ask to JS and returns its id, for [cancel]. */
+  /** Sends the ask to JS and returns its id, for [cancel]. Once the view closed it answers null at once. */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
+    if (closed) {
+      onAnswer(null)
+      return 0 // no ask: cancel(0) finds nothing
+    }
     val id = ++nextId
     pending[id] = onAnswer
     send(mapOf("name" to name, "payload" to payload, "askId" to id))
@@ -32,5 +38,8 @@ internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   }
 
   /** Cancels every pending ask. At closing JS isn't told: it aborts its own handlers at unmount. */
-  fun documentEnded(reason: End) = pending.keys.toList().forEach { cancel(it, tell = reason != End.CLOSING) }
+  fun documentEnded(reason: End) {
+    if (reason == End.CLOSING) closed = true
+    pending.keys.toList().forEach { cancel(it, tell = reason != End.CLOSING) }
+  }
 }
