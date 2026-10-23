@@ -3,13 +3,15 @@ import { Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
 import { WebView, createWebViewRef, useWebViewState } from '../WebView';
-import type { NavigationState, WebViewProps, WebViewRef } from '../types';
+import { CONNECTION, createBridge } from '../bridge/createBridge';
+import type { Bridge, NavigationState, WebViewProps, WebViewRef } from '../types';
 
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
+const mockBridgePost = jest.fn();
 const mockMount = jest.fn();
-// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `evaluate`, `get`, `call` and
-// `hook` methods; `get`, `call` and `hook` echo their request as JSON.
+// A host element named MinimalWebView whose ref has the native `answer`, `navigate`, `bridgePost`, `evaluate`, `get`,
+// `call` and `hook` methods; `get`, `call` and `hook` echo their request as JSON.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
@@ -23,6 +25,7 @@ jest.mock('expo', () => {
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
           navigate: mockNavigate,
+          bridgePost: mockBridgePost,
           evaluate: async () => '{"a":1}',
           get: async (path: string) => JSON.stringify({ get: path }),
           call: async (path: string, args: string, completion: string | null) =>
@@ -188,6 +191,67 @@ it('takes a ref to a WebViewRef, and no other ref', () => {
   // @ts-expect-error because the ref is a Text's, not a WebViewRef
   const wrong = <WebView source={{ uri: 'https://example.com' }} ref={createRef<Text>()} />;
   expect([element, wrong]).toHaveLength(2);
+});
+
+it('takes ref={null}', async () => {
+  expect((await render({ ref: null })).native).toBeDefined();
+});
+
+describe('bridge', () => {
+  const page = 'https://example.com';
+  const newBridge = () => createBridge({ allowedOrigins: [page] });
+  const onBridge = (native: object | undefined, nativeEvent: object) =>
+    act(async () =>
+      (native as { onBridge: (event: { nativeEvent: object }) => void }).onBridge({ nativeEvent })
+    );
+  const posted = () => JSON.parse(mockBridgePost.mock.lastCall?.[0] as string) as unknown;
+
+  it("gives native the page client and origins, and answers a page's call with its origin", async () => {
+    const bridge = newBridge();
+    bridge.handle('who', (_, sender) => sender.origin);
+    const { native } = await render({ bridge });
+    expect(native).toMatchObject({
+      bridgeScript: bridge[CONNECTION].script,
+      bridgeOrigins: [page],
+    });
+    const call = { doc: 'd1', kind: 'call', id: 'p1', method: 'who' };
+    await onBridge(native, { message: JSON.stringify(call), origin: `${page}:8443` });
+    expect(posted()).toEqual({ doc: 'd1', kind: 'result', id: 'p1', value: `${page}:8443` });
+  });
+
+  it('passes navigated and unavailable on to the bridge', async () => {
+    const bridge = newBridge();
+    const { native } = await render({ bridge });
+    await onBridge(native, { message: JSON.stringify({ doc: 'd1', kind: 'ready' }), origin: page });
+    const sent = bridge.call('x');
+    await onBridge(native, { navigated: true });
+    await expect(sent).rejects.toMatchObject({ code: 'navigated' });
+    await onBridge(native, { unavailable: true });
+    await expect(bridge.call('x')).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
+  it('detaches at unmount, so the bridge can go in the next WebView', async () => {
+    const bridge = newBridge();
+    const root = createRoot();
+    await act(async () => root.render(<WebView source={{ uri: page }} bridge={bridge} />));
+    const pending = bridge.call('x');
+    await act(async () => root.unmount());
+    await expect(pending).rejects.toMatchObject({ code: 'navigated' });
+    await render({ bridge });
+  });
+
+  it('recreates the native view for another bridge, not for the same one', async () => {
+    const root = createRoot();
+    const show = (bridge: Bridge) =>
+      act(async () => root.render(<WebView source={{ uri: page }} bridge={bridge} />));
+    const bridge = newBridge();
+    mockMount.mockClear();
+    await show(bridge);
+    await show(bridge);
+    expect(mockMount).toHaveBeenCalledTimes(1);
+    await show(newBridge());
+    expect(mockMount).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('ref.hook', () => {

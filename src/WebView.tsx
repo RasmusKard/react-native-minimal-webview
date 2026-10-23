@@ -462,7 +462,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
       },
     };
   }
-  if (Platform.OS !== 'android') return {};
   const { settings, webView } = props.android ?? {};
   return {
     settings: {
