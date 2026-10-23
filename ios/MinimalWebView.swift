@@ -212,6 +212,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
     hookContexts = MinimalWebViewHooks.hooks.filter { enables(hookOptions[$0.key]) }.map { HookContext($0, self) }
     for context in hookContexts { context.hook.configure?(configuration, context) }
+    // A typo, or a hook's module not linked or not rebuilt.
+    for key in hookOptions.keys where enables(hookOptions[key]) && !hookContexts.contains(where: { $0.key == key }) {
+      emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
+    }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }

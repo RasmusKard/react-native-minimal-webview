@@ -39,7 +39,9 @@ await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's rep
   `false` (JS doesn't send `null` and `undefined`). `context.options` is that value. A later change reaches the
   attached hook live, with no new WebView: its `onOptionsChange` handlers get the new value (null or nil when the key
   is removed), and `context.options` is it from then on. A key added after the WebView was created attaches nothing,
-  and a warning says so. On Android the WebView after a renderer crash gets the same hooks, with their current values.
+  and a warning says so. A key that enables a hook when the WebView is created but has no hook registered under it (a
+  typo, or a module not linked or not rebuilt) warns then, so pass a one-platform hook's key on that platform only.
+  On Android the WebView after a renderer crash gets the same hooks, with their current values.
 - **Delegates and clients.** A callback that returns a decision goes to the first hook delegate (client) that
   implements it, and the core steps aside; every other callback reaches the core first, then every hook that
   implements it. The decisions are `DelegateProxy.decisions` (iOS) and the `deciding(` calls in

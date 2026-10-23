@@ -136,8 +136,11 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+    val first = hookKeys == null
     val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
     hookContexts = MinimalWebViewHooks.hooks.filter { it.key in keys }.map { HookContext(it, this) }
+    // A typo, or a hook's module not linked or not rebuilt. Once: the WebView after a crash has the same keys.
+    if (first) (keys - hookContexts.map { it.key }.toSet()).forEach { warn("hookOptions.$it: no hook is registered under this key") }
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
