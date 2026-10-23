@@ -23,6 +23,7 @@
 - Hooks: `nativeOptions` is `hookOptions`, `onNativeEvent` is `onHookEvent`, and the `NativeEvent` type is `HookEvent<N, P>` (`N` and `P` type the name and payload).
 - Hooks: `MinimalWebViewHooks.register(key, configure:, attach:)` replaces the `configure` and `attach` maps. `context.options` is the hook's own `hookOptions` value, not every hook's, a `false` value attaches no hook, and Android's detach closure gets the reason (`CRASHED` or `CLOSING`).
 - Hooks (iOS): commit and crash callbacks reach hooks after the core, and observation callbacks reach every hook, as on Android.
+- Hooks (Android): a client that overrides a deprecated variant the platform forwards to (`shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`, the 4-argument `onReceivedError`, `onConsoleMessage(String, Int, String)`) counts as overriding the callback, so it now gets it and takes its decision: its `shouldOverrideUrlLoading` switches the navigation rules off.
 - Native: the view's `native` function is split into `get(path)` and `call(path, argsJson, completion)`.
 - Package: an `exports` map: only `react-native-minimal-webview` and `react-native-minimal-webview/package.json` resolve.
 
@@ -44,6 +45,7 @@
 - Crash recovery (iOS): reloads in place and keeps the back-forward list. Only the ref's `reload()` and a `source` change reset the crash guard, not a recovery reload.
 - Crash recovery (Android): the crash guard counts for the whole app, and the reports of one renderer death count once. Only the ref's `reload()` resets it, not pull-to-refresh or a `source` change. The new WebView keeps the history, and is built only once the app is in the foreground and the view on screen. Until then, `evaluate`, `get`, `call` and `hook` reject with `unavailable`, and a new `source` loads on the new WebView.
 - Hooks (iOS): the hook context is weak, the hooks' user scripts survive the core's script reset, and live settings apply before hooks attach.
+- Hooks (iOS): `context.emit` and `context.ask` can be called from any thread, as on Android; they hop to the main thread.
 - iOS `evaluate` rejects with the thrown error's own message.
 - Android downloads run on one IO thread, with a 100 MB cap.
 - Peer floors are Expo 53 and React Native 0.79, verified by a build and smoke run on SDK 53 and 55.

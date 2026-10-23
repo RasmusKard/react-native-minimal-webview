@@ -100,12 +100,14 @@ final class HookContext: WebViewContext {
   }
 
   func emit(_ event: String, _ payload: [String: Any]) {
-    view?.emit("\(key).\(event)", payload)
+    onMain { [self] in view?.emit("\(key).\(event)", payload) }
   }
 
   func ask(_ event: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
-    guard let view else { return onAnswer(nil) }
-    view.ask("\(key).\(event)", payload, onAnswer)
+    onMain { [self] in
+      guard let view else { return onAnswer(nil) }
+      view.ask("\(key).\(event)", payload, onAnswer)
+    }
   }
 
   func onOptionsChange(_ handler: @escaping (Any?) -> Void) {
@@ -127,5 +129,10 @@ final class HookContext: WebViewContext {
 
   func documentEnded(_ reason: DocumentScope.End) {
     documentEndHandlers.forEach { $0(reason) }
+  }
+
+  // A hook's own background work (a URLSession completion) may emit or ask; the view's asks are main-thread state.
+  private func onMain(_ block: @escaping () -> Void) {
+    if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
   }
 }
