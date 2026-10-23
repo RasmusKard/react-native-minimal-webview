@@ -28,6 +28,8 @@ import type {
 } from './types';
 
 type Native<T> = { nativeEvent: T };
+/** The native view's event props, by name and payload. */
+type NativeHandlers<E> = { [K in keyof E]: (event: Native<E[K]>) => void };
 
 /**
  * A type's documented keys, to pick from its native event: React Native adds its own (`target`, the view's tag). A
@@ -131,13 +133,14 @@ type NativeProps = ViewProps &
     bridgeOrigins: string[] | undefined;
     hookOptions: Record<string, unknown> | undefined;
     requestHandlers: string[];
-    onNavigation: (event: Native<NavigationEvent>) => void;
-    onNavigationState: (event: Native<NavigationState>) => void;
-    onBridge: (event: Native<BridgeEvent>) => void;
-    onHookEvent: (event: Native<AskableEvent>) => void;
-    onError: (event: Native<NativeErrorEvent>) => void;
-    onProcessGone: (event: Native<ProcessGoneEvent>) => void;
-  };
+  } & NativeHandlers<{
+    onNavigation: NavigationEvent;
+    onNavigationState: NavigationState;
+    onBridge: BridgeEvent;
+    onHookEvent: AskableEvent;
+    onError: NativeErrorEvent;
+    onProcessGone: ProcessGoneEvent;
+  }>;
 
 type NativeMethods = {
   navigate(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>;
