@@ -21,8 +21,8 @@ export function Browser() {
   before the first). `onLoadEnd` gets it with the state. See [`onLoadStart`, `onLoadEnd`](props.md) for what counts as
   which.
 - Iframes never change `url` or `pendingUrl`.
-- On Android with a WebView older than 146 (no `NAVIGATION_LISTENER`; Huawei and Fire OS devices ship their own
-  WebView builds), `pendingUrl` stays `null`. `url` still follows commits and SPA navigation.
+- On Android with a WebView older than 146, `pendingUrl` stays `null`; `url` still follows commits and SPA navigation
+  ([Android System WebView versions](props.md#android-system-webview-versions)).
 
 The hook follows the WebView when it remounts (a new `key`, a conditional render). While no WebView is mounted with
 the ref, the state is the initial one (`url: ''`), so a stale `url` never looks valid.

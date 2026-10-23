@@ -36,7 +36,8 @@ Android also sets these natively, once for each new WebView (the first, and the 
 - `javaScriptEnabled`, `domStorageEnabled` and `supportMultipleWindows` on (a new window reaches the navigation rules).
 - `allowFileAccess` and `allowContentAccess` off, `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`.
 - Pinch-zoom on, without the +/- buttons: `builtInZoomControls` on, `displayZoomControls` off.
-- `backForwardCacheEnabled` on, so back and forward restore the page as WebKit does (with WebView 146 and newer).
+- `backForwardCacheEnabled` on, so back and forward restore the page as WebKit does (with WebView 146 and newer, see
+  [Android System WebView versions](props.md#android-system-webview-versions)).
 - `downloadFaviconsEnabled` off, where the WebView has the setting (a hook client that overrides `onReceivedIcon` turns
   it back on).
 
