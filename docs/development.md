@@ -12,6 +12,17 @@ xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.s
 npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
 ```
 
+The code's shape, as reports rather than checks: the native thresholds are starting points that today's code exceeds.
+detekt, swiftlint, periphery and cloc are CLIs (Homebrew), not npm dependencies.
+
+```sh
+detekt --input android/src/main --config detekt.yml   # Kotlin complexity and unused private code (the rules are in detekt.yml)
+swiftlint lint                                        # Swift complexity (.swiftlint.yml)
+periphery scan                                        # unused Swift (.periphery.yml); builds the example app itself (needs example/ios, see below), ~40 s
+npx stryker run --mutate src/WebView.tsx              # WebView.test.tsx's mutation score, under the 80% gate today
+cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
+```
+
 Two files are generated, and CI fails when either is stale (`--check`):
 - `src/bridge/pageClient.generated.ts`, from `pageClient.ts` and `endpoint.ts`: `npm run build:page-client` after
   editing either.
