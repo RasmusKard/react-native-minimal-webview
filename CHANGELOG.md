@@ -36,6 +36,7 @@
 - Asks: `onNavigationRequest`, `onFileRequest`, `onPermissionRequest` and a hook ask's `onHookEvent` get an `AbortSignal` that aborts when native stops waiting.
 - Hooks: `ref.hook(name, method, args)` and `context.handle`; `context.url`, `context.onDocumentEnd` and `context.onOptionsChange`; a changed `hookOptions` value reaches its hook live; Android hooks get `configure`.
 - Types: `WebViewErrorCode` and `CodedError` for ref method rejections, `FullscreenChangeEvent`, `BridgeCallError`, `BridgeMethodMap` and `BridgeEventMap`.
+- Ref (iOS): `call` takes `{ cookie: properties }` for an `NSHTTPCookie` and resolves one as its properties, so JS sets and reads cookies through `httpCookieStore` without a native module.
 - Docs: [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md).
 
 ### Changed
@@ -55,6 +56,7 @@
 
 - Android crash recovery reloads the source with its headers, ends the cut-off load (`loading: false`), re-emits the navigation state, and `reload()` works after the guard gives up.
 - iOS `sharedCookies`: cookies the page deletes are deleted from `HTTPCookieStorage` too, so a logout sticks.
+- iOS `call` rejects a `{ data }` that isn't base64 instead of passing nil.
 - Android downloads leave no partial files after a failure.
 - Android fullscreen video restores the app's system bars.
 - The Android bridge listener ignores non-string messages.
