@@ -1,16 +1,14 @@
-// Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// npm v7+ will install ../node_modules/react and ../node_modules/react-native because of peerDependencies.
-// To prevent the incompatible react-native between ./node_modules/react-native and ../node_modules/react-native,
-// excludes the one from the parent folder when bundling.
+// The repo root's node_modules has its own react and react-native (npm installs peer dependencies), expo and
+// expo-modules-core: bundle only the example's. A second react-native is incompatible, and a second expo or
+// expo-modules-core breaks native module setup on Android.
 config.resolver.blockList = [
   ...Array.from(config.resolver.blockList ?? []),
-  // On windows the path will resolve with `\`. We need to escape it with `\\` for the RegExp.
-  // expo and expo-modules-core too: a second copy of them breaks native module setup on Android.
+  // Windows paths have `\`, which the RegExp needs escaped.
   ...['react', 'react-native', 'expo', 'expo-modules-core'].map(
     (name) =>
       new RegExp(path.resolve('..', 'node_modules', name).replace(/\\/g, '\\\\') + '[/\\\\]')
