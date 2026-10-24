@@ -35,7 +35,9 @@ extension MinimalWebView {
     finish(request, "external", nil) { _ in }
   }
 
-  /// window.open and target=_blank: never a second WKWebView. `allow` loads the URL in this one.
+  /// window.open and target=_blank: never a second WKWebView, since a popup model (presenting and closing a child,
+  /// `window.opener`, its own rules and bridge) is more than almost any app wants. `allow` loads the URL in this one.
+  /// An app that needs real popups takes `createWebViewWith` in a hook's UI delegate and owns the second view.
   func webView(
     _ webView: WKWebView,
     createWebViewWith configuration: WKWebViewConfiguration,
@@ -105,5 +107,7 @@ extension MinimalWebView {
 private let askTimeout: TimeInterval = 1
 
 /// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (iOS 9+), as Firefox for iOS uses it: `.allow`
-/// would hand a tapped link to another host to an installed app that claims it as a universal link.
+/// would hand a tapped link to another host to an installed app that claims it as a universal link, which Android's
+/// WebView never does, so the same rules would split the platforms. Hand-off is an explicit `external` rule. If WebKit
+/// drops the value, `.allow` brings the hand-off back.
 private let allowInPlace = WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2) ?? .allow

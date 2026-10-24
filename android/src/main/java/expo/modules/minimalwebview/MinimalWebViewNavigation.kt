@@ -142,7 +142,9 @@ internal class MinimalWebViewNavigation(
     return false
   }
 
-  // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed.
+  // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed. Never a second
+  // WebView for the app: a popup model is more than almost any app wants, and a hook chrome client's `onCreateWindow`
+  // owns one when it must.
   fun createWindow(isUserGesture: Boolean, resultMsg: Message): Boolean {
     val child = WebView(owner.context)
     // It only catches a URL: none of the page's access, and no JS of its own.

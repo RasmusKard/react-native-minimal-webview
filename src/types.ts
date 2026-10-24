@@ -57,7 +57,8 @@ export type NavigationRule = {
   mainFrame?: boolean;
   /**
    * `target=_blank` or `window.open`, a main-frame navigation. An allowed one loads in place: there is never a second
-   * WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked.
+   * WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked, and
+   * on Android one that doesn't navigate within 5 s (`window.open('')`) is dropped.
    */
   newWindow?: boolean;
   /**
@@ -186,7 +187,10 @@ export type BridgeEventMap = Record<string, unknown>;
  * A promise-based RPC channel to `window.nativeBridge` in the page. Attach it with the `bridge` prop. What it sends
  * waits for the page's `DOMContentLoaded`, so the handlers and listeners of the page's synchronous and deferred scripts
  * are in place, and never reaches a later page, even one on the same origin; the page's own calls work earlier.
- * Messages have no size limit.
+ * Messages have no size limit. The page's `window.nativeBridge` has the same four methods, `call(method, params?,
+ * { timeoutMs? })`, `handle`, `emit` and `on`, and its calls reject with an `Error` whose `code` is a
+ * {@link BridgeErrorCode}.
+ * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#the-bridge
  */
 export type Bridge<
   Methods extends BridgeMethodMap = BridgeMethodMap,
@@ -258,8 +262,9 @@ export type PermissionRequest = { origin: string; resources: PermissionResource[
 
 /**
  * A finished download: `uri` is a `file://` in the app's cache (iOS: the temporary directory), which the core never
- * deletes. `url` is the server URL the file came from; `null` when the page generated it (`data:` or `blob:` URL). The
- * page chooses the content, `filename` and `mimeType`, so don't open the file as trusted.
+ * deletes. `url` is the server URL the file came from; `null` when the page generated it (`data:` or `blob:` URL).
+ * `filename` is a plain file name, no path, but the page chose it, like the content and `mimeType`: don't open the file
+ * as trusted.
  */
 export type Download = {
   ok: true;
@@ -280,10 +285,10 @@ export type SettingValue =
   boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
 
 /**
- * A root's generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus, untyped, any
- * other key the platform has.
+ * A settings root: its generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus,
+ * untyped, any other key the platform has.
  */
-type Root<Known> = Known & Record<string, SettingValue | undefined>;
+export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>;
 
 /**
  * WebKit settings by Objective-C property name, set with Key-Value Coding, so any public property works, including ones
@@ -294,7 +299,7 @@ type Root<Known> = Known & Record<string, SettingValue | undefined>;
  * doesn't fit, or a private (`_`) one, is skipped with a warning; nothing here can crash the app. A root's `@default`
  * keys are the package's, and yours go over them. Read one back with the ref's `get('scrollView.bounces')`.
  * @platform ios
- * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/platform-settings.md
+ * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings
  */
 export type IOSSettings = {
   /**
@@ -302,18 +307,18 @@ export type IOSSettings = {
    * reloads and the navigation state starts over). The default lets a `<video playsinline>` play inline.
    * @default { allowsInlineMediaPlayback: true }
    */
-  configuration?: Root<IOSSettingKeys['configuration']>;
+  configuration?: SettingsRoot<IOSSettingKeys['configuration']>;
   /** `WKPreferences` (`configuration.preferences`), live. */
-  preferences?: Root<IOSSettingKeys['preferences']>;
+  preferences?: SettingsRoot<IOSSettingKeys['preferences']>;
   /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
-  webpagePreferences?: Root<IOSSettingKeys['webpagePreferences']>;
+  webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
    * The `WKWebView`, live.
    * @default { customUserAgent: null, inspectable: __DEV__ }
    */
-  webView?: Root<IOSSettingKeys['webView']>;
+  webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /** Its `UIScrollView`, live. */
-  scrollView?: Root<IOSSettingKeys['scrollView']>;
+  scrollView?: SettingsRoot<IOSSettingKeys['scrollView']>;
 };
 
 /**
@@ -324,7 +329,7 @@ export type IOSSettings = {
  * nothing here can crash the app. A root's `@default` keys are the package's, and yours go over them. Read one back
  * with the ref's `get('settings.textZoom')`.
  * @platform android
- * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/platform-settings.md
+ * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings
  */
 export type AndroidSettings = {
   /**
@@ -334,13 +339,13 @@ export type AndroidSettings = {
    * `MIXED_CONTENT_NEVER_ALLOW`; and, with WebView 146 and newer, `backForwardCacheEnabled` on.
    * @default { userAgentString: null }
    */
-  settings?: Root<AndroidSettingKeys['settings']>;
+  settings?: SettingsRoot<AndroidSettingKeys['settings']>;
   /**
    * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
    * `acceptThirdPartyCookies`. `webContentsDebuggingEnabled` is process-wide.
    * @default { webContentsDebuggingEnabled: __DEV__ }
    */
-  webView?: Root<AndroidSettingKeys['webView']>;
+  webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
 
 /**
@@ -373,7 +378,10 @@ export type CodedError = Error & { code: WebViewErrorCode };
 
 /**
  * The WebView's props. The ones from React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility
- * props, layout and touch events) go to the native view.
+ * props, layout and touch events) go to the native view. JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have
+ * no prop: iOS shows a `UIAlertController` titled with the frame's host, one at a time, and Android WebView's own
+ * dialogs; an auth challenge is declined, so the site's 401 page shows. A native hook takes them over (`HookDialogs`
+ * and `HookAuth` in `example/modules/sample-extension`).
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
@@ -412,8 +420,10 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * and other schemes open externally from the main frame and are blocked from a subframe. `about:`, `blob:`, `data:`
    * and `javascript:` always load in place. The `source` load, reloads and back/forward skip the rules; a redirect of
    * the `source` load doesn't, nor on Android a redirect of a reload or back/forward. On Android the rules never see a
-   * POST: form posts always load.
-   * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/navigation-rules.md
+   * POST: form posts always load, and a form POST to a new window doesn't load at all. An `external` `intent:` URL
+   * (Android) opens only as a browsable intent, without its explicit component or selector; when no app handles it, its
+   * `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as `block`.
+   * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#navigation-rules
    */
   navigationRules?: NavigationRule[];
   /**
@@ -438,7 +448,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * attaches its hook, and a later change reaches that hook live, without recreating the WebView. A key added later
    * attaches nothing (a warning says so), so a hook you switch on and off keeps its key, with the switch in its value.
    * A key no hook is registered under warns: pass a one-platform hook's key on that platform only.
-   * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/native-hooks.md
+   * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#native-hooks
    */
   hookOptions?: Record<string, unknown>;
   /**

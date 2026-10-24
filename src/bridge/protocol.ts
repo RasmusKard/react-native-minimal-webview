@@ -19,7 +19,8 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
  * `doc` is the page document's random token. Each side puts a token on every message (RN the token of the document it
  * means), and the page drops any message that isn't for it: native delivers to whatever document is current (iOS
  * checks only the origin), so a message posted as a same-origin navigation commits would otherwise reach the new page.
- * Messages are built without it; `send` adds it.
+ * It is for correctness, not security: an allowed page can rebind its own client. Messages are built without it;
+ * `send` adds it.
  */
 export type BridgeMessage = { doc?: string } & (
   | { kind: 'ready' }

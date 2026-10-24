@@ -30,32 +30,18 @@ export function Browser() {
 
 ## Docs
 
-- [Navigation state](docs/navigation-state.md): `useWebViewState`, and `createWebViewRef` for code outside React
-- [Navigation rules](docs/navigation-rules.md): which URLs load in place, open externally or are blocked
-- [The bridge](docs/bridge.md): calls and events between React Native and the page
-- [Platform settings](docs/platform-settings.md): any WebKit or Android setting by name, and `get` and `call`
-- [Page requests](docs/page-requests.md): file chooser, fullscreen video, permissions, downloads and JS dialogs, with recipes
-- [Native hooks](docs/native-hooks.md): your own Swift and Kotlin, with the real `WKWebView` or `WebView`
-- [Security defaults](docs/security.md)
-- [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): the prop map, the defaults that
-  differ, and recipes for what has no prop
-- [Development](docs/development.md): unit tests and the on-device suites
-- [Glossary](docs/glossary.md): the words the docs and the code use
-- [Decisions](docs/decisions.md): why things are the way they are, and what was rejected
-
-The props, ref methods and types are documented in their TSDoc.
+- [Examples](docs/examples.md): one per public interface, from the navigation state to native hooks
+- [API reference](docs/api/README.md), generated from the TSDoc. The native hook API is documented on
+  `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
+- [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): what differs, and recipes for what
+  has no prop
+- [Development](docs/development.md): the checks and the on-device suites
 
 ## Android System WebView versions
 
 Android System WebView updates apart from the OS (through the Play Store; Huawei and Fire OS devices ship their own
-builds), so what a device can do depends on its WebView, not its API level. The core checks each WebView feature at
-run time: an older WebView loses the features below, and nothing crashes. WebView 146 and newer has all of them.
-
-| WebView | Feature | Below it |
-|---|---|---|
-| 101 | `WEB_MESSAGE_LISTENER`, `DOCUMENT_START_SCRIPT` | Bridge calls reject with `unavailable`, `injectedScripts` don't run (each warns once per process), and `evaluate` rejects with `unavailable`, so `blob:` downloads fail. API 29+ devices with WebView updates on have it; the API 29 Google APIs emulator image ships 91 |
-| 146 | `NAVIGATION_LISTENER` | `pendingUrl` stays `null` (`url` still follows commits and SPA navigation). A load that never commits fires neither `onLoadStart` nor `onLoadEnd`. An SSL error on a back/forward load isn't reported. The back-forward cache stays off (WebView 133 reports no page finish for a restored page). Seen on WebView 133: an open file chooser is cancelled only when the next page commits, and the `paymentRequestEnabled` setting isn't supported |
-
-Other features are checked one by one: `preconnect` does nothing without `Profile.enqueuePreconnect` or `preconnect`,
-favicon downloads stay on without `downloadFaviconsEnabled`, and an `android` setting this WebView lacks is skipped with
-a warning.
+builds), so what a device can do depends on its WebView, not its API level. The core checks each feature at run time,
+and an older WebView loses the feature with a warning; nothing crashes. Below WebView 101: the bridge, `injectedScripts`
+and `evaluate`, and so `blob:` downloads. Below 146: `pendingUrl`, the load events of a load that never commits, an SSL
+error on a back/forward load, and the back-forward cache. Each one's TSDoc says so. `preconnect` and favicon downloads
+need features newer still, and an `android` setting this WebView lacks is skipped with a warning.
