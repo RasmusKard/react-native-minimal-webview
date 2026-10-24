@@ -88,6 +88,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
    * page is ready; at unmount it rejects what is in flight itself. */
   fun documentEnded(reason: End) {
     failEvaluations()
+    // At a commit this runs one main-thread hop after Chromium's (the NavigationListener's executor posts it), and
+    // relies on landing before the new page's first message sets replyProxy (the bridge suite's head-script call).
     replyProxy = null
     if (reason != End.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
   }

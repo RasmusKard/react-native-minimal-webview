@@ -55,6 +55,8 @@ export type Harness = {
     downloadFailures: DownloadFailure[];
     fullscreen: boolean[];
     pageCounts: { url: string; count: number }[];
+    /** The page counter's `documentEnd` payloads: the reason, and `context.url` at that moment. */
+    documentEnds: { reason: string; url: string }[];
     /** The names of the hooks' other events. */
     hookEvents: string[];
     /** Whether the example's error screen (the docs/props.md recipe) is mounted. */
@@ -550,6 +552,19 @@ async function bridge(h: Harness) {
     'the bridge works again after navigation',
     (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
   );
+
+  // The new page's first message is a head script's call. Android ends the old Document (and drops its reply proxy) one
+  // main-thread hop after the commit: that has to come first, or the answer is lost and JS takes the page as loading.
+  const head = `${page}&head=1`;
+  await openPage(h, head);
+  const headCall = await until(() => h.ref.current?.evaluate('window.__head'), 5000);
+  r.check(
+    "a head script's call at document start is answered",
+    (headCall as { result?: { head?: boolean } } | undefined)?.result?.head === true,
+    headCall
+  );
+  const afterHead = await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode);
+  r.check("RN -> page calls work after a head script's call", afterHead === 4, afterHead);
 
   const early = `${page}&early=1`;
   h.load(early);
@@ -2182,8 +2197,33 @@ async function fullscreen(h: Harness) {
 /** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
 async function sampleExtension(h: Harness) {
   const r = reporter('sampleExtension');
+  // WebKit moves its back-forward list to the next page a moment before it reports the commit, so what a handler sees
+  // can depend on timing: several same-origin navigations of each kind, each ending the page before it.
+  const misses: unknown[] = [];
+  const ends = async (go: () => unknown, to: string) => {
+    const [from, count] = [h.state().url, h.events.documentEnds.length];
+    await go();
+    await waitFor(h, (s) => s.url === to && idle(s) && h.events.documentEnds.length > count, 5000);
+    const end = h.events.documentEnds.at(-1);
+    if (end?.reason !== 'committed' || end.url !== from) misses.push({ from, end });
+  };
+  for (let i = 0; i < 3; i++) {
+    const [load, own] = [fresh(h, `/spa.html?load=${i}`), fresh(h, `/spa.html?own=${i}`)];
+    await ends(() => h.load(load), load);
+    await ends(
+      () => h.ref.current?.evaluate(`(location.href = '${own}', 1)`).catch(errorCode),
+      own
+    );
+    await ends(() => h.ref.current?.evaluate('(history.back(), 1)').catch(errorCode), load);
+  }
+  r.check(
+    'its onDocumentEnd handler hears each page end as that page: app loads, page navigations, history.back',
+    misses.length === 0,
+    misses
+  );
   const before = h.events.pageCounts.length;
   h.events.hookEvents.length = 0;
+  const previous = h.state().url;
   const page = fresh(h, '/spa.html');
   await openPage(h, page);
   await waitFor(h, () => h.events.pageCounts.at(-1)?.url === page, 5000);
@@ -2195,15 +2235,22 @@ async function sampleExtension(h: Harness) {
   );
   const inPage = (await h.ref.current?.evaluate('window.__pageCount')) as number;
   r.check('its native side reaches the page', inPage === event?.count, { inPage, event });
+  const ended = h.events.documentEnds.at(-1);
   r.check(
-    'its onDocumentEnd handler hears the old page end',
-    h.events.hookEvents.includes('pageCounter.documentEnd'),
-    h.events.hookEvents
+    'its onDocumentEnd handler hears the old page end, and context.url there is still that page',
+    ended?.reason === 'committed' && ended.url === previous,
+    { ended, previous }
   );
-  const count = await h.ref.current?.hook('pageCounter', 'count').catch(errorCode);
+  const count = await h.ref.current?.hook('sample.pageCounter', 'count').catch(errorCode);
   r.check('ref.hook resolves with the reply of its handler', count === inPage, { count, inPage });
+  const label = await h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
+  r.check(
+    "its ask waits for the app's answer (onHookEvent's return value)",
+    label === `page ${inPage}`,
+    { label, inPage }
+  );
   const unhandled = [
-    await h.ref.current?.hook('pageCounter', 'nope').catch(errorCode),
+    await h.ref.current?.hook('sample.pageCounter', 'nope').catch(errorCode),
     await h.ref.current?.hook('noSuchHook', 'count').catch(errorCode),
   ];
   r.check(
@@ -2215,7 +2262,7 @@ async function sampleExtension(h: Harness) {
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
-  h.setProps({ hookOptions: { pageCounter: { global: '__liveCount' } } });
+  h.setProps({ hookOptions: { 'sample.pageCounter': { global: '__liveCount' } } });
   const live = await until(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
@@ -2232,41 +2279,53 @@ async function sampleExtension(h: Harness) {
     await waitFor(h, (s) => s.url.includes('from=hook') && idle(s));
     r.check(
       'a callback the core does not implement is forwarded to its delegate (didReceiveServerRedirect)',
-      await waitFor(h, () => h.events.hookEvents.includes('pageCounter.redirect'), 3000),
+      await waitFor(h, () => h.events.hookEvents.includes('sample.pageCounter.redirect'), 3000),
       h.events.hookEvents
     );
   } else {
     r.check(
       'a callback the core does not implement is forwarded to its client (onPageCommitVisible)',
-      await waitFor(h, () => h.events.hookEvents.includes('pageCounter.commitVisible'), 3000),
+      await waitFor(
+        h,
+        () => h.events.hookEvents.includes('sample.pageCounter.commitVisible'),
+        3000
+      ),
       h.events.hookEvents
     );
   }
   // HTTP auth, which the core declines: the hook's delegate (client) answers it.
-  await recreate(h, { hookOptions: { pageCounter: true, hookAuth: true } }, true);
+  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } }, true);
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
   r.check('its delegate answers HTTP auth', auth === 'authorized', auth);
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
-  await recreate(h, { hookOptions: { pageCounter: true, hookDialogs: true } }, true);
+  await recreate(
+    h,
+    { hookOptions: { 'sample.pageCounter': true, 'sample.hookDialogs': true } },
+    true
+  );
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
   // The event reaches JS on its own schedule, after the evaluate result at times.
-  await until(() => h.events.hookEvents.includes('hookDialogs.alert'), 3000, 100);
+  await until(() => h.events.hookEvents.includes('sample.hookDialogs.alert'), 3000, 100);
   r.check(
     'its UI delegate takes over a dialog the core implements (alert), with no dialog shown',
-    after === 'after' && h.events.hookEvents.includes('hookDialogs.alert'),
+    after === 'after' && h.events.hookEvents.includes('sample.hookDialogs.alert'),
     { after, hookEvents: h.events.hookEvents }
   );
   await recreate(h, {}, true);
-  if (Platform.OS === 'ios') {
-    // configure() set data detectors before the WKWebView existed: WebKit turns the number into a tel: link.
-    h.loadSource({ html: '<p id="n">Call 415-555-0134 today</p>', baseUrl: h.pages });
-    const linked = async () =>
-      (await h.ref.current?.evaluate("document.querySelector('#n a[href^=tel]') !== null")) ===
-      true;
-    r.check('its configure hook sets creation-time settings', !!(await until(linked, 5000, 250)));
-  }
+  // configure() ran before the package set the view up. iOS: data detectors, which WebKit reads only from the
+  // configuration, turn the number into a tel: link. Android: the monospace default size it set (13px without it).
+  h.loadSource({
+    html: '<p id="n">Call 415-555-0134 today</p><code id="c">x</code>',
+    baseUrl: h.pages,
+  });
+  const configured =
+    Platform.OS === 'ios'
+      ? "document.querySelector('#n a[href^=tel]') !== null"
+      : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
+  const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
+  r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
   r.done();
 }
 
