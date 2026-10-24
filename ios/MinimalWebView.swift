@@ -1,8 +1,8 @@
 import ExpoModulesCore
 import WebKit
 
-// swiftlint:disable file_length - because the view is the aggregate root by design, see docs/decisions.md
-// swiftlint:disable:next type_body_length - because the view is the aggregate root by design, see docs/decisions.md
+// swiftlint:disable file_length - because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
+// swiftlint:disable:next type_body_length - because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
 class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigationState = EventDispatcher()
   let onBridge = EventDispatcher()

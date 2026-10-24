@@ -14,6 +14,7 @@ xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.s
 F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios16.4-macabi   # with the next line: PlatformSettings.swift on a WKWebView as Mac Catalyst, no simulator (coercion, KVC guard, get, call)
 xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o /tmp/mrw.o && xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/mrw.o -o /tmp/settings && /tmp/settings
 npm run mutation                           # Stryker on src/bridge, WebView.tsx and refStore.ts (fails below an 80% score)
+npm run docs                               # docs/api from the TSDoc (typedoc); `check` fails when it is stale
 ```
 
 The code's shape, as checks: each tool fails on any finding (detekt by default, SwiftLint and Periphery with `strict`).
@@ -28,12 +29,14 @@ periphery scan                                        # unused Swift (.periphery
 cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
 ```
 
-Two files are generated, and `npm test` fails when either is stale (its `pretest` runs both scripts with `--check`):
+Three things are generated, and a stale one fails `npm test` (its `pretest` runs the first two scripts with `--check`)
+or `npm run check` (which diffs the third):
 - `src/bridge/pageClient.generated.ts`, from `pageClient.ts` and `endpoint.ts`: `npm run build:page-client` after
   editing either.
 - `src/platform.generated.ts`, the settings keys and the `WK` and `Android` constants, from the SDK extracts in
   `.github/scripts/platform-headers/`: `npm run gen:platform-types`. After an Xcode, Android SDK or androidx.webkit
   upgrade, `npm run gen:platform-types -- --import` refreshes the extracts from the installed SDKs first.
+- `docs/api/`, the API reference, from the TSDoc of what `src/index.ts` exports: `npm run docs` after editing it.
 
 The matchers and crash recovery share their test cases in `src/__tests__/vectors/`: the navigation and recovery cases run
 on Kotlin and Swift, the origin cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches

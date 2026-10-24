@@ -5,7 +5,8 @@ package expo.modules.minimalwebview
  * restore or a failed load's error page too) and ends at the next commit, a renderer crash, or the view closing. It
  * doesn't end at a same-document or sub-frame navigation, a load that never commits (a stop, a download, a 204), the
  * view leaving the window or the app going to the background. What belongs to it registers here once, and the view
- * reports each end (docs/decisions.md). Public for [End], which hooks get.
+ * reports each end: one scope instead of a reset list per trigger, which disagreed per trigger and per platform. Public
+ * for [End], which hooks get.
  */
 class DocumentScope internal constructor() {
   /** Why a Document ended. */

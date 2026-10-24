@@ -26,7 +26,7 @@ import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
-@Suppress("TooManyFunctions") // because the view is the aggregate root by design, see docs/decisions.md
+@Suppress("TooManyFunctions") // because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
 internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
