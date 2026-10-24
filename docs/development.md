@@ -39,6 +39,9 @@ The matchers and crash recovery share their test cases in `src/__tests__/vectors
 on Kotlin and Swift, the origin cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches
 origins itself (`addWebMessageListener`).
 
+The peer floor (Expo SDK 53, React Native 0.79) is checked by a build and a smoke run on SDK 53 and 55; the example app
+and the on-device suites are on SDK 58.
+
 ## On-device suites
 
 The suites (`SUITES` in `example/harness.ts`) run inside the example app and make every WebView assertion there.
@@ -88,7 +91,7 @@ nearly twice as long. If it crashes at start with a window (`mrw-api37` on emula
 
 Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on. On
 `mrw-api36` (API 36, WebView 133) some checks are known limits of a WebView older than 146
-([Android System WebView versions](props.md#android-system-webview-versions)), and the harness reports them as
+([Android System WebView versions](../README.md#android-system-webview-versions)), and the harness reports them as
 `INFO ... known limit (WebView <146): <check>` instead of passing or failing them. The reference iOS simulator is an
 iPhone 17 Pro on iOS 26.5.
 
@@ -101,6 +104,5 @@ emulator -avd mrw-api37 -gpu host
 
 To add a suite: add it to `SUITES` in `example/harness.ts` (`run.sh` reads its keys). A suite that doesn't apply to a
 platform reports `skipped` there and ends. If it needs gestures, taps, dialogs or renderer kills, add a `<suite>.yaml`
-flow in `example/maestro/`. Otherwise `run.sh` wraps
-the generic `suite.yaml` for it. A suite must leave nothing behind that `reset()` in `harness.ts` doesn't undo, and
-must not depend on a site outside the test pages server.
+flow in `example/maestro/`. Otherwise `run.sh` wraps the generic `suite.yaml` for it. A suite must leave nothing behind
+that `reset()` in `harness.ts` doesn't undo, and must not depend on a site outside the test pages server.

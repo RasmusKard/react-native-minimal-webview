@@ -1,41 +1,21 @@
 # Page requests
 
-The page asks for things only the app can answer. Each request works without a prop, in one of three shapes: a prop
-answers it (the file chooser, permissions), a prop is told afterwards (fullscreen video, downloads), or only a
-[native hook](native-hooks.md) takes it over (JS dialogs, HTTP auth).
+The page asks for things only the app can answer. Each request works without a prop: a prop answers it (the file
+chooser, permissions) or is told afterwards (fullscreen video, downloads), and only a [native hook](native-hooks.md)
+takes over JS dialogs and HTTP auth.
 
-| The page | Default (no prop) | Prop | Typical packages |
+| The page | Without a prop | Prop | Typical packages |
 |---|---|---|---|
-| `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser, one at a time for the whole app (a request while one is open is cancelled, and if a chooser never returns a result, every later one is, until the app restarts); it ignores `capture` | `onFileRequest({ accept, multiple, capture })` (Android only) returns URIs, or `null` to cancel | expo-document-picker, expo-image-picker |
-| Fullscreen video | iOS: WebKit's. Android: the page's fullscreen view covers the WebView's window on black, system bars hide, and back exits | `onFullscreenChange({ active })` (Android only) | expo-screen-orientation |
-| Camera, microphone, (Android) location and protected media | Android: denied. iOS: WebKit's own prompt (location always prompts; FairPlay asks nothing) | `onPermissionRequest({ origin, resources })` answers `true` or `false`. Main frame only: other frames are denied without asking. Android doesn't name the frame, so there a frame of the top page's origin asks as the main frame. `protectedMedia` is the device id DRM (Widevine) playback needs | expo-camera, expo-audio, expo-location |
-| A download | http(s): opens externally (`onOpenExternal`, or the system browser, which fetches it without the page's session; reported to `onNavigation` as `external`). `data:` and `blob:`: dropped | `onDownload(result)`: a [file in the app's cache](#downloads) (`ok: true`), or a failure (`ok: false`) | expo-file-system, expo-sharing |
-| `alert`, `confirm`, `prompt` | iOS: a `UIAlertController` titled with the frame's host, one at a time; one that can't be presented (a second, or nothing to present from) is cancelled at once, and an open one is cancelled when the Document ends. Android: WebView's own dialogs | No prop: a [native hook](native-hooks.md) takes them over, as `HookDialogs` in `example/modules/sample-extension` does | |
-| HTTP basic or digest auth | Declined: the site's 401 page shows | No prop: a [native hook](native-hooks.md) answers it, as `HookAuth` in `example/modules/sample-extension` does | expo-secure-store |
+| `<input type="file">` | iOS: WebKit's picker (needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`). Android: the system file chooser | `onFileRequest` (Android) | expo-document-picker, expo-image-picker |
+| Fullscreen video | The platform's fullscreen view | `onFullscreenChange` (Android) | expo-screen-orientation |
+| Camera, microphone, (Android) location, protected media | Android: denied. iOS: WebKit's own prompt | `onPermissionRequest` | expo-camera, expo-audio, expo-location |
+| A download | http(s): opens externally. `data:` and `blob:`: dropped | `onDownload`: the core saves the file | expo-file-system, expo-sharing |
+| `alert`, `confirm`, `prompt` | iOS: a `UIAlertController` titled with the frame's host, one at a time (one that can't be presented is cancelled, and so is an open one when the Document ends). Android: WebView's own dialogs | None: a native hook, as `HookDialogs` in `example/modules/sample-extension` | |
+| HTTP basic or digest auth | Declined: the site's 401 page shows | None: a native hook, as `HookAuth` in `example/modules/sample-extension` | expo-secure-store |
 
-`onPermissionRequest` never makes the OS prompt: the app asks the OS (expo-camera, expo-location), and without OS
-permission the page's request fails anyway (`NotReadableError`, geolocation code 2 or 3). On iOS, `true` skips WebKit's
-own prompt. Android's WebView keeps a location answer until the page changes.
-
-An unanswered request is cancelled when its page is replaced (navigation, reload, crash, unmount) or, on Android, when
-Chromium withdraws it (`onPermissionRequestCanceled`, the geolocation prompt hidden). The handler's second argument, an
-`AbortSignal`, then aborts and its late answer is dropped: close the UI it opened, stop the work. `onNavigationRequest`
-gets one too, aborted at its 1 s timeout. Until then, a handler that never settles blocks that page's further requests
-of the same kind.
-
-A [native hook](native-hooks.md) whose delegate or client takes the same platform callback comes before these props.
-
-## Downloads
-
-With `onDownload`, the core saves the file: `WKDownload` on iOS (the page's session) into the temporary directory; on
-Android it is fetched again with the page's cookies and user agent into the cache, `data:` and `blob:` too. A POST
-body, the `headers` prop and HTTP auth credentials don't go with an Android fetch, so such a download can fail
-or save the wrong file (a login page). The result is `{ ok: true, uri, filename, mimeType, url }` with a `file://`
-`uri`, or `{ ok: false, filename, url, reason }` when it failed: `result.ok` tells them apart. `url` is the server URL the file came
-from; `null` when the page generated it (`data:` or `blob:` URL). The file is the app's: the core never deletes it.
-The page controls the file, its name and its MIME type, and Android's fetch sends the host's cookies whatever their
-SameSite, so don't open a download as trusted. On Android a download above 100 MB fails, and so does one whose
-redirects leave https: each hop goes to https, or from http to http.
+No prop makes an OS prompt: the app asks the OS (expo-camera, expo-location), and without OS permission the page's
+request fails anyway. Each prop can be added or removed at any time, and a native hook whose delegate or client takes
+the same platform callback comes before it.
 
 ## Recipes
 
@@ -76,7 +56,8 @@ onFullscreenChange={({ active }) =>
 }
 ```
 
-A download is a file in the app's cache. The app opens, saves or shares it, with expo-file-system and expo-sharing:
+A download is a file in the app's cache, its content, name and type chosen by the page, so don't trust it. The app
+opens, saves or shares it, with expo-file-system and expo-sharing:
 
 ```tsx
 // Open it: Quick Look on iOS, an app for the MIME type on Android.
