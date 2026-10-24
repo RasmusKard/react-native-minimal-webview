@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import type { ViewProps } from 'react-native';
 
+import type { BridgeConnection, CONNECTION } from './bridge/createBridge';
 import type { BridgeErrorCode } from './bridge/protocol';
 import type {
   AndroidSettingKeys,
@@ -16,7 +17,8 @@ import type {
  * form-urlencoded body (`a=1&b=2`): iOS sends `headers` with it and sets `Content-Type` when they don't; Android's
  * `postUrl` sends neither. `reload()` sends the POST again; crash recovery doesn't (`onProcessGone` reports
  * `recovered: false`). A `file://` uri loads with read access to its directory on iOS; Android needs
- * `android.settings.allowFileAccess`.
+ * `android.settings.allowFileAccess`. A `source` equal to the loaded one, field by field, loads nothing, even after
+ * the page navigated away.
  */
 export type WebViewSource =
   | { uri: string; headers?: Record<string, string>; body?: string }
@@ -95,6 +97,7 @@ export type LoadErrorEvent =
   | { kind: 'http'; url: string; statusCode: number };
 
 export type ProcessGoneEvent = {
+  /** False when the system killed the renderer for memory (Android). Always true on iOS: WebKit doesn't say. */
   didCrash: boolean;
   /** The core reloaded the page in a new process. */
   recovered: boolean;
@@ -147,7 +150,8 @@ export type Bridge<
   ): () => void;
   /**
    * Calls a method the page registered with `nativeBridge.handle`. Rejects on timeout, navigation or teardown with a
-   * {@link BridgeCallError}. `timeoutMs` overrides the bridge's for this call; `0` or `Infinity` means none.
+   * {@link BridgeCallError}. `timeoutMs` overrides the bridge's for this call; `0` or `Infinity` means none, and one
+   * that isn't 0 or more rejects with a plain `RangeError`.
    */
   call<M extends keyof Methods & string>(
     method: M,
@@ -161,6 +165,8 @@ export type Bridge<
     event: E,
     listener: (payload: Events[E], sender: BridgeSender) => void
   ): () => void;
+  /** What `<WebView>` attaches to; only `createBridge` makes one. */
+  readonly [CONNECTION]: BridgeConnection;
 };
 
 export type BridgeOptions = {
@@ -254,7 +260,8 @@ export type FullscreenChangeEvent = { active: boolean };
  * Why a ref method rejected. `script_error`: `evaluate`'s script threw, rejected or didn't parse. `native_error`: the
  * platform refused or failed a `get`, `call` or `hook`. `navigated`: the page went away before `evaluate` finished.
  * `unavailable`: the WebView lacks the features it needs (Android), is gone, or is being rebuilt after its renderer
- * died (Android, while the app is in the background). `hook_not_handled`: no attached hook handles the `hook` method.
+ * died (Android, while the app is in the background or the view detached). `hook_not_handled`: no attached hook
+ * handles the `hook` method.
  */
 export type WebViewErrorCode =
   'script_error' | 'native_error' | 'navigated' | 'unavailable' | 'hook_not_handled';

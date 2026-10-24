@@ -8,6 +8,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import prettier from 'prettier';
 
 const inputs = new URL('platform-headers/', import.meta.url);
@@ -140,7 +141,7 @@ const object = (entries: Record<string, string | number>) =>
     .join('\n')}\n}`;
 
 /** A C expression over integers, as JavaScript. The inputs are the vendored SDK extracts, not user data. */
-const evaluate = (expression: string) => (new Function(`return (${expression})`) as () => number)();
+const evaluate = (expression: string) => runInNewContext(`(${expression})`) as number;
 
 // iOS
 
@@ -267,7 +268,10 @@ function enumValues(body: string) {
     const expression = member[2]?.replace(/\b[A-Za-z_]\w*\b/g, (id) => String(values[id] ?? id));
     // NSUIntegerMax (`All`) is not a JSON number: the OR of the other members, filled in below, has the same effect.
     if (expression === 'NSUIntegerMax') unbounded.push(member[1]);
-    else values[member[1]] = last = expression ? evaluate(expression) : last + 1;
+    else {
+      last = expression ? evaluate(expression) : last + 1;
+      values[member[1]] = last;
+    }
   }
   const all = Object.values(values).reduce((a, b) => a | b, 0);
   for (const name of unbounded) values[name] = all;

@@ -4,12 +4,10 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -28,7 +26,8 @@ import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
-class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
+@Suppress("TooManyFunctions") // because the view is the aggregate root by design, see docs/decisions.md
+internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
   private val onHookEvent by EventDispatcher<Map<String, Any?>>()
@@ -37,14 +36,14 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
-  internal val document = DocumentScope()
+  private val document = DocumentScope()
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
   private var current: WebView? = null
   /**
    * Made at first use, which is the first prop batch, so that the configure hooks see `hookOptions`. Replaced when
-   * the render process dies; the hooks are attached to each one.
+   * the render process dies; the hooks are attached to each one. While [recovering] it is the destroyed one.
    */
   internal var webView: WebView
     get() = current ?: createWebView().also { current = it }
@@ -86,23 +85,16 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
-  internal val downloads = Downloads(this)
+  private val downloads = Downloads(this)
   /** The `hookOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
   private var hookKeys: Set<String>? = null
   /** The hooks' contexts for the current WebView, in registration order. */
   private var hookContexts: List<HookContext> = emptyList()
   /** What the attach hooks returned, run before their WebView goes away. */
-  private var detachers: List<(End) -> Unit> = emptyList()
+  private var detachers: List<() -> Unit> = emptyList()
   private var mounted = false
 
-  // Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until answered through `answer`
-  // or cancelled (null, and `core.askCancelled` to JS) by a new document, a crash, destroy, a timeout or the platform.
-  private val pendingAsks = mutableMapOf<Int, (Any?) -> Unit>()
-  private var nextAskId = 0
-
-  // The page's open file chooser (WebView allows one at a time). Chromium releases it only while its document is alive,
-  // so a navigation away cancels it when it starts, not at commit; a later answer is dropped.
-  private var fileChooser: ValueCallback<Array<Uri>>? = null
+  internal val asks = Asks { onHookEvent(it) }
 
   // Navigation state. Native owns the committed URL; JS is told. The clients (MinimalWebViewClients.kt) write it.
   internal var url = ""
@@ -127,20 +119,23 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. failAsks() last: it runs
-    // the asks' callbacks (hook and Chromium code), and a throw there must not skip the core's own resets.
-    document.register { cancelFileChooser() }
+    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. The asks last:
+    // their callbacks are hook and Chromium code, and a throw there must not skip the core's own resets.
+    document.register { fileUpload.cancel() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
-    document.register { failAsks(it) }
+    document.register { asks.documentEnded(it) }
     // The hooks' own handlers, per attach: the scope has no unregister, and a crash attaches the hooks again.
     document.register { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+    val first = hookKeys == null
     val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
     hookContexts = MinimalWebViewHooks.hooks.filter { it.key in keys }.map { HookContext(it, this) }
+    // A typo, or a hook's module not linked or not rebuilt. Once: the WebView after a crash has the same keys.
+    if (first) (keys - hookContexts.map { it.key }.toSet()).forEach { warn("hookOptions.$it: no hook is registered under this key") }
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
@@ -151,7 +146,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
       if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
-    if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this, ::newDocument))
+    if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
   }
 
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used
@@ -272,9 +267,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
   }
 
   private fun detachHooks() {
-    // Only destroy() and recover() detach, and destroy() sets `destroyed` first.
-    val reason = if (destroyed) End.CLOSING else End.CRASHED
-    detachers.forEach { it(reason) }
+    detachers.forEach { it() }
     detachers = emptyList()
     hookContexts = emptyList()
     clients.clear()
@@ -289,7 +282,7 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
-      } else if (!enables(old[key]) && enables(value)) {
+      } else if (key !in hookKeys.orEmpty() && !enables(old[key]) && enables(value)) {
         warn("hookOptions.$key: added after the WebView was created, so no hook attaches for it")
       }
     }
@@ -300,49 +293,10 @@ class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(contex
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 
-  fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) {
-    askWithId(name, payload, onAnswer)
-  }
-
-  /** [ask], returning the ask's id: [answer] with it, null to give up. */
-  internal fun askWithId(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
-    val id = ++nextAskId
-    pendingAsks[id] = onAnswer
-    onHookEvent(mapOf("name" to name, "payload" to payload, "askId" to id))
-    return id
-  }
-
-  /** JS's answer to an `ask`. */
-  internal fun answer(askId: Int, value: Any?) {
-    pendingAsks.remove(askId)?.invoke(value)
-  }
-
-  /** Native gives up on an ask: its callback gets null, and JS aborts the handler's signal unless [tell] is false. */
-  internal fun cancelAsk(askId: Int, tell: Boolean = true) {
-    val onAnswer = pendingAsks.remove(askId) ?: return
-    if (tell) emit("core.askCancelled", mapOf("askId" to askId))
-    onAnswer(null)
-  }
-
-  /** Wraps the file chooser's [callback] so it is answered once: by its handler, or by [cancelFileChooser]. */
-  internal fun holdFileChooser(callback: ValueCallback<Array<Uri>>): ValueCallback<Array<Uri>> =
-    object : ValueCallback<Array<Uri>> {
-      override fun onReceiveValue(value: Array<Uri>?) {
-        if (fileChooser !== this) return
-        fileChooser = null
-        callback.onReceiveValue(value)
-      }
-    }.also { fileChooser = it }
-
-  internal fun cancelFileChooser() = fileChooser?.onReceiveValue(null)
-
   /** A new main-frame document: what belonged to the old one ends. */
   internal fun newDocument() = document.end(End.COMMITTED)
 
   internal fun pageFinished() = refresher.pageFinished()
-
-  /** Cancels every pending ask. At destroy JS isn't told: it aborts its own handlers at unmount. */
-  private fun failAsks(reason: End) = pendingAsks.keys.toList().forEach { cancelAsk(it, tell = reason != End.CLOSING) }
 
   internal fun bridgePost(message: String) = scripts.post(message)
 

@@ -1,5 +1,5 @@
 // The page side of the bridge: installs `window.nativeBridge`. It runs inside the web page, so it imports nothing;
-// .github/scripts/build-page-client.mjs compiles it to the PAGE_CLIENT string that native injects at document start.
+// .github/scripts/build-page-client.mts compiles it to the PAGE_CLIENT string that native injects at document start.
 // Transport, a plain pipe each way: page -> native through `postMessage` (iOS WKScriptMessageHandler at
 // `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at `window.nativeBridgeTransport`); native ->
 // page through `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android). Messages follow

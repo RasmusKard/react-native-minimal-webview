@@ -3,20 +3,20 @@ package expo.modules.minimalwebview.requests
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import android.webkit.CookieManager
 import androidx.webkit.URLUtilCompat
-import com.facebook.react.modules.network.ForwardingCookieHandler
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.TAG
-import okhttp3.JavaNetCookieJar
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 /** What WebView's DownloadListener reports. */
 internal data class DownloadInfo(
@@ -51,28 +51,8 @@ internal class Downloads(private val owner: MinimalWebView) {
   }
 
   private fun fetch(download: DownloadInfo, name: String) {
-    save(name, download.url) { file ->
-      val request = Request.Builder().url(download.url).header("User-Agent", download.userAgent).build()
-      client.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-        val body = response.body ?: throw IOException("no response body")
-        if (body.contentLength() > MAX_BYTES) throw IOException(TOO_LARGE)
-        body.byteStream().use { input ->
-          file.outputStream().use { output ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var total = 0L
-            while (true) {
-              val read = input.read(buffer)
-              if (read < 0) break
-              total += read
-              if (total > MAX_BYTES) throw IOException(TOO_LARGE)
-              output.write(buffer, 0, read)
-            }
-          }
-        }
-        download.mimeType.ifEmpty { response.header("Content-Type")?.substringBefore(';') ?: "application/octet-stream" }
-      }
-    }
+    val cookies = CookieManager.getInstance()
+    save(name, download.url) { file -> fetchTo(download, file, cookies::getCookie, cookies::setCookie) }
   }
 
   /** Writes [data] (a data: URL) to [file] and returns its MIME type. */
@@ -103,7 +83,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         e
       }
       if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
-      owner.webView.post {
+      owner.mainHandler.post {
         when (result) {
           is String -> owner.emit(
             "core.download",
@@ -148,27 +128,68 @@ internal class Downloads(private val owner: MinimalWebView) {
     io.shutdown()
   }
 
-  private companion object {
+  internal companion object {
     // The page picks the file: a blob: passes whole through the app's memory several times (a data: URL, then its
     // bytes), and an http(s) one fills the cache, so above this a download fails instead of the app being killed.
     const val MAX_BYTES = 100L * 1024 * 1024
     const val TOO_LARGE = "larger than 100 MB"
+    const val MAX_REDIRECTS = 20 // OkHttp's, which React Native's fetch uses
+    const val TIMEOUT_MS = 30_000
+
+    /** Copies [input] to [output] and fails once more than [max] bytes came: the Content-Length can be missing or wrong. */
+    fun copyCapped(input: InputStream, output: OutputStream, max: Long) {
+      val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+      var total = 0L
+      while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > max) throw IOException(TOO_LARGE)
+        output.write(buffer, 0, read)
+      }
+    }
+
+    /** Fetches [download] into [file] and returns its MIME type. [cookie] and [setCookie] are the WebView's cookie store. */
+    fun fetchTo(download: DownloadInfo, file: File, cookie: (String) -> String?, setCookie: (String, String) -> Unit): String {
+      val connection = connect(URL(download.url), download.userAgent, cookie, setCookie)
+      try {
+        if (connection.responseCode !in 200..299) throw IOException("HTTP ${connection.responseCode}")
+        if (connection.contentLengthLong > MAX_BYTES) throw IOException(TOO_LARGE)
+        connection.inputStream.use { input -> file.outputStream().use { output -> copyCapped(input, output, MAX_BYTES) } }
+        return download.mimeType.ifEmpty { connection.contentType?.substringBefore(';') ?: "application/octet-stream" }
+      } finally {
+        connection.disconnect()
+      }
+    }
 
     /**
-     * Follows redirects (http to https too); each hop reads the WebView's cookies for its own host and stores what the
-     * server sets back into them, as React Native's fetch does. A redirect from https to http is refused, as Chrome
-     * blocks an insecure download started from a secure one.
+     * Opens [url] and follows its redirects (http to https too) by hand: each hop sends the cookies for its own URL and
+     * stores what the server sets back, as React Native's fetch does. A hop goes only to https, or from http to http:
+     * Chrome blocks an insecure download started from a secure one.
      */
-    val client: OkHttpClient by lazy {
-      OkHttpClient.Builder()
-        .cookieJar(JavaNetCookieJar(ForwardingCookieHandler()))
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .addNetworkInterceptor { chain ->
-          if (chain.call().request().isHttps && !chain.request().isHttps) throw IOException("refused a redirect from https to http")
-          chain.proceed(chain.request())
+    private fun connect(url: URL, userAgent: String, cookie: (String) -> String?, setCookie: (String, String) -> Unit): HttpURLConnection {
+      var current = url
+      repeat(MAX_REDIRECTS + 1) {
+        val at = current.toString()
+        val connection = current.openConnection() as HttpURLConnection
+        connection.instanceFollowRedirects = false
+        connection.connectTimeout = TIMEOUT_MS
+        connection.readTimeout = TIMEOUT_MS
+        connection.setRequestProperty("User-Agent", userAgent)
+        cookie(at)?.let { connection.setRequestProperty("Cookie", it) }
+        val code = connection.responseCode
+        // Header names come in any case (HTTP/2 lowercases them), and headerFields' keys keep it.
+        for ((key, values) in connection.headerFields) if (key.equals("Set-Cookie", ignoreCase = true)) values.forEach { setCookie(at, it) }
+        val location = connection.getHeaderField("Location")
+        if (code !in 300..399 || location == null) return connection
+        connection.disconnect()
+        val next = URL(current, location)
+        if (next.protocol != "https" && (next.protocol != "http" || current.protocol != "http")) {
+          throw IOException("refused a redirect from ${current.protocol} to ${next.protocol}")
         }
-        .build()
+        current = next
+      }
+      throw IOException("more than $MAX_REDIRECTS redirects")
     }
   }
 }

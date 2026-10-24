@@ -2,37 +2,42 @@
 
 ```sh
 npm install && (cd example && npm install)
+npm run check                              # the next four lines in one: test, lint, knip, both type-checks, prepare
 npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client)
-npm run lint && npm run prepare            # ESLint on src, example and .github; then a clean build
+npm run lint && npm run prepare            # ESLint on src, example and .github (a warning fails it too); then a clean build
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
-(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, crash-loop guard
-xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
-npm run mutation                           # Stryker on src/bridge (fails below an 80% score)
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch
+(cd example/android && ./gradlew :sample-extension:compileDebugKotlin)     # the sample extension against the Kotlin hook API, no app build
+xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios16.4-macabi   # with the next line: PlatformSettings.swift on a WKWebView as Mac Catalyst, no simulator (coercion, KVC guard, get, call)
+xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o /tmp/mrw.o && xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/mrw.o -o /tmp/settings && /tmp/settings
+npm run mutation                           # Stryker on src/bridge, WebView.tsx and refStore.ts (fails below an 80% score)
 ```
 
-The code's shape, as reports rather than checks: the native thresholds are starting points that today's code exceeds.
+The code's shape, as checks: each tool fails on any finding (detekt by default, SwiftLint and Periphery with `strict`).
+Lower a threshold when the code passes a lower one; raise one only with a reason written down.
+detekt flags a value equal to its threshold (`threshold: 15` allows 14); SwiftLint and ESLint allow a value equal to theirs.
 detekt, swiftlint, periphery and cloc are CLIs (Homebrew), not npm dependencies.
 
 ```sh
 detekt --input android/src/main --config detekt.yml   # Kotlin complexity and unused private code (the rules are in detekt.yml)
 swiftlint lint                                        # Swift complexity (.swiftlint.yml)
 periphery scan                                        # unused Swift (.periphery.yml); builds the example app itself (needs example/ios, see below), ~40 s
-npx stryker run --mutate src/WebView.tsx              # WebView.test.tsx's mutation score, under the 80% gate today
 cloc --quiet --exclude-dir=__tests__,Tests,test --not-match-f='\.generated\.' src ios android/src/main   # lines per layer
 ```
 
-Two files are generated, and CI fails when either is stale (`--check`):
+Two files are generated, and `npm test` fails when either is stale (its `pretest` runs both scripts with `--check`):
 - `src/bridge/pageClient.generated.ts`, from `pageClient.ts` and `endpoint.ts`: `npm run build:page-client` after
   editing either.
 - `src/platform.generated.ts`, the settings keys and the `WK` and `Android` constants, from the SDK extracts in
   `.github/scripts/platform-headers/`: `npm run gen:platform-types`. After an Xcode, Android SDK or androidx.webkit
   upgrade, `npm run gen:platform-types -- --import` refreshes the extracts from the installed SDKs first.
 
-The matchers share their test cases in `src/__tests__/vectors/`: the navigation cases run on Kotlin and Swift, the origin
-cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches origins itself
-(`addWebMessageListener`).
+The matchers and crash recovery share their test cases in `src/__tests__/vectors/`: the navigation and recovery cases run
+on Kotlin and Swift, the origin cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches
+origins itself (`addWebMessageListener`).
 
 ## On-device suites
 
@@ -78,12 +83,21 @@ Android emulators: use Google APIs system images (`google_apis`), never Play Sto
 a Play Store image the Play Store updates Android System WebView in the background soon after boot, so a run silently
 tests a newer WebView than the image ships. Start the emulator with `-gpu host`. With the default (`auto`) it can come
 up rendering in software (`adb shell dumpsys SurfaceFlinger | grep GLES` names SwiftShader), and a full run takes
-nearly twice as long.
+nearly twice as long. If it crashes at start with a window (`mrw-api37` on emulator 37.2.12 did on one Mac), add
+`-no-window`.
 
-Reference emulators: `mrw-api37` (Google APIs, API 37, WebView 149) is the one every suite passes on. On `mrw-api36`
-(API 36, WebView 133) some checks are known limits of a WebView older than 146
+Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on. On
+`mrw-api36` (API 36, WebView 133) some checks are known limits of a WebView older than 146
 ([Android System WebView versions](props.md#android-system-webview-versions)), and the harness reports them as
-`INFO ... known limit (WebView <146): <check>` instead of passing or failing them.
+`INFO ... known limit (WebView <146): <check>` instead of passing or failing them. The reference iOS simulator is an
+iPhone 17 Pro on iOS 26.5.
+
+```sh
+sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' 'system-images;android-36;google_apis;arm64-v8a'
+avdmanager create avd -n mrw-api37 -k 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' -d pixel_9_pro
+avdmanager create avd -n mrw-api36 -k 'system-images;android-36;google_apis;arm64-v8a' -d pixel_9_pro
+emulator -avd mrw-api37 -gpu host
+```
 
 To add a suite: add it to `SUITES` in `example/harness.ts` (`run.sh` reads its keys). A suite that doesn't apply to a
 platform reports `skipped` there and ends. If it needs gestures, taps, dialogs or renderer kills, add a `<suite>.yaml`

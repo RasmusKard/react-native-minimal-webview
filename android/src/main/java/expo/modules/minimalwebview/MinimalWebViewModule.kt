@@ -77,17 +77,7 @@ class MinimalWebViewModule : Module() {
 
     // Starts WebView (loading its code, starting Chromium) ahead of the first WebView, off the UI thread where the
     // device's WebView supports it. Best effort: an error only means the first WebView starts it as before.
-    Function("warmUp") {
-      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
-      val config = WebViewStartUpConfig.Builder { Thread(it, "WebViewWarmUp").start() }.build()
-      WebViewCompat.startUpWebView(context, config, object : WebViewOutcomeReceiver<WebViewStartUpResult, WebViewStartupException> {
-        override fun onResult(result: WebViewStartUpResult) = Unit
-
-        override fun onError(error: WebViewStartupException) {
-          Log.w(TAG, "WebView warm-up failed", error)
-        }
-      })
-    }
+    Function("warmUp") { warmUp(appContext.reactContext ?: throw Exceptions.ReactContextLost()) }
 
     // Opens a connection (DNS, TCP, TLS) to the URL's origin in the default profile, for a load that follows. Best
     // effort: nothing on a WebView without the profile API. ProfileStore wants the UI thread, and starts WebView there.
@@ -122,14 +112,7 @@ class MinimalWebViewModule : Module() {
       OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
 
-      AsyncFunction("navigate") { view: MinimalWebView, action: String ->
-        when (action) {
-          "back" -> view.webView.goBack()
-          "forward" -> view.webView.goForward()
-          "reload" -> view.retry()
-          "stop" -> view.webView.stopLoading()
-        }
-      }.runOnQueue(Queues.MAIN)
+      AsyncFunction("navigate") { view: MinimalWebView, action: String -> navigate(view, action) }.runOnQueue(Queues.MAIN)
       // `get('settings.textZoom')` and `call('webView.clearCache', '[true]', null)` resolve with the JSON of the result.
       // `argsJson` is a JSON string so a null argument survives the conversion; `completion` is iOS's.
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
@@ -142,17 +125,11 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
-        view.answer(askId, answer["value"])
+        view.asks.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
       // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
-        val handler = view.hookHandler(name, method)
-          ?: return@AsyncFunction promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
-        try {
-          handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { PlatformSettings.toJson(it) } }
-        } catch (e: Exception) {
-          promise.reject("native_error", e.message, e)
-        }
+        hook(view, name, method, args, promise)
       }.runOnQueue(Queues.MAIN)
       // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
@@ -161,6 +138,39 @@ class MinimalWebViewModule : Module() {
         }
       }.runOnQueue(Queues.MAIN)
     }
+  }
+}
+
+private fun warmUp(context: Context) {
+  val config = WebViewStartUpConfig.Builder { Thread(it, "WebViewWarmUp").start() }.build()
+  WebViewCompat.startUpWebView(context, config, object : WebViewOutcomeReceiver<WebViewStartUpResult, WebViewStartupException> {
+    override fun onResult(result: WebViewStartUpResult) = Unit
+
+    override fun onError(error: WebViewStartupException) {
+      Log.w(TAG, "WebView warm-up failed", error)
+    }
+  })
+}
+
+private fun navigate(view: MinimalWebView, action: String) {
+  // While recovering, `webView` is the destroyed one: only reload acts, by building the new one.
+  if (view.recovering && action != "reload") return
+  when (action) {
+    "back" -> view.webView.goBack()
+    "forward" -> view.webView.goForward()
+    "reload" -> view.retry()
+    "stop" -> view.webView.stopLoading()
+  }
+}
+
+private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) {
+  if (view.recovering) return promise.reject("unavailable", RECOVERING, null)
+  val handler = view.hookHandler(name, method)
+    ?: return promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
+  try {
+    handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { PlatformSettings.toJson(it) } }
+  } catch (e: Exception) {
+    promise.reject("native_error", e.message, e)
   }
 }
 
@@ -201,7 +211,7 @@ private object FileChooserContract : AppContextActivityResultContract<ChooserInt
 // Data classes, so the skip checks in applyProps compare them with ==. Every field is optional, as on iOS.
 
 /** `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `body` makes the request a form-urlencoded POST. */
-data class WebViewSource(
+internal data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
   @Field val body: String? = null,
@@ -209,7 +219,7 @@ data class WebViewSource(
   @Field val baseUrl: String? = null
 ) : Record
 
-data class InjectedScript(
+internal data class InjectedScript(
   @Field val code: String? = null,
   @Field val mainFrameOnly: Boolean? = null
 ) : Record

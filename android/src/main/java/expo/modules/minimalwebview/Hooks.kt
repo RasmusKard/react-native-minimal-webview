@@ -1,9 +1,9 @@
 package expo.modules.minimalwebview
 
-import android.app.Activity
 import android.content.Context
 import android.os.Looper
 import android.util.Log
+import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -28,7 +28,7 @@ object MinimalWebViewHooks {
   internal class Hook(
     val key: String,
     val configure: ((WebView, WebViewContext) -> Unit)?,
-    val attach: (WebView, WebViewContext) -> ((DocumentScope.End) -> Unit)?
+    val attach: (WebView, WebViewContext) -> (() -> Unit)?
   )
 
   /** In registration order: the order the hooks are configured and attached in, so which client comes first. */
@@ -38,13 +38,12 @@ object MinimalWebViewHooks {
    * Registers the hook for [key]. For each new WebView (the first, and the one that replaces it after the render
    * process dies) [configure] runs as soon as it is made, before the package sets it up (`WebViewCompat.setProfile`
    * goes here), and [attach] once it has its clients and is in the view hierarchy. `attach` returns what to run when
-   * that WebView goes away, which gets `CRASHED` or `CLOSING`, or null. A second registration under a key replaces the
-   * first, with a warning.
+   * that WebView goes away, or null. A second registration under a key replaces the first, with a warning.
    */
   fun register(
     key: String,
     configure: ((WebView, WebViewContext) -> Unit)? = null,
-    attach: (WebView, WebViewContext) -> ((DocumentScope.End) -> Unit)?
+    attach: (WebView, WebViewContext) -> (() -> Unit)?
   ) {
     // The package's own events are `core.…`: a hook under it would have its events taken for them.
     if (key == "core") {
@@ -69,7 +68,6 @@ internal fun enables(value: Any?) = value != null && value != false
 interface WebViewContext {
   /** This hook's `hookOptions` value; after a change, the new one. */
   val options: Any?
-  val activity: Activity?
 
   /** The committed URL, the one the navigation state reports; empty before the first commit. */
   val url: String
@@ -108,7 +106,6 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   val key get() = hook.key
   private var current: Any? = view.hookOptions[hook.key]
   override val options get() = current
-  override val activity get() = view.activity
   override val url get() = view.url
   override val clients get() = view.clients
   override val chromeClients get() = view.chromeClients
@@ -119,7 +116,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { view.ask("$key.$name", payload, onAnswer) }
+    onMain { view.asks.ask("$key.$name", payload, onAnswer) }
 
   override fun onOptionsChange(handler: (Any?) -> Unit) {
     optionsHandlers += handler
@@ -151,16 +148,30 @@ private val overrideCache = ConcurrentHashMap<String, Boolean>()
 private val BASES = setOf<Class<*>>(WebViewClient::class.java, WebChromeClient::class.java, WebViewClientCompat::class.java)
 
 /**
- * WebViewClientCompat's own overrides that only forward to a variant of the callback (the first two are final): the
- * variant's parameter types, by the callback's signature.
+ * The base classes' own methods that only forward to a variant of the callback: the variant's parameter types, by the
+ * declaring class and the callback's signature. WebViewClient's and WebChromeClient's forward to a deprecated variant;
+ * WebViewClientCompat's first two are final.
  */
-private val COMPAT_VARIANTS: Map<String, Array<Class<*>>> = mapOf(
-  signature("onReceivedError", WebView::class.java, WebResourceRequest::class.java, WebResourceError::class.java) to
-    arrayOf(WebView::class.java, WebResourceRequest::class.java, WebResourceErrorCompat::class.java),
-  signature("onSafeBrowsingHit", WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java) to
-    arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponseCompat::class.java),
-  signature("shouldOverrideUrlLoading", WebView::class.java, WebResourceRequest::class.java) to
-    arrayOf(WebView::class.java, String::class.java)
+private val VARIANTS: Map<Class<*>, Map<String, Array<Class<*>>>> = mapOf(
+  WebViewClient::class.java to mapOf(
+    signature("shouldOverrideUrlLoading", WebView::class.java, WebResourceRequest::class.java) to
+      arrayOf(WebView::class.java, String::class.java),
+    signature("shouldInterceptRequest", WebView::class.java, WebResourceRequest::class.java) to
+      arrayOf(WebView::class.java, String::class.java),
+    signature("onReceivedError", WebView::class.java, WebResourceRequest::class.java, WebResourceError::class.java) to
+      arrayOf(WebView::class.java, Integer.TYPE, String::class.java, String::class.java)
+  ),
+  WebChromeClient::class.java to mapOf(
+    signature("onConsoleMessage", ConsoleMessage::class.java) to arrayOf(String::class.java, Integer.TYPE, String::class.java)
+  ),
+  WebViewClientCompat::class.java to mapOf(
+    signature("onReceivedError", WebView::class.java, WebResourceRequest::class.java, WebResourceError::class.java) to
+      arrayOf(WebView::class.java, WebResourceRequest::class.java, WebResourceErrorCompat::class.java),
+    signature("onSafeBrowsingHit", WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java) to
+      arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponseCompat::class.java),
+    signature("shouldOverrideUrlLoading", WebView::class.java, WebResourceRequest::class.java) to
+      arrayOf(WebView::class.java, String::class.java)
+  )
 )
 
 private fun signature(callback: String, vararg types: Class<*>) = "$callback(${types.joinToString { it.name }})"
@@ -169,13 +180,13 @@ private fun signature(callback: String, vararg types: Class<*>) = "$callback(${t
 internal fun Any.overrides(callback: String, vararg types: Class<*>): Boolean = javaClass.overrides(callback, *types)
 
 /**
- * [Any.overrides] for the class. A WebViewClientCompat subclass that leaves one of the compat class's forwarding
- * overrides in place (COMPAT_VARIANTS) overrides the callback only through the variant the forwarder calls.
+ * [Any.overrides] for the class. A subclass that leaves one of the base classes' forwarding methods in place
+ * (VARIANTS) overrides the callback only through the variant the forwarder calls.
  */
 internal fun Class<*>.overrides(callback: String, vararg types: Class<*>): Boolean =
   overrideCache.getOrPut("${this.name}#${signature(callback, *types)}") {
     val declared = getMethod(callback, *types).declaringClass
-    if (declared != WebViewClientCompat::class.java) return@getOrPut declared !in BASES
-    val variant = COMPAT_VARIANTS[signature(callback, *types)] ?: return@getOrPut false
+    if (declared !in BASES) return@getOrPut true
+    val variant = VARIANTS[declared]?.get(signature(callback, *types)) ?: return@getOrPut false
     getMethod(callback, *variant).declaringClass !in BASES
   }

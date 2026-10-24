@@ -36,7 +36,7 @@ window.nativeBridge.on('themeChanged', (theme) => applyTheme(theme));
 ```
 
 **How it behaves:**
-- **Errors are structured:** a call rejects with a `BridgeCallError`, an `Error` whose `code` is a `BridgeErrorCode`: `timeout`, `not_found` (no handler), `handler_error` (the handler threw or rejected; `message` is its error's), `navigated` or `unavailable` (an Android WebView older than 101, see [Android System WebView versions](props.md#android-system-webview-versions)). Catch it with `(error as BridgeCallError).code`.
+- **Errors are structured:** a call rejects with a `BridgeCallError`, an `Error` whose `code` is a `BridgeErrorCode`: `timeout`, `not_found` (no handler), `handler_error` (the handler threw or rejected; `message` is its error's), `navigated` or `unavailable` (an Android WebView older than 101, see [Android System WebView versions](props.md#android-system-webview-versions)). Catch it with `(error as BridgeCallError).code`. A per-call `timeoutMs` that isn't 0 or more rejects with a plain `RangeError` instead.
 - **Limits:** calls time out after 10 s by default (`createBridge({ timeoutMs })`); one call can set its own with `{ timeoutMs }`, from either side (`bridge.call(method, params, { timeoutMs })`, `nativeBridge.call(…)`), where `0` or `Infinity` means none. Messages have no size limit.
 - **Page load:** calls and events from React Native wait until the page's DOM is parsed (`DOMContentLoaded`), so handlers and listeners registered by its synchronous or deferred scripts are in place. A page's own calls work earlier, and are answered at once.
 - **One document:** every message is for one document, and never reaches the next page, even on the same origin. Calls in flight are rejected with `navigated` when the page navigates, its renderer crashes or the WebView unmounts (a page's own calls also when it comes back from the back-forward cache); events are dropped. The other side may already have handled such a call, so retry only calls that are safe to repeat.
@@ -65,7 +65,8 @@ bridge.emit('themeChanged', 'dark');
 
 ### Page types
 
-The page client has the same four methods, untyped. For a TypeScript page:
+The page client has the same four methods, untyped, and `__receive`, native's entry point on iOS, which the page
+doesn't call. For a TypeScript page:
 
 ```ts
 declare global {

@@ -45,6 +45,7 @@ const events: Harness['events'] = {
   downloadFailures: [],
   fullscreen: [],
   pageCounts: [],
+  documentEnds: [],
   hookEvents: [],
   overlay: { error: false },
 };
@@ -137,10 +138,16 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            hookOptions={{ pageCounter: true }}
+            hookOptions={{ 'sample.pageCounter': true }}
             onHookEvent={(event) => {
-              if (isPageCounterEvent(event) && event.name === 'pageCounter.pageLoaded')
+              if (!isPageCounterEvent(event)) events.hookEvents.push(event.name);
+              else if (event.name === 'sample.pageCounter.pageLoaded')
                 events.pageCounts.push(event.payload);
+              else if (event.name === 'sample.pageCounter.documentEnd')
+                events.documentEnds.push(event.payload);
+              // The hook's ask: the return value is its answer.
+              else if (event.name === 'sample.pageCounter.label')
+                return `page ${event.payload.count}`;
               else events.hookEvents.push(event.name);
             }}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}

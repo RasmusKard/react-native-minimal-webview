@@ -27,8 +27,10 @@ and swiftc tests drive all three ends with fake registrants.
 
 ### Considered and rejected
 
-- Before WebView 146, Android has no commit callback, so `onPageStarted` (load start) stays the commit signal, early by
-  the provisional window: a main-frame load that never commits ends the Document spuriously. `onPageCommitVisible` is a
+- Before WebView 146, Android has no commit callback of its own, so `onPageStarted` stays the commit signal. Chromium
+  calls it at commit (for every app but old GMS), so a main-frame load that never commits leaves the Document as it was
+  and fires no load events. Seen on WebView 133 (2026-10-23): 1 s into a navigation to a 3 s slow response, the state
+  still reads `loading: false` with the old `url` (`urlTracking`'s "during slow load"). `onPageCommitVisible` is a
   true commit signal but fires after the body starts, so an early page post, or a small page's `ready`, would lose its
   reply proxy to the late reset.
 - A protocol with three methods, or the scope calling each feature's existing reset methods in order: closures that
@@ -110,3 +112,73 @@ per-host `external` rule, which opens the URL through the OS resolver on both pl
 
 - Hand-off by default (plain `.allow`): iOS and Android would split on the same rules, and no rule could keep a
   claimed host in place on iOS.
+
+## Android downloads fetch with HttpURLConnection
+
+Android's WebView hands a download over as a URL, so the core fetches it again with the WebView's cookies. That used
+React Native's OkHttp and its `ForwardingCookieHandler`, the package's only use of `com.facebook.react:react-android`.
+Decided 2026-10-23: `HttpURLConnection` with `CookieManager`, redirects followed by hand (`Downloads.kt`): each hop
+sends and stores its own URL's cookies, at most 20 redirects (OkHttp's limit), and a hop goes only to https or from
+http to http, which also refuses the http to https to http chain OkHttp's check let through. The cookie store is
+passed in, so a JVM test runs the loop against a local server. The package builds without `react-android`.
+
+### Considered and rejected
+
+- Keep OkHttp through `react-android`: no code, but tied to a React Native networking class and its OkHttp.
+- OkHttp with an own `CookieJar`: about as long, and keeps the dependency.
+
+## The view is the aggregate root
+
+`MinimalWebView` holds, on each platform, what has one owner by nature: the Expo surface (Expo binds the props, the
+events and the module's functions to the view instance), the platform WebView's life, crash recovery, the Document scope
+and its ends, the navigation state, the hook plumbing (contexts, detachers, the hooks' delegate and client lists) and on
+iOS the one core `WKNavigationDelegate` behind `DelegateProxy`, since WebKit has one delegate slot per kind. Decided
+2026-10-23: a feature with state of its own owns it in its own class (Kotlin's Navigation, Scripts and `requests/`;
+Swift's `Downloads`, `SharedCookies` and `DelegateProxy`; `DocumentScope`, `Asks` and `PlatformSettings` on both) and
+takes the view only for props, events and the current WebView, which a crash replaces on Android. Swift's `+Feature`
+files are one type split by file: an extension can't hold stored properties, so their state stays on the view,
+`internal` where another file needs it. So the two view classes are the one place the size checks don't apply
+(detekt's `TooManyFunctions`, SwiftLint's `type_body_length` and `file_length`, disabled there with this section as
+the reason); every other class and file keeps the global thresholds.
+
+### Considered and rejected
+
+- The core's page requests written against the hook seam (`WebViewContext` instead of the view): 4 of the 6 additions
+  they would need are core-only (the `core.` event prefix, the `requestHandlers` gate, the file chooser launcher, an
+  awaited `evaluate`) and would become a hidden half of the context. The other two, a cancellable `ask` and the
+  download listener slot, wait for a hook that needs them.
+
+## Shared cookies, pull-to-refresh and download saving stay in Core
+
+On 2026-10-22 three features were deferred as candidates to leave Core, to revisit once the hook seams they need had
+landed: shared cookies (iOS), pull-to-refresh and download saving. So were the seams: an Android content wrapper a hook
+can own (S2), Android download listeners on `WebViewContext` (S3), an iOS response-policy split (S4), a before-load
+gate (S5, of which `context.holdLoads()` was the first-load-only form), `context.reload()` (S6), and decision hooks that
+fall back to the core (`context.core`). Decided 2026-10-23: the three stay in Core, and the deferral is closed for
+them. Core is all of the package's native code, so an extension inside the package removes no line: the prop stays,
+and the seams and glue add about 6, 38 and 38 lines. A recipe in the app instead costs each app that wants the
+feature an Expo module of its own, about 90, 195 and 295 lines and a native rebuild, more than the feature costs the
+package.
+
+### What follows
+
+- A seam lands only for a named use, an extension that needs it. S3, S4, S5, `context.core` and a cancellable hook
+  `ask` (withdrawn when the platform withdraws its callback) wait for one. S2 and S6 are not added: no use needs native
+  UI around the WebView, and `ref.reload()` reloads from JS.
+- S5, when it comes, is per load, on both platforms, with a timeout for a `done` that never comes: a one-shot
+  `holdLoads()` doesn't fit cookies, which are copied before every `source` load. `context.core` comes on both
+  platforms or neither; on Android it needs a way past the routing of every decision. The cancellable `ask` comes with
+  S3 or S5.
+- A TS registry of hook types (an augmentable `HookTypes` behind `hookOptions`, `onHookEvent` and `ref.hook`) waits
+  for a first extension outside this repository; until then `HookEvent<N, P>` types one hook's events.
+
+### Considered and rejected
+
+- Each feature as an extension inside the package: no smaller, and each brings its own break. Shared cookies makes
+  `sharedCookies` a taken hook key and needs S5. Pull-to-refresh needs S2, S6 and a load-end observation, takes the
+  WebView out of the `SwipeRefreshLayout` it always sits in, and the vh=0 layout fix moves with it. Download saving
+  renames the pinned `core.download` event, orders itself against the app's hooks by Expo's module order, and its
+  `blob:` read loses the core `evaluate`'s checks.
+- Each as a recipe in the app: the module above, and for downloads against "don't touch Android's download listener"
+  ([Native hooks](native-hooks.md)). Shared cookies would still miss the first load, which nothing outside the core
+  can hold.

@@ -1,6 +1,8 @@
 import ExpoModulesCore
 import WebKit
 
+// swiftlint:disable file_length - because the view is the aggregate root by design, see docs/decisions.md
+// swiftlint:disable:next type_body_length - because the view is the aggregate root by design, see docs/decisions.md
 class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigationState = EventDispatcher()
   let onBridge = EventDispatcher()
@@ -59,12 +61,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var htmlCommit: (url: String, item: WKBackForwardListItem?)?
   /// The URL this view loads itself (source, reload after an error, an allowed new window): it skips the rules.
   var programmaticUrl: URL?
-  /// Every `ask` (navigation and extension) waits here for JS, by id, until answered through `answer`.
-  var pendingAsks: [Int: (Any?) -> Void] = [:]
+  private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
   let document = DocumentScope()
   /// The enabled hooks' contexts in registration order, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [HookContext] = []
-  var nextAskId = 0
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
   var askedAndAllowed: [Bool: Set<String>] = [:]
   /// A `source` load is being prepared (shared cookies): loads wait until it is done.
@@ -94,8 +94,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     super.init(appContext: appContext)
     clipsToBounds = true
     // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. `closing` comes from
-    // invalidate, at unmount; in the deinit fallback self is already nil and these do nothing (tearDown fails the asks).
-    document.register { [weak self] reason in self?.failPendingAsks(reason) }
+    // invalidate, at unmount; in the deinit fallback self is already nil and only the asks, held without the view, end:
+    // WebKit throws for a decision handler released uncalled.
+    document.register { [asks] in asks.documentEnded($0) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in
       guard let self else { return }
@@ -164,7 +165,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var onSource: Bool {
     guard let source else { return false }
     guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failedUrl == nil }
-    return URL(string: url).map { Self.sameURL($0, uri) } ?? false
+    return Recovery.showsSource(uri.absoluteString, url)
   }
 
   /// The page on screen is the POST `source`: it can't be fetched again by URL, so reload loads the source instead.
@@ -213,6 +214,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
     hookContexts = MinimalWebViewHooks.hooks.filter { enables(hookOptions[$0.key]) }.map { HookContext($0, self) }
     for context in hookContexts { context.hook.configure?(configuration, context) }
+    // A typo, or a hook's module not linked or not rebuilt.
+    for key in hookOptions.keys where enables(hookOptions[key]) && !hookContexts.contains(where: { $0.key == key }) {
+      emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
+    }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
@@ -253,8 +258,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func tearDown() {
     guard let webView else { return }
     document.end(.closing)
-    // Again for deinit, where the registrant above can't: WebKit throws for a decision handler released uncalled.
-    failPendingAsks(.closing)
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
@@ -350,7 +353,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     decidePolicyFor navigationAction: WKNavigationAction,
     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
   ) {
-    decideNavigation(navigationAction, in: webView, decide: decisionHandler)
+    decideNavigation(navigationAction, decide: decisionHandler)
   }
 
   func webView(
@@ -397,19 +400,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    loadEnded(webView) { $0.webView?(webView, didFinish: navigation) }
+    loadEnded { $0.webView?(webView, didFinish: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadEnded(webView, error) { $0.webView?(webView, didFail: navigation, withError: error) }
+    loadEnded(error) { $0.webView?(webView, didFail: navigation, withError: error) }
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadEnded(webView, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    loadEnded(error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
   }
 
   /// A load finished, or failed with `error`: the core's bookkeeping, then the hook delegates' callback.
-  private func loadEnded(_ webView: WKWebView, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
+  private func loadEnded(_ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
     outcome = error.map { failed($0) ? "failed" : "cancelled" } ?? "finished"
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
@@ -420,10 +423,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
   /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is always true on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    let now = Date()
-    crashTimes = crashTimes.filter { now.timeIntervalSince($0) < crashWindow } + [now]
     // A POST source on screen isn't sent again unasked (a browser asks first): the app's reload() can.
-    let recovered = crashTimes.count <= maxCrashesPerWindow && !onPostSource
+    let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     document.end(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered {
@@ -435,10 +436,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }
-
-// ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
-private let maxCrashesPerWindow = 3
-private let crashWindow: TimeInterval = 60
 
 /// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
 /// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
@@ -481,9 +478,5 @@ extension MinimalWebView {
 
   func emit(_ name: String, _ payload: [String: Any]) {
     onHookEvent(["name": name, "payload": payload])
-  }
-
-  func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
-    onHookEvent(["name": name, "payload": payload, "askId": register(onAnswer)])
   }
 }

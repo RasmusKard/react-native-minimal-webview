@@ -93,6 +93,12 @@
       {
         "action": "allow"
       }
+    ],
+    "customScheme": [
+      {
+        "scheme": ["myapp"],
+        "action": "external"
+      }
     ]
   },
   "cases": [
@@ -199,6 +205,17 @@
       }
     },
     {
+      "name": "no rules: a bare about: in the main frame allows",
+      "rules": null,
+      "request": {
+        "url": "about:"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
       "name": "internal: about:srcdoc skips rules",
       "rules": "app",
       "request": {
@@ -261,6 +278,18 @@
       "rules": "app",
       "request": {
         "url": "javascript:alert(1)",
+        "newWindow": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "new window: a bare about: blocks",
+      "rules": null,
+      "request": {
+        "url": "about:",
         "newWindow": true
       },
       "expect": {
@@ -824,6 +853,17 @@
       "expect": {
         "action": "allow",
         "rule": 1
+      }
+    },
+    {
+      "name": "scheme: a bare myapp: has the scheme myapp",
+      "rules": "customScheme",
+      "request": {
+        "url": "myapp:"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 0
       }
     },
     {

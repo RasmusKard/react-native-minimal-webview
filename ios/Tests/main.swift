@@ -1,7 +1,7 @@
-// Runs the shared navigation and origin rule cases against NavigationRules.swift and OriginRules.swift, and the
-// DocumentScope dispatch cases. Not part of the pod (see the podspec).
-//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Tests/main.swift \
-//     -o /tmp/rules && /tmp/rules
+// Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
+// and Recovery.swift, the DocumentScope dispatch cases and the Asks contract. Not part of the pod (see the podspec).
+//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
+//     ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation
 
 func fail(_ message: String) -> Never {
@@ -97,4 +97,80 @@ if late != [.closing] {
   print("FAIL document scope late registrant: \(late)")
 }
 print("\(2 - scopeFailures)/2 document scope cases pass")
-exit(failures + originFailures + scopeFailures == 0 ? 0 : 1)
+
+// Asks: each ask is answered once, by JS or with nil when native gives up; JS hears of a cancel except at closing.
+var askFailures = 0
+var sent: [[String: Any]] = []
+var replies: [String?] = []
+let asks = Asks { sent.append($0) }
+func ask() -> Int { asks.ask("hook.q", ["a": 1]) { replies.append($0 as? String) } }
+func cancelled() -> [Int] {
+  sent.filter { $0["name"] as? String == "core.askCancelled" }.compactMap { ($0["payload"] as? [String: Any])?["askId"] as? Int }
+}
+let answered = ask()
+asks.answer(answered, "yes")
+asks.answer(answered, "late")
+if replies != ["yes"] || sent.first?["name"] as? String != "hook.q" || sent.first?["askId"] as? Int != answered {
+  askFailures += 1
+  print("FAIL ask answered once: \(replies), \(sent)")
+}
+let timedOut = ask()
+asks.cancel(timedOut)
+asks.answer(timedOut, "late")
+asks.cancel(timedOut)
+if replies != ["yes", nil] || cancelled() != [timedOut] {
+  askFailures += 1
+  print("FAIL ask cancelled: \(replies), \(cancelled())")
+}
+let committed = ask()
+asks.documentEnded(.committed)
+let closing = ask()
+asks.documentEnded(.closing)
+asks.answer(closing, "late")
+if replies != ["yes", nil, nil, nil] || cancelled() != [timedOut, committed] {
+  askFailures += 1
+  print("FAIL ask at a Document end: \(replies), \(cancelled())")
+}
+let before = sent.count
+_ = ask()
+if replies != ["yes", nil, nil, nil, nil] || sent.count != before {
+  askFailures += 1
+  print("FAIL ask after closing: \(replies), \(sent.count - before) sent")
+}
+print("\(4 - askFailures)/4 ask cases pass")
+
+let recoveryPath = "ios/Tests/vectors/recovery.json"
+guard let recoveryData = FileManager.default.contents(atPath: recoveryPath),
+  let recovery = (try? JSONSerialization.jsonObject(with: recoveryData)) as? [String: Any],
+  let sourceCases = recovery["source"] as? [[String: Any]],
+  let guardCases = recovery["crashGuard"] as? [[String: Any]]
+else { fail("cannot read \(recoveryPath)") }
+
+var recoveryFailures = 0
+for testCase in sourceCases {
+  guard let name = testCase["name"] as? String, let uri = testCase["uri"] as? String,
+    let url = testCase["url"] as? String, let shows = testCase["shows"] as? Bool
+  else { fail("malformed case \(testCase)") }
+  if Recovery.showsSource(uri, url) != shows {
+    recoveryFailures += 1
+    print("FAIL \(name): expected shows \(shows)")
+  }
+}
+for testCase in guardCases {
+  guard let name = testCase["name"] as? String, let crashes = testCase["crashes"] as? [[String: Any]] else {
+    fail("malformed case \(testCase)")
+  }
+  var times: [Date] = []
+  let reloads = crashes.map { crash in
+    guard let at = crash["at"] as? Double else { fail("malformed crash \(crash)") }
+    return Recovery.crashAllowsReload(&times, now: Date(timeIntervalSince1970: at / 1000))
+  }
+  let expected = crashes.compactMap { $0["reload"] as? Bool }
+  if reloads != expected {
+    recoveryFailures += 1
+    print("FAIL \(name): expected reloads \(expected), got \(reloads)")
+  }
+}
+let recoveryCount = sourceCases.count + guardCases.count
+print("\(recoveryCount - recoveryFailures)/\(recoveryCount) recovery cases pass")
+exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures == 0 ? 0 : 1)

@@ -5,11 +5,11 @@ import WebKit
 /// by the rule in `WebViewContext`. `responds(to:)` says yes for whatever any of them implements, which WebKit reads
 /// once, when the proxy is assigned as the delegate.
 final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
-  private weak var core: MinimalWebView?
+  private weak var core: NSObject?
   var navigationDelegates: [WKNavigationDelegate] = []
   var uiDelegates: [WKUIDelegate] = []
 
-  init(core: MinimalWebView) {
+  init(core: NSObject) {
     self.core = core
   }
 
