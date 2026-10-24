@@ -2,6 +2,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Bridge</title>
+<script>
+  // With ?head=1 the page's first script calls native at once, before DOMContentLoaded and the page's `ready`.
+  if (location.search.includes('head=1') && window.nativeBridge) {
+    nativeBridge.call('echo', { head: true }).then((result) => (window.__head = { result }), (error) => (window.__head = { error: error.code }));
+  }
+</script>
 <script src="/common.js"></script>
 <style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
 <h1>Bridge</h1>

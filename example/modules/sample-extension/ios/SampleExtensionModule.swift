@@ -7,25 +7,30 @@ public class SampleExtensionModule: Module {
     Name("SampleExtension")
     OnCreate {
       // configure: a creation-time setting; WebKit reads data detectors only from the configuration.
-      MinimalWebViewHooks.register("pageCounter", configure: { configuration, _ in
+      MinimalWebViewHooks.register("sample.pageCounter", configure: { configuration, _ in
         configuration.dataDetectorTypes = .phoneNumber
       }) { webView, context in
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
         // A live option: the page gets the count under the new name at once, without a reload.
         context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
-        // JS's `ref.hook('pageCounter', 'count')`.
+        // JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }
-        context.onDocumentEnd { [weak context] reason in context?.emit("documentEnd", ["reason": "\(reason)"]) }
+        // `ref.hook('sample.pageCounter', 'label')`: asks the app for the count's label and replies with its answer.
+        context.handle("label") { [weak context] _, reply in context?.ask("label", ["count": counter.count], reply) }
+        context.onDocumentEnd { [weak context] reason in
+          guard let context, reason != .closing else { return }
+          context.emit("documentEnd", ["reason": "\(reason)", "url": context.url])
+        }
         return nil
       }
       // Fixtures for the harness: decision callbacks the core implements, which these delegates take over, so the
       // app's props are not asked.
-      MinimalWebViewHooks.register("hookAuth") { _, context in
+      MinimalWebViewHooks.register("sample.hookAuth") { _, context in
         context.navigationDelegates.append(HookAuth())
         return nil
       }
-      MinimalWebViewHooks.register("hookDialogs") { _, context in
+      MinimalWebViewHooks.register("sample.hookDialogs") { _, context in
         context.uiDelegates.append(HookDialogs(context: context))
         return nil
       }

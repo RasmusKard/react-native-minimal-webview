@@ -57,8 +57,10 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
 
   // A failed main-frame load commits an error page at the failed URL: `url` becomes that URL, as on iOS.
   override fun onNavigationCompleted(navigation: Navigation) {
-    if (navigation.didCommit()) owner.url = navigation.url
+    // The Document ends before `url` moves on, so its handlers see the page that ended: as on iOS, and before 146,
+    // where onPageStarted comes ahead of doUpdateVisitedHistory.
     if (navigation.didCommit() && !navigation.isSameDocument) owner.newDocument()
+    if (navigation.didCommit()) owner.url = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
       // A reported network or SSL error already made it "failed". Chromium's error page for an HTTP status (a 404 with
