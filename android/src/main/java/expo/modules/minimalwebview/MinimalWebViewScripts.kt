@@ -20,8 +20,10 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private val evaluations = mutableMapOf<Int, (Result<String>) -> Unit>()
   private var nextEvaluation = 0
 
-  /** Everything, into a new WebView (the first, or the one after a crash). The evaluate channel and the bridge go in
-   * only here: JS fixes `bridge` at mount. */
+  /**
+   * Installs everything into a new WebView, the first or the one after a crash. The evaluate channel and the bridge go
+   * in only here: JS fixes `bridge` at mount.
+   */
   fun install() {
     installEvaluate()
     installBridge()
@@ -151,7 +153,6 @@ $script
   }
 
   private companion object {
-    /** The props [lacks] has warned about. */
     val warnedProps = mutableSetOf<String>()
   }
 }

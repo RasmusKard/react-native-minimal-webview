@@ -1,5 +1,5 @@
-// Scripted spike checks. Results go to the JS console as `[harness] PASS|FAIL|INFO ...` lines, readable from
-// logcat (ReactNativeJS) or the Metro log, so no screenshots are needed.
+// The on-device suites (SUITES, at the end). Each result is logged as `[harness <platform>] PASS|FAIL|INFO ...` to the
+// JS console and to the test pages server, which prints it.
 import { Directory, File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
@@ -59,7 +59,7 @@ export type Harness = {
     documentEnds: { reason: string; url: string }[];
     /** The names of the hooks' other events. */
     hookEvents: string[];
-    /** Whether the example's error screen (the docs/props.md recipe) is mounted. */
+    /** Whether the example's error screen is mounted. */
     overlay: { error: boolean };
   };
 };
@@ -137,7 +137,7 @@ export function pollForSuites(get: () => Harness) {
       if (suite) await suite(current);
       else emit(`FAIL unknown suite ${name}`);
     } catch (error) {
-      // A thrown suite reports as a failure instead of leaving the harness busy forever.
+      // A suite that throws still gets a verdict, so the driver doesn't wait for one until it times out.
       request(`${name}#done pass=? fail=1`);
       emit(`FAIL ${name}: threw ${String(error)}`);
       emit(`DONE ${name} pass=? fail=1`);
@@ -219,8 +219,8 @@ async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
 
 const webViewMajors = new WeakMap<object, Promise<number>>();
 /**
- * Checks `name`, or reports it as INFO on an Android WebView older than 146, where it fails by design (no
- * NAVIGATION_LISTENER; ROADMAP's known limits). The version is read once per suite run (per reporter).
+ * Checks `name`, or reports it as INFO on an Android WebView older than 146, which lacks a feature the check needs
+ * (such as NavigationListener), so it fails by design there. The version is read once per suite run (per reporter).
  */
 async function checkUnlessOldWebView(
   h: Harness,
@@ -306,7 +306,6 @@ async function urlTracking(h: Harness) {
     await agree(h, r, `${id} agrees`);
   }
 
-  // 5.2: what url and pendingUrl show while a slow navigation is in flight
   const beforeSlow = h.state().url;
   await h.ref.current?.evaluate(`location.href = '/slow?ms=3000'`);
   await sleep(1000);
@@ -331,7 +330,7 @@ async function urlTracking(h: Harness) {
   );
   await agree(h, r, 'slow load agrees');
 
-  // A remount App doesn't re-render for: useWebViewState and getState() follow the new WebView, which loads the
+  // After a remount that doesn't re-render App, useWebViewState and getState() follow the new WebView, which loads the
   // source again, instead of keeping the old one's /slow page.
   const beforeRemount = h.state().url;
   h.remount();
@@ -347,7 +346,8 @@ async function urlTracking(h: Harness) {
   r.done();
 }
 
-// Android cancel-and-reissue: `ask` rules cancel the navigation, JS answers, `allow` reloads the URL.
+// The `ask` rule. Android can't hold a navigation: it cancels it, asks JS, and on `allow` loads the URL again (the
+// reissue).
 async function reissue(h: Harness) {
   const r = reporter('reissue');
   const asked: string[] = [];
@@ -424,7 +424,8 @@ async function reissue(h: Harness) {
     r.check('iframe navigations into an ask rule are asked', asked.length > beforeFrame, asked);
   }
 
-  // The page goes as the referrer: in full to its own origin, only its origin to another.
+  // A navigation an `ask` allowed (reissued, on Android) still sends the page as the referrer: in full to its own
+  // origin, only its origin to another.
   const referrerTo = async (target: string) => {
     const from = fresh(h, '/nav.html');
     await openPage(h, from);
@@ -587,7 +588,8 @@ async function bridge(h: Harness) {
   r.check('calls to a disallowed page time out', blocked === 'timeout', blocked);
 
   if (Platform.OS === 'ios') {
-    // The Document ends at unmount, from invalidate: deinit, the fallback, can no longer reject (its self is nil).
+    // The Document must end at unmount, in invalidate(): the deinit fallback can't reject the evaluate, because its
+    // weak self is already nil there.
     const unmounted = evaluate('new Promise(() => {})')?.catch(errorCode);
     await sleep(200);
     h.remount();
@@ -598,12 +600,12 @@ async function bridge(h: Harness) {
 }
 
 /**
- * The `pullToRefresh` prop. The gesture comes from outside the app: the suite logs `INFO ptr: SWIPE "<kind>"` and the
- * driver (adb input swipe / agent-device swipe) performs it.
+ * The `pullToRefresh` prop. The gesture comes from outside the app: the suite asks for `SWIPE "<kind>"` and the driver
+ * (maestro/ptr.yaml) performs it.
  */
 async function ptr(h: Harness) {
   const r = reporter('ptr');
-  // Rejects with `navigated` when the pull's reload replaces the page mid-call: read it again on the next poll.
+  // The evaluate rejects with `navigated` when the pull's reload replaces the page mid-call; the next poll retries.
   const loadedAt = async () =>
     (await h.ref.current
       ?.evaluate(`document.getElementById('loaded').textContent`)
@@ -664,8 +666,8 @@ async function ptr(h: Harness) {
   await h.ref.current?.evaluate(`document.getElementById('scroller').scrollTop = 400`);
   const inner = await pullStays('inner', `document.getElementById('scroller').scrollTop`);
   r.check('a pull inside a scrolled inner scroller does not reload', inner === 'stayed', inner);
-  // Off, the layout stays around the WebView and takes no pull. The next setProps turns it back on (the app's
-  // default), and the failing reload's pull below needs it on.
+  // With the prop off, the layout stays around the WebView but takes no pull. The next setProps turns it back on (the
+  // app's default), which the failing reload's pull below needs.
   h.setProps({ pullToRefresh: false });
   await open('long');
   r.check('no pull to refresh while the prop is off', !(await pull('full')));
@@ -803,7 +805,6 @@ async function upload(h: Harness) {
   r.done();
 }
 
-/** Empties every event log. */
 const clearEvents = (h: Harness) => {
   for (const log of Object.values(h.events)) if (Array.isArray(log)) log.length = 0;
   h.pageEvents.length = 0;
@@ -876,8 +877,8 @@ const tapPoint = async (h: Harness, id: string, frame?: string) =>
   ).join(' ');
 
 /**
- * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the error screen recipe in
- * docs/props.md (the example's ErrorScreen), and reload recovering.
+ * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
+ * (the recipe in docs/migrating-from-react-native-webview.md#loading-and-error-screens), and reload recovering.
  */
 async function errors(h: Harness) {
   const r = reporter('errors');
@@ -1206,7 +1207,7 @@ async function crash(h: Harness) {
     h.state()
   );
   r.check(
-    'a new source resets the crash-loop guard',
+    'a crash after reload() and a new source recovers',
     (await kill(5))?.recovered === true,
     h.events.gone.at(-1)
   );
@@ -1395,8 +1396,6 @@ async function settings(h: Harness) {
         String(desktop).includes('Macintosh'),
         desktop
       );
-      // get reads a property back; call: an NSHTTPCookie both ways, a void completion handler, valueError with NSData
-      // and UIImage, value, a struct and a BOOL, refusals.
       h.setProps({
         ios: {
           configuration,
@@ -1576,7 +1575,6 @@ async function settings(h: Harness) {
       );
       r.check('and leaves the setting alone', (await fontSize()) === '30px', await fontSize());
       r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
-      // get reads a setting back; call runs a public method of a root.
       r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
       await checkUnlessOldWebView(
         h,
@@ -1813,7 +1811,6 @@ async function navigation(h: Harness) {
   );
 
   if (Platform.OS === 'android') {
-    // An intent: whose app is not installed falls back to the web.
     h.setProps({});
     h.setRules([
       { scheme: ['intent'], action: 'external' },
@@ -1837,8 +1834,7 @@ async function navigation(h: Harness) {
 }
 
 /**
- * injectedScripts: run before page scripts, a DOMContentLoaded listener once the DOM is parsed, main frame only unless
- * mainFrameOnly is false, changes apply next load.
+ * The `injectedScripts` prop: when its scripts run, in which frames, and that a change applies from the next load.
  */
 async function injection(h: Harness) {
   const r = reporter('injection');
@@ -1961,7 +1957,6 @@ async function downloadsSuite(h: Harness) {
     );
   }
 
-  // Without onDownload: http(s) opens externally (here onOpenExternal), data: and blob: are dropped. Then set again.
   const opened: string[] = [];
   h.setProps({ onDownload: undefined, onOpenExternal: (url) => opened.push(url) });
   await sleep(300);
@@ -2106,7 +2101,6 @@ async function permissionsSuite(h: Harness) {
   answer = true;
 
   if (Platform.OS === 'android') {
-    // Without onPermissionRequest: denied. Set again: asked again, without a remount.
     h.setProps({ onPermissionRequest: undefined });
     await sleep(300);
     askedBefore = asked.length;
@@ -2157,7 +2151,7 @@ async function fullscreen(h: Harness) {
   );
   r.check('the page is still there', h.state().url.includes('/media.html'), h.state());
 
-  // Always on: without onFullscreenChange too. Nothing is reported; the page's fullscreenElement tells.
+  // Fullscreen works without onFullscreenChange too. Nothing is reported then, so the page's fullscreenElement tells.
   h.setProps({ onFullscreenChange: undefined });
   await sleep(300);
   const active = async () =>
@@ -2314,8 +2308,9 @@ async function sampleExtension(h: Harness) {
     { after, hookEvents: h.events.hookEvents }
   );
   await recreate(h, {}, true);
-  // configure() ran before the package set the view up. iOS: data detectors, which WebKit reads only from the
-  // configuration, turn the number into a tel: link. Android: the monospace default size it set (13px without it).
+  // The hook's configure() runs before the package sets the view up. On iOS it turns on data detectors, which WebKit
+  // reads only from the configuration, so the number becomes a tel: link; on Android it sets the monospace default font
+  // size to 14px (13px without it).
   h.loadSource({
     html: '<p id="n">Call 415-555-0134 today</p><code id="c">x</code>',
     baseUrl: h.pages,
@@ -2350,7 +2345,6 @@ async function network(h: Harness) {
     await text(h, 'auth')
   );
 
-  // Native requests (RN fetch) and the WebView share cookies: both directions.
   await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);
   await openPage(h, fresh(h, '/cookies'));
   r.check(
@@ -2502,7 +2496,6 @@ async function bfcache(h: Harness) {
   const after = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works after the late answer', after === 2, after);
 
-  // The rules still decide navigations the restored page starts.
   const asked = await allowAsks(h, [
     { path: ['/checkout'], action: 'ask' },
     { path: ['/blocked'], action: 'block' },

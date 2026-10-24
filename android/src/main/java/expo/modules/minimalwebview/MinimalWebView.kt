@@ -26,7 +26,7 @@ import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 import java.util.concurrent.CopyOnWriteArrayList
 
-@Suppress("TooManyFunctions") // because the view is the aggregate root by design, see docs/decisions.md
+@Suppress("TooManyFunctions") // because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
 internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
@@ -42,8 +42,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private var current: WebView? = null
   /**
-   * Made at first use, which is the first prop batch, so that the configure hooks see `hookOptions`. Replaced when
-   * the render process dies; the hooks are attached to each one. While [recovering] it is the destroyed one.
+   * Made at first use, the first prop batch, so that the configure hooks see `hookOptions`. Replaced after a renderer
+   * crash; while [recovering] it is the destroyed one.
    */
   internal var webView: WebView
     get() = current ?: createWebView().also { current = it }
@@ -76,9 +76,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
 
-  // The hooks' clients (WebViewContext) and the core's page requests. The clients (MinimalWebViewClients.kt) route each
-  // callback by the rule in WebViewContext. The page requests ask JS only for the requests in requestHandlers.
-  // Copy-on-write: Chromium reads it from its IO thread (shouldInterceptRequest) while attach and detach write it.
+  // The hooks' clients. Copy-on-write: Chromium reads them on its IO thread (shouldInterceptRequest) while attach and
+  // detach write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
   val activity: Activity? get() = appContext.currentActivity
@@ -96,7 +95,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal val asks = Asks { onHookEvent(it) }
 
-  // Navigation state. Native owns the committed URL; JS is told. The clients (MinimalWebViewClients.kt) write it.
+  // Navigation state: native owns it and tells JS. The clients (MinimalWebViewClients.kt) write it.
   internal var url = ""
   internal var pendingUrl: String? = null
   internal var title = ""
@@ -119,8 +118,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. The asks last:
-    // their callbacks are hook and Chromium code, and a throw there must not skip the core's own resets.
+    // What belongs to the Document (DocumentScope), reset in this order at every end. The asks last: their callbacks
+    // are hook and Chromium code, and a throw there must not skip the core's own resets.
     document.register { fileUpload.cancel() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
@@ -258,7 +257,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun attachHooks() {
     detachers = hookContexts.mapNotNull { it.hook.attach(webView, it) }
-    // A hook that takes favicons gets them downloaded again (configure() turns that off).
     if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
       WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
     ) {
@@ -293,7 +291,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 
-  /** A new main-frame document: what belonged to the old one ends. */
   internal fun newDocument() = document.end(End.COMMITTED)
 
   internal fun pageFinished() = refresher.pageFinished()

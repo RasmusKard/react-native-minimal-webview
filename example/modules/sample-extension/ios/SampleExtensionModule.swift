@@ -6,17 +6,17 @@ public class SampleExtensionModule: Module {
   public func definition() -> ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      // configure: a creation-time setting; WebKit reads data detectors only from the configuration.
+      // `configure` gets the configuration before the WKWebView exists: WebKit reads data detectors only from it.
       MinimalWebViewHooks.register("sample.pageCounter", configure: { configuration, _ in
         configuration.dataDetectorTypes = .phoneNumber
       }) { webView, context in
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
-        // A live option: the page gets the count under the new name at once, without a reload.
+        // A hookOptions change arrives live, with no reload; `context.options` is already the new value.
         context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
-        // JS's `ref.hook('sample.pageCounter', 'count')`.
+        // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }
-        // `ref.hook('sample.pageCounter', 'label')`: asks the app for the count's label and replies with its answer.
+        // An ask's answer can be the reply. The context keeps its handlers, so they capture it weakly.
         context.handle("label") { [weak context] _, reply in context?.ask("label", ["count": counter.count], reply) }
         context.onDocumentEnd { [weak context] reason in
           guard let context, reason != .closing else { return }
@@ -24,8 +24,8 @@ public class SampleExtensionModule: Module {
         }
         return nil
       }
-      // Fixtures for the harness: decision callbacks the core implements, which these delegates take over, so the
-      // app's props are not asked.
+      // Page requests only a hook can take over (the harness's fixtures): the first delegate that implements HTTP
+      // auth or the alert panel answers it.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context in
         context.navigationDelegates.append(HookAuth())
         return nil

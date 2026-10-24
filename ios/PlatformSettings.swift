@@ -32,7 +32,6 @@ final class PlatformSettings {
         continue
       }
       let isConfiguration = rootName == "configuration"
-      // Each key applies in one phase: configuration keys while creating, the rest live.
       guard isConfiguration || !creating else { continue }
       for (key, value) in entries {
         let id = "\(rootName).\(key)"

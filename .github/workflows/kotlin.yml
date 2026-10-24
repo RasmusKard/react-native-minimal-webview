@@ -15,13 +15,13 @@ on:
 
 permissions: { contents: read }
 
-concurrency:   # a new push cancels the run for the previous one
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # The Kotlin unit tests: the navigation rule matcher against the shared cases in src/__tests__/vectors/, and the
-  # DocumentScope, hook override and client coverage tests. Android matches origins itself (addWebMessageListener).
+  # The Kotlin unit tests, the navigation rule matcher among them against the shared cases in src/__tests__/vectors/.
+  # There is no Kotlin origin matcher: Android matches origins itself (addWebMessageListener).
   kotlin-rules:
     runs-on: ubuntu-latest
     steps:

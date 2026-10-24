@@ -5,12 +5,12 @@ on:
 
 permissions: { contents: read }
 
-concurrency: # a new push cancels the run for the previous one
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Stryker on the bridge files in stryker.config.json; fails below a mutation score of 80.
+  # Stryker on the files stryker.config.json lists; fails below a mutation score of 80.
   stryker:
     runs-on: ubuntu-latest
     steps:
