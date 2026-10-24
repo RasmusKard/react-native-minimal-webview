@@ -1,12 +1,12 @@
 // The bridge wire format. The RN side parses with it; the page client imports only its types.
 
-const ERROR_CODES = [
-  'timeout',
-  'not_found', // no handler for the method
-  'handler_error', // the handler threw or rejected; also any code from the page that isn't listed here
-  'navigated', // the page navigated or the view went away while the call was pending
-  'unavailable', // the platform lacks the needed WebView features
-] as const;
+const ERROR_CODES = ['timeout', 'not_found', 'handler_error', 'navigated', 'unavailable'] as const;
+/**
+ * Why a bridge call rejected. `timeout`: no answer in time. `not_found`: no handler for the method. `handler_error`:
+ * the handler threw or rejected (the `message` is its error's), or the page sent a code not listed here. `navigated`:
+ * the page navigated or crashed, or the WebView unmounted, while the call was pending. `unavailable`: the WebView lacks
+ * the features the bridge needs (Android System WebView older than 101).
+ */
 export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 
 /**
@@ -16,10 +16,10 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
  * `call` / `result` / `error`: a request and its answer, matched by `id`.
  * `event`: fire-and-forget, `method` is the event name.
  *
- * `doc` is the page document's random token. The page puts it on every message it sends, and RN puts the token of the
- * document it means on every message it sends: the page drops any message that isn't for it. Native delivers to
- * whatever document is current (iOS checks only the origin), so a message posted as a same-origin navigation commits
- * would otherwise reach the new page. Messages are built without it; `send` adds it.
+ * `doc` is the page document's random token. Each side puts a token on every message (RN the token of the document it
+ * means), and the page drops any message that isn't for it: native delivers to whatever document is current (iOS
+ * checks only the origin), so a message posted as a same-origin navigation commits would otherwise reach the new page.
+ * Messages are built without it; `send` adds it.
  */
 export type BridgeMessage = { doc?: string } & (
   | { kind: 'ready' }
