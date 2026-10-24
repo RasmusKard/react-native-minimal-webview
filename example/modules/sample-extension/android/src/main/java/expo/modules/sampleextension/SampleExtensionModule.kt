@@ -16,25 +16,33 @@ class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      MinimalWebViewHooks.register("pageCounter") { webView, context ->
+      // configure: before the package sets the WebView up (`WebViewCompat.setProfile` goes here); the app's
+      // `android.settings` apply after it and win.
+      MinimalWebViewHooks.register("sample.pageCounter", configure = { webView, _ ->
+        webView.settings.defaultFixedFontSize = 14
+      }) { webView, context ->
         val counter = PageCounter(context)
         context.clients += counter
         // A live option: the page gets the count under the new name at once, without a reload.
         context.onOptionsChange { counter.stamp(webView) }
-        // JS's `ref.hook('pageCounter', 'count')`.
+        // JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply -> reply(counter.count) }
+        // `ref.hook('sample.pageCounter', 'label')`: asks the app for the count's label and replies with its answer.
+        context.handle("label") { _, reply -> context.ask("label", mapOf("count" to counter.count), reply) }
         context.onDocumentEnd { reason ->
-          if (reason != DocumentScope.End.CLOSING) context.emit("documentEnd", mapOf("reason" to reason.name.lowercase()))
+          if (reason != DocumentScope.End.CLOSING) {
+            context.emit("documentEnd", mapOf("reason" to reason.name.lowercase(), "url" to context.url))
+          }
         }
         null
       }
       // Fixtures for the harness: decision callbacks the core implements, which these clients take over, so the
       // app's props are not asked.
-      MinimalWebViewHooks.register("hookAuth") { _, context ->
+      MinimalWebViewHooks.register("sample.hookAuth") { _, context ->
         context.clients += HookAuth()
         null
       }
-      MinimalWebViewHooks.register("hookDialogs") { _, context ->
+      MinimalWebViewHooks.register("sample.hookDialogs") { _, context ->
         context.chromeClients += HookDialogs(context)
         null
       }
