@@ -24,7 +24,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var settings: [String: Any] = [:]
   let platformSettings = PlatformSettings()
   var pullToRefresh = false
-  /// On the scroll view while `pullToRefresh` is set: a pull reloads.
   private lazy var refreshControl: UIRefreshControl = {
     let control = UIRefreshControl()
     control.addAction(UIAction { [weak self] _ in self?.reload() }, for: .valueChanged)
@@ -45,11 +44,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // Created once, from the first props: WebKit reads some WKWebViewConfiguration settings only at creation.
   private(set) var webView: WKWebView?
   private var observations: [NSKeyValueObservation] = []
-  // The page requests the core answers, and the WKWebView's delegate: it forwards each callback to this view or to
-  // the hooks' delegates (DelegateProxy).
   private(set) lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
-  /// What the attach hooks returned, run in tearDown.
   private var detachers: [() -> Void] = []
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
@@ -93,9 +89,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
-    // What belongs to the Document (docs/glossary.md, docs/decisions.md), reset in this order at every end. `closing` comes from
-    // invalidate, at unmount; in the deinit fallback self is already nil and only the asks, held without the view, end:
-    // WebKit throws for a decision handler released uncalled.
+    // What belongs to the Document (DocumentScope), reset in this order at every end. `closing` comes from invalidate,
+    // at unmount. In the deinit fallback self is already nil, so only the asks end (captured without the view): WebKit
+    // throws for a decision handler released uncalled.
     document.register { [asks] in asks.documentEnded($0) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in
@@ -131,7 +127,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     prepareLoad(webView) { [weak self] in self?.load(next) }
   }
 
-  /// Runs the shared-cookie copy, holds loads until it is done, then loads.
   private func prepareLoad(_ webView: WKWebView, then load: @escaping () -> Void) {
     preparing = true
     cookies.prepare(webView) { [weak self, weak webView] in
@@ -286,7 +281,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let item = webView.backForwardList.currentItem
     // Empty before the first commit: the URL being loaded is pendingUrl.
     let committed = htmlCommit.flatMap { $0.item === item ? $0.url : nil } ?? item?.url.absoluteString ?? ""
-    // After a failed load WebKit keeps the previous page; `url` stays the failed URL until the next commit.
     url = failedUrl ?? committed
     // WebKit's `url` is the active URL: a pending or provisional load shows here first.
     let active = webView.url?.absoluteString
@@ -411,7 +405,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     loadEnded(error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
   }
 
-  /// A load finished, or failed with `error`: the core's bookkeeping, then the hook delegates' callback.
   private func loadEnded(_ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
     outcome = error.map { failed($0) ? "failed" : "cancelled" } ?? "finished"
     // The spinner stops, or it would ignore the next pull.
@@ -453,7 +446,6 @@ extension MinimalWebView {
     }
   }
 
-  /// The handler a hook registered with `context.handle` for `method`, if it is attached.
   func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {
     hookContexts.first { $0.key == key }?.handlers[method]
   }
