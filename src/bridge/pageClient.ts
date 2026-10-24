@@ -1,10 +1,9 @@
-// The page side of the bridge: installs `window.nativeBridge`. It runs inside the web page, so it imports nothing;
-// .github/scripts/build-page-client.mts compiles it to the PAGE_CLIENT string that native injects at document start.
-// Transport, a plain pipe each way: page -> native through `postMessage` (iOS WKScriptMessageHandler at
-// `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at `window.nativeBridgeTransport`); native ->
-// page through `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android). Messages follow
-// ./protocol.ts, and answers to either side's calls travel as ordinary messages. The build compiles ./endpoint.ts in
-// with it.
+// The page side of the bridge: installs `window.nativeBridge`. It runs inside the web page, so
+// .github/scripts/build-page-client.mts compiles it, with ./endpoint.ts, into the PAGE_CLIENT string that native
+// injects at document start. Each direction is a plain pipe: page -> native through `postMessage` (iOS
+// WKScriptMessageHandler at `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at
+// `window.nativeBridgeTransport`), native -> page through `__receive` (iOS callAsyncJavaScript) or the transport's
+// `onmessage` (Android). Messages follow ./protocol.ts; answers to either side's calls travel as ordinary messages.
 import { createEndpoint, parseOrigin } from './endpoint';
 import type { BridgeMessage as Message } from './protocol';
 
@@ -43,7 +42,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
   };
   const endpoint = createEndpoint(send, timeoutMs, 'p');
 
-  /** Handles a message from native. Answers to native's calls are sent back as messages. */
+  /** Answers to native's calls go back through `send`, as messages. */
   const receive = async (text: string) => {
     const message = JSON.parse(text) as Message;
     if (message.doc === doc) await endpoint.receive(message, send);
@@ -56,12 +55,12 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
     emit: endpoint.emit,
     handle: endpoint.handle,
     on: endpoint.on,
-    /** Native entry point for iOS (callAsyncJavaScript, origin-checked there); Android uses the transport's onmessage. */
+    /** iOS's entry point (callAsyncJavaScript, origin-checked there); Android uses the transport's onmessage. */
     __receive: receive,
   });
-  // `ready` tells RN to deliver what it queued for this page (native can't deliver before the page has posted). Wait for
-  // DOMContentLoaded, so the page's synchronous and deferred scripts have registered their handlers and listeners; a
-  // call delivered earlier would get `not_found`. The page's own calls work before that: RN answers them at once.
+  // `ready` tells RN to deliver what it queued for this page (native can't deliver before the page has posted). Wait
+  // for DOMContentLoaded, so the page's synchronous and deferred scripts have registered their handlers and listeners;
+  // a call delivered earlier would get `not_found`. The page's own calls work before that: RN answers them at once.
   if (w.document.readyState === 'loading') {
     w.document.addEventListener('DOMContentLoaded', () => send({ kind: 'ready' }), {
       once: true,

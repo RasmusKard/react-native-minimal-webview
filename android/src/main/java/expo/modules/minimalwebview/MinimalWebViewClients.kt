@@ -29,9 +29,8 @@ import androidx.webkit.Navigation
 import androidx.webkit.NavigationListener
 import androidx.webkit.Page
 
-// WebView's callbacks. A new set is made for each WebView (recover() replaces it). Each callback goes to the core, to
-// the hooks' clients, or both, by the rule in WebViewContext: a decision callback to the first client that overrides it
-// (else the core, or WebView's default), an observation callback to the core and then to every client that overrides it.
+// WebView's callbacks, a new set for each WebView. Each one routes by the rule on WebViewContext.clients: a decision
+// callback through `deciding` (with no hook client, the core or WebView's default decides), the rest through `observing`.
 
 internal class Listener(private val owner: MinimalWebView) : NavigationListener {
   /** Pages that fired their load event and are still alive (current or in the back-forward cache). */

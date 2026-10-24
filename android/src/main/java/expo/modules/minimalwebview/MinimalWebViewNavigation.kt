@@ -24,7 +24,6 @@ internal class MinimalWebViewNavigation(
   // New windows still waiting for their first URL (createWindow).
   private val children = mutableSetOf<WebView>()
 
-  /** The Document ended: its allowed asks and its new windows are over. */
   fun documentEnded() {
     askedAndAllowed.clear()
     // Not on a child's stack (a commit, a crash, destroy): destroy them now. Cleared first, so a finish() finds none.
@@ -37,7 +36,6 @@ internal class MinimalWebViewNavigation(
   fun decide(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requestHandlers)
-    // An external link that cannot be opened is reported as blocked.
     val action = when (decision.action) {
       "ask" -> if (request.mainFrame) {
         return true.also { ask(request, decision.rule) }

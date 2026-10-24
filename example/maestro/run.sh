@@ -1,10 +1,9 @@
 #!/bin/bash
 # Usage: maestro/run.sh <android|ios> <device id> [suite...]
 # Runs harness suites in one Maestro session, one flow per suite: <suite>.yaml when the suite needs a driver (gestures,
-# dialogs, renderer kills), else a generated wrapper that runs suite.yaml with SUITE set. One session because Maestro's
-# start-up (~10 s) otherwise costs more than most suites. The app stays up between suites, and Maestro waits on the
-# test server rather than the screen (subflows/). Needs Metro, the test pages server (npm run test-pages) and the
-# example app installed on the device. Prints the failed checks at the end. MAESTRO overrides the maestro binary.
+# dialogs, renderer kills), else a generated wrapper that runs suite.yaml with SUITE set. One session, because Maestro's
+# start-up (~10 s) otherwise costs more than most suites. Needs Metro, the test pages server (npm run test-pages) and
+# the example app installed on the device. MAESTRO overrides the maestro binary.
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2

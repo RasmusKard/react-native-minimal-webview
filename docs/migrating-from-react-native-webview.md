@@ -2,8 +2,8 @@
 
 This package has 23 props of its own, plus `ref` and React Native's `ViewProps`. Most of what react-native-webview
 has a prop for is a platform setting by name here (`ios`, `android`, `get`, `call`; see
-[Platform settings](platform-settings.md)), a recipe, or a [native hook](native-hooks.md). It runs on iOS 16.4+ and Android API 29+, with the new architecture only
-([requirements](../README.md)).
+[Platform settings](platform-settings.md)), a recipe, or a [native hook](native-hooks.md). It runs on iOS 16.4+ and
+Android API 29+, with the new architecture only ([requirements](../README.md)).
 
 ## Defaults that differ
 
@@ -20,7 +20,7 @@ has a prop for is a platform setting by name here (`ios`, `android`, `get`, `cal
 | iOS directional lock | On | UIKit's: off | `ios.scrollView.directionalLockEnabled: true` |
 | Debugging | iOS off; Android on in debug builds | On in `__DEV__`, on both | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` |
 | iOS universal links | A tapped one opens the app that claims it | Loads in place ([Universal links stay in place](decisions.md#universal-links-stay-in-place)) | An `external` rule for the host |
-| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | [`onDownload`](page-requests.md#downloads) and a recipe |
+| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` and a [recipe](page-requests.md#recipes) |
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
 | Messaging | Every page and every frame | Only `allowedOrigins`, main frame only | [Messages from iframes](#messages-from-iframes) |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
@@ -74,7 +74,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone({ didCrash, recovered })`; the core reloads by itself |
 | `cacheEnabled` | iOS `ios.configuration.websiteDataStore: 'nonPersistent'`, Android `android.settings.cacheMode: Android.WebSettings.LOAD_NO_CACHE` |
 | `cacheMode` | `android.settings.cacheMode` |
-| `incognito` | iOS `ios.configuration.websiteDataStore: 'nonPersistent'`. Android: not supported ([roadmap](../ROADMAP.md)) |
+| `incognito` | iOS `ios.configuration.websiteDataStore: 'nonPersistent'`. Android: not supported |
 | `userAgent` | `userAgent` |
 | `applicationNameForUserAgent` | iOS `ios.configuration.applicationNameForUserAgent`; Android `android.settings.userAgentString` from `WebView.defaultUserAgent` plus the suffix |
 | `javaScriptEnabled` | `android.settings.javaScriptEnabled`, `ios.webpagePreferences.allowsContentJavaScript` (the bridge needs JS) |
@@ -137,7 +137,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `containerStyle` | Wrap the `WebView` in a `View` |
 | `bounces`, `scrollEnabled`, `pagingEnabled`, `directionalLockEnabled`, `decelerationRate`, `indicatorStyle`, `showsHorizontalScrollIndicator`, `showsVerticalScrollIndicator`, `contentInset`, `contentInsetAdjustmentBehavior`, `automaticallyAdjustsScrollIndicatorInsets` | `ios.scrollView.<the same name>`, enums as numbers (`WK.IndicatorStyle`, `WK.ContentInsetAdjustmentBehavior`; `decelerationRate: 0.998`) |
 | `automaticallyAdjustContentInsets` | `ios.scrollView.contentInsetAdjustmentBehavior` |
-| `scrollEnabled` (Android) | Not supported: injected CSS `overflow: hidden` ([roadmap](../ROADMAP.md)) |
+| `scrollEnabled` (Android) | Not supported: injected CSS `overflow: hidden` |
 | `showsHorizontalScrollIndicator`, `showsVerticalScrollIndicator` (Android) | `android.webView.horizontalScrollBarEnabled`, `verticalScrollBarEnabled` |
 | `overScrollMode` | `android.webView.overScrollMode`, a number (`0` always, `1` if content scrolls, `2` never) |
 | `nestedScrollEnabled` | A native hook |
@@ -177,8 +177,7 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 const title = await ref.current?.evaluate('document.title');
 ```
 
-It returns a promise that rejects with `script_error` when the script throws or doesn't parse, so await or catch it
-([ref methods](props.md#ref-methods)).
+It returns a promise that rejects with `script_error` when the script throws or doesn't parse, so await or catch it.
 
 ## onShouldStartLoadWithRequest
 
@@ -197,9 +196,8 @@ Navigation rules replace the callback: they run natively, in order, with no JS r
 ```
 
 For logic a rule can't express, an `ask` rule calls `onNavigationRequest`, which answers `allow`, `block` or
-`external` within 1 s (later counts as `block`). On Android `ask` works for the main frame only, cancels the
-navigation and reissues it on `allow`, and POST requests skip the rules
-([platform differences](navigation-rules.md#platform-differences)).
+`external` within 1 s (later counts as `block`). On Android `ask` works for the main frame only, and POST requests
+skip the rules ([platform differences](navigation-rules.md#platform-differences)).
 
 ```tsx
 navigationRules={[{ host: ['example.com'], action: 'allow' }, { mainFrame: true, action: 'ask' }]}
@@ -207,9 +205,8 @@ onNavigationRequest={({ url, newWindow, userInitiated }) => (isTrusted(url) ? 'a
 ```
 
 The request has `url`, `mainFrame` (was `isTopFrame`), `newWindow` and `userInitiated` (in place of `navigationType`
-`click`); there is no `navigationType` or `mainDocumentURL`. The `source` load, reloads and back/forward skip the
-rules; a redirect of the `source` load doesn't (on Android, nor does a reload's or back/forward's redirect). To only
-watch navigations, `onNavigation` reports every decision and the rule that made it (not one a native hook makes).
+`click`); there is no `navigationType` or `mainDocumentURL`. To only watch navigations, `onNavigation` reports every
+decision and the rule that made it (not one a native hook makes).
 
 `onOpenWindow`: a new window (`target=_blank`, `window.open`) is a navigation with `newWindow: true`. By default an
 allowed one loads in place ([New windows load in place](decisions.md#new-windows-load-in-place)); `{ newWindow: true, action: 'external' }`

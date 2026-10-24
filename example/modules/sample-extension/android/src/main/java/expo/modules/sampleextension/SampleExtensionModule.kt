@@ -16,28 +16,27 @@ class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      // configure: before the package sets the WebView up (`WebViewCompat.setProfile` goes here); the app's
+      // configure runs before the package sets the WebView up (`WebViewCompat.setProfile` goes here); the app's
       // `android.settings` apply after it and win.
       MinimalWebViewHooks.register("sample.pageCounter", configure = { webView, _ ->
         webView.settings.defaultFixedFontSize = 14
       }) { webView, context ->
         val counter = PageCounter(context)
         context.clients += counter
-        // A live option: the page gets the count under the new name at once, without a reload.
+        // A `hookOptions` change arrives live; context.options is already the new value.
         context.onOptionsChange { counter.stamp(webView) }
-        // JS's `ref.hook('sample.pageCounter', 'count')`.
+        // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply -> reply(counter.count) }
-        // `ref.hook('sample.pageCounter', 'label')`: asks the app for the count's label and replies with its answer.
+        // A handler can reply later, here with the app's answer to an ask.
         context.handle("label") { _, reply -> context.ask("label", mapOf("count" to counter.count), reply) }
         context.onDocumentEnd { reason ->
           if (reason != DocumentScope.End.CLOSING) {
             context.emit("documentEnd", mapOf("reason" to reason.name.lowercase(), "url" to context.url))
           }
         }
-        null
+        null // or a closure, run when this WebView goes away
       }
-      // Fixtures for the harness: decision callbacks the core implements, which these clients take over, so the
-      // app's props are not asked.
+      // A client that overrides a decision callback (HTTP auth, a JS alert) takes it from the core.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context ->
         context.clients += HookAuth()
         null
@@ -53,13 +52,11 @@ class SampleExtensionModule : Module() {
 /** The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx, through `adb reverse`). */
 private val AUTH_HOSTS = setOf("localhost")
 
-/** Answers HTTP basic or digest challenges from AUTH_HOSTS itself, and cancels the rest. */
 private class HookAuth : WebViewClient() {
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) =
     if (host in AUTH_HOSTS) handler.proceed("u", "p") else handler.cancel()
 }
 
-/** Answers every alert itself and reports it, instead of the core's dialog. */
 private class HookDialogs(private val context: WebViewContext) : WebChromeClient() {
   override fun onJsAlert(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
     context.emit("alert", mapOf("message" to message))
@@ -69,9 +66,9 @@ private class HookDialogs(private val context: WebViewContext) : WebChromeClient
 }
 
 /**
- * Counts page loads through two client callbacks: `onPageFinished`, which the core implements and fans out, and
- * `onPageCommitVisible`, which it doesn't and forwards. Its option, `true` or `{ global: name }`, names the page's
- * global that gets the count (`__pageCount` by default).
+ * Counts page loads. `onPageFinished` and `onPageCommitVisible` are observation callbacks: each reaches every client
+ * that overrides it, after the core. Its option, `true` or `{ global: name }`, names the page's global that gets the
+ * count (`__pageCount` by default).
  */
 private class PageCounter(private val context: WebViewContext) : WebViewClient() {
   var count = 0

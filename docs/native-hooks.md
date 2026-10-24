@@ -32,55 +32,14 @@ MinimalWebViewHooks.register("myPackage.pageCounter") { webView, context ->  // 
 await ref.current?.hook('myPackage.pageCounter', 'count');  // the handler's reply
 ```
 
-- **Registering.** `MinimalWebViewHooks.register(key, configure:, attach:)` from your module's `OnCreate`, before the
-  first WebView. Hooks run in registration order. Keys are global: a second registration under a key replaces the
-  first and logs a warning, so prefix yours with your package's name. `core` is reserved and refused.
-- **`hookOptions`.** A hook attaches to a WebView created with a value for its key other than `null`, `undefined` or
-  `false` (JS doesn't send `null` and `undefined`). `context.options` is that value. A later change reaches the
-  attached hook live, with no new WebView: its `onOptionsChange` handlers get the new value (null or nil when the key
-  is removed), and `context.options` is it from then on. A key added after the WebView was created attaches nothing,
-  and a warning says so: to switch a hook on and off, enable its key from the start and put the switch in its value
-  (`{ enabled: false }`), or give the WebView a new React `key`. A key that enables a hook when the WebView is
-  created but has no hook registered under it (a typo, or a module not linked or not rebuilt) warns then, so pass a
-  one-platform hook's key on that platform only.
-  On Android the WebView after a renderer crash gets the same hooks, with their current values.
-- **Delegates and clients.** Add yours to the context's lists, in order: `navigationDelegates` and `uiDelegates`
-  (iOS), `clients` and `chromeClients` (Android). A callback that returns a decision goes to the first hook delegate
-  (client) that implements it, and the core steps aside; every other callback reaches the core first, then every hook
-  that implements it. The decisions are `DelegateProxy.decisions` (iOS) and the `deciding(` calls in
-  `MinimalWebViewClients.kt` (Android). So a client that overrides `shouldOverrideUrlLoading` switches the navigation
-  rules off for that WebView, and a delegate that takes the response policy also switches off `onError`'s `http`
-  errors, `onDownload` and opening an untaken download externally. On iOS while `onDownload` is set, a delegate whose
-  `didBecome` sets `download.delegate` takes the download from the core, and `onDownload` gets nothing for it. On iOS,
-  an observation callback that neither the core nor `DelegateProxy` implements goes to the first delegate only.
-  Android's `shouldInterceptRequest` runs on a background thread. Overriding a variant that the base class forwards a callback to counts as overriding the callback:
-  `WebViewClientCompat`'s `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and
-  the platform's deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)`,
-  4-argument `onReceivedError` and `onConsoleMessage(String, Int, String)`.
-- **Events.** `context.emit(name, payload)` sends `onHookEvent({ name: '<key>.<name>', payload })`.
-  `context.ask(name, payload) { answer in … }` waits for the handler's return value (a promise is awaited; a throw or
-  no handler answers null), with no timeout: one still open when the Document ends is answered null.
-- **Calls from JS.** `context.handle(method) { args, reply in … }` answers `ref.hook(key, method, args)`; call `reply`
-  once. A handler that never replies leaves the promise pending: nothing settles it at the Document's end, a crash or
-  unmount. One handler per method, the last one wins. The promise rejects with `hook_not_handled` when no attached hook
-  under the key handles the method. The arguments and the reply cross as JSON.
-- **Values** arrive as the platform's JSON types: a number as `NSNumber` (Swift) or, in Kotlin, as `Double` in
-  `context.options` and an ask's answer and as `Int`, `Long` or `Double` in a `handle` handler's arguments, an
-  object as `Map` or `NSDictionary`, `null` as null or nil (`NSNull` inside a Swift array).
-- **The page.** `context.url` is the committed URL, the one `useWebViewState` reports; inside `onDocumentEnd` it is
-  still the page that ended. `context.onDocumentEnd { reason in … }`
-  runs at each end of the Document (`committed`, `crashed`, `closing`) after the core's own resets: per-page state
-  belongs there.
-- **Lifecycle.** iOS: `configure` runs after the `ios.configuration` settings and before the bridge, so replacing the
-  user content controller is fine and user scripts you add stay, after the package's. Android: `configure` runs as
-  soon as the WebView is made, before the package sets it up (`WebViewCompat.setProfile` goes here). `attach` runs once
-  the WebView exists and its settings are applied, so what it sets wins over the settings it was created with. The
-  closure `attach` returns runs when that WebView goes away, after the `onDocumentEnd` that gives the reason. Handlers
-  belong to one attach: Android attaches again after a crash, on a new WebView, and the new `attach` registers them
-  again. `emit` and `ask` are callable from any thread; `configure`, `attach`, the handlers and the answers run on
-  the main thread. Set delegates in `attach`: WebKit reads what a delegate responds to when it is assigned, and the
-  core re-assigns itself after each change to the lists. A context kept after the view closed does nothing, and its
-  `ask` answers null at once.
-- **What not to touch:** the WebView's own delegate and client slots (use the lists), the bridge's script message
-  handler and user scripts, and Android's download listener. `MinimalWebViewHooks.webViewClass` (iOS) and
-  `webViewFactory` (Android) let a subclass override what the platform class allows.
+To switch a hook on and off, enable its key from the start and put the switch in its value (`{ enabled: false }`): a
+key added after the WebView was created attaches nothing. A key with no hook registered under it warns, so pass a
+one-platform hook's key on that platform only.
+
+The API is documented on `MinimalWebViewHooks` and `WebViewContext` (`ios/Hooks.swift`,
+`android/src/main/java/expo/modules/minimalwebview/Hooks.kt`): registering, `hookOptions`, which callbacks reach a
+hook's delegates and clients, events, calls from JS, and the lifecycle.
+
+**What not to touch:** the WebView's own delegate and client slots (use the context's lists), the bridge's script
+message handler and user scripts, and Android's download listener. `MinimalWebViewHooks.webViewClass` (iOS) and
+`webViewFactory` (Android) let a subclass override what the platform class allows.

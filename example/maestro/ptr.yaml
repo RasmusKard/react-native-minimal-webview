@@ -3,7 +3,6 @@ name: ptr
 env:
   SUITE: ptr
 ---
-# Pull-to-refresh: seven pulls in the harness's order (full, full, short, inner, full, full, full).
 - runFlow: subflows/launch.yaml
 - runFlow: { file: subflows/pull.yaml, env: { N: 1, KIND: full } }
 - runFlow: { file: subflows/pull.yaml, env: { N: 2, KIND: full } }
