@@ -1,9 +1,11 @@
 # Migrating from react-native-webview
 
-This package has 23 props of its own, plus `ref` and React Native's `ViewProps`. Most of what react-native-webview
-has a prop for is a platform setting by name here (`ios`, `android`, `get`, `call`; see
-[Platform settings](platform-settings.md)), a recipe, or a [native hook](native-hooks.md). It runs on iOS 16.4+ and Android API 29+, with the new architecture only
-([requirements](../README.md)).
+Most react-native-webview props are platform settings by name here: `thirdPartyCookiesEnabled` is
+`android={{ webView: { acceptThirdPartyCookies: true } }}`, `bounces` is `ios={{ scrollView: { bounces: false } }}`,
+`cacheMode` is `android.settings.cacheMode`, `allowsBackForwardNavigationGestures` is `ios.webView.<the same name>`; the
+keys autocomplete ([platform settings](examples.md#platform-settings)). This page is what differs: the defaults, the
+props that became something else, and what has no equivalent. It runs on iOS 16.4+ and Android API 29+, with the new
+architecture only ([requirements](../README.md)).
 
 ## Defaults that differ
 
@@ -19,10 +21,10 @@ has a prop for is a platform setting by name here (`ios`, `android`, `get`, `cal
 | iOS content insets | `contentInsetAdjustmentBehavior: never`, no automatic indicator insets | UIKit's: `automatic`, and the indicator insets follow | `ios.scrollView.contentInsetAdjustmentBehavior` and `automaticallyAdjustsScrollIndicatorInsets` |
 | iOS directional lock | On | UIKit's: off | `ios.scrollView.directionalLockEnabled: true` |
 | Debugging | iOS off; Android on in debug builds | On in `__DEV__`, on both | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` |
-| iOS universal links | A tapped one opens the app that claims it | Loads in place ([Universal links stay in place](decisions.md#universal-links-stay-in-place)) | An `external` rule for the host |
-| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | [`onDownload`](page-requests.md#downloads) and a recipe |
+| iOS universal links | A tapped one opens the app that claims it | Loads in place, as on Android | An `external` rule for the host |
+| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)) |
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
-| Messaging | Every page and every frame | Only `allowedOrigins`, main frame only | [Messages from iframes](#messages-from-iframes) |
+| Messaging | Every page and every frame | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
 
 The settings in one object, for the rows a setting restores:
@@ -54,136 +56,31 @@ export const rnwDefaults = {
 
 To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: { ...rnwDefaults.ios.scrollView, bounces: false } }}`.
 
-## Prop map
-
-**Loading and content**
+## Props that became something else
 
 | react-native-webview | Here |
 |---|---|
-| `source` `{ uri, headers, method, body }`, `{ html, baseUrl }` | `source` `{ uri, headers?, body? }` (a `body` makes it a POST), `{ html, baseUrl? }` |
-| `source={require('./page.html')}` | Not accepted. Get a `file://` uri from expo-asset (`localUri`); Android also needs `android.settings.allowFileAccess: true` |
-| `allowingReadAccessToURL` | A `file://` source gets read access to its own directory; a parent directory isn't possible |
-| `onLoadStart`, `onLoadEnd` | The same names, with the [navigation state](navigation-state.md); `onLoadEnd`'s `state.outcome` says how the load ended |
-| `onLoad` | `onLoadEnd` with `state.outcome === 'finished'` |
-| `onLoadProgress` | `progress` in `useWebViewState` or `onNavigationStateChange` |
-| `onNavigationStateChange` | The same name; the state has `url`, `pendingUrl`, `title`, `loading`, `progress`, `canGoBack`, `canGoForward` and `outcome` |
-| `onError` | `onError` with `kind: 'network'` or `'ssl'` |
-| `onHttpError` | `onError` with `kind: 'http'` (`url`, `statusCode`) |
-| `onLoadSubResourceError` | A hook client's `onReceivedError`, which sees every frame's errors (Android) |
-| `renderLoading`, `renderError`, `startInLoadingState` | [Loading and error screens](#loading-and-error-screens) |
-| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone({ didCrash, recovered })`; the core reloads by itself |
-| `cacheEnabled` | iOS `ios.configuration.websiteDataStore: 'nonPersistent'`, Android `android.settings.cacheMode: Android.WebSettings.LOAD_NO_CACHE` |
-| `cacheMode` | `android.settings.cacheMode` |
-| `incognito` | iOS `ios.configuration.websiteDataStore: 'nonPersistent'`. Android: not supported ([roadmap](../ROADMAP.md)) |
-| `userAgent` | `userAgent` |
-| `applicationNameForUserAgent` | iOS `ios.configuration.applicationNameForUserAgent`; Android `android.settings.userAgentString` from `WebView.defaultUserAgent` plus the suffix |
-| `javaScriptEnabled` | `android.settings.javaScriptEnabled`, `ios.webpagePreferences.allowsContentJavaScript` (the bridge needs JS) |
-
-**Navigation**
-
-| react-native-webview | Here |
-|---|---|
-| `onShouldStartLoadWithRequest` | [Navigation rules](#onshouldstartloadwithrequest) |
-| `originWhitelist` | Navigation rules. With none, http(s) loads in place and other schemes open externally, as with react-native-webview's default |
-| `onOpenWindow` | A `{ newWindow: true }` rule; see [below](#onshouldstartloadwithrequest) |
-| `setSupportMultipleWindows` | On by default, so new windows reach the rules (`android.settings.supportMultipleWindows`) |
-| `javaScriptCanOpenWindowsAutomatically` | `ios.preferences.` and `android.settings.javaScriptCanOpenWindowsAutomatically` |
-| `limitsNavigationsToAppBoundDomains` | `ios.configuration.limitsNavigationsToAppBoundDomains` |
-| `allowsBackForwardNavigationGestures`, `allowsLinkPreview` | `ios.webView.<the same name>` |
-| `fraudulentWebsiteWarningEnabled`, `textInteractionEnabled` | `ios.preferences.<the same name>` |
-
-**Scripts and messaging**
-
-| react-native-webview | Here |
-|---|---|
-| `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded` | `injectedScripts: [{ code }]`, at document start |
-| `injectedJavaScript…ForMainFrameOnly` | `mainFrameOnly` (default `true`) |
-| `injectedJavaScriptObject` | `` injectedScripts: [{ code: `window.config = ${JSON.stringify(config)}` }] `` |
-| `injectJavaScript(code)` | [`evaluate`](#injectjavascript) |
-| `onMessage`, `postMessage` | [The bridge](#postmessage-and-onmessage) |
-| `webviewDebuggingEnabled` | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` (default `__DEV__`) |
-
-**Media, permissions, files and downloads**
-
-| react-native-webview | Here |
-|---|---|
-| `mediaPlaybackRequiresUserAction` | `ios.configuration.mediaTypesRequiringUserActionForPlayback` (`WK.AudiovisualMediaTypes`), `android.settings.mediaPlaybackRequiresUserGesture`; both default to requiring it |
-| `allowsInlineMediaPlayback`, `allowsPictureInPictureMediaPlayback`, `allowsAirPlayForMediaPlayback` | `ios.configuration.<the same name>` |
-| `allowsFullscreenVideo` | On by default; `onFullscreenChange` (Android) |
-| `autoManageStatusBarEnabled` | Not supported: iOS uses WebKit's own fullscreen |
-| `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onPermissionRequest` ([page requests](page-requests.md)) |
-| File input | `onFileRequest` (Android); iOS shows WebKit's picker |
+| `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow` | `navigationRules`, run natively; an `ask` rule calls `onNavigationRequest` ([below](#onshouldstartloadwithrequest)) |
+| `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded`, `injectedJavaScriptObject`, `…ForMainFrameOnly` | `injectedScripts: [{ code, mainFrameOnly }]`, all at document start |
+| `injectJavaScript(code)` | `evaluate(expression)` ([below](#injectjavascript)) |
+| `onMessage`, `postMessage`, `window.ReactNativeWebView` | The bridge ([below](#postmessage-and-onmessage)) |
+| `onLoad`, `onLoadProgress` | `onLoadEnd` with `state.outcome === 'finished'`; `progress` in `useWebViewState` |
+| `onError`, `onHttpError` | `onError`, with `kind` `'network'`, `'ssl'` or `'http'` |
+| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone`; the core reloads by itself |
+| `renderLoading`, `renderError`, `startInLoadingState` | Your own views over the WebView ([below](#loading-and-error-screens)) |
+| `onScroll`, `onContentSizeChange` | An injected script that reports over the bridge ([below](#scroll-position)) |
+| `source={require('./page.html')}`, `allowingReadAccessToURL` | A `file://` uri from expo-asset (`localUri`), which gets read access to its own directory; Android also needs `android.settings.allowFileAccess: true` |
+| `source.method`, `source.body` | `source.body` makes the request a POST |
 | `onFileDownload` | `onDownload`, on both platforms: the core saves the file |
-| `downloadingMessage`, `lackPermissionToDownloadMessage` | Not supported: the app shows its own UI in `onDownload` |
-| `basicAuthCredential` | A native hook (`HookAuth` in `example/modules/sample-extension`) |
-| `enableApplePay` | No prop. On iOS this package adds user scripts only for `bridge` and `injectedScripts` |
-
-**Storage, cookies and file access**
-
-| react-native-webview | Here |
-|---|---|
-| `sharedCookiesEnabled` | `sharedCookies` |
-| `thirdPartyCookiesEnabled` | `android.webView.acceptThirdPartyCookies` (default off, see [above](#defaults-that-differ)) |
-| `domStorageEnabled` | On by default (`android.settings.domStorageEnabled`) |
-| `saveFormDataDisabled` | `android.settings.saveFormData: false` |
-| `allowFileAccess`, `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`. On iOS the last two aren't public WebKit properties: a native hook |
-| `mixedContentMode` | `android.settings.mixedContentMode` (`Android.WebSettings.MIXED_CONTENT_…`) |
-
-**Scrolling, layout and rendering**
-
-| react-native-webview | Here |
-|---|---|
-| `style` | Styles the container view. A transparent page also needs the WebView's own background cleared: `ios.webView.opaque: false` with `backgroundColor: '#00000000'`, and `android.webView.backgroundColor: 0` (keys outside the generated list, not covered by the on-device suites) |
-| `containerStyle` | Wrap the `WebView` in a `View` |
-| `bounces`, `scrollEnabled`, `pagingEnabled`, `directionalLockEnabled`, `decelerationRate`, `indicatorStyle`, `showsHorizontalScrollIndicator`, `showsVerticalScrollIndicator`, `contentInset`, `contentInsetAdjustmentBehavior`, `automaticallyAdjustsScrollIndicatorInsets` | `ios.scrollView.<the same name>`, enums as numbers (`WK.IndicatorStyle`, `WK.ContentInsetAdjustmentBehavior`; `decelerationRate: 0.998`) |
-| `automaticallyAdjustContentInsets` | `ios.scrollView.contentInsetAdjustmentBehavior` |
-| `scrollEnabled` (Android) | Not supported: injected CSS `overflow: hidden` ([roadmap](../ROADMAP.md)) |
-| `showsHorizontalScrollIndicator`, `showsVerticalScrollIndicator` (Android) | `android.webView.horizontalScrollBarEnabled`, `verticalScrollBarEnabled` |
-| `overScrollMode` | `android.webView.overScrollMode`, a number (`0` always, `1` if content scrolls, `2` never) |
-| `nestedScrollEnabled` | A native hook |
-| `onScroll` | [Scroll position](#scroll-position) |
-| `onContentSizeChange` | A `ResizeObserver` in `injectedScripts` that reports over the bridge, like [Scroll position](#scroll-position) |
-| `contentMode` | `ios.webpagePreferences.preferredContentMode` (`WK.ContentMode`) |
-| `dataDetectorTypes` | `ios.configuration.dataDetectorTypes` (`WK.DataDetectorTypes`, combined with `\|`) |
-| `scalesPageToFit` | `android.settings.useWideViewPort` and `loadWithOverviewMode` |
-| `setBuiltInZoomControls`, `setDisplayZoomControls` | `android.settings.builtInZoomControls`, `displayZoomControls`; the defaults are the same |
-| `textZoom`, `minimumFontSize` | `android.settings.<the same name>`; iOS `ios.preferences.minimumFontSize` |
-| `forceDarkOn` | `android.settings.algorithmicDarkeningAllowed` |
-| `paymentRequestEnabled` | `android.settings.paymentRequestEnabled` |
-| `androidLayerType` | `call('webView.setLayerType', [1, null])`, again after a renderer crash (a new WebView) |
-| `pullToRefreshEnabled` | `pullToRefresh` |
-| `refreshControlLightMode`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems` | A native hook |
-| `nativeConfig` | A native hook, or `MinimalWebViewHooks.webViewClass` (iOS) and `webViewFactory` (Android) for a subclass |
-| `useSharedProcessPool` | Not supported: `WKProcessPool` has no effect since iOS 15 |
-
-**Ref methods**
-
-| react-native-webview | Here |
-|---|---|
-| `goBack`, `goForward`, `reload`, `stopLoading` | The same |
-| `injectJavaScript` | [`evaluate`](#injectjavascript) |
-| `postMessage` | [`bridge.emit`](#postmessage-and-onmessage) |
-| `requestFocus` | Android `call('webView.requestFocus')`; iOS: none |
-| `clearCache`, `clearFormData`, `clearHistory` | `call('webView.clearCache', [true])`, `call('webView.clearFormData')`, `call('webView.clearHistory')` on Android; on iOS `websiteDataStore.removeDataOfTypes:…` ([`call`](platform-settings.md#call)) clears the cache, and the back-forward list can't be cleared |
-
-## injectJavaScript
-
-`evaluate` runs an expression, not statements, and resolves with its value. react-native-webview's
-`'stmt; stmt; true;'` is a syntax error here: put statements in a function.
-
-```ts
-// was ref.current.injectJavaScript(`document.body.style.background = 'red'; true;`)
-await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
-const title = await ref.current?.evaluate('document.title');
-```
-
-It returns a promise that rejects with `script_error` when the script throws or doesn't parse, so await or catch it
-([ref methods](props.md#ref-methods)).
+| `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
+| File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
+| `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])` and the like; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
+| `basicAuthCredential`, JS dialogs, `menuItems`, `onCustomMenuSelection`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `nestedScrollEnabled`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
+| `incognito` (Android), `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage` | Not supported: Android has no incognito WebView; inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload` |
 
 ## onShouldStartLoadWithRequest
 
-Navigation rules replace the callback: they run natively, in order, with no JS round trip
-([Navigation rules](navigation-rules.md)). The usual allow-list:
+Navigation rules replace the callback: they run natively, in order, with no JS round trip.
 
 ```tsx
 // was: onShouldStartLoadWithRequest returning true for https://example.com/ and opening the rest with Linking
@@ -191,37 +88,32 @@ Navigation rules replace the callback: they run natively, in order, with no JS r
   navigationRules={[
     { host: ['example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
-    { mainFrame: true, action: 'external' }, // the rest opens in the browser or the app for it
+    { mainFrame: true, action: 'ask' }, // the rest: onNavigationRequest answers within 1 s, later counts as block
   ]}
+  onNavigationRequest={({ url, newWindow, userInitiated }) => (isTrusted(url) ? 'allow' : 'external')}
 />
 ```
 
-For logic a rule can't express, an `ask` rule calls `onNavigationRequest`, which answers `allow`, `block` or
-`external` within 1 s (later counts as `block`). On Android `ask` works for the main frame only, cancels the
-navigation and reissues it on `allow`, and POST requests skip the rules
-([platform differences](navigation-rules.md#platform-differences)).
-
-```tsx
-navigationRules={[{ host: ['example.com'], action: 'allow' }, { mainFrame: true, action: 'ask' }]}
-onNavigationRequest={({ url, newWindow, userInitiated }) => (isTrusted(url) ? 'allow' : 'external')}
-```
-
 The request has `url`, `mainFrame` (was `isTopFrame`), `newWindow` and `userInitiated` (in place of `navigationType`
-`click`); there is no `navigationType` or `mainDocumentURL`. The `source` load, reloads and back/forward skip the
-rules (their redirects don't). To only watch navigations, `onNavigation` reports every decision and the rule that made it.
+`click`); there is no `navigationType` or `mainDocumentURL`. A new window (`onOpenWindow`) is a navigation with
+`newWindow: true`: an allowed one loads in place, never in a second WebView.
 
-`onOpenWindow`: a new window (`target=_blank`, `window.open`) is a navigation with `newWindow: true`. By default an
-allowed one loads in place ([New windows load in place](decisions.md#new-windows-load-in-place)); `{ newWindow: true, action: 'external' }`
-opens it in the browser, and `{ newWindow: true, action: 'ask' }` gives it to `onNavigationRequest`.
+## injectJavaScript
+
+`evaluate` runs an expression, not statements, and resolves with its value; a script that throws or doesn't parse
+rejects with `script_error`.
+
+```ts
+// was ref.current.injectJavaScript(`document.body.style.background = 'red'; true;`)
+await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
+const title = await ref.current?.evaluate('document.title');
+```
 
 ## postMessage and onMessage
 
-The [bridge](bridge.md) replaces both with calls that return promises (`call` and `handle`) and events (`emit` and
-`on`), in both directions, for the origins you allow.
-
-Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events keep working through
-the bridge. Only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame; react-native-webview gives it
-to every page and every iframe.
+The [bridge](examples.md#the-bridge) replaces both with calls that return promises and events, in both directions, for
+the origins you allow. Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events
+keep working through this script; only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame.
 
 ```tsx
 const rnwMessages = {
@@ -239,23 +131,10 @@ useEffect(() => bridge.on('rnw', (data) => handleMessage(data as string)), [brid
 bridge.emit('rnw', message); // was ref.current.postMessage(message)
 ```
 
-The `message` event goes to `window` on iOS and `document` on Android, as react-native-webview sends it.
-
-## Messages from iframes
-
-The bridge serves only the main frame. A page that embeds a widget whose iframe posts to the app needs an extension:
-a [native hook](native-hooks.md) that adds its own channel under its own name, next to the bridge's. On iOS, a
-`WKScriptMessageHandler` added to `configuration.userContentController` in `configure` (it hears every frame, and
-`message.frameInfo` names the one that sent it), with a user script for the frames (`forMainFrameOnly: false`). On
-Android, `WebViewCompat.addWebMessageListener` in `attach`, with the frames' origins as its rules (its listener gets
-`sourceOrigin` and `isMainFrame`). The hook passes the messages on with `context.emit` (`onHookEvent`) and takes
-replies with `context.handle` (`ref.hook`). On iOS any frame of any origin can post to the handler, so check
-`message.frameInfo.securityOrigin`.
-
 ## Loading and error screens
 
-There is no `renderLoading` or `renderError`: the navigation state and `onError` give the same screens, under your own
-layout.
+The navigation state and `onError` give the same screens, under your own layout. An HTTP error status (404, 503) is
+not a failed load: the site's own page shows, so the recipe skips `kind: 'http'`.
 
 ```tsx
 const { loading } = useWebViewState(ref);
@@ -276,12 +155,11 @@ const [error, setError] = useState<LoadErrorEvent | null>(null);
 </View>
 ```
 
-An HTTP error status (404, 503) is not a failed load: the site's own page shows, so the recipe skips `kind: 'http'`.
-
 ## Scroll position
 
-There is no `onScroll` prop. An injected script reports the main frame's scroll position over the bridge, at most once
-per frame:
+An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
+in `allowedOrigins`. For offsets during a bounce or a pinch, a native hook observes `scrollView.contentOffset` on iOS
+and `setOnScrollChangeListener` on Android.
 
 ```tsx
 const scroll = {
@@ -296,6 +174,3 @@ const scroll = {
 <WebView bridge={bridge} injectedScripts={[scroll]} … />
 useEffect(() => bridge.on('scroll', (position) => onScroll(position as { x: number; y: number })), [bridge]);
 ```
-
-Only pages in `allowedOrigins` report. For offsets during a bounce or a pinch, a [native hook](native-hooks.md) can
-observe `scrollView.contentOffset` on iOS and `setOnScrollChangeListener` on Android.

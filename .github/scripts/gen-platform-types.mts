@@ -23,7 +23,6 @@ const WEBKIT_HEADERS = [
   'WKDataDetectorTypes',
   'WKWebsiteDataRecord',
 ];
-/** Root -> its Objective-C class. */
 const IOS_ROOTS = {
   configuration: 'WKWebViewConfiguration',
   preferences: 'WKPreferences',

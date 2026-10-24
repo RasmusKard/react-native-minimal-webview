@@ -122,7 +122,8 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {/* The error screen recipe in docs/props.md: an overlay the app owns, cleared when the next load starts. */}
+      {/* The error screen is an overlay the app owns, cleared when the next load starts: the recipe in
+          docs/migrating-from-react-native-webview.md#loading-and-error-screens. */}
       <View
         ref={webViewBox}
         style={styles.webview}
@@ -201,7 +202,7 @@ export default function App() {
   );
 }
 
-/** The example's error screen; records whether it is mounted so the harness can check the recipe. */
+/** The example's error screen; records whether it is mounted so the errors suite can check it. */
 function ErrorScreen(props: { error: LoadFailure; onRetry: () => void }) {
   useEffect(() => {
     events.overlay.error = true;

@@ -16,10 +16,13 @@ import androidx.webkit.WebViewClientCompat
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Native hooks: how an app or a package reaches the WebView this package creates, with no protocol to implement.
- * A hook is registered under the `hookOptions` key that enables it, from an Expo module's `OnCreate` (before the
- * first WebView is created), and runs for each WebView created with a value for that key other than null or false,
- * on the main thread. docs/native-hooks.md has the rules for the clients and the events.
+ * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
+ * WebViews and chains its own clients to it, with no protocol to implement. `example/modules/sample-extension` has
+ * complete ones.
+ *
+ * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
+ * [WebViewContext.chromeClients] instead), the bridge's web message listener and document-start scripts, and the
+ * download listener.
  */
 object MinimalWebViewHooks {
   /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
@@ -31,14 +34,25 @@ object MinimalWebViewHooks {
     val attach: (WebView, WebViewContext) -> (() -> Unit)?
   )
 
-  /** In registration order: the order the hooks are configured and attached in, so which client comes first. */
   internal val hooks = mutableListOf<Hook>()
 
   /**
-   * Registers the hook for [key]. For each new WebView (the first, and the one that replaces it after the render
-   * process dies) [configure] runs as soon as it is made, before the package sets it up (`WebViewCompat.setProfile`
-   * goes here), and [attach] once it has its clients and is in the view hierarchy. `attach` returns what to run when
-   * that WebView goes away, or null. A second registration under a key replaces the first, with a warning.
+   * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global: a second
+   * registration under a key replaces the first and logs a warning, so prefix yours with your package's name. `core`
+   * is reserved and refused. Hooks run in registration order, so an earlier hook's clients come first.
+   *
+   * The hook attaches to a WebView created with a `hookOptions` value for [key] other than null, undefined or false,
+   * and again, with the current value, to the WebView that replaces it after a renderer crash. A key added to
+   * `hookOptions` later attaches nothing (a warning says so): to switch a hook on and off, enable its key from the
+   * start and put the switch in its value (`{ enabled: false }`), or give the WebView a new React `key`. A key that
+   * enables no registered hook (a typo, or a module not linked or not rebuilt) warns too, so pass a one-platform hook's
+   * key on that platform only.
+   *
+   * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
+   *   (`WebViewCompat.setProfile` goes here).
+   * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
+   *   sets wins over the settings it was created with. It returns what to run when that WebView goes away, after the
+   *   [WebViewContext.onDocumentEnd] that gives the reason, or null.
    */
   fun register(
     key: String,
@@ -61,39 +75,74 @@ object MinimalWebViewHooks {
   }
 }
 
-/** Whether a `hookOptions` value enables its hook. */
 internal fun enables(value: Any?) = value != null && value != false
 
-/** One WebView instance, as a hook sees it. */
+/**
+ * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that
+ * attach: after a renderer crash, the new WebView's `attach` registers them again. [emit] and [ask] can be called from
+ * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its view
+ * closed does nothing.
+ */
 interface WebViewContext {
-  /** This hook's `hookOptions` value; after a change, the new one. */
+  /**
+   * This hook's `hookOptions` value, in JSON types: a number is a `Double`, an object a `Map`, an array a `List`.
+   * After a change it is the new value, already when the [onOptionsChange] handlers run.
+   */
   val options: Any?
 
-  /** The committed URL, the one the navigation state reports; empty before the first commit. */
+  /**
+   * The committed URL, the one the navigation state reports; empty before the first commit. Inside [onDocumentEnd] it
+   * is still the page that ended.
+   */
   val url: String
 
   /**
-   * Clients for the WebView, in order; add them in `attach`. A callback goes to the core, to the first client that
-   * overrides it, or to every one, by the rule in docs/native-hooks.md.
+   * The hook clients, in order; add yours in `attach`. A callback that returns a decision (the `deciding` calls in
+   * MinimalWebViewClients.kt) goes to the first client that overrides it, instead of the core and the app's props: a
+   * client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
+   * decide new windows unless a chrome client overrides `onCreateWindow`. Every other callback reaches the core first,
+   * then each client that overrides it. `shouldInterceptRequest` runs on a background thread.
+   *
+   * Overriding a variant the base class forwards to counts as overriding the callback: `WebViewClientCompat`'s
+   * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's
+   * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
+   * `onReceivedError`.
    */
   val clients: MutableList<WebViewClient>
+
+  /**
+   * The hook chrome clients, routed as [clients] are. Overriding the deprecated `onConsoleMessage(String, Int, String)`
+   * counts as overriding `onConsoleMessage`, and overriding `onReceivedIcon` turns favicon downloads back on.
+   */
   val chromeClients: MutableList<WebChromeClient>
 
-  /** Sends `onHookEvent({ name: "<hook>.<name>", payload })` to JS. */
+  /** Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS. */
   fun emit(name: String, payload: Map<String, Any?>)
 
-  /** Sends the event and waits for JS's answer, the handler's return value; null when the view or its page goes away. */
+  /**
+   * Sends the event and waits for JS's answer: the `onHookEvent` handler's return value, a promise awaited. A throw or
+   * no handler answers null. There is no timeout: an ask still open when the Document ends answers null, and one made
+   * after the view closed answers null at once. A number answers as a `Double`.
+   */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
-  /** Runs [handler] with this hook's new `hookOptions` value each time it changes; null when the key is removed. */
+  /**
+   * Runs [handler] with this hook's new `hookOptions` value each time it changes, live on the same WebView; null when
+   * the key is removed.
+   */
   fun onOptionsChange(handler: (Any?) -> Unit)
 
-  /** Runs [handler] at each end of the Document (docs/glossary.md): a new page committed, a crash, or the view closing. */
+  /**
+   * Runs [handler] at each end of the Document ([DocumentScope]), after the core's own resets: per-page state belongs
+   * here.
+   */
   fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
 
   /**
-   * Answers JS's `ref.hook("<hook>", method, args)`. [handler] gets the arguments as the platform's JSON types and
-   * calls `reply` once, with a value JSON can encode. A later handler for the same method replaces this one.
+   * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
+   * `Long` or `Double`) and calls `reply` once, with a value JSON can encode. One handler per method: the last one
+   * wins. The promise rejects with `hook_not_handled` when no attached hook under the key handles the method, and
+   * stays pending when a handler never replies, past the Document's end, a crash or unmount too.
    */
   fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
 }

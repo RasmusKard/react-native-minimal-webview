@@ -31,8 +31,11 @@ export const CONNECTION = Symbol('bridgeConnection');
 const MAX_QUEUE = 1000;
 
 /**
- * Creates a promise-based RPC channel to `window.nativeBridge`. Attach it to one `<WebView bridge={...}>`. The type
- * arguments only type `call`, `handle`, `emit` and `on`; nothing checks them at runtime.
+ * Creates a promise-based RPC channel to `window.nativeBridge` in the pages of `allowedOrigins`, for one WebView's
+ * `bridge` prop. Make it once (`useMemo`): a new bridge recreates the WebView. The type arguments type the method
+ * names, params, results and event payloads of `call`, `handle`, `emit` and `on`; nothing checks them at runtime, so a
+ * handler still validates what an untrusted page sends. Throws for an invalid origin rule or timeout.
+ * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#the-bridge
  */
 export function createBridge<
   Methods extends BridgeMethodMap = BridgeMethodMap,
@@ -79,7 +82,6 @@ export function createBridge<
     'n'
   );
 
-  /** Rejects the calls already posted to a page that is gone. */
   const rejectSent = (message: string) =>
     endpoint.rejectPending('navigated', message, (call) => call.sent);
   const unavailableMessage =

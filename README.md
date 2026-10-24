@@ -4,24 +4,21 @@ A small, extensible WebView for React Native, built with the Expo Modules API (S
 architecture only.
 
 - **Native decides, JS is told:** navigation rules run natively, with no JS round trip per navigation.
-- **One committed URL, owned by native:** `useWebViewState(ref)` gives the page on screen, a pending load, the title,
+- **Native owns the navigation state:** `useWebViewState(ref)` gives the committed URL, a pending load, the title,
   progress and history.
-- **A promise bridge** between React Native and the page, restricted to the origins you allow.
-- **Page requests just work** without a prop: the file chooser and permissions take an answer from a prop, fullscreen
-  video and downloads tell one afterwards, and JS dialogs and HTTP auth go to a native hook.
-- **Every platform setting by name,** without a change to this package: `ios={{ scrollView: { bounces: false } }}`,
-  `android={{ settings: { textZoom: 120 } }}`.
-- **The app owns device APIs:** no OS permission prompts or pickers of its own, no config plugin, and no dependency on
+- **A promise bridge** between React Native and the page, for the origins you allow.
+- **Page requests work without a prop:** a prop answers the file chooser and permissions, or hears about fullscreen
+  video and downloads; JS dialogs and HTTP auth go to a native hook.
+- **Every platform setting by name:** `ios={{ scrollView: { bounces: false } }}`, `android={{ settings: { textZoom: 120 } }}`.
+- **The app owns device APIs:** no OS permission prompts, pickers or config plugin of its own, and no dependency on
   expo-camera or similar packages.
 
-**Requirements:** iOS 16.4, Android API 29+ (`minSdkVersion 29`, for example with `expo-build-properties`), and Expo
-SDK 53+ (React Native 0.79+, React 19) with the new architecture. A bare React Native app works too, once it has the
-`expo` package through `npx install-expo-modules@latest`. On Android, the bridge, `injectedScripts` and `evaluate`
-need [Android System WebView 101+](docs/props.md#android-system-webview-versions). The floor is checked by a build and a
-smoke run on SDK 53 and 55; the on-device suites run on SDK 58. SDK 53 apps on a current Xcode need React Native's
-`fmt` pod built as C++17 (a Podfile `post_install` hook), which is React Native's issue, not this package's.
-Jest consumers add `minimal-rn-webview` to `transformIgnorePatterns` (with jest-expo, to its `node_modules/(?!...)`
-allowlist): the build is ESM.
+**Requirements:** iOS 16.4+, Android API 29+ (`minSdkVersion 29`, for example with `expo-build-properties`), Expo SDK
+53+ (React Native 0.79+, React 19), the new architecture. A bare React Native app needs the `expo` package
+(`npx install-expo-modules@latest`). On Android, the bridge, `injectedScripts` and `evaluate` need
+[Android System WebView 101+](#android-system-webview-versions). On a current Xcode, SDK 53 apps need React Native's
+`fmt` pod built as C++17 (a Podfile `post_install` hook). The build is ESM: Jest consumers add `minimal-rn-webview` to
+`transformIgnorePatterns` (with jest-expo, to its `node_modules/(?!...)` allowlist).
 
 ```tsx
 import { WebView } from 'minimal-rn-webview';
@@ -33,17 +30,18 @@ export function Browser() {
 
 ## Docs
 
-- [Navigation state](docs/navigation-state.md): `useWebViewState`, and `createWebViewRef` for code outside React
-- [Navigation rules](docs/navigation-rules.md): which URLs load in place, open externally or are blocked
-- [The bridge](docs/bridge.md): calls and events between React Native and the page
-- [Props and ref methods](docs/props.md): every prop, `evaluate`, `WebView.warmUp` and `preconnect`, Android System WebView versions
-- [Platform settings](docs/platform-settings.md): any WebKit or Android setting by name, and `get` and `call`
-- [Page requests](docs/page-requests.md): file chooser, fullscreen video, permissions, downloads and JS dialogs, with recipes
-- [Native hooks](docs/native-hooks.md): your own Swift and Kotlin, with the real `WKWebView` or `WebView`
-- [Security defaults](docs/security.md)
-- [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): the prop map, the defaults that
-  differ, and recipes for what has no prop
-- [Development](docs/development.md): unit tests and the on-device suites
-- [Glossary](docs/glossary.md): the words the docs and the code use
-- [Decisions](docs/decisions.md): why things are the way they are, and what was rejected
-- [Roadmap](ROADMAP.md)
+- [Examples](docs/examples.md): one per public interface, from the navigation state to native hooks
+- [API reference](docs/api/README.md), generated from the TSDoc. The native hook API is documented on
+  `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
+- [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): what differs, and recipes for what
+  has no prop
+- [Development](docs/development.md): the checks and the on-device suites
+
+## Android System WebView versions
+
+Android System WebView updates apart from the OS (through the Play Store; Huawei and Fire OS devices ship their own
+builds), so what a device can do depends on its WebView, not its API level. The core checks each feature at run time,
+and an older WebView loses the feature with a warning; nothing crashes. Below WebView 101: the bridge, `injectedScripts`
+and `evaluate`, and so `blob:` downloads. Below 146: `pendingUrl`, the load events of a load that never commits, an SSL
+error on a back/forward load, and the back-forward cache. Each one's TSDoc says so. `preconnect` and favicon downloads
+need features newer still, and an `android` setting this WebView lacks is skipped with a warning.

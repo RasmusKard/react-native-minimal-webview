@@ -24,7 +24,6 @@ internal class MinimalWebViewNavigation(
   // New windows still waiting for their first URL (createWindow).
   private val children = mutableSetOf<WebView>()
 
-  /** The Document ended: its allowed asks and its new windows are over. */
   fun documentEnded() {
     askedAndAllowed.clear()
     // Not on a child's stack (a commit, a crash, destroy): destroy them now. Cleared first, so a finish() finds none.
@@ -37,7 +36,6 @@ internal class MinimalWebViewNavigation(
   fun decide(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requestHandlers)
-    // An external link that cannot be opened is reported as blocked.
     val action = when (decision.action) {
       "ask" -> if (request.mainFrame) {
         return true.also { ask(request, decision.rule) }
@@ -81,6 +79,7 @@ internal class MinimalWebViewNavigation(
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its
   // default policy to it (origin only cross-origin, none from https to http); the page's own referrer policy is lost.
+  // loadUrl skips shouldOverrideUrlLoading, so the reissued URL isn't asked again (its redirects still go to decide).
   private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
   /**
@@ -143,7 +142,9 @@ internal class MinimalWebViewNavigation(
     return false
   }
 
-  // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed.
+  // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed. Never a second
+  // WebView for the app: a popup model is more than almost any app wants, and a hook chrome client's `onCreateWindow`
+  // owns one when it must.
   fun createWindow(isUserGesture: Boolean, resultMsg: Message): Boolean {
     val child = WebView(owner.context)
     // It only catches a URL: none of the page's access, and no JS of its own.

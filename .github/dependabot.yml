@@ -5,7 +5,7 @@ updates:
     schedule: { interval: weekly }
     groups:
       actions: { patterns: ['*'] }
-  # React Native and Expo majors are manual SDK moves (docs/development.md); the rest comes grouped, once a month.
+  # React Native minors and majors and Expo majors are SDK moves, made by hand; the rest comes grouped, once a month.
   - package-ecosystem: npm
     directory: /
     schedule: { interval: monthly }
