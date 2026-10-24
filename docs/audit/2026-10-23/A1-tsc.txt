@@ -1,2 +1,0 @@
-tsc tests exit=0
-tsc example exit=0
