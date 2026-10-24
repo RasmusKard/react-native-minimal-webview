@@ -44,7 +44,7 @@ internal object NavigationRules {
       val action = when (scheme) {
         "http", "https" -> "allow"
         "file" -> "block"
-        // an iframe (an ad) must not launch apps, so only the main frame goes external
+        // An iframe (an ad) must not launch apps, so only the main frame goes external.
         else -> if (request.mainFrame) "external" else "block"
       }
       return Decision(action, null)
@@ -58,7 +58,6 @@ internal object NavigationRules {
   // `_` in a host), so the parts are split with a regex.
   private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)(?:\\?([^#]*))?")
 
-  /** The scheme, host, path and the query's `&`-separated parameters that rules match. */
   private data class Parts(val scheme: String, val host: String?, val path: String, val params: List<String>)
 
   private fun parts(scheme: String, url: String): Parts {
