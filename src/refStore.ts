@@ -10,6 +10,7 @@ import {
 
 import type { NavigationState, WebViewRef, WebViewRefObject } from './types';
 
+/** The state while no WebView is mounted with a ref: an empty `url`, so a stale URL never looks valid. */
 export const INITIAL_STATE: NavigationState = {
   url: '',
   pendingUrl: null,
@@ -21,6 +22,7 @@ export const INITIAL_STATE: NavigationState = {
   outcome: null,
 };
 
+/** A mounted WebView's hold on its ref: it passes on the WebView's state, and lets go at unmount. */
 export type Attachment = { update(state: NavigationState): void; detach(): void };
 type Adapter = {
   nav: WebViewRefObject;
@@ -79,7 +81,9 @@ function createAdapter(): Adapter {
 
 /**
  * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. Its
- * `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
+ * `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts; `useWebViewState`
+ * takes it too. Give each mounted WebView its own: with two, the last mounted wins (with a warning in development)
+ * until it unmounts.
  */
 export function createWebViewRef(): WebViewRefObject {
   const adapter = createAdapter();
@@ -111,8 +115,9 @@ export function useAttach(
 }
 
 /**
- * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one); re-renders
- * on every change, and follows a remount. The initial state while none is mounted.
+ * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
+ * re-renders on every change, and follows a remount. The initial state (`url: ''`) while none is mounted.
+ * @see https://github.com/RasmusKard/react-native-minimal-webview/blob/main/docs/examples.md#navigation-state
  */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {
   const { nav } = adapterFor(ref);

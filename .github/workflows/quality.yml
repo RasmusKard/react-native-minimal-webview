@@ -5,7 +5,7 @@ on:
 
 permissions: { contents: read }
 
-concurrency:   # a new push cancels the run for the previous one
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
@@ -16,5 +16,5 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npx knip   # all but example/ (no baseline): unused files, exports, dependencies, unresolved imports
+      - run: npx knip
       - run: npm run lint

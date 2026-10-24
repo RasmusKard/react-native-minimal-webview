@@ -6,7 +6,7 @@ import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
 /**
  * An origin rule (`http(s)://host[:port]`, `http(s)://*.host[:port]`) or a `location.origin`, parsed; null for anything
- * else, `*` included. As OriginRules.swift: src/__tests__/vectors/origin-rules.json.
+ * else, `*` included. OriginRules.swift matches the same way: both run src/__tests__/vectors/origin-rules.json.
  */
 export const parseOrigin = (text: string) => {
   const m =

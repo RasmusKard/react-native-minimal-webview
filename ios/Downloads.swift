@@ -1,11 +1,8 @@
 import WebKit
 
-/// Downloads through WKDownload (the page's session and cookies), with the app's `onDownload`: `Content-Disposition:
-/// attachment`, types WebKit cannot show, `<a download>` and blob: URLs. Files land in the app's temporary directory;
-/// each finished download emits `download {ok: true, uri, filename, mimeType, url}` for the app to share or move
-/// (expo-sharing, expo-file-system), a failed one `download {ok: false, filename, url, reason}`. `url` is the full
-/// http(s) URL, or null for data: and blob: (the page made the file itself). Without the prop the core opens them
-/// externally.
+/// Saves downloads through WKDownload, with the page's session and cookies, while `onDownload` is set:
+/// `Content-Disposition: attachment`, types WebKit can't show, `<a download>` and blob: URLs. The files go to the app's
+/// temporary directory, and the core never deletes them. Without the prop, `openDownload` takes them.
 final class Downloads: NSObject, WKDownloadDelegate {
   private weak var view: MinimalWebView?
   private var files: [ObjectIdentifier: (url: URL, mimeType: String)] = [:]
@@ -20,7 +17,6 @@ final class Downloads: NSObject, WKDownloadDelegate {
     return response.isForMainFrame && (disposition.lowercased().hasPrefix("attachment") || !response.canShowMIMEType)
   }
 
-  /// `.download` for a file the app's prop takes; nil otherwise.
   func decidePolicy(for response: WKNavigationResponse) -> WKNavigationResponsePolicy? {
     handled && Self.isDownload(response) ? .download : nil
   }
@@ -42,7 +38,7 @@ final class Downloads: NSObject, WKDownloadDelegate {
     suggestedFilename: String,
     completionHandler: @escaping @MainActor (URL?) -> Void
   ) {
-    // The filename comes from the server or page: keep only its last path component.
+    // The server or the page names the file: only its last path component is kept, so it stays in its directory.
     let name = (suggestedFilename as NSString).lastPathComponent
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

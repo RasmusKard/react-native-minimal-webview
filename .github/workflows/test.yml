@@ -5,7 +5,7 @@ on:
 
 permissions: { contents: read }
 
-concurrency:   # a new push cancels the run for the previous one
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 

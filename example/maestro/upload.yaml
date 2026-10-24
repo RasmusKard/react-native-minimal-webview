@@ -3,9 +3,9 @@ name: upload
 env:
   SUITE: upload
 ---
-# Android file chooser: real taps on the page's file input (WebView opens choosers only on a gesture). Six answered by
-# onFileRequest (one never, then one on the next page), two that open the system chooser (back cancels it once it
-# covers the app), one onFileRequest again. (iOS skips itself.)
+# Android only (iOS skips the suite): real taps on the page's file input, since WebView opens a chooser only on a
+# gesture. onFileRequest gets the first six (it never answers the fifth; the sixth is on the next page). The next two
+# open the system chooser, which back cancels once it covers the app, and onFileRequest gets the last.
 - runFlow: subflows/launch.yaml
 - runFlow:
     when: { platform: Android }

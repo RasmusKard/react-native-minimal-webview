@@ -28,7 +28,8 @@ internal data class DownloadInfo(
 
 /**
  * Downloads, with the app's `onDownload`: http(s) is fetched again with the WebView's cookies and the page's user agent
- * (WebView hands over only the URL), data: is decoded, and blob: is read by the page. Each lands in its own app-cache
+ * (WebView hands over only the URL), through `HttpURLConnection` and `CookieManager` rather than React Native's OkHttp,
+ * so the package builds without `react-android`; data: is decoded, and blob: is read by the page. Each lands in its own app-cache
  * directory and emits `download {ok: true, uri, filename, mimeType, url}`, as on iOS; a failed one emits
  * `download {ok: false, filename, url, reason}`. `url` is the full http(s) URL, or null for data: and blob: (the page
  * made the file itself). Without the prop the core opens it externally. Nothing here may crash the app: the page

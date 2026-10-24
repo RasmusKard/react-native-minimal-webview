@@ -27,9 +27,8 @@ public class MinimalWebViewModule: Module {
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
       AsyncFunction("navigate") { (view: MinimalWebView, action: String) in navigate(view, action) }
-      // `get('scrollView.bounces')` reads a property; `call('webView.selector:', argsJson, completion)` calls a method
-      // (docs/platform-settings.md). Both resolve with the JSON of the result. `argsJson` is a JSON string so a null
-      // argument survives the conversion.
+      // `get('scrollView.bounces')` reads a property and `call('webView.selector:', argsJson, completion)` calls a
+      // method; both resolve with the result's JSON. `argsJson` is a string so a null argument survives the conversion.
       AsyncFunction("get") { (view: MinimalWebView, path: String, promise: Promise) in
         native(view, promise) { webView in promise.resolve(try view.platformSettings.get(path, webView: webView)) }
       }
@@ -50,9 +49,7 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("hook") { (view: MinimalWebView, name: String, method: String, args: String, promise: Promise) in
         hook(view, name, method, args, promise)
       }
-      // Resolves with the JSON-encoded value of the expression, awaiting a returned Promise; JS parses it.
-      // The page encodes it, as on Android: what JSON can't encode (a function, a cycle) gives "null".
-      // Rejects with unavailable when there is no WKWebView yet.
+      // Resolves with the expression's value as JSON, a returned Promise awaited; JS parses it.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         evaluate(view, script, promise)
       }
@@ -92,7 +89,6 @@ private func hook(_ view: MinimalWebView, _ name: String, _ method: String, _ ar
   }
 }
 
-/// Runs `body` with the view's WKWebView; what it throws rejects with `native_error`, no WKWebView with `unavailable`.
 private func native(_ view: MinimalWebView, _ promise: Promise, _ body: (WKWebView) throws -> Void) {
   guard let webView = view.webView else { return promise.reject("unavailable", "No WebView") }
   do {

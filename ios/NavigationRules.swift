@@ -20,7 +20,7 @@ enum NavigationRules {
     let rule: Int?
   }
 
-  /// The scheme, host, path and the query's `&`-separated parameters that rules match.
+  /// What rules match; `params` are the query's `&`-separated parameters.
   private struct Parts {
     let scheme: String
     let host: String?
@@ -56,13 +56,13 @@ enum NavigationRules {
       switch scheme {
       case "http", "https": return Decision(action: "allow", rule: nil)
       case "file": return Decision(action: "block", rule: nil)
-      // an iframe (an ad) must not launch apps, so only the main frame goes external
+      // An iframe (an ad) must not launch apps, so only the main frame goes external.
       default: return Decision(action: request.mainFrame ? "external" : "block", rule: nil)
       }
     }
     // ponytail: an unparseable URL has no host and path "/", so only rules without host conditions match it
     let components = URLComponents(string: request.url)
-    // encodedHost keeps IDNA hosts in their xn-- form; `host` would decode them
+    // encodedHost keeps an IDNA host in its xn-- form; `host` would decode it.
     var host = (components?.encodedHost ?? components?.host)?.lowercased()
     if host?.hasSuffix(".") == true { host?.removeLast() }
     if host?.isEmpty == true { host = nil }

@@ -1,19 +1,10 @@
 /// <reference types="node" />
 // Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse tcp:8090 tcp:8090`, on the
-// Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests.
-//   /redirect?to=<path>&code=302  server redirect
-//   /download?name=<file>          attachment response
-//   /moved?key=<k>                 an attachment the first time for a key, then a redirect to /download on 127.0.0.1
-//                                  (an Android download is fetched again, and must follow it)
-//   /post                          echoes a form POST (payment-style flow)
-//   /slow?ms=<n>                   delays the response
-//   /status/<code>                 empty response with that status
-//   /ua                            shows the User-Agent header the server received
-//   /flaky?key=<k>                 503 the first time for a key, then the normal page (reload-after-error tests)
-//   /harness/run?platform=<ios|android>&suite=<name>  queues a harness suite; the example app polls /harness/next and posts results to
-//                                  /harness/log, which this server prints
-//   /harness/await, /harness/verdict, /harness/idle, /harness/fresh  what the driver (Maestro) waits on: see harnessState
+// Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests, and
 // https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
+// The harness runs through it too: the app polls /harness/next for the suite /harness/run queued and posts its results
+// to /harness/log, which this server prints, and the driver (Maestro) waits on /harness/await, /harness/verdict and
+// /harness/idle instead of reading the screen (see harnessState).
 const { Buffer } = require('buffer');
 const { execFile, execFileSync } = require('child_process');
 const fs = require('fs');
@@ -280,6 +271,7 @@ function handle(req, res) {
   } else if (url.pathname === '/redirect') {
     res.writeHead(Number(q.get('code') ?? 302), { location: q.get('to') ?? '/' }).end();
   } else if (url.pathname === '/moved' && movedKeys.has(q.get('key') ?? '')) {
+    // Android fetches a download again, and must follow this redirect to another host.
     res.writeHead(302, { location: `http://127.0.0.1:${PORT}/download?name=moved.txt` }).end();
   } else if (url.pathname === '/moved') {
     movedKeys.add(q.get('key') ?? '');

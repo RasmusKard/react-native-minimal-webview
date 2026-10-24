@@ -495,7 +495,7 @@ test('the bridge transport has the names the page client uses', () => {
   expect(page).toContain(`${receive}: receive,`);
 });
 
-// What only one platform's hooks get: Android's clients, iOS's delegates (docs/native-hooks.md).
+// What only one platform's hooks get: Android's clients, iOS's delegates.
 const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients'];
 const IOS_ONLY_CONTEXT = ['navigationDelegates', 'uiDelegates'];
 

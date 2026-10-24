@@ -3,7 +3,8 @@ import WebKit
 /// Shares login cookies between the WebView and native requests (URLSession, fetch) when the `sharedCookies` prop is
 /// set: HTTPCookieStorage is copied into the WebView before each `source` load, and the WebView's cookie changes
 /// (including ones set by XHR and fetch, and deletions) are copied back as they happen. (Android needs nothing:
-/// CookieManager is already shared app-wide.)
+/// CookieManager is already shared app-wide.) In the core, not a hook: the copy before the first `source` load is
+/// something nothing outside the core can hold.
 final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   private weak var store: WKHTTPCookieStore?
   private var enabled = false
