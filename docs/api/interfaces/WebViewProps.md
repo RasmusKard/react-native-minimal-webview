@@ -83,11 +83,11 @@ Which navigations load in place, open externally or are blocked, decided nativel
 and with no match the navigation is blocked. With no rules (or `[]`), http(s) loads in place, `file:` is blocked,
 and other schemes open externally from the main frame and are blocked from a subframe. `about:`, `blob:`, `data:`
 and `javascript:` always load in place. The `source` load, reloads and back/forward skip the rules; a redirect of
-the `source` load doesn't, nor on Android a redirect of a reload or back/forward. On Android the rules never see a
-POST: form posts always load, and a form POST to a new window doesn't load at all. iOS shows form POSTs to the
-rules: an `external` one opens as a GET without its body, and one to a new window loads in place. An `external` `intent:` URL
-(Android) opens only as a browsable intent, without its explicit component or selector; when no app handles it, its
-`S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as `block`.
+the `source` load doesn't, nor on Android a redirect of a reload or back/forward. The rules never see a form POST,
+on either platform: it loads in place, and one to a new window loads in place on iOS and doesn't load on Android.
+An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
+when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
+`block`.
 
 #### See
 
