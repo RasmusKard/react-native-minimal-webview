@@ -108,6 +108,7 @@ private let askTimeout: TimeInterval = 1
 
 /// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (iOS 9+), as Firefox for iOS uses it: `.allow`
 /// would hand a tapped link to another host to an installed app that claims it as a universal link, which Android's
-/// WebView never does, so the same rules would split the platforms. Hand-off is an explicit `external` rule. If WebKit
-/// drops the value, `.allow` brings the hand-off back.
+/// WebView never does, so the same rules would split the platforms. Hand-off is an explicit `external` rule. The value
+/// goes to WebKit unchecked on every OS: an NS_ENUM's `init(rawValue:)` accepts any value, so `?? .allow` only
+/// satisfies the type, and nothing falls back if WebKit drops the value; only an app that claims a domain could tell.
 private let allowInPlace = WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2) ?? .allow

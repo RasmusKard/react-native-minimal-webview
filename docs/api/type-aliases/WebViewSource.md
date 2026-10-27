@@ -28,7 +28,8 @@ Sent with the first request only, not on later navigations.
 
 > **uri**: `string`
 
-A `file://` URL gets read access to its directory on iOS; Android needs `android.settings.allowFileAccess`.
+A `file://` URL gets read access to its directory on iOS; Android needs `android.settings.allowFileAccess`,
+which lets a `file:` page read any file the app can.
 
 ***
 

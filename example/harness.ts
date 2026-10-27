@@ -135,7 +135,11 @@ export function pollForSuites(get: () => Harness) {
     const suite = SUITES[name];
     try {
       if (suite) await suite(current);
-      else emit(`FAIL unknown suite ${name}`);
+      else {
+        // A verdict too, or the driver waits for one until it times out.
+        request(`${name}#done pass=? fail=1`);
+        emit(`FAIL unknown suite ${name}`);
+      }
     } catch (error) {
       // A suite that throws still gets a verdict, so the driver doesn't wait for one until it times out.
       request(`${name}#done pass=? fail=1`);
@@ -1483,20 +1487,23 @@ async function settings(h: Harness) {
         { completion: 'value' }
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
-      await page(`sessionStorage.setItem('mrw', '1')`);
-      const session = await call(
-        'webView.fetchDataOfTypes:completionHandler:',
-        [WK.WebViewDataType.sessionStorage],
-        { completion: 'valueError' }
-      );
-      const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
-        completion: 'error',
-      });
-      r.check(
-        'call takes NSData and an error completion handler',
-        typeof session === 'string' && session.length > 0 && restored === null,
-        { session: String(session).slice(0, 12), restored }
-      );
+      // iOS 18 selectors: below it they reject with native_error, as the floor should.
+      if (parseFloat(String(Platform.Version)) >= 18) {
+        await page(`sessionStorage.setItem('mrw', '1')`);
+        const session = await call(
+          'webView.fetchDataOfTypes:completionHandler:',
+          [WK.WebViewDataType.sessionStorage],
+          { completion: 'valueError' }
+        );
+        const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
+          completion: 'error',
+        });
+        r.check(
+          'call takes NSData and an error completion handler',
+          typeof session === 'string' && session.length > 0 && restored === null,
+          { session: String(session).slice(0, 12), restored }
+        );
+      } else r.info('call takes NSData: needs iOS 18', Platform.Version);
       r.check(
         'get reads a websiteDataStore property',
         (await get('websiteDataStore.persistent')) === true
@@ -1737,8 +1744,8 @@ async function navigation(h: Harness) {
     dataWindow()
   );
   r.check('the page stays after the blocked data: window', h.state().url === opener, h.state());
-  // Android decides only navigations that start inside a frame with a user gesture, not the frame's initial src load:
-  // a real tap on a link inside the iframe.
+  // Android never decides an iframe's http(s) navigations, with a gesture or without (the shapes suite's A4 settled
+  // it); the real tap keeps the gesture flag true in case a WebView ever does.
   if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
   else
     await h.ref.current?.evaluate(
