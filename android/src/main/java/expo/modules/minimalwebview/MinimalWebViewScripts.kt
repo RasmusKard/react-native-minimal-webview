@@ -17,8 +17,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private var replyProxy: JavaScriptReplyProxy? = null
   private var installedScripts: List<InjectedScript>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
-  private val evaluations = mutableMapOf<Int, (Result<String>) -> Unit>()
-  private var nextEvaluation = 0
+  private val evaluations = Evaluations()
 
   /**
    * Installs everything into a new WebView, the first or the one after a crash. The evaluate channel and the bridge go
@@ -89,7 +88,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   /** The Document ended: its evaluations fail and its reply proxy is gone. JS queues bridge messages until the next
    * page is ready; at unmount it rejects what is in flight itself. */
   fun documentEnded(reason: End) {
-    failEvaluations()
+    evaluations.failAll()
     // At a commit this runs one main-thread hop after Chromium's (the NavigationListener's executor posts it), and
     // relies on landing before the new page's first message sets replyProxy (the bridge suite's head-script call).
     replyProxy = null
@@ -101,9 +100,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private fun installEvaluate() {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
     WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
-      val reply = if (isMainFrame) runCatching { JSONArray(message.data) }.getOrNull() else null
-      val onResult = reply?.let { evaluations.remove(it.optInt(0, -1)) } ?: return@addWebMessageListener
-      onResult(if (reply.length() > 2) failure("script_error", reply.optString(2)) else Result.success(reply.optString(1, "null")))
+      // An ArrayBuffer has no string data (`data` throws).
+      if (message.type == WebMessageCompat.TYPE_STRING) evaluations.settle(message.data, isMainFrame)
     }
   }
 
@@ -114,8 +112,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
       return onResult(failure("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView"))
     }
-    val id = nextEvaluation++
-    evaluations[id] = onResult
+    val id = evaluations.add(onResult)
     // The script sits in a scope of its own (no wrapper names shadow the page's); the sync value is 1 once it started.
     val code = """typeof $EVALUATE === 'object' ? ((t, p) => (p.then(
   (v) => { try { v = JSON.stringify(v) } catch { v = null } t.postMessage(JSON.stringify([$id, v ?? 'null'])) },
@@ -126,17 +123,9 @@ $script
     webView.evaluateJavascript(code) {
       // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
       val why = if (it == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)"
-      if (it != "1") evaluations.remove(id)?.invoke(failure("script_error", why))
+      if (it != "1") evaluations.fail(id, why)
     }
   }
-
-  private fun failEvaluations() {
-    val waiting = evaluations.values.toList()
-    evaluations.clear()
-    waiting.forEach { it(failure("navigated", "the page navigated before the script finished")) }
-  }
-
-  private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
   /** Whether this device's WebView lacks one of [features] that [prop] needs; warns about it once per process. */
   private fun lacks(prop: String, features: List<String>, lost: String): Boolean {
@@ -157,7 +146,51 @@ $script
   }
 }
 
+/**
+ * The `evaluate` calls waiting for their result, by id. Each settles once: by the page's reply, a script that didn't
+ * run, or the Document's end. Main thread only.
+ */
+internal class Evaluations {
+  private val waiting = mutableMapOf<Int, (Result<String>) -> Unit>()
+  private var next = 0
+
+  /** Keeps [onResult] until its evaluation settles; returns the id the page's reply carries. */
+  fun add(onResult: (Result<String>) -> Unit): Int {
+    val id = next++
+    waiting[id] = onResult
+    return id
+  }
+
+  /**
+   * The page's [reply], `[id, valueJson]` or `[id, null, errorMessage]`, settles evaluation `id` with the value or a
+   * `script_error`. Only the main frame's replies count; a malformed one, or one for an id not waiting, is dropped.
+   */
+  fun settle(reply: String?, mainFrame: Boolean) {
+    if (!mainFrame) return
+    val parts = runCatching { JSONArray(reply) }.getOrNull() ?: return
+    val onResult = waiting.remove(parts.optInt(0, -1)) ?: return
+    onResult(
+      if (parts.length() > 2) failure("script_error", parts.optString(2))
+      else Result.success(parts.optString(1, "null"))
+    )
+  }
+
+  /** The script didn't run: evaluation [id] fails with a `script_error` saying [why], unless it settled already. */
+  fun fail(id: Int, why: String) {
+    waiting.remove(id)?.invoke(failure("script_error", why))
+  }
+
+  /** The Document ended: every waiting evaluation fails with `navigated`. */
+  fun failAll() {
+    val all = waiting.values.toList()
+    waiting.clear()
+    all.forEach { it(failure("navigated", "the page navigated before the script finished")) }
+  }
+}
+
 /** Why an `evaluate` failed; its code is the JS error code (`script_error`, `navigated`, `unavailable`). */
 internal class EvaluateError(code: String, message: String) : CodedException(code, message, null)
+
+private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
 private const val EVALUATE = "nativeEvaluateResult"

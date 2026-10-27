@@ -53,19 +53,26 @@ internal class Permissions(private val owner: MinimalWebView) {
     return true
   }
 
-  /** `location.origin` form: the scheme's default port left out. */
-  private fun originOf(url: String?): String? {
-    val uri = Uri.parse(url ?: return null)
-    val defaultPort = if (uri.scheme == "https") 443 else 80
-    val port = if (uri.port == -1 || uri.port == defaultPort) "" else ":${uri.port}"
-    return "${uri.scheme}://${uri.host}$port"
-  }
-
-  private companion object {
-    val RESOURCES = mapOf(
+  internal companion object {
+    private val RESOURCES = mapOf(
       PermissionRequest.RESOURCE_VIDEO_CAPTURE to "camera",
       PermissionRequest.RESOURCE_AUDIO_CAPTURE to "microphone",
       PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID to "protectedMedia"
     )
+
+    /**
+     * `location.origin` form: the scheme's default port left out. A missing scheme or host prints as `null` (`data:…`
+     * gives `data://null`, `""` gives `null://null`), and `file:///x` gives `file://`.
+     */
+    fun originOf(url: String?): String? {
+      val uri = Uri.parse(url ?: return null)
+      return origin(uri.scheme, uri.host, uri.port)
+    }
+
+    /** [originOf] from the scheme, host and port (-1 for none) that `Uri` parses. */
+    fun origin(scheme: String?, host: String?, port: Int): String {
+      val defaultPort = if (scheme == "https") 443 else 80
+      return "$scheme://$host" + if (port == -1 || port == defaultPort) "" else ":$port"
+    }
   }
 }

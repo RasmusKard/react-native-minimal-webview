@@ -78,6 +78,20 @@ object MinimalWebViewHooks {
 internal fun enables(value: Any?) = value != null && value != false
 
 /**
+ * Which [hooks] attach to a WebView created with the enabled `hookOptions` [keys]: the ones registered under them, in
+ * registration order. Second, the keys no hook is registered under.
+ */
+internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>) =
+  hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
+
+/**
+ * Whether a `hookOptions` change from [old] to [value] turns on [key], one the WebView was not created with ([keys]):
+ * no hook attaches for it, and a warning says so.
+ */
+internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
+  key !in keys && !enables(old) && enables(value)
+
+/**
  * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that
  * attach: after a renderer crash, the new WebView's `attach` registers them again. [emit] and [ask] can be called from
  * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its view

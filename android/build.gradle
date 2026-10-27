@@ -12,6 +12,8 @@ android {
     minSdkVersion 29
     consumerProguardFiles 'consumer-rules.pro'
   }
+  // -PmrwCoverage: JaCoCo for the unit tests (docs/development.md); without it, the build is unchanged
+  if (providers.gradleProperty('mrwCoverage').present) buildTypes.debug.enableUnitTestCoverage = true
 }
 
 dependencies {
