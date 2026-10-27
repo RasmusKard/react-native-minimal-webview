@@ -71,7 +71,8 @@ Runs an expression (not statements) in the page's main frame and awaits it. Reso
 `null` for what JSON can't encode (a function, `NaN`, a cycle), a `Date` as its ISO string. The value is the
 page's, so treat it as page data. Rejects with a [CodedError](CodedError.md): `script_error`, with the error's message, when
 the script throws, rejects or doesn't parse; `navigated` when the page goes away first; `unavailable` on Android
-with a WebView older than 101.
+with a WebView older than 83. There is no timeout: a page can hold a call until it navigates (an Android `blob:`
+download, which reads the blob this way, gives up after 30 s).
 
 #### Parameters
 
@@ -111,7 +112,8 @@ non-void `textZoom()`. Rejects with `native_error` for one it can't read, or tha
 
 > **goBack**(): `void`
 
-Goes back one page, when `canGoBack`.
+Goes back one page, when `canGoBack`. On Android, as Chrome's back button, it also skips the history entries a page
+added without a user gesture (`pushState`, a hash change) and the page that added them.
 
 #### Returns
 
