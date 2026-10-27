@@ -311,11 +311,15 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
 export type IOSSettings = {
   /**
    * `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
-   * reloads and the navigation state starts over). The default lets a `<video playsinline>` play inline.
+   * reloads and the navigation state starts over). The default lets a `<video playsinline>` play inline. The private
+   * `allowUniversalAccessFromFileURLs` is accepted, for react-native-webview parity: it lets a `file:` page read any URL.
    * @default { allowsInlineMediaPlayback: true }
    */
   configuration?: SettingsRoot<IOSSettingKeys['configuration']>;
-  /** `WKPreferences` (`configuration.preferences`), live. */
+  /**
+   * `WKPreferences` (`configuration.preferences`), live. The private `allowFileAccessFromFileURLs` is accepted, for
+   * react-native-webview parity: it lets a `file:` page read other `file:` URLs.
+   */
   preferences?: SettingsRoot<IOSSettingKeys['preferences']>;
   /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;

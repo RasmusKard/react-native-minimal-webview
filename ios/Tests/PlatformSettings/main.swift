@@ -32,6 +32,8 @@ sets("configuration", "websiteDataStore", "nonPersistent", configuration.website
 rejects("configuration", "websiteDataStore", "temporary", "a @\"WKWebsiteDataStore\" property can't take temporary")
 rejects("configuration", "allowsInlineMediaPlayback", 1, "a B property can't take 1")
 check("a live root while creating is skipped", reason("preferences", "minimumFontSize", 12.0), nil)
+// react-native-webview's private key, by KVC as it sets it (no declared property).
+sets("configuration", "allowUniversalAccessFromFileURLs", true, configuration.value(forKey: "allowUniversalAccessFromFileURLs") as? Bool, true)
 
 let view = WKWebView(frame: .zero, configuration: configuration)
 webView = view
@@ -50,6 +52,12 @@ sets("scrollView", "contentSize", ["width": 10.0, "height": 20], view.scrollView
 sets("webView", "accessibilityFrame", ["x": 1.0, "y": 2, "width": 3, "height": 4], view.accessibilityFrame, CGRect(x: 1, y: 2, width: 3, height: 4))
 check("KVC guard: a setter's exception is the reason", reason("scrollView", "contentOffset", ["x": Double.nan, "y": 0])?.hasPrefix("CALayerInvalidGeometry:"), true)
 rejects("preferences", "missing", 1, "no such property")
+// The other private key, read back with get; the allowlist names a root's own keys, and no other private one.
+sets("preferences", "allowFileAccessFromFileURLs", true, thrown { try settings.get("preferences.allowFileAccessFromFileURLs", webView: view) }, "true")
+check("get reads the private configuration key", thrown { try settings.get("configuration.allowUniversalAccessFromFileURLs", webView: view) }, "true")
+rejects("preferences", "allowUniversalAccessFromFileURLs", true, "no such property")
+rejects("preferences", "developerExtrasEnabled", true, "no such property")
+check("get refuses another private key", thrown { try settings.get("preferences.developerExtrasEnabled", webView: view) }, "no such property preferences.developerExtrasEnabled")
 rejects("preferences", "_private", 1, "private and nested keys are not allowed")
 rejects("webView", "scrollView.bounces", false, "private and nested keys are not allowed")
 rejects("webView", "URL", "https://example.com", "read-only")
