@@ -1880,6 +1880,12 @@ async function injection(h: Harness) {
   r.done();
 }
 
+/** Adds a download link to a blob of `bytes` zero bytes. */
+const blobLink = (h: Harness, id: string, bytes: number) =>
+  h.ref.current?.evaluate(
+    `(() => { const a = document.createElement('a'); a.id = '${id}'; a.download = '${id}.bin'; a.href = URL.createObjectURL(new Blob([new Uint8Array(${bytes})])); document.body.append(a); })()`
+  );
+
 /** Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
  * on Android a blob above the size cap fails. */
 async function downloadsSuite(h: Harness) {
@@ -1942,11 +1948,9 @@ async function downloadsSuite(h: Harness) {
   }
 
   if (Platform.OS === 'android') {
-    // Above Android's 100 MB cap a blob: download fails before the page reads it. The blob is made only here.
+    // Above Android's 100 MB cap a blob: download fails before the page reads it. The blobs are made only here.
     const failures = h.events.downloadFailures.length;
-    await h.ref.current?.evaluate(
-      "(() => { const a = document.createElement('a'); a.id = 'bigblob'; a.download = 'big.bin'; a.href = URL.createObjectURL(new Blob([new Uint8Array(101 * 1024 * 1024)])); document.body.append(a); })()"
-    );
+    await blobLink(h, 'bigblob', 101 * 1024 * 1024);
     await click(h, 'bigblob');
     const failed = await waitFor(h, () => h.events.downloadFailures.length > failures, 20000);
     const failure = h.events.downloadFailures[failures];
@@ -1955,6 +1959,18 @@ async function downloadsSuite(h: Harness) {
       failed && failure?.reason.includes('larger than') === true,
       failure
     );
+    // Far more than one reply can carry (a 40 MiB blob's data: URL never arrived whole): the page reads it in chunks.
+    const big = h.events.downloads.length;
+    await blobLink(h, 'bigok', 40 * 1024 * 1024);
+    await click(h, 'bigok');
+    const saved = await waitFor(h, () => h.events.downloads.length > big, 30000);
+    const bigFile = saved ? new File(h.events.downloads[big].uri) : null;
+    r.check(
+      'a 40 MiB blob downloads whole',
+      bigFile?.size === 40 * 1024 * 1024,
+      h.events.downloads[big]
+    );
+    bigFile?.delete();
   }
 
   const opened: string[] = [];
