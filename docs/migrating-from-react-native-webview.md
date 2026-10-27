@@ -24,8 +24,10 @@ architecture only ([requirements](../README.md)).
 | iOS universal links | A tapped one opens the app that claims it | Loads in place, as on Android | An `external` rule for the host |
 | Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)) |
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
-| Messaging | Every page and every frame | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
+| Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
+| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | iOS keeps the page before it on screen; Android shows the WebView's own error page | The error screen [below](#loading-and-error-screens) |
+| Android file chooser | Offers the camera, and opens it for `capture`, asking for the OS permissions itself | The system chooser, which ignores `capture` | `onFileRequest` with expo-image-picker ([page requests](examples.md#page-requests)) |
 
 The settings in one object, for the rows a setting restores:
 
@@ -75,8 +77,36 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])` and the like; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, JS dialogs, `menuItems`, `onCustomMenuSelection`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `nestedScrollEnabled`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
-| `incognito` (Android), `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage` | Not supported: Android has no incognito WebView; inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload` |
+| `basicAuthCredential`, JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nestedScrollEnabled`, `nativeConfig`; iOS `allowFileAccessFromFileURLs` and `allowUniversalAccessFromFileURLs` (private keys, which the settings refuse) | A [native hook](examples.md#native-hooks) |
+| `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
+| `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload`; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
+
+The props whose setting has another name:
+
+| react-native-webview | Here |
+|---|---|
+| `showsVerticalScrollIndicator`, `showsHorizontalScrollIndicator` | `ios.scrollView.<the same name>`; `android.webView.verticalScrollBarEnabled`, `horizontalScrollBarEnabled` |
+| `mediaPlaybackRequiresUserAction` | `ios.configuration.mediaTypesRequiringUserActionForPlayback`, `android.settings.mediaPlaybackRequiresUserGesture` (its default is both platforms' default) |
+| `contentMode` | `ios.webpagePreferences.preferredContentMode` (`WK.ContentMode`) |
+| `cacheEnabled: false` | `ios.configuration.websiteDataStore: 'nonPersistent'`, `android.settings.cacheMode: Android.WebSettings.LOAD_NO_CACHE` |
+| `automaticallyAdjustContentInsets` | `ios.scrollView.contentInsetAdjustmentBehavior` |
+| `forceDarkOn` | `android.settings.algorithmicDarkeningAllowed` (`forceDark` below `targetSdk` 33) |
+| `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
+| `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` (Android) | `android.settings.<the same name>` |
+| `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
+| `containerStyle` | A `View` around the WebView |
+
+## What else changes
+
+- `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries for `tel:`, `mailto:` and other schemes a page
+  opens are not needed: the core opens an `external` URL without asking `canOpenURL` first.
+- After a server redirect the rules block, the state is the page before it with `outcome` `cancelled`.
+  react-native-webview reports the redirecting URL as still loading (iOS) or the blocked URL as loaded (Android).
+- While the JS thread is busy, a rule still decides within a few milliseconds. react-native-webview's Android waits
+  250–500 ms on the UI thread for `onShouldStartLoadWithRequest` and then lets the navigation through; its iOS waits
+  for the answer.
+- A WebView costs about 37 MiB on iOS, a WebContent process each, as with react-native-webview; Android's share one
+  renderer, about 2 MiB each.
 
 ## onShouldStartLoadWithRequest
 
@@ -129,6 +159,31 @@ const rnwMessages = {
 
 useEffect(() => bridge.on('rnw', (data) => handleMessage(data as string)), [bridge]); // was onMessage
 bridge.emit('rnw', message); // was ref.current.postMessage(message)
+```
+
+## incognito
+
+On iOS a non-persistent data store holds the WebView's cookies, cache and storage and goes with it. Android has no
+incognito WebView: react-native-webview's `incognito` clears the app-wide cookies and the cache, which this does before
+the page loads (the calls need a mounted WebView, so the first `source` is blank).
+
+```tsx
+const [source, setSource] = useState<WebViewSource>({ uri: 'about:blank' });
+useEffect(() => {
+  (async () => {
+    if (Platform.OS === 'android') {
+      await ref.current?.call('cookieManager.removeAllCookies', [null]); // app-wide, as on react-native-webview
+      await ref.current?.call('webView.clearCache', [true]);
+    }
+    setSource({ uri: 'https://example.com' });
+  })();
+}, []);
+<WebView
+  ref={ref}
+  source={source}
+  ios={{ configuration: { websiteDataStore: 'nonPersistent' } }}
+  android={{ settings: { cacheMode: Android.WebSettings.LOAD_NO_CACHE } }}
+/>;
 ```
 
 ## Loading and error screens

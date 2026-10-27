@@ -55,8 +55,9 @@ https://github.com/RasmusKard/react-native-minimal-webview/blob/main/docs/exampl
 
 > `optional` **injectedScripts?**: [`InjectedScript`](../type-aliases/InjectedScript.md)[]
 
-Scripts to run at document start, before the page's own. A change applies from the next navigation. On Android
-with a WebView older than 101 they don't run (a warning says so, once per process).
+Scripts to run at document start, before the page's own, on every page and origin the WebView visits (and with
+`mainFrameOnly: false` in cross-origin iframes): guard with `location.origin`. A change applies from the next
+navigation. On Android with a WebView older than 101 they don't run (a warning says so, once per process).
 
 ***
 
@@ -83,7 +84,8 @@ and with no match the navigation is blocked. With no rules (or `[]`), http(s) lo
 and other schemes open externally from the main frame and are blocked from a subframe. `about:`, `blob:`, `data:`
 and `javascript:` always load in place. The `source` load, reloads and back/forward skip the rules; a redirect of
 the `source` load doesn't, nor on Android a redirect of a reload or back/forward. On Android the rules never see a
-POST: form posts always load, and a form POST to a new window doesn't load at all. An `external` `intent:` URL
+POST: form posts always load, and a form POST to a new window doesn't load at all. iOS shows form POSTs to the
+rules: an `external` one opens as a GET without its body, and one to a new window loads in place. An `external` `intent:` URL
 (Android) opens only as a browsable intent, without its explicit component or selector; when no app handles it, its
 `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as `block`.
 
@@ -101,8 +103,8 @@ A download finished ([Download](../type-aliases/Download.md)) or failed ([Downlo
 iOS downloads it in the page's session; Android fetches it again with the host's cookies (whatever their SameSite)
 and the page's user agent. That fetch sends no POST body, `source` headers or HTTP auth, so such a download can
 fail or save a login page, and it fails above 100 MB, on a redirect off https, and for `blob:` on a WebView older
-than 101. Without this prop, an http(s) download opens externally (`onOpenExternal` or the system browser, without
-the page's session), and a `data:` or `blob:` one is dropped.
+than 83. Without this prop, an http(s) download opens externally (`onOpenExternal` or the system browser, without
+the page's session), and a `data:` or `blob:` one is dropped. A PDF is a download on Android; iOS shows it inline.
 
 #### Parameters
 
@@ -315,7 +317,8 @@ Every change to the navigation state. Changes within one frame are combined into
 
 > `optional` **onOpenExternal?**: (`url`) => `void`
 
-Opens `external` navigations. Default: the system browser or app for the URL.
+Opens `external` navigations, every one, an Android `intent:` URL included (its fallback URL is not loaded).
+Default: the system browser or app for the URL.
 
 #### Parameters
 
