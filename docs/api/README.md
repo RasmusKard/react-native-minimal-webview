@@ -52,6 +52,7 @@
 ## Variables
 
 - [Android](variables/Android.md)
+- [reactNativeWebViewMessages](variables/reactNativeWebViewMessages.md)
 - [WK](variables/WK.md)
 
 ## Functions

@@ -25,7 +25,8 @@ https://github.com/RasmusKard/react-native-minimal-webview/blob/main/docs/exampl
 > `optional` **configuration?**: [`SettingsRoot`](SettingsRoot.md)\<[`IOSSettingKeys`](IOSSettingKeys.md)\[`"configuration"`\]\>
 
 `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
-reloads and the navigation state starts over). The default lets a `<video playsinline>` play inline.
+reloads and the navigation state starts over). The default lets a `<video playsinline>` play inline. The private
+`allowUniversalAccessFromFileURLs` is accepted, for react-native-webview parity: it lets a `file:` page read any URL.
 
 #### Default
 
@@ -39,7 +40,8 @@ reloads and the navigation state starts over). The default lets a `<video playsi
 
 > `optional` **preferences?**: [`SettingsRoot`](SettingsRoot.md)\<[`IOSSettingKeys`](IOSSettingKeys.md)\[`"preferences"`\]\>
 
-`WKPreferences` (`configuration.preferences`), live.
+`WKPreferences` (`configuration.preferences`), live. The private `allowFileAccessFromFileURLs` is accepted, for
+react-native-webview parity: it lets a `file:` page read other `file:` URLs.
 
 ***
 
