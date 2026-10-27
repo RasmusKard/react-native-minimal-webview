@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.author         = package['author']
   s.homepage       = package['homepage']
   s.platforms      = {
-    :ios => '16.4'
+    :ios => '17.0'
   }
   repository = package['repository']
   s.source         = { git: repository.is_a?(Hash) ? repository['url'] : repository } # npm pkg fix makes it a Hash
