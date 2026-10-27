@@ -111,7 +111,7 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
         return inCheckout ? 'allow' : 'external';
       });
       h.setProps({
-        ...(external ? { onOpenExternal: (url: string) => host.external.push(url) } : {}),
+        ...(external ? { onOpenExternal: (url: string) => void host.external.push(url) } : {}),
         ...(downloads ? {} : { onDownload: undefined }),
       });
       await sleep(300);
@@ -512,7 +512,7 @@ async function schemes({ r, s }: Shape) {
   }
   s.clear();
   await s.click('applink');
-  await until(() => s.external.length > 0, 3000);
+  await until(() => decision(s, '/applink/') !== undefined, 3000);
   r.check(
     'E8 schemes: an app-link host rule sends https external',
     all(
@@ -544,7 +544,7 @@ async function schemeDefaults({ r, s, android }: Shape) {
   await s.use('none');
   await hub(s);
   await s.click('tel');
-  await until(() => s.external.length > 0, 3000);
+  await until(() => decision(s, 'tel:') !== undefined, 3000);
   const main = { external: s.external.join(), decision: s.decisions.at(-1) };
   s.clear();
   const tapped = await lines(s, () => s.tap('frame-tel', 'frame'));

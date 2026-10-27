@@ -71,7 +71,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val refresher = PullToRefresh(this)
   /**
    * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
-   * `openExternal` is there when JS handles `external` navigations (onOpenExternal); native only reports them.
    */
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null

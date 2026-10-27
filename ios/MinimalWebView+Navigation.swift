@@ -98,8 +98,17 @@ extension MinimalWebView {
 
   private func finish(_ request: NavigationRules.Request, _ action: String, _ rule: Int?, _ completion: (Bool) -> Void) {
     completion(action == "allow")
-    guard action == "external", !requestHandlers.contains("openExternal") else { return report(request, action, rule) }
-    // As on Android: an external URL that nothing opens is reported as blocked.
+    guard action == "external" else { return report(request, action, rule) }
+    guard requestHandlers.contains("openExternal") else { return open(request, rule) }
+    // Only false hands the URL back: nil (a throw, or the page moved on first) means the app has it. No timeout, as
+    // nothing waits for the answer: the navigation is cancelled already.
+    asks.ask("core.openExternal", ["url": request.url]) { [weak self] answer in
+      if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, "external", rule) }
+    }
+  }
+
+  /// Opens an `external` URL outside the WebView. As on Android, one that nothing opens is reported as blocked.
+  private func open(_ request: NavigationRules.Request, _ rule: Int?) {
     guard let url = URL(string: request.url) else { return report(request, "block", rule) }
     UIApplication.shared.open(url) { [weak self] opened in self?.report(request, opened ? "external" : "block", rule) }
   }

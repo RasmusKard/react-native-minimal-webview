@@ -10,7 +10,7 @@ A navigation decision, for `onNavigation`.
 
 > **action**: [`NavigationAction`](NavigationAction.md)
 
-Without `onOpenExternal`, an `external` URL that no app opens is reported as `block`.
+Without `onOpenExternal`, or when it returns false, an `external` URL that no app opens is reported as `block`.
 
 ### rule
 

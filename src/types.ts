@@ -87,7 +87,7 @@ export type NavigationRequest = {
 
 /** A navigation decision, for `onNavigation`. */
 export type NavigationEvent = NavigationRequest & {
-  /** Without `onOpenExternal`, an `external` URL that no app opens is reported as `block`. */
+  /** Without `onOpenExternal`, or when it returns false, an `external` URL that no app opens is reported as `block`. */
   action: NavigationAction;
   /**
    * Index of the matching rule in `navigationRules`, or null when no rule did (a default, or a download opened
@@ -449,10 +449,11 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
     signal: AbortSignal
   ) => NavigationAction | Promise<NavigationAction>;
   /**
-   * Opens `external` navigations, every one, an Android `intent:` URL included (its fallback URL is not loaded).
-   * Default: the system browser or app for the URL.
+   * Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
+   * Return false to hand one back: the core then opens it as it does without this prop, an `intent:`'s fallback URL
+   * included. Anything else, a throw too, means you opened it. Default: the system browser or app for the URL.
    */
-  onOpenExternal?: (url: string) => void;
+  onOpenExternal?: (url: string) => boolean | void;
   /**
    * The bridge to the page, from `createBridge`. Read when the WebView is created: another bridge recreates it (the
    * page reloads and the navigation state starts over), so make it once (`useMemo`). A bridge serves one mounted

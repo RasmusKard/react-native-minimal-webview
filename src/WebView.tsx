@@ -64,8 +64,7 @@ export type AskableEvent = HookEvent & { askId?: number };
 
 /**
  * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
- * whose prop is set, and reads the set when the request comes, so a prop can come and go. `openExternal` is never
- * asked: native only checks that JS opens external links itself, and reports them on `onNavigation`.
+ * whose prop is set, and reads the set when the request comes, so a prop can come and go.
  */
 const REQUESTS = {
   navigationRequest: 'onNavigationRequest',
@@ -247,7 +246,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       asks.set(askId, controller);
     }
     const value = await settle(
-      () => handler?.(payload, controller?.signal),
+      // onOpenExternal takes the URL itself.
+      () => handler?.(request === 'onOpenExternal' ? payload['url'] : payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onHookEvent failed for ${name}`
@@ -256,12 +256,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     asks.delete(askId);
     // Native already answered a cancelled ask with null; a late answer would find nothing.
     if (!controller?.signal.aborted) await answer(askId, value);
-  };
-
-  const onNavigation = ({ nativeEvent }: Native<NavigationEvent>) => {
-    const event = pick(nativeEvent, NAVIGATION_KEYS);
-    if (event.action === 'external') props.onOpenExternal?.(event.url);
-    props.onNavigation?.(event);
   };
 
   return (
@@ -278,7 +272,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={props.hookOptions && withoutNulls(props.hookOptions)}
       requestHandlers={requestHandlers}
-      onNavigation={onNavigation}
+      onNavigation={({ nativeEvent }) => props.onNavigation?.(pick(nativeEvent, NAVIGATION_KEYS))}
       onNavigationState={({ nativeEvent }) =>
         onNavigationState({ nativeEvent: pick(nativeEvent, STATE_KEYS) })
       }
