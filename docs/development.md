@@ -8,7 +8,7 @@ npm run lint && npm run prepare            # ESLint on src, example and .github 
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
-(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch, permission origins
 (cd example/android && ./gradlew :sample-extension:compileDebugKotlin)     # the sample extension against the Kotlin hook API, no app build
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios16.4-macabi   # with the next line: PlatformSettings.swift on a WKWebView as Mac Catalyst, no simulator (coercion, KVC guard, get, call)
