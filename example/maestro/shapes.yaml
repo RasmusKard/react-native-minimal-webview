@@ -1,0 +1,20 @@
+appId: expo.modules.minimalwebview.example
+name: shapes
+env:
+  SUITE: shapes
+---
+# Android: real taps where the harness asks (iOS clicks from script): iframe links, new windows, a capture input, two SPA
+# routes; then one back press for the BackHandler recipe.
+- runFlow: subflows/launch.yaml
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - repeat:
+          times: 12
+          commands:
+            - evalScript: ${output.n = (output.n || 0) + 1}
+            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+            - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 13 } }
+      - back
+- runFlow: subflows/finish.yaml

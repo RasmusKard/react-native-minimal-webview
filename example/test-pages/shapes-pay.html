@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pay</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}iframe{width:100%;height:120px}</style>
+<!-- The merchant. ?mode=frame: 3-D Secure in the bank's iframe. ?mode=top: a full-page POST to the bank, no gesture.
+     ?done=frame: the bank's POST back, inside the iframe. -->
+<h1>Pay</h1>
+<script>
+  const params = new URLSearchParams(location.search);
+  const acs = (term) => 'http://127.0.0.1:8090/shapes-acs.html?term=' + encodeURIComponent(term);
+  if (params.get('done') === 'frame') parent.postMessage('3ds done', '*');
+  if (params.get('mode') === 'frame') {
+    addEventListener('message', (event) => {
+      if (event.data === '3ds done') location.assign('/spa.html?from=paid');
+    });
+    document.body.append(Object.assign(document.createElement('iframe'), { src: acs('http://localhost:8090/shapes-pay.html?done=frame') }));
+  }
+  if (params.get('mode') === 'top') {
+    setTimeout(() => {
+      const form = Object.assign(document.createElement('form'), { method: 'post', action: acs('http://localhost:8090/post?term=1') });
+      document.body.append(form);
+      form.submit();
+    }, 300);
+  }
+</script>

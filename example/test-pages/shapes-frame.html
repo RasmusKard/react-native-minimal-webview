@@ -1,0 +1,9 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>body{font:16px system-ui;margin:8px}a{display:block;margin:14px 0;font-size:16px}</style>
+<a id="frame-other" href="http://127.0.0.1:8090/spa.html?from=frame">another site, in the frame</a>
+<a id="frame-tel" href="tel:+3725550000">tel:, in the frame</a>
+<script>
+  addEventListener('click', (event) => parent.log('frame click', event.target.id), true);
+</script>
