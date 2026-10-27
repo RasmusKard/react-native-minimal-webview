@@ -6,12 +6,13 @@ import WebKit
 extension MinimalWebView {
   func decideNavigation(_ action: WKNavigationAction, decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
     guard let target = action.request.url else { return decide(allowInPlace) }
-    // New windows are decided in createWebViewWith; history steps, reloads and our own loads skip the rules,
-    // as on Android (shouldOverrideUrlLoading is not called for them).
+    // New windows are decided in createWebViewWith; history steps, reloads, form POSTs and our own loads skip the
+    // rules, as on Android (shouldOverrideUrlLoading is not called for them).
     if action.targetFrame == nil { return decide(allowInPlace) }
     let mainFrame = action.targetFrame?.isMainFrame ?? true
     let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
-    if own || action.navigationType == .backForward || action.navigationType == .reload {
+    if own || action.navigationType == .backForward || action.navigationType == .reload
+      || action.request.httpMethod == "POST" {
       if own { programmaticUrl = nil }
       return decide(allowInPlace)
     }
@@ -45,6 +46,12 @@ extension MinimalWebView {
     windowFeatures: WKWindowFeatures
   ) -> WKWebView? {
     guard let target = action.request.url, !target.absoluteString.isEmpty, target.absoluteString != "about:blank" else { return nil }
+    // A form POST to a web page skips the rules here too, and loads in place. This load is the app's, past WebKit's
+    // limits on what a page may load, so any other scheme still meets the rules, which block file: and internal ones.
+    if action.request.httpMethod == "POST", ["http", "https"].contains(target.scheme?.lowercased()) {
+      loadProgrammatic(action.request)
+      return nil
+    }
     let request = NavigationRules.Request(
       url: target.absoluteString, mainFrame: true, newWindow: true, userInitiated: action.navigationType == .linkActivated
     )

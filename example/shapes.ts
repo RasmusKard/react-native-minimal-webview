@@ -353,7 +353,7 @@ async function oauth({ r, s }: Shape) {
   );
 }
 
-/** 3. Checkout: 3-D Secure in the bank's iframe, or a full-page POST to a bank the app can't list (an `ask`). */
+/** 3. Checkout: 3-D Secure in the bank's iframe, or a full-page POST to a bank the app can't list (no rule sees it). */
 async function checkout({ r, s, android }: Shape) {
   await s.use('checkout');
   s.clear();
@@ -377,35 +377,30 @@ async function checkout({ r, s, android }: Shape) {
       acsFrame
     );
 
+  // The rules never see a form POST, on either platform: whatever the `ask` would answer, nothing is asked or decided.
   const term = `${PAGES}/post?term=1`;
-  const acs = `${OTHER}/shapes-acs.html?term=${encodeURIComponent(term)}`;
+  const unruled = () => s.asked.length === 0 && s.decisions.length === 0;
   await s.use('checkout', { inCheckout: true });
   s.clear();
   await s.open('/shapes-pay.html?mode=top');
   const posted = await waitFor(s, (st) => st.url === term && idle(st));
   const paRes = await body(s);
-  // Android never shows the rules a POST: nothing is asked there.
   r.check(
     'C3 checkout: a full-page POST to an unlisted bank loads while in checkout',
-    all(posted, paRes === 'PaRes=ok', s.asked.join() === (android ? '' : acs)),
-    { url: s.state().url, body: paRes, asked: s.asked }
+    all(posted, paRes === 'PaRes=ok', unruled()),
+    { url: s.state().url, body: paRes, asked: s.asked, decisions: s.decisions }
   );
 
+  // Outside checkout the `ask` would send the bank external: the POST loads in place all the same.
   await s.use('checkout', { inCheckout: false });
   s.clear();
-  const pay = await s.open('/shapes-pay.html?mode=top');
-  // iOS asks, and `external` gets the URL without its POST body; Android loads it unasked.
-  const expected = android ? { url: term, external: '' } : { url: pay, external: acs };
-  await until(
-    () =>
-      s.state().url === expected.url && idle(s.state()) && s.external.join() === expected.external,
-    10000
-  );
+  await s.open('/shapes-pay.html?mode=top');
+  await waitFor(s, (st) => st.url === term && idle(st));
   await sleep(500);
   r.check(
     'C4 checkout: the same POST outside checkout',
-    all(stays(s, expected.url), s.external.join() === expected.external),
-    { external: s.external, asked: s.asked, url: s.state().url }
+    all(stays(s, term), s.external.length === 0, unruled()),
+    { external: s.external, asked: s.asked, decisions: s.decisions, url: s.state().url }
   );
 }
 
@@ -487,10 +482,11 @@ async function deferredWindows({ r, s, android }: Shape) {
     return;
   }
   await s.tap('post-blank-submit');
+  const posted = await waitFor(s, (st) => st.url === `${PAGES}/post?from=blank` && idle(st));
   r.check(
     'D5 windows: a form POST to a new window',
-    await waitFor(s, (st) => st.url === `${PAGES}/post?from=blank` && idle(st)),
-    s.state()
+    all(posted, !s.decisions.some((n) => n.url.includes('/post'))),
+    { state: s.state(), decisions: s.decisions }
   );
   r.info('D5 iOS: the POST body after it loaded in place', await body(s));
 }
