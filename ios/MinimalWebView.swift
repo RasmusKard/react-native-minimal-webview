@@ -50,6 +50,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
   private(set) var url = ""
+  /// `url` as the hooks see it (`WebViewContext.url`): it follows `url` while no load is in flight and WebKit's own URL
+  /// agrees, and takes the new page at each commit, after `onDocumentEnd`. WebKit moves the back-forward list to the
+  /// next page before didCommit, and `url` can follow it early.
+  private(set) var hookUrl = ""
   private var pendingUrl: String?
   /// An html source never reaches the back-forward list (WebKit hides substitute-data loads from session history):
   /// while the item that was current at its commit stays current, the html page is what is on screen.
@@ -274,8 +278,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     MainActor.assumeIsolated { tearDown() }
   }
 
-  /// The page on screen: the back-forward list's current item is created on commit and updated by
-  /// pushState/replaceState/hash; pending and provisional loads never touch it.
+  /// The page on screen: the back-forward list's current item, which a commit creates or moves to a moment before
+  /// didCommit (a history step may move it earlier), and pushState/replaceState/hash update.
   private func refreshUrls() {
     guard let webView else { return }
     let item = webView.backForwardList.currentItem
@@ -285,6 +289,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // WebKit's `url` is the active URL: a pending or provisional load shows here first.
     let active = webView.url?.absoluteString
     pendingUrl = webView.isLoading && active != committed ? active : nil
+    if !webView.isLoading, failedUrl != nil || active == committed { hookUrl = url }
   }
 
   /// WebKit's KVO fires before the delegate callbacks: the state is read and emitted one main-queue turn later, once
@@ -389,6 +394,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
+    refreshUrls()
+    hookUrl = url
     scheduleUpdate()
     forward { $0.webView?(webView, didCommit: navigation) }
   }

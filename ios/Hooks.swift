@@ -118,7 +118,7 @@ final class HookContext: WebViewContext {
 
   var key: String { hook.key }
 
-  var url: String { view?.url ?? "" }
+  var url: String { view?.hookUrl ?? "" }
 
   var navigationDelegates: [WKNavigationDelegate] {
     get { view?.navigationDelegates ?? [] }

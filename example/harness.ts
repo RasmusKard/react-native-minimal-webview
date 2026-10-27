@@ -2231,6 +2231,30 @@ async function fullscreen(h: Harness) {
 /** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
 async function sampleExtension(h: Harness) {
   const r = reporter('sampleExtension');
+  // WebKit moves its back-forward list to the next page a moment before it reports the commit, so what a handler sees
+  // can depend on timing: several same-origin navigations of each kind, each ending the page before it.
+  const misses: unknown[] = [];
+  const ends = async (go: () => unknown, to: string) => {
+    const [from, count] = [h.state().url, h.events.documentEnds.length];
+    await go();
+    await waitFor(h, (s) => s.url === to && idle(s) && h.events.documentEnds.length > count, 5000);
+    const end = h.events.documentEnds.at(-1);
+    if (end?.reason !== 'committed' || end.url !== from) misses.push({ from, end });
+  };
+  for (let i = 0; i < 3; i++) {
+    const [load, own] = [fresh(h, `/spa.html?load=${i}`), fresh(h, `/spa.html?own=${i}`)];
+    await ends(() => h.load(load), load);
+    await ends(
+      () => h.ref.current?.evaluate(`(location.href = '${own}', 1)`).catch(errorCode),
+      own
+    );
+    await ends(() => h.ref.current?.evaluate('(history.back(), 1)').catch(errorCode), load);
+  }
+  r.check(
+    'its onDocumentEnd handler hears each page end as that page: app loads, page navigations, history.back',
+    misses.length === 0,
+    misses
+  );
   const before = h.events.pageCounts.length;
   h.events.hookEvents.length = 0;
   const previous = h.state().url;
