@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>IdP</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a{display:block;margin:10px 0;font-size:16px}</style>
+<!-- The identity provider, served from 127.0.0.1. `return` is the app's redirect URI; ?auto=1 returns at once (SSO). -->
+<h1>IdP</h1>
+<a id="signin">sign in</a>
+<script>
+  const params = new URLSearchParams(location.search);
+  const back = params.get('return') ?? 'mrwshapes://cb';
+  // A 302 from the IdP's origin to the redirect URI.
+  document.getElementById('signin').href = '/redirect?to=' + encodeURIComponent(back + '?code=302');
+  if (params.get('auto') === '1') setTimeout(() => location.replace(back + '?code=auto'), 200);
+  log('opener', String(window.opener));
+</script>

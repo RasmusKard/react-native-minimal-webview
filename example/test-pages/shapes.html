@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shapes</title>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
+<!-- The app shapes suite's hub (example/shapes.ts): "another site", the IdP and the bank are 127.0.0.1. -->
+<h1>Shapes</h1>
+<a id="own" href="/spa.html?from=own">own site</a>
+<a id="other" href="http://127.0.0.1:8090/spa.html?from=other">another site</a>
+<a id="offsite" href="/redirect?to=http%3A%2F%2F127.0.0.1%3A8090%2Fspa.html%3Ffrom%3Dredirect">server redirect off-site</a>
+<a id="login" href="http://127.0.0.1:8090/shapes-idp.html?return=mrwshapes%3A%2F%2Fcb">log in at the IdP</a>
+<button id="login-popup" onclick="window.open('http://127.0.0.1:8090/shapes-idp.html?popup=1')">log in in a popup</button>
+<a id="blank-own" href="/spa.html?from=blank" target="_blank">own site, new window</a>
+<a id="blank-other" href="http://127.0.0.1:8090/spa.html?from=blank-other" target="_blank">another site, new window</a>
+<button id="open-own" onclick="window.open('/spa.html?from=open')">window.open, own site</button>
+<button id="open-deferred" onclick="const w = window.open(''); log('opened', w === null ? 'null' : 'window'); setTimeout(() => { if (w) w.location.href = '/spa.html?from=deferred'; }, 300)">window.open(''), then its location</button>
+<form id="post-blank" method="post" action="/post?from=blank" target="_blank">
+  <input type="hidden" name="a" value="1" />
+  <button id="post-blank-submit">form POST to a new window</button>
+</form>
+<a id="tel" href="tel:+3725551234">tel:</a>
+<a id="mailto" href="mailto:shapes@example.com">mailto:</a>
+<a id="sms" href="sms:+3725551234">sms:</a>
+<a id="maps" href="maps:?q=Tallinn">maps:</a>
+<a id="market" href="market://details?id=com.example.none">market:</a>
+<a id="itms" href="itms-apps://apps.apple.com/app/id1">itms-apps:</a>
+<a id="intent" href="intent://x/#Intent;scheme=nothere;package=com.example.none;S.browser_fallback_url=http%3A%2F%2Flocalhost%3A8090%2Fspa.html%3Ffrom%3Dfallback;end">intent: with a fallback</a>
+<a id="applink" href="http://127.0.0.1:8090/applink/x">app link</a>
+<a id="pdf" href="/shapes.pdf">PDF</a>
+<iframe id="frame" src="/shapes-frame.html" width="100%" height="140" onload="window.frameLoads = (window.frameLoads || 0) + 1"></iframe>
+<script>
+  // Every click, so a check that expects nothing to happen knows the tap landed.
+  addEventListener('click', (event) => log('click', event.target.id), true);
+</script>

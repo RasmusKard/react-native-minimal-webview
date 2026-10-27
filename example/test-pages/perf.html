@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Perf</title>
+<script>
+  // The perf suite's page (example/perf.ts). Results go to the test server (perfPost), so a host on another WebView
+  // library reads them the same way. The perfCall/perfEmit/perfOn globals let such a host swap in its own bridge.
+  window.perfPost = (run, data) =>
+    fetch(`/perf/result?run=${encodeURIComponent(run)}`, { method: 'POST', body: JSON.stringify(data) });
+  // A navigation loop, ?run=…&i=…&n=…: this first script stamps the document's arrival before anything else runs,
+  // each document from i=1 adds `arrival - the previous document's stamp just before it navigated` to sessionStorage,
+  // and the last one (i = n) posts them. With &auto=1 each document goes on 50 ms after its load (so its load events
+  // reach JS first); without, perfGo() starts the next navigation.
+  (() => {
+    const arrived = Date.now();
+    const q = new URLSearchParams(location.search);
+    const run = q.get('run');
+    if (!run) return;
+    const i = Number(q.get('i')), n = Number(q.get('n'));
+    const key = `perf:${run}`;
+    const samples = JSON.parse(sessionStorage.getItem(key) ?? '[]');
+    const left = Number(sessionStorage.getItem(`${key}:left`));
+    if (i > 0 && left) samples.push(arrived - left);
+    sessionStorage.setItem(key, JSON.stringify(samples));
+    window.perfGo = (auto) => {
+      const next = new URL(location.href);
+      next.searchParams.set('i', String(i + 1));
+      if (auto) next.searchParams.set('auto', '1');
+      // The sample.perf probe stamps natively here (Android synchronously, iOS when the message lands).
+      window.perfMark?.mark(String(i + 1));
+      window.webkit?.messageHandlers?.perfMark?.postMessage(String(i + 1));
+      sessionStorage.setItem(`${key}:left`, String(Date.now()));
+      location.href = next.href;
+    };
+    addEventListener('load', () => {
+      if (i >= n) perfPost(run, samples);
+      else if (q.get('auto') === '1') setTimeout(() => perfGo(true), 50);
+    });
+  })();
+
+  /** The smallest steps of performance.now() and Date.now(): spin until the value changes, 20 times. */
+  window.perfClock = (run) => {
+    const step = (now) => {
+      const a = now();
+      let b = a;
+      while (b === a) b = now();
+      return b - a;
+    };
+    const steps = (now) => Array.from({ length: 20 }, () => step(now));
+    perfPost(run, { performanceNow: steps(() => performance.now()), dateNow: steps(Date.now) });
+  };
+  const call = (method, params) => (window.perfCall ?? nativeBridge.call)(method, params);
+  const emit = (event, payload) => (window.perfEmit ?? nativeBridge.emit)(event, payload);
+  const on = (event, listener) => (window.perfOn ?? nativeBridge.on)(event, listener);
+  /** n page -> RN -> page calls one after another (the app's `echo`): each one's ms. */
+  window.perfPageCalls = async (run, n) => {
+    const ms = [];
+    for (let k = 0; k < n; k++) {
+      const t = performance.now();
+      await call('echo', k);
+      ms.push(performance.now() - t);
+    }
+    perfPost(run, ms);
+  };
+  /** n events in one loop; the harness stamps the last one's arrival. */
+  window.perfPageEmit = (run, n) => {
+    const t0 = Date.now();
+    for (let k = 0; k < n; k++) emit('perfEvent', k);
+    perfPost(run, { t0, loopMs: Date.now() - t0 });
+  };
+  /** Counts n events from RN, then posts when the last arrived and whether they came in order. */
+  window.perfListen = (run, n) => {
+    const got = [];
+    const off = on('perfEvent', (k) => {
+      got.push(k);
+      if (got.length < n) return;
+      perfPost(run, { t1: Date.now(), n: got.length, inOrder: got.every((v, j) => v === j) });
+      off?.();
+    });
+  };
+  addEventListener('DOMContentLoaded', () => window.nativeBridge?.handle('echo', (params) => params));
+</script>
+<h1>Perf</h1>

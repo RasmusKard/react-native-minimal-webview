@@ -5,6 +5,7 @@ import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.minimalwebview.DocumentScope
@@ -45,7 +46,11 @@ class SampleExtensionModule : Module() {
         context.chromeClients += HookDialogs(context)
         null
       }
+      PerfProbe.register()
     }
+    // The perf suite's frame-gap probe (PerfProbe.kt): module functions, so they work without a hook too.
+    AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
+    AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
   }
 }
 

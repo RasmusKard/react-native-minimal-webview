@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { isPageCounterEvent } from 'sample-extension';
 
-import { SUITES, onDriverRequest, pollForSuites, type Harness } from './harness';
+import { SUITES, launchMarks, onDriverRequest, pollForSuites, type Harness } from './harness';
 
 const PAGES = 'http://localhost:8090';
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
@@ -62,7 +62,8 @@ function Remountable({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  const state = useWebViewState(ref);
+  launchMarks.render ??= performance.now();
+  const [extraWebViews, setExtraWebViews] = useState(0);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
@@ -106,6 +107,7 @@ export default function App() {
     setFileRequest: (handler) => (fileRequestRef.current = handler),
     setPermission: (handler) => (permissionRef.current = handler),
     setProps,
+    setExtraWebViews,
     events,
     setAsk: (ask) => (askRef.current = ask),
   };
@@ -175,6 +177,7 @@ export default function App() {
               setError(null);
             }}
             onLoadEnd={({ outcome }) => {
+              launchMarks.loadEnd ??= performance.now();
               events.loads.push('end');
               events.outcomes.push(outcome);
             }}
@@ -184,13 +187,17 @@ export default function App() {
         </Remountable>
         {error ? <ErrorScreen error={error} onRetry={() => ref.current?.reload()} /> : null}
       </View>
+      {extraWebViews > 0 ? (
+        <View style={styles.extras}>
+          {Array.from({ length: extraWebViews }, (_, k) => (
+            <WebView key={k} source={{ uri: `${PAGES}/?extra=${k}` }} style={styles.webview} />
+          ))}
+        </View>
+      ) : null}
       <Text testID="harness-request" style={styles.state}>
         {driverRequest}
       </Text>
-      <Text style={styles.state} numberOfLines={3}>
-        {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
-        {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
-      </Text>
+      <StateLine />
       <ScrollView horizontal style={styles.buttons}>
         <Button title="back" onPress={() => ref.current?.goBack()} />
         <Button title="home" onPress={() => setSource({ uri: `${PAGES}/?t=${Date.now()}` })} />
@@ -199,6 +206,20 @@ export default function App() {
         ))}
       </ScrollView>
     </View>
+  );
+}
+
+/**
+ * The state line. Its own component, so a navigation state event re-renders only it: App re-rendering the WebView on
+ * each one would put the example's render work inside the perf numbers.
+ */
+function StateLine() {
+  const state = useWebViewState(ref);
+  return (
+    <Text style={styles.state} numberOfLines={3}>
+      {state.loading ? `loading ${Math.round(state.progress * 100)}%` : 'idle'} · {state.url}
+      {state.pendingUrl ? ` → ${state.pendingUrl}` : ''}
+    </Text>
   );
 }
 
@@ -224,6 +245,7 @@ const styles = StyleSheet.create({
   overlay: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fee' },
   container: { flex: 1, paddingTop: 50, backgroundColor: '#fff' },
   webview: { flex: 1 },
+  extras: { flexDirection: 'row', height: 80 },
   state: { fontSize: 11, padding: 4 },
   buttons: { flexGrow: 0, paddingBottom: 30 },
 });

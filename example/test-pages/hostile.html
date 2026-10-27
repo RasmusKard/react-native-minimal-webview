@@ -1,0 +1,90 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hostile</title>
+<script>
+  // The hostile suite's page (example/hostile.ts), on the allowed origin and on 127.0.0.1.
+  // ?frames=1 embeds this page twice as a probe iframe (cross-origin and same-origin); ?frame=<name> is such a probe,
+  // which reports to its parent; ?probe=1 forges bridge messages from the main frame; ?stale=B calls the app at
+  // document start.
+  const q = new URLSearchParams(location.search);
+  /** Posts a forged ready, call and event through every bridge transport this document has; reports what it found. */
+  window.forge = (from) => {
+    const transport = window.nativeBridgeTransport;
+    const webkit = window.webkit?.messageHandlers?.nativeBridge;
+    const doc = `forged-${from}`;
+    for (const message of [
+      { kind: 'ready', doc },
+      { kind: 'call', id: doc, method: 'hostileProbe', params: { from }, doc },
+      { kind: 'event', method: 'hostileEvent', params: { from }, doc },
+    ]) {
+      for (const t of [transport, webkit]) {
+        try {
+          t?.postMessage(JSON.stringify(message));
+        } catch {}
+      }
+    }
+    return {
+      from,
+      nativeBridge: typeof window.nativeBridge,
+      transport: typeof transport,
+      webkit: typeof webkit,
+      injected: window.__hostileInjected ?? null,
+    };
+  };
+  if (q.get('stale') === 'B' && window.nativeBridge) {
+    // Records what native delivers to this document (Android: the transport; iOS: __receive), to show where the
+    // previous document's answer went.
+    window.__delivered = [];
+    const transport = window.nativeBridgeTransport;
+    const real = window.nativeBridge;
+    if (transport) {
+      const onmessage = transport.onmessage;
+      transport.onmessage = (event) => (__delivered.push(event.data), onmessage(event));
+    } else {
+      window.nativeBridge = { ...real, __receive: (text) => (__delivered.push(text), real.__receive(text)) };
+    }
+    nativeBridge.call('hostileSlow', { from: 'B', ms: 2500 }).then(
+      (result) => (window.__stale = { result }),
+      (error) => (window.__stale = { error: error.code })
+    );
+  }
+  if (q.has('frame')) addEventListener('load', () => parent.postMessage(forge(q.get('frame')), '*'));
+  else if (q.has('probe')) window.__probe = forge('main');
+  window.frameReports = [];
+  addEventListener('message', (event) => frameReports.push({ ...event.data, origin: event.origin }));
+  if (window.nativeBridge) {
+    nativeBridge.handle('sum', ({ a, b }) => a + b);
+    nativeBridge.handle('slowPage', () => new Promise((resolve) => setTimeout(() => resolve('late'), 3000)));
+  }
+  const blob = (body) => URL.createObjectURL(new Blob([body], { type: 'text/html' }));
+  // Each sets a sentinel on the window it runs in, or its opener's: the suite checks the opener never gets one.
+  const sentinel = (name) => `<script>try{(window.opener||window).${name}=1}catch(e){}<\/script>`;
+</script>
+<script src="/common.js"></script>
+<style>body{font:16px system-ui;margin:12px}a,button{display:block;margin:10px 0;font-size:16px}iframe{width:100%;height:60px}</style>
+<h1>Hostile</h1>
+<button id="open-data" onclick="log('click open-data'); window.open('data:text/html,' + encodeURIComponent(sentinel('__hostileData')))">window.open data:</button>
+<button id="open-js" onclick="log('click open-js'); window.open('javascript:try{(window.opener||window).__hostileJs=1}catch(e){};void 0')">window.open javascript:</button>
+<button id="open-blob" onclick="log('click open-blob'); window.open(blob(sentinel('__hostileBlob')))">window.open blob:</button>
+<button id="open-file" onclick="log('click open-file'); window.open('file:///etc/hosts')">window.open file:</button>
+<a id="blank-data" target="_blank" onclick="log('click blank-data')">target=_blank data:</a>
+<a id="dl-traversal" href="/download?name=..%2F..%2Fevil.txt">download named ../../evil.txt</a>
+<a id="dl-dotdot" href="/download?name=..">download named ..</a>
+<a id="dl-moved">download redirected to another host</a>
+<a id="dl-held" download="held.txt">blob download the page holds</a>
+<script>
+  document.getElementById('blank-data').href = 'data:text/html,' + encodeURIComponent(sentinel('__hostileBlank'));
+  document.getElementById('dl-moved').href = '/moved?key=hostile-' + Date.now();
+  document.getElementById('dl-held').href = URL.createObjectURL(new Blob(['held body'], { type: 'text/plain' }));
+  if (q.has('frames')) {
+    for (const [name, src] of [
+      ['cross', 'http://127.0.0.1:8090/hostile.html?frame=cross'],
+      ['same', '/hostile.html?frame=same'],
+    ]) {
+      const frame = document.createElement('iframe');
+      Object.assign(frame, { id: name, src });
+      document.body.append(frame);
+    }
+  }
+</script>
