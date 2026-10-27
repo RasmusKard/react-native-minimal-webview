@@ -65,6 +65,13 @@ class DownloadsTest {
   }
 
   @Test
+  fun replacesANameThatIsADirectoryOrEmpty() {
+    for (name in listOf(".", "..", "")) assertEquals(name, "download", Downloads.safeName(name))
+    assertEquals("...", Downloads.safeName("..."))
+    assertEquals("a.txt", Downloads.safeName("a.txt"))
+  }
+
+  @Test
   fun copiesABodyUpToTheCap() {
     val output = ByteArrayOutputStream()
     Downloads.copyCapped(ByteArrayInputStream(body), output, body.size.toLong())
