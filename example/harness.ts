@@ -2599,5 +2599,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   hostile,
 };
 
-/** Timings, run only when named (`maestro/run.sh <platform> <device> perf perfCold`): a full run leaves them out. */
+/** Timings, run only when named (`maestro/run.sh <platform> <device> perfCold perf`): a full run leaves them out. */
 const ON_DEMAND: Record<string, (h: Harness) => Promise<void>> = { perf, perfCold };
