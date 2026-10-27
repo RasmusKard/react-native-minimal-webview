@@ -61,8 +61,8 @@ export type NavigationRule = {
   /**
    * `target=_blank` or `window.open`, a main-frame navigation. An allowed one loads in place: there is never a second
    * WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked, and
-   * on Android one that doesn't navigate within 5 s (`window.open('')`) is dropped; on iOS `window.open('')` returns
-   * null.
+   * one opened with no URL (`window.open('')`) is decided when the page first sends it to one, or dropped when that
+   * doesn't happen within 5 s.
    */
   newWindow?: boolean;
   /**

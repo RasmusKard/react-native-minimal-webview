@@ -452,25 +452,24 @@ async function windows({ r, s }: Shape) {
   );
 }
 
-/** 4. (cont.) window.open('') with a later location, and a form POST into a new window: the platforms split. */
+/** 4. (cont.) window.open('') with a later location, and a form POST into a new window, where the platforms split. */
 async function deferredWindows({ r, s, android }: Shape) {
-  let page = await hub(s);
+  await hub(s);
   const log = await lines(s, () => s.tap('open-deferred'));
-  // iOS returns null for an empty window.open; Android's throwaway window catches the URL the opener sets (5 s).
+  // A throwaway window catches the URL the opener sets (within 5 s), which the rules decide as a new window.
   const deferred = `${PAGES}/spa.html?from=deferred`;
-  await waitFor(s, (st) => st.url === deferred && idle(st), android ? 8000 : 1000);
+  await waitFor(s, (st) => st.url === deferred && idle(st), 8000);
   r.check(
     "D4 windows: window.open('') and a later location",
-    android
-      ? all(
-          stays(s, deferred),
-          has(decision(s, 'from=deferred'), { newWindow: true, action: 'allow' })
-        )
-      : all(String(log).includes('opened null'), stays(s, page)),
+    all(
+      String(log).includes('opened window'),
+      stays(s, deferred),
+      has(decision(s, 'from=deferred'), { newWindow: true, action: 'allow' })
+    ),
     { log, url: s.state().url, decision: decision(s, 'from=deferred') }
   );
 
-  page = await hub(s);
+  const page = await hub(s);
   if (android) {
     const submitted = await lines(s, () => s.tap('post-blank-submit'));
     await sleep(3000);
