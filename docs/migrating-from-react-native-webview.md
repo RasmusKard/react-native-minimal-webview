@@ -4,7 +4,7 @@ Most react-native-webview props are platform settings by name here: `thirdPartyC
 `android={{ webView: { acceptThirdPartyCookies: true } }}`, `bounces` is `ios={{ scrollView: { bounces: false } }}`,
 `cacheMode` is `android.settings.cacheMode`, `allowsBackForwardNavigationGestures` is `ios.webView.<the same name>`; the
 keys autocomplete ([platform settings](examples.md#platform-settings)). This page is what differs: the defaults, the
-props that became something else, and what has no equivalent. It runs on iOS 16.4+ and Android API 29+, with the new
+props that became something else, and what has no equivalent. It runs on iOS 17.0+ and Android API 29+, with the new
 architecture only ([requirements](../README.md)).
 
 ## Defaults that differ
