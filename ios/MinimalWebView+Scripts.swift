@@ -53,7 +53,9 @@ extension MinimalWebView {
 
   func bridgeReceive(_ message: WKScriptMessage) {
     let origin = OriginRules.origin(of: message.frameInfo.securityOrigin)
-    guard message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin), let text = message.body as? String else { return }
+    // This view's main frame only: a window.open('') view (WindowCatcher) shares the content controller.
+    guard message.webView === webView, message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin),
+      let text = message.body as? String else { return }
     // `*` allows every document, opaque ones too (whose location.origin is "null"): nothing to compare.
     bridgeOrigin = bridgeOrigins.contains("*") ? "*" : origin
     onBridge(["message": text, "origin": origin])
