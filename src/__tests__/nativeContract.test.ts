@@ -129,9 +129,10 @@ const failure = { ok: 1, filename: 1, url: 1, reason: 1 } satisfies Record<
 const permission = { origin: 1, resources: 1 } satisfies Record<keyof PermissionRequest, 1>;
 const file = { accept: 1, multiple: 1, capture: 1 } satisfies Record<keyof FileRequest, 1>;
 const fullscreen = { active: 1 } satisfies Record<keyof FullscreenChangeEvent, 1>;
-// No type: JS reads `payload['message']` and `payload['askId']` untyped.
+// No type: JS reads `payload['message']`, `payload['askId']` and `payload['url']` untyped.
 const warning = { message: 1 };
 const askCancelled = { askId: 1 };
+const openExternal = { url: 1 };
 // onNavigation's payload is the navigation request's (its own row) plus these, added at the emit site.
 const decision = Object.fromEntries(
   Object.keys(navigation)
@@ -181,6 +182,12 @@ const PAYLOADS: Record<Platform, Row[]> = {
       file: 'MinimalWebViewNavigation.kt',
       emitSite: /fun fields\(/g,
       keys: request,
+    },
+    {
+      event: 'core.openExternal',
+      file: 'MinimalWebViewNavigation.kt',
+      emitSite: /"core\.openExternal",/g,
+      keys: openExternal,
     },
     {
       event: 'core.download',
@@ -260,6 +267,12 @@ const PAYLOADS: Record<Platform, Row[]> = {
       file: 'NavigationRules.swift',
       emitSite: /var payload: \[String: Any\] \{/g,
       keys: request,
+    },
+    {
+      event: 'core.openExternal',
+      file: 'MinimalWebView+Navigation.swift',
+      emitSite: /"core\.openExternal",/g,
+      keys: openExternal,
     },
     {
       event: 'core.download',

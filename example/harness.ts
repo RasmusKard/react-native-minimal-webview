@@ -1573,6 +1573,15 @@ async function settings(h: Harness) {
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'native_error'
       );
+      // The migration guide's transparent WebView. UIKit declares `opaque` without runtime property metadata, so
+      // `ios.webView.opaque` and `get` refuse it: `call` sets it and reads it back.
+      const transparent = await call('webView.setOpaque:', [false]);
+      const opaque = await call('webView.isOpaque', []);
+      r.check(
+        'call makes the WebView transparent (setOpaque: false), and isOpaque reads back false',
+        transparent === null && opaque === false,
+        { transparent, opaque }
+      );
     } else {
       const payment = () => page(`typeof PaymentRequest`);
       const paymentBefore = await payment();
@@ -1659,6 +1668,14 @@ async function settings(h: Harness) {
         'call rejects an unknown root',
         (await call('clearCache', [true])) === 'native_error'
       );
+      // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
+      h.setProps({ android: { webView: { backgroundColor: 0 } } });
+      await sleep(500);
+      r.check(
+        'android.webView.backgroundColor 0 (transparent) applies without a warning',
+        !warned('android.webView.backgroundColor'),
+        warnings
+      );
     }
   } finally {
     console.warn = warn;
@@ -1673,7 +1690,7 @@ async function navigation(h: Harness) {
   const asked: string[] = [];
   let lastAskAt = 0;
   const lastNavigation = () => h.events.navigations[h.events.navigations.length - 1];
-  h.setProps({ onOpenExternal: (url) => external.push(url) });
+  h.setProps({ onOpenExternal: (url) => void external.push(url) });
   h.setAsk((request) => {
     asked.push(request.url);
     lastAskAt = Date.now();
@@ -1694,7 +1711,7 @@ async function navigation(h: Harness) {
   h.events.navigations.length = 0;
 
   await click(h, 'tel');
-  await waitFor(h, () => external.length > 0, 3000);
+  await waitFor(h, () => lastNavigation() !== undefined, 3000);
   r.check('tel: goes to onOpenExternal', external[0] === 'tel:+3725551234', external);
   r.check(
     'onNavigation reports the external decision and rule',
@@ -1721,7 +1738,7 @@ async function navigation(h: Harness) {
     r.info('TAP', await tapPoint(h, id));
   };
   await tap('open');
-  await waitFor(h, () => external.length > 2, 15000);
+  await waitFor(h, () => lastNavigation()?.url === 'https://example.com/popup', 15000);
   r.check(
     'a tapped window.open to another site goes external (newWindow)',
     external[2] === 'https://example.com/popup',
@@ -1755,7 +1772,7 @@ async function navigation(h: Harness) {
     external
   );
   h.setProps({
-    onOpenExternal: (url) => external.push(url),
+    onOpenExternal: (url) => void external.push(url),
     ios: { preferences: { javaScriptCanOpenWindowsAutomatically: true } },
     android: { settings: { javaScriptCanOpenWindowsAutomatically: true } },
   });
@@ -1857,26 +1874,67 @@ async function navigation(h: Harness) {
     lastNavigation()
   );
 
-  if (Platform.OS === 'android') {
-    h.setProps({});
-    h.setRules([
-      { scheme: ['intent'], action: 'external' },
-      { scheme: ['http', 'https'], action: 'allow' },
-    ]);
+  // The core opens what onOpenExternal hands back (false) as it does without the prop. Android: an intent: for an app
+  // that isn't installed, whose fallback goes through the rules. iOS: a tel:, which a simulator has no app for.
+  h.setRules([
+    { scheme: ['intent', 'tel'], action: 'external' },
+    { scheme: ['http', 'https'], action: 'allow' },
+  ]);
+  const scheme = Platform.OS === 'android' ? 'intent:' : 'tel:';
+  const sendExternal = async (from: string, onOpenExternal?: WebViewProps['onOpenExternal']) => {
+    h.setProps(onOpenExternal ? { onOpenExternal } : {});
     await sleep(500);
-    const fallback = `${h.pages}/spa.html?from=fallback`;
-    await h.ref.current?.evaluate(
-      `location.href = 'intent://nothing/#Intent;scheme=nothere;package=com.example.notinstalled;S.browser_fallback_url=${encodeURIComponent(fallback)};end'`
+    external.length = 0;
+    h.events.navigations.length = 0;
+    const fallback = `${h.pages}/spa.html?from=${from}`;
+    const url =
+      Platform.OS === 'android'
+        ? `intent://nothing/#Intent;scheme=nothere;package=com.example.notinstalled;S.browser_fallback_url=${encodeURIComponent(fallback)};end`
+        : 'tel:+3725551234';
+    await h.ref.current?.evaluate(`location.href = ${JSON.stringify(url)}`);
+    const decided = (prefix: string) => h.events.navigations.find((n) => n.url.startsWith(prefix));
+    await waitFor(h, () => decided(scheme) !== undefined, 5000);
+    // The core decides the fallback before it reports the intent:, so only a decided one gets time to load.
+    const loaded = await waitFor(
+      h,
+      (s) => s.url === fallback && idle(s),
+      decided(fallback) ? 8000 : 1000
     );
-    r.check(
-      'intent: without an app loads browser_fallback_url',
-      await waitFor(h, (s) => s.url === fallback && idle(s), 8000),
-      h.state()
-    );
+    return {
+      external: [...external],
+      decision: decided(scheme),
+      fallback: decided(fallback),
+      loaded,
+    };
+  };
+  if (Platform.OS === 'android') {
+    const own = await sendExternal('fallback');
+    r.check('intent: without an app loads browser_fallback_url', own.loaded, own);
     // Nothing opened externally, so the intent: is reported as blocked; the fallback reports its own allow.
-    const intent = h.events.navigations.find((n) => n.url.startsWith('intent:'));
-    r.check('the intent: itself is reported as block', intent?.action === 'block', intent);
+    r.check('the intent: itself is reported as block', own.decision?.action === 'block', own);
   }
+  const handedBack = await sendExternal('handed-back', (url) => {
+    external.push(url);
+    return false;
+  });
+  r.check(
+    Platform.OS === 'android'
+      ? 'onOpenExternal returning false hands an intent: back: its fallback loads through the rules, it is reported block'
+      : 'onOpenExternal returning false hands tel: back to the OS, which opens nothing on a simulator: block',
+    handedBack.external.length === 1 &&
+      handedBack.decision?.action === 'block' &&
+      (Platform.OS === 'ios' || (handedBack.loaded && handedBack.fallback?.rule === 1)),
+    handedBack
+  );
+  const handled = await sendExternal('handled', (url) => void external.push(url));
+  r.check(
+    'onOpenExternal returning nothing has opened it: reported external, no fallback',
+    handled.external.length === 1 &&
+      handled.decision?.action === 'external' &&
+      handled.fallback === undefined &&
+      !handled.loaded,
+    handled
+  );
   r.done();
 }
 
@@ -2029,7 +2087,7 @@ async function downloadsSuite(h: Harness) {
   }
 
   const opened: string[] = [];
-  h.setProps({ onDownload: undefined, onOpenExternal: (url) => opened.push(url) });
+  h.setProps({ onDownload: undefined, onOpenExternal: (url) => void opened.push(url) });
   await sleep(300);
   const events = () => h.events.downloads.length + h.events.downloadFailures.length;
   const before = events();
