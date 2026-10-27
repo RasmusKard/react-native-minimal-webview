@@ -20,6 +20,7 @@ const ROOT = __dirname;
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
+  '.pdf': 'application/pdf',
   '.txt': 'text/plain',
 };
 

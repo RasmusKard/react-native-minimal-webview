@@ -20,6 +20,8 @@ import type {
 import { WebView, WK } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
 
+import { shapes } from './shapes';
+
 export type Harness = {
   pages: string;
   platform: string;
@@ -64,7 +66,7 @@ export type Harness = {
   };
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let current: Harness | null = null;
 
@@ -95,7 +97,7 @@ function request(text: string) {
   });
 }
 
-function reporter(suite: string) {
+export function reporter(suite: string) {
   let pass = 0;
   let fail = 0;
   let requests = 0;
@@ -173,7 +175,11 @@ async function reset(h: Harness) {
 }
 
 /** Polls `fn` until it returns something truthy, and returns that; undefined after `ms`. */
-async function until<T>(fn: () => T | Promise<T>, ms = 10000, step = 100): Promise<T | undefined> {
+export async function until<T>(
+  fn: () => T | Promise<T>,
+  ms = 10000,
+  step = 100
+): Promise<T | undefined> {
   for (const end = Date.now() + ms; Date.now() < end; await sleep(step)) {
     const value = await fn();
     if (value) return value;
@@ -184,7 +190,7 @@ async function until<T>(fn: () => T | Promise<T>, ms = 10000, step = 100): Promi
 const waitFor = async (h: Harness, predicate: (s: NavigationState) => boolean, ms = 10000) =>
   (await until(() => predicate(h.state()), ms, 50)) === true;
 
-const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
 /** Allows every `ask`, with `rules` ahead of a catch-all http(s) allow; returns the asked URLs. */
 const allowAsks = async (h: Harness, rules: NavigationRule[]) => {
   const asked: string[] = [];
@@ -226,7 +232,7 @@ const webViewMajors = new WeakMap<object, Promise<number>>();
  * Checks `name`, or reports it as INFO on an Android WebView older than 146, which lacks a feature the check needs
  * (such as NavigationListener), so it fails by design there. The version is read once per suite run (per reporter).
  */
-async function checkUnlessOldWebView(
+export async function checkUnlessOldWebView(
   h: Harness,
   r: ReturnType<typeof reporter>,
   name: string,
@@ -815,7 +821,7 @@ const clearEvents = (h: Harness) => {
 };
 
 /** A test page's URL with a cache-buster: `path` on the test pages server, or a full URL. */
-const fresh = (h: Harness, path: string) =>
+export const fresh = (h: Harness, path: string) =>
   `${path.startsWith('http') ? '' : h.pages}${path}${path.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
 /**
@@ -831,7 +837,7 @@ async function recreate(h: Harness, props: Partial<WebViewProps>, remount = fals
 }
 
 /** Loads `uri` and waits until it is the idle page and its load has ended. */
-async function openPage(h: Harness, uri: string, ms = 15000) {
+export async function openPage(h: Harness, uri: string, ms = 15000) {
   const loads = h.events.loads.length;
   h.load(uri);
   const ok = await waitFor(
@@ -865,7 +871,7 @@ const text = async (h: Harness, id: string) =>
  * Android: the screen pixels of an element's centre, `x y`, for a driver's TAP; with `frame`, of an element inside
  * that same-origin iframe.
  */
-const tapPoint = async (h: Harness, id: string, frame?: string) =>
+export const tapPoint = async (h: Harness, id: string, frame?: string) =>
   (
     (await h.ref.current?.evaluate(`(() => {
     const f = ${frame ? `document.getElementById(${JSON.stringify(frame)})` : 'null'};
@@ -2578,4 +2584,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   ptr,
   network,
   sources,
+  shapes,
 };
