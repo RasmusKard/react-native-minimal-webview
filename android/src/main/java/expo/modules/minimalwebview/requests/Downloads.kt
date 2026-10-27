@@ -7,6 +7,7 @@ import android.webkit.CookieManager
 import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.TAG
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -16,7 +17,9 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** What WebView's DownloadListener reports. */
 internal data class DownloadInfo(
@@ -29,7 +32,7 @@ internal data class DownloadInfo(
 /**
  * Downloads, with the app's `onDownload`: http(s) is fetched again with the WebView's cookies and the page's user agent
  * (WebView hands over only the URL), through `HttpURLConnection` and `CookieManager` rather than React Native's OkHttp,
- * so the package builds without `react-android`; data: is decoded, and blob: is read by the page. Each lands in its own app-cache
+ * so the package builds without `react-android`; data: is decoded, and blob: is read by the page in chunks. Each lands in its own app-cache
  * directory and emits `download {ok: true, uri, filename, mimeType, url}`, as on iOS; a failed one emits
  * `download {ok: false, filename, url, reason}`. `url` is the full http(s) URL, or null for data: and blob: (the page
  * made the file itself). Without the prop the core opens it externally. Nothing here may crash the app: the page
@@ -41,7 +44,7 @@ internal class Downloads(private val owner: MinimalWebView) {
   /** Returns true when the app's prop takes the download. */
   fun onDownloadStart(download: DownloadInfo): Boolean {
     if ("download" !in owner.requestHandlers) return false
-    val name = URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType)
+    val name = safeName(URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType))
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
       download.url.startsWith("data:") -> save(name, download.url) { file -> writeDataUrl(file, download.url) }
@@ -56,12 +59,12 @@ internal class Downloads(private val owner: MinimalWebView) {
     save(name, download.url) { file -> fetchTo(download, file, cookies::getCookie, cookies::setCookie) }
   }
 
-  /** Writes [data] (a data: URL) to [file] and returns its MIME type. */
+  /** Appends [data] (a data: URL) to [file] and returns its MIME type. */
   private fun writeDataUrl(file: File, data: String): String {
     val header = data.substringBefore(',')
     // The body may be percent-encoded even when base64 (encodeURIComponent of the base64 text).
     val body = data.substringAfter(',').let { if ('%' in it) Uri.decode(it) else it }
-    file.writeBytes(if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else body.toByteArray())
+    file.appendBytes(if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else body.toByteArray())
     return header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }
   }
 
@@ -96,25 +99,40 @@ internal class Downloads(private val owner: MinimalWebView) {
     }
   }
 
-  /** WebView cannot fetch a blob: URL for us: the page reads the blob and returns it as a data: URL. */
-  private fun readBlob(url: String, name: String) {
+  /**
+   * WebView cannot fetch a blob: URL for us: the page reads it and returns it as data: URLs, [CHUNK_BYTES] at a time,
+   * each awaited on the io thread. A reply crosses as one Java string and is parsed twice, so a blob returned whole
+   * fills the heap several times over: a 40 MB one never arrived, a 96 MB one crashed the app.
+   */
+  private fun readBlob(url: String, name: String) = save(name, url) { file ->
+    var offset = 0L
+    var type: String
+    do {
+      val (size, data) = readChunk(url, offset)
+      type = writeDataUrl(file, data)
+      offset += CHUNK_BYTES
+      if (offset > MAX_BYTES) throw IOException(TOO_LARGE) // the page's own size check can be forged
+    } while (offset < size)
+    type
+  }
+
+  /** Asks the page, from the io thread, for the blob's size and the data: URL of its [CHUNK_BYTES] at [offset]. */
+  private fun readChunk(url: String, offset: Long): Pair<Long, String> {
     val script = """
       fetch(${JSONObject.quote(url)}).then((r) => r.blob()).then((b) => new Promise((ok, fail) => {
         if (b.size > $MAX_BYTES) return fail(new Error(${JSONObject.quote(TOO_LARGE)}));
-        const reader = new FileReader(); reader.onload = () => ok(reader.result); reader.onerror = () => fail(reader.error);
-        reader.readAsDataURL(b);
+        const reader = new FileReader(); reader.onload = () => ok([b.size, reader.result]); reader.onerror = () => fail(reader.error);
+        reader.readAsDataURL(b.slice($offset, $offset + $CHUNK_BYTES, b.type));
       }))
     """.trimIndent()
-    owner.evaluate(script) { result ->
-      result.fold(
-        { json ->
-          save(name, url) { file ->
-            writeDataUrl(file, JSONTokener(json).nextValue() as? String ?: throw IOException("could not read the blob"))
-          }
-        },
-        { error -> failed(name, url, IOException("could not read the blob: ${error.message}")) }
-      )
-    }
+    val reply = ArrayBlockingQueue<Result<String>>(1)
+    owner.mainHandler.post { owner.evaluate(script) { reply.offer(it) } }
+    val result = reply.poll(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS) ?: throw IOException("the page did not read the blob in time")
+    val json = result.getOrElse { throw IOException("could not read the blob: ${it.message}") }
+    // A reply far longer than a chunk's data: URL is forged: refuse it before it is copied twice more.
+    if (json.length > CHUNK_BYTES / 3 * 4 + 1024) throw IOException(TOO_LARGE)
+    val chunk = JSONTokener(json).nextValue() as? JSONArray ?: throw IOException("could not read the blob")
+    return chunk.getLong(0) to chunk.getString(1)
   }
 
   private fun failed(name: String, url: String, error: Exception) {
@@ -130,12 +148,15 @@ internal class Downloads(private val owner: MinimalWebView) {
   }
 
   internal companion object {
-    // The page picks the file: a blob: passes whole through the app's memory several times (a data: URL, then its
-    // bytes), and an http(s) one fills the cache, so above this a download fails instead of the app being killed.
+    // The page picks the file, and an http(s) one fills the cache: above this a download fails instead.
     const val MAX_BYTES = 100L * 1024 * 1024
     const val TOO_LARGE = "larger than 100 MB"
+    const val CHUNK_BYTES = 4L * 1024 * 1024
     const val MAX_REDIRECTS = 20 // OkHttp's, which React Native's fetch uses
     const val TIMEOUT_MS = 30_000
+
+    /** `guessFileName` keeps a page's `.` or `..` (a directory: the save fails with EISDIR) and can be empty. */
+    fun safeName(name: String) = if (name.isEmpty() || name == "." || name == "..") "download" else name
 
     /** Copies [input] to [output] and fails once more than [max] bytes came: the Content-Length can be missing or wrong. */
     fun copyCapped(input: InputStream, output: OutputStream, max: Long) {
