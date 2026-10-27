@@ -90,7 +90,8 @@ a Play Store image the Play Store updates Android System WebView in the backgrou
 tests a newer WebView than the image ships. Start the emulator with `-gpu host`. With the default (`auto`) it can come
 up rendering in software (`adb shell dumpsys SurfaceFlinger | grep GLES` names SwiftShader), and a full run takes
 nearly twice as long. If it crashes at start with a window (`mrw-api37` on emulator 37.2.12 did on one Mac), add
-`-no-window`.
+`-no-window`. A run whose timings matter needs `-no-window -gpu host` and the other platform idle: windowed, the
+emulator ran 2–5× slower (a Hermes `performance.now()` step of about 83 ns is normal; 200–400 ns means it is throttled).
 
 Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on. On
 `mrw-api36` (API 36, WebView 133) some checks are known limits of a WebView older than 146
