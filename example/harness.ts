@@ -2593,6 +2593,32 @@ async function sources(h: Harness) {
     JSON.stringify(loaded) === JSON.stringify(['rgb(1, 2, 3)', 1, 'local']),
     { loaded, url: h.state().url }
   );
+  if (Platform.OS === 'ios') {
+    // react-native-webview's private keys: a file: page fetches a sibling file only with the first, and a server that
+    // sends no CORS headers (this one) only with the second.
+    const read = async (url: string) =>
+      await h.ref.current?.evaluate(`fetch('${url}').then((r) => r.text(), () => 'blocked')`);
+    const server = `${h.pages}/common.js`;
+    const without = [await read('app.js'), await read(server)];
+    h.setProps({ ios: { preferences: { allowFileAccessFromFileURLs: true } } });
+    await sleep(300);
+    const reloads = h.events.loads.length;
+    h.ref.current?.reload();
+    await waitFor(h, (s) => h.events.loads.slice(reloads).includes('end') && idle(s));
+    const sibling = await read('app.js');
+    r.check(
+      'ios.preferences.allowFileAccessFromFileURLs lets a file: page fetch a sibling file',
+      without[0] === 'blocked' && sibling === 'window.__asset = 1',
+      { without: without[0], sibling }
+    );
+    await recreate(h, { ios: { configuration: { allowUniversalAccessFromFileURLs: true } } });
+    const universal = await read(server);
+    r.check(
+      'ios.configuration.allowUniversalAccessFromFileURLs lets it fetch from a server with no CORS headers',
+      without[1] === 'blocked' && String(universal).includes('window.testLog = []'),
+      { without: without[1], universal: String(universal).slice(0, 40) }
+    );
+  }
   dir.delete();
   r.done();
 }
