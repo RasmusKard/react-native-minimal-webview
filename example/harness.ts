@@ -21,6 +21,7 @@ import { WebView, WK } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
 
 import { hostile } from './hostile';
+import { perf, perfCold } from './perf';
 import { shapes } from './shapes';
 
 export type Harness = {
@@ -45,6 +46,8 @@ export type Harness = {
   setPermission: (handler: ((request: PermissionRequest) => Promise<boolean>) | undefined) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
   setProps: (props: Partial<WebViewProps>) => void;
+  /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
+  setExtraWebViews: (n: number) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
   events: {
     errors: LoadErrorEvent[];
@@ -68,6 +71,9 @@ export type Harness = {
 };
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** `performance.now()` at App's first render and at its first onLoadEnd: the perfCold suite's cold mount. */
+export const launchMarks: { render?: number; loadEnd?: number } = {};
 
 let current: Harness | null = null;
 
@@ -135,7 +141,7 @@ export function pollForSuites(get: () => Harness) {
     if (!name) return;
     busy = true;
     current = get();
-    const suite = SUITES[name];
+    const suite = SUITES[name] ?? ON_DEMAND[name];
     try {
       if (suite) await suite(current);
       else {
@@ -164,6 +170,7 @@ export function pollForSuites(get: () => Harness) {
  */
 async function reset(h: Harness) {
   h.setProps({});
+  h.setExtraWebViews(0);
   h.setRules(undefined);
   h.setAsk(undefined);
   h.setPermission(undefined);
@@ -2591,3 +2598,6 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   shapes,
   hostile,
 };
+
+/** Timings, run only when named (`maestro/run.sh <platform> <device> perf perfCold`): a full run leaves them out. */
+const ON_DEMAND: Record<string, (h: Harness) => Promise<void>> = { perf, perfCold };
