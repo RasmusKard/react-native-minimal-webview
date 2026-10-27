@@ -36,8 +36,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var installedScripts: NSArray?
   /// The user scripts installScripts added: the others in the content controller are a hook's.
   var ownScripts: [WKUserScript] = []
-  /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes. `openExternal`
-  /// is there when JS handles `external` navigations (onOpenExternal); native only reports them.
+  /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes.
   var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 

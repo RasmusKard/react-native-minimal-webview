@@ -197,7 +197,7 @@ async function staleAnswer({ h, r }: Suite) {
 async function newWindows(suite: Suite) {
   const { h, r } = suite;
   const external: string[] = [];
-  h.setProps({ onOpenExternal: (url) => external.push(url) });
+  h.setProps({ onOpenExternal: (url) => void external.push(url) });
   h.setRules([
     { newWindow: true, action: 'allow' },
     { scheme: ['http', 'https'], action: 'allow' },
@@ -246,7 +246,7 @@ async function newWindows(suite: Suite) {
 /** F1: with no rules, a page sends the main frame to a custom scheme with no gesture: it goes external. */
 async function defaultScheme({ h, r }: Suite) {
   const external: string[] = [];
-  h.setProps({ onOpenExternal: (url) => external.push(url) });
+  h.setProps({ onOpenExternal: (url) => void external.push(url) });
   h.setRules(undefined);
   await sleep(300);
   const page = fresh(h, '/hostile.html');

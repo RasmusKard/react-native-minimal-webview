@@ -44,7 +44,7 @@ internal class MinimalWebViewNavigation(
         Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
         "block"
       }
-      "external" -> if (openExternal(request.url)) "external" else "block"
+      "external" -> return true.also { openExternal(request, decision.rule) }
       else -> decision.action
     }
     notifyNavigation(request, action, decision.rule)
@@ -70,8 +70,7 @@ internal class MinimalWebViewNavigation(
         askedAndAllowed += request.url
         reissue(request.url, referrer)
       }
-      val opened = action != "external" || openExternal(request.url)
-      notifyNavigation(request, if (opened) action else "block", rule)
+      if (action == "external") openExternal(request, rule) else notifyNavigation(request, action, rule)
     }
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
     owner.mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
@@ -88,9 +87,23 @@ internal class MinimalWebViewNavigation(
    */
   fun openDownload(url: String) {
     if (url.startsWith("http:") || url.startsWith("https:")) {
-      notifyNavigation(NavigationRules.Request(url, true, false, false), if (openExternal(url)) "external" else "block", null)
+      openExternal(NavigationRules.Request(url, true, false, false), null)
     } else {
       Log.w(TAG, "dropped a download from ${url.take(40)}")
+    }
+  }
+
+  /**
+   * Opens an `external` navigation and reports it (`block` when nothing opened it): the app's `onOpenExternal` if set,
+   * and [open] when it isn't or answers false.
+   */
+  private fun openExternal(request: NavigationRules.Request, rule: Int?) {
+    val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
+    if ("openExternal" !in owner.requestHandlers) return report(open(request.url))
+    // Only false hands the URL back: null (a throw, or the page moved on first) means the app has it. No timeout, as
+    // nothing waits for the answer: the navigation is cancelled already.
+    owner.asks.ask("core.openExternal", mapOf("url" to request.url)) { answer ->
+      report(answer != false || open(request.url))
     }
   }
 
@@ -98,8 +111,7 @@ internal class MinimalWebViewNavigation(
    * Opens a URL outside the WebView. Returns false when it could not be opened (the caller reports `block`): a page
    * controls the URL, so a malformed intent (bad syntax, launchFlags=zz) or a refused activity must not crash the app.
    */
-  private fun openExternal(url: String): Boolean {
-    if ("openExternal" in owner.requestHandlers) return true
+  private fun open(url: String): Boolean {
     val intent = try {
       browsableIntent(url)
     } catch (e: URISyntaxException) {

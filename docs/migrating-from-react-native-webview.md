@@ -94,6 +94,7 @@ The props whose setting has another name:
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
 | `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`; on iOS `ios.preferences.allowFileAccessFromFileURLs` and `ios.configuration.allowUniversalAccessFromFileURLs` |
 | `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
+| `style={{ backgroundColor: 'transparent' }}` | `android.webView.backgroundColor: 0`; on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (`ios.webView.opaque` is refused: UIKit declares it without runtime property metadata) |
 | `containerStyle` | A `View` around the WebView |
 
 ## What else changes
@@ -126,7 +127,8 @@ Navigation rules replace the callback: they run natively, in order, with no JS r
 
 The request has `url`, `mainFrame` (was `isTopFrame`), `newWindow` and `userInitiated` (in place of `navigationType`
 `click`); there is no `navigationType` or `mainDocumentURL`. A new window (`onOpenWindow`) is a navigation with
-`newWindow: true`: an allowed one loads in place, never in a second WebView.
+`newWindow: true`: an allowed one loads in place, never in a second WebView. react-native-webview on iOS also passes
+form POSTs to the callback; here a form POST loads in place on both platforms, without a decision.
 
 ## injectJavaScript
 

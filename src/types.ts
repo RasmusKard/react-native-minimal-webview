@@ -71,8 +71,9 @@ export type NavigationRule = {
    */
   userInitiated?: boolean;
   /**
-   * `ask` calls `onNavigationRequest`. On Android it works only for the main frame (elsewhere it is `block`), and an
-   * allowed navigation is loaded again, without the page's referrer policy or the gesture flag.
+   * `ask` calls `onNavigationRequest`. On Android it works only for the main frame (elsewhere it is `block`), waits for
+   * the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag:
+   * about 10 ms more than a rule takes (15 ms end to end against 7 on an API 37 emulator; on iOS 7 ms either way).
    */
   action: NavigationAction | 'ask';
 };
@@ -87,7 +88,7 @@ export type NavigationRequest = {
 
 /** A navigation decision, for `onNavigation`. */
 export type NavigationEvent = NavigationRequest & {
-  /** Without `onOpenExternal`, an `external` URL that no app opens is reported as `block`. */
+  /** Without `onOpenExternal`, or when it returns false, an `external` URL that no app opens is reported as `block`. */
   action: NavigationAction;
   /**
    * Index of the matching rule in `navigationRules`, or null when no rule did (a default, or a download opened
@@ -429,10 +430,11 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
    * and with no match the navigation is blocked. With no rules (or `[]`), http(s) loads in place, `file:` is blocked,
-   * and other schemes open externally from the main frame and are blocked from a subframe. `about:`, `blob:`, `data:`
-   * and `javascript:` always load in place. The `source` load, reloads and back/forward skip the rules; a redirect of
-   * the `source` load doesn't, nor on Android a redirect of a reload or back/forward. The rules never see a form POST,
-   * on either platform: it loads in place, and one to a new window loads in place on iOS and doesn't load on Android.
+   * and other schemes open externally from the main frame, with or without a user gesture (rules can require one with
+   * `userInitiated: true`), and are blocked from a subframe. `about:`, `blob:`, `data:` and `javascript:` always load
+   * in place. The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor
+   * on Android a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in
+   * place, and one to a new window loads in place on iOS and doesn't load on Android.
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
    * when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
    * `block`.
@@ -449,10 +451,12 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
     signal: AbortSignal
   ) => NavigationAction | Promise<NavigationAction>;
   /**
-   * Opens `external` navigations, every one, an Android `intent:` URL included (its fallback URL is not loaded).
-   * Default: the system browser or app for the URL.
+   * Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
+   * Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
+   * `intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
+   * app for the URL.
    */
-  onOpenExternal?: (url: string) => void;
+  onOpenExternal?: (url: string) => boolean | void | Promise<boolean | void>;
   /**
    * The bridge to the page, from `createBridge`. Read when the WebView is created: another bridge recreates it (the
    * page reloads and the navigation state starts over), so make it once (`useMemo`). A bridge serves one mounted
