@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.summary        = 'An out-of-package minimal-rn-webview extension'
   s.author         = ''
   s.homepage       = 'https://github.com/RasmusKard/minimal-rn-webview'
-  s.platforms      = { :ios => '16.4' }
+  s.platforms      = { :ios => '17.0' }
   s.source         = { git: '' }
   s.static_framework = true
   s.dependency 'ExpoModulesCore'
