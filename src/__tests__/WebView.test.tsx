@@ -617,18 +617,32 @@ describe('page requests', () => {
     await asked;
   });
 
-  it('tells onOpenExternal of an external navigation only', async () => {
-    const onOpenExternal = jest.fn();
-    const { native } = await render({ onOpenExternal });
-    const navigation = { mainFrame: true, newWindow: false, userInitiated: true, rule: null };
-    await act(async () => {
-      const { onNavigation } = native as { onNavigation: (event: { nativeEvent: object }) => void };
-      onNavigation({ nativeEvent: { ...navigation, url: 'https://a.example/', action: 'allow' } });
-      onNavigation({
-        nativeEvent: { ...navigation, url: 'https://b.example/', action: 'external' },
+  it('asks onOpenExternal with the URL alone and answers its result: false, else null', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onOpenExternal = jest
+      .fn<boolean | void, [string]>()
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(undefined)
+      .mockImplementationOnce(() => {
+        throw new Error('no');
       });
-    });
-    expect(onOpenExternal.mock.calls).toEqual([['https://b.example/']]);
+    const { fire } = await renderRequests({ onOpenExternal });
+    await fire('core.openExternal', { url: 'intent://a#Intent;end' }, 1);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: false });
+    await fire('core.openExternal', { url: 'tel:1' }, 2);
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
+    await fire('core.openExternal', { url: 'tel:2' }, 3);
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
+    expect(error).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] onOpenExternal failed',
+      expect.any(Error)
+    );
+    expect(onOpenExternal.mock.calls.map(([url]) => url)).toEqual([
+      'intent://a#Intent;end',
+      'tel:1',
+      'tel:2',
+    ]);
+    error.mockRestore();
   });
 });
 
