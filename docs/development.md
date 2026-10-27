@@ -8,11 +8,17 @@ npm run lint && npm run prepare            # ESLint on src, example and .github 
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
-(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch, permission origins, evaluations
 (cd example/android && ./gradlew :sample-extension:compileDebugKotlin)     # the sample extension against the Kotlin hook API, no app build
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios16.4-macabi   # with the next line: PlatformSettings.swift on a WKWebView as Mac Catalyst, no simulator (coercion, KVC guard, get, call)
 xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o /tmp/mrw.o && xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/mrw.o -o /tmp/settings && /tmp/settings
+npx jest --coverage --coverageReporters=text --collectCoverageFrom='src/**/*.{ts,tsx}'   # TS coverage per src/ file (istanbul), counting files no test loads; writes no files
+(cd example/android && ./gradlew -PmrwCoverage :minimal-rn-webview:createDebugUnitTestCoverageReport)   # Kotlin coverage (JaCoCo) in android/build/reports/coverage/test/debug/index.html, lines in its Missed and Lines columns
+xcrun swiftc -profile-generate -profile-coverage-mapping ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && LLVM_PROFILE_FILE=/tmp/rules.profraw /tmp/rules   # with the next three lines (F and T as above): Swift and Objective-C coverage (llvm-cov) of the files the two test binaries compile
+for m in MRWExceptions MRWInvoke; do xcrun clang -target $T -iframework "$F" -fobjc-arc -fprofile-instr-generate -fcoverage-mapping -c ios/$m.m -o /tmp/$m.o; done   # one object per file: llvm-profdata rejects the profile of a `clang -r` object
+xcrun swiftc -target $T -Fsystem "$F" -profile-generate -profile-coverage-mapping -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/MRWExceptions.o /tmp/MRWInvoke.o -o /tmp/settings && LLVM_PROFILE_FILE=/tmp/settings.profraw /tmp/settings
+xcrun llvm-profdata merge /tmp/rules.profraw /tmp/settings.profraw -o /tmp/ios.profdata && xcrun llvm-cov report /tmp/rules -object /tmp/settings -instr-profile=/tmp/ios.profdata -ignore-filename-regex=Tests/
 npm run mutation                           # Stryker on src/bridge, WebView.tsx and refStore.ts (fails below an 80% score)
 npm run docs                               # docs/api from the TSDoc (typedoc); `check` fails when it is stale
 ```
