@@ -452,10 +452,11 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   ) => NavigationAction | Promise<NavigationAction>;
   /**
    * Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
-   * Return false to hand one back: the core then opens it as it does without this prop, an `intent:`'s fallback URL
-   * included. Anything else, a throw too, means you opened it. Default: the system browser or app for the URL.
+   * Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
+   * `intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
+   * app for the URL.
    */
-  onOpenExternal?: (url: string) => boolean | void;
+  onOpenExternal?: (url: string) => boolean | void | Promise<boolean | void>;
   /**
    * The bridge to the page, from `createBridge`. Read when the WebView is created: another bridge recreates it (the
    * page reloads and the navigation state starts over), so make it once (`useMemo`). A bridge serves one mounted

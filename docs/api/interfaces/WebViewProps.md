@@ -316,11 +316,12 @@ Every change to the navigation state. Changes within one frame are combined into
 
 ### onOpenExternal?
 
-> `optional` **onOpenExternal?**: (`url`) => `boolean` \| `void`
+> `optional` **onOpenExternal?**: (`url`) => `boolean` \| `void` \| `Promise`\<`boolean` \| `void`\>
 
 Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
-Return false to hand one back: the core then opens it as it does without this prop, an `intent:`'s fallback URL
-included. Anything else, a throw too, means you opened it. Default: the system browser or app for the URL.
+Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
+`intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
+app for the URL.
 
 #### Parameters
 
@@ -330,7 +331,7 @@ included. Anything else, a throw too, means you opened it. Default: the system b
 
 #### Returns
 
-`boolean` \| `void`
+`boolean` \| `void` \| `Promise`\<`boolean` \| `void`\>
 
 ***
 
