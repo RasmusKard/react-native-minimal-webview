@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 
 import {
   type Harness,
-  checkUnlessOldWebView,
+  WEBVIEW,
   fresh,
   idle,
   openPage,
@@ -79,7 +79,8 @@ async function bridgeGate({ h, r }: Suite) {
     const leaked = { probes: probes.splice(0), events: events.splice(0) };
     const frame = (name: string) => reports?.find((report) => report.from === name);
     for (const name of ['cross', 'same']) {
-      r.check(
+      r.since(
+        WEBVIEW.bridge,
         `T3 a ${name}-origin iframe gets no bridge, and what it forges reaches no handler`,
         all(
           frame(name)?.nativeBridge === 'undefined',
@@ -93,7 +94,8 @@ async function bridgeGate({ h, r }: Suite) {
     // The control: the main frame's own call arrives, with its origin, and the forged `ready`s took nothing over.
     const control = await evaluate(h, "nativeBridge.call('hostileProbe', { from: 'main' })");
     const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
-    r.check(
+    r.since(
+      WEBVIEW.bridge,
       "T3 control: the main frame's call arrives with its origin, and RN -> page still works",
       all(control === 'ok', probes.length === 1, probes[0]?.sender.origin === h.pages, sum === 5),
       { control, probes, sum }
@@ -103,7 +105,8 @@ async function bridgeGate({ h, r }: Suite) {
     await openPage(h, fresh(h, `${OTHER}/hostile.html?probe=1`));
     await sleep(1000);
     const probe = (await evaluate(h, '__probe')) as FrameReport | undefined;
-    r.check(
+    r.since(
+      WEBVIEW.bridge,
       'T2 a main frame outside allowedOrigins gets no bridge, and what it forges reaches no handler',
       all(probe?.nativeBridge === 'undefined', probes.length === 0, events.length === 0),
       { probe, probes, events }
@@ -111,7 +114,8 @@ async function bridgeGate({ h, r }: Suite) {
     r.info('T2 bridge transports on the non-allowed main frame', probe);
 
     const injected = await evaluate(h, 'window.__hostileInjected');
-    r.check(
+    r.since(
+      WEBVIEW.injectedScripts,
       'F2 an injected script runs on a non-allowed origin, and (mainFrameOnly false) in its cross-origin iframes',
       all(injected === OTHER, frame('cross')?.injected === OTHER),
       { injected, frame: frame('cross') }
@@ -122,7 +126,8 @@ async function bridgeGate({ h, r }: Suite) {
     const early = await Promise.race([pending, sleep(500).then(() => 'pending')]);
     await evaluate(h, "(setTimeout(() => (location.href = '/spa.html?from=hostile'), 100), 1)");
     const settled = await Promise.race([pending, sleep(5000).then(() => 'still pending')]);
-    r.check(
+    r.since(
+      WEBVIEW.evaluate,
       'F3 an evaluate the page holds pending rejects navigated once the page navigates itself',
       all(early === 'pending', settled === 'navigated'),
       { early, settled }
@@ -163,12 +168,14 @@ async function staleAnswer({ h, r }: Suite) {
     // Only a race: B's call was waiting when A's answer came. (B's 2500 ms ends after A's 1500 ms, within the
     // page's 3 s bridge timeout.)
     const raced = (calls.B ?? Infinity) < (answers.A ?? 0);
-    r.check(
+    r.since(
+      WEBVIEW.bridge,
       "T4 an answer to the previous document's call does not settle the next document's call with the same id",
       all(raced, stale?.result === 'B'),
       { stale, calls, answers }
     );
-    r.check(
+    r.since(
+      WEBVIEW.bridge,
       'T4 an app call in flight rejects navigated when the page navigates itself',
       rn === 'navigated',
       rn
@@ -198,6 +205,13 @@ async function newWindows(suite: Suite) {
   await sleep(300);
   const page = fresh(h, '/hostile.html');
   await openPage(h, page);
+  const sentinelsNow = async () =>
+    JSON.stringify(
+      await evaluate(
+        h,
+        '[window.__hostileData, window.__hostileJs, window.__hostileBlob, window.__hostileBlank]'
+      )
+    );
   for (const [id, label] of [
     ['open-data', 'window.open to data:'],
     ['open-js', 'window.open to javascript:'],
@@ -206,14 +220,13 @@ async function newWindows(suite: Suite) {
     ['blank-data', 'target=_blank to data:'],
   ] as const) {
     const [loads, navigations] = [h.events.loads.length, h.events.navigations.length];
+    // A sentinel an earlier window set fails that window's check only.
+    const before = await sentinelsNow();
     const clicked = await gesture(suite, id);
     await until(() => h.events.navigations.length > navigations, 2000);
     await sleep(1000); // a load the core wrongly let in would have started by now
     const decisions = h.events.navigations.slice(navigations);
-    const sentinels = await evaluate(
-      h,
-      '[window.__hostileData, window.__hostileJs, window.__hostileBlob, window.__hostileBlank]'
-    );
+    const sentinels = await sentinelsNow();
     r.check(
       `T5 a tapped ${label} does not load, with a rule that allows every new window`,
       all(
@@ -221,10 +234,10 @@ async function newWindows(suite: Suite) {
         h.state().url === page,
         !decisions.some((decision) => decision.action === 'allow'),
         !h.events.loads.slice(loads).includes('start'),
-        JSON.stringify(sentinels) === '[null,null,null,null]',
+        sentinels === before,
         external.length === 0
       ),
-      { clicked, url: h.state().url, decisions, sentinels, external }
+      { clicked, url: h.state().url, decisions, before, sentinels, external }
     );
     r.info(`T5 ${label}: decisions`, decisions);
   }
@@ -303,9 +316,8 @@ async function ssl({ h, r, android }: Suite) {
   await waitFor(h, (s) => s.url === entry, 3000);
   await openPage(h, fresh(h, '/hostile.html?ssl=next'));
   const travel = await nextError(h, () => h.ref.current?.goBack());
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'T9 a back/forward load redirected to a bad certificate is cancelled and reported',
     all(travel.error?.kind === 'ssl', travel.error?.url === badAgain, travel.shown !== badAgain),
     { ...travel, state: h.state() }
@@ -405,7 +417,8 @@ async function heldBlob({ h, r, android }: Suite) {
   await evaluate(h, "(location.href = '/spa.html?from=held', 1)");
   await until(() => h.events.downloadFailures.length > failures, 5000);
   const failure = h.events.downloadFailures[failures];
-  r.check(
+  r.since(
+    WEBVIEW.evaluate,
     'F3 a blob download the page never lets finish waits for the page, and fails when it navigates',
     all(held, failure?.reason.includes('navigated') === true),
     { held, failure }

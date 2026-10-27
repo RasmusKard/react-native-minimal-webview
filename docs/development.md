@@ -106,16 +106,28 @@ nearly twice as long. If it crashes at start with a window (`mrw-api37` on emula
 emulator ran 2–5× slower (in the perf suite's `clock` line, a Hermes `performance.now()` step of about 83 ns is normal;
 200–400 ns means it is throttled).
 
-Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on. On
-`mrw-api36` (API 36, WebView 133) some checks are known limits of a WebView older than 146
-([Android System WebView versions](../README.md#android-system-webview-versions)), and the harness reports them as
-`INFO ... known limit (WebView <146): <check>` instead of passing or failing them. The reference iOS simulator is an
-iPhone 17 Pro on iOS 26.5.
+Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on.
+The floor emulators are `mrw-api36` (API 36, WebView 133) and `mrw-api29-gapi` (API 29, WebView 91). On an older
+WebView, a check that needs what that WebView lacks reports `INFO ... known limit (WebView <N>): <check>` instead of
+passing or failing, N being the first WebView that has it (`WEBVIEW` in `example/harness.ts`; the package's own floors
+are in [Android System WebView versions](../README.md#android-system-webview-versions)):
+- 83: `evaluate`, and so `blob:` downloads. Below it the suites can't read a page (they do it through `evaluate`).
+- 101: the bridge and `injectedScripts`.
+- 113: the file input's `cancel` event, which the upload page waits for.
+- 136: `android.settings.paymentRequestEnabled`.
+- 146: `pendingUrl`, the load events of a load that never commits, an SSL error on a back/forward load, and the
+  back-forward cache.
+
+On `mrw-api29-gapi` one check fails, and it is not a known limit: the hostile suite's T5 `window.open` to a
+`javascript:` URL. WebView 91 runs its script, although the WebView the core makes for a new window has JavaScript off.
+The reference iOS simulator is an iPhone 17 Pro on iOS 26.5.
 
 ```sh
 sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' 'system-images;android-36;google_apis;arm64-v8a'
+sdkmanager 'system-images;android-29;google_apis;arm64-v8a'
 avdmanager create avd -n mrw-api37 -k 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' -d pixel_9_pro
 avdmanager create avd -n mrw-api36 -k 'system-images;android-36;google_apis;arm64-v8a' -d pixel_9_pro
+avdmanager create avd -n mrw-api29-gapi -k 'system-images;android-29;google_apis;arm64-v8a' -d pixel_6
 emulator -avd mrw-api37 -gpu host
 ```
 

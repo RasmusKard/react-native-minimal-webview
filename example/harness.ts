@@ -104,21 +104,60 @@ function request(text: string) {
   });
 }
 
-export function reporter(suite: string) {
+/**
+ * The first Android System WebView with what a check needs, for `reporter` (the package's own floors: README, "Android
+ * System WebView versions").
+ */
+export const WEBVIEW = {
+  /** WEB_MESSAGE_LISTENER: `evaluate`, and so `blob:` downloads. */
+  evaluate: 83,
+  /** WEB_MESSAGE_LISTENER and DOCUMENT_START_SCRIPT (as androidx.webkit matches it). */
+  bridge: 101,
+  /** DOCUMENT_START_SCRIPT, as androidx.webkit matches it. */
+  injectedScripts: 101,
+  /** The file input's `cancel` event, which upload.html waits for. */
+  fileInputCancel: 113,
+  /** PAYMENT_REQUEST: WebSettingsCompat's `paymentRequestEnabled`. */
+  paymentRequest: 136,
+  /**
+   * NAVIGATION_LISTENER: `pendingUrl`, the load events of a load that never commits, an SSL error on a back/forward
+   * load and the back-forward cache.
+   */
+  navigationListener: 146,
+};
+
+let webViewMajor: number | undefined;
+/** The Android System WebView's major version, from its default user agent (no page needed); 0 on iOS. */
+const androidWebView = () =>
+  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.defaultUserAgent ?? '')?.[1] ?? 0));
+
+/** A suite's checks and INFO lines. With a `floor` (a `WEBVIEW` value) each `check` is a `since(floor, …)`. */
+export function reporter(suite: string, floor = 0) {
   let pass = 0;
   let fail = 0;
   let requests = 0;
+  const info = (name: string, detail: unknown) => {
+    if (/^[A-Z]+$/.test(name)) request(`${suite}#${++requests} ${name} ${JSON.stringify(detail)}`);
+    emit(`INFO ${suite}: ${name} ${JSON.stringify(detail)}`);
+  };
+  /**
+   * A check, or on an Android System WebView older than `version` (a `WEBVIEW` value) the INFO line
+   * `known limit (WebView <version>): <name>`: that WebView lacks what the check needs.
+   */
+  const since = (version: number, name: string, ok: boolean, detail: unknown = '') => {
+    const major = androidWebView();
+    if (major > 0 && major < version) {
+      info(`known limit (WebView <${version}): ${name}`, { major, ok, detail });
+      return;
+    }
+    if (ok) pass++;
+    else fail++;
+    emit(`${ok ? 'PASS' : 'FAIL'} ${suite}: ${name} ${ok ? '' : JSON.stringify(detail)}`);
+  };
   return {
-    check(name: string, ok: boolean, detail: unknown = '') {
-      if (ok) pass++;
-      else fail++;
-      emit(`${ok ? 'PASS' : 'FAIL'} ${suite}: ${name} ${ok ? '' : JSON.stringify(detail)}`);
-    },
-    info(name: string, detail: unknown) {
-      if (/^[A-Z]+$/.test(name))
-        request(`${suite}#${++requests} ${name} ${JSON.stringify(detail)}`);
-      emit(`INFO ${suite}: ${name} ${JSON.stringify(detail)}`);
-    },
+    check: (name: string, ok: boolean, detail: unknown = '') => since(floor, name, ok, detail),
+    info,
+    since,
     done() {
       request(`${suite}#done pass=${pass} fail=${fail}`);
       emit(`DONE ${suite} pass=${pass} fail=${fail}`);
@@ -238,34 +277,6 @@ async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
   r.check(name, agreed === true, seen);
 }
 
-const webViewMajors = new WeakMap<object, Promise<number>>();
-/**
- * Checks `name`, or reports it as INFO on an Android WebView older than 146, which lacks a feature the check needs
- * (such as NavigationListener), so it fails by design there. The version is read once per suite run (per reporter).
- */
-export async function checkUnlessOldWebView(
-  h: Harness,
-  r: ReturnType<typeof reporter>,
-  name: string,
-  ok: boolean,
-  detail: unknown = ''
-) {
-  if (!webViewMajors.has(r))
-    webViewMajors.set(
-      r,
-      Platform.OS === 'android'
-        ? Promise.resolve(h.ref.current?.evaluate('navigator.userAgent')).then(
-            (ua) => Number(/Chrome\/(\d+)/.exec(String(ua))?.[1] ?? 0),
-            () => 0
-          )
-        : Promise.resolve(0)
-    );
-  const major = await webViewMajors.get(r)!;
-  if (major > 0 && major < 146)
-    r.info(`known limit (WebView <146): ${name}`, { major, ok, detail });
-  else r.check(name, ok, detail);
-}
-
 async function urlTracking(h: Harness) {
   const r = reporter('urlTracking');
   // An app-started load is pending until it commits: never reported as the loaded, idle page before it starts. The
@@ -337,9 +348,8 @@ async function urlTracking(h: Harness) {
     loading: during.loading,
   });
   r.check('url keeps the committed page while loading', during.url === beforeSlow, during);
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'pendingUrl shows the in-flight url',
     (during.pendingUrl ?? '').includes('/slow'),
     during
@@ -466,21 +476,23 @@ async function reissue(h: Harness) {
 
 const errorCode = (error: unknown) => (error as { code?: string }).code;
 
-/** Starts a page-side `nativeBridge.call` and waits for its outcome. */
+/** Starts a page-side `nativeBridge.call` and waits for its outcome; `script_error` on a page without the bridge. */
 async function pageCall(h: Harness, method: string, params: unknown) {
-  await h.ref.current?.evaluate(`(() => {
+  const start = `(() => {
     window.__call = undefined;
     nativeBridge.call(${JSON.stringify(method)}, ${JSON.stringify(params)}).then(
       (result) => (window.__call = { result }),
       (error) => (window.__call = { error: error.code })
     );
-  })()`);
+  })()`;
+  const error = await h.ref.current?.evaluate(start).then(() => undefined, errorCode);
+  if (error) return { error };
   const outcome = await until(() => h.ref.current?.evaluate('window.__call'), 6000, 100);
   return (outcome ?? { error: 'harness timeout' }) as { result?: unknown; error?: string };
 }
 
 async function bridge(h: Harness) {
-  const r = reporter('bridge');
+  const r = reporter('bridge', WEBVIEW.bridge);
   const page = fresh(h, '/bridge.html');
   await openPage(h, page);
   const bridgeType = await h.ref.current?.evaluate(
@@ -494,7 +506,8 @@ async function bridge(h: Harness) {
   // evaluate: one contract on both platforms.
   const evaluate = (script: string) => h.ref.current?.evaluate(script);
   const plain = await evaluate(`({ n: 1 + 1, s: 'x', a: [true, null] })`);
-  r.check(
+  r.since(
+    WEBVIEW.evaluate,
     'evaluate returns a plain value',
     JSON.stringify(plain) === '{"n":2,"s":"x","a":[true,null]}',
     plain
@@ -502,11 +515,12 @@ async function bridge(h: Harness) {
   const awaited = await evaluate(
     `new Promise((resolve) => setTimeout(() => resolve('late'), 300))`
   );
-  r.check('evaluate awaits a Promise', awaited === 'late', awaited);
+  r.since(WEBVIEW.evaluate, 'evaluate awaits a Promise', awaited === 'late', awaited);
   const unencodable = await Promise.all(
     ['() => 1', 'NaN', '(() => { const o = {}; o.o = o; return o; })()'].map(evaluate)
   );
-  r.check(
+  r.since(
+    WEBVIEW.evaluate,
     'evaluate gives null for what JSON cannot encode',
     unencodable.every((v) => v === null),
     unencodable
@@ -516,7 +530,8 @@ async function bridge(h: Harness) {
       evaluate(s)?.catch(errorCode)
     )
   );
-  r.check(
+  r.since(
+    WEBVIEW.evaluate,
     'evaluate rejects script_error on a throw, a rejection or a syntax error',
     thrown.every((c) => c === 'script_error'),
     thrown
@@ -524,10 +539,17 @@ async function bridge(h: Harness) {
   const boom = await evaluate(`(() => { throw new Error('boom') })()`)?.catch(
     (error: unknown) => (error as Error).message
   );
-  r.check("evaluate rejects with the thrown error's message", String(boom).includes('boom'), boom);
+  r.since(
+    WEBVIEW.evaluate,
+    "evaluate rejects with the thrown error's message",
+    String(boom).includes('boom'),
+    boom
+  );
 
-  r.check('RN -> page call', (await h.bridge.call('sum', { a: 2, b: 3 })) === 5);
-  r.check('RN -> page awaits a page Promise', (await h.bridge.call('pageSlow')) === 'late');
+  const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
+  r.check('RN -> page call', sum === 5, sum);
+  const slowPage = await h.bridge.call('pageSlow').catch(errorCode);
+  r.check('RN -> page awaits a page Promise', slowPage === 'late', slowPage);
   const missing = await h.bridge.call('nope').catch(errorCode);
   r.check('RN -> page missing method rejects not_found', missing === 'not_found', missing);
 
@@ -556,7 +578,7 @@ async function bridge(h: Harness) {
   );
   r.check('RN -> page event', logged === true);
   const before = h.pageEvents.length;
-  await h.ref.current?.evaluate(`nativeBridge.emit('pageEvent', { n: 2 })`);
+  await h.ref.current?.evaluate(`nativeBridge.emit('pageEvent', { n: 2 })`).catch(errorCode);
   await waitFor(h, () => h.pageEvents.length > before, 3000);
   await sleep(200); // a duplicate would come right after
   r.check('page -> RN event', h.pageEvents.length === before + 1, h.pageEvents);
@@ -565,15 +587,14 @@ async function bridge(h: Harness) {
   const pending = evaluate('new Promise(() => {})')?.catch(errorCode);
   await sleep(200);
   h.load(`${page}&next=1`);
-  r.check('navigation rejects calls in flight', (await inFlight) === 'navigated');
+  const cutOff = await inFlight;
+  r.check('navigation rejects calls in flight', cutOff === 'navigated', cutOff);
   const gone = await pending;
-  r.check('navigation rejects an evaluate in flight', gone === 'navigated', gone);
+  r.since(WEBVIEW.evaluate, 'navigation rejects an evaluate in flight', gone === 'navigated', gone);
   await waitFor(h, (s) => s.url.includes('next=1') && idle(s));
   await sleep(500);
-  r.check(
-    'the bridge works again after navigation',
-    (await h.bridge.call('sum', { a: 1, b: 1 })) === 2
-  );
+  const again = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
+  r.check('the bridge works again after navigation', again === 2, again);
 
   // The new page's first message is a head script's call. Android ends the old Document (and drops its reply proxy) one
   // main-thread hop after the commit: that has to come first, or the answer is lost and JS takes the page as loading.
@@ -813,7 +834,12 @@ async function upload(h: Harness) {
       states.includes('background'),
       states
     );
-    r.check(`back cancels it (${label})`, logged?.includes('cancelled') ?? false, logged);
+    r.since(
+      WEBVIEW.fileInputCancel,
+      `back cancels it (${label})`,
+      logged?.includes('cancelled') ?? false,
+      logged
+    );
   }
   subscription.remove();
   h.setProps({});
@@ -963,17 +989,15 @@ async function errors(h: Harness) {
     await waitFor(h, (s) => s.loading, 3000);
     h.ref.current?.stopLoading();
   }, 5000);
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'a stopped load ends as cancelled',
     stopped === 'cancelled',
     stopped
   );
   const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'a 204 ends as cancelled',
     noContent === 'cancelled',
     noContent
@@ -987,9 +1011,8 @@ async function errors(h: Harness) {
     () => h.ref.current?.evaluate(`location.href = '/redirect?to=/blocked'`),
     5000
   );
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'a redirect the rules block ends as cancelled',
     blocked === 'cancelled',
     blocked
@@ -1172,7 +1195,8 @@ async function crash(h: Harness) {
   const recoveredVh = await viewportHeight(h);
   r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
   await sleep(1000);
-  r.check(
+  r.since(
+    WEBVIEW.bridge,
     'the bridge works after recovery',
     (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4
   );
@@ -1321,7 +1345,8 @@ async function mountSettings(h: Harness) {
   );
   await openPage(h, fresh(h, '/bridge.html'));
   await sleep(500);
-  r.check(
+  r.since(
+    WEBVIEW.bridge,
     'the bridge works after the remount',
     (await h.bridge.call('sum', { a: 3, b: 4 }).catch(errorCode)) === 7
   );
@@ -1562,9 +1587,8 @@ async function settings(h: Harness) {
       r.check('a WebView setter applies', (await page('navigator.onLine')) === false);
       await openPage(h, fresh(h, '/'));
       const paymentAfter = await payment();
-      await checkUnlessOldWebView(
-        h,
-        r,
+      r.since(
+        WEBVIEW.paymentRequest,
         'a setter only WebSettingsCompat has applies (through reflection on androidx, R8 included)',
         paymentBefore === 'undefined' && paymentAfter === 'function',
         { paymentBefore, paymentAfter }
@@ -1600,9 +1624,8 @@ async function settings(h: Harness) {
       r.check('and leaves the setting alone', (await fontSize()) === '30px', await fontSize());
       r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
       r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
-      await checkUnlessOldWebView(
-        h,
-        r,
+      r.since(
+        WEBVIEW.paymentRequest,
         'get reads a WebSettingsCompat getter',
         (await get('settings.paymentRequestEnabled')) === true
       );
@@ -1902,7 +1925,7 @@ async function navigation(h: Harness) {
  * The `injectedScripts` prop: when its scripts run, in which frames, and that a change applies from the next load.
  */
 async function injection(h: Harness) {
-  const r = reporter('injection');
+  const r = reporter('injection', WEBVIEW.injectedScripts);
   h.setProps({
     injectedScripts: [
       { code: 'window.__injectedStart = true;', mainFrameOnly: false },
@@ -1976,9 +1999,8 @@ async function downloadsSuite(h: Harness) {
     // Android before 146 reports no load for it: it never commits.
     if (id === 'attachment') {
       await waitFor(h, () => h.events.outcomes.length > outcomes, 2000);
-      await checkUnlessOldWebView(
-        h,
-        r,
+      r.since(
+        WEBVIEW.navigationListener,
         'the attachment load ends as cancelled',
         h.events.outcomes.length === outcomes + 1 && h.events.outcomes[outcomes] === 'cancelled',
         h.events.outcomes.slice(outcomes)
@@ -1989,9 +2011,16 @@ async function downloadsSuite(h: Harness) {
       Platform.OS === 'android' && (id === 'blob' || id === 'data')
         ? download?.filename.endsWith('.txt')
         : download?.filename === filename;
-    r.check(`${id} download reaches onDownload`, done && nameOk === true, download);
+    // Android reads a blob: download through the page (evaluate).
+    const floor = id === 'blob' ? WEBVIEW.evaluate : 0;
+    r.since(floor, `${id} download reaches onDownload`, done && nameOk === true, download);
     const text = download?.uri.startsWith('file:') ? await new File(download.uri).text() : null;
-    r.check(`${id} file holds the body`, text?.startsWith(body) === true, text?.slice(0, 80));
+    r.since(
+      floor,
+      `${id} file holds the body`,
+      text?.startsWith(body) === true,
+      text?.slice(0, 80)
+    );
     if (id === 'attachment')
       r.check(
         'the attachment request carries the page cookie',
@@ -2005,7 +2034,8 @@ async function downloadsSuite(h: Harness) {
         : id === 'moved'
           ? await h.ref.current?.evaluate("document.getElementById('moved').href")
           : null;
-    r.check(
+    r.since(
+      floor,
       `${id} download url is ${url === null ? 'null' : 'the full server URL'}`,
       download?.url === url,
       download?.url
@@ -2030,7 +2060,8 @@ async function downloadsSuite(h: Harness) {
     await click(h, 'bigok');
     const saved = await waitFor(h, () => h.events.downloads.length > big, 30000);
     const bigFile = saved ? new File(h.events.downloads[big].uri) : null;
-    r.check(
+    r.since(
+      WEBVIEW.evaluate,
       'a 40 MiB blob downloads whole',
       bigFile?.size === 40 * 1024 * 1024,
       h.events.downloads[big]
@@ -2502,9 +2533,8 @@ async function bfcache(h: Harness) {
     await waitFor(h, (s) => s.url === url && idle(s));
     await sleep(500); // a late state or load event would come now
     const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
-    await checkUnlessOldWebView(
-      h,
-      r,
+    r.since(
+      WEBVIEW.navigationListener,
       `${name}: the page is restored from the cache`,
       shows?.[1] === true,
       shows
@@ -2522,7 +2552,7 @@ async function bfcache(h: Harness) {
       { loads: h.events.loads, outcomes: h.events.outcomes }
     );
     const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
-    r.check(`${name}: RN -> page call`, sum === 5, sum);
+    r.since(WEBVIEW.bridge, `${name}: RN -> page call`, sum === 5, sum);
     h.bridge.emit('nativeEvent', { n: 7 });
     await until(
       async () =>
@@ -2530,10 +2560,16 @@ async function bfcache(h: Harness) {
       3000
     );
     const event = await h.ref.current?.evaluate('window.lastEvent');
-    r.check(`${name}: RN -> page event`, (event as { n?: number } | null)?.n === 7, event);
+    r.since(
+      WEBVIEW.bridge,
+      `${name}: RN -> page event`,
+      (event as { n?: number } | null)?.n === 7,
+      event
+    );
     await h.ref.current?.evaluate('window.lastEvent = null');
     const echo = await pageCall(h, 'echo', { url });
-    r.check(
+    r.since(
+      WEBVIEW.bridge,
       `${name}: page -> RN call`,
       (echo.result as { url?: string } | undefined)?.url === url,
       echo
@@ -2544,19 +2580,23 @@ async function bfcache(h: Harness) {
 
   // A call still unanswered when its page goes into the cache rejects at once; the answer the page sends once restored
   // is dropped. Both ways: the page's call to the app's 'slow' (answered after 5 s) rejects in the page.
-  await h.ref.current?.evaluate(`(() => {
+  const straddleCall = `(() => {
     window.__straddle = undefined;
     nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
-  })()`);
+  })()`;
+  await h.ref.current?.evaluate(straddleCall).catch(errorCode);
+  // Without the bridge the call rejects at once, before the page is left.
+  let left = Date.now();
   const inFlight = h.bridge.call('slow', { ms: 1500 }).then(
     (value) => ({ value, ms: Date.now() - left }),
     (error: unknown) => ({ code: errorCode(error), ms: Date.now() - left })
   );
   await sleep(200);
-  const left = Date.now();
+  left = Date.now();
   h.ref.current?.goBack();
   const settled = await inFlight;
-  r.check(
+  r.since(
+    WEBVIEW.bridge,
     'a call in flight when the page is left rejects with navigated',
     'code' in settled && settled.code === 'navigated' && settled.ms < 1000,
     settled
@@ -2567,15 +2607,14 @@ async function bfcache(h: Harness) {
   await sleep(2000); // the restored page's timer fires and it answers the old call
   const straddle = (await h.ref.current?.evaluate('window.__straddle')) as
     { error?: string } | null | undefined;
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'a page -> RN call cut off by leaving the page rejects with navigated',
     straddle?.error === 'navigated',
     straddle
   );
   const after = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
-  r.check('the bridge works after the late answer', after === 2, after);
+  r.since(WEBVIEW.bridge, 'the bridge works after the late answer', after === 2, after);
 
   const asked = await allowAsks(h, [
     { path: ['/checkout'], action: 'ask' },

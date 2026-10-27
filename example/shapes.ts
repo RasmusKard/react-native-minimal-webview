@@ -12,7 +12,7 @@ import { BackHandler, Platform } from 'react-native';
 
 import {
   type Harness,
-  checkUnlessOldWebView,
+  WEBVIEW,
   fresh,
   idle,
   openPage,
@@ -212,7 +212,7 @@ async function walkBack(s: ShapeHost, act: (id: string) => Promise<unknown>) {
 }
 
 /** 1. A hybrid app on its own domain: its links load in place, other sites open externally. */
-async function hybrid({ h, r, s }: Shape) {
+async function hybrid({ r, s }: Shape) {
   await s.use('hybrid');
   await hub(s);
   await s.click('own');
@@ -240,9 +240,8 @@ async function hybrid({ h, r, s }: Shape) {
   page = await hub(s);
   await s.click('offsite');
   await until(() => s.external.length > 0 && s.state().outcome === 'cancelled', 5000);
-  await checkUnlessOldWebView(
-    h,
-    r,
+  r.since(
+    WEBVIEW.navigationListener,
     'A3 hybrid: a server redirect off-site goes external',
     all(
       s.external.join() === `${OTHER}/spa.html?from=redirect`,
@@ -592,9 +591,8 @@ async function documents({ h, r, s, android }: Shape) {
         15000
       );
       const download = h.events.downloads[before];
-      await checkUnlessOldWebView(
-        h,
-        r,
+      r.since(
+        WEBVIEW.navigationListener,
         name,
         all(
           has(download, { mimeType: 'application/pdf', filename: 'shapes.pdf' }),
