@@ -12,7 +12,8 @@ import WebKit
 /// from a string; UIColor from `#rrggbb` or `#rrggbbaa`; UIEdgeInsets, CGPoint, CGSize and CGRect from an object; and
 /// `websiteDataStore` from `"default"` or `"nonPersistent"`. Anything else is rejected before KVC runs: a wrong value
 /// in an object-typed property can take the process down (WebKit asserts), and an unknown key raises an Objective-C
-/// exception Swift can't catch. Underscore (private) properties are refused.
+/// exception Swift can't catch. Underscore (private) properties are refused, and the only private keys accepted are the
+/// two react-native-webview sets by KVC (`privateBools`).
 ///
 /// `get` reads a property of a root and `call` invokes a method on one by selector, through MRWInvoke (MRWInvoke.h),
 /// which sets the arguments by the method's signature. For those two, `websiteDataStore` and `httpCookieStore` are
@@ -60,7 +61,7 @@ final class PlatformSettings {
     guard let object = root(rootName, webView: webView, configuration: webView.configuration) else {
       throw PlatformError("unknown root: use \(Self.roots)")
     }
-    guard !key.hasPrefix("_"), !key.contains("."), class_getProperty(type(of: object), key) != nil else {
+    guard !key.hasPrefix("_"), !key.contains("."), Self.attributes(object, key) != nil else {
       throw PlatformError("no such property \(path)")
     }
     return try Self.json { MRWJsonable(object.value(forKey: key)) }
@@ -129,14 +130,27 @@ final class PlatformSettings {
   /// `T{UIEdgeInsets=dddd}`, …) decides what the value may be.
   private func set(_ object: NSObject, _ key: String, _ value: Any) -> String? {
     guard !key.hasPrefix("_"), !key.contains(".") else { return "private and nested keys are not allowed" }
-    guard let property = class_getProperty(type(of: object), key) else { return "no such property" }
-    let attributes = String(cString: property_getAttributes(property)!).split(separator: ",")
+    guard let attributes = Self.attributes(object, key) else { return "no such property" }
     guard let first = attributes.first, first.hasPrefix("T") else { return "no type" }
     if attributes.contains("R") { return "read-only" }
     let type = String(first.dropFirst())
     guard let coerced = Self.coerce(value, type) else { return "a \(type) property can't take \(value)" }
     return MRWCatchException { object.setValue(coerced is NSNull ? nil : coerced, forKey: key) }
   }
+
+  /// The attributes of `object`'s property `key` (`TB`, `R`, …), or nil when it has none.
+  private static func attributes(_ object: NSObject, _ key: String) -> [Substring]? {
+    if privateBools[key].map({ object.isKind(of: $0) }) == true { return ["TB"] }
+    guard let property = class_getProperty(type(of: object), key) else { return nil }
+    return String(cString: property_getAttributes(property)!).split(separator: ",")
+  }
+
+  /// The private BOOLs react-native-webview sets by KVC, which reaches WebKit's `_set…` accessors: they declare no
+  /// property by these names. They widen what `file:` pages read: other `file:` URLs, and any URL.
+  private static let privateBools: [String: AnyClass] = [
+    "allowFileAccessFromFileURLs": WKPreferences.self,
+    "allowUniversalAccessFromFileURLs": WKWebViewConfiguration.self,
+  ]
 
   /// `value` as KVC must get it for a property of type encoding `type`; NSNull stands for nil. Nil: doesn't fit.
   private static func coerce(_ value: Any, _ type: String) -> Any? {

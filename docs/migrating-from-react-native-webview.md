@@ -65,7 +65,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow` | `navigationRules`, run natively; an `ask` rule calls `onNavigationRequest` ([below](#onshouldstartloadwithrequest)) |
 | `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded`, `injectedJavaScriptObject`, `…ForMainFrameOnly` | `injectedScripts: [{ code, mainFrameOnly }]`, all at document start |
 | `injectJavaScript(code)` | `evaluate(expression)` ([below](#injectjavascript)) |
-| `onMessage`, `postMessage`, `window.ReactNativeWebView` | The bridge ([below](#postmessage-and-onmessage)) |
+| `onMessage`, `postMessage`, `window.ReactNativeWebView` | The bridge, and `reactNativeWebViewMessages` for pages that use `window.ReactNativeWebView` ([below](#postmessage-and-onmessage)) |
 | `onLoad`, `onLoadProgress` | `onLoadEnd` with `state.outcome === 'finished'`; `progress` in `useWebViewState` |
 | `onError`, `onHttpError` | `onError`, with `kind` `'network'`, `'ssl'` or `'http'` |
 | `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone`; the core reloads by itself |
@@ -77,7 +77,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])` and the like; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nestedScrollEnabled`, `nativeConfig`; iOS `allowFileAccessFromFileURLs` and `allowUniversalAccessFromFileURLs` (private keys, which the settings refuse) | A [native hook](examples.md#native-hooks) |
+| `basicAuthCredential`, JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nestedScrollEnabled`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
 | `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload`; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
 
@@ -92,7 +92,7 @@ The props whose setting has another name:
 | `automaticallyAdjustContentInsets` | `ios.scrollView.contentInsetAdjustmentBehavior` |
 | `forceDarkOn` | `android.settings.algorithmicDarkeningAllowed` (`forceDark` below `targetSdk` 33) |
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
-| `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` (Android) | `android.settings.<the same name>` |
+| `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`; on iOS `ios.preferences.allowFileAccessFromFileURLs` and `ios.configuration.allowUniversalAccessFromFileURLs` |
 | `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
 | `containerStyle` | A `View` around the WebView |
 
@@ -143,19 +143,13 @@ const title = await ref.current?.evaluate('document.title');
 
 The [bridge](examples.md#the-bridge) replaces both with calls that return promises and events, in both directions, for
 the origins you allow. Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events
-keep working through this script; only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame.
+keep working with [`reactNativeWebViewMessages`](api/variables/reactNativeWebViewMessages.md) in `injectedScripts`;
+only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame.
 
 ```tsx
-const rnwMessages = {
-  // Runs after the bridge's own script, so `window.nativeBridge` already exists.
-  code: `if (window.nativeBridge) {
-    window.ReactNativeWebView = { postMessage: (data) => window.nativeBridge.emit('rnw', String(data)) };
-    window.nativeBridge.on('rnw', (data) =>
-      ${Platform.OS === 'ios' ? 'window' : 'document'}.dispatchEvent(new MessageEvent('message', { data })));
-  }`,
-} as const;
+import { reactNativeWebViewMessages } from 'minimal-rn-webview';
 
-<WebView bridge={bridge} injectedScripts={[rnwMessages]} … />
+<WebView bridge={bridge} injectedScripts={[reactNativeWebViewMessages]} … />
 
 useEffect(() => bridge.on('rnw', (data) => handleMessage(data as string)), [bridge]); // was onMessage
 bridge.emit('rnw', message); // was ref.current.postMessage(message)
