@@ -65,7 +65,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow` | `navigationRules`, run natively; an `ask` rule calls `onNavigationRequest` ([below](#onshouldstartloadwithrequest)) |
 | `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded`, `injectedJavaScriptObject`, `…ForMainFrameOnly` | `injectedScripts: [{ code, mainFrameOnly }]`, all at document start |
 | `injectJavaScript(code)` | `evaluate(expression)` ([below](#injectjavascript)) |
-| `onMessage`, `postMessage`, `window.ReactNativeWebView` | The bridge ([below](#postmessage-and-onmessage)) |
+| `onMessage`, `postMessage`, `window.ReactNativeWebView` | The bridge, and `reactNativeWebViewMessages` for pages that use `window.ReactNativeWebView` ([below](#postmessage-and-onmessage)) |
 | `onLoad`, `onLoadProgress` | `onLoadEnd` with `state.outcome === 'finished'`; `progress` in `useWebViewState` |
 | `onError`, `onHttpError` | `onError`, with `kind` `'network'`, `'ssl'` or `'http'` |
 | `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone`; the core reloads by itself |
@@ -143,19 +143,13 @@ const title = await ref.current?.evaluate('document.title');
 
 The [bridge](examples.md#the-bridge) replaces both with calls that return promises and events, in both directions, for
 the origins you allow. Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events
-keep working through this script; only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame.
+keep working with [`reactNativeWebViewMessages`](api/variables/reactNativeWebViewMessages.md) in `injectedScripts`;
+only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame.
 
 ```tsx
-const rnwMessages = {
-  // Runs after the bridge's own script, so `window.nativeBridge` already exists.
-  code: `if (window.nativeBridge) {
-    window.ReactNativeWebView = { postMessage: (data) => window.nativeBridge.emit('rnw', String(data)) };
-    window.nativeBridge.on('rnw', (data) =>
-      ${Platform.OS === 'ios' ? 'window' : 'document'}.dispatchEvent(new MessageEvent('message', { data })));
-  }`,
-} as const;
+import { reactNativeWebViewMessages } from 'minimal-rn-webview';
 
-<WebView bridge={bridge} injectedScripts={[rnwMessages]} … />
+<WebView bridge={bridge} injectedScripts={[reactNativeWebViewMessages]} … />
 
 useEffect(() => bridge.on('rnw', (data) => handleMessage(data as string)), [bridge]); // was onMessage
 bridge.emit('rnw', message); // was ref.current.postMessage(message)
