@@ -20,6 +20,7 @@ import type {
 import { WebView, WK } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
 
+import { hostile } from './hostile';
 import { shapes } from './shapes';
 
 export type Harness = {
@@ -187,8 +188,11 @@ export async function until<T>(
   return undefined;
 }
 
-const waitFor = async (h: Harness, predicate: (s: NavigationState) => boolean, ms = 10000) =>
-  (await until(() => predicate(h.state()), ms, 50)) === true;
+export const waitFor = async (
+  h: Pick<Harness, 'state'>,
+  predicate: (s: NavigationState) => boolean,
+  ms = 10000
+) => (await until(() => predicate(h.state()), ms, 50)) === true;
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
 /** Allows every `ask`, with `rules` ahead of a catch-all http(s) allow; returns the asked URLs. */
@@ -2585,4 +2589,5 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   network,
   sources,
   shapes,
+  hostile,
 };

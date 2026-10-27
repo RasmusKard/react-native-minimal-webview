@@ -20,6 +20,7 @@ import {
   sleep,
   tapPoint,
   until,
+  waitFor,
 } from './harness';
 
 /** The blocks' policies: the rule sets in RULES. */
@@ -103,7 +104,7 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
   const host: ShapeHost = {
     use: async (policy, { external = true, downloads = true, inCheckout = false } = {}) => {
       h.setRules(RULES[policy]);
-      // The OAuth ask takes the return URL and blocks it; the checkout ask lets an unknown bank in during checkout only.
+      // The OAuth ask takes the return URL and blocks it; the checkout ask lets an unknown bank in only in checkout.
       h.setAsk((request) => {
         host.asked.push(request.url);
         if (policy !== 'checkout') return 'block';
@@ -142,13 +143,12 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
   return host;
 }
 
-const all = (...conditions: boolean[]) => conditions.every(Boolean);
+export const all = (...conditions: boolean[]) => conditions.every(Boolean);
 /** Whether `value` has each of `fields`, compared with ===. */
 const has = (value: object | undefined, fields: Record<string, unknown>) =>
   value !== undefined &&
   Object.entries(fields).every(([key, field]) => (value as Record<string, unknown>)[key] === field);
-const settle = async (s: ShapeHost, predicate: (state: NavigationState) => boolean, ms = 10000) =>
-  (await until(() => predicate(s.state()), ms, 50)) === true;
+
 const stays = (s: ShapeHost, url: string) => s.state().url === url;
 /** The last decision about a URL that contains `part`. */
 const decision = (s: ShapeHost, part: string) =>
@@ -187,22 +187,24 @@ const agrees = async (s: ShapeHost) =>
   )) === true;
 async function push(s: ShapeHost) {
   await s.click('push');
-  await settle(s, (st) => st.url.includes('/spa/pushed'), 3000);
+  await waitFor(s, (st) => st.url.includes('/spa/pushed'), 3000);
   return s.state().url;
 }
-/** Opens a page and then the SPA, adds a pushState and a hash entry with `act`, and goes back twice: where each lands. */
+/**
+ * Opens a page and then the SPA, adds a pushState and a hash entry with `act`, and goes back twice: where each lands.
+ */
 async function walkBack(s: ShapeHost, act: (id: string) => Promise<unknown>) {
   const before = await s.open('/spa.html?from=before');
   const start = await s.open('/spa.html');
   await act('push');
-  await settle(s, (st) => st.url.includes('/spa/pushed'), 10000);
+  await waitFor(s, (st) => st.url.includes('/spa/pushed'), 10000);
   const pushed = s.state().url;
   await act('hash');
-  await settle(s, (st) => st.url.includes('#h'), 10000);
+  await waitFor(s, (st) => st.url.includes('#h'), 10000);
   const back = async () => {
     const from = s.state().url;
     s.goBack();
-    await settle(s, (st) => st.url !== from && idle(st), 3000);
+    await waitFor(s, (st) => st.url !== from && idle(st), 3000);
     return { url: s.state().url, agrees: await agrees(s) };
   };
   const first = await back();
@@ -214,7 +216,7 @@ async function hybrid({ h, r, s }: Shape) {
   await s.use('hybrid');
   await hub(s);
   await s.click('own');
-  const own = await settle(s, (st) => st.url === `${PAGES}/spa.html?from=own` && idle(st));
+  const own = await waitFor(s, (st) => st.url === `${PAGES}/spa.html?from=own` && idle(st));
   r.check(
     'A1 hybrid: an own-site link loads in place',
     all(own, has(decision(s, 'from=own'), { action: 'allow', rule: 0 })),
@@ -300,7 +302,7 @@ async function oauth({ r, s }: Shape) {
   await s.click('login');
   r.check(
     'B1 oauth: the IdP page on another origin loads',
-    await settle(s, (st) => st.url === idp && idle(st)),
+    await waitFor(s, (st) => st.url === idp && idle(st)),
     s.state()
   );
   await askAfter(s, () => s.click('signin'));
@@ -338,7 +340,7 @@ async function oauth({ r, s }: Shape) {
   await hub(s);
   await s.tap('login-popup');
   const popup = `${OTHER}/shapes-idp.html?popup=1`;
-  const popped = await settle(s, (st) => st.url === popup && idle(st), 15000);
+  const popped = await waitFor(s, (st) => st.url === popup && idle(st), 15000);
   const noOpener = await s.evaluate('window.opener === null').catch(String);
   r.check(
     'B6 oauth: a popup login loads in place with no window.opener',
@@ -356,7 +358,7 @@ async function checkout({ r, s, android }: Shape) {
   await s.use('checkout');
   s.clear();
   await s.open('/shapes-pay.html?mode=frame');
-  const paid = await settle(s, (st) => st.url === `${PAGES}/spa.html?from=paid` && idle(st));
+  const paid = await waitFor(s, (st) => st.url === `${PAGES}/spa.html?from=paid` && idle(st));
   r.check(
     'C1 checkout: the 3-D Secure iframe completes and the page moves on',
     all(paid, s.asked.length === 0),
@@ -380,7 +382,7 @@ async function checkout({ r, s, android }: Shape) {
   await s.use('checkout', { inCheckout: true });
   s.clear();
   await s.open('/shapes-pay.html?mode=top');
-  const posted = await settle(s, (st) => st.url === term && idle(st));
+  const posted = await waitFor(s, (st) => st.url === term && idle(st));
   const paRes = await body(s);
   // Android never shows the rules a POST: nothing is asked there.
   r.check(
@@ -412,14 +414,14 @@ async function windows({ r, s }: Shape) {
   await s.use('windows');
   let page = await hub(s);
   await s.tap('blank-own');
-  const blank = await settle(
+  const blank = await waitFor(
     s,
     (st) => st.url === `${PAGES}/spa.html?from=blank` && idle(st),
     15000
   );
   const blankOwn = decision(s, 'from=blank');
   s.goBack();
-  const returned = await settle(s, (st) => st.url === page && idle(st), 5000);
+  const returned = await waitFor(s, (st) => st.url === page && idle(st), 5000);
   r.check(
     'D1 windows: a same-site target=_blank loads in place, goBack returns to the opener page',
     all(blank, has(blankOwn, { newWindow: true, action: 'allow', rule: 0 }), returned),
@@ -442,7 +444,7 @@ async function windows({ r, s }: Shape) {
 
   await hub(s);
   await s.tap('open-own');
-  const opened = await settle(
+  const opened = await waitFor(
     s,
     (st) => st.url === `${PAGES}/spa.html?from=open` && idle(st),
     15000
@@ -461,7 +463,7 @@ async function deferredWindows({ r, s, android }: Shape) {
   const log = await lines(s, () => s.tap('open-deferred'));
   // iOS returns null for an empty window.open; Android's throwaway window catches the URL the opener sets (5 s).
   const deferred = `${PAGES}/spa.html?from=deferred`;
-  await settle(s, (st) => st.url === deferred && idle(st), android ? 8000 : 1000);
+  await waitFor(s, (st) => st.url === deferred && idle(st), android ? 8000 : 1000);
   r.check(
     "D4 windows: window.open('') and a later location",
     android
@@ -487,7 +489,7 @@ async function deferredWindows({ r, s, android }: Shape) {
   await s.tap('post-blank-submit');
   r.check(
     'D5 windows: a form POST to a new window',
-    await settle(s, (st) => st.url === `${PAGES}/post?from=blank` && idle(st)),
+    await waitFor(s, (st) => st.url === `${PAGES}/post?from=blank` && idle(st)),
     s.state()
   );
   r.info('D5 iOS: the POST body after it loaded in place', await body(s));
@@ -580,7 +582,7 @@ async function documents({ h, r, s, android }: Shape) {
       ? 'F1 docs: a PDF link shows inline on iOS, arrives in onDownload on Android'
       : 'F2 docs: without onDownload a PDF opens externally on Android';
     if (!android) {
-      const inline = await settle(
+      const inline = await waitFor(
         s,
         (st) => st.url === pdf && idle(st) && st.outcome === 'finished'
       );
@@ -709,7 +711,7 @@ async function offline({ h, r, s }: Shape) {
     const failedUrl = `${PAGES}/drop?key=${key}&p=2`;
     const errors = h.events.errors.length;
     await s.evaluate(`location.href = '/drop?key=${key}&p=2'`);
-    const failed = await settle(s, (st) => st.outcome === 'failed' && idle(st));
+    const failed = await waitFor(s, (st) => st.outcome === 'failed' && idle(st));
     const failure = {
       failed,
       error: h.events.errors[errors],
@@ -718,7 +720,7 @@ async function offline({ h, r, s }: Shape) {
     };
     await drop(0);
     s.reload();
-    const recovered = await settle(
+    const recovered = await waitFor(
       s,
       (st) => st.url === failedUrl && idle(st) && st.outcome === 'finished'
     );
@@ -754,11 +756,11 @@ async function backButton({ r, s, android }: Shape) {
     return true;
   });
   try {
-    await settle(s, (st) => st.canGoBack, 3000);
+    await waitFor(s, (st) => st.canGoBack, 3000);
     r.info('BACK', 'the BackHandler recipe');
     r.check(
       'H4 android back: the BackHandler recipe goes back one page',
-      await settle(s, (st) => st.url === first && idle(st)),
+      await waitFor(s, (st) => st.url === first && idle(st)),
       s.state()
     );
   } finally {
