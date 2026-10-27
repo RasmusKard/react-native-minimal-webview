@@ -11,11 +11,15 @@ import android.webkit.WebViewClient
 import androidx.webkit.SafeBrowsingResponseCompat
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. */
+/**
+ * `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. And which
+ * hooks a WebView's `hookOptions` attach.
+ */
 class HooksTest {
   private class Plain : WebViewClient()
   private class PlainCompat : WebViewClientCompat()
@@ -43,6 +47,8 @@ class HooksTest {
   private val error = arrayOf(WebView::class.java, WebResourceRequest::class.java, WebResourceError::class.java)
   private val safeBrowsing = arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java)
   private val url = arrayOf(WebView::class.java, WebResourceRequest::class.java)
+
+  private fun hook(key: String) = MinimalWebViewHooks.Hook(key, null) { _, _ -> null }
 
   @Test
   fun `a plain subclass overrides only what it declares`() {
@@ -73,5 +79,28 @@ class HooksTest {
     // Counting this one would switch the navigation rules off for every WebViewClientCompat hook.
     assertFalse(PlainCompat::class.java.overrides("shouldOverrideUrlLoading", *url))
     assertFalse(PlainCompat::class.java.overrides("onPageCommitVisible", WebView::class.java, String::class.java))
+  }
+
+  @Test
+  fun `a hookOptions value enables its hook unless it is null or false`() {
+    for (value in listOf(null, false)) assertFalse("$value", enables(value))
+    for (value in listOf(true, 0.0, "", mapOf<String, Any>(), listOf<Any>())) assertTrue("$value", enables(value))
+  }
+
+  @Test
+  fun `the hooks under the creation keys attach in registration order, and a key without one is reported`() {
+    val (attaching, unregistered) = selectHooks(listOf(hook("b"), hook("a"), hook("c")), setOf("a", "b", "typo"))
+    assertEquals(listOf("b", "a"), attaching.map { it.key })
+    assertEquals(setOf("typo"), unregistered)
+  }
+
+  @Test
+  fun `a key turned on after creation is added late, and one the WebView was created with never is`() {
+    val created = setOf("a")
+    assertTrue(addedLate("b", null, mapOf("enabled" to false), created))
+    assertTrue(addedLate("b", false, 0.0, created))
+    assertFalse("on already, so warned already", addedLate("b", true, mapOf("enabled" to false), created))
+    assertFalse("turned off", addedLate("b", true, false, created))
+    assertFalse("created with it, so attached or reported then", addedLate("a", false, true, created))
   }
 }
