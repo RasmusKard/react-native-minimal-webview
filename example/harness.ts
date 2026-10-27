@@ -1573,6 +1573,15 @@ async function settings(h: Harness) {
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'native_error'
       );
+      // The migration guide's transparent WebView. UIKit declares `opaque` without runtime property metadata, so
+      // `ios.webView.opaque` and `get` refuse it: `call` sets it and reads it back.
+      const transparent = await call('webView.setOpaque:', [false]);
+      const opaque = await call('webView.isOpaque', []);
+      r.check(
+        'call makes the WebView transparent (setOpaque: false), and isOpaque reads back false',
+        transparent === null && opaque === false,
+        { transparent, opaque }
+      );
     } else {
       const payment = () => page(`typeof PaymentRequest`);
       const paymentBefore = await payment();
@@ -1658,6 +1667,14 @@ async function settings(h: Harness) {
       r.check(
         'call rejects an unknown root',
         (await call('clearCache', [true])) === 'native_error'
+      );
+      // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
+      h.setProps({ android: { webView: { backgroundColor: 0 } } });
+      await sleep(500);
+      r.check(
+        'android.webView.backgroundColor 0 (transparent) applies without a warning',
+        !warned('android.webView.backgroundColor'),
+        warnings
       );
     }
   } finally {
