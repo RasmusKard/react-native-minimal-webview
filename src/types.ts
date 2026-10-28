@@ -73,8 +73,7 @@ export type NavigationRule = {
   userInitiated?: boolean;
   /**
    * `ask` calls `onNavigationRequest`. On Android it works only for the main frame (elsewhere it is `block`), waits for
-   * the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag:
-   * about 10 ms more than a rule takes (15 ms end to end against 7 on an API 37 emulator; on iOS 7 ms either way).
+   * the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag.
    */
   action: NavigationAction | 'ask';
 };

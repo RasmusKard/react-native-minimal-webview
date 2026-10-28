@@ -2723,7 +2723,10 @@ async function sources(h: Harness) {
   r.done();
 }
 
-/** In run order: `maestro/run.sh` runs these keys when it is given no suites. */
+/**
+ * In run order: `maestro/run.sh` runs these keys when it is given no suites. A suite reports `skipped` on a platform it
+ * doesn't apply to, leaves nothing behind that `reset()` doesn't undo, and needs no site but the test pages server.
+ */
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   navigation,

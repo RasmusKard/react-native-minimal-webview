@@ -36,7 +36,7 @@ export function Browser() {
   `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
 - [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): what differs, and recipes for what
   has no prop
-- [Development](docs/development.md): the checks and the on-device suites
+- [Development](docs/development.md): setup, the checks and the on-device suites
 
 ## Android System WebView versions
 
