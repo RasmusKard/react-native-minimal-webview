@@ -459,6 +459,8 @@ export type AndroidSettingKeys = ${object({
  * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
  * the option set \`webView.fetchDataOfTypes:\` takes.
  * @group Platform settings
+ * @namespace
+ * @hideGroups
  */
 export const WK = ${object({
     ...iosEnums(ios),
@@ -469,6 +471,8 @@ export const WK = ${object({
 /**
  * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants: \`settings: { cacheMode: Android.WebSettings.LOAD_NO_CACHE }\`.
  * @group Platform settings
+ * @namespace
+ * @hideGroups
  */
 export const Android = ${object({
     WebSettings: `{\n${javaConstants(constants, 'WebSettings')}\n}`,
