@@ -125,8 +125,9 @@ are in [Android System WebView versions](../README.md#android-system-webview-ver
 
 On both floor emulators one check fails, and it is not a known limit: the hostile suite's T5 `window.open` to a
 `javascript:` URL. WebView 91 and 133 run its script, although the WebView the core makes for a new window has
-JavaScript off; 149 doesn't. The reference iOS simulator is an iPhone 17 Pro on iOS 26.5; an iPhone 15 on iOS 17.5
-passes every suite too.
+JavaScript off; 149 doesn't. The reference iOS simulator is an iPhone 17 Pro on iOS 26.5; an iPhone 15 on iOS 17.0
+(the floor) or 17.5 passes every suite too. Xcode 27.1 can't download an iOS 17 runtime: get its dmg from
+[Apple's downloads](https://developer.apple.com/download/all/) (signed in) and run `xcrun simctl runtime add <dmg>`.
 
 ```sh
 sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' 'system-images;android-36;google_apis;arm64-v8a'
