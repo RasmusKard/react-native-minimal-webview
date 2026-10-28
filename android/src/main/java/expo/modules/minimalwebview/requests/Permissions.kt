@@ -5,11 +5,7 @@ import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import expo.modules.minimalwebview.MinimalWebView
 
-/**
- * Camera, microphone, location and protected media (the device id DRM playback needs) for the main frame: the app's
- * `onPermissionRequest({origin, resources})` may request OS permission and answers true or false. Without the prop the
- * core denies. Never prompts by itself: a grant the OS has not allowed still fails in the page.
- */
+/** The `onPermissionRequest` prop. */
 internal class Permissions(private val owner: MinimalWebView) {
   // Asks waiting for JS, by their PermissionRequest or GeolocationPermissions.Callback, for the platform cancels.
   private val asks = mutableMapOf<Any, Int>()

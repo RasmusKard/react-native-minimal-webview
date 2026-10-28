@@ -105,9 +105,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     }
   }
 
-  /** Runs an expression in the page and awaits it, as iOS does; resolves with its JSON ("null" for what JSON can't
-   * encode). WebView drops the callback when the document is replaced first, so a new document rejects what is still
-   * waiting instead of leaving it pending forever. A failure is an [EvaluateError]. */
+  /** The `evaluate` ref method. A new document rejects what is still waiting: WebView drops the callback when the
+   * document is replaced first. */
   fun evaluate(script: String, onResult: (Result<String>) -> Unit) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
       return onResult(failure("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView"))

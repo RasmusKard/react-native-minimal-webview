@@ -6,10 +6,7 @@ import android.webkit.WebChromeClient.FileChooserParams
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.MinimalWebViewModule
 
-/**
- * `<input type="file">`: asks the app's `onFileRequest` for URIs (null = cancel). The app picks them, with
- * expo-document-picker or expo-image-picker. Without the prop the core opens the system chooser.
- */
+/** `<input type="file">`, and the `onFileRequest` prop. */
 internal class FileUpload(private val owner: MinimalWebView) {
   // The page's open file chooser (WebView allows one at a time). Chromium releases it only while its document is alive,
   // so a navigation away cancels it when it starts, not at commit; a later answer is dropped.

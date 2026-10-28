@@ -1,10 +1,8 @@
 import WebKit
 
 /// Native hooks: Swift in your own Expo module that gets the real WKWebView behind each WebView, its creation-time
-/// configuration and a `WebViewContext`, with no protocol to implement. A hook attaches to each WebView created with a
-/// `hookOptions` value for its key other than null, undefined or false. A key that enables no registered hook (a typo,
-/// or a module not linked or not rebuilt) warns when the WebView is created, so pass a one-platform hook's key on that
-/// platform only.
+/// configuration and a `WebViewContext`, with no protocol to implement. A hook attaches to each WebView whose
+/// `hookOptions` enables its key (the prop's TSDoc has the rules).
 /// Don't touch the WKWebView's own `navigationDelegate` and `uiDelegate` (use the context's lists), or the bridge's
 /// script message handler and user scripts.
 public enum MinimalWebViewHooks {
@@ -25,7 +23,7 @@ public enum MinimalWebViewHooks {
   /// configured and attached in registration order. Keys are global, so prefix yours with your package's name: a
   /// second hook under a key stops the app (`fatalError`, naming the key and both call sites). The same call running
   /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. `core` is reserved
-  /// and refused.
+  /// and refused: the package's own events are named `core.…`.
   /// - Parameters:
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
@@ -41,7 +39,6 @@ public enum MinimalWebViewHooks {
     file: String = #fileID,
     line: Int = #line
   ) {
-    // The package's own events are named `core.…`: a hook under that key would have its events taken for them.
     guard key != "core" else { return NSLog("[minimal-rn-webview] the hook key `core` is reserved: the hook is not registered") }
     let hook = Hook(key: key, site: "\(file):\(line)", configure: configure, attach: attach)
     guard let index = hooks.firstIndex(where: { $0.key == key }) else { return hooks.append(hook) }
@@ -94,18 +91,14 @@ public protocol WebViewContext: AnyObject {
   /// Sends the event as `emit` does and calls `onAnswer` with the JS handler's return value, a promise awaited. It
   /// answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
-  /// Runs `handler` with this hook's new `hookOptions` value each time it changes, live, with no new WebView; nil when
-  /// the key is removed. A key added after the WebView was created attaches nothing, with a warning: to switch a hook
-  /// on and off, enable its key from the start and put the switch in its value (`{ enabled: false }`), or give the
-  /// WebView a new React `key`.
+  /// Runs `handler` with this hook's new `hookOptions` value each time it changes, live; nil when the key is removed.
+  /// To switch a hook on and off, keep its key enabled and put the switch in its value (`{ enabled: false }`).
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
   /// Runs `handler` at each end of the Document (`DocumentScope`), after the core's own resets: per-page state belongs
   /// here.
   func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void)
-  /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` once, and both
-  /// cross as JSON. One handler per method, the last one wins. A handler that never replies leaves the promise
-  /// pending: nothing settles it at the Document's end, a crash or unmount. With no attached hook under the key
-  /// handling the method, the promise rejects with `hook_not_handled`.
+  /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` exactly once, and
+  /// both cross as JSON. One handler per method, the last one wins.
   func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: @escaping (Any?) -> Void) -> Void)
 }
 

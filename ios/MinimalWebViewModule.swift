@@ -13,7 +13,6 @@ public class MinimalWebViewModule: Module {
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }
       Prop("bridgeOrigins") { (view: MinimalWebView, origins: [String]?) in view.bridgeOrigins = origins ?? [] }
       Prop("hookOptions") { (view: MinimalWebView, options: [String: Any]?) in view.hookOptions = options ?? [:] }
-      // JSON, so a null (reset this key) survives: the dictionary conversion drops nulls.
       Prop("settings") { (view: MinimalWebView, json: String?) in
         let data = json?.data(using: .utf8) ?? Data()
         view.settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
@@ -27,8 +26,6 @@ public class MinimalWebViewModule: Module {
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
       AsyncFunction("navigate") { (view: MinimalWebView, action: String) in navigate(view, action) }
-      // `get('scrollView.bounces')` reads a property and `call('webView.selector:', argsJson, completion)` calls a
-      // method; both resolve with the result's JSON. `argsJson` is a string so a null argument survives the conversion.
       AsyncFunction("get") { (view: MinimalWebView, path: String, promise: Promise) in
         native(view, promise) { webView in promise.resolve(try view.platformSettings.get(path, webView: webView)) }
       }
@@ -41,15 +38,12 @@ public class MinimalWebViewModule: Module {
         }
       }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
-      // JS's answer to an `ask` (a page request, a navigation request or a hook's).
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
         view.asks.answer(askId, answer["value"] is NSNull ? nil : answer["value"])
       }
-      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { (view: MinimalWebView, name: String, method: String, args: String, promise: Promise) in
         hook(view, name, method, args, promise)
       }
-      // Resolves with the expression's value as JSON, a returned Promise awaited; JS parses it.
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
         evaluate(view, script, promise)
       }
@@ -100,7 +94,6 @@ private func native(_ view: MinimalWebView, _ promise: Promise, _ body: (WKWebVi
 
 // A prop that fails to convert is dropped whole (ExpoFabricView's try?), so every field is optional.
 
-/// `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `body` makes the request a form-urlencoded POST.
 struct WebViewSource: Record {
   @Field var uri: String? = nil
   @Field var headers: [String: String]? = nil

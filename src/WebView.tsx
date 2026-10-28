@@ -246,7 +246,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       asks.set(askId, controller);
     }
     const value = await settle(
-      // onOpenExternal takes the URL itself.
       () => handler?.(request === 'onOpenExternal' ? payload['url'] : payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
