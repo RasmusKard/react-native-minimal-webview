@@ -8,9 +8,12 @@ export function load(app: Application) {
     for (const variable of context.project.getReflectionsByKind(ReflectionKind.Variable))
       variable.setFlag(ReflectionFlag.Const, false);
   });
-  // Optional: the signature's `?` says it already. The flag stays, since the `?` comes from it.
-  // shortcut: matches the default theme's pill markup; check the pills after a TypeDoc upgrade.
+  // Optional: the signature's `?` says it already. The flag stays, since the `?` comes from it. Returns: the signature
+  // shows the type, so the heading stays only above a `@returns` text.
+  // shortcut: matches the default theme's markup; check the pills and Returns headings after a TypeDoc upgrade.
   app.renderer.on(PageEvent.END, (page) => {
-    if (page.contents) page.contents = page.contents.replace(/<code class="tsd-tag">Optional<\/code> ?/g, '');
+    page.contents = page.contents
+      ?.replace(/<code class="tsd-tag">Optional<\/code> ?/g, '')
+      .replace(/<h4 class="tsd-returns-title">(?:(?!<\/h4>).)*<\/h4>(?!\s*<p\b)/gs, '');
   });
 }
