@@ -37,9 +37,11 @@ object MinimalWebViewHooks {
   internal val hooks = mutableListOf<Hook>()
 
   /**
-   * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global: a second
-   * registration under a key replaces the first and logs a warning, so prefix yours with your package's name. `core`
-   * is reserved and refused. Hooks run in registration order, so an earlier hook's clients come first.
+   * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global, so prefix
+   * yours with your package's name: a second hook under a key throws [IllegalStateException] (a minified build may
+   * replace the first instead). The same `register` call running again replaces its hook: a JS reload creates the
+   * modules anew, and their `OnCreate` runs again. `core` is reserved and refused. Hooks run in registration order, so
+   * an earlier hook's clients come first.
    *
    * The hook attaches to a WebView created with a `hookOptions` value for [key] other than null, undefined or false,
    * and again, with the current value, to the WebView that replaces it after a renderer crash. A key added to
@@ -68,10 +70,16 @@ object MinimalWebViewHooks {
     val index = hooks.indexOfFirst { it.key == key }
     if (index < 0) {
       hooks += hook
-    } else {
-      Log.w(TAG, "a second hook registered under `$key` replaces the first")
-      hooks[index] = hook
+      return
     }
+    // Each lambda in the source compiles to a class of its own: the same class is the same call running again.
+    // shortcut: R8 can merge two lambdas' classes in a minified build; upgrade if a duplicate must throw there too.
+    val first = hooks[index].attach.javaClass
+    check(first == attach.javaClass) {
+      "two hooks are registered under `$key` (${first.name} and ${attach.javaClass.name}): " +
+        "prefix yours with your package's name"
+    }
+    hooks[index] = hook
   }
 }
 
