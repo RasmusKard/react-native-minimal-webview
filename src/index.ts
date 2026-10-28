@@ -15,6 +15,8 @@
  * What native hooks send to `onHookEvent`.
  * @groupDescription Platform settings
  * WebKit and Android WebView properties, set by name through the `ios` and `android` props.
+ * @document ../docs/examples.md
+ * @document ../docs/migrating-from-react-native-webview.md
  * @packageDocumentation
  */
 export { WebView } from './WebView';

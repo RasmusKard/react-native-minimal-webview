@@ -4,3 +4,10 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 3.2fr) minmax(0, 18rem);
   }
 }
+
+/* The migration guide's tables are wider than the column: they scroll instead of running under the page index. */
+.tsd-typography table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}

@@ -4,7 +4,8 @@
   "out": "docs/api",
   "plugin": ["./.github/scripts/typedoc-plugin.mts"],
   "customCss": "typedoc.css",
-  "readme": "none",
+  "readme": "README.md",
+  "headings": { "readme": false },
   "disableSources": true,
   "excludeExternals": true,
   "treatWarningsAsErrors": true,
@@ -16,5 +17,6 @@
   "searchInComments": true,
   "includeHierarchySummary": false,
   "navigationLinks": { "GitHub": "https://github.com/RasmusKard/minimal-rn-webview" },
-  "groupOrder": ["WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
+  "highlightLanguages": ["bash", "console", "css", "html", "javascript", "json", "jsonc", "json5", "yaml", "tsx", "typescript", "kotlin", "swift"],
+  "groupOrder": ["Documents", "WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
 }
