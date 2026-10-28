@@ -915,7 +915,7 @@ export const tapPoint = async (h: Harness, id: string, frame?: string) =>
 
 /**
  * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
- * (the recipe in docs/migrating-from-react-native-webview.md#loading-and-error-screens), and reload recovering.
+ * (the recipe in guides/migrating-from-react-native-webview.md#loading-and-error-screens), and reload recovering.
  */
 async function errors(h: Harness) {
   const r = reporter('errors');

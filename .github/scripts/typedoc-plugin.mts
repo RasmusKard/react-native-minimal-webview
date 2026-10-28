@@ -1,4 +1,5 @@
-// The TypeDoc plugin typedoc.json loads: drops the pills that tell a caller nothing, and shows the platform tags as icons.
+// The TypeDoc plugin .config/typedoc.json loads: drops the pills that tell a caller nothing, and shows the platform
+// tags as icons.
 import {
   Comment,
   Converter,
