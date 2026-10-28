@@ -412,7 +412,9 @@ ${Object.entries(STRUCTS)
 
 /**
  * The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from
- * the SDK headers. \`@since\` is the iOS version. A key a newer SDK adds works too: \`IOSSettings\` takes any key.
+ * the SDK headers.
+ *
+ * \`@since\` is the iOS version. A key a newer SDK adds works too: \`IOSSettings\` takes any key.
  * @group Platform settings
  */
 export type IOSSettingKeys = ${object(
@@ -427,6 +429,7 @@ export type IOSSettingKeys = ${object(
 /**
  * The Android settings keys by root: the one-argument \`WebSettings\`, \`WebView\` and \`CookieManager\` setters, then
  * \`WebSettingsCompat\`'s and \`WebViewCompat\`'s statics, then the scroll setters \`WebView\` inherits from \`View\`.
+ *
  * \`@since\` is the API level. A key a newer SDK or androidx.webkit adds works too: \`AndroidSettings\` takes any key.
  * @group Platform settings
  */
@@ -450,9 +453,11 @@ export type AndroidSettingKeys = ${object({
 
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
- * \`configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }\`. An option set's \`all\` is the OR of its listed
- * bits, not \`NSUIntegerMax\`, which JSON can't carry. \`WebsiteDataType\` has the data type names the \`websiteDataStore\`
- * methods take, for \`call\`; \`WebViewDataType\` is the option set \`webView.fetchDataOfTypes:\` takes.
+ * \`configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }\`.
+ *
+ * An option set's \`all\` is the OR of its listed bits, not \`NSUIntegerMax\`, which JSON can't carry.
+ * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
+ * the option set \`webView.fetchDataOfTypes:\` takes.
  * @group Platform settings
  */
 export const WK = ${object({

@@ -1,6 +1,6 @@
 <!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>AndroidSettings | minimal-rn-webview</title><meta name="description" content="Documentation for minimal-rn-webview"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container"><a href="../index.html" class="title">minimal-rn-webview</a>
-<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<div id="tsd-toolbar-links"><a href="https://github.com/RasmusKard/minimal-rn-webview">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
 <div id="tsd-search-status" aria-live="polite" aria-atomic="true">
 <div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
@@ -12,15 +12,16 @@
 <h1>Type Alias AndroidSettings<code class="tsd-tag">Android</code></h1></div>
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>Android settings by setter name without <code>set</code>, applied by reflection, so any public setter works, including ones a
-newer SDK or androidx.webkit adds: <code>{ settings: { textZoom: 120 }, webView: { overScrollMode: 2 } }</code>. The keys the
-SDK lists autocomplete, with their <code>@since</code>; the constants are in <code>Android</code> (<code>Android.WebSettings.LOAD_NO_CACHE</code>). A
-key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
+newer SDK or androidx.webkit adds: <code>{ settings: { textZoom: 120 }, webView: { overScrollMode: 2 } }</code>.</p>
+<p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <code>Android</code>
+(<code>Android.WebSettings.LOAD_NO_CACHE</code>).</p>
+<p>A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
 nothing here can crash the app. A root's <code>@default</code> keys are the package's, and yours go over them. Read one back
 with the ref's <code>get('settings.textZoom')</code>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
-<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings">https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings</a></p>
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings">Platform settings example</a></p>
 </div></div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">AndroidSettings</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#settings">settings</a><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#settings"><span class="tsd-signature-type">&quot;settings&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#webview">webView</a><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#webview"><span class="tsd-signature-type">&quot;webView&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
 <section class="tsd-panel-group tsd-index-group">
@@ -39,10 +40,11 @@ with the ref's <code>get('settings.textZoom')</code>.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="settings"><code class="tsd-tag">Optional</code><span>settings</span><a href="#settings" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">settings</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#settings"><span class="tsd-signature-type">&quot;settings&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
-<div class="tsd-comment tsd-typography"><p><code>WebSettings</code> setters, then static <code>WebSettingsCompat</code> ones. Each new WebView starts with <code>javaScriptEnabled</code>,
-<code>domStorageEnabled</code>, <code>supportMultipleWindows</code> and <code>builtInZoomControls</code> on; <code>allowFileAccess</code>,
-<code>allowContentAccess</code>, <code>displayZoomControls</code> and <code>downloadFaviconsEnabled</code> off; <code>mixedContentMode</code>
-<code>MIXED_CONTENT_NEVER_ALLOW</code>; and, with WebView 146 and newer, <code>backForwardCacheEnabled</code> on.</p>
+<div class="tsd-comment tsd-typography"><p><code>WebSettings</code> setters, then static <code>WebSettingsCompat</code> ones.</p>
+<p>Each new WebView starts with <code>javaScriptEnabled</code>, <code>domStorageEnabled</code>, <code>supportMultipleWindows</code> and
+<code>builtInZoomControls</code> on; <code>allowFileAccess</code>, <code>allowContentAccess</code>, <code>displayZoomControls</code> and
+<code>downloadFaviconsEnabled</code> off; <code>mixedContentMode</code> <code>MIXED_CONTENT_NEVER_ALLOW</code>; and, with WebView 146 and newer,
+<code>backForwardCacheEnabled</code> on.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-default">
@@ -54,7 +56,8 @@ with the ref's <code>get('settings.textZoom')</code>.</p>
 <h3 class="tsd-anchor-link" id="webview"><code class="tsd-tag">Optional</code><span>web<wbr/>View</span><a href="#webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">webView</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#webview"><span class="tsd-signature-type">&quot;webView&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p><code>WebView</code> setters (static and inherited <code>View</code> ones too), then <code>WebViewCompat</code> ones, then <code>CookieManager</code>'s
-<code>acceptThirdPartyCookies</code>. <code>webContentsDebuggingEnabled</code> is process-wide.</p>
+<code>acceptThirdPartyCookies</code>.</p>
+<p><code>webContentsDebuggingEnabled</code> is process-wide.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-default">
@@ -79,6 +82,7 @@ with the ref's <code>get('settings.textZoom')</code>.</p>
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
 <div><a href="#settings"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>settings</span></a><a href="#webview"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>web<wbr/>View</span></a></div></details></div></details></div>
 <div class="site-menu">
+<nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/minimal-rn-webview" class="tsd-nav-link">GitHub</a></nav>
 <nav class="tsd-navigation"><a href="../index.html">minimal-rn-webview</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
 <li>Loading...</li></ul></nav></div></div></div><footer>

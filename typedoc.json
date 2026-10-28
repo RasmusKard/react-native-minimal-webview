@@ -11,5 +11,9 @@
   "navigation": { "includeGroups": true },
   "visibilityFilters": { "@android": true, "@ios": true },
   "locales": { "en": { "tag_ios": "iOS" } },
+  "useFirstParagraphOfCommentAsSummary": true,
+  "searchInComments": true,
+  "includeHierarchySummary": false,
+  "navigationLinks": { "GitHub": "https://github.com/RasmusKard/minimal-rn-webview" },
   "groupOrder": ["WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
 }

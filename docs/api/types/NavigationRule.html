@@ -1,6 +1,6 @@
 <!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>NavigationRule | minimal-rn-webview</title><meta name="description" content="Documentation for minimal-rn-webview"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container"><a href="../index.html" class="title">minimal-rn-webview</a>
-<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<div id="tsd-toolbar-links"><a href="https://github.com/RasmusKard/minimal-rn-webview">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
 <div id="tsd-search-status" aria-live="polite" aria-atomic="true">
 <div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
@@ -36,14 +36,15 @@
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="action"><span>action</span><a href="#action" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">action</span><span class="tsd-signature-symbol">:</span> <a href="NavigationAction.html" class="tsd-signature-type tsd-kind-type-alias">NavigationAction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;ask&quot;</span></div>
-<div class="tsd-comment tsd-typography"><p><code>ask</code> calls <code>onNavigationRequest</code>. On Android it works only for the main frame (elsewhere it is <code>block</code>), waits for
-the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag.</p>
+<div class="tsd-comment tsd-typography"><p><code>ask</code> calls <code>onNavigationRequest</code>.</p>
+<p>On Android it works only for the main frame (elsewhere it is <code>block</code>), waits for the next frame, and loads an
+allowed navigation again, without the page's referrer policy or the gesture flag.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="host"><code class="tsd-tag">Optional</code><span>host</span><a href="#host" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">host</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>Exact, or a <code>*.</code> suffix wildcard that matches subdomains only: <code>['*.example.com']</code> does not match <code>example.com</code>.
-Case, port, userinfo and a trailing dot are ignored.</p>
+<div class="tsd-comment tsd-typography"><p>Exact, or a <code>*.</code> suffix wildcard that matches subdomains only: <code>['*.example.com']</code> does not match <code>example.com</code>.</p>
+<p>Case, port, userinfo and a trailing dot are ignored.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="mainframe"><code class="tsd-tag">Optional</code><span>main<wbr/>Frame</span><a href="#mainframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -53,17 +54,18 @@ Case, port, userinfo and a trailing dot are ignored.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="newwindow"><code class="tsd-tag">Optional</code><span>new<wbr/>Window</span><a href="#newwindow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">newWindow</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
-<div class="tsd-comment tsd-typography"><p><code>target=_blank</code> or <code>window.open</code>, a main-frame navigation. An allowed one loads in place: there is never a second
-WebView, so no <code>window.opener</code> (a native hook that takes <code>createWebViewWith</code> on iOS or <code>onCreateWindow</code> on Android
-owns real popups). One to <code>data:</code>, <code>blob:</code>, <code>javascript:</code>, <code>about:</code> or <code>file:</code> is always blocked (on Android,
-WebView may still run a <code>javascript:</code> one's script, with the page's origin), and one opened with no URL
-(<code>window.open('')</code>) is decided when the page first sends it to one, or dropped when that doesn't happen within 5 s.</p>
+<div class="tsd-comment tsd-typography"><p><code>target=_blank</code> or <code>window.open</code>, a main-frame navigation.</p>
+<p>An allowed one loads in place: there is never a second WebView, so no <code>window.opener</code> (a native hook that takes
+<code>createWebViewWith</code> on iOS or <code>onCreateWindow</code> on Android owns real popups).</p>
+<p>One to <code>data:</code>, <code>blob:</code>, <code>javascript:</code>, <code>about:</code> or <code>file:</code> is always blocked (on Android, WebView may still run a
+<code>javascript:</code> one's script, with the page's origin), and one opened with no URL (<code>window.open('')</code>) is decided when
+the page first sends it to one, or dropped when that doesn't happen within 5 s.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="path"><code class="tsd-tag">Optional</code><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>Plain prefixes of the percent-encoded URL path: <code>['/checkout']</code> also matches <code>/checkouts</code>. A URL without an
-authority (<code>myapp:/open</code>) has the path <code>/</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Plain prefixes of the percent-encoded URL path: <code>['/checkout']</code> also matches <code>/checkouts</code>.</p>
+<p>A URL without an authority (<code>myapp:/open</code>) has the path <code>/</code>.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="query"><code class="tsd-tag">Optional</code><span>query</span><a href="#query" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -79,8 +81,9 @@ name, whatever its value; <code>utm_term=google</code> matches only that exact v
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="userinitiated"><code class="tsd-tag">Optional</code><span>user<wbr/>Initiated</span><a href="#userinitiated" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">userInitiated</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
-<div class="tsd-comment tsd-typography"><p>A user gesture started it (Android <code>hasGesture()</code>, iOS <code>.linkActivated</code>). A <code>location.href</code> change or <code>window.open</code>
-from a click handler is true on Android, but false on iOS, where only a tapped link is.</p>
+<div class="tsd-comment tsd-typography"><p>A user gesture started it (Android <code>hasGesture()</code>, iOS <code>.linkActivated</code>).</p>
+<p>A <code>location.href</code> change or <code>window.open</code> from a click handler is true on Android, but false on iOS, where only a
+tapped link is.</p>
 </div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -99,6 +102,7 @@ from a click handler is true on Android, but false on iOS, where only a tapped l
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
 <div><a href="#action"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>action</span></a><a href="#host"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>host</span></a><a href="#mainframe"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>main<wbr/>Frame</span></a><a href="#newwindow"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>new<wbr/>Window</span></a><a href="#path"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>path</span></a><a href="#query"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>query</span></a><a href="#scheme"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>scheme</span></a><a href="#userinitiated"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>user<wbr/>Initiated</span></a></div></details></div></details></div>
 <div class="site-menu">
+<nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/minimal-rn-webview" class="tsd-nav-link">GitHub</a></nav>
 <nav class="tsd-navigation"><a href="../index.html">minimal-rn-webview</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
 <li>Loading...</li></ul></nav></div></div></div><footer>

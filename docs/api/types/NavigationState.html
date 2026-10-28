@@ -1,6 +1,6 @@
 <!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>NavigationState | minimal-rn-webview</title><meta name="description" content="Documentation for minimal-rn-webview"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container"><a href="../index.html" class="title">minimal-rn-webview</a>
-<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<div id="tsd-toolbar-links"><a href="https://github.com/RasmusKard/minimal-rn-webview">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
 <div id="tsd-search-status" aria-live="polite" aria-atomic="true">
 <div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
@@ -45,18 +45,21 @@
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="outcome"><span>outcome</span><a href="#outcome" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">outcome</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;finished&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;failed&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;cancelled&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></div>
-<div class="tsd-comment tsd-typography"><p>How the last main-frame load ended; null while one is loading, and before the first. <code>failed</code>: a network or SSL
-error, or a renderer crash, cut it off. <code>cancelled</code>: it never showed a page (a stop before the response, a
-download, a 204, a redirect the rules blocked, a load a newer one replaced); a stop after the page arrived is
-<code>cancelled</code> on iOS but <code>finished</code> on Android, and a 204 is <code>finished</code> on iOS 17. An HTTP error status (404) is
-<code>finished</code>: the site's page shows, and <code>onError</code> gets an <code>http</code> error. On Android with a WebView older than 146,
-a load that never commits changes nothing here.</p>
+<div class="tsd-comment tsd-typography"><p>How the last main-frame load ended; null while one is loading, and before the first.</p>
+<ul>
+<li><code>failed</code>: a network or SSL error, or a renderer crash, cut it off.</li>
+<li><code>cancelled</code>: it never showed a page (a stop before the response, a download, a 204, a redirect the rules blocked,
+a load a newer one replaced); a stop after the page arrived is <code>cancelled</code> on iOS but <code>finished</code> on Android, and
+a 204 is <code>finished</code> on iOS 17.</li>
+</ul>
+<p>An HTTP error status (404) is <code>finished</code>: the site's page shows, and <code>onError</code> gets an <code>http</code> error. On Android
+with a WebView older than 146, a load that never commits changes nothing here.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="pendingurl"><span>pending<wbr/>Url</span><a href="#pendingurl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">pendingUrl</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></div>
-<div class="tsd-comment tsd-typography"><p>A main-frame load in progress, which may still fail or be blocked. Iframes never change it. Always null on Android
-with a WebView older than 146.</p>
+<div class="tsd-comment tsd-typography"><p>A main-frame load in progress, which may still fail or be blocked.</p>
+<p>Iframes never change it. Always null on Android with a WebView older than 146.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="progress"><span>progress</span><a href="#progress" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -70,7 +73,8 @@ with a WebView older than 146.</p>
 <h3 class="tsd-anchor-link" id="url"><span>url</span><a href="#url" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">url</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>The page on screen: changes on commit and same-document navigation (pushState, replaceState, hash), and stays the
-old page while a load is in progress. After a failed load, the failed URL. Iframes never change it.</p>
+old page while a load is in progress.</p>
+<p>After a failed load, the failed URL. Iframes never change it.</p>
 </div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -89,6 +93,7 @@ old page while a load is in progress. After a failed load, the failed URL. Ifram
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
 <div><a href="#cangoback"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>can<wbr/>Go<wbr/>Back</span></a><a href="#cangoforward"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>can<wbr/>Go<wbr/>Forward</span></a><a href="#loading"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>loading</span></a><a href="#outcome"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>outcome</span></a><a href="#pendingurl"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>pending<wbr/>Url</span></a><a href="#progress"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>progress</span></a><a href="#title"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>title</span></a><a href="#url"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>url</span></a></div></details></div></details></div>
 <div class="site-menu">
+<nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/minimal-rn-webview" class="tsd-nav-link">GitHub</a></nav>
 <nav class="tsd-navigation"><a href="../index.html">minimal-rn-webview</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
 <li>Loading...</li></ul></nav></div></div></div><footer>
