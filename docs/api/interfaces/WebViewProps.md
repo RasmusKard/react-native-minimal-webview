@@ -123,7 +123,8 @@ the page's session), and a `data:` or `blob:` one is dropped. A PDF is a downloa
 
 > `optional` **onError?**: (`event`) => `void`
 
-A main-frame load failed, or got an HTTP error status. On Android with a WebView older than 146, an SSL error on a
+A main-frame load failed, or got an HTTP error status. After a failed load iOS keeps the page before it on screen,
+and Android shows WebView's own error page. On Android with a WebView older than 146, an SSL error on a
 back/forward load isn't reported.
 
 #### Parameters
@@ -321,7 +322,8 @@ Every change to the navigation state. Changes within one frame are combined into
 Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
 Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
 `intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
-app for the URL.
+app for the URL, opened without asking `canOpenURL` first, so no `LSApplicationQueriesSchemes` (iOS) or `<queries>`
+(Android) entries are needed.
 
 #### Parameters
 
@@ -400,9 +402,8 @@ false
 
 > `optional` **ref?**: `Ref`\<[`WebViewRef`](../type-aliases/WebViewRef.md)\>
 
-Gets the [WebViewRef](../type-aliases/WebViewRef.md). A ref object (`useRef`, `createRef`, `createWebViewRef`) also works with
-`useWebViewState`. Give each mounted WebView its own ref: with two, the last mounted wins (with a warning in
-development) until it unmounts.
+Gets the [WebViewRef](../type-aliases/WebViewRef.md). Give each mounted WebView its own ref: with two, the last mounted wins (with a
+warning in development) until it unmounts.
 
 ***
 

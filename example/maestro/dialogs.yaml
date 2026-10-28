@@ -4,8 +4,8 @@ env:
   SUITE: dialogs
 ---
 # alert, confirm, prompt. Each press reads the screen only once the harness has asked for it, so the query lands while
-# the page is blocked in the dialog: a regression check for iOS, where that hung XCTest for 60 s while the blocked
-# WebView was in the accessibility tree. The dialog hides the screen behind it, so wait for its OK button.
+# the dialog blocks the page (MinimalWebView.swift's `dialog` says why that matters). The dialog hides the screen
+# behind it, so wait for its OK button.
 - runFlow: subflows/launch.yaml
 - runFlow: { file: subflows/await.yaml, env: { N: 1 } }
 - extendedWaitUntil: { visible: OK, timeout: 30000 }
