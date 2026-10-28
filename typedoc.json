@@ -2,7 +2,6 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
-  "plugin": ["typedoc-github-theme"],
   "readme": "none",
   "disableSources": true,
   "excludeExternals": true,
