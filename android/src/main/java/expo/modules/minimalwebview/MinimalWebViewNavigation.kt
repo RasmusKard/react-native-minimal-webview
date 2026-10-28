@@ -81,10 +81,7 @@ internal class MinimalWebViewNavigation(
   // loadUrl skips shouldOverrideUrlLoading, so the reissued URL isn't asked again (its redirects still go to decide).
   private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
-  /**
-   * A download nothing handled (no `onDownload`): an http(s) one opens externally, reported like an `external`
-   * navigation; the browser fetches it without the page's session. A data: or blob: one only the page can read: dropped.
-   */
+  /** A download no `onDownload` takes. */
   fun openDownload(url: String) {
     if (url.startsWith("http:") || url.startsWith("https:")) {
       openExternal(NavigationRules.Request(url, true, false, false), null)
@@ -100,8 +97,7 @@ internal class MinimalWebViewNavigation(
   private fun openExternal(request: NavigationRules.Request, rule: Int?) {
     val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
     if ("openExternal" !in owner.requestHandlers) return report(open(request.url))
-    // Only false hands the URL back: null (a throw, or the page moved on first) means the app has it. No timeout, as
-    // nothing waits for the answer: the navigation is cancelled already.
+    // A page that moved on first answers null, which counts as opened. No timeout: nothing waits for the answer.
     owner.asks.ask("core.openExternal", mapOf("url" to request.url)) { answer ->
       report(answer != false || open(request.url))
     }
@@ -154,9 +150,7 @@ internal class MinimalWebViewNavigation(
     return false
   }
 
-  // A throwaway WebView catches the new window's first URL; the rules decide, then it is destroyed. Never a second
-  // WebView for the app: a popup model is more than almost any app wants, and a hook chrome client's `onCreateWindow`
-  // owns one when it must.
+  // Never a second WebView: a popup model is more than almost any app wants, so a throwaway one only catches the URL.
   fun createWindow(isUserGesture: Boolean, resultMsg: Message): Boolean {
     val child = WebView(owner.context)
     // It only catches a URL: none of the page's access, and no JS of its own.

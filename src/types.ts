@@ -60,8 +60,9 @@ export type NavigationRule = {
   mainFrame?: boolean;
   /**
    * `target=_blank` or `window.open`, a main-frame navigation. An allowed one loads in place: there is never a second
-   * WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked (on
-   * Android, WebView may still run a `javascript:` one's script, with the page's origin), and one opened with no URL
+   * WebView, so no `window.opener` (a native hook that takes `createWebViewWith` on iOS or `onCreateWindow` on Android
+   * owns real popups). One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked (on Android,
+   * WebView may still run a `javascript:` one's script, with the page's origin), and one opened with no URL
    * (`window.open('')`) is decided when the page first sends it to one, or dropped when that doesn't happen within 5 s.
    */
   newWindow?: boolean;
@@ -118,7 +119,7 @@ export type NavigationState = {
    * How the last main-frame load ended; null while one is loading, and before the first. `failed`: a network or SSL
    * error, or a renderer crash, cut it off. `cancelled`: it never showed a page (a stop before the response, a
    * download, a 204, a redirect the rules blocked, a load a newer one replaced); a stop after the page arrived is
-   * `cancelled` on iOS but `finished` on Android, and a 204 is `finished` on iOS 17.5. An HTTP error status (404) is
+   * `cancelled` on iOS but `finished` on Android, and a 204 is `finished` on iOS 17. An HTTP error status (404) is
    * `finished`: the site's page shows, and `onError` gets an `http` error. On Android with a WebView older than 146,
    * a load that never commits changes nothing here.
    */
@@ -141,9 +142,9 @@ export type ProcessGoneEvent = {
   /**
    * The core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground and the
    * view on screen, with the history restored unless the `source` page was on screen, and with the props applied but
-   * not what `call` set. False while a POST `source` is
-   * on screen (`reload()` sends it again), and after more than 3 crashes in 60 s, counted for the whole app on Android,
-   * until the next `reload()` (on iOS also a `source` change).
+   * not what `call` set. False while a POST `source` is on screen, which, as in a browser, isn't sent again unasked
+   * (`reload()` sends it), and after more than 3 crashes in 60 s, counted for the whole app on Android, until the next
+   * `reload()` (on iOS also a `source` change).
    */
   recovered: boolean;
 };
@@ -211,10 +212,9 @@ export type Bridge<
     handler: BridgeHandler<Methods[M]['params'], Methods[M]['result']>
   ): () => void;
   /**
-   * Calls a method the page registered with `nativeBridge.handle`. Rejects with a {@link BridgeCallError}, with
-   * `navigated` when the page navigates or crashes, or the WebView unmounts, before it answers: the page may have
-   * handled the call already, so retry only calls that are safe to repeat. `timeoutMs` overrides the bridge's for this
-   * call; `0` or `Infinity` means none, and one that isn't 0 or more rejects with a plain `RangeError`.
+   * Calls a method the page registered with `nativeBridge.handle`. Rejects with a {@link BridgeCallError}; after
+   * `navigated` the page may have handled the call already, so retry only calls that are safe to repeat. `timeoutMs`
+   * overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain `RangeError`.
    */
   call<M extends keyof Methods & string>(
     method: M,
@@ -453,7 +453,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
    * Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
    * `intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
-   * app for the URL.
+   * app for the URL, opened without asking `canOpenURL` first, so no `LSApplicationQueriesSchemes` (iOS) or `<queries>`
+   * (Android) entries are needed.
    */
   onOpenExternal?: (url: string) => boolean | void | Promise<boolean | void>;
   /**
@@ -538,7 +539,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /** Every change to the navigation state. Changes within one frame are combined into one call. */
   onNavigationStateChange?: (state: NavigationState) => void;
   /**
-   * A main-frame load failed, or got an HTTP error status. On Android with a WebView older than 146, an SSL error on a
+   * A main-frame load failed, or got an HTTP error status. After a failed load iOS keeps the page before it on screen,
+   * and Android shows WebView's own error page. On Android with a WebView older than 146, an SSL error on a
    * back/forward load isn't reported.
    */
   onError?: (event: LoadErrorEvent) => void;
@@ -555,9 +557,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /** `loading` went false: `state.outcome` says how the load ended. */
   onLoadEnd?: (state: NavigationState) => void;
   /**
-   * Gets the {@link WebViewRef}. A ref object (`useRef`, `createRef`, `createWebViewRef`) also works with
-   * `useWebViewState`. Give each mounted WebView its own ref: with two, the last mounted wins (with a warning in
-   * development) until it unmounts.
+   * Gets the {@link WebViewRef}. Give each mounted WebView its own ref: with two, the last mounted wins (with a
+   * warning in development) until it unmounts.
    */
   ref?: Ref<WebViewRef>;
 }
@@ -584,10 +585,8 @@ export type WebViewRef = {
   /**
    * Runs an expression (not statements) in the page's main frame and awaits it. Resolves with its value through JSON:
    * `null` for what JSON can't encode (a function, `NaN`, a cycle), a `Date` as its ISO string. The value is the
-   * page's, so treat it as page data. Rejects with a {@link CodedError}: `script_error`, with the error's message, when
-   * the script throws, rejects or doesn't parse; `navigated` when the page goes away first; `unavailable` on Android
-   * with a WebView older than 83. There is no timeout: a page can hold a call until it navigates (an Android `blob:`
-   * download, which reads the blob this way, gives up after 30 s).
+   * page's, so treat it as page data. Rejects with a {@link CodedError}: `script_error` (with the script's error
+   * message), `navigated` or `unavailable`. There is no timeout: a page can hold a call until it navigates.
    */
   evaluate(script: string): Promise<unknown>;
   /**
@@ -634,9 +633,9 @@ export type WebViewRef = {
   ): Promise<unknown>;
   /**
    * Calls the `method` handler the native hook `name` registered with `context.handle`, with `args`, and resolves with
-   * its reply; both cross as JSON. Rejects with `hook_not_handled` when no attached hook `name` handles `method`, or
-   * `native_error` when the reply can't cross as JSON. A handler that never replies leaves the promise pending: nothing
-   * settles it on navigation, a crash or unmount.
+   * its reply; both cross as JSON. Rejects with `hook_not_handled`, or `native_error` when the reply can't cross as
+   * JSON. A handler that never replies leaves the promise pending: nothing settles it on navigation, a crash or
+   * unmount.
    */
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };

@@ -69,10 +69,8 @@ sets and dictionaries of them. On Android: primitives, strings, and lists and ma
 
 Runs an expression (not statements) in the page's main frame and awaits it. Resolves with its value through JSON:
 `null` for what JSON can't encode (a function, `NaN`, a cycle), a `Date` as its ISO string. The value is the
-page's, so treat it as page data. Rejects with a [CodedError](CodedError.md): `script_error`, with the error's message, when
-the script throws, rejects or doesn't parse; `navigated` when the page goes away first; `unavailable` on Android
-with a WebView older than 83. There is no timeout: a page can hold a call until it navigates (an Android `blob:`
-download, which reads the blob this way, gives up after 30 s).
+page's, so treat it as page data. Rejects with a [CodedError](CodedError.md): `script_error` (with the script's error
+message), `navigated` or `unavailable`. There is no timeout: a page can hold a call until it navigates.
 
 #### Parameters
 
@@ -138,9 +136,9 @@ Goes forward one page, when `canGoForward`.
 > **hook**(`name`, `method`, `args?`): `Promise`\<`unknown`\>
 
 Calls the `method` handler the native hook `name` registered with `context.handle`, with `args`, and resolves with
-its reply; both cross as JSON. Rejects with `hook_not_handled` when no attached hook `name` handles `method`, or
-`native_error` when the reply can't cross as JSON. A handler that never replies leaves the promise pending: nothing
-settles it on navigation, a crash or unmount.
+its reply; both cross as JSON. Rejects with `hook_not_handled`, or `native_error` when the reply can't cross as
+JSON. A handler that never replies leaves the promise pending: nothing settles it on navigation, a crash or
+unmount.
 
 #### Parameters
 

@@ -261,7 +261,6 @@ async function frames({ r, s, android }: Shape) {
   const moved = (await until(async () => (await frameLoads()) > loadsBefore, 15000)) === true;
   await sleep(500);
   const other = decision(s, 'from=frame');
-  // Android never shows the rules an iframe's http(s) navigation, tapped or not (NavigationRule.mainFrame).
   if (android) r.info('A4 Android decision for the tapped http(s) iframe link', other ?? 'none');
   r.check(
     'A4 hybrid: an iframe link to another site loads in the iframe',
@@ -376,7 +375,6 @@ async function checkout({ r, s, android }: Shape) {
       acsFrame
     );
 
-  // The rules never see a form POST, on either platform: whatever the `ask` would answer, nothing is asked or decided.
   const term = `${PAGES}/post?term=1`;
   const unruled = () => s.asked.length === 0 && s.decisions.length === 0;
   await s.use('checkout', { inCheckout: true });
@@ -455,7 +453,6 @@ async function windows({ r, s }: Shape) {
 async function deferredWindows({ r, s, android }: Shape) {
   await hub(s);
   const log = await lines(s, () => s.tap('open-deferred'));
-  // A throwaway window catches the URL the opener sets (within 5 s), which the rules decide as a new window.
   const deferred = `${PAGES}/spa.html?from=deferred`;
   await waitFor(s, (st) => st.url === deferred && idle(st), 8000);
   r.check(
@@ -665,8 +662,6 @@ async function spa({ r, s, android }: Shape) {
     ),
     tapped
   );
-  // Added by script, without a gesture: Android's goBack, like Chrome's back button, skips those entries and the page
-  // that added them (Chromium's history manipulation intervention); WebKit steps back one entry.
   const scripted = await walkBack(s, (id) => s.click(id));
   r.check(
     'H1b spa: goBack() over entries a script added without a gesture',

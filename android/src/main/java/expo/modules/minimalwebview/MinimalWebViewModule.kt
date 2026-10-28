@@ -75,12 +75,10 @@ class MinimalWebViewModule : Module() {
       MinimalWebView.inBackground = false
     }
 
-    // Starts WebView (loading its code, starting Chromium) ahead of the first WebView, off the UI thread where the
-    // device's WebView supports it. Best effort: an error only means the first WebView starts it as before.
+    // Best effort: an error only means the first WebView starts WebView as before.
     Function("warmUp") { warmUp(appContext.reactContext ?: throw Exceptions.ReactContextLost()) }
 
-    // Opens a connection (DNS, TCP, TLS) to the URL's origin in the default profile, for a load that follows. Best
-    // effort: nothing on a WebView without the profile API. ProfileStore wants the UI thread, and starts WebView there.
+    // ProfileStore wants the UI thread, and starts WebView there.
     AsyncFunction("preconnect") { url: String ->
       if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return@AsyncFunction
       val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
@@ -90,7 +88,6 @@ class MinimalWebViewModule : Module() {
       }
     }.runOnQueue(Queues.MAIN)
 
-    // The platform's default user agent (`WebView.defaultUserAgent` in JS), for apps that append to it.
     Constant("defaultUserAgent") {
       WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
     }
@@ -103,7 +100,6 @@ class MinimalWebViewModule : Module() {
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
       Prop("hookOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.hookOptions = options.orEmpty() }
-      // JSON, so a null (reset this key) survives: the map conversion drops nulls on iOS, and this keeps both the same.
       Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
       Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
       Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
@@ -113,8 +109,6 @@ class MinimalWebViewModule : Module() {
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
 
       AsyncFunction("navigate") { view: MinimalWebView, action: String -> navigate(view, action) }.runOnQueue(Queues.MAIN)
-      // `get('settings.textZoom')` and `call('webView.clearCache', '[true]', null)` resolve with the JSON of the result.
-      // `argsJson` is a JSON string so a null argument survives the conversion; `completion` is iOS's.
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
         native(view, promise) { view.platformSettings.get(path) }
       }.runOnQueue(Queues.MAIN)
@@ -127,11 +121,9 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
         view.asks.answer(askId, answer["value"])
       }.runOnQueue(Queues.MAIN)
-      // A hook's `context.handle` handler: the arguments and the reply cross as JSON, like `call`'s.
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
         hook(view, name, method, args, promise)
       }.runOnQueue(Queues.MAIN)
-      // Resolves with the JSON-encoded result of the expression; JS parses it.
       AsyncFunction("evaluate") { view: MinimalWebView, script: String, promise: Promise ->
         view.evaluate(script) { result ->
           result.fold(promise::resolve) { promise.reject(it.toCodedException()) }
@@ -210,7 +202,6 @@ private object FileChooserContract : AppContextActivityResultContract<ChooserInt
 
 // Data classes, so the skip checks in applyProps compare them with ==. Every field is optional, as on iOS.
 
-/** `{ uri, headers?, body? }` or `{ html, baseUrl? }`. `body` makes the request a form-urlencoded POST. */
 internal data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
