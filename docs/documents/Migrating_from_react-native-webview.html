@@ -119,7 +119,7 @@ props that became something else, and what has no equivalent. The <a href="../">
 <tr>
 <td>Failed load</td>
 <td>An &quot;Error loading page&quot; view replaces the page, with or without <code>renderError</code></td>
-<td>No error view of its own (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror"><code>onError</code></a>)</td>
+<td>No error view of its own on iOS, which keeps the page before it; Android shows WebView's own error page (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror"><code>onError</code></a>)</td>
 <td>The error screen <a href="#loading-and-error-screens">below</a></td>
 </tr>
 <tr>
@@ -205,7 +205,7 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td>On Android <code>call('webView.clearCache', [true])</code> and the like; on iOS <code>call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)</code> clears the cache, and the back-forward list can't be cleared</td>
 </tr>
 <tr>
-<td><code>basicAuthCredential</code>, JS dialogs, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>keyboardDisplayRequiresUserAction</code>, <code>hideKeyboardAccessoryView</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>nestedScrollEnabled</code>, <code>nativeConfig</code></td>
+<td><code>basicAuthCredential</code>, custom JS dialogs, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>keyboardDisplayRequiresUserAction</code>, <code>hideKeyboardAccessoryView</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>nativeConfig</code></td>
 <td>A <a href="Examples.html#native-hooks">native hook</a></td>
 </tr>
 <tr>
@@ -258,6 +258,10 @@ props that became something else, and what has no equivalent. The <a href="../">
 <tr>
 <td><code>allowFileAccessFromFileURLs</code>, <code>allowUniversalAccessFromFileURLs</code></td>
 <td><code>android.settings.&lt;the same name&gt;</code>; on iOS <code>ios.preferences.allowFileAccessFromFileURLs</code> and <code>ios.configuration.allowUniversalAccessFromFileURLs</code></td>
+</tr>
+<tr>
+<td><code>nestedScrollEnabled</code></td>
+<td><code>android.webView.nestedScrollingEnabled</code></td>
 </tr>
 <tr>
 <td><code>androidLayerType</code></td>

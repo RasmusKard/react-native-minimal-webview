@@ -29,7 +29,7 @@ props that became something else, and what has no equivalent. The [requirements]
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
 | Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
-| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own ([`onError`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror)) | The error screen [below](#loading-and-error-screens) |
+| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own on iOS, which keeps the page before it; Android shows WebView's own error page ([`onError`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror)) | The error screen [below](#loading-and-error-screens) |
 | Android file chooser | Offers the camera, and opens it for `capture`, asking for the OS permissions itself | The system chooser, which ignores `capture` | `onFileRequest` with expo-image-picker ([page requests](examples.md#page-requests)) |
 
 The settings in one object, for the rows a setting restores:
@@ -80,7 +80,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])` and the like; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nestedScrollEnabled`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
+| `basicAuthCredential`, custom JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
 | `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload`; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
 
@@ -96,6 +96,7 @@ The props whose setting has another name:
 | `forceDarkOn` | `android.settings.algorithmicDarkeningAllowed` (`forceDark` below `targetSdk` 33) |
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
 | `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`; on iOS `ios.preferences.allowFileAccessFromFileURLs` and `ios.configuration.allowUniversalAccessFromFileURLs` |
+| `nestedScrollEnabled` | `android.webView.nestedScrollingEnabled` |
 | `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
 | `style={{ backgroundColor: 'transparent' }}` | `android.webView.backgroundColor: 0`; on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (`ios.webView.opaque` is refused) |
 | `containerStyle` | A `View` around the WebView |
