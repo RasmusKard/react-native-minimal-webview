@@ -80,8 +80,10 @@ function createAdapter(): Adapter {
 }
 
 /**
- * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it. Its
- * `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
+ * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it.
+ *
+ * Its `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
+ * @group WebView
  */
 export function createWebViewRef(): WebViewRefObject {
   const adapter = createAdapter();
@@ -114,8 +116,11 @@ export function useAttach(
 
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
- * re-renders on every change, and follows a remount. The initial state (`url: ''`) while none is mounted.
- * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#navigation-state
+ * re-renders on every change, and follows a remount.
+ *
+ * The initial state (`url: ''`) while none is mounted.
+ * @see [Navigation state example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#navigation-state)
+ * @group Navigation
  */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {
   const { nav } = adapterFor(ref);

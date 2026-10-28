@@ -31,11 +31,11 @@ export function Browser() {
 ## Docs
 
 - [Examples](docs/examples.md): one per public interface, from the navigation state to native hooks
-- [API reference](docs/api/README.md), generated from the TSDoc. The native hook API is documented on
+- [API reference](https://rasmuskard.github.io/minimal-rn-webview/api/modules.html), generated from the TSDoc. The native hook API is documented on
   `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
 - [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): what differs, and recipes for what
   has no prop
-- [Development](docs/development.md): setup, the checks and the on-device suites
+- [Development](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/development.md): setup, the checks and the on-device suites
 
 ## Android System WebView versions
 
