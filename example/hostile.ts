@@ -227,8 +227,6 @@ async function newWindows(suite: Suite) {
     await sleep(1000); // a load the core wrongly let in would have started by now
     const decisions = h.events.navigations.slice(navigations);
     const sentinels = await sentinelsNow();
-    // Android's WebView can run a javascript: window's script before that window's JavaScript-off setting
-    // applies, and the core can't stop it: there a script that ran is reported, not failed.
     const scriptMayRun = android && id === 'open-js';
     r.check(
       `T5 a tapped ${label} does not load, with a rule that allows every new window`,
