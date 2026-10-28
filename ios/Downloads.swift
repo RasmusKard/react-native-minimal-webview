@@ -1,8 +1,6 @@
 import WebKit
 
-/// Saves downloads through WKDownload, with the page's session and cookies, while `onDownload` is set:
-/// `Content-Disposition: attachment`, types WebKit can't show, `<a download>` and blob: URLs. The files go to the app's
-/// temporary directory, and the core never deletes them. Without the prop, `openDownload` takes them.
+/// The `onDownload` prop, through WKDownload. Without the prop, `openDownload` takes the URL.
 final class Downloads: NSObject, WKDownloadDelegate {
   private weak var view: MinimalWebView?
   private var files: [ObjectIdentifier: (url: URL, mimeType: String)] = [:]
@@ -63,7 +61,6 @@ final class Downloads: NSObject, WKDownloadDelegate {
     ])
   }
 
-  /// The download's server URL for the events; null when the page generated the file (data:, blob:).
   private func serverUrl(_ download: WKDownload) -> Any {
     guard let url = download.originalRequest?.url, ["http", "https"].contains(url.scheme?.lowercased()) else { return NSNull() }
     return url.absoluteString

@@ -22,7 +22,7 @@ export type BridgeConnection = {
   receive(message: string, origin: string): void;
   /** The platform lacks the WebView features the bridge needs: calls reject with `unavailable`. */
   markUnavailable(): void;
-  /** A new document committed: queue messages until its page client says `ready` (at DOMContentLoaded). */
+  /** A new document committed: queue messages until its page client says `ready`. */
   navigated(): void;
 };
 
@@ -32,9 +32,9 @@ const MAX_QUEUE = 1000;
 
 /**
  * Creates a promise-based RPC channel to `window.nativeBridge` in the pages of `allowedOrigins`, for one WebView's
- * `bridge` prop. Make it once (`useMemo`): a new bridge recreates the WebView. The type arguments type the method
- * names, params, results and event payloads of `call`, `handle`, `emit` and `on`; nothing checks them at runtime, so a
- * handler still validates what an untrusted page sends. Throws for an invalid origin rule or timeout.
+ * `bridge` prop. The type arguments type the method names, params, results and event payloads of `call`, `handle`,
+ * `emit` and `on`; nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws
+ * for an invalid origin rule or timeout.
  * @see https://github.com/RasmusKard/react-native-minimal-webview/blob/main/docs/examples.md#the-bridge
  */
 export function createBridge<
@@ -57,7 +57,7 @@ export function createBridge<
   let post: ((message: string) => void) | null = null;
   // idle: no document committed since attach. loading: one committed and hasn't said `ready` yet.
   let phase: 'idle' | 'loading' | 'ready' = 'idle';
-  // The token of the document that last said `ready` (protocol.ts `doc`): what RN sends is for that document only.
+  // The token of the document that last said `ready` (protocol.ts `doc`).
   let doc: string | undefined;
   // Messages for the next document that says `ready`. Only the latest document's: see navigated().
   let queue: BridgeMessage[] = [];
@@ -94,9 +94,8 @@ export function createBridge<
       return;
     }
     if (message.kind !== 'ready') {
-      // Answers go out at once, not through the ready-gated queue: the page may be waiting for this answer before it
-      // reaches DOMContentLoaded (a module script awaiting a call), and `ready` is sent only then. Native can deliver
-      // it: the page's call is a message from that page. It carries the caller's token, so only that document takes it.
+      // Answers skip the ready queue: a module script may await one before DOMContentLoaded, and native can deliver
+      // it, as the page has posted.
       const reply = (answer: BridgeMessage) =>
         post?.(JSON.stringify({ ...answer, doc: message.doc }));
       void endpoint.receive(message, reply, { origin });

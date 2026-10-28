@@ -306,7 +306,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
    */
   internal fun processGone(didCrash: Boolean, at: Long) {
     if (destroyed) return
-    // A POST source on screen isn't sent again unasked (a payment form, say): the app's reload() does that.
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
     document.end(End.CRASHED)
     detachHooks()

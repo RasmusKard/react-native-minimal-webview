@@ -104,25 +104,19 @@ function request(text: string) {
   });
 }
 
-/**
- * The first Android System WebView with what a check needs, for `reporter` (the package's own floors: README, "Android
- * System WebView versions").
- */
+/** The first Android System WebView with what a check needs, for `reporter`. */
 export const WEBVIEW = {
-  /** WEB_MESSAGE_LISTENER: `evaluate`, and so `blob:` downloads. */
+  /** WEB_MESSAGE_LISTENER */
   evaluate: 83,
-  /** WEB_MESSAGE_LISTENER and DOCUMENT_START_SCRIPT (as androidx.webkit matches it). */
+  /** WEB_MESSAGE_LISTENER and DOCUMENT_START_SCRIPT, as androidx.webkit matches them */
   bridge: 101,
-  /** DOCUMENT_START_SCRIPT, as androidx.webkit matches it. */
+  /** DOCUMENT_START_SCRIPT, as androidx.webkit matches it */
   injectedScripts: 101,
   /** The file input's `cancel` event, which upload.html waits for. */
   fileInputCancel: 113,
-  /** PAYMENT_REQUEST: WebSettingsCompat's `paymentRequestEnabled`. */
+  /** PAYMENT_REQUEST */
   paymentRequest: 136,
-  /**
-   * NAVIGATION_LISTENER: `pendingUrl`, the load events of a load that never commits, an SSL error on a back/forward
-   * load and the back-forward cache.
-   */
+  /** NAVIGATION_LISTENER */
   navigationListener: 146,
 };
 
@@ -377,8 +371,7 @@ async function urlTracking(h: Harness) {
   r.done();
 }
 
-// The `ask` rule. Android can't hold a navigation: it cancels it, asks JS, and on `allow` loads the URL again (the
-// reissue).
+// The `ask` rule (NavigationRule.action).
 async function reissue(h: Harness) {
   const r = reporter('reissue');
   const asked: string[] = [];
@@ -444,7 +437,6 @@ async function reissue(h: Harness) {
     `(() => { const f = document.createElement('iframe'); f.src = '/checkout/frame'; document.body.append(f); f.onload = () => f.contentWindow.location.href = '/checkout/frame2'; })()`
   );
   await sleep(1500);
-  // Android cannot hold a navigation, so `ask` falls back to block for iframes; iOS holds the handler and asks.
   if (Platform.OS === 'android') {
     r.check(
       'iframe navigations into an ask rule are blocked without asking',
@@ -455,8 +447,6 @@ async function reissue(h: Harness) {
     r.check('iframe navigations into an ask rule are asked', asked.length > beforeFrame, asked);
   }
 
-  // A navigation an `ask` allowed (reissued, on Android) still sends the page as the referrer: in full to its own
-  // origin, only its origin to another.
   const referrerTo = async (target: string) => {
     const from = fresh(h, '/nav.html');
     await openPage(h, from);
@@ -983,7 +973,6 @@ async function errors(h: Harness) {
     h.events.outcomes
   );
 
-  // Loads that never show a page end as cancelled. Android before 146 reports nothing for them: they never commit.
   const stopped = await outcomeOf(async () => {
     h.load(fresh(h, '/slow?ms=3000'));
     await waitFor(h, (s) => s.loading, 3000);
@@ -996,7 +985,6 @@ async function errors(h: Harness) {
     stopped
   );
   const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
-  // iOS 17 ends it as finished, as the TSDoc says.
   const expected204 =
     Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 18 ? 'finished' : 'cancelled';
   r.since(
@@ -1576,8 +1564,7 @@ async function settings(h: Harness) {
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'native_error'
       );
-      // The migration guide's transparent WebView. UIKit declares `opaque` without runtime property metadata, so
-      // `ios.webView.opaque` and `get` refuse it: `call` sets it and reads it back.
+      // The migration guide's transparent WebView.
       const transparent = await call('webView.setOpaque:', [false]);
       const opaque = await call('webView.isOpaque', []);
       r.check(
@@ -1804,8 +1791,7 @@ async function navigation(h: Harness) {
     dataWindow()
   );
   r.check('the page stays after the blocked data: window', h.state().url === opener, h.state());
-  // Android never decides an iframe's http(s) navigations, with a gesture or without (the shapes suite's A4 settled
-  // it); the real tap keeps the gesture flag true in case a WebView ever does.
+  // A real tap keeps the gesture flag true, in case a WebView ever decides an iframe's http(s) navigation.
   if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
   else
     await h.ref.current?.evaluate(
@@ -1821,7 +1807,6 @@ async function navigation(h: Harness) {
   await sleep(300);
 
   const frames = h.events.navigations.filter((n) => !n.mainFrame);
-  // Android intercepts only non-http(s) iframe navigations (WebViewClient docs); iOS decides them all.
   if (Platform.OS === 'android')
     r.info('iframe decisions (http(s) iframes are not intercepted on Android)', frames.length);
   else
@@ -2016,7 +2001,6 @@ async function downloadsSuite(h: Harness) {
     await click(h, id);
     const done = await waitFor(h, () => h.events.downloads.length > before, 20000);
     const download = h.events.downloads[before];
-    // Android before 146 reports no load for it: it never commits.
     if (id === 'attachment') {
       await waitFor(h, () => h.events.outcomes.length > outcomes, 2000);
       r.since(
@@ -2047,7 +2031,6 @@ async function downloadsSuite(h: Harness) {
         text?.includes('dl=1') === true,
         text
       );
-    // The server URL for http downloads; null when the page generated the file (data:, blob:).
     const url =
       id === 'attachment'
         ? attachmentUrl
@@ -2074,7 +2057,7 @@ async function downloadsSuite(h: Harness) {
       failed && failure?.reason.includes('larger than') === true,
       failure
     );
-    // Far more than one reply can carry (a 40 MiB blob's data: URL never arrived whole): the page reads it in chunks.
+    // Far more than one reply can carry: the page reads it in chunks.
     const big = h.events.downloads.length;
     await blobLink(h, 'bigok', 40 * 1024 * 1024);
     await click(h, 'bigok');
@@ -2154,7 +2137,6 @@ async function permissionsSuite(h: Harness) {
       /geo ok|geo error [23]/.test(geo),
       geo
     );
-    // WebView keeps a location answer for the page's lifetime: a new page asks the app again.
     await openPage(h, fresh(h, '/device.html'));
     answer = false;
     const geoDenied = await press('geo');
@@ -2666,7 +2648,6 @@ async function sources(h: Harness) {
     (await text(h, 'body')) === body,
     await text(h, 'body')
   );
-  // The page can't be fetched by URL: reload sends the POST again (Android's WebView would decline the resubmission).
   await h.ref.current?.evaluate(`document.getElementById('body').textContent = 'stale'`);
   const loads = h.events.loads.length;
   h.ref.current?.reload();
@@ -2723,7 +2704,10 @@ async function sources(h: Harness) {
   r.done();
 }
 
-/** In run order: `maestro/run.sh` runs these keys when it is given no suites. */
+/**
+ * In run order: `maestro/run.sh` runs these keys when it is given no suites. A suite reports `skipped` on a platform it
+ * doesn't apply to, leaves nothing behind that `reset()` doesn't undo, and needs no site but the test pages server.
+ */
 export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   urlTracking,
   navigation,

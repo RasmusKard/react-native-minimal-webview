@@ -14,11 +14,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import expo.modules.minimalwebview.DocumentScope.End
 import expo.modules.minimalwebview.MinimalWebView
 
-/**
- * HTML5 fullscreen video, always on: the page's fullscreen view covers the WebView's own window on a black backdrop,
- * system bars hide, and back exits. Orientation is the app's: it can unlock it in
- * `onFullscreenChange` (expo-screen-orientation).
- */
+/** HTML5 fullscreen video, and the `onFullscreenChange` prop. */
 internal class FullscreenVideo(private val owner: MinimalWebView) {
   private var shown: Pair<View, CustomViewCallback>? = null
   private var backdrop: FrameLayout? = null

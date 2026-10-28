@@ -37,10 +37,9 @@ What `<WebView>` attaches to. Only `createBridge` sets it, so a hand-made or moc
 
 > **call**\<`M`\>(`method`, `params?`, `options?`): `Promise`\<`Methods`\[`M`\]\[`"result"`\]\>
 
-Calls a method the page registered with `nativeBridge.handle`. Rejects with a [BridgeCallError](BridgeCallError.md), with
-`navigated` when the page navigates or crashes, or the WebView unmounts, before it answers: the page may have
-handled the call already, so retry only calls that are safe to repeat. `timeoutMs` overrides the bridge's for this
-call; `0` or `Infinity` means none, and one that isn't 0 or more rejects with a plain `RangeError`.
+Calls a method the page registered with `nativeBridge.handle`. Rejects with a [BridgeCallError](BridgeCallError.md); after
+`navigated` the page may have handled the call already, so retry only calls that are safe to repeat. `timeoutMs`
+overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain `RangeError`.
 
 #### Type Parameters
 

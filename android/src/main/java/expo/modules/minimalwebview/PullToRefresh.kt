@@ -7,10 +7,9 @@ import android.widget.FrameLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
- * Pull down at the top of the page to reload (the `pullToRefresh` prop): a SwipeRefreshLayout around the WebView.
- * WebView sends no nested-scroll events, so it asks the WebView whether the document can scroll up, and on touch-down
- * asks the page whether the element under the finger is inside an inner scroller (overflow: auto) that is already
- * scrolled.
+ * The `pullToRefresh` prop. WebView sends no nested-scroll events, so it asks the WebView whether the document can
+ * scroll up, and on touch-down asks the page whether the element under the finger is inside an inner scroller
+ * (overflow: auto) that is already scrolled.
  */
 internal class PullToRefresh(private val owner: MinimalWebView) {
   // The page's answer for the current touch; null while it is pending, which holds the pull off. The down event itself

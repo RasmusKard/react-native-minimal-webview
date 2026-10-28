@@ -51,7 +51,6 @@ export function createEndpoint<Sender = void>(
 
   return {
     pending,
-    /** `timeoutMs` overrides the endpoint's for this call; `0` or `Infinity` means none. */
     call(method: string, params?: unknown, options?: { timeoutMs?: number }) {
       const ms = options?.timeoutMs ?? timeoutMs;
       if (!(ms >= 0))

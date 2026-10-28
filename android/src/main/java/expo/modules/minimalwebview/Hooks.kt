@@ -40,15 +40,12 @@ object MinimalWebViewHooks {
    * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global, so prefix
    * yours with your package's name: a second hook under a key throws [IllegalStateException] (a minified build may
    * replace the first instead). The same `register` call running again replaces its hook: a JS reload creates the
-   * modules anew, and their `OnCreate` runs again. `core` is reserved and refused. Hooks run in registration order, so
-   * an earlier hook's clients come first.
+   * modules anew, and their `OnCreate` runs again. `core` is reserved and refused: the package's own events are named
+   * `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
    *
-   * The hook attaches to a WebView created with a `hookOptions` value for [key] other than null, undefined or false,
-   * and again, with the current value, to the WebView that replaces it after a renderer crash. A key added to
-   * `hookOptions` later attaches nothing (a warning says so): to switch a hook on and off, enable its key from the
-   * start and put the switch in its value (`{ enabled: false }`), or give the WebView a new React `key`. A key that
-   * enables no registered hook (a typo, or a module not linked or not rebuilt) warns too, so pass a one-platform hook's
-   * key on that platform only.
+   * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
+   * with the current value, to the WebView that replaces it after a renderer crash. To switch a hook on and off, keep
+   * its key enabled and put the switch in its value (`{ enabled: false }`).
    *
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
    *   (`WebViewCompat.setProfile` goes here).
@@ -61,7 +58,6 @@ object MinimalWebViewHooks {
     configure: ((WebView, WebViewContext) -> Unit)? = null,
     attach: (WebView, WebViewContext) -> (() -> Unit)?
   ) {
-    // The package's own events are `core.…`: a hook under it would have its events taken for them.
     if (key == "core") {
       Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
       return
@@ -162,9 +158,8 @@ interface WebViewContext {
 
   /**
    * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
-   * `Long` or `Double`) and calls `reply` once, with a value JSON can encode. One handler per method: the last one
-   * wins. The promise rejects with `hook_not_handled` when no attached hook under the key handles the method, and
-   * stays pending when a handler never replies, past the Document's end, a crash or unmount too.
+   * `Long` or `Double`) and calls `reply` exactly once, with a value JSON can encode. One handler per method: the last
+   * one wins.
    */
   fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
 }

@@ -30,13 +30,9 @@ internal data class DownloadInfo(
 )
 
 /**
- * Downloads, with the app's `onDownload`: http(s) is fetched again with the WebView's cookies and the page's user agent
- * (WebView hands over only the URL), through `HttpURLConnection` and `CookieManager` rather than React Native's OkHttp,
- * so the package builds without `react-android`; data: is decoded, and blob: is read by the page in chunks. Each lands in its own app-cache
- * directory and emits `download {ok: true, uri, filename, mimeType, url}`, as on iOS; a failed one emits
- * `download {ok: false, filename, url, reason}`. `url` is the full http(s) URL, or null for data: and blob: (the page
- * made the file itself). Without the prop the core opens it externally. Nothing here may crash the app: the page
- * controls the URL.
+ * The `onDownload` prop. WebView hands over only the URL, so http(s) is fetched again, through `HttpURLConnection` and
+ * `CookieManager` rather than React Native's OkHttp, so the package builds without `react-android`. Nothing here may
+ * crash the app: the page controls the URL.
  */
 internal class Downloads(private val owner: MinimalWebView) {
   private val io = Executors.newSingleThreadExecutor()
@@ -102,7 +98,7 @@ internal class Downloads(private val owner: MinimalWebView) {
   /**
    * WebView cannot fetch a blob: URL for us: the page reads it and returns it as data: URLs, [CHUNK_BYTES] at a time,
    * each awaited on the io thread. A reply crosses as one Java string and is parsed twice, so a blob returned whole
-   * fills the heap several times over: a 40 MB one never arrived, a 96 MB one crashed the app.
+   * fills the heap several times over.
    */
   private fun readBlob(url: String, name: String) = save(name, url) { file ->
     var offset = 0L
@@ -140,7 +136,6 @@ internal class Downloads(private val owner: MinimalWebView) {
     owner.emit("core.download", mapOf("ok" to false, "filename" to name, "url" to serverUrl(url), "reason" to (error.message ?: error.toString())))
   }
 
-  /** The download's server URL for the events; null when the page generated the file (data:, blob:). */
   private fun serverUrl(url: String) = url.takeIf { it.startsWith("http:") || it.startsWith("https:") }
 
   fun detach() {

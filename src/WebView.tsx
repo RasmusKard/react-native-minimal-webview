@@ -246,7 +246,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       asks.set(askId, controller);
     }
     const value = await settle(
-      // onOpenExternal takes the URL itself.
       () => handler?.(request === 'onOpenExternal' ? payload['url'] : payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
@@ -391,10 +390,10 @@ export declare namespace WebView {
    */
   const defaultUserAgent: string | null;
   /**
-   * Starts WebView (its code and Chromium) in the background, so that the first WebView mounts faster, blocks the UI
-   * thread less and sends its first request sooner. Call it at app start when a WebView shows soon after: right before
-   * the mount it gains less. React Native's first `fetch` starts WebView too (its cookie jar is WebView's
-   * `CookieManager`), so an app that fetches early gets part of this anyway. No-op on iOS.
+   * Starts WebView (loads its code, starts Chromium) ahead of the first WebView, on a background thread where the
+   * device's WebView supports that, so the first WebView loads sooner. Call it at app start when a WebView shows soon
+   * after. React Native's first `fetch` starts WebView too (its cookie jar is WebView's `CookieManager`), so an app that
+   * fetches early gets part of this anyway. No-op on iOS.
    * @platform android
    */
   function warmUp(): void;

@@ -28,19 +28,15 @@ extension MinimalWebView {
     }
   }
 
-  /// A download no hook takes (no onDownload): http(s) opens externally, reported like an `external` navigation; the
-  /// browser fetches it without the page's session. A data: or blob: one only the page can read: dropped.
+  /// A download no `onDownload` takes.
   func openDownload(_ url: URL) {
     guard ["http", "https"].contains(url.scheme?.lowercased()) else { return }
     let request = NavigationRules.Request(url: url.absoluteString, mainFrame: true, newWindow: false, userInitiated: false)
     finish(request, "external", nil) { _ in }
   }
 
-  /// window.open and target=_blank: never a second WKWebView for the page, since a popup model (presenting and closing a
-  /// child, `window.opener`, its own rules and bridge) is more than almost any app wants. `allow` loads the URL in this
-  /// one. A window opened with no URL yet (`window.open('')`) gets a throwaway view that catches the URL the page sends
-  /// it to (`WindowCatcher`), as on Android. An app that needs real popups takes `createWebViewWith` in a hook's UI
-  /// delegate and owns the second view.
+  /// window.open and target=_blank. Never a second WKWebView: a popup model (presenting and closing a child,
+  /// `window.opener`, its own rules and bridge) is more than almost any app wants.
   func webView(
     _ webView: WKWebView,
     createWebViewWith configuration: WKWebViewConfiguration,
@@ -57,8 +53,7 @@ extension MinimalWebView {
 
   private func openWindow(_ request: URLRequest, _ userInitiated: Bool) {
     guard let target = request.url else { return }
-    // A form POST to a web page skips the rules here too, and loads in place. This load is the app's, past WebKit's
-    // limits on what a page may load, so any other scheme still meets the rules, which block file: and internal ones.
+    // This load is the app's, past WebKit's limits on what a page may load, so only an http(s) POST skips the rules.
     if request.httpMethod == "POST", ["http", "https"].contains(target.scheme?.lowercased()) {
       return loadProgrammatic(request)
     }
@@ -100,8 +95,7 @@ extension MinimalWebView {
     completion(action == "allow")
     guard action == "external" else { return report(request, action, rule) }
     guard requestHandlers.contains("openExternal") else { return open(request, rule) }
-    // Only false hands the URL back: nil (a throw, or the page moved on first) means the app has it. No timeout, as
-    // nothing waits for the answer: the navigation is cancelled already.
+    // A page that moved on first answers nil, which counts as opened. No timeout: nothing waits for the answer.
     asks.ask("core.openExternal", ["url": request.url]) { [weak self] answer in
       if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, "external", rule) }
     }

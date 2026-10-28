@@ -29,8 +29,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
   });
   // Main frame only (Android injects into allowed-origin iframes too, but only the main frame's messages are taken).
   if (w.nativeBridge || !allowed || w !== w.top) return;
-  // This document's token (protocol.ts `doc`): a message for another document, like a late answer to a call of the
-  // previous page, is dropped.
+  // This document's token (protocol.ts `doc`).
   const doc = Math.random().toString(36).slice(2, 10);
 
   const ios = w.webkit?.messageHandlers?.nativeBridge;
@@ -58,9 +57,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigi
     /** iOS's entry point (callAsyncJavaScript, origin-checked there); Android uses the transport's onmessage. */
     __receive: receive,
   });
-  // `ready` tells RN to deliver what it queued for this page (native can't deliver before the page has posted). Wait
-  // for DOMContentLoaded, so the page's synchronous and deferred scripts have registered their handlers and listeners;
-  // a call delivered earlier would get `not_found`. The page's own calls work before that: RN answers them at once.
+  // `ready` (protocol.ts) waits for DOMContentLoaded: a call delivered earlier would get `not_found`.
   if (w.document.readyState === 'loading') {
     w.document.addEventListener('DOMContentLoaded', () => send({ kind: 'ready' }), {
       once: true,

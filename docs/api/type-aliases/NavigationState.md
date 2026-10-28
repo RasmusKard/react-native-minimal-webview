@@ -31,7 +31,7 @@ A WebView's navigation state, as native reports it: from `useWebViewState` and `
 How the last main-frame load ended; null while one is loading, and before the first. `failed`: a network or SSL
 error, or a renderer crash, cut it off. `cancelled`: it never showed a page (a stop before the response, a
 download, a 204, a redirect the rules blocked, a load a newer one replaced); a stop after the page arrived is
-`cancelled` on iOS but `finished` on Android, and a 204 is `finished` on iOS 17.5. An HTTP error status (404) is
+`cancelled` on iOS but `finished` on Android, and a 204 is `finished` on iOS 17. An HTTP error status (404) is
 `finished`: the site's page shows, and `onError` gets an `http` error. On Android with a WebView older than 146,
 a load that never commits changes nothing here.
 
