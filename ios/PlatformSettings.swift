@@ -107,7 +107,7 @@ final class PlatformSettings {
   /// counting. `mutable` covers `mutableCopy` and KVC's `mutableArrayValueForKey:` and its kin.
   private static let refused = [
     "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
-    "setNavigationDelegate", "setUIDelegate", "setDelegate", "setValue", "setValuesForKeys", "valueForKey",
+    "setInteractionState", "setNavigationDelegate", "setUIDelegate", "setDelegate", "setValue", "setValuesForKeys", "valueForKey",
     "dictionaryWithValuesForKeys", "mutable", "willChange", "didChange", "performSelector", "init", "copy", "new",
     "retain", "release", "autorelease", "dealloc",
   ]
