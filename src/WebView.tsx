@@ -4,6 +4,7 @@ import { Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
+import { DEFAULTS } from './defaults.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookEvent,
@@ -330,9 +331,8 @@ function viewPropsOf(props: WebViewProps): ViewProps {
 }
 
 /**
- * The platform's settings for native: the package's defaults (inline media on iOS, debugging in `__DEV__`, no custom
- * user agent), the app's `ios` or `android` roots over them, and `userAgent` on top. An unset `userAgent` resets its
- * key to the default, so removing the prop undoes it.
+ * The platform's settings for native: the package's defaults, the app's `ios` or `android` roots over them, and
+ * `userAgent` on top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
   const set = (value: string | undefined, key: string) =>
@@ -341,10 +341,9 @@ function platformSettings(props: WebViewProps): NativeSettings {
     const { configuration, webView, ...rest } = props.ios ?? {};
     return {
       ...rest,
-      configuration: { allowsInlineMediaPlayback: true, ...configuration },
+      configuration: { ...DEFAULTS.IOSSettings.configuration, ...configuration },
       webView: {
-        customUserAgent: null,
-        inspectable: __DEV__,
+        ...DEFAULTS.IOSSettings.webView,
         ...webView,
         ...set(props.userAgent, 'customUserAgent'),
       },
@@ -353,11 +352,11 @@ function platformSettings(props: WebViewProps): NativeSettings {
   const { settings, webView } = props.android ?? {};
   return {
     settings: {
-      userAgentString: null,
+      ...DEFAULTS.AndroidSettings.settings,
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },
-    webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
+    webView: { ...DEFAULTS.AndroidSettings.webView, ...webView },
   };
 }
 

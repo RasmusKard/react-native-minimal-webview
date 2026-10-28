@@ -19,7 +19,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit -p src/__tests__/tsconfig.json
       - run: cd example && npm ci && npx tsc --noEmit
-      - run: npm test -- --watchAll=false   # its pretest checks both generated files
+      - run: npm test -- --watchAll=false   # its pretest checks the generated files
       - run: npm run prepare   # clean build
 
   # The Swift navigation and origin rule matchers and crash recovery against the shared cases in
