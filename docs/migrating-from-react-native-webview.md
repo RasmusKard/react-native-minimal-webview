@@ -25,7 +25,7 @@ props that became something else, and what has no equivalent. The [requirements]
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
 | Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
-| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own ([`onError`](api/interfaces/WebViewProps.md#onerror)) | The error screen [below](#loading-and-error-screens) |
+| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own ([`onError`](https://rasmuskard.github.io/minimal-rn-webview/api/interfaces/WebViewProps.html#onerror)) | The error screen [below](#loading-and-error-screens) |
 | Android file chooser | Offers the camera, and opens it for `capture`, asking for the OS permissions itself | The system chooser, which ignores `capture` | `onFileRequest` with expo-image-picker ([page requests](examples.md#page-requests)) |
 
 The settings in one object, for the rows a setting restores:
@@ -99,7 +99,7 @@ The props whose setting has another name:
 ## What else changes
 
 - The `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens can
-  go ([`onOpenExternal`](api/interfaces/WebViewProps.md#onopenexternal)).
+  go ([`onOpenExternal`](https://rasmuskard.github.io/minimal-rn-webview/api/interfaces/WebViewProps.html#onopenexternal)).
 - After a server redirect the rules block, the state is the page before it with `outcome` `cancelled`.
   react-native-webview reports the redirecting URL as still loading (iOS) or the blocked URL as loaded (Android).
 - A rule decides natively, so a busy JS thread doesn't hold it up. react-native-webview's Android blocks the UI thread
@@ -138,7 +138,7 @@ const title = await ref.current?.evaluate('document.title');
 
 The [bridge](examples.md#the-bridge) replaces both with calls that return promises and events, in both directions, for
 the origins you allow. Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events
-keep working with [`reactNativeWebViewMessages`](api/variables/reactNativeWebViewMessages.md) in `injectedScripts`.
+keep working with [`reactNativeWebViewMessages`](https://rasmuskard.github.io/minimal-rn-webview/api/variables/reactNativeWebViewMessages.html) in `injectedScripts`.
 
 ```tsx
 import { reactNativeWebViewMessages } from 'minimal-rn-webview';
