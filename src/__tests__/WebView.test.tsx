@@ -85,8 +85,11 @@ describe('WebView', () => {
     expect(error).not.toHaveBeenCalled();
   });
 
-  it('sends pullToRefresh, and on iOS sharedCookies, as false unless set', async () => {
-    expect((await render({})).native).toMatchObject({ pullToRefresh: false, sharedCookies: false });
+  it('sends pullToRefresh, and on iOS sharedCookies, as undefined unless set', async () => {
+    expect((await render({})).native).toMatchObject({
+      pullToRefresh: undefined,
+      sharedCookies: undefined,
+    });
     expect((await render({ pullToRefresh: true, sharedCookies: true })).native).toMatchObject({
       pullToRefresh: true,
       sharedCookies: true,

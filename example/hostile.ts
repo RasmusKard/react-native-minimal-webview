@@ -65,9 +65,7 @@ async function bridgeGate({ h, r }: Suite) {
   const unlisten = h.bridge.on('hostileEvent', (payload) => events.push(payload));
   try {
     h.setProps({
-      injectedScripts: [
-        { code: 'window.__hostileInjected = location.origin;', mainFrameOnly: false },
-      ],
+      injectedScripts: [{ code: 'window.__hostileInjected = location.origin;', allFrames: true }],
     });
     await sleep(300);
     await openPage(h, fresh(h, '/hostile.html?frames=1'));
@@ -116,7 +114,7 @@ async function bridgeGate({ h, r }: Suite) {
     const injected = await evaluate(h, 'window.__hostileInjected');
     r.since(
       WEBVIEW.injectedScripts,
-      'F2 an injected script runs on a non-allowed origin, and (mainFrameOnly false) in its cross-origin iframes',
+      'F2 an injected script runs on a non-allowed origin, and (allFrames) in its cross-origin iframes',
       all(injected === OTHER, frame('cross')?.injected === OTHER),
       { injected, frame: frame('cross') }
     );

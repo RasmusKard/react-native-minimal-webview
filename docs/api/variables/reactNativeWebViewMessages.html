@@ -11,12 +11,17 @@
 <li><a href="" aria-current="page">reactNativeWebViewMessages</a></li></ul>
 <h1>Variable reactNativeWebViewMessages</h1></div>
 <div class="tsd-signature"><span class="tsd-kind-variable">reactNativeWebViewMessages</span><span class="tsd-signature-symbol">:</span> <a href="../types/InjectedScript.html" class="tsd-signature-type tsd-kind-type-alias">InjectedScript</a><span class="tsd-signature-symbol"> = ...</span></div>
-<div class="tsd-comment tsd-typography"><p>react-native-webview's messaging, for <code>injectedScripts</code>.</p>
-<p>The page's <code>window.ReactNativeWebView.postMessage(data)</code> emits <code>String(data)</code> as the bridge event <code>rnw</code>, for
-<code>bridge.on('rnw', …)</code>, and <code>bridge.emit('rnw', data)</code> dispatches a <code>message</code> event with that <code>data</code> on <code>window</code> on iOS
-and on <code>document</code> on Android, as react-native-webview does.</p>
+<div class="tsd-comment tsd-typography"><p>react-native-webview's messaging, for <code>injectedScripts</code>, carried by the bridge event <code>rnw</code>.</p>
+<p>The page's <code>window.ReactNativeWebView.postMessage(data)</code> arrives as <code>String(data)</code>, and what you emit reaches the
+page as a <code>message</code> event on <code>window</code> on iOS and on <code>document</code> on Android, as react-native-webview does.</p>
 <p>It needs the <code>bridge</code> prop: only the main frame of the pages in <code>allowedOrigins</code> gets <code>window.ReactNativeWebView</code>.</p>
-</div></div>
+</div>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="tsx"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">bridge</span><span class="hl-1"> = </span><span class="hl-5">createBridge</span><span class="hl-1">({ </span><span class="hl-2">allowedOrigins:</span><span class="hl-1"> [</span><span class="hl-3">&#39;https://example.com&#39;</span><span class="hl-1">] });</span><br/><span class="hl-2">bridge</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;rnw&#39;</span><span class="hl-1">, (</span><span class="hl-2">data</span><span class="hl-1">) </span><span class="hl-4">=&gt;</span><span class="hl-1"> </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-2">data</span><span class="hl-1">)); </span><span class="hl-12">// the page called ReactNativeWebView.postMessage(data)</span><br/><span class="hl-2">bridge</span><span class="hl-1">.</span><span class="hl-5">emit</span><span class="hl-1">(</span><span class="hl-3">&#39;rnw&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;hello&#39;</span><span class="hl-1">); </span><span class="hl-12">// the page gets a message event whose data is &#39;hello&#39;</span><br/><br/><span class="hl-6">&lt;</span><span class="hl-7">WebView</span><span class="hl-1"> </span><span class="hl-8">source</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">{ </span><span class="hl-2">uri:</span><span class="hl-9"> </span><span class="hl-3">&#39;https://example.com&#39;</span><span class="hl-9"> }</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-8">bridge</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-2">bridge</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-8">injectedScripts</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">[</span><span class="hl-2">reactNativeWebViewMessages</span><span class="hl-9">]</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-6">/&gt;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

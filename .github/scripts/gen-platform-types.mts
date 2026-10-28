@@ -4,7 +4,7 @@
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and the API file of the
 // androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade. It
 // keeps only the declarations this script reads (the iOS doc comments are Apple's).
-// The WK constant names are the header names with their common prefix stripped: an SDK rename renames a constant.
+// IOSConstants' names are the header names with their common prefix stripped: an SDK rename renames a constant.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -293,7 +293,7 @@ function iosEnums(text: string) {
       return p.slice(0, i);
     });
     while (names.some((m) => /[a-z0-9]/.test(m[prefix.length] ?? ''))) prefix = prefix.slice(0, -1);
-    const key = `${doc({ deprecated: availability.deprecated })}${name.replace(/^(WK|UIScrollView)/, '')}`;
+    const key = `${doc({ deprecated: availability.deprecated }, '@enum')}${name.replace(/^(WK|UIScrollView)/, '')}`;
     enums[key] = object(
       Object.fromEntries(
         Object.entries(values).map(([m, v]) => [
@@ -453,7 +453,7 @@ export type AndroidSettingKeys = ${object({
 
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
- * \`configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }\`.
+ * \`configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }\`.
  *
  * An option set's \`all\` is the OR of its listed bits, not \`NSUIntegerMax\`, which JSON can't carry.
  * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
@@ -462,23 +462,24 @@ export type AndroidSettingKeys = ${object({
  * @namespace
  * @hideGroups
  */
-export const WK = ${object({
+export const IOSConstants = ${object({
     ...iosEnums(ios),
-    '/** `WKWebsiteDataStore` data types: `removeDataOfTypes:`, `fetchDataRecordsOfTypes:` */\nWebsiteDataType':
+    '/** @enum */\nWebsiteDataType':
       object(websiteDataTypes(ios)),
   })} as const;
 
 /**
- * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants: \`settings: { cacheMode: Android.WebSettings.LOAD_NO_CACHE }\`.
+ * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants:
+ * \`settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }\`.
  * @group Platform settings
  * @namespace
  * @hideGroups
  */
-export const Android = ${object({
-    WebSettings: `{\n${javaConstants(constants, 'WebSettings')}\n}`,
-    WebView: `{\n${javaConstants(constants, 'WebView')}\n}`,
-    WebSettingsCompat: `{\n${javaConstants(androidx, 'WebSettingsCompat')}\n}`,
-    WebViewCompat: `{\n${javaConstants(androidx, 'WebViewCompat')}\n}`,
+export const AndroidConstants = ${object({
+    '/** @enum */\nWebSettings': `{\n${javaConstants(constants, 'WebSettings')}\n}`,
+    '/** @enum */\nWebView': `{\n${javaConstants(constants, 'WebView')}\n}`,
+    '/** @enum */\nWebSettingsCompat': `{\n${javaConstants(androidx, 'WebSettingsCompat')}\n}`,
+    '/** @enum */\nWebViewCompat': `{\n${javaConstants(androidx, 'WebViewCompat')}\n}`,
   })} as const;
 `;
   const config = await prettier.resolveConfig(fileURLToPath(target));

@@ -76,7 +76,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
       val code = script.code ?: continue
       // No frame selector in androidx.webkit 1.17: main-frame-only scripts guard themselves.
       // A prefix, not a wrapping block: top-level const/let/class in the script must stay global.
-      val source = if (script.mainFrameOnly != false) "if (window !== window.top) throw 0;\n$code" else code
+      val source = if (script.allFrames != true) "if (window !== window.top) throw 0;\n$code" else code
       scriptHandlers += WebViewCompat.addDocumentStartJavaScript(webView, source, setOf("*"))
     }
   }
