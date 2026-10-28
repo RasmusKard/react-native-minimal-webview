@@ -10,7 +10,7 @@
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
 <li><a href="" aria-current="page">BridgeErrorCode</a></li></ul>
 <h1>Type Alias BridgeErrorCode</h1></div>
-<div class="tsd-signature"><span class="tsd-kind-type-alias">BridgeErrorCode</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">typeof</span> <span class="tsd-signature-type">ERROR_CODES</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">]</span></div>
+<div class="tsd-signature"><span class="tsd-kind-type-alias">BridgeErrorCode</span><span class="tsd-signature-symbol">:</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;timeout&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;not_found&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;handler_error&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;navigated&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;unavailable&quot;</span></div>
 <div class="tsd-comment tsd-typography"><p>Why a bridge call rejected. <code>timeout</code>: no answer in time. <code>not_found</code>: no handler for the method. <code>handler_error</code>:
 the handler threw or rejected (the <code>message</code> is its error's), or the page sent a code not listed here. <code>navigated</code>:
 the page navigated or crashed, or the WebView unmounted, while the call was pending. <code>unavailable</code>: the WebView lacks
