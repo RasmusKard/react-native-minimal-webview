@@ -119,7 +119,7 @@ export function useAttach(
  * re-renders on every change, and follows a remount.
  *
  * The initial state (`url: ''`) while none is mounted.
- * @see [Navigation state example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#navigation-state)
+ * @see [Navigation state example](../docs/examples.md#navigation-state)
  * @group Navigation
  */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {

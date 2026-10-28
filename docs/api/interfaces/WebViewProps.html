@@ -86,13 +86,13 @@ pass a one-platform hook's key on that platform only.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
-<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#native-hooks">Native hooks example</a></p>
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="../documents/Examples.html#native-hooks">Native hooks example</a></p>
 </div></div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="injectedscripts"><span>injected<wbr/>Scripts</span><a href="#injectedscripts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">injectedScripts</span><span class="tsd-signature-symbol">?:</span> <a href="../types/InjectedScript.html" class="tsd-signature-type tsd-kind-type-alias">InjectedScript</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Scripts to run at document start, before the page's own, on every page and origin the WebView visits (and with
-<code>mainFrameOnly: false</code> in cross-origin iframes): guard with <code>location.origin</code>.</p>
+<code>allFrames: true</code> in cross-origin iframes): guard with <code>location.origin</code>.</p>
 <p>A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
 so, once per process).</p>
 </div></section>
@@ -120,7 +120,7 @@ when no app handles it, its <code>S.browser_fallback_url</code> goes through the
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
-<h4 class="tsd-anchor-link" id="see-1">See<a href="#see-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#navigation-rules">Navigation rules example</a></p>
+<h4 class="tsd-anchor-link" id="see-1">See<a href="#see-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="../documents/Examples.html#navigation-rules">Navigation rules example</a></p>
 </div></div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ondownload"><span>on<wbr/>Download</span><a href="#ondownload" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -227,13 +227,7 @@ request), and a late answer is dropped; until it settles, the page's next reques
 <div class="tsd-signature"><span class="tsd-kind-property">pullToRefresh</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p>Pull down at the top of the page to reload: <code>UIRefreshControl</code> on iOS, <code>SwipeRefreshLayout</code> on Android, where a
 pull inside a scrolled inner scroller (<code>overflow: auto</code>) scrolls it instead.</p>
-</div>
-<div class="tsd-comment tsd-typography">
-<div class="tsd-tag-default">
-<h4 class="tsd-anchor-link" id="default">Default<a href="#default" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">false</span>
-</code><button type="button">Copy</button></pre>
-
-</div></div></section>
+</div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ref"><span>ref</span><a href="#ref" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">ref</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Ref</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/WebViewRef.html" class="tsd-signature-type tsd-kind-type-alias">WebViewRef</a><span class="tsd-signature-symbol">&gt;</span></div>
@@ -247,13 +241,7 @@ unmounts.</p>
 <div class="tsd-comment tsd-typography"><p>Copies <code>HTTPCookieStorage</code> (native requests) into the WebView before each <code>source</code> load, which waits for it, and
 the WebView's cookie changes, deletions included, back as they happen.</p>
 <p>Android needs nothing: <code>CookieManager</code> is shared app-wide, and flushed when the app goes to the background.</p>
-</div>
-<div class="tsd-comment tsd-typography">
-<div class="tsd-tag-default">
-<h4 class="tsd-anchor-link" id="default-1">Default<a href="#default-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">false</span>
-</code><button type="button">Copy</button></pre>
-
-</div></div></section>
+</div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="source"><span>source</span><a href="#source" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">source</span><span class="tsd-signature-symbol">:</span> <a href="../types/WebViewSource.html" class="tsd-signature-type tsd-kind-type-alias">WebViewSource</a></div>
