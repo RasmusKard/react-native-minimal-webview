@@ -293,7 +293,7 @@ function iosEnums(text: string) {
       return p.slice(0, i);
     });
     while (names.some((m) => /[a-z0-9]/.test(m[prefix.length] ?? ''))) prefix = prefix.slice(0, -1);
-    const key = `${doc({ deprecated: availability.deprecated })}${name.replace(/^(WK|UIScrollView)/, '')}`;
+    const key = `${doc({ deprecated: availability.deprecated }, '@enum')}${name.replace(/^(WK|UIScrollView)/, '')}`;
     enums[key] = object(
       Object.fromEntries(
         Object.entries(values).map(([m, v]) => [
@@ -464,7 +464,7 @@ export type AndroidSettingKeys = ${object({
  */
 export const IOSConstants = ${object({
     ...iosEnums(ios),
-    '/** `WKWebsiteDataStore` data types: `removeDataOfTypes:`, `fetchDataRecordsOfTypes:` */\nWebsiteDataType':
+    '/** @enum */\nWebsiteDataType':
       object(websiteDataTypes(ios)),
   })} as const;
 
@@ -476,10 +476,10 @@ export const IOSConstants = ${object({
  * @hideGroups
  */
 export const AndroidConstants = ${object({
-    WebSettings: `{\n${javaConstants(constants, 'WebSettings')}\n}`,
-    WebView: `{\n${javaConstants(constants, 'WebView')}\n}`,
-    WebSettingsCompat: `{\n${javaConstants(androidx, 'WebSettingsCompat')}\n}`,
-    WebViewCompat: `{\n${javaConstants(androidx, 'WebViewCompat')}\n}`,
+    '/** @enum */\nWebSettings': `{\n${javaConstants(constants, 'WebSettings')}\n}`,
+    '/** @enum */\nWebView': `{\n${javaConstants(constants, 'WebView')}\n}`,
+    '/** @enum */\nWebSettingsCompat': `{\n${javaConstants(androidx, 'WebSettingsCompat')}\n}`,
+    '/** @enum */\nWebViewCompat': `{\n${javaConstants(androidx, 'WebViewCompat')}\n}`,
   })} as const;
 `;
   const config = await prettier.resolveConfig(fileURLToPath(target));

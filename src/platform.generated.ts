@@ -472,57 +472,68 @@ export type AndroidSettingKeys = {
  * @hideGroups
  */
 export const IOSConstants = {
+  /** @enum */
   SelectionGranularity: {
     dynamic: 0,
     character: 1,
   },
+  /** @enum */
   AudiovisualMediaTypes: {
     none: 0,
     audio: 1,
     video: 2,
     all: 3,
   },
+  /** @enum */
   InactiveSchedulingPolicy: {
     suspend: 0,
     throttle: 1,
     none: 2,
   },
+  /** @enum */
   ContentMode: {
     recommended: 0,
     mobile: 1,
     desktop: 2,
   },
+  /** @enum */
   WebpagePreferencesUpgradeToHTTPSPolicy: {
     keepAsRequested: 0,
     automaticFallbackToHTTP: 1,
     userMediatedFallbackToHTTP: 2,
     errorOnFailure: 3,
   },
+  /** @enum */
   SecurityRestrictionMode: {
     none: 0,
     maximizeCompatibility: 1,
     lockdown: 2,
   },
+  /** @enum */
   MediaPlaybackState: {
     none: 0,
     playing: 1,
     paused: 2,
     suspended: 3,
   },
+  /** @enum */
   MediaCaptureState: {
     none: 0,
     active: 1,
     muted: 2,
   },
+  /** @enum */
   FullscreenState: {
     notInFullscreen: 0,
     enteringFullscreen: 1,
     inFullscreen: 2,
     exitingFullscreen: 3,
   },
+  /** @enum */
   WebViewDataType: {
     sessionStorage: 1,
   },
+  /** @enum */
   DataDetectorTypes: {
     none: 0,
     phoneNumber: 1,
@@ -534,11 +545,13 @@ export const IOSConstants = {
     lookupSuggestion: 64,
     all: 127,
   },
+  /** @enum */
   IndicatorStyle: {
     default: 0,
     black: 1,
     white: 2,
   },
+  /** @enum */
   KeyboardDismissMode: {
     none: 0,
     onDrag: 1,
@@ -546,13 +559,14 @@ export const IOSConstants = {
     onDragWithAccessory: 3,
     interactiveWithAccessory: 4,
   },
+  /** @enum */
   ContentInsetAdjustmentBehavior: {
     automatic: 0,
     scrollableAxes: 1,
     never: 2,
     always: 3,
   },
-  /** `WKWebsiteDataStore` data types: `removeDataOfTypes:`, `fetchDataRecordsOfTypes:` */
+  /** @enum */
   WebsiteDataType: {
     fetchCache: 'WKWebsiteDataTypeFetchCache',
     diskCache: 'WKWebsiteDataTypeDiskCache',
@@ -579,6 +593,7 @@ export const IOSConstants = {
  * @hideGroups
  */
 export const AndroidConstants = {
+  /** @enum */
   WebSettings: {
     FORCE_DARK_AUTO: 1,
     FORCE_DARK_OFF: 0,
@@ -596,6 +611,7 @@ export const AndroidConstants = {
     MIXED_CONTENT_COMPATIBILITY_MODE: 2,
     MIXED_CONTENT_NEVER_ALLOW: 1,
   },
+  /** @enum */
   WebView: {
     RENDERER_PRIORITY_BOUND: 1,
     RENDERER_PRIORITY_IMPORTANT: 2,
@@ -604,6 +620,7 @@ export const AndroidConstants = {
     SCHEME_MAILTO: 'mailto:',
     SCHEME_TEL: 'tel:',
   },
+  /** @enum */
   WebSettingsCompat: {
     ATTRIBUTION_BEHAVIOR_APP_SOURCE_AND_APP_TRIGGER: 3,
     ATTRIBUTION_BEHAVIOR_APP_SOURCE_AND_WEB_TRIGGER: 1,
@@ -627,6 +644,7 @@ export const AndroidConstants = {
     WEB_AUTHENTICATION_SUPPORT_FOR_BROWSER: 2,
     WEB_AUTHENTICATION_SUPPORT_NONE: 0,
   },
+  /** @enum */
   WebViewCompat: {
     INJECTION_EVENT_DOCUMENT_END: 1,
     INJECTION_EVENT_DOCUMENT_START: 0,

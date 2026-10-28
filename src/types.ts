@@ -162,7 +162,7 @@ export type NavigationState = {
 };
 
 /**
- * A main-frame error.
+ * A main-frame error, for `onError`.
  *
  * - `network` and `ssl`: the load failed, no page arrived (`code` is the platform's error code); an SSL error always
  *   cancels the load.
@@ -202,7 +202,7 @@ export type InjectedScript = {
   code: string;
   /**
    * `false` runs it in every frame, iframes included.
-   * @default true
+   * @default `true`
    */
   mainFrameOnly?: boolean;
 };
@@ -257,7 +257,7 @@ export type BridgeEventMap = Record<string, unknown>;
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
  * and `on`, and its calls reject with an `Error` whose `code` is a {@link BridgeErrorCode}.
- * @see [Bridge example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#the-bridge)
+ * @see [Bridge example](../docs/examples.md#the-bridge)
  * @group Bridge
  */
 export type Bridge<
@@ -310,7 +310,7 @@ export type BridgeOptions = {
   allowedOrigins: string[];
   /**
    * Per-call timeout in milliseconds; `0` or `Infinity` means none.
-   * @default 10000
+   * @default `10000`
    */
   timeoutMs?: number;
 };
@@ -394,7 +394,7 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * A key that doesn't fit, or a private (`_`) one, is skipped with a warning; nothing here can crash the app. A root's
  * `@default` keys are the package's, and yours go over them. Read one back with the ref's `get('scrollView.bounces')`.
  * @ios
- * @see [Platform settings example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings)
+ * @see [Platform settings example](../docs/examples.md#platform-settings)
  * @group Platform settings
  */
 export type IOSSettings = {
@@ -404,7 +404,7 @@ export type IOSSettings = {
    *
    * The default lets a `<video playsinline>` play inline. The private `allowUniversalAccessFromFileURLs` is accepted,
    * for react-native-webview parity: it lets a `file:` page read any URL.
-   * @default { allowsInlineMediaPlayback: true }
+   * @default `{ allowsInlineMediaPlayback: true }`
    */
   configuration?: SettingsRoot<IOSSettingKeys['configuration']>;
   /**
@@ -418,7 +418,7 @@ export type IOSSettings = {
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
    * The `WKWebView`, live.
-   * @default { customUserAgent: null, inspectable: __DEV__ }
+   * @default `{ customUserAgent: null, inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /** Its `UIScrollView`, live. */
@@ -436,7 +436,7 @@ export type IOSSettings = {
  * nothing here can crash the app. A root's `@default` keys are the package's, and yours go over them. Read one back
  * with the ref's `get('settings.textZoom')`.
  * @android
- * @see [Platform settings example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings)
+ * @see [Platform settings example](../docs/examples.md#platform-settings)
  * @group Platform settings
  */
 export type AndroidSettings = {
@@ -447,7 +447,7 @@ export type AndroidSettings = {
    * `builtInZoomControls` on; `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and
    * `downloadFaviconsEnabled` off; `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`; and, with WebView 146 and newer,
    * `backForwardCacheEnabled` on.
-   * @default { userAgentString: null }
+   * @default `{ userAgentString: null }`
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
   /**
@@ -455,7 +455,7 @@ export type AndroidSettings = {
    * `acceptThirdPartyCookies`.
    *
    * `webContentsDebuggingEnabled` is process-wide.
-   * @default { webContentsDebuggingEnabled: __DEV__ }
+   * @default `{ webContentsDebuggingEnabled: __DEV__ }`
    */
   webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
@@ -472,7 +472,7 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
 };
 
 /**
- * `onFullscreenChange`'s event.
+ * A fullscreen change, for `onFullscreenChange`.
  * @android
  * @group Events
  */
@@ -565,7 +565,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
    * when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
    * `block`.
-   * @see [Navigation rules example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#navigation-rules)
+   * @see [Navigation rules example](../docs/examples.md#navigation-rules)
    */
   navigationRules?: NavigationRule[];
   /**
@@ -602,7 +602,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * reaches that hook live, without recreating the WebView. A key added later attaches nothing (a warning says so), so
    * a hook you switch on and off keeps its key, with the switch in its value. A key no hook is registered under warns:
    * pass a one-platform hook's key on that platform only.
-   * @see [Native hooks example](https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#native-hooks)
+   * @see [Native hooks example](../docs/examples.md#native-hooks)
    */
   hookOptions?: Record<string, unknown>;
   /**
@@ -616,7 +616,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
    * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
-   * @default false
+   * @default `false`
    */
   pullToRefresh?: boolean;
   /**
@@ -625,7 +625,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background.
    * @ios
-   * @default false
+   * @default `false`
    */
   sharedCookies?: boolean;
   /**

@@ -5,11 +5,13 @@
   }
 }
 
-/* The migration guide's tables are wider than the column: they scroll instead of running under the page index. */
+/* The migration guide's tables are wider than the column: their code wraps, so they fit it. */
 .tsd-typography table {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
+  width: 100%;
+}
+.tsd-typography table code {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* The plugin moves the platform icons after a member's name, where the theme leaves no gap. */
