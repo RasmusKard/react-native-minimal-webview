@@ -13,12 +13,13 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. And which
- * hooks a WebView's `hookOptions` attach.
+ * `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. Which hooks
+ * a WebView's `hookOptions` attach, and which registrations under a key that is taken fail.
  */
 class HooksTest {
   private class Plain : WebViewClient()
@@ -92,6 +93,24 @@ class HooksTest {
     val (attaching, unregistered) = selectHooks(listOf(hook("b"), hook("a"), hook("c")), setOf("a", "b", "typo"))
     assertEquals(listOf("b", "a"), attaching.map { it.key })
     assertEquals(setOf("typo"), unregistered)
+  }
+
+  @Test
+  fun `a second hook under a key throws, naming it, and the same call again (a JS reload) replaces its hook`() {
+    // A module's OnCreate, which a reload runs again.
+    fun onCreate() = MinimalWebViewHooks.register("test.taken") { _, _ -> null }
+    try {
+      onCreate()
+      onCreate()
+      val error = assertThrows(IllegalStateException::class.java) {
+        MinimalWebViewHooks.register("test.taken") { _, _ -> null }
+      }
+      assertTrue(error.message, error.message.orEmpty().contains("`test.taken`"))
+      MinimalWebViewHooks.register("test.free") { _, _ -> null }
+      assertEquals(listOf("test.taken", "test.free"), MinimalWebViewHooks.hooks.map { it.key }.filter { it.startsWith("test.") })
+    } finally {
+      MinimalWebViewHooks.hooks.removeAll { it.key.startsWith("test.") }
+    }
   }
 
   @Test
