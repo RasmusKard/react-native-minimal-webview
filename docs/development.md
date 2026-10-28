@@ -48,8 +48,13 @@ The matchers and crash recovery share their test cases in `src/__tests__/vectors
 on Kotlin and Swift, the origin cases on TS and Swift. There is no Kotlin origin matcher: Android's WebView matches
 origins itself (`addWebMessageListener`).
 
-The peer floor (Expo SDK 53, React Native 0.79) is checked by a build and a smoke run on SDK 53 and 55; the example app
-and the on-device suites are on SDK 58.
+The peer floor (Expo SDK 53, React Native 0.79) has no automated check, and the SDK 58 example can't stand in for it
+(SDK 53's Gradle plugin refuses a library without `versionName`). After a native or Gradle change, smoke-test it by
+hand: `npm pack`; outside `/tmp` (the iOS bundle step mixes up `/tmp` and `/private/tmp`),
+`npx create-expo-app <dir> --template blank-typescript@sdk-53`; there, `npx expo install expo-build-properties`
+(`android.minSdkVersion` 29, `ios.deploymentTarget` `'17.0'`), `npm install` the packed file, and a screen that shows
+what `evaluate` returns in `onLoadEnd`; `npx expo prebuild`, the README's `fmt` hook in the Podfile, and a Release build
+per platform (it embeds the bundle). The example app and the on-device suites are on SDK 58.
 
 ## On-device suites
 
