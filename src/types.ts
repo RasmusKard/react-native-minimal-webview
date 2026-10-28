@@ -60,9 +60,10 @@ export type NavigationRule = {
   mainFrame?: boolean;
   /**
    * `target=_blank` or `window.open`, a main-frame navigation. An allowed one loads in place: there is never a second
-   * WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked, and
-   * one opened with no URL (`window.open('')`) is decided when the page first sends it to one, or dropped when that
-   * doesn't happen within 5 s.
+   * WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked (on
+   * Android a WebView older than 149 may still run a `javascript:` one's script, with the page's origin), and one
+   * opened with no URL (`window.open('')`) is decided when the page first sends it to one, or dropped when that doesn't
+   * happen within 5 s.
    */
   newWindow?: boolean;
   /**
@@ -72,8 +73,7 @@ export type NavigationRule = {
   userInitiated?: boolean;
   /**
    * `ask` calls `onNavigationRequest`. On Android it works only for the main frame (elsewhere it is `block`), waits for
-   * the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag:
-   * about 10 ms more than a rule takes (15 ms end to end against 7 on an API 37 emulator; on iOS 7 ms either way).
+   * the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag.
    */
   action: NavigationAction | 'ask';
 };

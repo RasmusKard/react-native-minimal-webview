@@ -392,11 +392,9 @@ export declare namespace WebView {
   const defaultUserAgent: string | null;
   /**
    * Starts WebView (loads its code, starts Chromium) ahead of the first WebView, on a background thread where the
-   * device's WebView supports that. Measured on Android System WebView 149 (an emulator, a Debug build): called at app
-   * start, it brought the first WebView's first `onLoadEnd` about 15% sooner, a median of 287 against 339 ms from the
-   * app's first render (5 launches each, all 5 with it faster than all 5 without). Call it at app start when a WebView
-   * shows soon after. React Native's first `fetch` starts WebView too (its cookie jar is WebView's `CookieManager`), so
-   * an app that fetches early gets part of this anyway. No-op on iOS.
+   * device's WebView supports that, so the first WebView loads sooner. Call it at app start when a WebView shows soon
+   * after. React Native's first `fetch` starts WebView too (its cookie jar is WebView's `CookieManager`), so an app that
+   * fetches early gets part of this anyway. No-op on iOS.
    * @platform android
    */
   function warmUp(): void;
@@ -404,10 +402,7 @@ export declare namespace WebView {
    * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, for a load that follows; nothing
    * on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`. It starts WebView on the UI thread if
    * nothing has yet, so call it once `warmUp()` has had time or a WebView is mounted, a moment before the load.
-   * Measured on Android System WebView 149 (an emulator, a Debug build, the server on the same machine): called at app
-   * start right after `warmUp()`, the first load (`onLoadStart` to `onLoadEnd`) took a median of 36 against 50 ms
-   * without it (5 launches each; the ranges overlap). Prefetch and prerender aren't wrapped: a native hook reaches them
-   * through `ProfileStore`. No-op on iOS.
+   * Prefetch and prerender aren't wrapped: a native hook reaches them through `ProfileStore`. No-op on iOS.
    * @platform android
    */
   function preconnect(url: string): void;

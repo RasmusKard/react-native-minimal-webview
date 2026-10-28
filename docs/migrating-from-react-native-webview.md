@@ -103,11 +103,9 @@ The props whose setting has another name:
   opens are not needed: the core opens an `external` URL without asking `canOpenURL` first.
 - After a server redirect the rules block, the state is the page before it with `outcome` `cancelled`.
   react-native-webview reports the redirecting URL as still loading (iOS) or the blocked URL as loaded (Android).
-- While the JS thread is busy, a rule still decides within a few milliseconds. react-native-webview's Android waits
-  250–500 ms on the UI thread for `onShouldStartLoadWithRequest` and then lets the navigation through; its iOS waits
-  for the answer.
-- A WebView costs about 37 MiB on iOS, a WebContent process each, as with react-native-webview; Android's share one
-  renderer, about 2 MiB each.
+- A rule decides natively, so a busy JS thread doesn't hold it up. react-native-webview's Android blocks the UI thread
+  waiting for `onShouldStartLoadWithRequest`, then lets the navigation through on a timeout; its iOS waits for the
+  answer.
 
 ## onShouldStartLoadWithRequest
 
