@@ -1,7 +1,11 @@
+---
+title: Examples
+---
+
 # Examples
 
 One example per public interface. What each prop, method and type does is in its TSDoc, generated into the
-[API reference](api/README.md).
+[API reference](https://rasmuskard.github.io/react-native-minimal-webview/api/modules.html).
 
 ## Navigation state
 

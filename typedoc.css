@@ -1,0 +1,18 @@
+/* The default column is narrower than the 100-character lines of the code in the TSDoc and the guides. */
+@media (min-width: 1200px) {
+  .container-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3.2fr) minmax(0, 18rem);
+  }
+}
+
+/* The migration guide's tables are wider than the column: they scroll instead of running under the page index. */
+.tsd-typography table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* The plugin moves the platform icons after a member's name, where the theme leaves no gap. */
+h3 > span + code.tsd-tag {
+  margin-left: 0.25em;
+}
