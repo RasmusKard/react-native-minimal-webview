@@ -22,6 +22,20 @@ export function Browser() {
 }
 ```
 
+Android's back button is the app's: `goBack()` from a `BackHandler` (on Android it skips, as Chrome does, the entries a
+page added without a user gesture).
+
+```tsx
+useEffect(() => {
+  const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (!canGoBack) return false;
+    ref.current?.goBack();
+    return true;
+  });
+  return () => subscription.remove();
+}, [canGoBack]);
+```
+
 Outside React (a push notification handler), `createWebViewRef()` makes the ref at module level:
 
 ```tsx
@@ -141,8 +155,12 @@ native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sa
 
 ```tsx
 <WebView
-  // <input type="file">, Android (iOS shows WebKit's picker): expo-document-picker, or expo-image-picker for photos
-  onFileRequest={async ({ accept, multiple }) => {
+  // <input type="file">, Android (iOS shows WebKit's picker): expo-image-picker for the camera, expo-document-picker else
+  onFileRequest={async ({ accept, multiple, capture }) => {
+    if (capture) {
+      const photo = await ImagePicker.launchCameraAsync();
+      return photo.canceled ? null : photo.assets.map((asset) => asset.uri);
+    }
     const mimeTypes = accept.filter((type) => type.includes('/')); // the picker takes MIME types, not `.pdf`
     const result = await DocumentPicker.getDocumentAsync({ type: mimeTypes.length ? mimeTypes : '*/*', multiple });
     return result.canceled ? null : result.assets.map((asset) => asset.uri);
@@ -165,8 +183,10 @@ native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sa
 ## Native hooks
 
 Anything the settings can't express is a few lines of Swift or Kotlin in your own Expo module (a
-[local module](https://docs.expo.dev/modules/get-started/) or a package): a hook gets the real `WKWebView` or
-`WebView` and chains its own delegates and clients. `example/modules/sample-extension` is a complete one.
+[local module](https://docs.expo.dev/modules/get-started/), `npx create-expo-module@latest --local`, or a package): a
+hook gets the real `WKWebView` or `WebView` and chains its own delegates and clients. The module depends on this one:
+`s.dependency 'MinimalWebView'` in its podspec and `implementation project(':minimal-rn-webview')` in its
+`build.gradle`. `example/modules/sample-extension` is a complete one.
 
 ```swift
 // iOS, in your module's OnCreate
