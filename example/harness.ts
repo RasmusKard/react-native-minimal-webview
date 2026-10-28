@@ -996,10 +996,13 @@ async function errors(h: Harness) {
     stopped
   );
   const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
+  // iOS 17 ends it as finished, as the TSDoc says.
+  const expected204 =
+    Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 18 ? 'finished' : 'cancelled';
   r.since(
     WEBVIEW.navigationListener,
-    'a 204 ends as cancelled',
-    noContent === 'cancelled',
+    `a 204 ends as ${expected204}`,
+    noContent === expected204,
     noContent
   );
   h.setRules([
