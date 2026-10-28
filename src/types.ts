@@ -287,13 +287,17 @@ export type Download = {
  */
 export type DownloadFailure = { ok: false; filename: string; url: string | null; reason: string };
 
-/** What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs. */
+/**
+ * What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs.
+ * @group Platform settings
+ */
 export type SettingValue =
   boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
 
 /**
  * A settings root: its generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus,
  * untyped, any other key the platform has.
+ * @group Platform settings
  */
 export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>;
 
@@ -307,6 +311,7 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * keys are the package's, and yours go over them. Read one back with the ref's `get('scrollView.bounces')`.
  * @platform ios
  * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings
+ * @group Platform settings
  */
 export type IOSSettings = {
   /**
@@ -341,6 +346,7 @@ export type IOSSettings = {
  * with the ref's `get('settings.textZoom')`.
  * @platform android
  * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings
+ * @group Platform settings
  */
 export type AndroidSettings = {
   /**
