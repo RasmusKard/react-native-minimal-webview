@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["example/**"],
+  "ignore": ["example/**", "docs/api/**"],
   "ignoreBinaries": ["javap"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["@babel/core"]
