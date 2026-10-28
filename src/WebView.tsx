@@ -4,6 +4,7 @@ import { Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
+import { DEFAULTS } from './defaults.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookEvent,
@@ -169,6 +170,7 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
 /**
  * A WebView whose native side decides navigations and owns the navigation state: see {@link WebViewProps} and
  * {@link WebViewRef}.
+ * @group WebView
  */
 export function WebView(props: WebViewProps) {
   return <WebViewInstance key={creationKey(props)} {...props} />;
@@ -263,8 +265,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       ref={native}
       source={props.source}
       settings={settings}
-      pullToRefresh={props.pullToRefresh ?? false}
-      sharedCookies={Platform.OS === 'ios' ? (props.sharedCookies ?? false) : undefined}
+      pullToRefresh={props.pullToRefresh}
+      sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
       navigationRules={props.navigationRules}
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
@@ -329,9 +331,8 @@ function viewPropsOf(props: WebViewProps): ViewProps {
 }
 
 /**
- * The platform's settings for native: the package's defaults (inline media on iOS, debugging in `__DEV__`, no custom
- * user agent), the app's `ios` or `android` roots over them, and `userAgent` on top. An unset `userAgent` resets its
- * key to the default, so removing the prop undoes it.
+ * The platform's settings for native: the package's defaults, the app's `ios` or `android` roots over them, and
+ * `userAgent` on top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
   const set = (value: string | undefined, key: string) =>
@@ -340,10 +341,9 @@ function platformSettings(props: WebViewProps): NativeSettings {
     const { configuration, webView, ...rest } = props.ios ?? {};
     return {
       ...rest,
-      configuration: { allowsInlineMediaPlayback: true, ...configuration },
+      configuration: { ...DEFAULTS.IOSSettings.configuration, ...configuration },
       webView: {
-        customUserAgent: null,
-        inspectable: __DEV__,
+        ...DEFAULTS.IOSSettings.webView,
         ...webView,
         ...set(props.userAgent, 'customUserAgent'),
       },
@@ -352,11 +352,11 @@ function platformSettings(props: WebViewProps): NativeSettings {
   const { settings, webView } = props.android ?? {};
   return {
     settings: {
-      userAgentString: null,
+      ...DEFAULTS.AndroidSettings.settings,
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },
-    webView: { webContentsDebuggingEnabled: __DEV__, ...webView },
+    webView: { ...DEFAULTS.AndroidSettings.webView, ...webView },
   };
 }
 
@@ -382,27 +382,39 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
   return { onNavigationState, onError, lastRef };
 }
 
+/**
+ * What `WebView` carries besides the component: `preconnect`, `warmUp` and `defaultUserAgent`.
+ * @group WebView
+ * @hideGroups
+ */
 export declare namespace WebView {
   /**
-   * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
-   * `ios.configuration.applicationNameForUserAgent` appends.
-   * @platform android
+   * Android's default user agent, for `android.settings.userAgentString` with a suffix.
+   *
+   * Null on iOS, where `ios.configuration.applicationNameForUserAgent` appends.
+   * @android
    */
   const defaultUserAgent: string | null;
   /**
-   * Starts WebView (loads its code, starts Chromium) ahead of the first WebView, on a background thread where the
-   * device's WebView supports that, so the first WebView loads sooner. Call it at app start when a WebView shows soon
-   * after. React Native's first `fetch` starts WebView too (its cookie jar is WebView's `CookieManager`), so an app that
-   * fetches early gets part of this anyway. No-op on iOS.
-   * @platform android
+   * Starts WebView (loads its code, starts Chromium) before any WebView mounts, on a background thread where the
+   * device's WebView supports that, so the first WebView mounts sooner.
+   *
+   * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
+   * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing. WebView
+   * starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's `CookieManager`).
+   * No-op on iOS.
+   * @android
    */
   function warmUp(): void;
   /**
-   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, for a load that follows; nothing
-   * on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`. It starts WebView on the UI thread if
-   * nothing has yet, so call it once `warmUp()` has had time or a WebView is mounted, a moment before the load.
-   * Prefetch and prerender aren't wrapped: a native hook reaches them through `ProfileStore`. No-op on iOS.
-   * @platform android
+   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes later.
+   *
+   * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a mounted
+   * WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at mount
+   * gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a
+   * WebView is mounted. Does nothing on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`, and on
+   * iOS. For prefetch and prerender, a native hook uses `ProfileStore`.
+   * @android
    */
   function preconnect(url: string): void;
 }
