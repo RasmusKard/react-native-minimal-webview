@@ -104,6 +104,6 @@ struct WebViewSource: Record {
 
 struct InjectedScript: Record {
   @Field var code: String? = nil
-  @Field var allFrames: Bool = false
+  @Field var allFrames: Bool? = nil
 }
 

@@ -212,6 +212,6 @@ internal data class WebViewSource(
 
 internal data class InjectedScript(
   @Field val code: String? = null,
-  @Field val allFrames: Boolean = false
+  @Field val allFrames: Boolean? = null
 ) : Record
 
