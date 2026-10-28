@@ -7,5 +7,6 @@
   "excludeExternals": true,
   "treatWarningsAsErrors": true,
   "validation": { "notExported": false },
-  "navigation": { "includeGroups": true }
+  "navigation": { "includeGroups": true },
+  "groupOrder": ["WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
 }

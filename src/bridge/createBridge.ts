@@ -36,6 +36,7 @@ const MAX_QUEUE = 1000;
  * `emit` and `on`; nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws
  * for an invalid origin rule or timeout.
  * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#the-bridge
+ * @group Bridge
  */
 export function createBridge<
   Methods extends BridgeMethodMap = BridgeMethodMap,

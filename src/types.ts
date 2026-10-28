@@ -12,7 +12,10 @@ import type {
   UIEdgeInsets,
 } from './platform.generated';
 
-/** What the WebView loads: a URL, or an HTML string. */
+/**
+ * What the WebView loads: a URL, or an HTML string.
+ * @group WebView
+ */
 export type WebViewSource =
   | {
       /**
@@ -34,10 +37,14 @@ export type WebViewSource =
 /**
  * What happens to a navigation. `allow`: it loads in place, on iOS a tapped universal link too (instead of opening the
  * app that claims it). `block`: it is cancelled. `external`: `onOpenExternal`, or else the system, opens it.
+ * @group Navigation
  */
 export type NavigationAction = 'allow' | 'block' | 'external';
 
-/** One navigation rule. Every field it sets must match; for a list, one matching entry is enough. */
+/**
+ * One navigation rule. Every field it sets must match; for a list, one matching entry is enough.
+ * @group Navigation
+ */
 export type NavigationRule = {
   /** Exact, case-insensitive: `['tel', 'mailto']`. */
   scheme?: string[];
@@ -78,7 +85,10 @@ export type NavigationRule = {
   action: NavigationAction | 'ask';
 };
 
-/** A navigation an `ask` rule puts to `onNavigationRequest`. */
+/**
+ * A navigation an `ask` rule puts to `onNavigationRequest`.
+ * @group Navigation
+ */
 export type NavigationRequest = {
   url: string;
   mainFrame: boolean;
@@ -86,7 +96,10 @@ export type NavigationRequest = {
   userInitiated: boolean;
 };
 
-/** A navigation decision, for `onNavigation`. */
+/**
+ * A navigation decision, for `onNavigation`.
+ * @group Navigation
+ */
 export type NavigationEvent = NavigationRequest & {
   /** Without `onOpenExternal`, or when it returns false, an `external` URL that no app opens is reported as `block`. */
   action: NavigationAction;
@@ -97,7 +110,10 @@ export type NavigationEvent = NavigationRequest & {
   rule: number | null;
 };
 
-/** A WebView's navigation state, as native reports it: from `useWebViewState` and `onNavigationStateChange`. */
+/**
+ * A WebView's navigation state, as native reports it: from `useWebViewState` and `onNavigationStateChange`.
+ * @group Navigation
+ */
 export type NavigationState = {
   /**
    * The page on screen: changes on commit and same-document navigation (pushState, replaceState, hash), and stays the
@@ -130,12 +146,16 @@ export type NavigationState = {
  * A main-frame error. `network` and `ssl`: the load failed, no page arrived (`code` is the platform's error code); an
  * SSL error always cancels the load. `http`: the response had an HTTP error status (400+), and the site's own error
  * page shows.
+ * @group Events
  */
 export type LoadErrorEvent =
   | { kind: 'network' | 'ssl'; url: string; code: number; description: string }
   | { kind: 'http'; url: string; statusCode: number };
 
-/** The renderer process died, for `onProcessGone`. */
+/**
+ * The renderer process died, for `onProcessGone`.
+ * @group Events
+ */
 export type ProcessGoneEvent = {
   /** False when the system killed the renderer for memory (Android). Always true on iOS: WebKit doesn't say. */
   didCrash: boolean;
@@ -152,6 +172,7 @@ export type ProcessGoneEvent = {
 /**
  * Runs at document start, before any page script. Code for when the DOM is parsed goes in
  * `addEventListener('DOMContentLoaded', …)`.
+ * @group Scripts
  */
 export type InjectedScript = {
   code: string;
@@ -165,19 +186,24 @@ export type InjectedScript = {
 /**
  * Who sent a call or event: the page's origin as `location.origin` writes it (`https://example.com:8443`), checked by
  * native code, not taken from the page. Every allowed origin gets the same trust; a handler scopes itself with this.
+ * @group Bridge
  */
 export type BridgeSender = { origin: string };
 
 /**
  * Answers a bridge call: the return value (a promise is awaited) is the result. A throw or rejection rejects the call
  * with `handler_error` and the error's message.
+ * @group Bridge
  */
 export type BridgeHandler<Params = unknown, Result = unknown> = (
   params: Params,
   sender: BridgeSender
 ) => Result | Promise<Result>;
 
-/** What a bridge call rejects with: an `Error` whose `code` says why. */
+/**
+ * What a bridge call rejects with: an `Error` whose `code` says why.
+ * @group Bridge
+ */
 export type BridgeCallError = Error & { code: BridgeErrorCode };
 
 /**
@@ -185,9 +211,13 @@ export type BridgeCallError = Error & { code: BridgeErrorCode };
  * `{ share: { params: { url: string }; result: boolean } }`. One map covers both directions, so a method is named once,
  * whichever side handles it. A `type`, not an `interface` (an interface has no index signature, so it doesn't satisfy
  * `Record`).
+ * @group Bridge
  */
 export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
-/** The events either side may emit, for `createBridge<Methods, Events>`: `{ themeChanged: 'light' | 'dark' }`. */
+/**
+ * The events either side may emit, for `createBridge<Methods, Events>`: `{ themeChanged: 'light' | 'dark' }`.
+ * @group Bridge
+ */
 export type BridgeEventMap = Record<string, unknown>;
 
 /**
@@ -198,6 +228,7 @@ export type BridgeEventMap = Record<string, unknown>;
  * { timeoutMs? })`, `handle`, `emit` and `on`, and its calls reject with an `Error` whose `code` is a
  * {@link BridgeErrorCode}.
  * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#the-bridge
+ * @group Bridge
  */
 export type Bridge<
   Methods extends BridgeMethodMap = BridgeMethodMap,
@@ -232,7 +263,10 @@ export type Bridge<
   readonly [CONNECTION]: BridgeConnection;
 };
 
-/** The options of `createBridge`. */
+/**
+ * The options of `createBridge`.
+ * @group Bridge
+ */
 export type BridgeOptions = {
   /**
    * The origins whose pages get `window.nativeBridge`, main frame only: `'*'` (any origin, opaque ones too),
@@ -252,18 +286,21 @@ export type BridgeOptions = {
  * An `<input type="file">`. `accept` is its `accept` list as written, MIME types and extensions (`.pdf`). `capture` is
  * its `capture` attribute: the page wants the camera.
  * @platform android
+ * @group Page requests
  */
 export type FileRequest = { accept: string[]; multiple: boolean; capture: boolean };
 
 /**
  * `geolocation` and `protectedMedia` (the device id DRM playback needs, Widevine) are Android only: on iOS, location
  * always shows WebKit's own prompt, and FairPlay asks nothing.
+ * @group Page requests
  */
 export type PermissionResource = 'camera' | 'microphone' | 'geolocation' | 'protectedMedia';
 /**
  * `origin` is the requesting page's, as `location.origin` writes it; every `file:` page is `file://`. Only the main
  * frame asks (on Android, which doesn't name the frame, any frame of the top page's origin); other frames, and a page
  * with an opaque origin (`data:`, a sandboxed frame), are denied without asking.
+ * @group Page requests
  */
 export type PermissionRequest = { origin: string; resources: PermissionResource[] };
 
@@ -272,6 +309,7 @@ export type PermissionRequest = { origin: string; resources: PermissionResource[
  * deletes. `url` is the server URL the file came from; `null` when the page generated it (`data:` or `blob:` URL).
  * `filename` is a plain file name, no path, but the page chose it, like the content and `mimeType`: don't open the file
  * as trusted.
+ * @group Page requests
  */
 export type Download = {
   ok: true;
@@ -284,6 +322,7 @@ export type Download = {
 /**
  * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error). `url` as in {@link Download}.
  * `ok` tells it from a {@link Download}.
+ * @group Page requests
  */
 export type DownloadFailure = { ok: false; filename: string; url: string | null; reason: string };
 
@@ -368,6 +407,7 @@ export type AndroidSettings = {
 /**
  * An event a native hook sent with `emit` or `ask`, named `'<hook key>.<event name>'`. `N` and `P` type one hook's
  * events: `HookEvent<'pageCounter.pageLoaded', { count: number }>`.
+ * @group Native hooks
  */
 export type HookEvent<N extends string = string, P = Record<string, unknown>> = {
   name: N;
@@ -377,6 +417,7 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
 /**
  * `onFullscreenChange`'s event.
  * @platform android
+ * @group Events
  */
 export type FullscreenChangeEvent = { active: boolean };
 
@@ -386,11 +427,15 @@ export type FullscreenChangeEvent = { active: boolean };
  * `unavailable`: the WebView lacks the features it needs (`evaluate` on an Android System WebView older than 83), is gone, or is being
  * rebuilt after its renderer died (Android, while the app is in the background or the view detached).
  * `hook_not_handled`: no attached hook handles the `hook` method.
+ * @group WebView
  */
 export type WebViewErrorCode =
   'script_error' | 'native_error' | 'navigated' | 'unavailable' | 'hook_not_handled';
 
-/** What a ref method rejects with: an `Error` whose `code` says why. */
+/**
+ * What a ref method rejects with: an `Error` whose `code` says why.
+ * @group WebView
+ */
 export type CodedError = Error & { code: WebViewErrorCode };
 
 /**
@@ -399,6 +444,7 @@ export type CodedError = Error & { code: WebViewErrorCode };
  * no prop: iOS shows a `UIAlertController` titled with the frame's host, one at a time, and Android WebView's own
  * dialogs; an auth challenge is declined, so the site's 401 page shows. A native hook takes them over (`HookDialogs`
  * and `HookAuth` in `example/modules/sample-extension`).
+ * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
@@ -572,6 +618,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
 /**
  * A WebView's ref. A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and
  * `evaluate`, `get`, `call` and `hook` reject with `unavailable`.
+ * @group WebView
  */
 export type WebViewRef = {
   /**
@@ -646,7 +693,10 @@ export type WebViewRef = {
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };
 
-/** What `createWebViewRef()` returns: a ref that outlives the WebViews mounted with it. */
+/**
+ * What `createWebViewRef()` returns: a ref that outlives the WebViews mounted with it.
+ * @group WebView
+ */
 export type WebViewRefObject = {
   /** The mounted WebView's ref, or null while none is mounted. */
   readonly current: WebViewRef | null;

@@ -7,6 +7,7 @@ const ERROR_CODES = ['timeout', 'not_found', 'handler_error', 'navigated', 'unav
  * the page navigated or crashed, or the WebView unmounted, while the call was pending. `unavailable`: the WebView lacks
  * the features the bridge needs (Android System WebView older than 101).
  * @useDeclaredType
+ * @group Bridge
  */
 export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 

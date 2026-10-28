@@ -169,6 +169,7 @@ const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string)
 /**
  * A WebView whose native side decides navigations and owns the navigation state: see {@link WebViewProps} and
  * {@link WebViewRef}.
+ * @group WebView
  */
 export function WebView(props: WebViewProps) {
   return <WebViewInstance key={creationKey(props)} {...props} />;
@@ -382,6 +383,7 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
   return { onNavigationState, onError, lastRef };
 }
 
+/** @group WebView */
 export declare namespace WebView {
   /**
    * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
