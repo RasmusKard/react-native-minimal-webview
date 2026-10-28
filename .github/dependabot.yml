@@ -5,7 +5,10 @@ updates:
     schedule: { interval: weekly }
     groups:
       actions: { patterns: ['*'] }
-  # React Native minors and majors and Expo majors are SDK moves, made by hand; the rest comes grouped, once a month.
+  # React Native minors and majors, Expo majors and React are SDK moves, made by hand; the rest comes grouped, once a
+  # month. Majors held until what blocks them moves: TypeScript 7 (typedoc and typescript-eslint stop at 6.0), ESLint 10
+  # (eslint-plugin-react, in eslint-config-universe, calls APIs it removed), Babel 8 (babel-preset-expo is on 7) and
+  # @types/node (.nvmrc's Node 22).
   - package-ecosystem: npm
     directory: /
     schedule: { interval: monthly }
@@ -16,6 +19,15 @@ updates:
         update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: expo
         update-types: [version-update:semver-major]
+      - dependency-name: react
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: '@babel/core'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
   - package-ecosystem: npm
     directory: /example
     schedule: { interval: monthly }
@@ -25,4 +37,7 @@ updates:
       - dependency-name: react-native
         update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: expo
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+      - dependency-name: typescript
         update-types: [version-update:semver-major]
