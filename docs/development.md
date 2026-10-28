@@ -23,9 +23,9 @@ npm run check                                                              # TS 
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules   # Swift tests
 F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios17.0-macabi   # with the next line: the PlatformSettings tests, as Mac Catalyst
 xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o /tmp/mrw.o && xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/mrw.o -o /tmp/settings && /tmp/settings
-detekt --input android/src/main --config detekt.yml
-swiftlint lint
-periphery scan                                                             # builds the example app, so it needs example/ios
+detekt --input android/src/main --config .config/detekt.yml
+swiftlint lint --config .config/swiftlint.yml
+periphery scan --config .config/periphery.yml                              # builds the example app, so it needs example/ios
 ```
 
 ## On-device suites
