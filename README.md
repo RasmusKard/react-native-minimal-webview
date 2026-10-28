@@ -30,12 +30,12 @@ export function Browser() {
 
 ## Docs
 
-- [Examples](docs/examples.md): one per public interface, from the navigation state to native hooks
-- [API reference](https://rasmuskard.github.io/react-native-minimal-webview/api/modules.html), generated from the TSDoc. The native hook API is documented on
+- [Examples](guides/examples.md): one per public interface, from the navigation state to native hooks
+- [API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html), generated from the TSDoc. The native hook API is documented on
   `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
-- [Migrating from react-native-webview](docs/migrating-from-react-native-webview.md): what differs, and recipes for what
+- [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md): what differs, and recipes for what
   has no prop
-- [Development](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/docs/development.md): setup, the checks and the on-device suites
+- [Development](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md): setup, the checks and the on-device suites
 
 ## Android System WebView versions
 

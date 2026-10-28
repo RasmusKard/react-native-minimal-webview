@@ -13,7 +13,7 @@ android {
     versionName project.version // Expo SDK 53's module plugin requires it
     consumerProguardFiles 'consumer-rules.pro'
   }
-  // -PmrwCoverage: JaCoCo for the unit tests (docs/development.md); without it, the build is unchanged
+  // -PmrwCoverage: JaCoCo for the unit tests (.github/CONTRIBUTING.md); without it, the build is unchanged
   if (providers.gradleProperty('mrwCoverage').present) buildTypes.debug.enableUnitTestCoverage = true
 }
 

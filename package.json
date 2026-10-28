@@ -30,13 +30,13 @@
     "test": "jest",
     "lint": "eslint --max-warnings 0 src example .github",
     "prepare": "npm run clean && npm run build",
-    "check": "npm test && npm run lint && knip && tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && npm run prepare && npm run docs:check",
-    "mutation": "stryker run",
+    "check": "npm test && npm run lint && knip --config .config/knip.json && tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && npm run prepare && npm run docs:check",
+    "mutation": "stryker run .config/stryker.config.json",
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
     "gen:defaults": "node .github/scripts/gen-defaults.mts",
     "docs": "typedoc",
-    "docs:check": "typedoc --out build/api && (git diff --no-index --exit-code build/api docs/api || (echo 'docs/api is stale: run npm run docs' && exit 1))"
+    "docs:check": "typedoc --out build/docs && (git diff --no-index --exit-code build/docs docs || (echo 'docs is stale: run npm run docs' && exit 1))"
   },
   "keywords": [
     "react-native",

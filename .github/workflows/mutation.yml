@@ -1,7 +1,7 @@
 name: mutation
 on:
   pull_request:
-    paths: ['src/bridge/**', 'src/__tests__/**', 'stryker.config.json']
+    paths: ['src/bridge/**', 'src/__tests__/**', '.config/stryker.config.json']
 
 permissions: { contents: read }
 
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Stryker on the files stryker.config.json lists; fails below a mutation score of 80.
+  # Stryker on the files .config/stryker.config.json lists; fails below a mutation score of 80.
   stryker:
     runs-on: ubuntu-latest
     steps:

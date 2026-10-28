@@ -730,7 +730,7 @@ async function offline({ h, r, s }: Shape) {
   }
 }
 
-/** 8. (cont.) Android's back button through the app's BackHandler recipe (docs/examples.md). */
+/** 8. (cont.) Android's back button through the app's BackHandler recipe (guides/examples.md). */
 async function backButton({ r, s, android }: Shape) {
   if (!android) {
     r.info('H4 android back: skipped', 'iOS has no back button');
