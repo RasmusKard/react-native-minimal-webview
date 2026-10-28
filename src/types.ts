@@ -26,14 +26,23 @@ export type WebViewSource =
       /** Sent with the first request only, not on later navigations. */
       headers?: Record<string, string>;
       /**
-       * Makes the request a POST with this form-urlencoded body (`a=1&b=2`).
+       * Makes the request a POST with this form-urlencoded body.
        *
        * iOS sends `headers` with it and sets `Content-Type` when they don't; Android's `postUrl` sends neither.
        * `reload()` sends the POST again; crash recovery doesn't (`onProcessGone` reports `recovered: false`).
+       * @example
+       * ```ts
+       * const source: WebViewSource = { uri: 'https://example.com/form', body: 'a=1&b=2' };
+       * ```
        */
       body?: string;
     }
-  | { html: string; baseUrl?: string };
+  | {
+      /** The page's HTML. */
+      html: string;
+      /** The page's URL: its relative URLs resolve against it, and it has this origin. Without it, `about:blank`. */
+      baseUrl?: string;
+    };
 
 /**
  * What happens to a navigation.
@@ -47,26 +56,35 @@ export type NavigationAction = 'allow' | 'block' | 'external';
 
 /**
  * One navigation rule. Every field it sets must match; for a list, one matching entry is enough.
+ * @example
+ * ```ts
+ * const navigationRules: NavigationRule[] = [
+ *   { query: ['gad_source', 'utm_term=google'], action: 'block' }, // gad_source with any value, utm_term only =google
+ *   { scheme: ['tel', 'mailto'], action: 'external' },
+ *   { host: ['*.example.com'], path: ['/checkout'], action: 'external' }, // shop.example.com/checkouts too
+ *   { host: ['example.com', '*.example.com'], action: 'allow' }, // *.example.com alone skips example.com
+ * ];
+ * ```
  * @group Navigation
  */
 export type NavigationRule = {
-  /** Exact, case-insensitive: `['tel', 'mailto']`. */
+  /** Exact, case-insensitive. */
   scheme?: string[];
   /**
-   * Exact, or a `*.` suffix wildcard that matches subdomains only: `['*.example.com']` does not match `example.com`.
+   * Exact, or a `*.` suffix wildcard that matches subdomains only, not the domain itself.
    *
    * Case, port, userinfo and a trailing dot are ignored.
    */
   host?: string[];
   /**
-   * Plain prefixes of the percent-encoded URL path: `['/checkout']` also matches `/checkouts`.
+   * Plain prefixes of the percent-encoded URL path, not whole segments.
    *
    * A URL without an authority (`myapp:/open`) has the path `/`.
    */
   path?: string[];
   /**
-   * Query parameters, percent-encoded as in the URL and case-sensitive: `gad_source` matches a parameter with that
-   * name, whatever its value; `utm_term=google` matches only that exact value.
+   * Query parameters, percent-encoded as in the URL and case-sensitive: a name matches that parameter whatever its
+   * value, and `name=value` only that exact value.
    */
   query?: string[];
   /** Android decides only an iframe's non-http(s) navigations, so a `mainFrame: false` rule for http(s) is iOS only. */
@@ -103,9 +121,13 @@ export type NavigationRule = {
  * @group Navigation
  */
 export type NavigationRequest = {
+  /** The URL it goes to. */
   url: string;
+  /** Whether it's the main frame's, not an iframe's. */
   mainFrame: boolean;
+  /** Whether it's a new-window navigation ({@link NavigationRule.newWindow}). */
   newWindow: boolean;
+  /** Whether a user gesture started it ({@link NavigationRule.userInitiated}). */
   userInitiated: boolean;
 };
 
@@ -193,9 +215,13 @@ export type ProcessGoneEvent = {
 };
 
 /**
- * Runs at document start, before any page script.
- *
- * Code for when the DOM is parsed goes in `addEventListener('DOMContentLoaded', …)`.
+ * Runs at document start, before any page script and before the DOM is parsed.
+ * @example
+ * ```ts
+ * const script: InjectedScript = {
+ *   code: "addEventListener('DOMContentLoaded', () => document.body.classList.add('in-app'));",
+ * };
+ * ```
  * @group Scripts
  */
 export type InjectedScript = {
@@ -234,16 +260,25 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
 export type BridgeCallError = Error & { code: BridgeErrorCode };
 
 /**
- * The methods either side may call, for `createBridge<Methods>`: `{ share: { params: { url: string }; result: boolean }
- * }`.
+ * The methods either side may call, for `createBridge<Methods>`.
  *
  * One map covers both directions, so a method is named once, whichever side handles it. A `type`, not an `interface`
  * (an interface has no index signature, so it doesn't satisfy `Record`).
+ * @example
+ * ```ts
+ * type Methods = { share: { params: { url: string }; result: boolean } };
+ * const bridge = createBridge<Methods>({ allowedOrigins: ['https://example.com'] });
+ * ```
  * @group Bridge
  */
 export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
 /**
- * The events either side may emit, for `createBridge<Methods, Events>`: `{ themeChanged: 'light' | 'dark' }`.
+ * The events either side may emit, for `createBridge<Methods, Events>`.
+ * @example
+ * ```ts
+ * type Events = { themeChanged: 'light' | 'dark' };
+ * const bridge = createBridge<Methods, Events>({ allowedOrigins: ['https://example.com'] });
+ * ```
  * @group Bridge
  */
 export type BridgeEventMap = Record<string, unknown>;
@@ -302,10 +337,15 @@ export type Bridge<
  */
 export type BridgeOptions = {
   /**
-   * The origins whose pages get `window.nativeBridge`, main frame only: `'*'` (any origin, opaque ones too),
-   * `'https://example.com'`, `'https://*.example.com'` (subdomains only, not `example.com`) or an IP literal
-   * (`'http://[::1]:8080'`), each with an optional port. http or https, no path, ASCII (punycode) hosts; case is
-   * ignored, and a missing port means 80 or 443.
+   * The origins whose pages get `window.nativeBridge`, main frame only: an origin, a `*.` wildcard that matches
+   * subdomains only (not the domain itself), an IP literal, or `'*'` for any origin, opaque ones too.
+   *
+   * Each takes an optional port. http or https, no path, ASCII (punycode) hosts; case is ignored, and a missing port
+   * means 80 or 443.
+   * @example
+   * ```ts
+   * createBridge({ allowedOrigins: ['https://example.com', 'https://*.example.com', 'http://[::1]:8080'] });
+   * ```
    */
   allowedOrigins: string[];
   /**
@@ -317,13 +357,17 @@ export type BridgeOptions = {
 
 /**
  * An `<input type="file">`.
- *
- * `accept` is its `accept` list as written, MIME types and extensions (`.pdf`). `capture` is its `capture` attribute:
- * the page wants the camera.
  * @android
  * @group Page requests
  */
-export type FileRequest = { accept: string[]; multiple: boolean; capture: boolean };
+export type FileRequest = {
+  /** Its `accept` list as written: MIME types and extensions (`.pdf`). */
+  accept: string[];
+  /** Its `multiple` attribute. */
+  multiple: boolean;
+  /** Its `capture` attribute: the page wants the camera. */
+  capture: boolean;
+};
 
 /**
  * A device resource a page can ask for.
@@ -336,37 +380,46 @@ export type PermissionResource = 'camera' | 'microphone' | 'geolocation' | 'prot
 /**
  * A page's permission request, for `onPermissionRequest`.
  *
- * `origin` is the requesting page's, as `location.origin` writes it; every `file:` page is `file://`. Only the main
- * frame asks (on Android, which doesn't name the frame, any frame of the top page's origin); other frames, and a page
- * with an opaque origin (`data:`, a sandboxed frame), are denied without asking.
+ * Only the main frame asks (on Android, which doesn't name the frame, any frame of the top page's origin); other
+ * frames, and a page with an opaque origin (`data:`, a sandboxed frame), are denied without asking.
  * @group Page requests
  */
-export type PermissionRequest = { origin: string; resources: PermissionResource[] };
+export type PermissionRequest = {
+  /** The requesting page's origin, as `location.origin` writes it; every `file:` page is `file://`. */
+  origin: string;
+  resources: PermissionResource[];
+};
 
 /**
  * A finished download.
- *
- * - `uri` is a `file://` in the app's cache (iOS: the temporary directory), which the core never deletes.
- * - `url` is the server URL the file came from; `null` when the page generated it (`data:` or `blob:` URL).
- * - `filename` is a plain file name, no path, but the page chose it, like the content and `mimeType`: don't open the
- *   file as trusted.
  * @group Page requests
  */
 export type Download = {
   ok: true;
+  /** A `file://` in the app's cache (iOS: the temporary directory), which the core never deletes. */
   uri: string;
+  /**
+   * A plain file name, no path, but the page chose it, like the content and `mimeType`: don't open the file as
+   * trusted.
+   */
   filename: string;
   mimeType: string;
+  /** The server URL the file came from; `null` when the page generated it (`data:` or `blob:` URL). */
   url: string | null;
 };
 
 /**
  * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error).
- *
- * `url` as in {@link Download}. `ok` tells it from a {@link Download}.
  * @group Page requests
  */
-export type DownloadFailure = { ok: false; filename: string; url: string | null; reason: string };
+export type DownloadFailure = {
+  /** Tells it from a {@link Download}. */
+  ok: false;
+  filename: string;
+  /** As in {@link Download}. */
+  url: string | null;
+  reason: string;
+};
 
 /**
  * What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs.
@@ -384,15 +437,24 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
 
 /**
  * WebKit settings by Objective-C property name, set with Key-Value Coding, so any public property works, including ones
- * this package has never heard of: `{ scrollView: { bounces: false } }`.
+ * this package has never heard of.
  *
  * The keys the SDK headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
- * option sets by raw value (`IOSConstants.DataDetectorTypes.link`), structs as objects (`contentInset: { top, left,
- * bottom, right }`), a `UIColor` as `#rrggbb` or `#rrggbbaa`, an `NSURL` as a string, `websiteDataStore` as `'default'`
- * or `'nonPersistent'`.
+ * option sets by raw value (from {@link IOSConstants}), structs as objects, a `UIColor` as `#rrggbb` or `#rrggbbaa`,
+ * an `NSURL` as a string, `websiteDataStore` as `'default'` or `'nonPersistent'`.
  *
  * A key that doesn't fit, or a private (`_`) one, is skipped with a warning; nothing here can crash the app. A root's
- * `@default` keys are the package's, and yours go over them. Read one back with the ref's `get('scrollView.bounces')`.
+ * `@default` keys are the package's, and yours go over them. Read one back with the ref's {@link WebViewRef.get | get}.
+ * @example
+ * ```tsx
+ * <WebView
+ *   source={{ uri: 'https://example.com' }}
+ *   ios={{
+ *     configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link },
+ *     scrollView: { bounces: false, contentInset: { top: 0, left: 0, bottom: 80, right: 0 } },
+ *   }}
+ * />
+ * ```
  * @ios
  * @see [Platform settings example](../docs/examples.md#platform-settings)
  * @group Platform settings
@@ -427,14 +489,23 @@ export type IOSSettings = {
 
 /**
  * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
- * newer SDK or androidx.webkit adds: `{ settings: { textZoom: 120 }, webView: { overScrollMode: 2 } }`.
+ * newer SDK or androidx.webkit adds.
  *
- * The keys the SDK lists autocomplete, with their `@since`; the constants are in `AndroidConstants`
- * (`AndroidConstants.WebSettings.LOAD_NO_CACHE`).
+ * The keys the SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
  *
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
  * nothing here can crash the app. A root's `@default` keys are the package's, and yours go over them. Read one back
- * with the ref's `get('settings.textZoom')`.
+ * with the ref's {@link WebViewRef.get | get}.
+ * @example
+ * ```tsx
+ * <WebView
+ *   source={{ uri: 'https://example.com' }}
+ *   android={{
+ *     settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE },
+ *     webView: { overScrollMode: 2 },
+ *   }}
+ * />
+ * ```
  * @android
  * @see [Platform settings example](../docs/examples.md#platform-settings)
  * @group Platform settings
@@ -461,13 +532,19 @@ export type AndroidSettings = {
 };
 
 /**
- * An event a native hook sent with `emit` or `ask`, named `'<hook key>.<event name>'`.
+ * An event a native hook sent with `emit` or `ask`.
  *
- * `N` and `P` type one hook's events: `HookEvent<'pageCounter.pageLoaded', { count: number }>`.
+ * `N` and `P` type one hook's events.
+ * @example
+ * ```ts
+ * type PageLoaded = HookEvent<'pageCounter.pageLoaded', { count: number }>;
+ * ```
  * @group Native hooks
  */
 export type HookEvent<N extends string = string, P = Record<string, unknown>> = {
+  /** `'<hook key>.<event name>'`. */
   name: N;
+  /** What the hook sent with it. */
   payload: P;
 };
 
@@ -755,23 +832,26 @@ export type WebViewRef = {
    */
   evaluate(script: string): Promise<unknown>;
   /**
-   * A platform setting read by name, through JSON as {@link WebViewRef.call | call} converts results:
-   * `get('scrollView.bounces')` on iOS, `get('settings.textZoom')` on Android.
+   * A platform setting read by name, through JSON as {@link WebViewRef.call | call} converts results.
    *
    * The roots are those of {@link IOSSettings} and {@link AndroidSettings}, plus `websiteDataStore` and
    * `httpCookieStore` on iOS and `cookieManager` and `webStorage` on Android. On Android, `textZoom` reads
    * `getTextZoom()`, `isTextZoom()` or a non-void `textZoom()`. Rejects with `native_error` for one it can't read, or
    * that the core owns.
+   * @example
+   * ```ts
+   * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
+   * const textZoom = await ref.current?.get('settings.textZoom'); // Android
+   * ```
    */
   get(key: string): Promise<unknown>;
   /**
    * Calls a platform method, `root.method`, and resolves with its result through JSON.
    *
    * Android: a public method of `settings` (then `WebSettingsCompat`'s statics), `webView` (then `WebViewCompat`'s),
-   * `cookieManager` or `webStorage`: `call('webView.clearCache', [true])`.
+   * `cookieManager` or `webStorage`.
    *
-   * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`:
-   * `call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true])`.
+   * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`.
    *
    * Rejects with `native_error` for an unknown method, a wrong argument count, an argument that doesn't fit, a method
    * that raises, a result JSON can't carry (iOS: `NaN`), and what the core owns: on iOS every selector that loads,
@@ -796,6 +876,11 @@ export type WebViewRef = {
    * as a base64 PNG, the structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds), and arrays,
    * sets and dictionaries of them. On Android: primitives, strings, and lists and maps of them. Any other object is
    * `null`.
+   * @example
+   * ```ts
+   * await ref.current?.call('webView.clearCache', [true]); // Android
+   * await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true]); // iOS
+   * ```
    */
   call(
     method: string,

@@ -12,14 +12,18 @@
 <h1>Type Alias AndroidSettings<code class="tsd-tag" title="Android"><svg role="img" aria-label="Android" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg></code></h1></div>
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>Android settings by setter name without <code>set</code>, applied by reflection, so any public setter works, including ones a
-newer SDK or androidx.webkit adds: <code>{ settings: { textZoom: 120 }, webView: { overScrollMode: 2 } }</code>.</p>
-<p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <code>AndroidConstants</code>
-(<code>AndroidConstants.WebSettings.LOAD_NO_CACHE</code>).</p>
+newer SDK or androidx.webkit adds.</p>
+<p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <a href="../modules/AndroidConstants.html" class="tsd-kind-namespace">AndroidConstants</a>.</p>
 <p>A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
 nothing here can crash the app. A root's <code>@default</code> keys are the package's, and yours go over them. Read one back
-with the ref's <code>get('settings.textZoom')</code>.</p>
+with the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="tsx"><span class="hl-6">&lt;</span><span class="hl-7">WebView</span><br/><span class="hl-1">  </span><span class="hl-8">source</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">{ </span><span class="hl-2">uri:</span><span class="hl-9"> </span><span class="hl-3">&#39;https://example.com&#39;</span><span class="hl-9"> }</span><span class="hl-4">}</span><br/><span class="hl-1">  </span><span class="hl-8">android</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">{</span><br/><span class="hl-9">    </span><span class="hl-2">settings:</span><span class="hl-9"> { </span><span class="hl-2">textZoom:</span><span class="hl-9"> </span><span class="hl-10">120</span><span class="hl-9">, </span><span class="hl-2">cacheMode:</span><span class="hl-9"> </span><span class="hl-2">AndroidConstants</span><span class="hl-9">.</span><span class="hl-2">WebSettings</span><span class="hl-9">.</span><span class="hl-11">LOAD_NO_CACHE</span><span class="hl-9"> },</span><br/><span class="hl-9">    </span><span class="hl-2">webView:</span><span class="hl-9"> { </span><span class="hl-2">overScrollMode:</span><span class="hl-9"> </span><span class="hl-10">2</span><span class="hl-9"> },</span><br/><span class="hl-9">  }</span><span class="hl-4">}</span><br/><span class="hl-6">/&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+</div>
 <div class="tsd-tag-see">
 <h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="../documents/Examples.html#platform-settings">Platform settings example</a></p>
 </div></div></section>

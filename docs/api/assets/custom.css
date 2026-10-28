@@ -5,9 +5,12 @@
   }
 }
 
-/* The migration guide's tables are wider than the column: their code wraps, so they fit it. */
+/* The migration guide's tables are wider than the column: their code wraps to fit it, and where even that isn't
+   enough (a phone), the table scrolls instead of being cut off. */
 .tsd-typography table {
-  width: 100%;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .tsd-typography table code {
   white-space: normal;
