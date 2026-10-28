@@ -226,11 +226,8 @@ export type ProcessGoneEvent = {
  */
 export type InjectedScript = {
   code: string;
-  /**
-   * `false` runs it in every frame, iframes included.
-   * @default `true`
-   */
-  mainFrameOnly?: boolean;
+  /** Runs it in every frame, iframes included. */
+  allFrames?: boolean;
 };
 
 /**
@@ -621,7 +618,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   userAgent?: string;
   /**
    * Scripts to run at document start, before the page's own, on every page and origin the WebView visits (and with
-   * `mainFrameOnly: false` in cross-origin iframes): guard with `location.origin`.
+   * `allFrames: true` in cross-origin iframes): guard with `location.origin`.
    *
    * A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
    * so, once per process).

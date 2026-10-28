@@ -16,7 +16,7 @@ extension MinimalWebView {
     }
     for script in injectedScripts {
       guard let code = script.code else { continue }
-      ownScripts.append(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.mainFrameOnly ?? true, in: .page))
+      ownScripts.append(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: !script.allFrames, in: .page))
     }
     (ownScripts + hooks).forEach { controller.addUserScript($0) }
     installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray

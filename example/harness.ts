@@ -1933,7 +1933,7 @@ async function injection(h: Harness) {
   const r = reporter('injection', WEBVIEW.injectedScripts);
   h.setProps({
     injectedScripts: [
-      { code: 'window.__injectedStart = true;', mainFrameOnly: false },
+      { code: 'window.__injectedStart = true;', allFrames: true },
       { code: 'window.__mainOnly = true; window.__marker = "one";' },
       {
         code: `addEventListener('DOMContentLoaded', () => (window.__injectedEnd = !!document.getElementById('end')));`,
@@ -1952,7 +1952,7 @@ async function injection(h: Harness) {
     const w = document.querySelector('iframe').contentWindow;
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
-  r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
+  r.check('an allFrames script runs in iframes', frame.start, frame);
   r.check('a script runs in the main frame only by default', frame.top && !frame.mainOnly, frame);
   h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
   await sleep(500);

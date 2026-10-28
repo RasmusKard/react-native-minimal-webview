@@ -92,7 +92,7 @@ pass a one-platform hook's key on that platform only.</p>
 <h3 class="tsd-anchor-link" id="injectedscripts"><span>injected<wbr/>Scripts</span><a href="#injectedscripts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">injectedScripts</span><span class="tsd-signature-symbol">?:</span> <a href="../types/InjectedScript.html" class="tsd-signature-type tsd-kind-type-alias">InjectedScript</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Scripts to run at document start, before the page's own, on every page and origin the WebView visits (and with
-<code>mainFrameOnly: false</code> in cross-origin iframes): guard with <code>location.origin</code>.</p>
+<code>allFrames: true</code> in cross-origin iframes): guard with <code>location.origin</code>.</p>
 <p>A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
 so, once per process).</p>
 </div></section>
