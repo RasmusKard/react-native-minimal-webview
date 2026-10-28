@@ -264,8 +264,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       ref={native}
       source={props.source}
       settings={settings}
-      pullToRefresh={props.pullToRefresh ?? false}
-      sharedCookies={Platform.OS === 'ios' ? (props.sharedCookies ?? false) : undefined}
+      pullToRefresh={props.pullToRefresh}
+      sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
       navigationRules={props.navigationRules}
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}

@@ -693,7 +693,6 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
    * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
-   * @default `false`
    */
   pullToRefresh?: boolean;
   /**
@@ -702,7 +701,6 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background.
    * @ios
-   * @default `false`
    */
   sharedCookies?: boolean;
   /**
