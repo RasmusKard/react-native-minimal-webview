@@ -11,3 +11,8 @@
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* The plugin moves the platform icons after a member's name, where the theme leaves no gap. */
+h3 > span + code.tsd-tag {
+  margin-left: 0.25em;
+}
