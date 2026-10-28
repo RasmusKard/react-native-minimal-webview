@@ -41,4 +41,5 @@ export function Browser() {
 
 Android System WebView updates apart from the OS (through the Play Store; Huawei and Fire OS devices ship their own
 builds), so what a device can do depends on its WebView, not its API level. The core checks each feature at run time,
-and an older WebView loses the feature with a warning; nothing crashes. A feature's TSDoc names the WebView it needs.
+and an older WebView loses the feature; nothing crashes. Losing the bridge or `injectedScripts` logs a warning. A
+feature's TSDoc names the WebView it needs.
