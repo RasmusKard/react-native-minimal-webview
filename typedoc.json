@@ -2,12 +2,9 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
-  "plugin": ["typedoc-plugin-markdown"],
   "readme": "none",
   "disableSources": true,
   "excludeExternals": true,
   "treatWarningsAsErrors": true,
-  "validation": { "notExported": false },
-  "hidePageHeader": true,
-  "hideBreadcrumbs": true
+  "validation": { "notExported": false }
 }
