@@ -387,9 +387,9 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * this package has never heard of: `{ scrollView: { bounces: false } }`.
  *
  * The keys the SDK headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
- * option sets by raw value (`IOS.DataDetectorTypes.link`), structs as objects (`contentInset: { top, left, bottom, right
- * }`), a `UIColor` as `#rrggbb` or `#rrggbbaa`, an `NSURL` as a string, `websiteDataStore` as `'default'` or
- * `'nonPersistent'`.
+ * option sets by raw value (`IOSConstants.DataDetectorTypes.link`), structs as objects (`contentInset: { top, left,
+ * bottom, right }`), a `UIColor` as `#rrggbb` or `#rrggbbaa`, an `NSURL` as a string, `websiteDataStore` as `'default'`
+ * or `'nonPersistent'`.
  *
  * A key that doesn't fit, or a private (`_`) one, is skipped with a warning; nothing here can crash the app. A root's
  * `@default` keys are the package's, and yours go over them. Read one back with the ref's `get('scrollView.bounces')`.
@@ -429,8 +429,8 @@ export type IOSSettings = {
  * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
  * newer SDK or androidx.webkit adds: `{ settings: { textZoom: 120 }, webView: { overScrollMode: 2 } }`.
  *
- * The keys the SDK lists autocomplete, with their `@since`; the constants are in `Android`
- * (`Android.WebSettings.LOAD_NO_CACHE`).
+ * The keys the SDK lists autocomplete, with their `@since`; the constants are in `AndroidConstants`
+ * (`AndroidConstants.WebSettings.LOAD_NO_CACHE`).
  *
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
  * nothing here can crash the app. A root's `@default` keys are the package's, and yours go over them. Read one back

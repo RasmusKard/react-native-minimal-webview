@@ -13,8 +13,8 @@
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>Android settings by setter name without <code>set</code>, applied by reflection, so any public setter works, including ones a
 newer SDK or androidx.webkit adds: <code>{ settings: { textZoom: 120 }, webView: { overScrollMode: 2 } }</code>.</p>
-<p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <code>Android</code>
-(<code>Android.WebSettings.LOAD_NO_CACHE</code>).</p>
+<p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <code>AndroidConstants</code>
+(<code>AndroidConstants.WebSettings.LOAD_NO_CACHE</code>).</p>
 <p>A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
 nothing here can crash the app. A root's <code>@default</code> keys are the package's, and yours go over them. Read one back
 with the ref's <code>get('settings.textZoom')</code>.</p>

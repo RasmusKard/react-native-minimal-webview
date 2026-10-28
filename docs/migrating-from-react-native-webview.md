@@ -20,7 +20,7 @@ props that became something else, and what has no equivalent. The [requirements]
 | Android fullscreen video | Off (`allowsFullscreenVideo`) | On, reported to `onFullscreenChange` | A hook chrome client that takes `onShowCustomView` |
 | iOS inline video | Off: video plays in the fullscreen player | On (`allowsInlineMediaPlayback`) | `ios.configuration.allowsInlineMediaPlayback: false` |
 | iOS AirPlay | Off | WebKit's: on | `ios.configuration.allowsAirPlayForMediaPlayback: false` |
-| iOS data detectors | Phone numbers | None | `ios.configuration.dataDetectorTypes: IOS.DataDetectorTypes.phoneNumber` |
+| iOS data detectors | Phone numbers | None | `ios.configuration.dataDetectorTypes: IOSConstants.DataDetectorTypes.phoneNumber` |
 | iOS content insets | `contentInsetAdjustmentBehavior: never`, no automatic indicator insets | UIKit's: `automatic`, and the indicator insets follow | `ios.scrollView.contentInsetAdjustmentBehavior` and `automaticallyAdjustsScrollIndicatorInsets` |
 | iOS directional lock | On | UIKit's: off | `ios.scrollView.directionalLockEnabled: true` |
 | Debugging | iOS off; Android on in debug builds | On in `__DEV__`, on both | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` |
@@ -35,17 +35,17 @@ props that became something else, and what has no equivalent. The [requirements]
 The settings in one object, for the rows a setting restores:
 
 ```tsx
-import { IOS, type WebViewProps } from 'minimal-rn-webview';
+import { IOSConstants, type WebViewProps } from 'minimal-rn-webview';
 
 export const rnwDefaults = {
   ios: {
     configuration: {
       allowsInlineMediaPlayback: false,
       allowsAirPlayForMediaPlayback: false,
-      dataDetectorTypes: IOS.DataDetectorTypes.phoneNumber,
+      dataDetectorTypes: IOSConstants.DataDetectorTypes.phoneNumber,
     },
     scrollView: {
-      contentInsetAdjustmentBehavior: IOS.ContentInsetAdjustmentBehavior.never,
+      contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
       automaticallyAdjustsScrollIndicatorInsets: false,
       directionalLockEnabled: true,
     },
@@ -90,8 +90,8 @@ The props whose setting has another name:
 |---|---|
 | `showsVerticalScrollIndicator`, `showsHorizontalScrollIndicator` | `ios.scrollView.<the same name>`; `android.webView.verticalScrollBarEnabled`, `horizontalScrollBarEnabled` |
 | `mediaPlaybackRequiresUserAction` | `ios.configuration.mediaTypesRequiringUserActionForPlayback`, `android.settings.mediaPlaybackRequiresUserGesture` (its default is both platforms' default) |
-| `contentMode` | `ios.webpagePreferences.preferredContentMode` (`IOS.ContentMode`) |
-| `cacheEnabled: false` | `ios.configuration.websiteDataStore: 'nonPersistent'`, `android.settings.cacheMode: Android.WebSettings.LOAD_NO_CACHE` |
+| `contentMode` | `ios.webpagePreferences.preferredContentMode` (`IOSConstants.ContentMode`) |
+| `cacheEnabled: false` | `ios.configuration.websiteDataStore: 'nonPersistent'`, `android.settings.cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE` |
 | `automaticallyAdjustContentInsets` | `ios.scrollView.contentInsetAdjustmentBehavior` |
 | `forceDarkOn` | `android.settings.algorithmicDarkeningAllowed` (`forceDark` below `targetSdk` 33) |
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
@@ -174,7 +174,7 @@ useEffect(() => {
   ref={ref}
   source={source}
   ios={{ configuration: { websiteDataStore: 'nonPersistent' } }}
-  android={{ settings: { cacheMode: Android.WebSettings.LOAD_NO_CACHE } }}
+  android={{ settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE } }}
 />;
 ```
 

@@ -113,14 +113,14 @@ Any setting by its platform name, and any public method through `call`.
 ```tsx
 <WebView
   ios={{
-    configuration: { dataDetectorTypes: IOS.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
+    configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
     preferences: { minimumFontSize: 12 }, // WKPreferences
     webpagePreferences: { allowsContentJavaScript: false }, // WKWebpagePreferences
     webView: { allowsBackForwardNavigationGestures: true }, // WKWebView
     scrollView: { bounces: false }, // its UIScrollView
   }}
   android={{
-    settings: { textZoom: 120, cacheMode: Android.WebSettings.LOAD_NO_CACHE }, // WebSettings, then WebSettingsCompat
+    settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }, // WebSettings, then WebSettingsCompat
     webView: { overScrollMode: 2, acceptThirdPartyCookies: true }, // WebView, then WebViewCompat, then CookieManager
   }}
 />;
@@ -133,7 +133,7 @@ await ref.current?.call('cookieManager.removeAllCookies', [null]);
 await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
 await ref.current?.call(
   'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-  [{ set: [IOS.WebsiteDataType.cookies, IOS.WebsiteDataType.localStorage] }, { date: 0 }],
+  [{ set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] }, { date: 0 }],
   { completion: 'void' }
 );
 const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64

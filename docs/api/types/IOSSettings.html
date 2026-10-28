@@ -14,8 +14,8 @@
 <div class="tsd-comment tsd-typography"><p>WebKit settings by Objective-C property name, set with Key-Value Coding, so any public property works, including ones
 this package has never heard of: <code>{ scrollView: { bounces: false } }</code>.</p>
 <p>The keys the SDK headers list autocomplete, with their <code>@since</code>. A value must fit the property's type: enums and
-option sets by raw value (<code>IOS.DataDetectorTypes.link</code>), structs as objects (<code>contentInset: { top, left, bottom, right }</code>), a <code>UIColor</code> as <code>#rrggbb</code> or <code>#rrggbbaa</code>, an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'default'</code> or
-<code>'nonPersistent'</code>.</p>
+option sets by raw value (<code>IOSConstants.DataDetectorTypes.link</code>), structs as objects (<code>contentInset: { top, left, bottom, right }</code>), a <code>UIColor</code> as <code>#rrggbb</code> or <code>#rrggbbaa</code>, an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'default'</code>
+or <code>'nonPersistent'</code>.</p>
 <p>A key that doesn't fit, or a private (<code>_</code>) one, is skipped with a warning; nothing here can crash the app. A root's
 <code>@default</code> keys are the package's, and yours go over them. Read one back with the ref's <code>get('scrollView.bounces')</code>.</p>
 </div>

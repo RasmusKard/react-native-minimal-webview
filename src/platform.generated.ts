@@ -462,7 +462,7 @@ export type AndroidSettingKeys = {
 
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
- * `configuration: { dataDetectorTypes: IOS.DataDetectorTypes.link }`.
+ * `configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }`.
  *
  * An option set's `all` is the OR of its listed bits, not `NSUIntegerMax`, which JSON can't carry.
  * `WebsiteDataType` has the data type names the `websiteDataStore` methods take, for `call`; `WebViewDataType` is
@@ -471,7 +471,7 @@ export type AndroidSettingKeys = {
  * @namespace
  * @hideGroups
  */
-export const IOS = {
+export const IOSConstants = {
   SelectionGranularity: {
     dynamic: 0,
     character: 1,
@@ -572,12 +572,13 @@ export const IOS = {
 } as const;
 
 /**
- * The `WebSettings`, `WebView`, `WebSettingsCompat` and `WebViewCompat` constants: `settings: { cacheMode: Android.WebSettings.LOAD_NO_CACHE }`.
+ * The `WebSettings`, `WebView`, `WebSettingsCompat` and `WebViewCompat` constants:
+ * `settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }`.
  * @group Platform settings
  * @namespace
  * @hideGroups
  */
-export const Android = {
+export const AndroidConstants = {
   WebSettings: {
     FORCE_DARK_AUTO: 1,
     FORCE_DARK_OFF: 0,
