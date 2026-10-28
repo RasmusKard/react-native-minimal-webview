@@ -47,10 +47,10 @@
 <p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>.</p>
 <p>Rejects with <code>native_error</code> for an unknown method, a wrong argument count, an argument that doesn't fit, a method
 that raises, a result JSON can't carry (iOS: <code>NaN</code>), and what the core owns: on iOS every selector that loads,
-navigates, runs a script, starts a download or sets a delegate, and private (<code>_</code>), KVC, KVO, <code>performSelector</code>,
-<code>init…</code>, <code>copy…</code>, <code>mutable…</code>, <code>new…</code> and reference-counting selectors; on Android (in <code>get</code> too) the loads,
-navigations, clients, JavaScript interfaces, web message listeners, document-start scripts, <code>destroy</code>,
-<code>removeAllViews</code>, <code>pauseTimers</code>, <code>resumeTimers</code> and <code>evaluateJavascript</code>.</p>
+navigates (<code>setInteractionState:</code> too), runs a script, starts a download or sets a delegate, and private (<code>_</code>),
+KVC, KVO, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>, <code>mutable…</code>, <code>new…</code> and reference-counting selectors; on Android (in
+<code>get</code> too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
+<code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>, <code>resumeTimers</code> and <code>evaluateJavascript</code>.</p>
 <p>On iOS two mistakes the signature can't catch crash the app: a wrong <code>completion</code> shape, and an object argument of
 the wrong class; for a method that takes another object, write a native hook.</p>
 </div>

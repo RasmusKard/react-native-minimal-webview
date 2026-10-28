@@ -42,7 +42,8 @@ has no prop</li>
 <h2 id="android-system-webview-versions" class="tsd-anchor-link">Android System WebView versions<a href="#android-system-webview-versions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>Android System WebView updates apart from the OS (through the Play Store; Huawei and Fire OS devices ship their own
 builds), so what a device can do depends on its WebView, not its API level. The core checks each feature at run time,
-and an older WebView loses the feature with a warning; nothing crashes. A feature's TSDoc names the WebView it needs.</p>
+and an older WebView loses the feature; nothing crashes. Losing the bridge or <code>injectedScripts</code> logs a warning. A
+feature's TSDoc names the WebView it needs.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">

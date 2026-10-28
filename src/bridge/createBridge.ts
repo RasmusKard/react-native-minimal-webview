@@ -76,7 +76,7 @@ export function createBridge<
       if (post && phase === 'ready') deliver(message);
       else {
         queue.push(message);
-        // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call still times out
+        // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call times out, or with timeoutMs 0 never settles
         if (queue.length > MAX_QUEUE) queue.shift();
       }
     },
