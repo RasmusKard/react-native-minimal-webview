@@ -4,7 +4,7 @@
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and the API file of the
 // androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade. It
 // keeps only the declarations this script reads (the iOS doc comments are Apple's).
-// The WK constant names are the header names with their common prefix stripped: an SDK rename renames a constant.
+// The IOS constant names are the header names with their common prefix stripped: an SDK rename renames a constant.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -453,7 +453,7 @@ export type AndroidSettingKeys = ${object({
 
 /**
  * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
- * \`configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }\`.
+ * \`configuration: { dataDetectorTypes: IOS.DataDetectorTypes.link }\`.
  *
  * An option set's \`all\` is the OR of its listed bits, not \`NSUIntegerMax\`, which JSON can't carry.
  * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
@@ -462,7 +462,7 @@ export type AndroidSettingKeys = ${object({
  * @namespace
  * @hideGroups
  */
-export const WK = ${object({
+export const IOS = ${object({
     ...iosEnums(ios),
     '/** `WKWebsiteDataStore` data types: `removeDataOfTypes:`, `fetchDataRecordsOfTypes:` */\nWebsiteDataType':
       object(websiteDataTypes(ios)),

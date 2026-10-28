@@ -113,7 +113,7 @@ Any setting by its platform name, and any public method through `call`.
 ```tsx
 <WebView
   ios={{
-    configuration: { dataDetectorTypes: WK.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
+    configuration: { dataDetectorTypes: IOS.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
     preferences: { minimumFontSize: 12 }, // WKPreferences
     webpagePreferences: { allowsContentJavaScript: false }, // WKWebpagePreferences
     webView: { allowsBackForwardNavigationGestures: true }, // WKWebView
@@ -133,7 +133,7 @@ await ref.current?.call('cookieManager.removeAllCookies', [null]);
 await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
 await ref.current?.call(
   'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-  [{ set: [WK.WebsiteDataType.cookies, WK.WebsiteDataType.localStorage] }, { date: 0 }],
+  [{ set: [IOS.WebsiteDataType.cookies, IOS.WebsiteDataType.localStorage] }, { date: 0 }],
   { completion: 'void' }
 );
 const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64

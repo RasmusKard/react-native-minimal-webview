@@ -17,7 +17,7 @@ import type {
   WebViewRefObject,
   WebViewSource,
 } from 'minimal-rn-webview';
-import { WebView, WK } from 'minimal-rn-webview';
+import { WebView, IOS } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
 
 import { hostile } from './hostile';
@@ -1403,7 +1403,7 @@ async function settings(h: Harness) {
         ios: {
           configuration,
           scrollView: {
-            contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never,
+            contentInsetAdjustmentBehavior: IOS.ContentInsetAdjustmentBehavior.never,
             contentOffset: { x: 0, y: 30 },
           },
         },
@@ -1422,7 +1422,7 @@ async function settings(h: Harness) {
       h.setProps({
         ios: {
           configuration,
-          webpagePreferences: { preferredContentMode: WK.ContentMode.desktop },
+          webpagePreferences: { preferredContentMode: IOS.ContentMode.desktop },
         },
       });
       await sleep(500);
@@ -1488,7 +1488,7 @@ async function settings(h: Harness) {
       const before = await page('document.cookie');
       const cleared = await call(
         'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-        [{ set: [WK.WebsiteDataType.cookies] }, { date: 0 }],
+        [{ set: [IOS.WebsiteDataType.cookies] }, { date: 0 }],
         { completion: 'void' }
       );
       r.check(
@@ -1516,7 +1516,7 @@ async function settings(h: Harness) {
       );
       const records = await call(
         'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
-        [{ set: [WK.WebsiteDataType.localStorage] }],
+        [{ set: [IOS.WebsiteDataType.localStorage] }],
         { completion: 'value' }
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
@@ -1525,7 +1525,7 @@ async function settings(h: Harness) {
         await page(`sessionStorage.setItem('mrw', '1')`);
         const session = await call(
           'webView.fetchDataOfTypes:completionHandler:',
-          [WK.WebViewDataType.sessionStorage],
+          [IOS.WebViewDataType.sessionStorage],
           { completion: 'valueError' }
         );
         const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {

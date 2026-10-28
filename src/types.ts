@@ -387,7 +387,7 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * this package has never heard of: `{ scrollView: { bounces: false } }`.
  *
  * The keys the SDK headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
- * option sets by raw value (`WK.DataDetectorTypes.link`), structs as objects (`contentInset: { top, left, bottom, right
+ * option sets by raw value (`IOS.DataDetectorTypes.link`), structs as objects (`contentInset: { top, left, bottom, right
  * }`), a `UIColor` as `#rrggbb` or `#rrggbbaa`, an `NSURL` as a string, `websiteDataStore` as `'default'` or
  * `'nonPersistent'`.
  *

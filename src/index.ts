@@ -23,7 +23,7 @@ export { WebView } from './WebView';
 export { createWebViewRef, useWebViewState } from './refStore';
 export { createBridge } from './bridge/createBridge';
 export { reactNativeWebViewMessages } from './reactNativeWebViewMessages';
-export { Android, WK } from './platform.generated';
+export { Android, IOS } from './platform.generated';
 export type {
   AndroidSettingKeys,
   CGPoint,
