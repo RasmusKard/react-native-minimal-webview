@@ -15,8 +15,8 @@
 newer SDK or androidx.webkit adds.</p>
 <p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <a href="../modules/AndroidConstants.html" class="tsd-kind-namespace">AndroidConstants</a>.</p>
 <p>A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
-nothing here can crash the app. A root's <code>@default</code> keys are the package's, and yours go over them. Read one back
-with the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
+nothing here can crash the app. A root's default keys are the package's, and yours go over them. Read one back with
+the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
@@ -43,28 +43,20 @@ with the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p
 <section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="settings"><span>settings</span><a href="#settings" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">settings</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#settings"><span class="tsd-signature-type">&quot;settings&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-signature"><span class="tsd-kind-property">settings</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#settings"><span class="tsd-signature-type">&quot;settings&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = { userAgentString: null }</span></div>
 <div class="tsd-comment tsd-typography"><p><code>WebSettings</code> setters, then static <code>WebSettingsCompat</code> ones.</p>
 <p>Each new WebView starts with <code>javaScriptEnabled</code>, <code>domStorageEnabled</code>, <code>supportMultipleWindows</code> and
 <code>builtInZoomControls</code> on; <code>allowFileAccess</code>, <code>allowContentAccess</code>, <code>displayZoomControls</code> and
 <code>downloadFaviconsEnabled</code> off; <code>mixedContentMode</code> <code>MIXED_CONTENT_NEVER_ALLOW</code>; and, with WebView 146 and newer,
 <code>backForwardCacheEnabled</code> on.</p>
-</div>
-<div class="tsd-comment tsd-typography">
-<div class="tsd-tag-default">
-<h4 class="tsd-anchor-link" id="default">Default<a href="#default" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><code>{ userAgentString: null }</code></p>
-</div></div></section>
+</div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="webview"><span>web<wbr/>View</span><a href="#webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">webView</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#webview"><span class="tsd-signature-type">&quot;webView&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-signature"><span class="tsd-kind-property">webView</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="AndroidSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="AndroidSettingKeys.html#webview"><span class="tsd-signature-type">&quot;webView&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = { webContentsDebuggingEnabled: __DEV__ }</span></div>
 <div class="tsd-comment tsd-typography"><p><code>WebView</code> setters (static and inherited <code>View</code> ones too), then <code>WebViewCompat</code> ones, then <code>CookieManager</code>'s
 <code>acceptThirdPartyCookies</code>.</p>
 <p><code>webContentsDebuggingEnabled</code> is process-wide.</p>
-</div>
-<div class="tsd-comment tsd-typography">
-<div class="tsd-tag-default">
-<h4 class="tsd-anchor-link" id="default-1">Default<a href="#default-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><code>{ webContentsDebuggingEnabled: __DEV__ }</code></p>
-</div></div></section></section></details></div>
+</div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

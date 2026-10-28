@@ -17,7 +17,7 @@ this package has never heard of.</p>
 option sets by raw value (from <a href="../modules/IOSConstants.html" class="tsd-kind-namespace">IOSConstants</a>), structs as objects, a <code>UIColor</code> as <code>#rrggbb</code> or <code>#rrggbbaa</code>,
 an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'default'</code> or <code>'nonPersistent'</code>.</p>
 <p>A key that doesn't fit, or a private (<code>_</code>) one, is skipped with a warning; nothing here can crash the app. A root's
-<code>@default</code> keys are the package's, and yours go over them. Read one back with the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
+default keys are the package's, and yours go over them. Read one back with the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
@@ -47,16 +47,12 @@ an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'defau
 <section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="configuration"><span>configuration</span><a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">configuration</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="IOSSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">IOSSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="IOSSettingKeys.html#configuration"><span class="tsd-signature-type">&quot;configuration&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-signature"><span class="tsd-kind-property">configuration</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="IOSSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">IOSSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="IOSSettingKeys.html#configuration"><span class="tsd-signature-type">&quot;configuration&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = { allowsInlineMediaPlayback: true }</span></div>
 <div class="tsd-comment tsd-typography"><p><code>WKWebViewConfiguration</code>: read once, when the WKWebView is created; a change recreates the WebView (the page
 reloads and the navigation state starts over).</p>
 <p>The default lets a <code>&lt;video playsinline&gt;</code> play inline. The private <code>allowUniversalAccessFromFileURLs</code> is accepted,
 for react-native-webview parity: it lets a <code>file:</code> page read any URL.</p>
-</div>
-<div class="tsd-comment tsd-typography">
-<div class="tsd-tag-default">
-<h4 class="tsd-anchor-link" id="default">Default<a href="#default" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><code>{ allowsInlineMediaPlayback: true }</code></p>
-</div></div></section>
+</div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="preferences"><span>preferences</span><a href="#preferences" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">preferences</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="IOSSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">IOSSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="IOSSettingKeys.html#preferences"><span class="tsd-signature-type">&quot;preferences&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
@@ -76,13 +72,9 @@ other <code>file:</code> URLs.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="webview"><span>web<wbr/>View</span><a href="#webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">webView</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="IOSSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">IOSSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="IOSSettingKeys.html#webview"><span class="tsd-signature-type">&quot;webView&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-signature"><span class="tsd-kind-property">webView</span><span class="tsd-signature-symbol">?:</span> <a href="SettingsRoot.html" class="tsd-signature-type tsd-kind-type-alias">SettingsRoot</a><span class="tsd-signature-symbol">&lt;</span><a href="IOSSettingKeys.html" class="tsd-signature-type tsd-kind-type-alias">IOSSettingKeys</a><span class="tsd-signature-symbol">[</span><a href="IOSSettingKeys.html#webview"><span class="tsd-signature-type">&quot;webView&quot;</span></a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = { customUserAgent: null, inspectable: __DEV__ }</span></div>
 <div class="tsd-comment tsd-typography"><p>The <code>WKWebView</code>, live.</p>
-</div>
-<div class="tsd-comment tsd-typography">
-<div class="tsd-tag-default">
-<h4 class="tsd-anchor-link" id="default-1">Default<a href="#default-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><code>{ customUserAgent: null, inspectable: __DEV__ }</code></p>
-</div></div></section></section></details></div>
+</div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

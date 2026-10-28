@@ -444,7 +444,7 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * an `NSURL` as a string, `websiteDataStore` as `'default'` or `'nonPersistent'`.
  *
  * A key that doesn't fit, or a private (`_`) one, is skipped with a warning; nothing here can crash the app. A root's
- * `@default` keys are the package's, and yours go over them. Read one back with the ref's {@link WebViewRef.get | get}.
+ * default keys are the package's, and yours go over them. Read one back with the ref's {@link WebViewRef.get | get}.
  * @example
  * ```tsx
  * <WebView
@@ -494,8 +494,8 @@ export type IOSSettings = {
  * The keys the SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
  *
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
- * nothing here can crash the app. A root's `@default` keys are the package's, and yours go over them. Read one back
- * with the ref's {@link WebViewRef.get | get}.
+ * nothing here can crash the app. A root's default keys are the package's, and yours go over them. Read one back with
+ * the ref's {@link WebViewRef.get | get}.
  * @example
  * ```tsx
  * <WebView
