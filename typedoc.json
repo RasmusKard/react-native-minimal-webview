@@ -8,5 +8,7 @@
   "treatWarningsAsErrors": true,
   "validation": { "notExported": false },
   "navigation": { "includeGroups": true },
+  "visibilityFilters": { "@android": true, "@ios": true },
+  "locales": { "en": { "tag_ios": "iOS" } },
   "groupOrder": ["WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
 }

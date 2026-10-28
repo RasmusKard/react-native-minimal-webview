@@ -285,7 +285,7 @@ export type BridgeOptions = {
 /**
  * An `<input type="file">`. `accept` is its `accept` list as written, MIME types and extensions (`.pdf`). `capture` is
  * its `capture` attribute: the page wants the camera.
- * @platform android
+ * @android
  * @group Page requests
  */
 export type FileRequest = { accept: string[]; multiple: boolean; capture: boolean };
@@ -348,7 +348,7 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * `#rrggbb` or `#rrggbbaa`, an `NSURL` as a string, `websiteDataStore` as `'default'` or `'nonPersistent'`. A key that
  * doesn't fit, or a private (`_`) one, is skipped with a warning; nothing here can crash the app. A root's `@default`
  * keys are the package's, and yours go over them. Read one back with the ref's `get('scrollView.bounces')`.
- * @platform ios
+ * @ios
  * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings
  * @group Platform settings
  */
@@ -383,7 +383,7 @@ export type IOSSettings = {
  * key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
  * nothing here can crash the app. A root's `@default` keys are the package's, and yours go over them. Read one back
  * with the ref's `get('settings.textZoom')`.
- * @platform android
+ * @android
  * @see https://github.com/RasmusKard/minimal-rn-webview/blob/main/docs/examples.md#platform-settings
  * @group Platform settings
  */
@@ -416,7 +416,7 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
 
 /**
  * `onFullscreenChange`'s event.
- * @platform android
+ * @android
  * @group Events
  */
 export type FullscreenChangeEvent = { active: boolean };
@@ -456,14 +456,14 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * WebKit settings by property name; see {@link IOSSettings}. A key you remove keeps its value until the WebView is
    * recreated, unless the package sets it (`inspectable`, `customUserAgent`): that one goes back to the package's
    * default. The `userAgent` prop wins over the same key here.
-   * @platform ios
+   * @ios
    */
   ios?: IOSSettings;
   /**
    * Android settings by setter name; see {@link AndroidSettings}. A key you remove keeps its value until the WebView is
    * recreated, unless the package sets it (`webContentsDebuggingEnabled`, `userAgentString`): that one goes back to the
    * package's default. The `userAgent` prop wins over the same key here.
-   * @platform android
+   * @android
    */
   android?: AndroidSettings;
   /**
@@ -539,7 +539,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, which waits for it, and
    * the WebView's cookie changes, deletions included, back as they happen. Android needs nothing: `CookieManager` is
    * shared app-wide, and flushed when the app goes to the background.
-   * @platform ios
+   * @ios
    * @default false
    */
   sharedCookies?: boolean;
@@ -550,7 +550,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * WebKit's picker, which needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`. `signal` aborts when
    * native stops waiting (the page moved on, crashed or unmounted), and a late answer is dropped; until it settles, the
    * page's next file request waits.
-   * @platform android
+   * @android
    */
   onFileRequest?: (
     request: FileRequest,
@@ -559,7 +559,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * The page entered or left fullscreen (`active`). Fullscreen works without it: the page's view covers the window, the
    * system bars hide and back exits. iOS shows WebKit's own fullscreen, not reported.
-   * @platform android
+   * @android
    */
   onFullscreenChange?: (event: FullscreenChangeEvent) => void;
   /**

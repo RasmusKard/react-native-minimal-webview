@@ -388,7 +388,7 @@ export declare namespace WebView {
   /**
    * Android's default user agent, for `android.settings.userAgentString` with a suffix. Null on iOS, where
    * `ios.configuration.applicationNameForUserAgent` appends.
-   * @platform android
+   * @android
    */
   const defaultUserAgent: string | null;
   /**
@@ -396,7 +396,7 @@ export declare namespace WebView {
    * device's WebView supports that, so the first WebView loads sooner. Call it at app start when a WebView shows soon
    * after. React Native's first `fetch` starts WebView too (its cookie jar is WebView's `CookieManager`), so an app that
    * fetches early gets part of this anyway. No-op on iOS.
-   * @platform android
+   * @android
    */
   function warmUp(): void;
   /**
@@ -404,7 +404,7 @@ export declare namespace WebView {
    * on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`. It starts WebView on the UI thread if
    * nothing has yet, so call it once `warmUp()` has had time or a WebView is mounted, a moment before the load.
    * Prefetch and prerender aren't wrapped: a native hook reaches them through `ProfileStore`. No-op on iOS.
-   * @platform android
+   * @android
    */
   function preconnect(url: string): void;
 }
