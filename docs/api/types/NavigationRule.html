@@ -1,4 +1,4 @@
-<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>NavigationRule | minimal-rn-webview</title><meta name="description" content="Documentation for minimal-rn-webview"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>NavigationRule | minimal-rn-webview</title><meta name="description" content="Documentation for minimal-rn-webview"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container"><a href="../index.html" class="title">minimal-rn-webview</a>
 <div id="tsd-toolbar-links"><a href="https://github.com/RasmusKard/minimal-rn-webview">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
@@ -41,18 +41,18 @@
 allowed navigation again, without the page's referrer policy or the gesture flag.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="host"><code class="tsd-tag">Optional</code><span>host</span><a href="#host" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="host"><span>host</span><a href="#host" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">host</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Exact, or a <code>*.</code> suffix wildcard that matches subdomains only: <code>['*.example.com']</code> does not match <code>example.com</code>.</p>
 <p>Case, port, userinfo and a trailing dot are ignored.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="mainframe"><code class="tsd-tag">Optional</code><span>main<wbr/>Frame</span><a href="#mainframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="mainframe"><span>main<wbr/>Frame</span><a href="#mainframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">mainFrame</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p>Android decides only an iframe's non-http(s) navigations, so a <code>mainFrame: false</code> rule for http(s) is iOS only.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="newwindow"><code class="tsd-tag">Optional</code><span>new<wbr/>Window</span><a href="#newwindow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="newwindow"><span>new<wbr/>Window</span><a href="#newwindow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">newWindow</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p><code>target=_blank</code> or <code>window.open</code>, a main-frame navigation.</p>
 <p>An allowed one loads in place: there is never a second WebView, so no <code>window.opener</code> (a native hook that takes
@@ -62,24 +62,24 @@ allowed navigation again, without the page's referrer policy or the gesture flag
 the page first sends it to one, or dropped when that doesn't happen within 5 s.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="path"><code class="tsd-tag">Optional</code><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="path"><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Plain prefixes of the percent-encoded URL path: <code>['/checkout']</code> also matches <code>/checkouts</code>.</p>
 <p>A URL without an authority (<code>myapp:/open</code>) has the path <code>/</code>.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="query"><code class="tsd-tag">Optional</code><span>query</span><a href="#query" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="query"><span>query</span><a href="#query" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">query</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Query parameters, percent-encoded as in the URL and case-sensitive: <code>gad_source</code> matches a parameter with that
 name, whatever its value; <code>utm_term=google</code> matches only that exact value.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="scheme"><code class="tsd-tag">Optional</code><span>scheme</span><a href="#scheme" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="scheme"><span>scheme</span><a href="#scheme" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheme</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Exact, case-insensitive: <code>['tel', 'mailto']</code>.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="userinitiated"><code class="tsd-tag">Optional</code><span>user<wbr/>Initiated</span><a href="#userinitiated" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 class="tsd-anchor-link" id="userinitiated"><span>user<wbr/>Initiated</span><a href="#userinitiated" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">userInitiated</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p>A user gesture started it (Android <code>hasGesture()</code>, iOS <code>.linkActivated</code>).</p>
 <p>A <code>location.href</code> change or <code>window.open</code> from a click handler is true on Android, but false on iOS, where only a

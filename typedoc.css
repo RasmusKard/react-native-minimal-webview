@@ -1,0 +1,6 @@
+/* The default column is narrower than the 100-character lines of the code in the TSDoc and the guides. */
+@media (min-width: 1200px) {
+  .container-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3.2fr) minmax(0, 18rem);
+  }
+}

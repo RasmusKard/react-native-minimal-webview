@@ -3,6 +3,7 @@
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
   "plugin": ["./.github/scripts/typedoc-plugin.mts"],
+  "customCss": "typedoc.css",
   "readme": "none",
   "disableSources": true,
   "excludeExternals": true,
