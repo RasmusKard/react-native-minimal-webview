@@ -1,7 +1,7 @@
 # Examples
 
 One example per public interface. What each prop, method and type does is in its TSDoc, generated into the
-[API reference](api/index.html).
+[API reference](https://rasmuskard.github.io/minimal-rn-webview/api/).
 
 ## Navigation state
 
