@@ -10,8 +10,9 @@ One navigation rule. Every field it sets must match; for a list, one matching en
 
 > **action**: [`NavigationAction`](NavigationAction.md) \| `"ask"`
 
-`ask` calls `onNavigationRequest`. On Android it works only for the main frame (elsewhere it is `block`), and an
-allowed navigation is loaded again, without the page's referrer policy or the gesture flag.
+`ask` calls `onNavigationRequest`. On Android it works only for the main frame (elsewhere it is `block`), waits for
+the next frame, and loads an allowed navigation again, without the page's referrer policy or the gesture flag:
+about 10 ms more than a rule takes (15 ms end to end against 7 on an API 37 emulator; on iOS 7 ms either way).
 
 ***
 
@@ -38,8 +39,8 @@ Android decides only an iframe's non-http(s) navigations, so a `mainFrame: false
 
 `target=_blank` or `window.open`, a main-frame navigation. An allowed one loads in place: there is never a second
 WebView, so no `window.opener`. One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked, and
-on Android one that doesn't navigate within 5 s (`window.open('')`) is dropped; on iOS `window.open('')` returns
-null.
+one opened with no URL (`window.open('')`) is decided when the page first sends it to one, or dropped when that
+doesn't happen within 5 s.
 
 ***
 

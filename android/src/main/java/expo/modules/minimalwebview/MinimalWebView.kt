@@ -71,7 +71,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val refresher = PullToRefresh(this)
   /**
    * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
-   * `openExternal` is there when JS handles `external` navigations (onOpenExternal); native only reports them.
    */
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
@@ -132,9 +131,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
     val first = hookKeys == null
     val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
-    hookContexts = MinimalWebViewHooks.hooks.filter { it.key in keys }.map { HookContext(it, this) }
+    val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keys)
+    hookContexts = attaching.map { HookContext(it, this) }
     // A typo, or a hook's module not linked or not rebuilt. Once: the WebView after a crash has the same keys.
-    if (first) (keys - hookContexts.map { it.key }.toSet()).forEach { warn("hookOptions.$it: no hook is registered under this key") }
+    if (first) unregistered.forEach { warn("hookOptions.$it: no hook is registered under this key") }
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
@@ -280,7 +280,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
-      } else if (key !in hookKeys.orEmpty() && !enables(old[key]) && enables(value)) {
+      } else if (addedLate(key, old[key], value, hookKeys.orEmpty())) {
         warn("hookOptions.$key: added after the WebView was created, so no hook attaches for it")
       }
     }

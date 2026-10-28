@@ -6,12 +6,13 @@ import WebKit
 extension MinimalWebView {
   func decideNavigation(_ action: WKNavigationAction, decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
     guard let target = action.request.url else { return decide(allowInPlace) }
-    // New windows are decided in createWebViewWith; history steps, reloads and our own loads skip the rules,
-    // as on Android (shouldOverrideUrlLoading is not called for them).
+    // New windows are decided in createWebViewWith; history steps, reloads, form POSTs and our own loads skip the
+    // rules, as on Android (shouldOverrideUrlLoading is not called for them).
     if action.targetFrame == nil { return decide(allowInPlace) }
     let mainFrame = action.targetFrame?.isMainFrame ?? true
     let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
-    if own || action.navigationType == .backForward || action.navigationType == .reload {
+    if own || action.navigationType == .backForward || action.navigationType == .reload
+      || action.request.httpMethod == "POST" {
       if own { programmaticUrl = nil }
       return decide(allowInPlace)
     }
@@ -35,24 +36,38 @@ extension MinimalWebView {
     finish(request, "external", nil) { _ in }
   }
 
-  /// window.open and target=_blank: never a second WKWebView, since a popup model (presenting and closing a child,
-  /// `window.opener`, its own rules and bridge) is more than almost any app wants. `allow` loads the URL in this one.
-  /// An app that needs real popups takes `createWebViewWith` in a hook's UI delegate and owns the second view.
+  /// window.open and target=_blank: never a second WKWebView for the page, since a popup model (presenting and closing a
+  /// child, `window.opener`, its own rules and bridge) is more than almost any app wants. `allow` loads the URL in this
+  /// one. A window opened with no URL yet (`window.open('')`) gets a throwaway view that catches the URL the page sends
+  /// it to (`WindowCatcher`), as on Android. An app that needs real popups takes `createWebViewWith` in a hook's UI
+  /// delegate and owns the second view.
   func webView(
     _ webView: WKWebView,
     createWebViewWith configuration: WKWebViewConfiguration,
     for action: WKNavigationAction,
     windowFeatures: WKWindowFeatures
   ) -> WKWebView? {
-    guard let target = action.request.url, !target.absoluteString.isEmpty, target.absoluteString != "about:blank" else { return nil }
-    let request = NavigationRules.Request(
-      url: target.absoluteString, mainFrame: true, newWindow: true, userInitiated: action.navigationType == .linkActivated
-    )
-    run(request) { [weak self] allowed in
-      guard allowed, let self else { return }
-      self.loadProgrammatic(action.request)
+    let userInitiated = action.navigationType == .linkActivated
+    guard let target = action.request.url?.absoluteString, !target.isEmpty, target != "about:blank" else {
+      return WindowCatcher.window(configuration) { [weak self] request in self?.openWindow(request, userInitiated) }
     }
+    openWindow(action.request, userInitiated)
     return nil
+  }
+
+  private func openWindow(_ request: URLRequest, _ userInitiated: Bool) {
+    guard let target = request.url else { return }
+    // A form POST to a web page skips the rules here too, and loads in place. This load is the app's, past WebKit's
+    // limits on what a page may load, so any other scheme still meets the rules, which block file: and internal ones.
+    if request.httpMethod == "POST", ["http", "https"].contains(target.scheme?.lowercased()) {
+      return loadProgrammatic(request)
+    }
+    let window = NavigationRules.Request(
+      url: target.absoluteString, mainFrame: true, newWindow: true, userInitiated: userInitiated
+    )
+    run(window) { [weak self] allowed in
+      if allowed { self?.loadProgrammatic(request) }
+    }
   }
 
   /// Applies the rules (and `ask`) to a request and reports the outcome; `completion` gets whether to load it here.
@@ -83,8 +98,17 @@ extension MinimalWebView {
 
   private func finish(_ request: NavigationRules.Request, _ action: String, _ rule: Int?, _ completion: (Bool) -> Void) {
     completion(action == "allow")
-    guard action == "external", !requestHandlers.contains("openExternal") else { return report(request, action, rule) }
-    // As on Android: an external URL that nothing opens is reported as blocked.
+    guard action == "external" else { return report(request, action, rule) }
+    guard requestHandlers.contains("openExternal") else { return open(request, rule) }
+    // Only false hands the URL back: nil (a throw, or the page moved on first) means the app has it. No timeout, as
+    // nothing waits for the answer: the navigation is cancelled already.
+    asks.ask("core.openExternal", ["url": request.url]) { [weak self] answer in
+      if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, "external", rule) }
+    }
+  }
+
+  /// Opens an `external` URL outside the WebView. As on Android, one that nothing opens is reported as blocked.
+  private func open(_ request: NavigationRules.Request, _ rule: Int?) {
     guard let url = URL(string: request.url) else { return report(request, "block", rule) }
     UIApplication.shared.open(url) { [weak self] opened in self?.report(request, opened ? "external" : "block", rule) }
   }
@@ -105,6 +129,51 @@ extension MinimalWebView {
 }
 
 private let askTimeout: TimeInterval = 1
+
+/// The window `window.open('')` (or about:blank) opens, which a page navigates later (`w.location = url`), as async
+/// popup payment buttons do. WebKit needs a WKWebView for it, made from the configuration it passes (it requires that
+/// object). This one is never shown: it cancels its first navigation and hands the request on, then goes; one that
+/// hasn't navigated within 5 s, or that the page closes, goes unused.
+private final class WindowCatcher: NSObject, WKNavigationDelegate, WKUIDelegate {
+  private var child: WKWebView?
+  private var caught: ((URLRequest) -> Void)?
+
+  static func window(_ configuration: WKWebViewConfiguration, caught: @escaping (URLRequest) -> Void) -> WKWebView {
+    let catcher = WindowCatcher()
+    let child = WKWebView(frame: .zero, configuration: configuration)
+    child.navigationDelegate = catcher
+    child.uiDelegate = catcher
+    (catcher.child, catcher.caught) = (child, caught)
+    // The view's delegates are weak: the timer holds the catcher, and the catcher the view until it lets it go.
+    DispatchQueue.main.asyncAfter(deadline: .now() + newWindowTimeout) { catcher.drop() }
+    return child
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    decidePolicyFor action: WKNavigationAction,
+    decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
+  ) {
+    guard action.request.url?.absoluteString != "about:blank" else { return decisionHandler(.allow) }
+    decisionHandler(.cancel)
+    let caught = self.caught
+    drop()
+    caught?(action.request)
+  }
+
+  func webViewDidClose(_ webView: WKWebView) {
+    drop()
+  }
+
+  /// The view goes a turn later: this can run inside its own callback.
+  private func drop() {
+    caught = nil
+    DispatchQueue.main.async { [child] in withExtendedLifetime(child) {} }
+    child = nil
+  }
+}
+
+private let newWindowTimeout: TimeInterval = 5
 
 /// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (iOS 9+), as Firefox for iOS uses it: `.allow`
 /// would hand a tapped link to another host to an installed app that claims it as a universal link, which Android's

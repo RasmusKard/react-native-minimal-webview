@@ -13,6 +13,8 @@ public enum MinimalWebViewHooks {
 
   struct Hook {
     let key: String
+    /// Where it was registered, `#fileID:#line`: the same place again is a JS reload, not a second hook.
+    let site: String
     let configure: ((WKWebViewConfiguration, WebViewContext) -> Void)?
     let attach: (WKWebView, WebViewContext) -> (() -> Void)?
   }
@@ -20,8 +22,10 @@ public enum MinimalWebViewHooks {
   private(set) static var hooks: [Hook] = []
 
   /// Registers the hook for `key`; call it from your module's `OnCreate`, before the first WebView. Hooks are
-  /// configured and attached in registration order. Keys are global: a second registration under a key replaces the
-  /// first and logs a warning, so prefix yours with your package's name. `core` is reserved and refused.
+  /// configured and attached in registration order. Keys are global, so prefix yours with your package's name: a
+  /// second hook under a key stops the app (`fatalError`, naming the key and both call sites). The same call running
+  /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. `core` is reserved
+  /// and refused.
   /// - Parameters:
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
@@ -29,20 +33,25 @@ public enum MinimalWebViewHooks {
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
   ///     `onDocumentEnd(.closing)`, or nil.
+  ///   - file: With `line`, the call site that tells a reload from a second hook: leave both to their defaults.
   public static func register(
     _ key: String,
     configure: ((WKWebViewConfiguration, WebViewContext) -> Void)? = nil,
-    attach: @escaping (WKWebView, WebViewContext) -> (() -> Void)?
+    attach: @escaping (WKWebView, WebViewContext) -> (() -> Void)?,
+    file: String = #fileID,
+    line: Int = #line
   ) {
     // The package's own events are named `core.…`: a hook under that key would have its events taken for them.
     guard key != "core" else { return NSLog("[minimal-rn-webview] the hook key `core` is reserved: the hook is not registered") }
-    let hook = Hook(key: key, configure: configure, attach: attach)
-    if let index = hooks.firstIndex(where: { $0.key == key }) {
-      NSLog("[minimal-rn-webview] a second hook registered under `%@` replaces the first", key)
-      hooks[index] = hook
-    } else {
-      hooks.append(hook)
+    let hook = Hook(key: key, site: "\(file):\(line)", configure: configure, attach: attach)
+    guard let index = hooks.firstIndex(where: { $0.key == key }) else { return hooks.append(hook) }
+    guard hooks[index].site == hook.site else {
+      fatalError(
+        "[minimal-rn-webview] two hooks are registered under `\(key)`, at \(hooks[index].site) and \(hook.site): "
+          + "prefix yours with your package's name"
+      )
     }
+    hooks[index] = hook
   }
 }
 
@@ -118,7 +127,7 @@ final class HookContext: WebViewContext {
 
   var key: String { hook.key }
 
-  var url: String { view?.url ?? "" }
+  var url: String { view?.hookUrl ?? "" }
 
   var navigationDelegates: [WKNavigationDelegate] {
     get { view?.navigationDelegates ?? [] }

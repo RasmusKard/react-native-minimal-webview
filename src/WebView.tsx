@@ -64,8 +64,7 @@ export type AskableEvent = HookEvent & { askId?: number };
 
 /**
  * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
- * whose prop is set, and reads the set when the request comes, so a prop can come and go. `openExternal` is never
- * asked: native only checks that JS opens external links itself, and reports them on `onNavigation`.
+ * whose prop is set, and reads the set when the request comes, so a prop can come and go.
  */
 const REQUESTS = {
   navigationRequest: 'onNavigationRequest',
@@ -247,7 +246,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       asks.set(askId, controller);
     }
     const value = await settle(
-      () => handler?.(payload, controller?.signal),
+      // onOpenExternal takes the URL itself.
+      () => handler?.(request === 'onOpenExternal' ? payload['url'] : payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onHookEvent failed for ${name}`
@@ -256,12 +256,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     asks.delete(askId);
     // Native already answered a cancelled ask with null; a late answer would find nothing.
     if (!controller?.signal.aborted) await answer(askId, value);
-  };
-
-  const onNavigation = ({ nativeEvent }: Native<NavigationEvent>) => {
-    const event = pick(nativeEvent, NAVIGATION_KEYS);
-    if (event.action === 'external') props.onOpenExternal?.(event.url);
-    props.onNavigation?.(event);
   };
 
   return (
@@ -278,7 +272,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={props.hookOptions && withoutNulls(props.hookOptions)}
       requestHandlers={requestHandlers}
-      onNavigation={onNavigation}
+      onNavigation={({ nativeEvent }) => props.onNavigation?.(pick(nativeEvent, NAVIGATION_KEYS))}
       onNavigationState={({ nativeEvent }) =>
         onNavigationState({ nativeEvent: pick(nativeEvent, STATE_KEYS) })
       }
@@ -397,10 +391,12 @@ export declare namespace WebView {
    */
   const defaultUserAgent: string | null;
   /**
-   * Starts WebView (its code and Chromium) in the background, so that the first WebView mounts faster, blocks the UI
-   * thread less and sends its first request sooner. Call it at app start when a WebView shows soon after: right before
-   * the mount it gains less. React Native's first `fetch` starts WebView too (its cookie jar is WebView's
-   * `CookieManager`), so an app that fetches early gets part of this anyway. No-op on iOS.
+   * Starts WebView (loads its code, starts Chromium) ahead of the first WebView, on a background thread where the
+   * device's WebView supports that. Measured on Android System WebView 149 (an emulator, a Debug build): called at app
+   * start, it brought the first WebView's first `onLoadEnd` about 15% sooner, a median of 287 against 339 ms from the
+   * app's first render (5 launches each, all 5 with it faster than all 5 without). Call it at app start when a WebView
+   * shows soon after. React Native's first `fetch` starts WebView too (its cookie jar is WebView's `CookieManager`), so
+   * an app that fetches early gets part of this anyway. No-op on iOS.
    * @platform android
    */
   function warmUp(): void;
@@ -408,7 +404,10 @@ export declare namespace WebView {
    * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, for a load that follows; nothing
    * on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`. It starts WebView on the UI thread if
    * nothing has yet, so call it once `warmUp()` has had time or a WebView is mounted, a moment before the load.
-   * Prefetch and prerender aren't wrapped: a native hook reaches them through `ProfileStore`. No-op on iOS.
+   * Measured on Android System WebView 149 (an emulator, a Debug build, the server on the same machine): called at app
+   * start right after `warmUp()`, the first load (`onLoadStart` to `onLoadEnd`) took a median of 36 against 50 ms
+   * without it (5 launches each; the ranges overlap). Prefetch and prerender aren't wrapped: a native hook reaches them
+   * through `ProfileStore`. No-op on iOS.
    * @platform android
    */
   function preconnect(url: string): void;

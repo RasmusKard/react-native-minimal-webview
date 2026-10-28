@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bank</title>
+<!-- The bank's 3-D Secure page (127.0.0.1): after 300 ms it POSTs PaRes back to its `term` URL. -->
+<h1>Bank</h1>
+<form id="acs" method="post"><input type="hidden" name="PaRes" value="ok" /></form>
+<script>
+  const form = document.getElementById('acs');
+  form.action = new URLSearchParams(location.search).get('term');
+  setTimeout(() => form.submit(), 300);
+</script>

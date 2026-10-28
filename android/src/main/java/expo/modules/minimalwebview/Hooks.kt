@@ -37,9 +37,10 @@ object MinimalWebViewHooks {
   internal val hooks = mutableListOf<Hook>()
 
   /**
-   * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global: a second
-   * registration under a key replaces the first and logs a warning, so prefix yours with your package's name. `core`
-   * is reserved and refused. Hooks run in registration order, so an earlier hook's clients come first.
+   * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global, so prefix
+   * yours with your package's name: a second hook under a key throws [IllegalStateException]. The same `register` call
+   * running again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. `core` is
+   * reserved and refused. Hooks run in registration order, so an earlier hook's clients come first.
    *
    * The hook attaches to a WebView created with a `hookOptions` value for [key] other than null, undefined or false,
    * and again, with the current value, to the WebView that replaces it after a renderer crash. A key added to
@@ -68,14 +69,33 @@ object MinimalWebViewHooks {
     val index = hooks.indexOfFirst { it.key == key }
     if (index < 0) {
       hooks += hook
-    } else {
-      Log.w(TAG, "a second hook registered under `$key` replaces the first")
-      hooks[index] = hook
+      return
     }
+    // Each lambda in the source compiles to a class of its own: the same class is the same call running again.
+    val first = hooks[index].attach.javaClass
+    check(first == attach.javaClass) {
+      "two hooks are registered under `$key` (${first.name} and ${attach.javaClass.name}): " +
+        "prefix yours with your package's name"
+    }
+    hooks[index] = hook
   }
 }
 
 internal fun enables(value: Any?) = value != null && value != false
+
+/**
+ * Which [hooks] attach to a WebView created with the enabled `hookOptions` [keys]: the ones registered under them, in
+ * registration order. Second, the keys no hook is registered under.
+ */
+internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>) =
+  hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
+
+/**
+ * Whether a `hookOptions` change from [old] to [value] turns on [key], one the WebView was not created with ([keys]):
+ * no hook attaches for it, and a warning says so.
+ */
+internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
+  key !in keys && !enables(old) && enables(value)
 
 /**
  * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that

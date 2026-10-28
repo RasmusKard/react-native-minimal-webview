@@ -3,16 +3,22 @@
 ```sh
 npm install && (cd example && npm install)
 npm run check                              # the next four lines in one: test, lint, knip, both type-checks, prepare
-npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client)
+npm test                                   # TS unit tests (bridge protocol and types, createBridge, origin matcher, WebView, native contract, page client, react-native-webview messages)
 npm run lint && npm run prepare            # ESLint on src, example and .github (a warning fails it too); then a clean build
 npx tsc --noEmit -p src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit)   # type-check the tests and the example
 npx knip                                   # unused files, exports and dependencies (not example/)
 (cd example && npx expo prebuild --platform android --no-install)          # once, if example/android doesn't exist yet
-(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch
+(cd example/android && ./gradlew :minimal-rn-webview:testDebugUnitTest)   # Kotlin navigation matcher, DocumentScope, hooks, clients, asks, crash-loop guard, showsSource, platform settings, download fetch, permission origins, evaluations
 (cd example/android && ./gradlew :sample-extension:compileDebugKotlin)     # the sample extension against the Kotlin hook API, no app build
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
-F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios16.4-macabi   # with the next line: PlatformSettings.swift on a WKWebView as Mac Catalyst, no simulator (coercion, KVC guard, get, call)
+F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios17.0-macabi   # with the next line: PlatformSettings.swift on a WKWebView as Mac Catalyst, no simulator (coercion, KVC guard, get, call)
 xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o /tmp/mrw.o && xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/mrw.o -o /tmp/settings && /tmp/settings
+npx jest --coverage --coverageReporters=text --collectCoverageFrom='src/**/*.{ts,tsx}'   # TS coverage per src/ file (istanbul), counting files no test loads; writes no files
+(cd example/android && ./gradlew -PmrwCoverage :minimal-rn-webview:createDebugUnitTestCoverageReport)   # Kotlin coverage (JaCoCo) in android/build/reports/coverage/test/debug/index.html, lines in its Missed and Lines columns
+xcrun swiftc -profile-generate -profile-coverage-mapping ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && LLVM_PROFILE_FILE=/tmp/rules.profraw /tmp/rules   # with the next three lines (F and T as above): Swift and Objective-C coverage (llvm-cov) of the files the two test binaries compile
+for m in MRWExceptions MRWInvoke; do xcrun clang -target $T -iframework "$F" -fobjc-arc -fprofile-instr-generate -fcoverage-mapping -c ios/$m.m -o /tmp/$m.o; done   # one object per file: llvm-profdata rejects the profile of a `clang -r` object
+xcrun swiftc -target $T -Fsystem "$F" -profile-generate -profile-coverage-mapping -import-objc-header ios/Tests/PlatformSettings/Bridging.h ios/PlatformSettings.swift ios/Tests/PlatformSettings/main.swift /tmp/MRWExceptions.o /tmp/MRWInvoke.o -o /tmp/settings && LLVM_PROFILE_FILE=/tmp/settings.profraw /tmp/settings
+xcrun llvm-profdata merge /tmp/rules.profraw /tmp/settings.profraw -o /tmp/ios.profdata && xcrun llvm-cov report /tmp/rules -object /tmp/settings -instr-profile=/tmp/ios.profdata -ignore-filename-regex=Tests/
 npm run mutation                           # Stryker on src/bridge, WebView.tsx and refStore.ts (fails below an 80% score)
 npm run docs                               # docs/api from the TSDoc (typedoc); `check` fails when it is stale
 ```
@@ -72,6 +78,7 @@ Before a run:
 ```bash
 example/maestro/run.sh android emulator-5556                    # every suite in SUITES (each skips what its platform lacks)
 example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the named suites
+example/maestro/run.sh android emulator-5556 perfCold perf       # the timing suites, which run only when named
 ```
 
 - Each suite gets its own `[Passed]`/`[Failed]` line, and the failed checks print at the end. A failure doesn't stop
@@ -79,11 +86,16 @@ example/maestro/run.sh ios <simulator udid> ptr dialogs network  # only the name
 - The app launches once per run and stays up: the harness resets itself after each suite, and Maestro waits on the
   test server, not the screen. The next suite relaunches the app only after a failed or cut-off one.
 - On Android, `run.sh` does `adb root` (for renderer kills) and the `adb reverse` ports itself.
-- A full run takes about 3 minutes per platform, also with Android and iOS running at the same time (each platform has
+- A full run takes about 4 minutes per platform, also with Android and iOS running at the same time (each platform has
   its own harness queue). Start the second ~10 s after the first: once, two Maestro CLIs starting in the same second
   killed Android's device server.
 - Debug output for failed runs is in `~/.maestro/tests`. The test pages server prints every check, with timestamps.
 - A suite can also be started by hand: `curl 'localhost:8090/harness/run?platform=android&suite=urlTracking'`.
+- `perf` and `perfCold` (`ON_DEMAND` in `harness.ts`) measure instead of checking behavior, so a full run leaves them
+  out. Each number is an INFO line in the test pages server's output. `perf` takes about 70 s. `perfCold` reports the
+  mount at the app's launch, one sample per `run.sh` call, and only as the run's first suite: a suite before it, such
+  as `perf`, can replace `onLoadEnd` before the launch load ends. Their numbers count only from a headless emulator
+  with the other platform idle (below).
 
 Android emulators: use Google APIs system images (`google_apis`), never Play Store ones (`google_apis_playstore`). On
 a Play Store image the Play Store updates Android System WebView in the background soon after boot, so a run silently
@@ -91,22 +103,36 @@ tests a newer WebView than the image ships. Start the emulator with `-gpu host`.
 up rendering in software (`adb shell dumpsys SurfaceFlinger | grep GLES` names SwiftShader), and a full run takes
 nearly twice as long. If it crashes at start with a window (`mrw-api37` on emulator 37.2.12 did on one Mac), add
 `-no-window`. A run whose timings matter needs `-no-window -gpu host` and the other platform idle: windowed, the
-emulator ran 2–5× slower (a Hermes `performance.now()` step of about 83 ns is normal; 200–400 ns means it is throttled).
+emulator ran 2–5× slower (in the perf suite's `clock` line, a Hermes `performance.now()` step of about 83 ns is normal;
+200–400 ns means it is throttled).
 
-Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on. On
-`mrw-api36` (API 36, WebView 133) some checks are known limits of a WebView older than 146
-([Android System WebView versions](../README.md#android-system-webview-versions)), and the harness reports them as
-`INFO ... known limit (WebView <146): <check>` instead of passing or failing them. The reference iOS simulator is an
-iPhone 17 Pro on iOS 26.5.
+Reference emulators: `mrw-api37` (Google APIs, API 37.1, 16 KB pages, WebView 149) is the one every suite passes on.
+The floor emulators are `mrw-api36` (API 36, WebView 133) and `mrw-api29-gapi` (API 29, WebView 91). On an older
+WebView, a check that needs what that WebView lacks reports `INFO ... known limit (WebView <N>): <check>` instead of
+passing or failing, N being the first WebView that has it (`WEBVIEW` in `example/harness.ts`; the package's own floors
+are in [Android System WebView versions](../README.md#android-system-webview-versions)):
+- 83: `evaluate`, and so `blob:` downloads. Below it the suites can't read a page (they do it through `evaluate`).
+- 101: the bridge and `injectedScripts`.
+- 113: the file input's `cancel` event, which the upload page waits for.
+- 136: `android.settings.paymentRequestEnabled`.
+- 146: `pendingUrl`, the load events of a load that never commits, an SSL error on a back/forward load, and the
+  back-forward cache.
+
+On `mrw-api29-gapi` one check fails, and it is not a known limit: the hostile suite's T5 `window.open` to a
+`javascript:` URL. WebView 91 runs its script, although the WebView the core makes for a new window has JavaScript off.
+The reference iOS simulator is an iPhone 17 Pro on iOS 26.5.
 
 ```sh
 sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' 'system-images;android-36;google_apis;arm64-v8a'
+sdkmanager 'system-images;android-29;google_apis;arm64-v8a'
 avdmanager create avd -n mrw-api37 -k 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' -d pixel_9_pro
 avdmanager create avd -n mrw-api36 -k 'system-images;android-36;google_apis;arm64-v8a' -d pixel_9_pro
+avdmanager create avd -n mrw-api29-gapi -k 'system-images;android-29;google_apis;arm64-v8a' -d pixel_6
 emulator -avd mrw-api37 -gpu host
 ```
 
 To add a suite: add it to `SUITES` in `example/harness.ts` (`run.sh` reads its keys). A suite that doesn't apply to a
 platform reports `skipped` there and ends. If it needs gestures, taps, dialogs or renderer kills, add a `<suite>.yaml`
 flow in `example/maestro/`. Otherwise `run.sh` wraps the generic `suite.yaml` for it. A suite must leave nothing behind
-that `reset()` in `harness.ts` doesn't undo, and must not depend on a site outside the test pages server.
+that `reset()` in `harness.ts` doesn't undo, and must not depend on a site outside the test pages server. A suite that
+only measures goes in `ON_DEMAND` instead of `SUITES`.

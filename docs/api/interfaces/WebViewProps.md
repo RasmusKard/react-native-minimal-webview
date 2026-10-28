@@ -81,13 +81,14 @@ ios
 
 Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
 and with no match the navigation is blocked. With no rules (or `[]`), http(s) loads in place, `file:` is blocked,
-and other schemes open externally from the main frame and are blocked from a subframe. `about:`, `blob:`, `data:`
-and `javascript:` always load in place. The `source` load, reloads and back/forward skip the rules; a redirect of
-the `source` load doesn't, nor on Android a redirect of a reload or back/forward. On Android the rules never see a
-POST: form posts always load, and a form POST to a new window doesn't load at all. iOS shows form POSTs to the
-rules: an `external` one opens as a GET without its body, and one to a new window loads in place. An `external` `intent:` URL
-(Android) opens only as a browsable intent, without its explicit component or selector; when no app handles it, its
-`S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as `block`.
+and other schemes open externally from the main frame, with or without a user gesture (rules can require one with
+`userInitiated: true`), and are blocked from a subframe. `about:`, `blob:`, `data:` and `javascript:` always load
+in place. The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor
+on Android a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in
+place, and one to a new window loads in place on iOS and doesn't load on Android.
+An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
+when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
+`block`.
 
 #### See
 
@@ -315,10 +316,12 @@ Every change to the navigation state. Changes within one frame are combined into
 
 ### onOpenExternal?
 
-> `optional` **onOpenExternal?**: (`url`) => `void`
+> `optional` **onOpenExternal?**: (`url`) => `boolean` \| `void` \| `Promise`\<`boolean` \| `void`\>
 
-Opens `external` navigations, every one, an Android `intent:` URL included (its fallback URL is not loaded).
-Default: the system browser or app for the URL.
+Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
+Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
+`intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
+app for the URL.
 
 #### Parameters
 
@@ -328,7 +331,7 @@ Default: the system browser or app for the URL.
 
 #### Returns
 
-`void`
+`boolean` \| `void` \| `Promise`\<`boolean` \| `void`\>
 
 ***
 

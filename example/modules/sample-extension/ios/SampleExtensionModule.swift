@@ -34,7 +34,11 @@ public class SampleExtensionModule: Module {
         context.uiDelegates.append(HookDialogs(context: context))
         return nil
       }
+      PerfProbe.register()
     }
+    // The perf suite's frame-gap probe (PerfProbe.swift): module functions, so they work without a hook too.
+    AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
+    AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
   }
 }
 

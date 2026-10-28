@@ -20,6 +20,7 @@ const ROOT = __dirname;
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
+  '.pdf': 'application/pdf',
   '.txt': 'text/plain',
 };
 
@@ -122,6 +123,9 @@ const challenged = new Set();
 const dropping = new Set();
 const flakyKeys = new Set();
 const movedKeys = new Set();
+/** @type {Map<string, string>} the perf suite's page samples, by run */
+const perfResults = new Map();
+const APP_ID = 'expo.modules.minimalwebview.example';
 
 /** @param {import('http').IncomingMessage} req @param {import('http').ServerResponse} res */
 function handle(req, res) {
@@ -192,6 +196,55 @@ function handle(req, res) {
         ? ['adb', [...(device ? ['-s', device] : []), 'shell', 'pkill -9 -f sandboxed_process']]
         : ['sh', ['-c', `pkill -9 -P "$(${launchd})" -f com.apple.WebKit.WebContent`]];
     execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
+  } else if (url.pathname === '/perf/result') {
+    // The perf suite's page-side samples: perf.html posts them, the harness reads them back (empty until posted).
+    const run = q.get('run') ?? '';
+    if (req.method !== 'POST') return res.end(perfResults.get(run) ?? '');
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', () => {
+      perfResults.set(run, body);
+      log(`[perf] ${run} ${body.length > 200 ? `${body.length} bytes` : body}`);
+      res.end();
+    });
+  } else if (url.pathname === '/driver/memory') {
+    // The perf suite's memory read, in KB: TOTAL PSS of the app and the WebView renderers it bound (Android, `dumpsys
+    // meminfo`), or the footprint of the app and the WebKit processes its simulator's launchd_sim runs (iOS: no other
+    // app there uses WebKit). Lists the processes it summed.
+    const [cmd, args] =
+      platform === 'android'
+        ? [
+            'adb',
+            [
+              'shell',
+              `for p in $(pidof ${APP_ID}) $(dumpsys activity services ${APP_ID} | sed -n 's/.*app=ProcessRecord{[0-9a-f]* \\([0-9]*\\):.*sandboxed.*/\\1/p' | sort -u); do echo "P $p $(tr '\\0' ' ' < /proc/$p/cmdline | cut -c1-90)"; dumpsys meminfo $p | grep -E 'TOTAL PSS:|WebViews:'; done`,
+            ],
+          ]
+        : [
+            'sh',
+            [
+              '-c',
+              `A=$(pgrep -f '/minimalrnwebviewexample.app/minimalrnwebviewexampl[e]' | head -1); footprint --noCategories -f bytes -p $A $(pgrep -P "$(ps -o ppid= -p $A)" -f com.apple.WebKit | sed 's/^/-p /')`,
+            ],
+          ];
+    execFile(cmd, args, (error, stdout) => {
+      if (error) return res.writeHead(500).end(error.message);
+      /** @type {{ pid: number, name: string, kb: number, webViews?: string }[]} */
+      const processes = [];
+      if (platform === 'android') {
+        for (const [, pid, name, kb, webViews] of stdout.matchAll(
+          /^P (\d+) (.*)\n.*TOTAL PSS:\s+(\d+)(?:.*\n.*WebViews:\s+(\d+))?/gm
+        ))
+          processes.push({ pid: Number(pid), name: name.trim(), kb: Number(kb), webViews });
+      } else {
+        for (const [, name, pid, bytes] of stdout.matchAll(
+          /^(\S.*) \[(\d+)\]: \S+\s+Footprint: (\d+) B/gm
+        ))
+          processes.push({ pid: Number(pid), name, kb: Math.round(Number(bytes) / 1024) });
+      }
+      const totalKb = processes.reduce((sum, p) => sum + p.kb, 0);
+      res.end(JSON.stringify({ totalKb, processes }));
+    });
   } else if (url.pathname === '/harness/next') {
     const suite = queued.get(platform) ?? '';
     const state = harnessState(platform);
