@@ -6,5 +6,6 @@
   "disableSources": true,
   "excludeExternals": true,
   "treatWarningsAsErrors": true,
-  "validation": { "notExported": false }
+  "validation": { "notExported": false },
+  "navigation": { "includeGroups": true }
 }
