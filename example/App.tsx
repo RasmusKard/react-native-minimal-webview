@@ -125,7 +125,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       {/* The error screen is an overlay the app owns, cleared when the next load starts: the recipe in
-          docs/migrating-from-react-native-webview.md#loading-and-error-screens. */}
+          guides/migrating-from-react-native-webview.md#loading-and-error-screens. */}
       <View
         ref={webViewBox}
         style={styles.webview}

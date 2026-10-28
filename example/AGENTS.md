@@ -1,4 +1,4 @@
-The example app for react-native-minimal-webview, and the host of its on-device suites (`docs/development.md` at the repo root).
+The example app for react-native-minimal-webview, and the host of its on-device suites (`.github/CONTRIBUTING.md`).
 
 ## Expo has changed — do not trust your training data
 

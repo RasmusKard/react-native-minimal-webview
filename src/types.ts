@@ -289,7 +289,7 @@ export type BridgeEventMap = Record<string, unknown>;
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
  * and `on`, and its calls reject with an `Error` whose `code` is a {@link BridgeErrorCode}.
- * @see [Bridge example](../docs/examples.md#the-bridge)
+ * @see [Bridge example](../guides/examples.md#the-bridge)
  * @group Bridge
  */
 export type Bridge<
@@ -453,7 +453,7 @@ export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>
  * />
  * ```
  * @ios
- * @see [Platform settings example](../docs/examples.md#platform-settings)
+ * @see [Platform settings example](../guides/examples.md#platform-settings)
  * @group Platform settings
  */
 export type IOSSettings = {
@@ -504,7 +504,7 @@ export type IOSSettings = {
  * />
  * ```
  * @android
- * @see [Platform settings example](../docs/examples.md#platform-settings)
+ * @see [Platform settings example](../guides/examples.md#platform-settings)
  * @group Platform settings
  */
 export type AndroidSettings = {
@@ -639,7 +639,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
    * when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
    * `block`.
-   * @see [Navigation rules example](../docs/examples.md#navigation-rules)
+   * @see [Navigation rules example](../guides/examples.md#navigation-rules)
    */
   navigationRules?: NavigationRule[];
   /**
@@ -676,7 +676,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * reaches that hook live, without recreating the WebView. A key added later attaches nothing (a warning says so), so
    * a hook you switch on and off keeps its key, with the switch in its value. A key no hook is registered under warns:
    * pass a one-platform hook's key on that platform only.
-   * @see [Native hooks example](../docs/examples.md#native-hooks)
+   * @see [Native hooks example](../guides/examples.md#native-hooks)
    */
   hookOptions?: Record<string, unknown>;
   /**

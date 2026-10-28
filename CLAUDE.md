@@ -11,6 +11,6 @@ Ask before opening a PR. Committing and pushing to a branch is fine without aski
 
 ## Development
 
-@docs/development.md
+@.github/CONTRIBUTING.md
 
 A full on-device run fits in one 10-minute tool call.
