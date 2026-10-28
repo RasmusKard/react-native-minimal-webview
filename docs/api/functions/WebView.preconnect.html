@@ -16,11 +16,12 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="preconnect"><span class="tsd-kind-call-signature">preconnect</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">url</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#preconnect" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Opens a connection to <code>url</code>'s origin (DNS, TCP, TLS) in WebView's default profile, for a load that follows; nothing
-on a WebView without <code>Profile.enqueuePreconnect</code> or <code>Profile.preconnect</code>.</p>
-<p>It starts WebView on the UI thread if nothing has yet, so call it once <code>warmUp()</code> has had time or a WebView is
-mounted, a moment before the load. Prefetch and prerender aren't wrapped: a native hook reaches them through
-<code>ProfileStore</code>. No-op on iOS.</p>
+<div class="tsd-comment tsd-typography"><p>Opens a connection to <code>url</code>'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes later.</p>
+<p>Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a mounted
+WebView will go to. A WebView connects to its <code>source</code> itself as it mounts, so preconnecting <code>source</code> at mount
+gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once <code>warmUp()</code> has had time or a
+WebView is mounted. Does nothing on a WebView without <code>Profile.enqueuePreconnect</code> or <code>Profile.preconnect</code>, and on
+iOS. For prefetch and prerender, a native hook uses <code>ProfileStore</code>.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>

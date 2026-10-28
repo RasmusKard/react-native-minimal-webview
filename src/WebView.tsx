@@ -397,21 +397,24 @@ export declare namespace WebView {
    */
   const defaultUserAgent: string | null;
   /**
-   * Starts WebView (loads its code, starts Chromium) ahead of the first WebView, on a background thread where the
-   * device's WebView supports that, so the first WebView loads sooner.
+   * Starts WebView (loads its code, starts Chromium) before any WebView mounts, on a background thread where the
+   * device's WebView supports that, so the first WebView mounts sooner.
    *
-   * Call it at app start when a WebView shows soon after. React Native's first `fetch` starts WebView too (its cookie
-   * jar is WebView's `CookieManager`), so an app that fetches early gets part of this anyway. No-op on iOS.
+   * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
+   * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing. WebView
+   * starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's `CookieManager`).
+   * No-op on iOS.
    * @android
    */
   function warmUp(): void;
   /**
-   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, for a load that follows; nothing
-   * on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`.
+   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes later.
    *
-   * It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a WebView is
-   * mounted, a moment before the load. Prefetch and prerender aren't wrapped: a native hook reaches them through
-   * `ProfileStore`. No-op on iOS.
+   * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a mounted
+   * WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at mount
+   * gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a
+   * WebView is mounted. Does nothing on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`, and on
+   * iOS. For prefetch and prerender, a native hook uses `ProfileStore`.
    * @android
    */
   function preconnect(url: string): void;
