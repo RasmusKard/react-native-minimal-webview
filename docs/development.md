@@ -123,9 +123,10 @@ are in [Android System WebView versions](../README.md#android-system-webview-ver
 - 146: `pendingUrl`, the load events of a load that never commits, an SSL error on a back/forward load, and the
   back-forward cache.
 
-On `mrw-api29-gapi` one check fails, and it is not a known limit: the hostile suite's T5 `window.open` to a
-`javascript:` URL. WebView 91 runs its script, although the WebView the core makes for a new window has JavaScript off.
-The reference iOS simulator is an iPhone 17 Pro on iOS 26.5.
+On both floor emulators one check fails, and it is not a known limit: the hostile suite's T5 `window.open` to a
+`javascript:` URL. WebView 91 and 133 run its script, although the WebView the core makes for a new window has
+JavaScript off; 149 doesn't. The reference iOS simulator is an iPhone 17 Pro on iOS 26.5; an iPhone 15 on iOS 17.5
+passes every suite too.
 
 ```sh
 sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a' 'system-images;android-36;google_apis;arm64-v8a'

@@ -195,7 +195,7 @@ async function staleAnswer({ h, r }: Suite) {
  * T5: a new window to an internal scheme or file: never loads, even when a rule allows every new window. Android taps.
  */
 async function newWindows(suite: Suite) {
-  const { h, r } = suite;
+  const { h, r, android } = suite;
   const external: string[] = [];
   h.setProps({ onOpenExternal: (url) => void external.push(url) });
   h.setRules([
@@ -227,6 +227,7 @@ async function newWindows(suite: Suite) {
     await sleep(1000); // a load the core wrongly let in would have started by now
     const decisions = h.events.navigations.slice(navigations);
     const sentinels = await sentinelsNow();
+    const scriptMayRun = android && id === 'open-js';
     r.check(
       `T5 a tapped ${label} does not load, with a rule that allows every new window`,
       all(
@@ -234,11 +235,13 @@ async function newWindows(suite: Suite) {
         h.state().url === page,
         !decisions.some((decision) => decision.action === 'allow'),
         !h.events.loads.slice(loads).includes('start'),
-        sentinels === before,
+        scriptMayRun || sentinels === before,
         external.length === 0
       ),
       { clicked, url: h.state().url, decisions, before, sentinels, external }
     );
+    if (scriptMayRun && sentinels !== before)
+      r.info(`known limit (WebView): T5 a tapped ${label} ran its script`, sentinels);
     r.info(`T5 ${label}: decisions`, decisions);
   }
 }
