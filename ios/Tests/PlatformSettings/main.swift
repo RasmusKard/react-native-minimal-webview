@@ -74,6 +74,7 @@ check("call", thrown { try settings.call("preferences.setMinimumFontSize:", args
 check("call resolved", result, "null")
 check("call set", view.configuration.preferences.minimumFontSize, 14.0)
 check("call refused", thrown { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "reload is owned by the core, or private")
+check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], completion: nil, webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
 check("NaN as JSON throws", (thrown { try PlatformSettings.json { Double.nan } } as? String)?.hasPrefix("NSInvalidArgumentException:"), true)
 print("\(cases - failures)/\(cases) platform settings cases pass")
 exit(failures == 0 ? 0 : 1)

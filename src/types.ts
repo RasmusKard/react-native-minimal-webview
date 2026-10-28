@@ -850,10 +850,10 @@ export type WebViewRef = {
    *
    * Rejects with `native_error` for an unknown method, a wrong argument count, an argument that doesn't fit, a method
    * that raises, a result JSON can't carry (iOS: `NaN`), and what the core owns: on iOS every selector that loads,
-   * navigates, runs a script, starts a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`,
-   * `init…`, `copy…`, `mutable…`, `new…` and reference-counting selectors; on Android (in `get` too) the loads,
-   * navigations, clients, JavaScript interfaces, web message listeners, document-start scripts, `destroy`,
-   * `removeAllViews`, `pauseTimers`, `resumeTimers` and `evaluateJavascript`.
+   * navigates (`setInteractionState:` too), runs a script, starts a download or sets a delegate, and private (`_`),
+   * KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`, `new…` and reference-counting selectors; on Android (in
+   * `get` too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
+   * `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers` and `evaluateJavascript`.
    *
    * On iOS two mistakes the signature can't catch crash the app: a wrong `completion` shape, and an object argument of
    * the wrong class; for a method that takes another object, write a native hook.
