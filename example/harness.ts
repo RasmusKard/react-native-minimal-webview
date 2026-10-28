@@ -17,7 +17,7 @@ import type {
   WebViewRefObject,
   WebViewSource,
 } from 'react-native-minimal-webview';
-import { WebView, WK } from 'react-native-minimal-webview';
+import { WebView, IOSConstants } from 'react-native-minimal-webview';
 import { AppState, Platform } from 'react-native';
 
 import { hostile } from './hostile';
@@ -1403,7 +1403,7 @@ async function settings(h: Harness) {
         ios: {
           configuration,
           scrollView: {
-            contentInsetAdjustmentBehavior: WK.ContentInsetAdjustmentBehavior.never,
+            contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
             contentOffset: { x: 0, y: 30 },
           },
         },
@@ -1422,7 +1422,7 @@ async function settings(h: Harness) {
       h.setProps({
         ios: {
           configuration,
-          webpagePreferences: { preferredContentMode: WK.ContentMode.desktop },
+          webpagePreferences: { preferredContentMode: IOSConstants.ContentMode.desktop },
         },
       });
       await sleep(500);
@@ -1488,7 +1488,7 @@ async function settings(h: Harness) {
       const before = await page('document.cookie');
       const cleared = await call(
         'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-        [{ set: [WK.WebsiteDataType.cookies] }, { date: 0 }],
+        [{ set: [IOSConstants.WebsiteDataType.cookies] }, { date: 0 }],
         { completion: 'void' }
       );
       r.check(
@@ -1516,7 +1516,7 @@ async function settings(h: Harness) {
       );
       const records = await call(
         'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
-        [{ set: [WK.WebsiteDataType.localStorage] }],
+        [{ set: [IOSConstants.WebsiteDataType.localStorage] }],
         { completion: 'value' }
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
@@ -1525,7 +1525,7 @@ async function settings(h: Harness) {
         await page(`sessionStorage.setItem('mrw', '1')`);
         const session = await call(
           'webView.fetchDataOfTypes:completionHandler:',
-          [WK.WebViewDataType.sessionStorage],
+          [IOSConstants.WebViewDataType.sessionStorage],
           { completion: 'valueError' }
         );
         const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
@@ -1933,7 +1933,7 @@ async function injection(h: Harness) {
   const r = reporter('injection', WEBVIEW.injectedScripts);
   h.setProps({
     injectedScripts: [
-      { code: 'window.__injectedStart = true;', mainFrameOnly: false },
+      { code: 'window.__injectedStart = true;', allFrames: true },
       { code: 'window.__mainOnly = true; window.__marker = "one";' },
       {
         code: `addEventListener('DOMContentLoaded', () => (window.__injectedEnd = !!document.getElementById('end')));`,
@@ -1952,7 +1952,7 @@ async function injection(h: Harness) {
     const w = document.querySelector('iframe').contentWindow;
     return { start: w.__injectedStart === true, mainOnly: w.__mainOnly === true, top: window.__mainOnly === true };
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
-  r.check('a mainFrameOnly: false script runs in iframes', frame.start, frame);
+  r.check('an allFrames script runs in iframes', frame.start, frame);
   r.check('a script runs in the main frame only by default', frame.top && !frame.mainOnly, frame);
   h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
   await sleep(500);

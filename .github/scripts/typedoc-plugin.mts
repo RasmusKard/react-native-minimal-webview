@@ -24,6 +24,16 @@ export function load(app: Application) {
     for (const variable of context.project.getReflectionsByKind(ReflectionKind.Variable))
       variable.setFlag(ReflectionFlag.Const, false);
   });
+  // A property's `@default` renders in its signature row after the type, as a default parameter's does, instead of as
+  // a section of its own.
+  app.converter.on(Converter.EVENT_RESOLVE_BEGIN, (context) => {
+    for (const property of context.project.getReflectionsByKind(ReflectionKind.Property)) {
+      const tag = property.comment?.getTag('@default');
+      if (!tag || !(property instanceof DeclarationReflection)) continue;
+      property.defaultValue = Comment.combineDisplayParts(tag.content).replace(/^`|`$/g, '');
+      property.comment?.removeTags('@default');
+    }
+  });
   // A function's tags sit on its signature, which renders them under the signature; on the function itself they render
   // next to its name, as a variable's and a property's do.
   app.converter.on(Converter.EVENT_RESOLVE_END, (context) => {

@@ -1,3 +1,4 @@
+import { DEFAULTS } from '../defaults.generated';
 import type {
   Bridge,
   BridgeEventMap,
@@ -8,8 +9,6 @@ import type {
 import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
-
-const DEFAULT_TIMEOUT_MS = 10_000;
 
 /** What `<WebView>` needs from a bridge: `Bridge`'s `[CONNECTION]`, a key the package doesn't export. */
 export type BridgeConnection = {
@@ -37,7 +36,7 @@ const MAX_QUEUE = 1000;
  * The type arguments type the method names, params, results and event payloads of `call`, `handle`, `emit` and `on`;
  * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws for an invalid
  * origin rule or timeout.
- * @see [Bridge example](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/docs/examples.md#the-bridge)
+ * @see [Bridge example](../../docs/examples.md#the-bridge)
  * @group Bridge
  */
 export function createBridge<
@@ -51,7 +50,7 @@ export function createBridge<
       `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
     );
   }
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutMs = options.timeoutMs ?? DEFAULTS.BridgeOptions.timeoutMs;
   if (!(timeoutMs >= 0)) {
     throw new Error(
       `createBridge: timeoutMs must be 0 or more (0 or Infinity for none), not ${timeoutMs}`

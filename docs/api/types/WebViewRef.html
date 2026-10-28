@@ -43,9 +43,8 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Calls a platform method, <code>root.method</code>, and resolves with its result through JSON.</p>
 <p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (then <code>WebViewCompat</code>'s),
-<code>cookieManager</code> or <code>webStorage</code>: <code>call('webView.clearCache', [true])</code>.</p>
-<p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>:
-<code>call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true])</code>.</p>
+<code>cookieManager</code> or <code>webStorage</code>.</p>
+<p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>.</p>
 <p>Rejects with <code>native_error</code> for an unknown method, a wrong argument count, an argument that doesn't fit, a method
 that raises, a result JSON can't carry (iOS: <code>NaN</code>), and what the core owns: on iOS every selector that loads,
 navigates, runs a script, starts a download or sets a delegate, and private (<code>_</code>), KVC, KVO, <code>performSelector</code>,
@@ -76,7 +75,13 @@ or rejects with the error; <code>'error'</code> for <code>(NSError *)</code> res
 as a base64 PNG, the structs as objects, an <code>NSHTTPCookie</code> as its properties (<code>Expires</code> in seconds), and arrays,
 sets and dictionaries of them. On Android: primitives, strings, and lists and maps of them. Any other object is
 <code>null</code>.</p>
-</div></li></ul></section>
+
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;webView.clearCache&#39;</span><span class="hl-1">, [</span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-12">// Android</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.setContentOffset:animated:&#39;</span><span class="hl-1">, [{ </span><span class="hl-2">x:</span><span class="hl-1"> </span><span class="hl-10">0</span><span class="hl-1">, </span><span class="hl-2">y:</span><span class="hl-1"> </span><span class="hl-10">100</span><span class="hl-1"> }, </span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-12">// iOS</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="evaluate"><span>evaluate</span><a href="#evaluate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -100,8 +105,7 @@ hold a call until it navigates.</p>
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="get-1"><span class="tsd-kind-call-signature">get</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#get-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>A platform setting read by name, through JSON as <a href="#call" class="tsd-kind-method">call</a> converts results:
-<code>get('scrollView.bounces')</code> on iOS, <code>get('settings.textZoom')</code> on Android.</p>
+<div class="tsd-comment tsd-typography"><p>A platform setting read by name, through JSON as <a href="#call" class="tsd-kind-method">call</a> converts results.</p>
 <p>The roots are those of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a> and <a href="AndroidSettings.html" class="tsd-kind-type-alias">AndroidSettings</a>, plus <code>websiteDataStore</code> and
 <code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android, <code>textZoom</code> reads
 <code>getTextZoom()</code>, <code>isTextZoom()</code> or a non-void <code>textZoom()</code>. Rejects with <code>native_error</code> for one it can't read, or
@@ -111,7 +115,13 @@ that the core owns.</p>
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">key</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
-</div></li></ul></section>
+
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-example">
+<h4 class="tsd-anchor-link" id="example-1">Example<a href="#example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">bounces</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.bounces&#39;</span><span class="hl-1">); </span><span class="hl-12">// iOS</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">textZoom</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;settings.textZoom&#39;</span><span class="hl-1">); </span><span class="hl-12">// Android</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="goback"><span>go<wbr/>Back</span><a href="#goback" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
