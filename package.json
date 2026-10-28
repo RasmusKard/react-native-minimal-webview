@@ -35,7 +35,7 @@
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
     "docs": "typedoc",
-    "docs:check": "typedoc --out build/api && git diff --no-index --exit-code build/api docs/api"
+    "docs:check": "typedoc --out build/api && (git diff --no-index --exit-code build/api docs/api || (echo 'docs/api is stale: run npm run docs' && exit 1))"
   },
   "keywords": [
     "react-native",

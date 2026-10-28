@@ -1,8 +1,7 @@
 # Examples
 
 One example per public interface. What each prop, method and type does is in its TSDoc, generated into the
-[API reference](api/README.md). The native hook API is documented on `MinimalWebViewHooks` and `WebViewContext` in
-`ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`.
+[API reference](api/README.md).
 
 ## Navigation state
 
@@ -22,8 +21,7 @@ export function Browser() {
 }
 ```
 
-Android's back button is the app's: `goBack()` from a `BackHandler` (on Android it skips, as Chrome does, the entries a
-page added without a user gesture).
+Android's back button is the app's: `goBack()` from a `BackHandler`.
 
 ```tsx
 useEffect(() => {
@@ -49,8 +47,6 @@ function onInboxNotification() {
 ```
 
 ## Navigation rules
-
-The rules run natively, in order; the first match wins.
 
 ```tsx
 <WebView
@@ -86,7 +82,7 @@ const count = await bridge.call('getCartCount');
 bridge.emit('themeChanged', 'dark');
 ```
 
-In the page, on the allowed origins and in the main frame only:
+In the page:
 
 ```ts
 declare global {
@@ -150,8 +146,7 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 
 ## Page requests
 
-Each works without its prop; the prop answers it or is told afterwards. JS dialogs and HTTP auth have no prop: a
-native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sample-extension`).
+Each works without its prop; the prop answers it or is told afterwards.
 
 ```tsx
 <WebView
@@ -165,7 +160,7 @@ native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sa
     const result = await DocumentPicker.getDocumentAsync({ type: mimeTypes.length ? mimeTypes : '*/*', multiple });
     return result.canceled ? null : result.assets.map((asset) => asset.uri);
   }}
-  // Camera, microphone and, on Android, location and DRM: ask the OS first (expo-camera), then grant
+  // Ask the OS first (expo-camera), then grant
   onPermissionRequest={async ({ origin, resources }) => {
     if (origin !== 'https://meet.example.com' || !resources.every((resource) => resource === 'camera')) return false;
     return (await Camera.requestCameraPermissionsAsync()).granted;
@@ -174,8 +169,7 @@ native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sa
   onFullscreenChange={({ active }) =>
     active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
   }
-  // A download, saved to the app's cache: open it (expo-file-system; Quick Look on iOS, an app for the type on Android)
-  // or share it with expo-sharing. The page chose its content and name.
+  // A download: open it (expo-file-system; Quick Look on iOS, an app on Android) or share it (expo-sharing)
   onDownload={(result) => (result.ok ? new File(result.uri).preview() : console.warn('download failed', result.reason))}
 />
 ```

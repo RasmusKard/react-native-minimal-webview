@@ -22,9 +22,8 @@ extension MinimalWebView {
     installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
   }
 
-  /// The `evaluate` ref method. The page encodes the value, as on Android: what JSON can't encode (a function, a
-  /// cycle) gives "null". A new document rejects what is still waiting with `navigated`, as on Android: WebKit settles
-  /// a call whose page went away seconds later or never.
+  /// The `evaluate` ref method. A new document rejects what is still waiting: WebKit settles a call whose page went
+  /// away seconds later or never.
   func evaluate(_ script: String, onResult: @escaping (Result<String, EvaluateError>) -> Void) {
     guard let webView else { return onResult(.failure(EvaluateError(code: "unavailable", message: "No WebView"))) }
     let id = nextEvaluation

@@ -4,8 +4,7 @@ Most react-native-webview props are platform settings by name here: `thirdPartyC
 `android={{ webView: { acceptThirdPartyCookies: true } }}`, `bounces` is `ios={{ scrollView: { bounces: false } }}`,
 `cacheMode` is `android.settings.cacheMode`, `allowsBackForwardNavigationGestures` is `ios.webView.<the same name>`; the
 keys autocomplete ([platform settings](examples.md#platform-settings)). This page is what differs: the defaults, the
-props that became something else, and what has no equivalent. It runs on iOS 17.0+ and Android API 29+, with the new
-architecture only ([requirements](../README.md)).
+props that became something else, and what has no equivalent. The [requirements](../README.md) are in the README.
 
 ## Defaults that differ
 
@@ -26,7 +25,7 @@ architecture only ([requirements](../README.md)).
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
 | Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
-| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | iOS keeps the page before it on screen; Android shows the WebView's own error page | The error screen [below](#loading-and-error-screens) |
+| Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own ([`onError`](api/interfaces/WebViewProps.md#onerror)) | The error screen [below](#loading-and-error-screens) |
 | Android file chooser | Offers the camera, and opens it for `capture`, asking for the OS permissions itself | The system chooser, which ignores `capture` | `onFileRequest` with expo-image-picker ([page requests](examples.md#page-requests)) |
 
 The settings in one object, for the rows a setting restores:
@@ -62,16 +61,16 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 
 | react-native-webview | Here |
 |---|---|
-| `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow` | `navigationRules`, run natively; an `ask` rule calls `onNavigationRequest` ([below](#onshouldstartloadwithrequest)) |
+| `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow` | `navigationRules`; an `ask` rule calls `onNavigationRequest` ([below](#onshouldstartloadwithrequest)) |
 | `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded`, `injectedJavaScriptObject`, `…ForMainFrameOnly` | `injectedScripts: [{ code, mainFrameOnly }]`, all at document start |
 | `injectJavaScript(code)` | `evaluate(expression)` ([below](#injectjavascript)) |
 | `onMessage`, `postMessage`, `window.ReactNativeWebView` | The bridge, and `reactNativeWebViewMessages` for pages that use `window.ReactNativeWebView` ([below](#postmessage-and-onmessage)) |
 | `onLoad`, `onLoadProgress` | `onLoadEnd` with `state.outcome === 'finished'`; `progress` in `useWebViewState` |
 | `onError`, `onHttpError` | `onError`, with `kind` `'network'`, `'ssl'` or `'http'` |
-| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone`; the core reloads by itself |
+| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone` |
 | `renderLoading`, `renderError`, `startInLoadingState` | Your own views over the WebView ([below](#loading-and-error-screens)) |
 | `onScroll`, `onContentSizeChange` | An injected script that reports over the bridge ([below](#scroll-position)) |
-| `source={require('./page.html')}`, `allowingReadAccessToURL` | A `file://` uri from expo-asset (`localUri`), which gets read access to its own directory; Android also needs `android.settings.allowFileAccess: true` |
+| `source={require('./page.html')}`, `allowingReadAccessToURL` | A `file://` uri from expo-asset (`localUri`) |
 | `source.method`, `source.body` | `source.body` makes the request a POST |
 | `onFileDownload` | `onDownload`, on both platforms: the core saves the file |
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
@@ -94,24 +93,22 @@ The props whose setting has another name:
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
 | `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`; on iOS `ios.preferences.allowFileAccessFromFileURLs` and `ios.configuration.allowUniversalAccessFromFileURLs` |
 | `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
-| `style={{ backgroundColor: 'transparent' }}` | `android.webView.backgroundColor: 0`; on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (`ios.webView.opaque` is refused: UIKit declares it without runtime property metadata) |
+| `style={{ backgroundColor: 'transparent' }}` | `android.webView.backgroundColor: 0`; on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (`ios.webView.opaque` is refused) |
 | `containerStyle` | A `View` around the WebView |
 
 ## What else changes
 
-- `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries for `tel:`, `mailto:` and other schemes a page
-  opens are not needed: the core opens an `external` URL without asking `canOpenURL` first.
+- The `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens can
+  go ([`onOpenExternal`](api/interfaces/WebViewProps.md#onopenexternal)).
 - After a server redirect the rules block, the state is the page before it with `outcome` `cancelled`.
   react-native-webview reports the redirecting URL as still loading (iOS) or the blocked URL as loaded (Android).
-- While the JS thread is busy, a rule still decides within a few milliseconds. react-native-webview's Android waits
-  250–500 ms on the UI thread for `onShouldStartLoadWithRequest` and then lets the navigation through; its iOS waits
-  for the answer.
-- A WebView costs about 37 MiB on iOS, a WebContent process each, as with react-native-webview; Android's share one
-  renderer, about 2 MiB each.
+- A rule decides natively, so a busy JS thread doesn't hold it up. react-native-webview's Android blocks the UI thread
+  waiting for `onShouldStartLoadWithRequest`, then lets the navigation through on a timeout; its iOS waits for the
+  answer.
 
 ## onShouldStartLoadWithRequest
 
-Navigation rules replace the callback: they run natively, in order, with no JS round trip.
+Navigation rules replace the callback.
 
 ```tsx
 // was: onShouldStartLoadWithRequest returning true for https://example.com/ and opening the rest with Linking
@@ -127,13 +124,9 @@ Navigation rules replace the callback: they run natively, in order, with no JS r
 
 The request has `url`, `mainFrame` (was `isTopFrame`), `newWindow` and `userInitiated` (in place of `navigationType`
 `click`); there is no `navigationType` or `mainDocumentURL`. A new window (`onOpenWindow`) is a navigation with
-`newWindow: true`: an allowed one loads in place, never in a second WebView. react-native-webview on iOS also passes
-form POSTs to the callback; here a form POST loads in place on both platforms, without a decision.
+`newWindow: true`. react-native-webview on iOS also passes form POSTs to the callback.
 
 ## injectJavaScript
-
-`evaluate` runs an expression, not statements, and resolves with its value; a script that throws or doesn't parse
-rejects with `script_error`.
 
 ```ts
 // was ref.current.injectJavaScript(`document.body.style.background = 'red'; true;`)
@@ -145,8 +138,7 @@ const title = await ref.current?.evaluate('document.title');
 
 The [bridge](examples.md#the-bridge) replaces both with calls that return promises and events, in both directions, for
 the origins you allow. Pages that call `window.ReactNativeWebView.postMessage(string)` and listen for `message` events
-keep working with [`reactNativeWebViewMessages`](api/variables/reactNativeWebViewMessages.md) in `injectedScripts`;
-only `allowedOrigins` get `ReactNativeWebView`, and only in the main frame.
+keep working with [`reactNativeWebViewMessages`](api/variables/reactNativeWebViewMessages.md) in `injectedScripts`.
 
 ```tsx
 import { reactNativeWebViewMessages } from 'minimal-rn-webview';

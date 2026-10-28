@@ -84,7 +84,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // allowed). RN's messages are delivered only while the page still has it.
   var bridgeOrigin: String?
   // The JS dialog on screen, and how to complete it if it has to go away. WebKit requires exactly one completion.
-  // While one is up the page is blocked, and an accessibility query into it (XCTest's) hangs for 60 s: hide it.
+  // While one is up the page is blocked, and an accessibility query into it (XCTest's) hangs: hide it.
   var dialog: (controller: UIAlertController, cancel: () -> Void)? {
     didSet { webView?.accessibilityElementsHidden = dialog != nil }
   }
@@ -422,7 +422,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
   /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is always true on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    // A POST source on screen isn't sent again unasked (a browser asks first): the app's reload() can.
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     document.end(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
