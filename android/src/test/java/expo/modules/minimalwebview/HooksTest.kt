@@ -147,6 +147,18 @@ class HooksTest {
   }
 
   @Test
+  fun `a decision goes to the first client that overrides it, and two that do warn once per callback`() {
+    val warnings = mutableListOf<String>()
+    val deciders = Deciders { warnings += it }
+    val overriding = { client: String -> client.startsWith("auth") }
+    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("plain", "auth1", "auth2"), overriding))
+    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("auth1", "auth2"), overriding))
+    assertEquals("auth1", deciders.first("onJsAlert", listOf("auth1"), overriding))
+    assertNull(deciders.first("onJsPrompt", listOf("plain"), overriding))
+    assertEquals(listOf("onReceivedHttpAuthRequest: more than one hook client overrides it; only the first one gets it"), warnings)
+  }
+
+  @Test
   fun `a detached attachment drops emits and answers asks null at once`() {
     val attachment = Attachment()
     var sent = 0

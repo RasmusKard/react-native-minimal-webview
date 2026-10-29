@@ -128,6 +128,23 @@ internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = w
 }
 
 /**
+ * Picks the hook client that gets a decision callback: the first of the clients that override it. When more than one
+ * does, it calls [warn] with a `core.warning` message naming the callback, once per callback.
+ */
+internal class Deciders(private val warn: (String) -> Unit) {
+  // Concurrent: shouldInterceptRequest decides on Chromium's IO thread.
+  private val warned = ConcurrentHashMap.newKeySet<String>()
+
+  fun <T> first(callback: String, clients: List<T>, overrides: (T) -> Boolean): T? {
+    val overriding = clients.filter(overrides)
+    if (overriding.size > 1 && warned.add(callback)) {
+      warn("$callback: more than one hook client overrides it; only the first one gets it")
+    }
+    return overriding.firstOrNull()
+  }
+}
+
+/**
  * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that
  * attach: after a renderer crash, the new WebView's `attach` registers them again. [emit] and [ask] can be called from
  * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its attach
@@ -151,8 +168,10 @@ interface WebViewContext {
    * The hook clients, in order; add yours in `attach`. A callback that returns a decision (the `deciding` calls in
    * MinimalWebViewClients.kt) goes to the first client that overrides it, instead of the core and the app's props: a
    * client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
-   * decide new windows unless a chrome client overrides `onCreateWindow`. Every other callback reaches the core first,
-   * then each client that overrides it. `shouldInterceptRequest` runs on a background thread.
+   * decide new windows unless a chrome client overrides `onCreateWindow`. A decision more than one client overrides
+   * still goes only to the first, and a `core.warning` names it, once per WebView, when it first comes. Every other
+   * callback reaches the core first, then each client that overrides it. `shouldInterceptRequest` runs on a background
+   * thread.
    *
    * Overriding a variant the base class forwards to counts as overriding the callback: `WebViewClientCompat`'s
    * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's

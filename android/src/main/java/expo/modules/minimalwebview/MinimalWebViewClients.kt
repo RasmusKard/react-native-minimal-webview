@@ -94,7 +94,8 @@ private val FLOAT = java.lang.Float.TYPE
 
 internal class Client(private val owner: MinimalWebView, private val navigation: MinimalWebViewNavigation) : WebViewClient() {
   /** The first hook client that overrides a decision callback, or null: the core decides. */
-  private fun deciding(name: String, vararg types: Class<*>) = owner.clients.firstOrNull { it.overrides(name, *types) }
+  private fun deciding(name: String, vararg types: Class<*>) =
+    owner.deciders.first(name, owner.clients) { it.overrides(name, *types) }
 
   /** Every hook client that overrides an observation callback, after the core. */
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebViewClient) -> Unit) =
@@ -229,7 +230,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 }
 
 internal class ChromeClient(private val owner: MinimalWebView, private val navigation: MinimalWebViewNavigation) : WebChromeClient() {
-  private fun deciding(name: String, vararg types: Class<*>) = owner.chromeClients.firstOrNull { it.overrides(name, *types) }
+  private fun deciding(name: String, vararg types: Class<*>) =
+    owner.deciders.first(name, owner.chromeClients) { it.overrides(name, *types) }
 
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebChromeClient) -> Unit) =
     owner.chromeClients.toList().forEach { if (it.overrides(name, *types)) block(it) }

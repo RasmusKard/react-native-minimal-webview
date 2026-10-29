@@ -66,7 +66,7 @@ export async function extensions(h: Harness) {
   try {
     await inert(h, r);
     await auth(h, r);
-    await dialogs(h, r);
+    await dialogs(h, r, warnings);
     await scroll(h, r);
     await menu(h, r, warnings);
     await (ios ? keyboard(h, r) : android(h, r));
@@ -146,7 +146,7 @@ async function auth(h: Harness, r: Reporter) {
   h.setProps({});
 }
 
-async function dialogs(h: Harness, r: Reporter) {
+async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof captureWarnings>) {
   const seen: Dialog[] = [];
   h.setProps({
     extensions: [
@@ -182,6 +182,19 @@ async function dialogs(h: Harness, r: Reporter) {
         ['prompt', 'name?', 'default'],
       ]),
     seen
+  );
+  // Android checks when the callback comes, iOS when the delegates are set.
+  h.setProps({ extensions: [dialogsExtension(() => true), sampleHook('hookDialogs')] });
+  await sleep(300);
+  void h.ref.current?.evaluate("setTimeout(() => alert('two hooks'), 0)");
+  const alert = ios ? 'webView:runJavaScriptAlertPanelWithMessage:' : 'onJsAlert:';
+  await until(() => warnings.warned(alert), 3000);
+  r.check(
+    'an alert two hooks take warns that only the first one gets it',
+    warnings.lines.some(
+      (line) => line.includes(alert) && line.includes('only the first one gets it')
+    ),
+    warnings.lines
   );
   h.setProps({});
 }
