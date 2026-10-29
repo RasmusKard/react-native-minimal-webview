@@ -10,6 +10,7 @@ import type {
   Bridge,
   NavigationRequest,
   NavigationState,
+  SettingValue,
   WebViewProps,
   WebViewRef,
   WebViewRefObject,
@@ -124,10 +125,11 @@ describe('WebView', () => {
     expect((await render({ navigationRules: rules })).native?.navigationRules).toBe(rules);
   });
 
-  it('defaultUserAgent is null, and warmUp and preconnect do nothing, on iOS', () => {
-    WebView.warmUp();
-    WebView.preconnect('https://example.com');
-    expect(WebView.defaultUserAgent).toBeNull();
+  it('WebView.android: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
+    WebView.android.warmUp();
+    WebView.android.preconnect('https://example.com');
+    WebView.android.setWebContentsDebuggingEnabled(true);
+    expect(WebView.android.defaultUserAgent).toBeNull();
     expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
     expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
     expect(mockNativeModule.setWebContentsDebuggingEnabled).not.toHaveBeenCalled();

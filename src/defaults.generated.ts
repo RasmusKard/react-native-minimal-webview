@@ -6,9 +6,6 @@ export const DEFAULTS = {
     configuration: { allowsInlineMediaPlayback: true },
     webView: { customUserAgent: null, inspectable: __DEV__ },
   },
-  AndroidSettings: {
-    settings: { userAgentString: null },
-    webView: { webContentsDebuggingEnabled: __DEV__ },
-  },
+  AndroidSettings: { settings: { userAgentString: null } },
   WebViewProps: { pullToRefresh: false, sharedCookies: false },
 };

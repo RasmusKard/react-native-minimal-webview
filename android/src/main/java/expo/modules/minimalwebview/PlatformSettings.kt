@@ -93,34 +93,14 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     }
   }
 
-  /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws with the reason. */
-  fun get(path: String): String {
-    val (targets, key) = resolve(path)
-    if (key in OWNED) throw problem("$key is ${owned(key)}")
-    val capital = key.replaceFirstChar { it.uppercaseChar() }
-    for (target in targets) {
-      for (method in target.cls.methods) {
-        val getter = method.name == "get$capital" || method.name == "is$capital"
-        if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
-        val args = arguments(method, target, emptyList()) ?: continue
-        return toJson(invoke(method, target, args))
-      }
-    }
-    throw problem("no public getter for $path")
-  }
+  /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
+  fun get(path: String): String = resolve(path).let { (targets, key) -> get(targets, key) }
 
   /** `root.method` with [args], a public method the core doesn't own ([call]). Throws a [PlatformException]. */
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")
-    for (target in targets) {
-      for (method in target.cls.methods) {
-        if (method.name != name) continue
-        val arguments = arguments(method, target, args) ?: continue
-        return toJson(invoke(method, target, arguments))
-      }
-    }
-    throw problem("no public method $path takes these arguments")
+    if (!call(targets, name, args, reply)) throw notFound("no public method $path takes these arguments")
   }
 
   /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
@@ -161,32 +141,12 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       "setWebContentsDebuggingEnabled"
     )
 
-    /** The JS function that replaces an owned method, for its rejection reason. */
-    private val REPLACED = mapOf("setWebContentsDebuggingEnabled" to "WebView.android.setWebContentsDebuggingEnabled")
-
-    fun owned(name: String) = "owned by the core" + REPLACED[name]?.let { ": use $it" }.orEmpty()
-
-    /** Calls [key]'s setter on the first target that takes [value]; returns the problem, or null when it was set. */
-    fun set(targets: List<Target>, key: String, value: Any?): String? {
-      if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
-      val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
-      if (setter in OWNED) return owned(setter)
-      var seen = false
-      for (target in targets) {
-        for (method in target.cls.methods) {
-          if (method.name != setter) continue
-          seen = true
-          val args = arguments(method, target, listOf(value)) ?: continue
-          return try {
-            before()
-            invoke(method, target, args)
-            null
-          } catch (e: IllegalArgumentException) {
-            e.message
-          }
-        }
-      }
-      return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
+    /** [key]'s getter on the first of [targets] that has one, as JSON. */
+    fun get(targets: List<Target>, key: String): String {
+      if (key in OWNED) throw problem("$key is ${owned(key)}")
+      val value = read(targets, key)
+      if (value === NONE) throw notFound("no public getter for $key")
+      return toJson(value)
     }
 
     /**
@@ -212,6 +172,51 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
           if (method.name != name || !accepts(method)) continue
           val arguments = arguments(method, target, values) ?: continue
           return invoke(method, target, arguments)
+        }
+      }
+      return NONE
+    }
+
+    /** The JS function that replaces an owned method, for its rejection reason. */
+    private val REPLACED = mapOf("setWebContentsDebuggingEnabled" to "WebView.android.setWebContentsDebuggingEnabled")
+
+    fun owned(name: String) = "owned by the core" + REPLACED[name]?.let { ": use $it" }.orEmpty()
+
+    /**
+     * Calls [key]'s setter on the first target that takes [value], running [before] just before it; returns the
+     * problem, or null when it was set.
+     */
+    fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
+      if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
+      val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
+      if (setter in OWNED) return owned(setter)
+      var seen = false
+      for (target in targets) {
+        for (method in target.cls.methods) {
+          if (method.name != setter) continue
+          seen = true
+          val args = arguments(method, target, listOf(value)) ?: continue
+          return try {
+            before()
+            invoke(method, target, args)
+            null
+          } catch (e: IllegalArgumentException) {
+            e.message
+          }
+        }
+      }
+      return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
+    }
+
+    /** [key]'s getter value (`getKey`, `isKey` or a non-void `key()`) on the first target that has one, or [NONE]. */
+    private fun read(targets: List<Target>, key: String): Any? {
+      val capital = key.replaceFirstChar { it.uppercaseChar() }
+      for (target in targets) {
+        for (method in target.cls.methods) {
+          val getter = method.name == "get$capital" || method.name == "is$capital"
+          if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
+          val args = arguments(method, target, emptyList()) ?: continue
+          return invoke(method, target, args)
         }
       }
       return NONE

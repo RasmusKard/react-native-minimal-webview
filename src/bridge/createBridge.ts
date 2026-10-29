@@ -6,7 +6,7 @@ import type {
   BridgeOptions,
   BridgeSender,
 } from '../types';
-import { bridgeError, createEndpoint, invalidOrigins } from './endpoint';
+import { codedError, createEndpoint, invalidOrigins } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
