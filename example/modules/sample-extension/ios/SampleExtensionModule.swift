@@ -26,7 +26,7 @@ public class SampleExtensionModule: Module {
       }
       // Page requests only a hook can take over (the harness's fixtures): HTTP auth and the alert panel.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context in
-        context.navigationDelegates.append(HookAuth())
+        context.navigationDelegates.append(HookAuth(context: context))
         return nil
       }
       MinimalWebViewHooks.register("sample.hookDialogs") { _, context in
@@ -59,8 +59,15 @@ private final class SampleWKWebView: WKWebView {}
 /// The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx).
 private let authHosts: Set<String> = ["localhost"]
 
-/// Answers HTTP basic or digest challenges from authHosts itself, and cancels the rest.
+/// Answers HTTP basic or digest challenges from authHosts itself, and cancels the rest. Sends `challenge` for each
+/// challenge it gets.
 private final class HookAuth: NSObject, WKNavigationDelegate {
+  private weak var context: WebViewContext?
+
+  init(context: WebViewContext) {
+    self.context = context
+  }
+
   func webView(
     _ webView: WKWebView,
     didReceive challenge: URLAuthenticationChallenge,
@@ -68,6 +75,7 @@ private final class HookAuth: NSObject, WKNavigationDelegate {
   ) {
     let space = challenge.protectionSpace
     let method = space.authenticationMethod
+    context?.emit("challenge", ["method": method, "host": space.host])
     guard method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest else {
       return completionHandler(.performDefaultHandling, nil)
     }

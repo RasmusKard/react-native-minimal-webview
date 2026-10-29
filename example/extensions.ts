@@ -131,17 +131,22 @@ async function auth(h: Harness, r: Reporter) {
     off
   );
   if (!ios) return;
-  // Its delegate comes first (its package registers first) and passes on the challenge after its credential fails.
+  // Its delegate comes first (its package registers first) and passes on the challenge after its credential fails:
+  // the later hook's delegate is asked only then.
+  const asked: unknown[] = [];
   h.setProps({
-    extensions: [basicAuthCredential({ username: 'u', password: 'wrong' }), sampleHook('hookAuth')],
+    extensions: [
+      basicAuthCredential({ username: 'u', password: 'wrong' }),
+      { ...sampleHook('hookAuth'), onEvent: ({ payload }) => void asked.push(payload) },
+    ],
   });
   await sleep(300);
   await openPage(h, fresh(h, '/auth?chain=1'));
   const chained = await text(h, 'auth');
   r.check(
     "a challenge basicAuthCredential passes on reaches a later hook's delegate, which signs in",
-    chained === 'authorized',
-    chained
+    asked.length > 0 && chained === 'authorized',
+    { asked, chained }
   );
   h.setProps({});
 }
