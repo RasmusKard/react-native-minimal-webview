@@ -18,6 +18,8 @@ function typed(bridge: Bridge<Methods, Events>) {
 
   const count: Promise<number> = bridge.call('getCartCount');
   void bridge.call('share', { url: 'https://example.com' }, { timeoutMs: 0 });
+  // @ts-expect-error because the method isn't in the map
+  void bridge.call('typo');
   // @ts-expect-error because the param type is wrong
   void bridge.call('share', { url: 1 });
   // @ts-expect-error because the result is a number
@@ -27,6 +29,8 @@ function typed(bridge: Bridge<Methods, Events>) {
   // @ts-expect-error because the payload isn't one of the event's
   bridge.emit('themeChanged', 'blue');
   bridge.on('themeChanged', (theme) => theme satisfies 'light' | 'dark');
+  // @ts-expect-error because the event isn't in the map
+  bridge.emit('typo');
 
   // A typed bridge goes in the `bridge` prop.
   const prop: WebViewProps['bridge'] = bridge;
