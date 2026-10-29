@@ -99,18 +99,18 @@ describe('WebView', () => {
   });
 
   it('defaultUserAgent is null, and warmUp and preconnect do nothing, on iOS', () => {
-    WebView.warmUp();
-    WebView.preconnect('https://example.com');
-    expect(WebView.defaultUserAgent).toBeNull();
+    WebView.android.warmUp();
+    WebView.android.preconnect('https://example.com');
+    expect(WebView.android.defaultUserAgent).toBeNull();
     expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
     expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
   });
 
   it("defaultUserAgent, warmUp and preconnect are the native module's on Android", () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    WebView.warmUp();
-    WebView.preconnect('https://example.com');
-    expect(WebView.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
+    WebView.android.warmUp();
+    WebView.android.preconnect('https://example.com');
+    expect(WebView.android.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
     expect(mockNativeModule.warmUp).toHaveBeenCalledTimes(1);
     expect(mockNativeModule.preconnect).toHaveBeenCalledWith('https://example.com');
   });
