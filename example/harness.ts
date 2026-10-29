@@ -2409,8 +2409,14 @@ async function sampleExtension(h: Harness) {
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(
     h,
-    { hookOptions: { 'sample.pageCounter': true, 'sample.hookDialogs': true } },
+    { hookOptions: { 'sample.pageCounter': true, 'sample.hookDialogs': true, 'sample.subclass': true } },
     true
+  );
+  const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
+  r.check(
+    "its webViewClass (webViewFactory) makes the WebView it's enabled on",
+    made === (Platform.OS === 'ios' ? 'SampleWKWebView' : 'SampleWebView'),
+    made
   );
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
