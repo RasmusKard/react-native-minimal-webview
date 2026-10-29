@@ -262,8 +262,9 @@ export type BridgeCallError = Error & { code: BridgeErrorCode };
 /**
  * The methods either side may call, for `createBridge<Methods>`.
  *
- * One map covers both directions, so a method is named once, whichever side handles it. A `type`, not an `interface`
- * (an interface has no index signature, so it doesn't satisfy `Record`).
+ * One map covers both directions, so a method is named once, whichever side handles it. With a map, `handle` and
+ * `call` take only its methods: another name doesn't compile. A `type`, not an `interface` (an interface has no index
+ * signature, so it doesn't satisfy `Record`).
  * @example
  * ```ts
  * type Methods = { share: { params: { url: string }; result: boolean } };
@@ -274,6 +275,8 @@ export type BridgeCallError = Error & { code: BridgeErrorCode };
 export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
 /**
  * The events either side may emit, for `createBridge<Methods, Events>`.
+ *
+ * With a map, `emit` and `on` take only its events: another name doesn't compile.
  * @example
  * ```ts
  * type Events = { themeChanged: 'light' | 'dark' };
