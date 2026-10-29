@@ -2,7 +2,7 @@
 // holds. The page is test-pages/hostile.html, on the allowed origin (localhost:8090), on another one (127.0.0.1:8090),
 // and over https with a self-signed certificate (localhost:8443).
 import { Directory, File, Paths } from 'expo-file-system';
-import type { BridgeSender, Download, DownloadFailure } from 'react-native-minimal-webview';
+import type { BridgeSender, Download, DownloadResult } from 'react-native-minimal-webview';
 import { Platform } from 'react-native';
 
 import {
@@ -335,7 +335,7 @@ async function download(h: Harness, id: string) {
     20000
   );
   return (h.events.downloads[ok] ?? h.events.downloadFailures[failed]) as
-    Download | DownloadFailure | undefined;
+    DownloadResult | undefined;
 }
 
 /** In a directory of its own (Android's cache/downloads/<n>/, iOS's tmp/<UUID>/), and not named `.` or `..`. */
@@ -421,7 +421,7 @@ async function heldBlob({ h, r, android }: Suite) {
   r.since(
     WEBVIEW.evaluate,
     'F3 a blob download the page never lets finish waits for the page, and fails when it navigates',
-    all(held, failure?.reason.includes('navigated') === true),
+    all(held, failure?.kind === 'data' && failure.description.includes('navigated')),
     { held, failure }
   );
   r.info('F3 the held blob download', { held, failure });

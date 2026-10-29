@@ -401,17 +401,30 @@ export type Download = {
 };
 
 /**
- * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error).
+ * A download that could not be saved; `kind` says why:
+ * - `network`: connecting or reading the response failed, or a redirect was refused.
+ * - `http`: the response had an error status (Android only: iOS saves what the server sent).
+ * - `data`: the content: a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or a file
+ *   above 100 MB.
  * @group Page requests
  */
-export type DownloadFailure = {
-  /** Tells it from a {@link Download}. */
-  ok: false;
-  filename: string;
-  /** As in {@link Download}. */
-  url: string | null;
-  reason: string;
-};
+export type DownloadFailure =
+  | {
+      /** Tells it from a {@link Download}. */
+      ok: false;
+      kind: 'network' | 'data';
+      filename: string;
+      /** As in {@link Download}. */
+      url: string | null;
+      description: string;
+    }
+  | { ok: false; kind: 'http'; filename: string; url: string; statusCode: number };
+
+/**
+ * What `onDownload` gets.
+ * @group Page requests
+ */
+export type DownloadResult = Download | DownloadFailure;
 
 /**
  * What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs.
@@ -777,7 +790,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
    * reaches neither this prop nor the external fallback.
    */
-  onDownload?: (result: Download | DownloadFailure) => void;
+  onDownload?: (result: DownloadResult) => void;
   /**
    * Every navigation the rules, or their defaults, decided.
    *

@@ -189,7 +189,7 @@ Each works without its prop; the prop answers it or is told afterwards.
     active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
   }
   // A download: open it (expo-file-system; Quick Look on iOS, an app on Android) or share it (expo-sharing)
-  onDownload={(result) => (result.ok ? new File(result.uri).preview() : console.warn('download failed', result.reason))}
+  onDownload={(result) => (result.ok ? new File(result.uri).preview() : console.warn('download failed', result.kind))}
 />
 ```
 
