@@ -760,6 +760,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * `block`.
    *
    * A change applies from the next navigation.
+   *
+   * A native hook can take these decisions, defaults included: see `WebViewContext.clients` (Android) and
+   * `navigationDelegates` (iOS).
    * @see [Navigation rules example](../guides/examples.md#navigation-rules)
    */
   navigationRules?: readonly NavigationRule[];

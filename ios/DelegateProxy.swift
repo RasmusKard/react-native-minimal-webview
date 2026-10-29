@@ -87,9 +87,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     preferences: WKWebpagePreferences,
     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy, WKWebpagePreferences) -> Void
   ) {
-    let owner = delegates(for: Self.actionPolicy).first {
-      $0.responds(to: Self.actionPolicy) || $0.responds(to: Self.actionPolicyWithPreferences)
-    }
+    let owner = takers(of: Self.actionPolicy).first
     if let owner, owner.responds(to: Self.actionPolicyWithPreferences) {
       (owner as? WKNavigationDelegate)?.webView?(
         webView, decidePolicyFor: navigationAction, preferences: preferences, decisionHandler: decisionHandler)
@@ -103,14 +101,40 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private static let actionPolicyWithPreferences =
     NSSelectorFromString("webView:decidePolicyForNavigationAction:preferences:decisionHandler:")
 
+  /// The hook delegates that implement a decision, in order: the first one takes it. Either action policy variant
+  /// counts as the action policy.
+  private func takers(of decision: Selector) -> [NSObject] {
+    delegates(for: decision).filter {
+      $0.responds(to: decision) || decision == Self.actionPolicy && $0.responds(to: Self.actionPolicyWithPreferences)
+    }
+  }
+
   /// The decision callbacks more than one hook delegate implements, by selector name: only the first one gets each.
   var sharedDecisions: [String] {
-    let policies = delegates(for: Self.actionPolicy).filter {
-      $0.responds(to: Self.actionPolicy) || $0.responds(to: Self.actionPolicyWithPreferences)
-    }
-    let shared = Self.decisions.filter { decision in delegates(for: decision).filter { $0.responds(to: decision) }.count > 1 }
-    return ((policies.count > 1 ? [Self.actionPolicy] : []) + shared).map(NSStringFromSelector)
+    ([Self.actionPolicy] + Self.decisions).filter { takers(of: $0).count > 1 }.map(NSStringFromSelector)
   }
+
+  /// The decisions a hook delegate takes that the core makes from the app's props or their defaults: each one's
+  /// selector name and what stops applying.
+  var takenDecisions: [(name: String, lost: String)] {
+    Self.fromProps.filter { !takers(of: $0.0).isEmpty }.map { (NSStringFromSelector($0.0), $0.1) }
+  }
+
+  private static let fromProps: [(Selector, String)] = [
+    (actionPolicy, "navigationRules, their defaults and onNavigationRequest don't apply to navigations"),
+    (
+      NSSelectorFromString("webView:decidePolicyForNavigationResponse:decisionHandler:"),
+      "onDownload, opening downloads externally and onError's http errors don't apply"
+    ),
+    (
+      NSSelectorFromString("webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:"),
+      "navigationRules, their defaults and onNavigationRequest don't apply to new windows"
+    ),
+    (
+      NSSelectorFromString("webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:"),
+      "onPermissionRequest and the core's subframe deny don't apply"
+    )
+  ]
 
   /// The decision callbacks the core implements: a hook delegate that implements one owns it. The action policy is
   /// not here: the proxy decides it above.

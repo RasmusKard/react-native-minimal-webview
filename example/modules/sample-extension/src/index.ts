@@ -35,7 +35,7 @@ export const pageCounter = (
  * `useExtensions`.
  */
 export const sampleHook = (
-  name: 'hookAuth' | 'hookDialogs' | 'subclass' | 'seams' | 'perf'
+  name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf'
 ): HookExtension => ({ key: `sample.${name}`, options: true });
 
 /** The `sample.seams` hook's counter (Android): how many of its WebViews were destroyed at unmount. */

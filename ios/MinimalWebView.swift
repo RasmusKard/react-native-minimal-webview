@@ -45,7 +45,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var observations: [NSKeyValueObservation] = []
   private(set) lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
-  /// The decision callbacks a `core.warning` said more than one hook delegate implements: one warning each.
+  /// The decision warnings sent, shared and taken (DelegateProxy): one each per view.
   private var warnedDecisions: Set<String> = []
   private var detachers: [() -> Void] = []
 
@@ -486,7 +486,7 @@ extension MinimalWebView {
       proxy.navigationDelegates = newValue
       webView?.navigationDelegate = nil
       webView?.navigationDelegate = proxy
-      warnSharedDecisions()
+      warnDecisions()
     }
   }
 
@@ -496,13 +496,16 @@ extension MinimalWebView {
       proxy.uiDelegates = newValue
       webView?.uiDelegate = nil
       webView?.uiDelegate = proxy
-      warnSharedDecisions()
+      warnDecisions()
     }
   }
 
-  private func warnSharedDecisions() {
+  private func warnDecisions() {
     for name in proxy.sharedDecisions where warnedDecisions.insert(name).inserted {
       emit("core.warning", ["message": "\(name): more than one hook delegate implements it; only the first one gets it"])
+    }
+    for (name, lost) in proxy.takenDecisions where warnedDecisions.insert("\(name) taken").inserted {
+      emit("core.warning", ["message": "\(name): a hook delegate takes it, so \(lost)"])
     }
   }
 

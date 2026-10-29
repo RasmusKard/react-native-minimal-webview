@@ -33,6 +33,11 @@ public class SampleExtensionModule: Module {
         context.uiDelegates.append(HookDialogs(context: context))
         return nil
       }
+      // Takes the navigation decision from the app's navigationRules, which a `core.warning` says.
+      MinimalWebViewHooks.register("sample.hookNavigation") { _, context in
+        context.navigationDelegates.append(HookNavigation())
+        return nil
+      }
       // Each WebView that enables this hook is made from its subclass; others stay plain WKWebViews.
       MinimalWebViewHooks.register("sample.subclass", webViewClass: SampleWKWebView.self) { webView, context in
         let name = String(describing: type(of: webView))
@@ -84,6 +89,17 @@ private final class HookAuth: NSObject, WKNavigationDelegate {
       return completionHandler(.cancelAuthenticationChallenge, nil)
     }
     completionHandler(.useCredential, URLCredential(user: "u", password: "p", persistence: .forSession))
+  }
+}
+
+/// Loads every navigation in place.
+private final class HookNavigation: NSObject, WKNavigationDelegate {
+  func webView(
+    _ webView: WKWebView,
+    decidePolicyFor navigationAction: WKNavigationAction,
+    decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
+  ) {
+    decisionHandler(.allow)
   }
 }
 

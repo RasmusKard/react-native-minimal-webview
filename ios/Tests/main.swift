@@ -266,6 +266,10 @@ proxyCheck("nobody takes it: the default handling", answered([Challenged(.perfor
 proxyCheck("a decision two delegates implement is shared", proxy([], [uiAlert, UIWithAlertAndPolicy()]).sharedDecisions == [NSStringFromSelector(alertPanel)])
 proxyCheck("either action policy variant counts", proxy([plain, preferring]).sharedDecisions == ["webView:decidePolicyForNavigationAction:decisionHandler:"])
 proxyCheck("one delegate per decision, another list's or a challenge: none shared", proxy([NavigationWithAlert(), plain, Challenged(.useCredential), Challenged(.useCredential)], [uiAlert]).sharedDecisions.isEmpty)
+let actionPolicyName = "webView:decidePolicyForNavigationAction:decisionHandler:"
+proxyCheck("either action policy variant takes it from the props", [[plain], [preferring], [plain, preferring]].allSatisfy { proxy($0).takenDecisions.map(\.name) == [actionPolicyName] })
+proxyCheck("it names what stops applying", proxy([plain]).takenDecisions.first?.lost == "navigationRules, their defaults and onNavigationRequest don't apply to navigations")
+proxyCheck("a decision no prop makes, or a UI delegate's action policy: none taken", proxy([NavigationWithAlert()], [uiAlert]).takenDecisions.isEmpty)
 print("\(proxyCount - proxyFailures)/\(proxyCount) proxy cases pass")
 
 let ordered = inRegistrationOrder(["typo", "c", "a", "b", "other"], ["b", "x", "a", "c"])

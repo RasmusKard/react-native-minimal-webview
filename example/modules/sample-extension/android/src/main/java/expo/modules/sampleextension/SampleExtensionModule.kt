@@ -4,6 +4,7 @@ import android.content.Context
 import android.webkit.HttpAuthHandler
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import expo.modules.kotlin.functions.Queues
@@ -47,6 +48,11 @@ class SampleExtensionModule : Module() {
         context.chromeClients += HookDialogs(context)
         null
       }
+      // Takes the navigation decision from the app's navigationRules, which a `core.warning` says.
+      MinimalWebViewHooks.register("sample.hookNavigation") { _, context ->
+        context.clients += HookNavigation()
+        null
+      }
       // Each WebView that enables this hook is made by its factory, a crash's replacement too; others stay plain.
       MinimalWebViewHooks.register("sample.subclass", webViewFactory = ::SampleWebView) { webView, context ->
         val name = webView.javaClass.simpleName
@@ -72,6 +78,11 @@ private val AUTH_HOSTS = setOf("localhost")
 private class HookAuth : WebViewClient() {
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) =
     if (host in AUTH_HOSTS) handler.proceed("u", "p") else handler.cancel()
+}
+
+/** Loads every navigation in place. */
+private class HookNavigation : WebViewClient() {
+  override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = false
 }
 
 private class HookDialogs(private val context: WebViewContext) : WebChromeClient() {
