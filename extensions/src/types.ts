@@ -107,6 +107,9 @@ export interface ExtensionProps {
    * iOS answers HTTP basic challenges, and doesn't send a credential again once the site has rejected it; Android
    * answers every HTTP auth request. A change applies from the next challenge. Without it, and for the challenges it
    * doesn't answer, the core's handling applies: the challenge is declined and the site's 401 page shows.
+   *
+   * A credential once accepted stays with the WebView's network session, as in a browser: after the prop changes or is
+   * removed, an origin that accepted it can still get it, until the app restarts.
    */
   basicAuthCredential?: BasicAuthCredential;
   /**

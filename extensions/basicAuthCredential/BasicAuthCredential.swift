@@ -37,7 +37,8 @@ enum BasicAuthCredential {
         challenge.previousFailureCount == 0, let credential = context?.options as? [String: Any],
         let user = credential["username"] as? String, let password = credential["password"] as? String
       else { return completionHandler(.performDefaultHandling, nil) }
-      completionHandler(.useCredential, URLCredential(user: user, password: password, persistence: .none))
+      // WebKit doesn't use a credential with no persistence for a page load: the session keeps it.
+      completionHandler(.useCredential, URLCredential(user: user, password: password, persistence: .forSession))
     }
   }
 }
