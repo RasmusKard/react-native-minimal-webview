@@ -49,7 +49,12 @@ const FUNCTION = /\b(?:AsyncFunction|Function|Constant)\("(\w+)"\)/g;
 const events = (text: string) => names(text.match(/\bEvents\(([^)]*)\)/)?.[1] ?? '', /"(\w+)"/g);
 
 const IOS_ONLY_PROPS = ['sharedCookies'];
-const ANDROID_ONLY_FUNCTIONS = ['defaultUserAgent', 'preconnect', 'warmUp'];
+const ANDROID_ONLY_FUNCTIONS = [
+  'defaultUserAgent',
+  'preconnect',
+  'setWebContentsDebuggingEnabled',
+  'warmUp',
+];
 const ANDROID_ONLY_REQUESTS = ['fileRequest', 'fullscreenChange'];
 
 test('both platforms define the same props, events and functions, except the documented platform-only ones', () => {
@@ -122,8 +127,12 @@ const download = { ok: 1, uri: 1, filename: 1, mimeType: 1, url: 1 } satisfies R
   keyof Download,
   1
 >;
-const failure = { ok: 1, filename: 1, url: 1, reason: 1 } satisfies Record<
-  keyof DownloadFailure,
+const failure = { ok: 1, kind: 1, filename: 1, url: 1, description: 1 } satisfies Record<
+  keyof Exclude<DownloadFailure, { kind: 'http' }>,
+  1
+>;
+const httpFailure = { ok: 1, kind: 1, filename: 1, url: 1, statusCode: 1 } satisfies Record<
+  keyof Extract<DownloadFailure, { kind: 'http' }>,
   1
 >;
 const permission = { origin: 1, resources: 1 } satisfies Record<keyof PermissionRequest, 1>;
@@ -193,7 +202,7 @@ const PAYLOADS: Record<Platform, Row[]> = {
       event: 'core.download',
       file: 'requests/Downloads.kt',
       emitSite: /"core\.download",/g,
-      keys: [download, failure],
+      keys: [download, failure, httpFailure],
     },
     {
       event: 'core.permissionRequest',
@@ -345,6 +354,7 @@ const outcome = { finished: 1, failed: 1, cancelled: 1 } satisfies Record<
   1
 >;
 const kind = { network: 1, ssl: 1, http: 1 } satisfies Record<LoadErrorEvent['kind'], 1>;
+const downloadKind = { network: 1, http: 1, data: 1 } satisfies Record<DownloadFailure['kind'], 1>;
 const source = { uri: 1, headers: 1, body: 1, html: 1, baseUrl: 1 } satisfies Record<
   AllKeys<WebViewSource>,
   1
@@ -404,6 +414,12 @@ const VALUES: Record<Platform, ValueRow[]> = {
     },
     { name: 'error kind', keys: kind, site: /reportError\("\w+"/g },
     {
+      name: 'download failure kind',
+      keys: downloadKind,
+      files: ['requests/Downloads.kt'],
+      site: /(?<="kind" to )"\w+"|"network" else "data"/g,
+    },
+    {
       name: 'WebViewSource fields',
       keys: source,
       site: /class WebViewSource\([^]*?\) : Record/g,
@@ -434,7 +450,19 @@ const VALUES: Record<Platform, ValueRow[]> = {
   ],
   ios: [
     { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*/g },
-    { name: 'error kind', keys: kind, site: /(?<="kind": )[^,]*/g },
+    {
+      name: 'error kind',
+      keys: kind,
+      files: ['MinimalWebView.swift'],
+      site: /(?<="kind": )[^,]*/g,
+    },
+    {
+      name: 'download failure kind',
+      keys: downloadKind,
+      files: ['Downloads.swift'],
+      site: /(?<="kind": )[^,]*/g,
+      lacks: ['http'],
+    },
     {
       name: 'WebViewSource fields',
       keys: source,

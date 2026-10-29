@@ -12,8 +12,9 @@
 <h1>Type Alias BridgeMethodMap</h1></div>
 <div class="tsd-signature"><span class="tsd-kind-type-alias">BridgeMethodMap</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">params</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">result</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>The methods either side may call, for <code>createBridge&lt;Methods&gt;</code>.</p>
-<p>One map covers both directions, so a method is named once, whichever side handles it. A <code>type</code>, not an <code>interface</code>
-(an interface has no index signature, so it doesn't satisfy <code>Record</code>).</p>
+<p>One map covers both directions, so a method is named once, whichever side handles it. With a map, <code>handle</code> and
+<code>call</code> take only its methods: another name doesn't compile. A <code>type</code>, not an <code>interface</code> (an interface has no index
+signature, so it doesn't satisfy <code>Record</code>).</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">

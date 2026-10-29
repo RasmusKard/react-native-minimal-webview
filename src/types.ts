@@ -199,8 +199,11 @@ export type LoadErrorEvent =
  * @group Events
  */
 export type ProcessGoneEvent = {
-  /** False when the system killed the renderer for memory (Android). Always true on iOS: WebKit doesn't say. */
-  didCrash: boolean;
+  /**
+   * False when the system killed the renderer for memory. Null on iOS: WebKit doesn't say, so test it with `=== true`
+   * or `=== false`, not as a condition.
+   */
+  didCrash: boolean | null;
   /**
    * The core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground and the
    * view on screen, with the history restored unless the `source` page was on screen, and with the props applied but
@@ -252,8 +255,9 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
 /**
  * The methods either side may call, for `createBridge<Methods>`.
  *
- * One map covers both directions, so a method is named once, whichever side handles it. A `type`, not an `interface`
- * (an interface has no index signature, so it doesn't satisfy `Record`).
+ * One map covers both directions, so a method is named once, whichever side handles it. With a map, `handle` and
+ * `call` take only its methods: another name doesn't compile. A `type`, not an `interface` (an interface has no index
+ * signature, so it doesn't satisfy `Record`).
  * @example
  * ```ts
  * type Methods = { share: { params: { url: string }; result: boolean } };
@@ -264,6 +268,8 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
 export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
 /**
  * The events either side may emit, for `createBridge<Methods, Events>`.
+ *
+ * With a map, `emit` and `on` take only its events: another name doesn't compile.
  * @example
  * ```ts
  * type Events = { themeChanged: 'light' | 'dark' };
@@ -398,17 +404,30 @@ export type Download = {
 };
 
 /**
- * A download that could not be saved (a bad data: or blob: URL, a network or HTTP error).
+ * A download that could not be saved; `kind` says why:
+ * - `network`: connecting or reading the response failed, or a redirect was refused.
+ * - `http`: the response had an error status (Android only: iOS saves what the server sent).
+ * - `data`: the content: a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or a file
+ *   above 100 MB.
  * @group Page requests
  */
-export type DownloadFailure = {
-  /** Tells it from a {@link Download}. */
-  ok: false;
-  filename: string;
-  /** As in {@link Download}. */
-  url: string | null;
-  reason: string;
-};
+export type DownloadFailure =
+  | {
+      /** Tells it from a {@link Download}. */
+      ok: false;
+      kind: 'network' | 'data';
+      filename: string;
+      /** As in {@link Download}. */
+      url: string | null;
+      description: string;
+    }
+  | { ok: false; kind: 'http'; filename: string; url: string; statusCode: number };
+
+/**
+ * What `onDownload` gets.
+ * @group Page requests
+ */
+export type DownloadResult = Download | DownloadFailure;
 
 /**
  * What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs.
@@ -479,6 +498,8 @@ export type IOSSettings = {
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
    * The `WKWebView`, live.
+   *
+   * `customUserAgent: null` is WebKit's default user agent, with `applicationNameForUserAgent` appended.
    * @default `{ customUserAgent: null, inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
@@ -516,7 +537,7 @@ export type AndroidSettings = {
    * Each new WebView starts with `javaScriptEnabled`, `domStorageEnabled`, `supportMultipleWindows` and
    * `builtInZoomControls` on; `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and
    * `downloadFaviconsEnabled` off; `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`; and, with WebView 146 and newer,
-   * `backForwardCacheEnabled` on.
+   * `backForwardCacheEnabled` on. `userAgentString: null` is WebView's default user agent.
    * @default `{ userAgentString: null }`
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
@@ -524,8 +545,8 @@ export type AndroidSettings = {
    * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
    * `acceptThirdPartyCookies`.
    *
-   * `webContentsDebuggingEnabled` is process-wide.
-   * @default `{ webContentsDebuggingEnabled: __DEV__ }`
+   * `webContentsDebuggingEnabled` is refused: it is process-wide, set with
+   * {@link WebView.android.setWebContentsDebuggingEnabled}.
    */
   webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
@@ -629,7 +650,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`).
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
-   * `android.settings.userAgentString` to `WebView.defaultUserAgent` plus your suffix.
+   * `android.settings.userAgentString` to `WebView.android.defaultUserAgent` plus your suffix.
    */
   userAgent?: string;
   /**
@@ -772,7 +793,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
    * reaches neither this prop nor the external fallback.
    */
-  onDownload?: (result: Download | DownloadFailure) => void;
+  onDownload?: (result: DownloadResult) => void;
   /**
    * Every navigation the rules, or their defaults, decided.
    *
@@ -879,7 +900,8 @@ export type WebViewRef = {
    * a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`,
    * `new…` and reference-counting selectors; on Android (in `get` too) the loads, navigations, clients, JavaScript
    * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
-   * `resumeTimers` and `evaluateJavascript`.
+   * `resumeTimers`, `evaluateJavascript` and
+   * `setWebContentsDebuggingEnabled`.
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
    * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's

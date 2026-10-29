@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
@@ -145,6 +146,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
+    val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    WebView.setWebContentsDebuggingEnabled(webContentsDebugging ?: debuggable)
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
@@ -462,6 +465,9 @@ internal const val RECOVERING = "the WebView is being rebuilt after its renderer
 
 /** Whether this process has made a WebView, so WebView is started. */
 @Volatile internal var webViewCreated = false
+
+/** What `setWebContentsDebuggingEnabled` set; null until it is called. */
+@Volatile internal var webContentsDebugging: Boolean? = null
 
 internal fun failed(message: String, error: Exception): Boolean {
   Log.w(TAG, message, error)

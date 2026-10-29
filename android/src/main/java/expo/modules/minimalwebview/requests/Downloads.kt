@@ -21,6 +21,12 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+/** The server answered [code], not 2xx. */
+internal class HttpStatus(val code: Int) : IOException("HTTP $code")
+
+/** The file is above [Downloads.MAX_BYTES]. */
+internal class TooLarge : IOException(Downloads.TOO_LARGE)
+
 /** What WebView's DownloadListener reports. */
 internal data class DownloadInfo(
   val url: String,
@@ -107,7 +113,7 @@ internal class Downloads(private val owner: MinimalWebView) {
       val (size, data) = readChunk(url, offset)
       type = writeDataUrl(file, data)
       offset += CHUNK_BYTES
-      if (offset > MAX_BYTES) throw IOException(TOO_LARGE) // the page's own size check can be forged
+      if (offset > MAX_BYTES) throw TooLarge() // the page's own size check can be forged
     } while (offset < size)
     type
   }
@@ -126,14 +132,20 @@ internal class Downloads(private val owner: MinimalWebView) {
     val result = reply.poll(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS) ?: throw IOException("the page did not read the blob in time")
     val json = result.getOrElse { throw IOException("could not read the blob: ${it.message}") }
     // A reply far longer than a chunk's data: URL is forged: refuse it before it is copied twice more.
-    if (json.length > CHUNK_BYTES / 3 * 4 + 1024) throw IOException(TOO_LARGE)
+    if (json.length > CHUNK_BYTES / 3 * 4 + 1024) throw TooLarge()
     val chunk = JSONTokener(json).nextValue() as? JSONArray ?: throw IOException("could not read the blob")
     return chunk.getLong(0) to chunk.getString(1)
   }
 
   private fun failed(name: String, url: String, error: Exception) {
     Log.w(TAG, "download of $name failed", error)
-    owner.emit("core.download", mapOf("ok" to false, "filename" to name, "url" to serverUrl(url), "reason" to (error.message ?: error.toString())))
+    if (error is HttpStatus) {
+      return owner.emit("core.download", mapOf("ok" to false, "kind" to "http", "filename" to name, "url" to url, "statusCode" to error.code))
+    }
+    owner.emit(
+      "core.download",
+      mapOf("ok" to false, "kind" to kind(error, serverUrl(url) != null), "filename" to name, "url" to serverUrl(url), "description" to (error.message ?: error.toString()))
+    )
   }
 
   private fun serverUrl(url: String) = url.takeIf { it.startsWith("http:") || it.startsWith("https:") }
@@ -150,6 +162,14 @@ internal class Downloads(private val owner: MinimalWebView) {
     const val MAX_REDIRECTS = 20 // OkHttp's, which React Native's fetch uses
     const val TIMEOUT_MS = 30_000
 
+    /**
+     * A failed download's `kind` other than `http`: everything but a [fetched] (http(s)) download's own IOException is
+     * the content's.
+     */
+    fun kind(error: Exception, fetched: Boolean) =
+      // shortcut: a disk error while an http(s) body streams reads as network; tell them apart if apps need to.
+      if (fetched && error is IOException && error !is TooLarge) "network" else "data"
+
     /** `guessFileName` keeps a page's `.` or `..` (a directory: the save fails with EISDIR) and can be empty. */
     fun safeName(name: String) = if (name.isEmpty() || name == "." || name == "..") "download" else name
 
@@ -161,7 +181,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         val read = input.read(buffer)
         if (read < 0) break
         total += read
-        if (total > max) throw IOException(TOO_LARGE)
+        if (total > max) throw TooLarge()
         output.write(buffer, 0, read)
       }
     }
@@ -170,8 +190,8 @@ internal class Downloads(private val owner: MinimalWebView) {
     fun fetchTo(download: DownloadInfo, file: File, cookie: (String) -> String?, setCookie: (String, String) -> Unit): String {
       val connection = connect(URL(download.url), download.userAgent, cookie, setCookie)
       try {
-        if (connection.responseCode !in 200..299) throw IOException("HTTP ${connection.responseCode}")
-        if (connection.contentLengthLong > MAX_BYTES) throw IOException(TOO_LARGE)
+        if (connection.responseCode !in 200..299) throw HttpStatus(connection.responseCode)
+        if (connection.contentLengthLong > MAX_BYTES) throw TooLarge()
         connection.inputStream.use { input -> file.outputStream().use { output -> copyCapped(input, output, MAX_BYTES) } }
         return download.mimeType.ifEmpty { connection.contentType?.substringBefore(';') ?: "application/octet-stream" }
       } finally {

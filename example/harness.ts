@@ -124,7 +124,7 @@ export const WEBVIEW = {
 let webViewMajor: number | undefined;
 /** The Android System WebView's major version, from its default user agent (no page needed); 0 on iOS. */
 const androidWebView = () =>
-  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.defaultUserAgent ?? '')?.[1] ?? 0));
+  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.android.defaultUserAgent ?? '')?.[1] ?? 0));
 
 /** A suite's checks and INFO lines. With a `floor` (a `WEBVIEW` value) each `check` is a `since(floor, …)`. */
 export function reporter(suite: string, floor = 0) {
@@ -1342,7 +1342,11 @@ async function mountSettings(h: Harness) {
     h,
     Platform.OS === 'ios'
       ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
-      : { android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } } },
+      : {
+          android: {
+            settings: { userAgentString: `${WebView.android.defaultUserAgent} Remounted/9` },
+          },
+        },
     Platform.OS === 'android'
   );
   const remountedVh = await viewportHeight(h);
@@ -2084,8 +2088,8 @@ async function downloadsSuite(h: Harness) {
     const failed = await waitFor(h, () => h.events.downloadFailures.length > failures, 20000);
     const failure = h.events.downloadFailures[failures];
     r.check(
-      'a blob above the size cap reports a failure with a reason',
-      failed && failure?.reason.includes('larger than') === true,
+      'a blob above the size cap reports a data failure with a description',
+      failed && failure?.kind === 'data' && failure.description.includes('larger than'),
       failure
     );
     // Far more than one reply can carry: the page reads it in chunks.

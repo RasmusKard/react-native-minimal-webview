@@ -157,6 +157,7 @@ const nativeModule = () =>
     defaultUserAgent: string;
     warmUp(): void;
     preconnect(url: string): Promise<void>;
+    setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
 
 /** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
@@ -404,7 +405,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },
-    webView: { ...DEFAULTS.AndroidSettings.webView, ...webView },
+    webView: { ...webView },
   };
 }
 
@@ -431,49 +432,74 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
 }
 
 /**
- * What `WebView` carries besides the component: `preconnect`, `warmUp` and `defaultUserAgent`.
+ * What `WebView` carries besides the component: {@link WebView.android}.
  * @group WebView
  * @hideGroups
  */
 export declare namespace WebView {
   /**
-   * Android's default user agent, for `android.settings.userAgentString` with a suffix.
-   *
-   * Null on iOS, where `ios.configuration.applicationNameForUserAgent` appends.
+   * Android's process-wide WebView functions. On iOS they do nothing, and `defaultUserAgent` is null.
    * @android
    */
-  const defaultUserAgent: string | null;
-  /**
-   * Starts WebView (loads its code, starts Chromium) before any WebView mounts, on a background thread where the
-   * device's WebView supports that, so the first WebView mounts sooner.
-   *
-   * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
-   * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing. WebView
-   * starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's `CookieManager`).
-   * No-op on iOS.
-   * @android
-   */
-  function warmUp(): void;
-  /**
-   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes later.
-   *
-   * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a mounted
-   * WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at mount
-   * gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a
-   * WebView is mounted. Does nothing on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`, and on
-   * iOS. For prefetch and prerender, a native hook uses `ProfileStore`.
-   * @android
-   */
-  function preconnect(url: string): void;
+  namespace android {
+    /**
+     * Android's default user agent, for `android.settings.userAgentString` with a suffix.
+     *
+     * The first read loads WebView's code, on the JS thread: read it once `warmUp()` has had time or a WebView is
+     * mounted. Null on iOS, where `ios.configuration.applicationNameForUserAgent` appends.
+     * @android
+     */
+    const defaultUserAgent: string | null;
+    /**
+     * Starts WebView before any WebView mounts, so the first WebView mounts sooner.
+     *
+     * With the androidx.webkit feature `ASYNC_WEBVIEW_STARTUP` it loads WebView's code and starts Chromium on a
+     * background thread; without it, it only loads the code there, and Chromium starts on the UI thread as the first
+     * WebView mounts.
+     *
+     * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
+     * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing.
+     * WebView starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's
+     * `CookieManager`). No-op on iOS.
+     * @android
+     */
+    function warmUp(): void;
+    /**
+     * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes
+     * later.
+     *
+     * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a
+     * mounted WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at
+     * mount gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had
+     * time or a WebView is mounted. Needs the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or
+     * `PRECONNECT`; without them, and on iOS, it does nothing. For prefetch and prerender, a native hook uses
+     * `ProfileStore`.
+     * @android
+     */
+    function preconnect(url: string): void;
+    /**
+     * Turns remote debugging (`chrome://inspect`) of every WebView in the app on or off.
+     *
+     * Until it is called, it is on when the app is debuggable (a debug build) and off otherwise. Called before any
+     * WebView exists, it applies when the first one is made, so it doesn't start WebView. No-op on iOS, where
+     * `ios.webView.inspectable` sets it per WebView.
+     * @android
+     */
+    function setWebContentsDebuggingEnabled(enabled: boolean): void;
+  }
 }
-Object.defineProperty(WebView, 'defaultUserAgent', {
-  get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
-});
-Object.assign(WebView, {
+const android = {
   warmUp: (): void => {
     if (Platform.OS === 'android') nativeModule().warmUp();
   },
   preconnect: (url: string): void => {
     if (Platform.OS === 'android') void nativeModule().preconnect(url);
   },
+  setWebContentsDebuggingEnabled: (enabled: boolean): void => {
+    if (Platform.OS === 'android') void nativeModule().setWebContentsDebuggingEnabled(enabled);
+  },
+};
+Object.defineProperty(android, 'defaultUserAgent', {
+  get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });
+Object.assign(WebView, { android });
