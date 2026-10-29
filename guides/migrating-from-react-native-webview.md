@@ -207,7 +207,7 @@ const [error, setError] = useState<LoadErrorEvent | null>(null);
 
 An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
 in `allowedOrigins`. For offsets during a bounce or a pinch, a native hook observes `scrollView.contentOffset` on iOS
-and `setOnScrollChangeListener` on Android.
+and adds a listener to `context.scrollListeners` on Android.
 
 ```tsx
 const scroll = {

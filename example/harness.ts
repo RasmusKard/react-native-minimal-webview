@@ -2470,6 +2470,19 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
       !!taken && passed && h.events.downloads.length === downloads + 1,
       { taken, downloads: h.events.downloads.length - downloads }
     );
+    // Its second touch listener counts a down and a cancel that its first one doesn't consume.
+    const touches = await h.ref.current?.hook('sample.seams', 'touch').catch(errorCode);
+    r.check('its touch listeners share the slot, in order', touches === 2, touches);
+    h.loadSource({ html: '<div style="height: 5000px">tall</div>', baseUrl: h.pages });
+    const scrolled = await until(
+      async () => (await h.ref.current?.evaluate('(scrollTo(0, 400), scrollY > 0)')) === true,
+      5000
+    );
+    const both = await until(
+      () => ['scrollA', 'scrollB'].every((name) => h.events.hookEvents.includes(`sample.seams.${name}`)),
+      3000
+    );
+    r.check('its two scroll listeners both get the scroll', !!scrolled && !!both, h.events.hookEvents);
     const closed = await seams.closedViews();
     await recreate(h, {}, true);
     const now = await until(async () => {
