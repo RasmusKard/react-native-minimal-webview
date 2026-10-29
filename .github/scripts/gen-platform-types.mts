@@ -398,14 +398,14 @@ function iosCompletions(text: string) {
 
 // Android
 
-/** JVM descriptors of the one-argument setter parameters the reflection channel takes. */
+/** JVM descriptors of the one-argument setter parameters the reflection channel takes; it passes null to a String. */
 const DESCRIPTORS: Record<string, string> = {
   Z: 'boolean',
   I: 'number',
   J: 'number',
   F: 'number',
   D: 'number',
-  'Ljava/lang/String;': 'string',
+  'Ljava/lang/String;': 'string | null',
 };
 const JAVA_TYPES: Record<string, string> = {
   boolean: 'boolean',
@@ -413,7 +413,7 @@ const JAVA_TYPES: Record<string, string> = {
   long: 'number',
   float: 'number',
   double: 'number',
-  String: 'string',
+  String: 'string | null',
 };
 const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase());
 /** Primitive setters the core owns (`OWNED` in PlatformSettings.kt), which settings refuse. */
