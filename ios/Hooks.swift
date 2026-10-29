@@ -89,7 +89,8 @@ public protocol WebViewContext: AnyObject {
   /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event as `emit` does and calls `onAnswer` with the JS handler's return value, a promise awaited. It
-  /// answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout.
+  /// answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout. An
+  /// ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
   /// Runs `handler` with this hook's new `hookOptions` value each time it changes, live; nil when the key is removed.
   /// To switch a hook on and off, keep its key enabled and put the switch in its value (`{ enabled: false }`).

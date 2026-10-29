@@ -118,14 +118,15 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     // What belongs to the Document (DocumentScope), reset in this order at every end. The asks last: their callbacks
-    // are hook and Chromium code, and a throw there must not skip the core's own resets.
+    // are hook and Chromium code, and a throw there must not skip the core's own resets. The asks and the hooks skip
+    // the commit that opens a Document with none open: what a hook starts in attach belongs to the Document it opens.
     document.register { fileUpload.cancel() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
-    document.register { asks.documentEnded(it) }
+    document.register(skipsOpening = true) { asks.documentEnded(it) }
     // The hooks' own handlers, per attach: the scope has no unregister, and a crash attaches the hooks again.
-    document.register { reason -> hookContexts.forEach { it.documentEnded(reason) } }
+    document.register(skipsOpening = true) { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
 
   private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
