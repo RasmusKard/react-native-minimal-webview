@@ -224,6 +224,7 @@ export type ProcessGoneEvent = {
  * ```ts
  * const script: InjectedScript = {
  *   code: "addEventListener('DOMContentLoaded', () => document.body.classList.add('in-app'));",
+ *   origins: ['https://example.com'],
  * };
  * ```
  * @group Scripts
@@ -232,6 +233,17 @@ export type InjectedScript = {
   code: string;
   /** Runs it in every frame, iframes included. */
   allFrames?: boolean;
+  /**
+   * The origins whose frames run it, in the syntax of {@link BridgeOptions.allowedOrigins}. Each frame is matched by
+   * its own `location.origin`, so a listed page's iframes from other origins don't run it; about:blank and srcdoc
+   * frames have their parent's origin. `'*'` matches every origin, opaque ones (`data:`, sandboxed frames) and
+   * `file:` included; `[]` matches none.
+   *
+   * Without `'*'` in the list, the code runs inside a function: its top-level `let`, `const`, `class`, `function` and
+   * `var` stay local to it, so put what the page should see on `window`. An invalid rule throws when the WebView
+   * renders.
+   */
+  origins: string[];
 };
 
 /**
@@ -663,8 +675,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    */
   userAgent?: string;
   /**
-   * Scripts to run at document start, before the page's own, on every page and origin the WebView visits (and with
-   * `allFrames: true` in cross-origin iframes): guard with `location.origin`.
+   * Scripts to run at document start, before the page's own, in the frames of each script's `origins`.
    *
    * A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
    * so, once per process).
