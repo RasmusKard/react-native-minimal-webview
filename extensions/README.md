@@ -48,7 +48,7 @@ To change an extension, or to take only one, copy it into a module of your own:
 1. `npx create-expo-module --local <name>`.
 2. Copy the extension's folder into it: the `.swift` file into `ios/`, the `.kt` file next to your module's
    `<Name>Module.kt` (in `android/src/main/java/`), and `index.ts`, the function that returns its `HookExtension`, into
-   `src/`.
+   `src/`, and export that function from your module's `index.ts`.
 3. In the `.kt` file, change the `package` line to the one in your `<Name>Module.kt`.
 4. Register the hook: in both `<Name>Module.swift` and `<Name>Module.kt`, add
    `OnCreate { BasicAuthCredential.register() }` (the extension's own name) to the module's `definition()`. The copies

@@ -127,6 +127,12 @@ class HooksTest {
   }
 
   @Test
+  fun `changed keys go in registration order, then the unregistered ones sorted`() {
+    val keys = linkedSetOf("typo", "c", "a", "b", "other")
+    assertEquals(listOf("b", "a", "c", "other", "typo"), inRegistrationOrder(keys, listOf("b", "x", "a", "c")))
+  }
+
+  @Test
   fun `a key turned on while not attached is added late, and an attached one never is`() {
     val attached = setOf("a")
     assertTrue(addedLate("b", null, mapOf("enabled" to false), attached))

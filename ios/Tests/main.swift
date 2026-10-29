@@ -1,6 +1,6 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DelegateProxy routing, the DocumentScope dispatch cases, the Asks contract and ReadAccess's
-// roots. Not part of the pod (see the podspec).
+// and Recovery.swift, the DelegateProxy routing and the late hooks' order, the DocumentScope dispatch cases, the Asks
+// contract and ReadAccess's roots. Not part of the pod (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
 //     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation
@@ -268,6 +268,11 @@ proxyCheck("either action policy variant counts", proxy([plain, preferring]).sha
 proxyCheck("one delegate per decision, another list's or a challenge: none shared", proxy([NavigationWithAlert(), plain, Challenged(.useCredential), Challenged(.useCredential)], [uiAlert]).sharedDecisions.isEmpty)
 print("\(proxyCount - proxyFailures)/\(proxyCount) proxy cases pass")
 
+let ordered = inRegistrationOrder(["typo", "c", "a", "b", "other"], ["b", "x", "a", "c"])
+let orderOk = ordered == ["b", "a", "c", "other", "typo"]
+if !orderOk { print("FAIL hook order: got \(ordered)") }
+print(orderOk ? "1/1 hook order cases pass" : "0/1 hook order cases pass")
+
 // (name, file, readAccessRoot, the expected root, whether a warning)
 let readCases: [(String, String, String?, String, Bool)] = [
   ("no root: the file's directory", "file:///a/site/index.html", nil, "file:///a/site/", false),
@@ -293,4 +298,4 @@ for (name, file, root, expected, warns) in readCases {
   }
 }
 print("\(readCases.count - readFailures)/\(readCases.count) read root cases pass")
-exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures + proxyFailures + readFailures == 0 ? 0 : 1)
+exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures + proxyFailures + readFailures + (orderOk ? 0 : 1) == 0 ? 0 : 1)

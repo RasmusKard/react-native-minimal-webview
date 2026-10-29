@@ -18,12 +18,12 @@ public enum MinimalWebViewHooks {
   private(set) static var hooks: [Hook] = []
 
   /// Registers the hook for `key`; call it from your module's `OnCreate`, before the first WebView. Hooks are
-  /// configured and attached in registration order. Keys are global, so prefix yours with your package's name: a
-  /// second hook under a key stops the app (`fatalError`, naming the key and both call sites). The same call running
-  /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. A helper that
-  /// calls `register` for other code is one call site, so a second hook under a key through it replaces the first
-  /// silently: pass the helper's caller's `file` and `line` on. `core` is reserved and refused: the package's own
-  /// events are named `core.…`.
+  /// configured and attached in registration order, which across packages is autolinking's: packages sorted by name.
+  /// Keys are global, so prefix yours with your package's name: a second hook under a key stops the app (`fatalError`,
+  /// naming the key and both call sites). The same call running again replaces its hook: a JS reload creates the
+  /// modules anew, and their `OnCreate` runs again. A helper that calls `register` for other code is one call site,
+  /// so a second hook under a key through it replaces the first silently: pass the helper's caller's `file` and `line`
+  /// on. `core` is reserved and refused: the package's own events are named `core.…`.
   /// - Parameters:
   ///   - webViewClass: The WKWebView subclass to make each WebView that enables this hook from, so it can override
   ///     what WKWebView lets it; nil leaves the class to the other hooks. A view whose enabled hooks name different

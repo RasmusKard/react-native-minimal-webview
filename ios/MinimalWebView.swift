@@ -451,7 +451,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 extension MinimalWebView {
   /// Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewClass` whose key turns on.
   private func optionsChanged(from old: [String: Any]) {
-    for key in Set(old.keys).union(hookOptions.keys) {
+    for key in inRegistrationOrder(Set(old.keys).union(hookOptions.keys), MinimalWebViewHooks.hooks.map(\.key)) {
       let value = hookOptions[key]
       if let was = old[key], let value, (was as AnyObject as? NSObject)?.isEqual(value) == true { continue }
       if let context = hookContexts.first(where: { $0.key == key }) {
