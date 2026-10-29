@@ -199,8 +199,11 @@ export type LoadErrorEvent =
  * @group Events
  */
 export type ProcessGoneEvent = {
-  /** False when the system killed the renderer for memory (Android). Always true on iOS: WebKit doesn't say. */
-  didCrash: boolean;
+  /**
+   * False when the system killed the renderer for memory. Null on iOS: WebKit doesn't say, so test it with `=== true`
+   * or `=== false`, not as a condition.
+   */
+  didCrash: boolean | null;
   /**
    * The core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground and the
    * view on screen, with the history restored unless the `source` page was on screen, and with the props applied but
