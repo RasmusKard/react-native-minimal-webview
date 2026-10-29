@@ -8,10 +8,18 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
-<li><a href="" aria-current="page">DownloadResult</a></li></ul>
-<h1>Type Alias DownloadResult</h1></div>
-<div class="tsd-signature"><span class="tsd-kind-type-alias">DownloadResult</span><span class="tsd-signature-symbol">:</span> <a href="Download.html" class="tsd-signature-type tsd-kind-type-alias">Download</a> <span class="tsd-signature-symbol">|</span> <a href="DownloadFailure.html" class="tsd-signature-type tsd-kind-type-alias">DownloadFailure</a></div>
-<div class="tsd-comment tsd-typography"><p>What <code>onDownload</code> gets.</p>
+<li><a href="" aria-current="page">BridgeErrorCode</a></li></ul>
+<h1>Type Alias BridgeErrorCode</h1></div>
+<div class="tsd-signature"><span class="tsd-kind-type-alias">BridgeErrorCode</span><span class="tsd-signature-symbol">:</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;timeout&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;not_found&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;handler_error&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;navigated&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;unavailable&quot;</span></div>
+<div class="tsd-comment tsd-typography"><p>Why a bridge call rejected.</p>
+<ul>
+<li><code>timeout</code>: no answer in time.</li>
+<li><code>not_found</code>: no handler for the method.</li>
+<li><code>handler_error</code>: the handler threw or rejected (the <code>message</code> is its error's), or a script talking to the bridge's
+transport itself sent a code not listed here.</li>
+<li><code>navigated</code>: the page navigated or crashed, or the WebView unmounted, while the call was pending.</li>
+<li><code>unavailable</code>: the WebView lacks the features the bridge needs (Android System WebView older than 101).</li>
+</ul>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">

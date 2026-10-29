@@ -15,8 +15,9 @@
 newer SDK or androidx.webkit adds (under a root's <code>other</code>).</p>
 <p>The keys the SDK lists autocomplete, with their <code>@since</code>; the constants are in <a href="../modules/AndroidConstants.html" class="tsd-kind-namespace">AndroidConstants</a>.</p>
 <p>A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
-nothing here can crash the app. A root's default keys are the package's, and yours go over them. Read one back with
-the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
+nothing here can crash the app. A root's default keys are the package's, and yours go over them; a key the package
+doesn't set keeps the platform's default (<code>acceptThirdPartyCookies</code> is off, for one). Read a key back with the ref's
+<a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">

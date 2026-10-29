@@ -34,8 +34,8 @@ const MAX_QUEUE = 1000;
  * `bridge` prop.
  *
  * The type arguments type the method names, params, results and event payloads of `call`, `handle`, `emit` and `on`;
- * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws for an invalid
- * origin rule or timeout.
+ * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an `Error` for an
+ * invalid origin rule or timeout.
  * @see [Bridge example](../../guides/examples.md#the-bridge)
  * @group Bridge
  */
