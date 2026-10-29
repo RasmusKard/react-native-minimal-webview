@@ -1,0 +1,10 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "extends": ["./typedoc.json"],
+  "entryPoints": ["../extensions/src/index.ts"],
+  "tsconfig": "../extensions/tsconfig.json",
+  "out": "../docs/extensions",
+  "readme": "../extensions/README.md",
+  "name": "@react-native-minimal-webview/extensions",
+  "groupOrder": ["Extensions", "Values", "Events"]
+}

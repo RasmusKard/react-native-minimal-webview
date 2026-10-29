@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../../..",
+    "types": ["jest", "node"],
+    "paths": { "react-native-minimal-webview": ["../../../src/index.ts"] }
+  },
+  "include": ["./"],
+  "exclude": []
+}

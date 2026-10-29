@@ -1,0 +1,10 @@
+{
+  "// ": "The build: it reads react-native-minimal-webview's types from its build, so it runs after the core's (npm run prepare).",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./build"
+  },
+  "include": ["./src", "./*/*.ts"],
+  "exclude": ["**/__tests__/*", "./build"]
+}

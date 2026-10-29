@@ -1,9 +1,9 @@
-# Unused Swift. Builds the example app (the only buildable target that compiles ios/) and reports on ios/ only.
+# Unused Swift. Builds the example app (the only target that compiles ios/ and extensions/) and reports on those.
 project: example/ios/reactnativeminimalwebviewexample.xcworkspace
 schemes: [reactnativeminimalwebviewexample]
 retain_public: true          # a library: its public API has no callers in this workspace
 retain_objc_annotated: true  # @objc invalidate() is called by React Native through the runtime
-report_include: ["ios/**"]
+report_include: ["ios/**", "extensions/**"]
 relative_results: true
 disable_update_check: true
 strict: true                 # exit non-zero on any finding: the baseline is 0

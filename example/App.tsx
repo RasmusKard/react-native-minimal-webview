@@ -4,6 +4,7 @@ import {
   type LoadErrorEvent,
   type WebViewSource,
   WebView,
+  useExtensions,
   createBridge,
   type PermissionRequest,
   type FileRequest,
@@ -20,9 +21,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import { isPageCounterEvent } from 'sample-extension';
+import { type PageCounterEvent, pageCounter } from 'sample-extension';
 
-import { SUITES, launchMarks, onDriverRequest, pollForSuites, type Harness } from './harness';
+import {
+  SUITES,
+  launchMarks,
+  onDriverRequest,
+  pollForSuites,
+  type Harness,
+  type HarnessProps,
+} from './harness';
 
 const PAGES = 'http://localhost:8090';
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
@@ -52,6 +60,16 @@ const events: Harness['events'] = {
 const pageEvents: unknown[] = [];
 const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
 
+/** The page counter's events, into the logs. */
+function onPageCounterEvent(event: PageCounterEvent) {
+  if (event.name === 'sample.pageCounter.pageLoaded') events.pageCounts.push(event.payload);
+  else if (event.name === 'sample.pageCounter.documentEnd') events.documentEnds.push(event.payload);
+  // The hook's ask: the return value is its answer.
+  else if (event.name === 'sample.pageCounter.label') return `page ${event.payload.count}`;
+  else events.hookEvents.push(event.name);
+  return undefined;
+}
+
 /** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
   const [key, setKey] = useState(0);
@@ -66,7 +84,7 @@ export default function App() {
   const [extraWebViews, setExtraWebViews] = useState(0);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
-  const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
+  const [extraProps, setProps] = useState<HarnessProps>({});
   const [driverRequest, setDriverRequest] = useState('');
   const [error, setError] = useState<LoadFailure | null>(null);
   useEffect(() => {
@@ -91,6 +109,10 @@ export default function App() {
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
     undefined
   );
+  const { extensions = [], ...props } = extraProps;
+  const hooks = useExtensions([pageCounter(true, onPageCounterEvent), ...extensions], {
+    onHookEvent: (event) => void events.hookEvents.push(event.name),
+  });
   const harness: Harness = {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
@@ -141,18 +163,7 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            hookOptions={{ 'sample.pageCounter': true }}
-            onHookEvent={(event) => {
-              if (!isPageCounterEvent(event)) events.hookEvents.push(event.name);
-              else if (event.name === 'sample.pageCounter.pageLoaded')
-                events.pageCounts.push(event.payload);
-              else if (event.name === 'sample.pageCounter.documentEnd')
-                events.documentEnds.push(event.payload);
-              // The hook's ask: the return value is its answer.
-              else if (event.name === 'sample.pageCounter.label')
-                return `page ${event.payload.count}`;
-              else events.hookEvents.push(event.name);
-            }}
+            {...hooks}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
             onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
@@ -181,8 +192,8 @@ export default function App() {
               events.loads.push('end');
               events.outcomes.push(outcome);
             }}
-            {...extraProps}
-            ios={{ configuration: IOS_CONFIGURATION, ...extraProps.ios }}
+            {...props}
+            ios={{ configuration: IOS_CONFIGURATION, ...props.ios }}
           />
         </Remountable>
         {error ? <ErrorScreen error={error} onRetry={() => ref.current?.reload()} /> : null}

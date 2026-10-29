@@ -4,7 +4,8 @@
     "strict": true,
     "paths": {
       "react-native-minimal-webview": ["../src/index"],
-      "react-native-minimal-webview/*": ["../src/*"]
+      "react-native-minimal-webview/*": ["../src/*"],
+      "@react-native-minimal-webview/extensions": ["../extensions/src/index"]
     }
   }
 }

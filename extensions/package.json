@@ -1,0 +1,56 @@
+{
+  "name": "@react-native-minimal-webview/extensions",
+  "version": "0.1.0",
+  "description": "react-native-webview props for react-native-minimal-webview, as native hooks for its useExtensions",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/src/index.d.ts",
+      "react-native": "./src/index.ts",
+      "default": "./build/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "react-native": "src/index.ts",
+  "files": [
+    "build",
+    "!build/gradle",
+    "src",
+    "!src/**/__tests__",
+    "*/*.swift",
+    "*/*.kt",
+    "*/*.ts",
+    "MinimalWebViewExtensions.podspec",
+    "build.gradle",
+    "expo-module.config.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "tsc"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "react-native-minimal-webview",
+    "react-native-webview"
+  ],
+  "repository": "https://github.com/RasmusKard/react-native-minimal-webview",
+  "bugs": {
+    "url": "https://github.com/RasmusKard/react-native-minimal-webview/issues"
+  },
+  "author": "Rasmus Kard <rasmus.kard@delfi.ee> (https://github.com/RasmusKard)",
+  "license": "MIT",
+  "homepage": "https://github.com/RasmusKard/react-native-minimal-webview/tree/main/extensions#readme",
+  "devDependencies": {
+    "react-native-minimal-webview": "file:.."
+  },
+  "peerDependencies": {
+    "expo": ">=53",
+    "react-native-minimal-webview": "0.1.0",
+    "react": ">=19",
+    "react-native": ">=0.79"
+  }
+}
