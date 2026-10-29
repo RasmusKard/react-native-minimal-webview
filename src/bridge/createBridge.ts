@@ -6,7 +6,7 @@ import type {
   BridgeOptions,
   BridgeSender,
 } from '../types';
-import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
+import { codedError, createEndpoint, parseOrigin } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
@@ -153,7 +153,7 @@ export function createBridge<
     handle: endpoint.handle,
     call(method, params, callOptions) {
       if (unavailable)
-        return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
+        return Promise.reject(codedError({ code: 'unavailable', message: unavailableMessage }));
       return endpoint.call(method, params, callOptions);
     },
     emit: endpoint.emit,

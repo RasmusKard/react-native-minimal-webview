@@ -1453,7 +1453,7 @@ async function settings(h: Harness) {
       );
       r.check(
         'get rejects for an unknown property',
-        (await get('scrollView.nope')) === 'native_error'
+        (await get('scrollView.nope')) === 'not_found'
       );
       const call = (
         method: string,
@@ -1520,7 +1520,7 @@ async function settings(h: Harness) {
         { completion: 'value' }
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
-      // iOS 18 selectors: below it they reject with native_error, as the floor should.
+      // iOS 18 selectors: below it they reject with not_found, as the floor should.
       if (parseFloat(String(Platform.Version)) >= 18) {
         await page(`sessionStorage.setItem('mrw', '1')`);
         const session = await call(
@@ -1558,7 +1558,7 @@ async function settings(h: Harness) {
       );
       r.check(
         'call rejects an unknown selector',
-        (await call('webView.nope:', [1])) === 'native_error'
+        (await call('webView.nope:', [1])) === 'not_found'
       );
       r.check(
         'call rejects a wrong argument count',
@@ -1629,7 +1629,7 @@ async function settings(h: Harness) {
         (await get('settings.paymentRequestEnabled')) === true
       );
       r.check('get reads an is-getter', (await get('webView.verticalScrollBarEnabled')) === true);
-      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'native_error');
+      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'not_found');
       const call = (method: string, args?: unknown[]) =>
         h.ref.current?.call(method, args).catch(errorCode);
       r.check('call runs a WebView method', (await call('webView.clearCache', [true])) === null);
@@ -1656,7 +1656,7 @@ async function settings(h: Harness) {
       r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
       r.check(
         'call rejects an unknown root',
-        (await call('clearCache', [true])) === 'native_error'
+        (await call('clearCache', [true])) === 'not_found'
       );
       // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
       h.setProps({ android: { webView: { backgroundColor: 0 } } });
@@ -2362,8 +2362,8 @@ async function sampleExtension(h: Harness) {
     await h.ref.current?.hook('noSuchHook', 'count').catch(errorCode),
   ];
   r.check(
-    'ref.hook rejects with hook_not_handled when no attached hook handles the method',
-    unhandled.every((code) => code === 'hook_not_handled'),
+    'ref.hook rejects with not_found when no attached hook handles the method',
+    unhandled.every((code) => code === 'not_found'),
     unhandled
   );
   // A changed value reaches the attached hook (onOptionsChange), which stamps the page under the new name.
@@ -2401,6 +2401,14 @@ async function sampleExtension(h: Harness) {
       h.events.hookEvents
     );
   }
+  // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
+  h.setProps({ onHookEvent: () => new Promise<never>(() => {}) });
+  await sleep(100);
+  const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
+  await sleep(200);
+  await recreate(h, {}, true);
+  const unmounted = await Promise.race([held, sleep(3000).then(() => 'still pending')]);
+  r.check('unmount rejects a ref.hook in flight with navigated', unmounted === 'navigated', unmounted);
   // HTTP auth, which the core declines: the hook's delegate (client) answers it.
   await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } }, true);
   await openPage(h, fresh(h, '/auth?hook=1'));

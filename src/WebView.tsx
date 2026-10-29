@@ -3,7 +3,7 @@ import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from '
 import { AppState, Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
-import { bridgeError } from './bridge/endpoint';
+import { codedError } from './bridge/endpoint';
 import { DEFAULTS } from './defaults.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
@@ -182,20 +182,46 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const attachmentRef = useRef<Attachment>(undefined);
   const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
 
+  // The rejecters of native calls not settled yet. An unmount rejects them: native may never answer (a hook handler
+  // that never replies), and a late answer then settles nothing.
+  const [inFlight] = useState(() => new Set<(error: Error) => void>());
+  useEffect(
+    () => () => {
+      const message = 'the WebView unmounted before the call was answered';
+      inFlight.forEach((reject) => reject(codedError({ code: 'navigated', message })));
+      inFlight.clear();
+    },
+    [inFlight]
+  );
+
   // A handle can outlive its native view (one captured before an unmount): navigation is then a no-op, and what
   // answers rejects with `unavailable`.
   const [handle] = useState((): WebViewRef => {
     const parsed = (json: string) => JSON.parse(json) as unknown;
     const gone = (): never => {
-      throw bridgeError({ code: 'unavailable', message: 'the WebView is gone' });
+      throw codedError({ code: 'unavailable', message: 'the WebView is gone' });
     };
+    const settled = (promise: Promise<string>) =>
+      new Promise<string>((resolve, reject) => {
+        inFlight.add(reject);
+        promise.then(
+          (value) => {
+            inFlight.delete(reject);
+            resolve(value);
+          },
+          (error: unknown) => {
+            inFlight.delete(reject);
+            reject(error);
+          }
+        );
+      });
     // Android can run a view function before Expo has registered the view and reject it with ERR_VIEW_NOT_FOUND:
     // try again each frame for about a second. An unmount ends the loop, as `call` then finds no view; so does the
     // background, where no frame comes.
     const mounted = async (call: () => Promise<string> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
-          return parsed(await (call() ?? gone()));
+          return parsed(await settled(call() ?? gone()));
         } catch (error) {
           if ((error as { code?: string }).code !== 'ERR_VIEW_NOT_FOUND') throw error;
           if (frame === 60 || AppState.currentState === 'background') gone();
