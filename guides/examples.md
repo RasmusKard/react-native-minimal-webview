@@ -239,7 +239,19 @@ MinimalWebViewHooks.register("myPackage.pageCounter") { webView, context -> // e
 }
 ```
 
+The module's JS exports a function that returns the hook's `HookExtension`, and the app passes it to `useExtensions`,
+as it does [@minimal-rn-webview/extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/)' functions:
+
 ```tsx
-<WebView hookOptions={{ 'myPackage.pageCounter': { label: 'a' } }} onHookEvent={({ name, payload }) => …} />; // the key enables the hook
+// In your module
+export const pageCounter = (label: string, onLoaded: (count: number) => void): HookExtension => ({
+  key: 'myPackage.pageCounter',
+  options: { label }, // its hookOptions value, which enables the hook
+  onEvent: ({ name, payload }) => name === 'myPackage.pageCounter.pageLoaded' && onLoaded(payload.count as number),
+});
+
+// In the app
+const hooks = useExtensions([pageCounter('a', setCount), loggedIn && basicAuthCredential(credential)]);
+<WebView source={source} ref={ref} {...hooks} />;
 await ref.current?.hook('myPackage.pageCounter', 'count'); // the handler's reply
 ```

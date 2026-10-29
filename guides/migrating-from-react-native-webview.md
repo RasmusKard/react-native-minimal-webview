@@ -74,7 +74,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onError`, `onHttpError` | `onError`, with `kind` `'network'`, `'ssl'` or `'http'` |
 | `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone` |
 | `renderLoading`, `renderError`, `startInLoadingState` | Your own views over the WebView ([below](#loading-and-error-screens)) |
-| `onScroll`, `onContentSizeChange` | An injected script that reports over the bridge ([below](#scroll-position)) |
+| `onContentSizeChange` | An injected script that reports over the bridge, as the scroll position does ([below](#scroll-position)) |
 | `source={require('./page.html')}` | A `file://` uri from expo-asset (`localUri`) |
 | `allowingReadAccessToURL` | `source.readAccessRoot` |
 | `source.method`, `source.body` | `source.body` makes the request a POST |
@@ -82,8 +82,14 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])`, `call('webView.clearHistory')`, `call('webView.clearFormData')` and `call('webView.requestFocus')`; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `downloadingMessage`, `nativeConfig`, and custom JS dialogs (react-native-webview has no prop for them) | A [native hook](examples.md#native-hooks) |
-| `nestedScrollEnabled` | A native hook with a touch listener that calls `requestDisallowInterceptTouchEvent(true)` on the WebView's parent. `android.webView.nestedScrollingEnabled` doesn't do it: the parent still takes the swipe |
+| `basicAuthCredential` | [`basicAuthCredential(credential)`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/basicAuthCredential.html) of [@minimal-rn-webview/extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/), passed to `useExtensions`, as are the functions below |
+| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/menuItems.html) |
+| `onScroll` | [`onScroll(handler)`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/onScroll.html) |
+| `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/hideKeyboardAccessoryView.html) |
+| `nestedScrollEnabled` | [`nestedScrollEnabled()`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/nestedScrollEnabled.html) |
+| `androidLayerType` | [`androidLayerType(type)`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/androidLayerType.html) |
+| Custom JS dialogs (react-native-webview has no prop for them) | [`dialogs(onDialog)`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/dialogs.html) |
+| `keyboardDisplayRequiresUserAction`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `downloadingMessage`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
 | `autoManageStatusBarEnabled`, `useSharedProcessPool`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
 
@@ -100,7 +106,6 @@ The props whose setting has another name:
 | `forceDarkOn` | `android.settings.algorithmicDarkeningAllowed` (`forceDark` below `targetSdk` 33) |
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
 | `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`; on iOS `ios.preferences.allowFileAccessFromFileURLs` and `ios.configuration.allowUniversalAccessFromFileURLs` |
-| `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
 | `style={{ backgroundColor: 'transparent' }}` | `android.webView.other.backgroundColor: 0`; on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (the `ios.webView.opaque` key is [skipped with a warning](https://rasmuskard.github.io/minimal-rn-webview/types/IOSSettings.html)) |
 | `containerStyle` | A `View` around the WebView |
 
@@ -213,8 +218,8 @@ const [error, setError] = useState<LoadErrorEvent | null>(null);
 ## Scroll position
 
 An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
-in `allowedOrigins`. For offsets during a bounce or a pinch, a native hook observes `scrollView.contentOffset` on iOS
-and adds a listener to `context.scrollListeners` on Android.
+in `allowedOrigins`. For the offsets during a bounce or a pinch too, use
+[`onScroll`](https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/onScroll.html) of @minimal-rn-webview/extensions.
 
 ```tsx
 const scroll = {

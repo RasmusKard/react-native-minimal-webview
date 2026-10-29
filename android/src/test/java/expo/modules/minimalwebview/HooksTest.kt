@@ -127,6 +127,12 @@ class HooksTest {
   }
 
   @Test
+  fun `changed keys go in registration order, then the unregistered ones sorted`() {
+    val keys = linkedSetOf("typo", "c", "a", "b", "other")
+    assertEquals(listOf("b", "a", "c", "other", "typo"), inRegistrationOrder(keys, listOf("b", "x", "a", "c")))
+  }
+
+  @Test
   fun `a key turned on while not attached is added late, and an attached one never is`() {
     val attached = setOf("a")
     assertTrue(addedLate("b", null, mapOf("enabled" to false), attached))
@@ -144,6 +150,18 @@ class HooksTest {
     val made = hook("c") { WebView(it) }
     assertTrue(lateAttachWarning("c", made).orEmpty().contains("attaches only when the WebView is created"))
     assertTrue(lateAttachWarning("typo", null).orEmpty().contains("no hook is registered"))
+  }
+
+  @Test
+  fun `a decision goes to the first client that overrides it, and two that do warn once per callback`() {
+    val warnings = mutableListOf<String>()
+    val deciders = Deciders { warnings += it }
+    val overriding = { client: String -> client.startsWith("auth") }
+    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("plain", "auth1", "auth2"), overriding))
+    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("auth1", "auth2"), overriding))
+    assertEquals("auth1", deciders.first("onJsAlert", listOf("auth1"), overriding))
+    assertNull(deciders.first("onJsPrompt", listOf("plain"), overriding))
+    assertEquals(listOf("onReceivedHttpAuthRequest: more than one hook client overrides it; only the first one gets it"), warnings)
   }
 
   @Test

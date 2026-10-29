@@ -18,12 +18,12 @@ public enum MinimalWebViewHooks {
   private(set) static var hooks: [Hook] = []
 
   /// Registers the hook for `key`; call it from your module's `OnCreate`, before the first WebView. Hooks are
-  /// configured and attached in registration order. Keys are global, so prefix yours with your package's name: a
-  /// second hook under a key stops the app (`fatalError`, naming the key and both call sites). The same call running
-  /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. A helper that
-  /// calls `register` for other code is one call site, so a second hook under a key through it replaces the first
-  /// silently: pass the helper's caller's `file` and `line` on. `core` is reserved and refused: the package's own
-  /// events are named `core.…`.
+  /// configured and attached in registration order, which across packages is autolinking's: packages sorted by name.
+  /// Keys are global, so prefix yours with your package's name: a second hook under a key stops the app (`fatalError`,
+  /// naming the key and both call sites). The same call running again replaces its hook: a JS reload creates the
+  /// modules anew, and their `OnCreate` runs again. A helper that calls `register` for other code is one call site,
+  /// so a second hook under a key through it replaces the first silently: pass the helper's caller's `file` and `line`
+  /// on. `core` is reserved and refused: the package's own events are named `core.…`.
   /// - Parameters:
   ///   - webViewClass: The WKWebView subclass to make each WebView that enables this hook from, so it can override
   ///     what WKWebView lets it; nil leaves the class to the other hooks. A view whose enabled hooks name different
@@ -91,10 +91,14 @@ public protocol WebViewContext: AnyObject {
   /// variants (with or without `preferences`), and that delegate's own variant is called. A delegate that takes the
   /// action policy decides navigations instead of the navigation rules, which still decide new windows unless a UI
   /// delegate takes `createWebViewWith`. One that takes the response policy switches off `onError`'s `http` errors,
-  /// `onDownload` and opening an untaken download externally.
+  /// `onDownload` and opening an untaken download externally. A decision more than one delegate implements still goes
+  /// only to the first, and a `core.warning` names it, once per WebView.
   /// Every other callback the core implements reaches the core, then every delegate that implements it;
   /// `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation` reach every delegate too.
-  /// Any other callback (an authentication challenge) goes only to the first delegate that implements it.
+  /// An authentication challenge goes to each delegate that implements it, in order, until one answers other than
+  /// `.performDefaultHandling`, and gets WebKit's default handling when none does. The next delegate gets it only once
+  /// the one before has called its completion handler, which each must call exactly once, as WebKit requires.
+  /// Any other callback goes only to the first delegate that implements it.
   /// While `onDownload` is set, a delegate whose `didBecome` sets `download.delegate` takes the download from the core,
   /// and `onDownload` gets nothing for it.
   var navigationDelegates: [WKNavigationDelegate] { get set }
