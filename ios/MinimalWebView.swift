@@ -223,7 +223,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
     installScripts(configuration.userContentController)
-    let webView = MinimalWebViewHooks.webViewClass.init(frame: bounds, configuration: configuration)
+    let classes = hookContexts.compactMap { context in context.hook.webViewClass.map { (context.key, $0) } }
+    let webViewClass = classes.first?.1 ?? WKWebView.self
+    for (key, other) in classes where other != webViewClass {
+      emit("core.warning", ["message": "hookOptions.\(key): its webViewClass is not used, \(classes[0].0)'s is"])
+    }
+    let webView = webViewClass.init(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     webView.navigationDelegate = proxy
     webView.uiDelegate = proxy
