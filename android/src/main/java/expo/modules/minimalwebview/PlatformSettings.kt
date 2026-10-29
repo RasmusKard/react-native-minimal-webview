@@ -24,17 +24,27 @@ import java.lang.reflect.Modifier
  * setter for the value's type, a feature this device's WebView lacks (`UnsupportedOperationException`) or a method the
  * core owns is reported and skipped; nothing here throws at the caller except [get] and [call], which reject.
  */
-internal class PlatformSettings(private val owner: MinimalWebView) {
+internal class PlatformSettings(private val targets: (root: String) -> List<Target>?) {
   /** `root.key` -> the last value applied or rejected, so an unchanged value is neither applied nor reported again. */
   private val applied = mutableMapOf<String, Any?>()
+
+  /** `root.key` -> its getter's value before the first write ([NONE]: no getter), set back when the key is removed. */
+  private val originals = mutableMapOf<String, Any?>()
 
   /** A receiver (null for statics) and, for compat and CookieManager methods, the root object passed first. */
   internal class Target(val cls: Class<*>, val receiver: Any?, val leading: Any?)
 
-  /** Applies [settings]; returns the rejected keys with their reasons. [force] re-applies everything (a new WebView). */
+  /**
+   * Applies [settings], and sets a key applied before and missing now back to its value before the first write;
+   * returns the rejected keys with their reasons. [force] re-applies everything (a new WebView).
+   */
   fun apply(settings: Map<String, Any?>?, force: Boolean = false): List<Map<String, String>> {
-    if (force) applied.clear()
-    val rejected = mutableListOf<Map<String, String>>()
+    if (force) {
+      applied.clear()
+      originals.clear()
+    }
+    // Before the new values, so restoring one can't undo another that depends on it.
+    val rejected = restore(removedFrom = settings.orEmpty()).toMutableList()
     for ((rootName, entries) in settings.orEmpty()) {
       val targets = targets(rootName)?.takeIf { rootName in listOf("settings", "webView") }
       if (targets == null || entries !is Map<*, *>) {
@@ -46,11 +56,40 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
         val id = "$rootName.$key"
         if (applied.containsKey(id) && applied[id] == value) continue
         applied[id] = value
-        val problem = set(targets, key, value) ?: continue
+        val problem = write(targets, id, key, value) ?: continue
         rejected += mapOf("key" to id, "reason" to problem)
       }
     }
     return rejected
+  }
+
+  /** [set], keeping the value it replaces the first time under [id]; returns the problem, or null when it was set. */
+  private fun write(targets: List<Target>, id: String, key: String, value: Any?): String? {
+    if (id in originals) return set(targets, key, value)
+    return set(targets, key, value) {
+      originals[id] = runCatching { read(targets, key) }.getOrDefault(NONE)
+    }?.also { originals.remove(id) }
+  }
+
+  /** Forgets each applied key [removedFrom] no longer has and sets its original value back; returns what failed. */
+  private fun restore(removedFrom: Map<String, Any?>): List<Map<String, String>> {
+    val present = removedFrom.flatMap { (rootName, entries) ->
+      (entries as? Map<*, *>)?.keys.orEmpty().map { "$rootName.$it" }
+    }.toSet()
+    return (applied.keys - present).mapNotNull { id ->
+      applied.remove(id)
+      if (id !in originals) return@mapNotNull null
+      val original = originals.remove(id)
+      val (rootName, key) = id.split('.', limit = 2)
+      // shortcut: a setter with no getter (geolocationEnabled, initialScale, backgroundColor) can't be restored; add
+      // the platform's defaults for those if one matters.
+      val problem = if (original === NONE) {
+        "removed, but it has no getter to restore it from: it keeps its value until the WebView is recreated"
+      } else {
+        set(targets(rootName).orEmpty(), key, original)?.let { "removed, but restoring it failed: $it" }
+      }
+      problem?.let { mapOf("key" to id, "reason" to it) }
+    }
   }
 
   /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
@@ -66,23 +105,24 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     return (targets(parts[0]) ?: throw notFound("unknown root: use settings, webView, cookieManager or webStorage")) to parts[1]
   }
 
-  private fun targets(root: String): List<Target>? = when (root) {
-    "settings" -> listOf(
-      Target(WebSettings::class.java, owner.webView.settings, null),
-      Target(WebSettingsCompat::class.java, null, owner.webView.settings)
-    )
-    "webView" -> listOf(
-      Target(WebView::class.java, owner.webView, null),
-      Target(WebViewCompat::class.java, null, owner.webView),
-      Target(CookieManager::class.java, CookieManager.getInstance(), owner.webView)
-    )
-    "cookieManager" -> listOf(Target(CookieManager::class.java, CookieManager.getInstance(), null))
-    "webStorage" -> listOf(Target(WebStorage::class.java, WebStorage.getInstance(), null))
-    else -> null
-  }
-
   internal companion object {
     val NONE = Any()
+
+    /** The targets of [root] on [webView], or null for an unknown root. */
+    fun targets(webView: WebView, root: String): List<Target>? = when (root) {
+      "settings" -> listOf(
+        Target(WebSettings::class.java, webView.settings, null),
+        Target(WebSettingsCompat::class.java, null, webView.settings)
+      )
+      "webView" -> listOf(
+        Target(WebView::class.java, webView, null),
+        Target(WebViewCompat::class.java, null, webView),
+        Target(CookieManager::class.java, CookieManager.getInstance(), webView)
+      )
+      "cookieManager" -> listOf(Target(CookieManager::class.java, CookieManager.getInstance(), null))
+      "webStorage" -> listOf(Target(WebStorage::class.java, WebStorage.getInstance(), null))
+      else -> null
+    }
 
     /**
      * Methods the core owns: its clients, listeners, scripts, loads and navigations, and the WebView's lifetime and timers;
@@ -98,16 +138,9 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     /** [key]'s getter on the first of [targets] that has one, as JSON. */
     fun get(targets: List<Target>, key: String): String {
       if (key in OWNED) throw problem("$key is owned by the core")
-      val capital = key.replaceFirstChar { it.uppercaseChar() }
-      for (target in targets) {
-        for (method in target.cls.methods) {
-          val getter = method.name == "get$capital" || method.name == "is$capital"
-          if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
-          val args = arguments(method, target, emptyList()) ?: continue
-          return toJson(invoke(method, target, args))
-        }
-      }
-      throw notFound("no public getter for $key")
+      val value = read(targets, key)
+      if (value === NONE) throw notFound("no public getter for $key")
+      return toJson(value)
     }
 
     /** The first method [name] of [targets] that takes [args], its result as JSON. */
@@ -123,8 +156,11 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
       throw notFound("no public method $name takes these arguments")
     }
 
-    /** Calls [key]'s setter on the first target that takes [value]; returns the problem, or null when it was set. */
-    fun set(targets: List<Target>, key: String, value: Any?): String? {
+    /**
+     * Calls [key]'s setter on the first target that takes [value], running [before] just before it; returns the
+     * problem, or null when it was set.
+     */
+    fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
       if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
       val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
       if (setter in OWNED) return "owned by the core"
@@ -135,6 +171,7 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
           seen = true
           val args = arguments(method, target, listOf(value)) ?: continue
           return try {
+            before()
             invoke(method, target, args)
             null
           } catch (e: IllegalArgumentException) {
@@ -143,6 +180,20 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
         }
       }
       return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
+    }
+
+    /** [key]'s getter value (`getKey`, `isKey` or a non-void `key()`) on the first target that has one, or [NONE]. */
+    private fun read(targets: List<Target>, key: String): Any? {
+      val capital = key.replaceFirstChar { it.uppercaseChar() }
+      for (target in targets) {
+        for (method in target.cls.methods) {
+          val getter = method.name == "get$capital" || method.name == "is$capital"
+          if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
+          val args = arguments(method, target, emptyList()) ?: continue
+          return invoke(method, target, args)
+        }
+      }
+      return NONE
     }
 
     /** The method's arguments for [values], with the target's leading object first, or null when they don't fit. */

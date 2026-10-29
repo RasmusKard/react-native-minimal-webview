@@ -611,17 +611,17 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * WebKit settings by property name; see {@link IOSSettings}.
    *
-   * A key you remove keeps its value until the WebView is recreated, unless the package sets it (`inspectable`,
-   * `customUserAgent`): that one goes back to the package's default. The `userAgent` prop wins over the same key here.
+   * A key you remove goes back to the value it had before you first set it: the package's default or WebKit's. The
+   * `userAgent` prop wins over the same key here.
    * @ios
    */
   ios?: IOSSettings;
   /**
    * Android settings by setter name; see {@link AndroidSettings}.
    *
-   * A key you remove keeps its value until the WebView is recreated, unless the package sets it
-   * (`webContentsDebuggingEnabled`, `userAgentString`): that one goes back to the package's default. The `userAgent`
-   * prop wins over the same key here.
+   * A key you remove goes back to the value it had before you first set it: the package's (see
+   * {@link AndroidSettings.settings}) or the platform's. A key with no getter, such as `geolocationEnabled`, keeps its
+   * value until the WebView is recreated, with a warning. The `userAgent` prop wins over the same key here.
    * @android
    */
   android?: AndroidSettings;
