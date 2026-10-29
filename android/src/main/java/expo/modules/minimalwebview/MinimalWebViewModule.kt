@@ -7,6 +7,7 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
+import android.webkit.WebView
 import androidx.webkit.Profile
 import androidx.webkit.ProfileStore
 import androidx.webkit.WebViewCompat
@@ -79,14 +80,9 @@ class MinimalWebViewModule : Module() {
     Function("warmUp") { warmUp(appContext.reactContext ?: throw Exceptions.ReactContextLost()) }
 
     // ProfileStore wants the UI thread, and starts WebView there.
-    AsyncFunction("preconnect") { url: String ->
-      if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return@AsyncFunction
-      val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
-      when {
-        WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
-        WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
-      }
-    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("preconnect") { url: String -> preconnect(url) }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("setWebContentsDebuggingEnabled") { enabled: Boolean -> setWebContentsDebugging(enabled) }.runOnQueue(Queues.MAIN)
 
     Constant("defaultUserAgent") {
       WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
@@ -133,6 +129,21 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
     }
   }
+}
+
+private fun preconnect(url: String) {
+  if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return
+  val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
+  when {
+    WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
+    WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
+  }
+}
+
+/** Before the first WebView only stored, for each new WebView to apply: setting it now would start WebView. */
+private fun setWebContentsDebugging(enabled: Boolean) {
+  webContentsDebugging = enabled
+  if (webViewCreated) WebView.setWebContentsDebuggingEnabled(enabled)
 }
 
 private fun warmUp(context: Context) {

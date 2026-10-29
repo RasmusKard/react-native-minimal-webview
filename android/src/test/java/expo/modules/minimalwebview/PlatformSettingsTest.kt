@@ -100,6 +100,10 @@ class PlatformSettingsTest {
     assertEquals("no public setter" to none, set("missing", 1))
     assertEquals("not a public setter" to none, set("_int", 1))
     assertEquals("owned by the core" to none, set("webViewClient", 1))
+    assertEquals(
+      "owned by the core: use WebView.android.setWebContentsDebuggingEnabled" to none,
+      set("webContentsDebuggingEnabled", true)
+    )
     assertEquals("not supported by this WebView" to none, set("unsupported", 1))
     assertEquals("failed: java.lang.IllegalStateException: boom 1" to none, set("failing", 1))
   }

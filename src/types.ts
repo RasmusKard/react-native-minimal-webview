@@ -526,8 +526,8 @@ export type AndroidSettings = {
    * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
    * `acceptThirdPartyCookies`.
    *
-   * `webContentsDebuggingEnabled` is process-wide.
-   * @default `{ webContentsDebuggingEnabled: __DEV__ }`
+   * `webContentsDebuggingEnabled` is refused: it is process-wide, set with
+   * {@link WebView.android.setWebContentsDebuggingEnabled}.
    */
   webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
@@ -621,9 +621,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Android settings by setter name; see {@link AndroidSettings}.
    *
-   * A key you remove goes back to the value it had before you first set it: the package's (see
-   * {@link AndroidSettings.settings}) or the platform's. A key with no getter, such as `geolocationEnabled`, keeps its
-   * value until the WebView is recreated, with a warning. The `userAgent` prop wins over the same key here.
+   * A key you remove keeps its value until the WebView is recreated, unless the package sets it (`userAgentString`):
+   * that one goes back to the package's default. The `userAgent`
+   * prop wins over the same key here.
    * @android
    */
   android?: AndroidSettings;
@@ -874,14 +874,13 @@ export type WebViewRef = {
    *
    * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`.
    *
-   * Rejects with a {@link CodedError}: `not_found` for an unknown root or method (Android: or none of that name takes
-   * these arguments); `unavailable` for a compat method this WebView doesn't support (Android); `native_error` for a
-   * wrong argument count, an argument that doesn't fit, a method that raises, a result JSON can't carry (`NaN`), and
-   * what the core owns: on iOS every selector that loads, navigates (`setInteractionState:` too), runs a script, starts
-   * a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`,
-   * `new…` and reference-counting selectors; on Android (in `get` too) the loads, navigations, clients, JavaScript
-   * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
-   * `resumeTimers` and `evaluateJavascript`.
+   * Rejects with `native_error` for an unknown method, a wrong argument count, an argument that doesn't fit, a method
+   * that raises, a result JSON can't carry (iOS: `NaN`), and what the core owns: on iOS every selector that loads,
+   * navigates (`setInteractionState:` too), runs a script, starts a download or sets a delegate, and private (`_`),
+   * KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`, `new…` and reference-counting selectors; on Android (in
+   * `get` too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
+   * `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers`, `evaluateJavascript` and
+   * `setWebContentsDebuggingEnabled`.
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
    * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's

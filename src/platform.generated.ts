@@ -401,8 +401,6 @@ export type AndroidSettingKeys = {
      * @deprecated since API 23
      */
     verticalScrollbarOverlay?: boolean;
-    /** @since 19 */
-    webContentsDebuggingEnabled?: boolean;
     /** `WebViewCompat`, WebView feature `MUTE_AUDIO` */
     audioMuted?: boolean;
     /** `WebViewCompat`, WebView feature `MULTI_PROFILE` */

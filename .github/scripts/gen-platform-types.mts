@@ -416,6 +416,8 @@ const JAVA_TYPES: Record<string, string> = {
   String: 'string',
 };
 const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase());
+/** Primitive setters the core owns (`OWNED` in PlatformSettings.kt), which settings refuse. */
+const OWNED_KEYS = new Set(['webContentsDebuggingEnabled']);
 
 /** `set<Key>(<leading><simple>)V` methods of a class (`android/webkit/WebView`) from api-versions.xml: key -> TypeScript member. */
 function androidKeys(xml: string, cls: string, leading = '', text = '') {
@@ -426,7 +428,7 @@ function androidKeys(xml: string, cls: string, leading = '', text = '') {
   );
   const keys: Record<string, string> = {};
   for (const [, name, descriptor, attributes] of block.matchAll(pattern)) {
-    if (attributes.includes('removed=')) continue;
+    if (attributes.includes('removed=') || OWNED_KEYS.has(lowerFirst(name))) continue;
     const since = attributes.match(/since="(\d+)"/)?.[1] ?? '1';
     const deprecated = attributes.match(/deprecated="(\d+)"/)?.[1];
     keys[lowerFirst(name)] =
