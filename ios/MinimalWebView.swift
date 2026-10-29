@@ -45,6 +45,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var observations: [NSKeyValueObservation] = []
   private(set) lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
+  /// The decision callbacks a `core.warning` said more than one hook delegate implements: one warning each.
+  private var warnedDecisions: Set<String> = []
   private var detachers: [() -> Void] = []
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
@@ -484,6 +486,7 @@ extension MinimalWebView {
       proxy.navigationDelegates = newValue
       webView?.navigationDelegate = nil
       webView?.navigationDelegate = proxy
+      warnSharedDecisions()
     }
   }
 
@@ -493,6 +496,13 @@ extension MinimalWebView {
       proxy.uiDelegates = newValue
       webView?.uiDelegate = nil
       webView?.uiDelegate = proxy
+      warnSharedDecisions()
+    }
+  }
+
+  private func warnSharedDecisions() {
+    for name in proxy.sharedDecisions where warnedDecisions.insert(name).inserted {
+      emit("core.warning", ["message": "\(name): more than one hook delegate implements it; only the first one gets it"])
     }
   }
 

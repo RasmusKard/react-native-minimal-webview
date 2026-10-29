@@ -97,6 +97,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private var mounted = false
 
   internal val asks = Asks { onHookEvent(it) }
+  internal val deciders = Deciders { message -> mainHandler.post { warn(message) } }
 
   // Navigation state: native owns it and tells JS. The clients (MinimalWebViewClients.kt) write it.
   internal var url = ""

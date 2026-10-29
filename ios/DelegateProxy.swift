@@ -103,14 +103,23 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private static let actionPolicyWithPreferences =
     NSSelectorFromString("webView:decidePolicyForNavigationAction:preferences:decisionHandler:")
 
+  /// The decision callbacks more than one hook delegate implements, by selector name: only the first one gets each.
+  var sharedDecisions: [String] {
+    let policies = delegates(for: Self.actionPolicy).filter {
+      $0.responds(to: Self.actionPolicy) || $0.responds(to: Self.actionPolicyWithPreferences)
+    }
+    let shared = Self.decisions.filter { decision in delegates(for: decision).filter { $0.responds(to: decision) }.count > 1 }
+    return ((policies.count > 1 ? [Self.actionPolicy] : []) + shared).map(NSStringFromSelector)
+  }
+
   /// The decision callbacks the core implements: a hook delegate that implements one owns it. The action policy is
   /// not here: the proxy decides it above.
-  private static let decisions = Set([
+  private static let decisions = [
     "webView:decidePolicyForNavigationResponse:decisionHandler:",
     "webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:",
     "webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:",
     "webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:",
     "webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:",
     "webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:"
-  ].map(NSSelectorFromString))
+  ].map(NSSelectorFromString)
 }

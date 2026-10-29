@@ -263,6 +263,9 @@ proxyCheck("a default answer passes the challenge on", answered([Challenged(.per
 let later = Challenged(.useCredential)
 proxyCheck("any other answer stands", answered([Challenged(.cancelAuthenticationChallenge), later]) == .cancelAuthenticationChallenge && later.calls == 0)
 proxyCheck("nobody takes it: the default handling", answered([Challenged(.performDefaultHandling)]) == .performDefaultHandling)
+proxyCheck("a decision two delegates implement is shared", proxy([], [uiAlert, UIWithAlertAndPolicy()]).sharedDecisions == [NSStringFromSelector(alertPanel)])
+proxyCheck("either action policy variant counts", proxy([plain, preferring]).sharedDecisions == ["webView:decidePolicyForNavigationAction:decisionHandler:"])
+proxyCheck("one delegate per decision, another list's or a challenge: none shared", proxy([NavigationWithAlert(), plain, Challenged(.useCredential), Challenged(.useCredential)], [uiAlert]).sharedDecisions.isEmpty)
 print("\(proxyCount - proxyFailures)/\(proxyCount) proxy cases pass")
 
 // (name, file, readAccessRoot, the expected root, whether a warning)

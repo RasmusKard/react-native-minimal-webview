@@ -91,7 +91,8 @@ public protocol WebViewContext: AnyObject {
   /// variants (with or without `preferences`), and that delegate's own variant is called. A delegate that takes the
   /// action policy decides navigations instead of the navigation rules, which still decide new windows unless a UI
   /// delegate takes `createWebViewWith`. One that takes the response policy switches off `onError`'s `http` errors,
-  /// `onDownload` and opening an untaken download externally.
+  /// `onDownload` and opening an untaken download externally. A decision more than one delegate implements still goes
+  /// only to the first, and a `core.warning` names it, once per WebView.
   /// Every other callback the core implements reaches the core, then every delegate that implements it;
   /// `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation` reach every delegate too.
   /// An authentication challenge goes to each delegate that implements it, in order, until one answers other than
