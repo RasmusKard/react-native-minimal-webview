@@ -59,7 +59,8 @@ function onInboxNotification() {
     { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides, within 1 s
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
-    { mainFrame: true, action: 'external' }, // other sites, tel: and mailto: links, new windows; a subframe's is blocked
+    { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
+    { mainFrame: true, action: 'external' }, // other sites and new windows; any other subframe navigation is blocked
   ]}
   onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'external')}
   onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
@@ -163,9 +164,46 @@ const title = await ref.current?.evaluate('document.title'); // an expression, n
 await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
 ```
 
+## Cookies
+
+Cookies are platform objects, reached through `call`. Android's `CookieManager` is shared by every WebView in the app.
+On iOS the WebView's own cookie store takes an `NSHTTPCookie`, as `{ cookie: properties }` (the required keys and the
+completion shapes are in [`call`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call)); the
+[`sharedCookies`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#sharedcookies) prop copies
+`HTTPCookieStorage` into it instead.
+
+```tsx
+// Android
+await ref.current?.call('cookieManager.setCookie', ['https://example.com', 'session=abc; Path=/; Secure']);
+const header = await ref.current?.call('cookieManager.getCookie', ['https://example.com']); // 'session=abc'
+
+// iOS
+await ref.current?.call(
+  'httpCookieStore.setCookie:completionHandler:',
+  [{ cookie: { Name: 'session', Value: 'abc', Domain: 'example.com', Path: '/' } }],
+  { completion: 'void' }
+);
+const cookies = await ref.current?.call('httpCookieStore.getAllCookies:', [], { completion: 'value' }); // [{ Name, Value, … }]
+```
+
+## Local files
+
+An `html` string takes a `baseUrl` that its relative URLs resolve against. A file is a `file://` uri, such as an
+expo-asset's `localUri`: iOS gives the page read access to the file's directory, and Android needs `allowFileAccess`,
+which lets a `file:` page read any file the app can. `file:///android_asset/…` needs no setting.
+
+```tsx
+const [assets] = useAssets(require('./page.html'));
+
+<WebView source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }} />;
+{assets?.[0]?.localUri && (
+  <WebView source={{ uri: assets[0].localUri }} android={{ settings: { allowFileAccess: true } }} />
+)}
+```
+
 ## Page requests
 
-Each works without its prop; the prop answers it or is told afterwards.
+Each has a default without its prop (Android denies permissions); the prop answers it or is told afterwards.
 
 ```tsx
 <WebView
@@ -206,7 +244,7 @@ hook gets the real `WKWebView` or `WebView` and chains its own delegates and cli
 MinimalWebViewHooks.register("myPackage.pageCounter", configure: { configuration, context in // before the WKWebView exists
   configuration.dataDetectorTypes = .phoneNumber
 }) { webView, context in // once it exists; returns a detach closure, or nil
-  let counter = PageCounter(context: context) // a WKNavigationDelegate
+  let counter = PageCounter(context: context) // a WKNavigationDelegate; it holds the context weakly (see `WebViewContext`)
   context.navigationDelegates.append(counter)
   context.handle("count") { args, reply in reply(counter.count) }
   context.onDocumentEnd { reason in counter.pageEnded() }
