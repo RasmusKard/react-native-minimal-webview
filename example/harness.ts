@@ -2517,7 +2517,7 @@ async function sampleExtension(h: Harness) {
   const late = await h.ref.current?.hook('sample.pageCounter', 'count').catch(errorCode);
   r.check(
     'a key turned on after creation whose hook has configure warns and attaches nothing',
-    late === 'hook_not_handled' && warnings.warned('attaches only when the WebView is created'),
+    late === 'not_found' && warnings.warned('attaches only when the WebView is created'),
     { late, warnings: warnings.lines }
   );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
