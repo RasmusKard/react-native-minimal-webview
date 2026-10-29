@@ -35,6 +35,12 @@ public class SampleExtensionModule: Module {
         return nil
       }
       PerfProbe.register()
+      // The refresh control exists before `pullToRefresh` shows it, so it can be styled at attach.
+      MinimalWebViewHooks.register("sample.seams") { webView, context in
+        context.refreshControl?.tintColor = .white
+        context.handle("tint") { [weak webView] _, reply in reply(webView?.scrollView.refreshControl?.tintColor == .white) }
+        return nil
+      }
     }
     // The perf suite's frame-gap probe (PerfProbe.swift): module functions, so they work without a hook too.
     AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
