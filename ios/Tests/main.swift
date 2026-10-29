@@ -242,6 +242,27 @@ proxyCheck("the proxy answers the preferences variant", proxy([]).responds(to: #
 let uiAlert = UIWithAlertAndPolicy()
 proxyCheck("an earlier UI delegate's alert beats a navigation delegate's", proxy([NavigationWithAlert()], [uiAlert]).forwardingTarget(for: alertPanel) as AnyObject? === uiAlert)
 proxyCheck("a navigation delegate's alert is not an alert owner", proxy([NavigationWithAlert()]).forwardingTarget(for: alertPanel) as AnyObject? === core)
+final class Challenged: NSObject, WKNavigationDelegate {
+  let answer: URLSession.AuthChallengeDisposition
+  var calls = 0
+  init(_ answer: URLSession.AuthChallengeDisposition) { self.answer = answer }
+  @objc func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+    calls += 1
+    completionHandler(answer, nil)
+  }
+}
+let challenge = class_createInstance(URLAuthenticationChallenge.self, 0) as! URLAuthenticationChallenge
+func answered(_ delegates: [WKNavigationDelegate]) -> URLSession.AuthChallengeDisposition? {
+  var answer: URLSession.AuthChallengeDisposition?
+  proxy(delegates).webView(webView, didReceive: challenge) { disposition, _ in answer = disposition }
+  return answer
+}
+proxyCheck("no hook: a challenge gets the default handling", answered([]) == .performDefaultHandling)
+let trusting = Challenged(.useCredential)
+proxyCheck("a default answer passes the challenge on", answered([Challenged(.performDefaultHandling), plain, trusting]) == .useCredential && trusting.calls == 1)
+let later = Challenged(.useCredential)
+proxyCheck("any other answer stands", answered([Challenged(.cancelAuthenticationChallenge), later]) == .cancelAuthenticationChallenge && later.calls == 0)
+proxyCheck("nobody takes it: the default handling", answered([Challenged(.performDefaultHandling)]) == .performDefaultHandling)
 print("\(proxyCount - proxyFailures)/\(proxyCount) proxy cases pass")
 
 // (name, file, readAccessRoot, the expected root, whether a warning)

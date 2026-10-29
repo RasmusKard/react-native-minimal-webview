@@ -1,9 +1,9 @@
 import WebKit
 
-/// The WKWebView's navigation and UI delegate. It implements only the observation callbacks the core doesn't, to give
-/// them to every hook delegate; every other callback is forwarded to the core (MinimalWebView) or to a hook delegate,
-/// by the rule in `WebViewContext`. `responds(to:)` says yes for whatever any of them implements, which WebKit reads
-/// once, when the proxy is assigned as the delegate.
+/// The WKWebView's navigation and UI delegate. It implements the observation callbacks the core doesn't, to give them
+/// to every hook delegate, and the authentication challenge, to offer it to each in turn; every other callback is
+/// forwarded to the core (MinimalWebView) or to a hook delegate, by the rule in `WebViewContext`. `responds(to:)` says
+/// yes for whatever any of them implements, which WebKit reads once, when the proxy is assigned as the delegate.
 final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private weak var core: NSObject?
   var navigationDelegates: [WKNavigationDelegate] = []
@@ -51,6 +51,32 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   func webViewDidClose(_ webView: WKWebView) {
     uiDelegates.forEach { $0.webViewDidClose?(webView) }
   }
+
+  /// An authentication challenge, offered to each navigation delegate that implements it, in order, until one answers
+  /// other than `.performDefaultHandling`; WebKit's default handling when none does.
+  func webView(
+    _ webView: WKWebView,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    let takers = navigationDelegates.filter { ($0 as? NSObject)?.responds(to: Self.challenge) == true }
+    Self.offer(challenge, webView, takers[...], completionHandler)
+  }
+
+  private static func offer(
+    _ challenge: URLAuthenticationChallenge,
+    _ webView: WKWebView,
+    _ takers: ArraySlice<WKNavigationDelegate>,
+    _ completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    guard let taker = takers.first else { return completionHandler(.performDefaultHandling, nil) }
+    taker.webView?(webView, didReceive: challenge) { disposition, credential in
+      guard disposition == .performDefaultHandling else { return completionHandler(disposition, credential) }
+      offer(challenge, webView, takers.dropFirst(), completionHandler)
+    }
+  }
+
+  private static let challenge = NSSelectorFromString("webView:didReceiveAuthenticationChallenge:completionHandler:")
 
   /// The action policy, a decision the first navigation delegate that implements either variant owns, else the core.
   /// WebKit calls only this variant once the delegate answers it, so the proxy answers it always and calls the owner's
