@@ -25,4 +25,17 @@ class DocumentScopeTest {
     scope.end(End.CLOSING)
     assertEquals(listOf(End.CLOSING), heard)
   }
+
+  @Test
+  fun `a skipsOpening registrant doesn't hear the commit that opens a Document with none open`() {
+    val scope = DocumentScope()
+    val skipped = mutableListOf<End>()
+    val plain = mutableListOf<End>()
+    scope.register(skipsOpening = true) { skipped += it }
+    scope.register { plain += it }
+    val ends = listOf(End.COMMITTED, End.COMMITTED, End.CRASHED, End.CRASHED, End.COMMITTED, End.COMMITTED, End.CLOSING)
+    ends.forEach(scope::end)
+    assertEquals(listOf(End.COMMITTED, End.CRASHED, End.CRASHED, End.COMMITTED, End.CLOSING), skipped)
+    assertEquals(ends, plain)
+  }
 }

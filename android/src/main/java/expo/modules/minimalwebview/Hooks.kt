@@ -152,7 +152,8 @@ interface WebViewContext {
   /**
    * Sends the event and waits for JS's answer: the `onHookEvent` handler's return value, a promise awaited. A throw or
    * no handler answers null. There is no timeout: an ask still open when the Document ends answers null, and one made
-   * after the context's attach ended answers null at once. A number answers as a `Double`.
+   * after the view closed answers null at once. An ask made before the WebView's first commit (in `attach`) belongs to
+   * the Document that commit opens. A number answers as a `Double`.
    */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 

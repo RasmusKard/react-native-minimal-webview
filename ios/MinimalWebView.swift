@@ -94,8 +94,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     clipsToBounds = true
     // What belongs to the Document (DocumentScope), reset in this order at every end. `closing` comes from invalidate,
     // at unmount. In the deinit fallback self is already nil, so only the asks end (captured without the view): WebKit
-    // throws for a decision handler released uncalled.
-    document.register { [asks] in asks.documentEnded($0) }
+    // throws for a decision handler released uncalled. The asks and the hooks skip the commit that opens a Document
+    // with none open: what a hook starts in attach, or after a crash, belongs to the Document that commit opens.
+    document.register(skipsOpening: true) { [asks] in asks.documentEnded($0) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in
       guard let self else { return }
@@ -108,7 +109,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The spinner belongs to a load, and a crash ends the load without a delegate callback.
     document.register { [weak self] reason in if reason == .crashed { self?.refreshControl.endRefreshing() } }
     // The hooks' own handlers, on their contexts: the scope has no unregister.
-    document.register { [weak self] reason in self?.hookContexts.forEach { $0.documentEnded(reason) } }
+    document.register(skipsOpening: true) { [weak self] reason in
+      self?.hookContexts.forEach { $0.documentEnded(reason) }
+    }
   }
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.

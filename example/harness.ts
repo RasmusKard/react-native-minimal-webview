@@ -2306,6 +2306,10 @@ async function fullscreen(h: Harness) {
 /** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
 async function sampleExtension(h: Harness) {
   const r = reporter('sampleExtension');
+  const mountEnds = h.events.documentEnds.length;
+  await recreate(h, {}, true);
+  const phantom = h.events.documentEnds.slice(mountEnds).filter((end) => end.url === '');
+  r.check('the first commit after mount ends no Document', phantom.length === 0, phantom);
   // WebKit moves its back-forward list to the next page a moment before it reports the commit, so what a handler sees
   // can depend on timing: several same-origin navigations of each kind, each ending the page before it.
   const misses: unknown[] = [];
