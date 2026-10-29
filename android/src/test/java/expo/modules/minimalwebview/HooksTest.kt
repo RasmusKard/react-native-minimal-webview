@@ -1,5 +1,6 @@
 package expo.modules.minimalwebview
 
+import android.content.Context
 import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
@@ -13,13 +14,14 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. Which hooks
- * a WebView's `hookOptions` attach, and which registrations under a key that is taken fail.
+ * a WebView's `hookOptions` attach, which one's factory makes it, and which registrations under a key that is taken fail.
  */
 class HooksTest {
   private class Plain : WebViewClient()
@@ -49,7 +51,8 @@ class HooksTest {
   private val safeBrowsing = arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java)
   private val url = arrayOf(WebView::class.java, WebResourceRequest::class.java)
 
-  private fun hook(key: String) = MinimalWebViewHooks.Hook(key, null) { _, _ -> null }
+  private fun hook(key: String, factory: ((Context) -> WebView)? = null) =
+    MinimalWebViewHooks.Hook(key, factory, null) { _, _ -> null }
 
   @Test
   fun `a plain subclass overrides only what it declares`() {
@@ -96,6 +99,16 @@ class HooksTest {
   }
 
   @Test
+  fun `the first attaching hook with a factory makes the WebView, and a different one is reported`() {
+    val shared: (Context) -> WebView = { WebView(it) }
+    val other: (Context) -> WebView = { WebView(it) }
+    assertEquals(null to emptyList<String>(), pickFactory(listOf(hook("a"), hook("b"))))
+    val (maker, unused) = pickFactory(listOf(hook("a"), hook("b", shared), hook("c", other), hook("d", shared)))
+    assertEquals("b", maker?.key)
+    assertEquals("the same object on two hooks is one factory", listOf("c"), unused)
+  }
+
+  @Test
   fun `a second hook under a key throws, naming it, and the same call again (a JS reload) replaces its hook`() {
     // A module's OnCreate, which a reload runs again.
     fun onCreate() = MinimalWebViewHooks.register("test.taken") { _, _ -> null }
@@ -114,12 +127,39 @@ class HooksTest {
   }
 
   @Test
-  fun `a key turned on after creation is added late, and one the WebView was created with never is`() {
-    val created = setOf("a")
-    assertTrue(addedLate("b", null, mapOf("enabled" to false), created))
-    assertTrue(addedLate("b", false, 0.0, created))
-    assertFalse("on already, so warned already", addedLate("b", true, mapOf("enabled" to false), created))
-    assertFalse("turned off", addedLate("b", true, false, created))
-    assertFalse("created with it, so attached or reported then", addedLate("a", false, true, created))
+  fun `a key turned on while not attached is added late, and an attached one never is`() {
+    val attached = setOf("a")
+    assertTrue(addedLate("b", null, mapOf("enabled" to false), attached))
+    assertTrue(addedLate("b", false, 0.0, attached))
+    assertFalse("on already, so attached or warned already", addedLate("b", true, mapOf("enabled" to false), attached))
+    assertFalse("turned off", addedLate("b", true, false, attached))
+    assertFalse("attached, so its hook gets the change", addedLate("a", false, true, attached))
+  }
+
+  @Test
+  fun `a late key attaches a hook without configure or a factory, and warns for one with either or none`() {
+    assertNull(lateAttachWarning("a", hook("a")))
+    val configured = MinimalWebViewHooks.Hook("b", null, { _, _ -> }) { _, _ -> null }
+    assertTrue(lateAttachWarning("b", configured).orEmpty().contains("attaches only when the WebView is created"))
+    val made = hook("c") { WebView(it) }
+    assertTrue(lateAttachWarning("c", made).orEmpty().contains("attaches only when the WebView is created"))
+    assertTrue(lateAttachWarning("typo", null).orEmpty().contains("no hook is registered"))
+  }
+
+  @Test
+  fun `a detached attachment drops emits and answers asks null at once`() {
+    val attachment = Attachment()
+    var sent = 0
+    val answers = mutableListOf<Any?>()
+    attachment.emit { sent++ }
+    attachment.ask({ answers += it }) { sent++ }
+    assertEquals(2, sent)
+    assertTrue(answers.isEmpty())
+
+    attachment.detach()
+    attachment.emit { sent++ }
+    attachment.ask({ answers += it }) { sent++ }
+    assertEquals(2, sent)
+    assertEquals(listOf<Any?>(null), answers)
   }
 }

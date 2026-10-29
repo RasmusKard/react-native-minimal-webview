@@ -14,9 +14,13 @@
 <div class="tsd-comment tsd-typography"><p>A promise-based RPC channel to <code>window.nativeBridge</code> in the page.</p>
 <p>Attach it with the <code>bridge</code> prop. What it sends waits for the page's <code>DOMContentLoaded</code>, so the handlers and
 listeners of the page's synchronous and deferred scripts are in place, and never reaches a later page, even one on
-the same origin; the page's own calls work earlier. Messages have no size limit.</p>
+the same origin. A call or event made while no WebView is mounted with the bridge waits the same way (a call's
+timeout runs meanwhile; the latest 1000 are kept), and unmounting rejects the calls in flight with <code>navigated</code>. The
+page's own calls don't wait: one made before React Native has registered its method rejects with <code>not_found</code>.
+Handlers and listeners belong to the bridge, not to a WebView: they stay across unmounts. Messages have no size
+limit.</p>
 <p>The page's <code>window.nativeBridge</code> has the same four methods, <code>call(method, params?, { timeoutMs? })</code>, <code>handle</code>, <code>emit</code>
-and <code>on</code>, and its calls reject with an <code>Error</code> whose <code>code</code> is a <a href="BridgeErrorCode.html" class="tsd-kind-type-alias">BridgeErrorCode</a>.</p>
+and <code>on</code>, and its calls reject with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
@@ -54,9 +58,8 @@ and <code>on</code>, and its calls reject with an <code>Error</code> whose <code
 <div class="tsd-signature tsd-anchor-link" id="call-1"><span class="tsd-kind-call-signature">call</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#callm">M</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#callm">M</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">params</span><span class="tsd-signature-symbol">?:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#methods">Methods</a><span class="tsd-signature-symbol">[</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#callm">M</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">&quot;params&quot;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">timeoutMs</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#methods">Methods</a><span class="tsd-signature-symbol">[</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#callm">M</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">&quot;result&quot;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><a href="#call-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Calls a method the page registered with <code>nativeBridge.handle</code>.</p>
-<p>Rejects with a <a href="BridgeCallError.html" class="tsd-kind-type-alias">BridgeCallError</a>; after <code>navigated</code> the page may have handled the call already, so retry only
-calls that are safe to repeat. <code>timeoutMs</code> overrides the bridge's for this call, and one that isn't 0 or more
-rejects with a plain <code>RangeError</code>.</p>
+<p>Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>timeout</code>, <code>not_found</code>, <code>handler_error</code>, <code>navigated</code> or <code>unavailable</code>.
+<code>timeoutMs</code> overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain <code>RangeError</code>.</p>
 </div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>
@@ -75,7 +78,8 @@ rejects with a plain <code>RangeError</code>.</p>
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="emit-1"><span class="tsd-kind-call-signature">emit</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#emite">E</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#emite">E</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">payload</span><span class="tsd-signature-symbol">?:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#events">Events</a><span class="tsd-signature-symbol">[</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#emite">E</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#emit-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Fires an event the page listens to with <code>nativeBridge.on</code>. Dropped if the page goes away before it arrives.</p>
+<div class="tsd-comment tsd-typography"><p>Fires an event the page listens to with <code>nativeBridge.on</code>.</p>
+<p>Dropped if the page goes away before it arrives, or if the page has no listener for it.</p>
 </div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>
@@ -113,6 +117,7 @@ rejects with a plain <code>RangeError</code>.</p>
 <div class="tsd-signature tsd-anchor-link" id="on-1"><span class="tsd-kind-call-signature">on</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#one">E</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#one">E</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">listener</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">payload</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#events">Events</a><span class="tsd-signature-symbol">[</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#one">E</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">sender</span><span class="tsd-signature-symbol">:</span> <a href="BridgeSender.html" class="tsd-signature-type tsd-kind-type-alias">BridgeSender</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">()</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">void</span><a href="#on-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Listens to <code>nativeBridge.emit(event, payload)</code> from the page. Returns an unsubscribe function.</p>
+<p>A listener that throws is reported as an unhandled promise rejection, and the event's later listeners don't run.</p>
 </div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>

@@ -1,15 +1,19 @@
 import { requireNativeModule, requireNativeView } from 'expo';
 import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, type ViewProps } from 'react-native';
+import { AppState, Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
-import { bridgeError } from './bridge/endpoint';
+import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
+import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
 import { DEFAULTS } from './defaults.generated';
+import { iosCompletions } from './platform.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookEvent,
+  InjectedScript,
   LoadErrorEvent,
   NavigationEvent,
+  NavigationRule,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
@@ -109,7 +113,9 @@ const OWN_SET: Set<string> &
 type NativeSettings = Record<string, Record<string, SettingValue | undefined>>;
 
 type NativeProps = ViewProps &
-  Pick<WebViewProps, 'source' | 'navigationRules' | 'injectedScripts' | 'pullToRefresh'> & {
+  Pick<WebViewProps, 'source' | 'navigationRules' | 'pullToRefresh'> & {
+    /** With each script's `origins` in its code (`nativeScripts`). */
+    injectedScripts: Omit<InjectedScript, 'origins'>[] | undefined;
     ref: Ref<NativeMethods>;
     /** iOS only: Android's CookieManager is already shared. */
     sharedCookies: boolean | undefined;
@@ -143,7 +149,7 @@ export type NativeMethods = {
   get(path: string): Promise<string>;
   /**
    * Calls a platform method: the JSON of its result. `argsJson` is JSON, so that a `null` argument survives the native
-   * conversion. `completion` is iOS's handler shape.
+   * conversion. `completion` is the iOS selector's handler shape, from the SDK headers; Android ignores it.
    */
   call(path: string, argsJson: string, completion: string | null): Promise<string>;
   /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `call`. */
@@ -156,6 +162,7 @@ const nativeModule = () =>
     defaultUserAgent: string;
     warmUp(): void;
     preconnect(url: string): Promise<void>;
+    setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
 
 /** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
@@ -182,33 +189,76 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const attachmentRef = useRef<Attachment>(undefined);
   const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
 
+  // The rejecters of native calls not settled yet. An unmount rejects them: native may never answer (a hook handler
+  // that never replies), and a late answer then settles nothing.
+  const [inFlight] = useState(() => new Set<(error: Error) => void>());
+  useEffect(
+    () => () => {
+      const message = 'the WebView unmounted before the call was answered';
+      inFlight.forEach((reject) => reject(codedError({ code: 'navigated', message })));
+      inFlight.clear();
+    },
+    [inFlight]
+  );
+
   // A handle can outlive its native view (one captured before an unmount): navigation is then a no-op, and what
   // answers rejects with `unavailable`.
   const [handle] = useState((): WebViewRef => {
     const parsed = (json: string) => JSON.parse(json) as unknown;
     const gone = (): never => {
-      throw bridgeError({ code: 'unavailable', message: 'the WebView is gone' });
+      throw codedError({ code: 'unavailable', message: 'the WebView is gone' });
+    };
+    const settled = (promise: Promise<string>) =>
+      new Promise<string>((resolve, reject) => {
+        inFlight.add(reject);
+        promise.then(
+          (value) => {
+            inFlight.delete(reject);
+            resolve(value);
+          },
+          (error: unknown) => {
+            inFlight.delete(reject);
+            reject(error);
+          }
+        );
+      });
+    // Android can run a view function before Expo has registered the view and reject it with ERR_VIEW_NOT_FOUND:
+    // try again each frame for about a second. An unmount ends the loop, as `call` then finds no view; so does the
+    // background, where no frame comes.
+    const mounted = async (call: () => Promise<string> | undefined) => {
+      for (let frame = 0; ; frame++) {
+        try {
+          return parsed(await settled(call() ?? gone()));
+        } catch (error) {
+          if ((error as { code?: string }).code !== 'ERR_VIEW_NOT_FOUND') throw error;
+          if (frame === 60 || AppState.currentState === 'background') gone();
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+      }
     };
     return {
       goBack: () => void native.current?.navigate('back'),
       goForward: () => void native.current?.navigate('forward'),
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
-      evaluate: async (script) => parsed(await (native.current?.evaluate(script) ?? gone())),
-      get: async (key) => parsed(await (native.current?.get(key) ?? gone())),
-      call: async (method, args = [], options) =>
-        parsed(
-          await (native.current?.call(method, JSON.stringify(args), options?.completion ?? null) ??
-            gone())
+      evaluate: (script) => mounted(() => native.current?.evaluate(script)),
+      get: (key) => mounted(() => native.current?.get(key)),
+      call: (method, args = []) =>
+        mounted(() =>
+          native.current?.call(method, JSON.stringify(args), iosCompletions[method] ?? null)
         ),
-      hook: async (name, method, args = []) =>
-        parsed(await (native.current?.hook(name, method, JSON.stringify(args)) ?? gone())),
+      hook: (name, method, args = []) =>
+        mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
   useAttach(ref, handle, lastRef, attachmentRef);
 
   // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
+  const injectedScripts = useMemo(
+    () => nativeScripts(props.injectedScripts),
+    [props.injectedScripts]
+  );
   const connection = props.bridge?.[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
@@ -248,7 +298,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       asks.set(askId, controller);
     }
     const value = await settle(
-      () => handler?.(request === 'onOpenExternal' ? payload['url'] : payload, controller?.signal),
+      () => handler?.(payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onHookEvent failed for ${name}`
@@ -267,8 +317,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       settings={settings}
       pullToRefresh={props.pullToRefresh}
       sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
-      navigationRules={props.navigationRules}
-      injectedScripts={props.injectedScripts}
+      navigationRules={
+        props.navigationRules?.length ? props.navigationRules : WebView.defaultNavigationRules
+      }
+      injectedScripts={injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={props.hookOptions && withoutNulls(props.hookOptions)}
@@ -285,6 +337,27 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       }
     />
   );
+}
+
+/**
+ * The scripts as native runs them: one whose `origins` lack `*` runs inside a function, so that even its function
+ * declarations take effect only where the guard lets it run.
+ */
+function nativeScripts(scripts: InjectedScript[] | undefined) {
+  return scripts?.map(({ code, allFrames, origins }) => {
+    if (!Array.isArray(origins))
+      throw new Error("injectedScripts: every script needs origins (['*'] for every origin)");
+    const invalid = invalidOrigins(origins);
+    if (invalid.length) {
+      throw new Error(
+        `injectedScripts: invalid origins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
+      );
+    }
+    const forms = originForms(origins);
+    if (forms.any) return { code, allFrames };
+    const guard = `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
+    return { code: `if (${guard}) (() => {\n${code}\n})();`, allFrames };
+  });
 }
 
 /** The page requests with a prop set, as a new array only when that set changes. */
@@ -330,6 +403,14 @@ function viewPropsOf(props: WebViewProps): ViewProps {
   return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
+/** Each root's keys with its `other` ones among them, as native takes them; a generated key wins. */
+const flattened = (
+  roots: Record<string, { other?: NativeSettings[string] } | undefined> = {}
+): NativeSettings =>
+  Object.fromEntries(
+    Object.entries(roots).map(([name, { other, ...keys } = {}]) => [name, { ...other, ...keys }])
+  );
+
 /**
  * The platform's settings for native: the package's defaults, the app's `ios` or `android` roots over them, and
  * `userAgent` on top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
@@ -338,7 +419,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
   const set = (value: string | undefined, key: string) =>
     value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
-    const { configuration, webView, ...rest } = props.ios ?? {};
+    const { configuration, webView, ...rest } = flattened(props.ios);
     return {
       ...rest,
       configuration: { ...DEFAULTS.IOSSettings.configuration, ...configuration },
@@ -349,14 +430,14 @@ function platformSettings(props: WebViewProps): NativeSettings {
       },
     };
   }
-  const { settings, webView } = props.android ?? {};
+  const { settings, webView } = flattened(props.android);
   return {
     settings: {
       ...DEFAULTS.AndroidSettings.settings,
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },
-    webView: { ...DEFAULTS.AndroidSettings.webView, ...webView },
+    webView: { ...webView },
   };
 }
 
@@ -383,49 +464,92 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
 }
 
 /**
- * What `WebView` carries besides the component: `preconnect`, `warmUp` and `defaultUserAgent`.
+ * What `WebView` carries besides the component: {@link WebView.android} and `defaultNavigationRules`.
  * @group WebView
  * @hideGroups
  */
 export declare namespace WebView {
   /**
-   * Android's default user agent, for `android.settings.userAgentString` with a suffix.
-   *
-   * Null on iOS, where `ios.configuration.applicationNameForUserAgent` appends.
+   * Android's process-wide WebView functions. On iOS they do nothing, and `defaultUserAgent` is null.
    * @android
    */
-  const defaultUserAgent: string | null;
+  namespace android {
+    /**
+     * Android's default user agent, for `android.settings.userAgentString` with a suffix.
+     *
+     * The first read loads WebView's code, on the JS thread: read it once `warmUp()` has had time or a WebView is
+     * mounted. Null on iOS, where `ios.configuration.applicationNameForUserAgent` appends.
+     * @android
+     */
+    const defaultUserAgent: string | null;
+    /**
+     * Starts WebView before any WebView mounts, so the first WebView mounts sooner.
+     *
+     * With the androidx.webkit feature `ASYNC_WEBVIEW_STARTUP` it loads WebView's code and starts Chromium on a
+     * background thread; without it, it only loads the code there, and Chromium starts on the UI thread as the first
+     * WebView mounts.
+     *
+     * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
+     * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing.
+     * WebView starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's
+     * `CookieManager`). No-op on iOS.
+     * @android
+     */
+    function warmUp(): void;
+    /**
+     * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes
+     * later.
+     *
+     * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a
+     * mounted WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at
+     * mount gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had
+     * time or a WebView is mounted. Needs the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or
+     * `PRECONNECT`; without them, and on iOS, it does nothing. For prefetch and prerender, a native hook uses
+     * `ProfileStore`.
+     * @android
+     */
+    function preconnect(url: string): void;
+    /**
+     * Turns remote debugging (`chrome://inspect`) of every WebView in the app on or off.
+     *
+     * Until it is called, it is on when the app is debuggable (a debug build) and off otherwise. Called before any
+     * WebView exists, it applies when the first one is made, so it doesn't start WebView. No-op on iOS, where
+     * `ios.webView.inspectable` sets it per WebView.
+     * @android
+     */
+    function setWebContentsDebuggingEnabled(enabled: boolean): void;
+  }
   /**
-   * Starts WebView (loads its code, starts Chromium) before any WebView mounts, on a background thread where the
-   * device's WebView supports that, so the first WebView mounts sooner.
-   *
-   * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
-   * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing. WebView
-   * starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's `CookieManager`).
-   * No-op on iOS.
-   * @android
+   * The rules for an unset or empty `navigationRules`: `file:` is blocked, http(s) loads in place, and any other scheme
+   * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
+   * Anything else, a subframe's or one without a gesture, is blocked. Frozen; spread it after your own rules to keep
+   * it.
    */
-  function warmUp(): void;
-  /**
-   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes later.
-   *
-   * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a mounted
-   * WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at mount
-   * gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a
-   * WebView is mounted. Does nothing on a WebView without `Profile.enqueuePreconnect` or `Profile.preconnect`, and on
-   * iOS. For prefetch and prerender, a native hook uses `ProfileStore`.
-   * @android
-   */
-  function preconnect(url: string): void;
+  const defaultNavigationRules: readonly NavigationRule[];
 }
-Object.defineProperty(WebView, 'defaultUserAgent', {
-  get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
-});
-Object.assign(WebView, {
+const freeze = <T extends object>(value: T): T => {
+  Object.values(value).forEach((field) => typeof field === 'object' && freeze(field as object));
+  return Object.freeze(value);
+};
+const android = {
   warmUp: (): void => {
     if (Platform.OS === 'android') nativeModule().warmUp();
   },
   preconnect: (url: string): void => {
     if (Platform.OS === 'android') void nativeModule().preconnect(url);
   },
+  setWebContentsDebuggingEnabled: (enabled: boolean): void => {
+    if (Platform.OS === 'android') void nativeModule().setWebContentsDebuggingEnabled(enabled);
+  },
+};
+Object.defineProperty(android, 'defaultUserAgent', {
+  get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
+});
+Object.assign(WebView, {
+  android,
+  defaultNavigationRules: freeze<NavigationRule[]>([
+    { scheme: ['file'], action: 'block' },
+    { scheme: ['http', 'https'], action: 'allow' },
+    { mainFrame: true, userInitiated: true, action: 'external' },
+  ]),
 });

@@ -7,6 +7,7 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
 import android.webkit.WebSettings
+import android.webkit.WebView
 import androidx.webkit.Profile
 import androidx.webkit.ProfileStore
 import androidx.webkit.WebViewCompat
@@ -79,14 +80,9 @@ class MinimalWebViewModule : Module() {
     Function("warmUp") { warmUp(appContext.reactContext ?: throw Exceptions.ReactContextLost()) }
 
     // ProfileStore wants the UI thread, and starts WebView there.
-    AsyncFunction("preconnect") { url: String ->
-      if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return@AsyncFunction
-      val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
-      when {
-        WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
-        WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
-      }
-    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("preconnect") { url: String -> preconnect(url) }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("setWebContentsDebuggingEnabled") { enabled: Boolean -> setWebContentsDebugging(enabled) }.runOnQueue(Queues.MAIN)
 
     Constant("defaultUserAgent") {
       WebSettings.getDefaultUserAgent(appContext.reactContext ?: throw Exceptions.ReactContextLost())
@@ -110,10 +106,12 @@ class MinimalWebViewModule : Module() {
 
       AsyncFunction("navigate") { view: MinimalWebView, action: String -> navigate(view, action) }.runOnQueue(Queues.MAIN)
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
-        native(view, promise) { view.platformSettings.get(path) }
+        native(view, promise) { promise.resolve(view.platformSettings.get(path)) }
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
-        native(view, promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) }
+        native(view, promise) {
+          view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) { json -> native(view, promise) { promise.resolve(json()) } }
+        }
         // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
@@ -131,6 +129,21 @@ class MinimalWebViewModule : Module() {
       }.runOnQueue(Queues.MAIN)
     }
   }
+}
+
+private fun preconnect(url: String) {
+  if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return
+  val profile = ProfileStore.getInstance().getOrCreateProfile(Profile.DEFAULT_PROFILE_NAME)
+  when {
+    WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
+    WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
+  }
+}
+
+/** Before the first WebView only stored, for each new WebView to apply: setting it now would start WebView. */
+private fun setWebContentsDebugging(enabled: Boolean) {
+  webContentsDebugging = enabled
+  if (webViewCreated) WebView.setWebContentsDebuggingEnabled(enabled)
 }
 
 private fun warmUp(context: Context) {
@@ -158,23 +171,26 @@ private fun navigate(view: MinimalWebView, action: String) {
 private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) {
   if (view.recovering) return promise.reject("unavailable", RECOVERING, null)
   val handler = view.hookHandler(name, method)
-    ?: return promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
+    ?: return promise.reject("not_found", "no attached hook `$name` handles `$method`", null)
   try {
-    handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { PlatformSettings.toJson(it) } }
+    handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } }
   } catch (e: Exception) {
     promise.reject("native_error", e.message, e)
   }
 }
 
-/** Resolves with [body]'s JSON; anything it throws rejects with `native_error`, a dead WebView with `unavailable`. */
-private inline fun native(view: MinimalWebView, promise: Promise, body: () -> String) =
+/**
+ * Runs [body], which resolves [promise]. A [PlatformException] it throws rejects with its code, anything else with
+ * `native_error`, and a dead WebView with `unavailable`.
+ */
+private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Unit) =
   if (view.recovering) {
     promise.reject("unavailable", RECOVERING, null)
   } else {
     try {
-      promise.resolve(body())
+      body()
     } catch (e: Exception) {
-      promise.reject("native_error", e.message, e)
+      promise.reject((e as? PlatformException)?.code ?: "native_error", e.message, e)
     }
   }
 
@@ -206,6 +222,8 @@ internal data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
   @Field val body: String? = null,
+  // Unused on Android: here so that a change loads the source again, as on iOS.
+  @Field val readAccessRoot: String? = null,
   @Field val html: String? = null,
   @Field val baseUrl: String? = null
 ) : Record

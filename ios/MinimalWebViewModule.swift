@@ -72,13 +72,13 @@ private func evaluate(_ view: MinimalWebView, _ script: String, _ promise: Promi
 
 private func hook(_ view: MinimalWebView, _ name: String, _ method: String, _ args: String, _ promise: Promise) {
   guard let handler = view.hookHandler(name, method) else {
-    return promise.reject("hook_not_handled", "no attached hook `\(name)` handles `\(method)`")
+    return promise.reject("not_found", "no attached hook `\(name)` handles `\(method)`")
   }
   handler((try? JSONSerialization.jsonObject(with: Data(args.utf8))) as? [Any] ?? []) { value in
     do {
       promise.resolve(try PlatformSettings.json { MRWJsonable(value) })
     } catch {
-      promise.reject("native_error", (error as? PlatformError)?.message ?? error.localizedDescription)
+      reject(promise, error)
     }
   }
 }
@@ -88,8 +88,13 @@ private func native(_ view: MinimalWebView, _ promise: Promise, _ body: (WKWebVi
   do {
     try body(webView)
   } catch {
-    promise.reject("native_error", (error as? PlatformError)?.message ?? error.localizedDescription)
+    reject(promise, error)
   }
+}
+
+private func reject(_ promise: Promise, _ error: Error) {
+  let platform = error as? PlatformError
+  promise.reject(platform?.code ?? "native_error", platform?.message ?? error.localizedDescription)
 }
 
 // A prop that fails to convert is dropped whole (ExpoFabricView's try?), so every field is optional.
@@ -98,6 +103,7 @@ struct WebViewSource: Record {
   @Field var uri: String? = nil
   @Field var headers: [String: String]? = nil
   @Field var body: String? = nil
+  @Field var readAccessRoot: String? = nil
   @Field var html: String? = nil
   @Field var baseUrl: String? = nil
 }

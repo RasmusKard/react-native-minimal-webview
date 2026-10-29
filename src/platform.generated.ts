@@ -28,7 +28,7 @@ export type CGRect = { x: number; y: number; width: number; height: number };
  * The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from
  * the SDK headers.
  *
- * `@since` is the iOS version. A key a newer SDK adds works too: `IOSSettings` takes any key.
+ * `@since` is the iOS version. A key a newer SDK adds goes under the root's `other`.
  * @group Platform settings
  */
 export type IOSSettingKeys = {
@@ -45,17 +45,28 @@ export type IOSSettingKeys = {
     showsSystemScreenTimeBlockingView?: boolean;
     /** @since 14.5 */
     upgradeKnownHostsToHTTPS?: boolean;
-    /** @since 10.0 */
+    /**
+     * A {@link IOSConstants.AudiovisualMediaTypes}.
+     * @since 10.0
+     */
     mediaTypesRequiringUserActionForPlayback?: number;
     /** @since 14.0 */
     limitsNavigationsToAppBoundDomains?: boolean;
     /** @since 17.0 */
     allowsInlinePredictions?: boolean;
     allowsInlineMediaPlayback?: boolean;
+    /**
+     * A {@link IOSConstants.SelectionGranularity}.
+     * @since 8.0
+     * @deprecated This property is ignored; selection granularity is always `character`.
+     */
     selectionGranularity?: number;
     /** @since 9.0 */
     allowsPictureInPictureMediaPlayback?: boolean;
-    /** @since 10.0 */
+    /**
+     * A {@link IOSConstants.DataDetectorTypes}.
+     * @since 10.0
+     */
     dataDetectorTypes?: number;
     /** @since 10.0 */
     ignoresViewportScaleLimits?: boolean;
@@ -93,7 +104,10 @@ export type IOSSettingKeys = {
     siteSpecificQuirksModeEnabled?: boolean;
     /** @since 15.4 */
     elementFullscreenEnabled?: boolean;
-    /** @since 17.0 */
+    /**
+     * A {@link IOSConstants.InactiveSchedulingPolicy}.
+     * @since 17.0
+     */
     inactiveSchedulingPolicy?: number;
     /**
      * @since 8.0
@@ -103,15 +117,24 @@ export type IOSSettingKeys = {
   };
   /** `WKWebpagePreferences` */
   webpagePreferences: {
-    /** @since 13.0 */
+    /**
+     * A {@link IOSConstants.ContentMode}.
+     * @since 13.0
+     */
     preferredContentMode?: number;
     /** @since 14.0 */
     allowsContentJavaScript?: boolean;
     /** @since 16.0 */
     lockdownModeEnabled?: boolean;
-    /** @since 18.2 */
+    /**
+     * A {@link IOSConstants.WebpagePreferencesUpgradeToHTTPSPolicy}.
+     * @since 18.2
+     */
     preferredHTTPSNavigationPolicy?: number;
-    /** @since 26.4 */
+    /**
+     * A {@link IOSConstants.SecurityRestrictionMode}.
+     * @since 26.4
+     */
     securityRestrictionMode?: number;
     /** @since 27.0 */
     overrideReferrer?: string | null;
@@ -147,7 +170,10 @@ export type IOSSettingKeys = {
     contentInset?: UIEdgeInsets;
     /** @since 17.4 */
     contentAlignmentPoint?: CGPoint;
-    /** @since 11.0 */
+    /**
+     * A {@link IOSConstants.ContentInsetAdjustmentBehavior}.
+     * @since 11.0
+     */
     contentInsetAdjustmentBehavior?: number;
     /** @since 13.0 */
     automaticallyAdjustsScrollIndicatorInsets?: boolean;
@@ -167,6 +193,7 @@ export type IOSSettingKeys = {
     transfersVerticalScrollingToParent?: boolean;
     showsVerticalScrollIndicator?: boolean;
     showsHorizontalScrollIndicator?: boolean;
+    /** A {@link IOSConstants.IndicatorStyle}. */
     indicatorStyle?: number;
     /** @since 11.1 */
     verticalScrollIndicatorInsets?: UIEdgeInsets;
@@ -183,7 +210,10 @@ export type IOSSettingKeys = {
     zoomScale?: number;
     bouncesZoom?: boolean;
     scrollsToTop?: boolean;
-    /** @since 7.0 */
+    /**
+     * A {@link IOSConstants.KeyboardDismissMode}.
+     * @since 7.0
+     */
     keyboardDismissMode?: number;
     /** @since 17.0 */
     allowsKeyboardScrolling?: boolean;
@@ -194,7 +224,7 @@ export type IOSSettingKeys = {
  * The Android settings keys by root: the one-argument `WebSettings`, `WebView` and `CookieManager` setters, then
  * `WebSettingsCompat`'s and `WebViewCompat`'s statics, then the scroll setters `WebView` inherits from `View`.
  *
- * `@since` is the API level. A key a newer SDK or androidx.webkit adds works too: `AndroidSettings` takes any key.
+ * `@since` is the API level. A key a newer SDK or androidx.webkit adds goes under the root's `other`.
  * @group Platform settings
  */
 export type AndroidSettingKeys = {
@@ -371,8 +401,6 @@ export type AndroidSettingKeys = {
      * @deprecated since API 23
      */
     verticalScrollbarOverlay?: boolean;
-    /** @since 19 */
-    webContentsDebuggingEnabled?: boolean;
     /** `WebViewCompat`, WebView feature `MUTE_AUDIO` */
     audioMuted?: boolean;
     /** `WebViewCompat`, WebView feature `MULTI_PROFILE` */
@@ -584,6 +612,44 @@ export const IOSConstants = {
     screenTime: 'WKWebsiteDataTypeScreenTime',
   },
 } as const;
+
+/** The completion-handler shape of each WebKit method `call` reaches, by `root.selector`, for MRWInvoke. */
+export const iosCompletions: Record<string, 'void' | 'value' | 'valueError' | 'error' | 'number'> =
+  {
+    'webView.evaluateJavaScript:completionHandler:': 'valueError',
+    'webView.evaluateJavaScript:inFrame:inContentWorld:completionHandler:': 'valueError',
+    'webView.callAsyncJavaScript:arguments:inFrame:inContentWorld:completionHandler:': 'valueError',
+    'webView.closeAllMediaPresentationsWithCompletionHandler:': 'void',
+    'webView.pauseAllMediaPlaybackWithCompletionHandler:': 'void',
+    'webView.pauseAllMediaPlayback:': 'void',
+    'webView.setAllMediaPlaybackSuspended:completionHandler:': 'void',
+    'webView.resumeAllMediaPlayback:': 'void',
+    'webView.suspendAllMediaPlayback:': 'void',
+    'webView.requestMediaPlaybackStateWithCompletionHandler:': 'number',
+    'webView.requestMediaPlaybackState:': 'number',
+    'webView.setCameraCaptureState:completionHandler:': 'void',
+    'webView.setMicrophoneCaptureState:completionHandler:': 'void',
+    'webView.takeSnapshotWithConfiguration:completionHandler:': 'valueError',
+    'webView.createPDFWithConfiguration:completionHandler:': 'valueError',
+    'webView.createWebArchiveDataWithCompletionHandler:': 'valueError',
+    'webView.findString:withConfiguration:completionHandler:': 'value',
+    'webView.startDownloadUsingRequest:completionHandler:': 'value',
+    'webView.resumeDownloadFromResumeData:completionHandler:': 'value',
+    'webView.fetchDataOfTypes:completionHandler:': 'valueError',
+    'webView.restoreData:completionHandler:': 'error',
+    'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:': 'value',
+    'websiteDataStore.removeDataOfTypes:forDataRecords:completionHandler:': 'void',
+    'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:': 'void',
+    'websiteDataStore.fetchDataOfTypes:completionHandler:': 'valueError',
+    'websiteDataStore.restoreData:completionHandler:': 'error',
+    'httpCookieStore.getAllCookies:': 'value',
+    'httpCookieStore.getCookiesForURL:completionHandler:': 'value',
+    'httpCookieStore.setCookie:completionHandler:': 'void',
+    'httpCookieStore.setCookies:completionHandler:': 'void',
+    'httpCookieStore.deleteCookie:completionHandler:': 'void',
+    'httpCookieStore.setCookiePolicy:completionHandler:': 'void',
+    'httpCookieStore.getCookiePolicy:': 'number',
+  };
 
 /**
  * The `WebSettings`, `WebView`, `WebSettingsCompat` and `WebViewCompat` constants:

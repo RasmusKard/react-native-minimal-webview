@@ -163,7 +163,7 @@ export default function App() {
             android={{
               webView: { acceptThirdPartyCookies: true },
               settings: {
-                userAgentString: `${WebView.defaultUserAgent} MinimalWebViewExample/1.0`,
+                userAgentString: `${WebView.android.defaultUserAgent} MinimalWebViewExample/1.0`,
               },
             }}
             onError={(event) => {

@@ -59,7 +59,8 @@ function onInboxNotification() {
     { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides, within 1 s
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
-    { mainFrame: true, action: 'external' }, // other sites, tel: and mailto: links, new windows; a subframe's is blocked
+    { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
+    { mainFrame: true, action: 'external' }, // other sites and new windows; any other subframe navigation is blocked
   ]}
   onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'external')}
   onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
@@ -128,29 +129,60 @@ Any setting by its platform name, and any public method through `call`.
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
 // Android: a public method of settings, webView, cookieManager or webStorage
 await ref.current?.call('webView.clearCache', [true]);
-await ref.current?.call('cookieManager.removeAllCookies', [null]);
-// iOS: an Objective-C selector; a trailing completion handler needs its shape
+await ref.current?.call('cookieManager.removeAllCookies'); // resolves once they're gone
+// iOS: an Objective-C selector
 await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
-await ref.current?.call(
-  'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-  [{ set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] }, { date: 0 }],
-  { completion: 'void' }
-);
-const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
+await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
+  { set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] },
+  { date: 0 },
+]);
+const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null]); // base64
 ```
+
+## Cookies
+
+```tsx
+// iOS: the WebView's data store (`sharedCookies` syncs it with the app's)
+await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
+  { cookie: { Name: 'session', Value: token, Domain: 'example.com', Path: '/', Secure: 'TRUE' } },
+]);
+const cookies = await ref.current?.call('httpCookieStore.getAllCookies:'); // [{ Name, Value, Domain, Path, … }]
+// Android: the app-wide CookieManager
+await ref.current?.call('cookieManager.setCookie', ['https://example.com', `session=${token}; Secure`]);
+const header = await ref.current?.call('cookieManager.getCookie', ['https://example.com']); // 'session=…; other=…'
+```
+
+The calls need a mounted WebView: to set a cookie before the first page, mount with `{ uri: 'about:blank' }` and set
+the real `source` after the call resolves.
 
 ## Scripts
 
 ```tsx
-<WebView injectedScripts={[{ code: `window.config = ${JSON.stringify(config)}` }]} … />; // at document start, before the page's scripts
+<WebView injectedScripts={[{ code: `window.config = ${JSON.stringify(config)}`, origins: ['https://example.com'] }]} … />; // at document start, before the page's scripts
 
 const title = await ref.current?.evaluate('document.title'); // an expression, not statements
 await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
 ```
 
+## Local files
+
+An `html` string takes a `baseUrl` that its relative URLs resolve against. A file is a `file://` uri, such as an
+expo-asset's `localUri`: iOS gives the page read access to the file's directory (an ancestor in `readAccessRoot`
+widens it), and Android needs `allowFileAccess`, which lets a `file:` page read any file the app can.
+`file:///android_asset/…` needs no setting.
+
+```tsx
+const [assets] = useAssets(require('./page.html'));
+
+<WebView source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }} />;
+{assets?.[0]?.localUri && (
+  <WebView source={{ uri: assets[0].localUri }} android={{ settings: { allowFileAccess: true } }} />
+)}
+```
+
 ## Page requests
 
-Each works without its prop; the prop answers it or is told afterwards.
+Each has a default without its prop (Android denies permissions); the prop answers it or is told afterwards.
 
 ```tsx
 <WebView
@@ -174,7 +206,7 @@ Each works without its prop; the prop answers it or is told afterwards.
     active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
   }
   // A download: open it (expo-file-system; Quick Look on iOS, an app on Android) or share it (expo-sharing)
-  onDownload={(result) => (result.ok ? new File(result.uri).preview() : console.warn('download failed', result.reason))}
+  onDownload={(result) => (result.ok ? new File(result.uri).preview() : console.warn('download failed', result.kind))}
 />
 ```
 
@@ -191,7 +223,7 @@ hook gets the real `WKWebView` or `WebView` and chains its own delegates and cli
 MinimalWebViewHooks.register("myPackage.pageCounter", configure: { configuration, context in // before the WKWebView exists
   configuration.dataDetectorTypes = .phoneNumber
 }) { webView, context in // once it exists; returns a detach closure, or nil
-  let counter = PageCounter(context: context) // a WKNavigationDelegate
+  let counter = PageCounter(context: context) // a WKNavigationDelegate; it holds the context weakly (see `WebViewContext`)
   context.navigationDelegates.append(counter)
   context.handle("count") { args, reply in reply(counter.count) }
   context.onDocumentEnd { reason in counter.pageEnded() }

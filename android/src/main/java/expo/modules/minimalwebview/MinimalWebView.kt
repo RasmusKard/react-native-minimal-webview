@@ -3,11 +3,13 @@ package expo.modules.minimalwebview
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -66,7 +68,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var injectedScripts: List<InjectedScript>? = null
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
   internal var settings: Map<String, Any?>? = null
-  internal val platformSettings = PlatformSettings(this)
+  internal val platformSettings = PlatformSettings { PlatformSettings.targets(webView, it) }
   internal var pullToRefresh = false
   private val refresher = PullToRefresh(this)
   /**
@@ -79,14 +81,16 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   // detach write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
+  val touchListeners = mutableListOf<View.OnTouchListener>()
+  val scrollListeners = mutableListOf<View.OnScrollChangeListener>()
   val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   private val downloads = Downloads(this)
-  /** The `hookOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
+  /** The enabled `hookOptions` keys the first WebView was made with, and those attached later: they pick the hooks, also for one after a crash. */
   private var hookKeys: Set<String>? = null
-  /** The hooks' contexts for the current WebView, in registration order. */
+  /** The hooks' contexts for the current WebView, in attach order. */
   private var hookContexts: List<HookContext> = emptyList()
   /** What the attach hooks returned, run before their WebView goes away. */
   private var detachers: List<() -> Unit> = emptyList()
@@ -118,34 +122,47 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     // What belongs to the Document (DocumentScope), reset in this order at every end. The asks last: their callbacks
-    // are hook and Chromium code, and a throw there must not skip the core's own resets.
+    // are hook and Chromium code, and a throw there must not skip the core's own resets. The asks and the hooks skip
+    // the commit that opens a Document with none open: what a hook starts in attach belongs to the Document it opens.
     document.register { fileUpload.cancel() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
     document.register { fullscreen.documentEnded(it) }
-    document.register { asks.documentEnded(it) }
+    document.register(skipsOpening = true) { asks.documentEnded(it) }
     // The hooks' own handlers, per attach: the scope has no unregister, and a crash attaches the hooks again.
-    document.register { reason -> hookContexts.forEach { it.documentEnded(reason) } }
+    document.register(skipsOpening = true) { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
 
-  private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+  private fun createWebView(): WebView {
     val first = hookKeys == null
     val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
     val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keys)
+    val (maker, unused) = pickFactory(attaching)
+    val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
     hookContexts = attaching.map { HookContext(it, this) }
     // A typo, or a hook's module not linked or not rebuilt. Once: the WebView after a crash has the same keys.
     if (first) unregistered.forEach { warn("hookOptions.$it: no hook is registered under this key") }
+    if (first) unused.forEach { warn("hookOptions.$it: its webViewFactory is not used, ${maker?.key}'s is") }
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
+    val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    WebView.setWebContentsDebuggingEnabled(webContentsDebugging ?: debuggable)
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
-    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
-      if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
+      val taken = hookContexts.any {
+        it.downloadStarted(url, userAgent, download.contentDisposition, download.mimeType, contentLength)
+      }
+      if (!taken && !downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
+    // View's slots hold one listener each: the hooks share them through their lists.
+    view.setOnTouchListener { v, event -> touchListeners.any { it.onTouch(v, event) } }
+    view.setOnScrollChangeListener { v, x, y, oldX, oldY -> scrollListeners.forEach { it.onScrollChange(v, x, y, oldX, oldY) } }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
+    return view
   }
 
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used
@@ -257,6 +274,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun attachHooks() {
     detachers = hookContexts.mapNotNull { it.hook.attach(webView, it) }
+    enableFavicons()
+  }
+
+  private fun enableFavicons() {
     if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
       WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
     ) {
@@ -264,15 +285,21 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     }
   }
 
-  private fun detachHooks() {
+  /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
+  private fun detachHooks(): List<HookContext> {
+    val detached = hookContexts
     detachers.forEach { it() }
     detachers = emptyList()
+    hookContexts.forEach { it.detach() }
     hookContexts = emptyList()
     clients.clear()
     chromeClients.clear()
+    touchListeners.clear()
+    scrollListeners.clear()
+    return detached
   }
 
-  /** Tells each attached hook whose value changed. A key that was not there when the WebView was made attaches nothing. */
+  /** Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewFactory` whose key turns on. */
   private fun optionsChanged(old: Map<String, Any?>) {
     for (key in old.keys + hookOptions.keys) {
       val value = hookOptions[key]
@@ -281,9 +308,21 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       if (context != null) {
         context.optionsChanged(value)
       } else if (addedLate(key, old[key], value, hookKeys.orEmpty())) {
-        warn("hookOptions.$key: added after the WebView was created, so no hook attaches for it")
+        attachLate(key)
       }
     }
+  }
+
+  private fun attachLate(key: String) {
+    val hook = MinimalWebViewHooks.hooks.find { it.key == key }
+    lateAttachWarning(key, hook)?.let { return warn(it) }
+    hookKeys = hookKeys.orEmpty() + key
+    // The WebView the recovery builds attaches it with the others.
+    if (recovering || hook == null) return
+    val context = HookContext(hook, this)
+    hookContexts = hookContexts + context
+    hook.attach(webView, context)?.let { detachers = detachers + it }
+    enableFavicons()
   }
 
   /** The handler a hook registered with `context.handle` for [method], if it is attached. */
@@ -308,13 +347,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
     document.end(End.CRASHED)
-    detachHooks()
+    val detached = detachHooks()
     val dead = webView
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
     val restorable = !showsSource(source, url)
     val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
     refresher.content.removeView(dead)
     dead.destroy()
+    detached.forEach { it.destroyed(End.CRASHED) }
     pendingRecovery = Recovery(reload, history)
     // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
     if (loading) outcome = "failed"
@@ -361,10 +401,13 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingRecovery = null
     waiting -= this
     document.end(End.CLOSING)
-    detachHooks()
+    val detached = detachHooks()
     downloads.detach()
     webView.stopLoading()
     webView.destroy()
+    // shortcut: still in the layout here, unlike after a crash; if ProfileStore.deleteProfile in onDestroyed throws
+    // "in use" on a device, remove the WebView from refresher.content before destroy() first.
+    detached.forEach { it.destroyed(End.CLOSING) }
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {
@@ -422,6 +465,9 @@ internal const val RECOVERING = "the WebView is being rebuilt after its renderer
 
 /** Whether this process has made a WebView, so WebView is started. */
 @Volatile internal var webViewCreated = false
+
+/** What `setWebContentsDebuggingEnabled` set; null until it is called. */
+@Volatile internal var webContentsDebugging: Boolean? = null
 
 internal fun failed(message: String, error: Exception): Boolean {
   Log.w(TAG, message, error)

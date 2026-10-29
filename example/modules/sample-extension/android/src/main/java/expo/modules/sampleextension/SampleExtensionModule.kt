@@ -1,5 +1,6 @@
 package expo.modules.sampleextension
 
+import android.content.Context
 import android.webkit.HttpAuthHandler
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
@@ -46,13 +47,24 @@ class SampleExtensionModule : Module() {
         context.chromeClients += HookDialogs(context)
         null
       }
+      // Each WebView that enables this hook is made by its factory, a crash's replacement too; others stay plain.
+      MinimalWebViewHooks.register("sample.subclass", webViewFactory = ::SampleWebView) { webView, context ->
+        val name = webView.javaClass.simpleName
+        context.handle("class") { _, reply -> reply(name) }
+        null
+      }
       PerfProbe.register()
+      Seams.register()
     }
+    AsyncFunction("closedViews") { Seams.closed }.runOnQueue(Queues.MAIN)
     // The perf suite's frame-gap probe (PerfProbe.kt): module functions, so they work without a hook too.
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
   }
 }
+
+/** The `sample.subclass` hook's WebView: an override of what WebView lets a subclass change would go here. */
+private class SampleWebView(context: Context) : WebView(context)
 
 /** The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx, through `adb reverse`). */
 private val AUTH_HOSTS = setOf("localhost")

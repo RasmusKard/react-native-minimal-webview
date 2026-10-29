@@ -11,8 +11,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
 
-  // Props, applied together in applyProps(). The bridge, the hooks that attach and the `configuration` settings are
-  // fixed at mount: they are read once, when the WKWebView is created.
+  // Props, applied together in applyProps(). The bridge, the hooks with a configure step and the `configuration`
+  // settings are fixed at mount: they are read once, when the WKWebView is created.
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
@@ -24,7 +24,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var settings: [String: Any] = [:]
   let platformSettings = PlatformSettings()
   var pullToRefresh = false
-  private lazy var refreshControl: UIRefreshControl = {
+  private(set) lazy var refreshControl: UIRefreshControl = {
     let control = UIRefreshControl()
     control.addAction(UIAction { [weak self] _ in self?.reload() }, for: .valueChanged)
     return control
@@ -62,7 +62,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var programmaticUrl: URL?
   private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
   let document = DocumentScope()
-  /// The enabled hooks' contexts in registration order, for the life of the WKWebView: a hook may keep its own.
+  /// The attached hooks' contexts in attach order, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [HookContext] = []
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
   var askedAndAllowed: [Bool: Set<String>] = [:]
@@ -94,8 +94,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     clipsToBounds = true
     // What belongs to the Document (DocumentScope), reset in this order at every end. `closing` comes from invalidate,
     // at unmount. In the deinit fallback self is already nil, so only the asks end (captured without the view): WebKit
-    // throws for a decision handler released uncalled.
-    document.register { [asks] in asks.documentEnded($0) }
+    // throws for a decision handler released uncalled. The asks and the hooks skip the commit that opens a Document
+    // with none open: what a hook starts in attach, or after a crash, belongs to the Document that commit opens.
+    document.register(skipsOpening: true) { [asks] in asks.documentEnded($0) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in
       guard let self else { return }
@@ -108,7 +109,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The spinner belongs to a load, and a crash ends the load without a delegate callback.
     document.register { [weak self] reason in if reason == .crashed { self?.refreshControl.endRefreshing() } }
     // The hooks' own handlers, on their contexts: the scope has no unregister.
-    document.register { [weak self] reason in self?.hookContexts.forEach { $0.documentEnded(reason) } }
+    document.register(skipsOpening: true) { [weak self] reason in
+      self?.hookContexts.forEach { $0.documentEnded(reason) }
+    }
   }
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.
@@ -177,12 +180,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// Loads a request the app started, not the page: it skips the navigation rules. A file URL goes through loadFileURL
-  /// with its directory as the read root, so the page's own assets load (load(_:) can't read local files).
-  // shortcut: the read root is the file's directory; add a source field if a site needs a wider one
+  /// with the source's read root, so the page's own assets load (load(_:) can't read local files).
   func loadProgrammatic(_ request: URLRequest) {
     programmaticUrl = request.url
     if let url = request.url, url.isFileURL {
-      webView?.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+      let access = ReadAccess.root(for: url, source?.readAccessRoot)
+      if let warning = access.warning { emit("core.warning", ["message": warning]) }
+      webView?.loadFileURL(url, allowingReadAccessTo: access.root)
     } else {
       webView?.load(request)
     }
@@ -220,7 +224,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
     }
     installScripts(configuration.userContentController)
-    let webView = MinimalWebViewHooks.webViewClass.init(frame: bounds, configuration: configuration)
+    let classes = hookContexts.compactMap { context in context.hook.webViewClass.map { (context.key, $0) } }
+    let webViewClass = classes.first?.1 ?? WKWebView.self
+    for (key, other) in classes where other != webViewClass {
+      emit("core.warning", ["message": "hookOptions.\(key): its webViewClass is not used, \(classes[0].0)'s is"])
+    }
+    let webView = webViewClass.init(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     webView.navigationDelegate = proxy
     webView.uiDelegate = proxy
@@ -420,7 +429,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
-  /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is always true on iOS.
+  /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is null on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     document.end(.crashed)
@@ -430,7 +439,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       // Any other page: reload() relaunches the process with the back-forward list's item, so history stays.
       if onSource || webView.backForwardList.currentItem == nil, let source { load(source) } else { reload() }
     }
-    onProcessGone(["didCrash": true, "recovered": recovered])
+    onProcessGone(["didCrash": NSNull(), "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }
@@ -438,7 +447,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 /// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
 /// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
 extension MinimalWebView {
-  /// Tells each attached hook whose value changed. A key that was not there when the WKWebView was made attaches nothing.
+  /// Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewClass` whose key turns on.
   private func optionsChanged(from old: [String: Any]) {
     for key in Set(old.keys).union(hookOptions.keys) {
       let value = hookOptions[key]
@@ -446,9 +455,23 @@ extension MinimalWebView {
       if let context = hookContexts.first(where: { $0.key == key }) {
         context.optionsChanged(value)
       } else if !enables(old[key]), enables(value) {
-        emit("core.warning", ["message": "hookOptions.\(key): added after the WebView was created, so no hook attaches for it"])
+        attachLate(key)
       }
     }
+  }
+
+  private func attachLate(_ key: String) {
+    guard let webView, let hook = MinimalWebViewHooks.hooks.first(where: { $0.key == key }) else {
+      return emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
+    }
+    // configure edits the configuration the WKWebView was created from, and webViewClass makes it: too late for this one.
+    guard hook.configure == nil, hook.webViewClass == nil else {
+      let why = hook.configure != nil ? "configure" : "a webViewClass"
+      return emit("core.warning", ["message": "hookOptions.\(key): its hook has \(why), so it attaches only when the WebView is created"])
+    }
+    let context = HookContext(hook, self)
+    hookContexts.append(context)
+    if let detach = hook.attach(webView, context) { detachers.append(detach) }
   }
 
   func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {

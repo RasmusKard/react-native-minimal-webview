@@ -62,6 +62,15 @@ class DownloadsTest {
       assertEquals(path, reason, assertThrows(IOException::class.java) { fetch(path) }.message)
     }
     assertEquals("the first request and 20 redirects", 21, received.count { it.startsWith("/loop") })
+    assertEquals(404, assertThrows(HttpStatus::class.java) { fetch("/missing") }.code)
+  }
+
+  @Test
+  fun kindsAFailureByWhatFailed() {
+    assertEquals("network", Downloads.kind(IOException("timeout"), fetched = true))
+    assertEquals("data", Downloads.kind(TooLarge(), fetched = true))
+    assertEquals("data", Downloads.kind(IOException("could not read the blob"), fetched = false))
+    assertEquals("data", Downloads.kind(IllegalArgumentException("bad base-64"), fetched = false))
   }
 
   @Test

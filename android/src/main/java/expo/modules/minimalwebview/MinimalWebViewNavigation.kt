@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.FileUriExposedException
 import android.os.Message
 import android.util.Log
 import android.webkit.RenderProcessGoneDetail
@@ -98,14 +99,15 @@ internal class MinimalWebViewNavigation(
     val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
     if ("openExternal" !in owner.requestHandlers) return report(open(request.url))
     // A page that moved on first answers null, which counts as opened. No timeout: nothing waits for the answer.
-    owner.asks.ask("core.openExternal", mapOf("url" to request.url)) { answer ->
+    owner.asks.ask("core.openExternal", fields(request)) { answer ->
       report(answer != false || open(request.url))
     }
   }
 
   /**
    * Opens a URL outside the WebView. Returns false when it could not be opened (the caller reports `block`): a page
-   * controls the URL, so a malformed intent (bad syntax, launchFlags=zz) or a refused activity must not crash the app.
+   * controls the URL, so a malformed intent (bad syntax, launchFlags=zz), a refused activity or a `file:` URL (which
+   * Android refuses to hand to another app) must not crash the app.
    */
   private fun open(url: String): Boolean {
     val intent = try {
@@ -121,6 +123,8 @@ internal class MinimalWebViewNavigation(
     } catch (e: ActivityNotFoundException) {
       openFallback(intent, url, e)
     } catch (e: SecurityException) {
+      failed("not allowed to open $url", e)
+    } catch (e: FileUriExposedException) {
       failed("not allowed to open $url", e)
     }
   }

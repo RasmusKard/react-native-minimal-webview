@@ -19,6 +19,7 @@ import type {
 } from 'minimal-rn-webview';
 import { WebView, IOSConstants } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
+import { seams } from 'sample-extension';
 
 import { hostile } from './hostile';
 import { perf, perfCold } from './perf';
@@ -123,7 +124,7 @@ export const WEBVIEW = {
 let webViewMajor: number | undefined;
 /** The Android System WebView's major version, from its default user agent (no page needed); 0 on iOS. */
 const androidWebView = () =>
-  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.defaultUserAgent ?? '')?.[1] ?? 0));
+  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.android.defaultUserAgent ?? '')?.[1] ?? 0));
 
 /** A suite's checks and INFO lines. With a `floor` (a `WEBVIEW` value) each `check` is a `since(floor, …)`. */
 export function reporter(suite: string, floor = 0) {
@@ -199,7 +200,7 @@ export function pollForSuites(get: () => Harness) {
 
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
- * props, the event logs, and a new WebView (a platform settings key is not reset by its absence).
+ * props, the event logs, and a new WebView (an Android settings key with no getter is not reset by its absence).
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -228,6 +229,23 @@ export async function until<T>(
   return undefined;
 }
 
+/** Collects each `console.warn` line (the WebView's warnings among them) until `stop` restores `console.warn`. */
+function captureWarnings() {
+  const lines: string[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+    warn(...args);
+  };
+  return {
+    lines,
+    warned: (text: string) => lines.some((line) => line.includes(text)),
+    stop: () => {
+      console.warn = warn;
+    },
+  };
+}
+
 export const waitFor = async (
   h: Pick<Harness, 'state'>,
   predicate: (s: NavigationState) => boolean,
@@ -235,6 +253,13 @@ export const waitFor = async (
 ) => (await until(() => predicate(h.state()), ms, 50)) === true;
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+/** An `onOpenExternal` that records each URL in `into` and answers that the app opened it. */
+export const recordExternal =
+  (into: string[]): WebViewProps['onOpenExternal'] =>
+  ({ url }) => {
+    into.push(url);
+    return true;
+  };
 /** Allows every `ask`, with `rules` ahead of a catch-all http(s) allow; returns the asked URLs. */
 const allowAsks = async (h: Harness, rules: NavigationRule[]) => {
   const asked: string[] = [];
@@ -854,7 +879,8 @@ export const fresh = (h: Harness, path: string) =>
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
  * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
- * that don't recreate it (`hookOptions`, whose keys pick the hooks only when it is created), it remounts too.
+ * that don't recreate it (`hookOptions`, whose keys pick the hooks with configure only when it is created), it
+ * remounts too.
  */
 async function recreate(h: Harness, props: Partial<WebViewProps>, remount = false) {
   const loads = h.events.loads.length;
@@ -1323,7 +1349,11 @@ async function mountSettings(h: Harness) {
     h,
     Platform.OS === 'ios'
       ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
-      : { android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } } },
+      : {
+          android: {
+            settings: { userAgentString: `${WebView.android.defaultUserAgent} Remounted/9` },
+          },
+        },
     Platform.OS === 'android'
   );
   const remountedVh = await viewportHeight(h);
@@ -1352,13 +1382,7 @@ async function mountSettings(h: Harness) {
 /** `ios` / `android` settings by name: applied live, seen by the page, rejected with a warning when wrong; get and call. */
 async function settings(h: Harness) {
   const r = reporter('settings');
-  const warnings: string[] = [];
-  const warn = console.warn;
-  console.warn = (...args: unknown[]) => {
-    warnings.push(args.map(String).join(' '));
-    warn(...args);
-  };
-  const warned = (text: string) => warnings.some((line) => line.includes(text));
+  const { lines: warnings, warned, stop } = captureWarnings();
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
   // An 8px span's computed size: the minimum font size setting raises it.
@@ -1377,8 +1401,8 @@ async function settings(h: Harness) {
         ios: {
           configuration,
           preferences,
-          scrollView: { nope: 1 },
-          webView: { _private: 1, URL: 'x' },
+          scrollView: { other: { nope: 1 } },
+          webView: { other: { _private: 1, URL: 'x' } },
         },
       });
       r.check('a WKPreferences number applies', (await fontSize()) === '30px', await fontSize());
@@ -1413,6 +1437,10 @@ async function settings(h: Harness) {
         'a UIScrollView struct applies',
         (await page('scrollY')) === 30,
         await page('scrollY')
+      );
+      r.check(
+        'a removed key (preferences.minimumFontSize) goes back to its start-up value',
+        (await get('preferences.minimumFontSize')) === 0
       );
       const width = (await page('innerWidth')) as number;
       h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
@@ -1453,26 +1481,22 @@ async function settings(h: Harness) {
       );
       r.check(
         'get rejects for an unknown property',
-        (await get('scrollView.nope')) === 'native_error'
+        (await get('scrollView.nope')) === 'not_found'
       );
-      const call = (
-        method: string,
-        args?: unknown[],
-        options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
-      ) => h.ref.current?.call(method, args, options).catch(errorCode);
+      const call = (method: string, args?: unknown[]) =>
+        h.ref.current?.call(method, args).catch(errorCode);
       // The site data clear below removes this cookie.
       const value = String(Date.now());
       const setCookie = (cookie: Record<string, string>) =>
-        call('httpCookieStore.setCookie:completionHandler:', [{ cookie }], { completion: 'void' });
+        call('httpCookieStore.setCookie:completionHandler:', [{ cookie }]);
       const stored = await setCookie({
         Name: 'mrwCall',
         Value: value,
         Domain: 'localhost',
         Path: '/',
       });
-      const cookies = (await call('httpCookieStore.getAllCookies:', [], {
-        completion: 'value',
-      })) as { Name: string; Value: string }[] | string | undefined;
+      const cookies = (await call('httpCookieStore.getAllCookies:')) as
+        { Name: string; Value: string }[] | string | undefined;
       r.check(
         'call takes { cookie } and resolves an NSHTTPCookie as its properties',
         stored === null &&
@@ -1488,8 +1512,7 @@ async function settings(h: Harness) {
       const before = await page('document.cookie');
       const cleared = await call(
         'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-        [{ set: [IOSConstants.WebsiteDataType.cookies] }, { date: 0 }],
-        { completion: 'void' }
+        [{ set: [IOSConstants.WebsiteDataType.cookies] }, { date: 0 }]
       );
       r.check(
         'call clears site data (a void completion handler)',
@@ -1498,39 +1521,35 @@ async function settings(h: Harness) {
           (await page('document.cookie')) === '',
         { before, cleared }
       );
-      const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null], {
-        completion: 'valueError',
-      });
+      const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null]);
       r.check(
         'call resolves NSData as base64 (valueError)',
         typeof pdf === 'string' && pdf.length > 100 && pdf.startsWith('JVBERi0'),
         String(pdf).slice(0, 20)
       );
-      const png = await call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], {
-        completion: 'valueError',
-      });
+      const png = await call('webView.takeSnapshotWithConfiguration:completionHandler:', [null]);
       r.check(
         'call resolves a UIImage as a PNG (valueError)',
         typeof png === 'string' && png.startsWith('iVBORw0KGgo'),
         String(png).slice(0, 20)
       );
-      const records = await call(
-        'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
-        [{ set: [IOSConstants.WebsiteDataType.localStorage] }],
-        { completion: 'value' }
-      );
+      const records = await call('websiteDataStore.fetchDataRecordsOfTypes:completionHandler:', [
+        { set: [IOSConstants.WebsiteDataType.localStorage] },
+      ]);
       r.check('call resolves a value completion handler', Array.isArray(records), records);
-      // iOS 18 selectors: below it they reject with native_error, as the floor should.
+      const playback = await call('webView.requestMediaPlaybackStateWithCompletionHandler:');
+      r.check(
+        'call resolves an integer completion handler (no media: none)',
+        playback === IOSConstants.MediaPlaybackState.none,
+        playback
+      );
+      // iOS 18 selectors: below it they reject with not_found, as the floor should.
       if (parseFloat(String(Platform.Version)) >= 18) {
         await page(`sessionStorage.setItem('mrw', '1')`);
-        const session = await call(
-          'webView.fetchDataOfTypes:completionHandler:',
-          [IOSConstants.WebViewDataType.sessionStorage],
-          { completion: 'valueError' }
-        );
-        const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
-          completion: 'error',
-        });
+        const session = await call('webView.fetchDataOfTypes:completionHandler:', [
+          IOSConstants.WebViewDataType.sessionStorage,
+        ]);
+        const restored = await call('webView.restoreData:completionHandler:', [{ data: session }]);
         r.check(
           'call takes NSData and an error completion handler',
           typeof session === 'string' && session.length > 0 && restored === null,
@@ -1558,7 +1577,7 @@ async function settings(h: Harness) {
       );
       r.check(
         'call rejects an unknown selector',
-        (await call('webView.nope:', [1])) === 'native_error'
+        (await call('webView.nope:', [1])) === 'not_found'
       );
       r.check(
         'call rejects a wrong argument count',
@@ -1575,10 +1594,11 @@ async function settings(h: Harness) {
     } else {
       const payment = () => page(`typeof PaymentRequest`);
       const paymentBefore = await payment();
+      const fontBefore = await get('settings.minimumFontSize');
       h.setProps({
         android: {
-          settings: { minimumFontSize: 30, paymentRequestEnabled: true, nope: 1 },
-          webView: { networkAvailable: false, _private: 1, webViewClient: null },
+          settings: { minimumFontSize: 30, paymentRequestEnabled: true, other: { nope: 1 } },
+          webView: { networkAvailable: false, other: { _private: 1, webViewClient: null } },
         },
       });
       await sleep(500);
@@ -1610,7 +1630,7 @@ async function settings(h: Harness) {
       // The renderer process keeps navigator.onLine for later WebViews: put it back.
       h.setProps({
         android: {
-          settings: { minimumFontSize: 'big' as never },
+          settings: { minimumFontSize: 'big' as never, paymentRequestEnabled: true },
           webView: { networkAvailable: true },
         },
       });
@@ -1629,7 +1649,7 @@ async function settings(h: Harness) {
         (await get('settings.paymentRequestEnabled')) === true
       );
       r.check('get reads an is-getter', (await get('webView.verticalScrollBarEnabled')) === true);
-      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'native_error');
+      r.check('get rejects for an unknown key', (await get('settings.nope')) === 'not_found');
       const call = (method: string, args?: unknown[]) =>
         h.ref.current?.call(method, args).catch(errorCode);
       r.check('call runs a WebView method', (await call('webView.clearCache', [true])) === null);
@@ -1642,33 +1662,48 @@ async function settings(h: Harness) {
         'get refuses a core-owned method, and the WebView still works',
         (await get('webView.destroy')) === 'native_error' && (await page('1+1')) === 2
       );
+      const origin = String(await page('location.origin'));
+      const set = await call('cookieManager.setCookie', [origin, 'mrwSet=2']);
+      const read = await call('cookieManager.getCookie', [origin]);
+      r.check(
+        'call sets and reads a cookie through cookieManager',
+        set === null && String(read).includes('mrwSet=2'),
+        { set, read }
+      );
       await page(`(document.cookie = 'mrw=1; path=/')`);
       const before = await page('document.cookie');
-      const removed = await call('cookieManager.removeAllCookies', [null]);
-      await sleep(500);
+      // No callback in the args: the call resolves once the cookies are gone, with whether there were any.
+      const removed = await call('cookieManager.removeAllCookies');
       r.check(
-        'call clears cookies through cookieManager',
+        'call awaits a ValueCallback: cookieManager.removeAllCookies',
         String(before).includes('mrw=1') &&
-          removed === null &&
+          removed === true &&
           (await page('document.cookie')) === '',
         { before, removed }
       );
       r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
-      r.check(
-        'call rejects an unknown root',
-        (await call('clearCache', [true])) === 'native_error'
-      );
+      r.check('call rejects an unknown root', (await call('clearCache', [true])) === 'not_found');
       // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
-      h.setProps({ android: { webView: { backgroundColor: 0 } } });
+      h.setProps({ android: { webView: { other: { backgroundColor: 0 } } } });
       await sleep(500);
       r.check(
         'android.webView.backgroundColor 0 (transparent) applies without a warning',
         !warned('android.webView.backgroundColor'),
         warnings
       );
+      r.check(
+        'a removed key (settings.minimumFontSize) goes back to its start-up value',
+        (await get('settings.minimumFontSize')) === fontBefore,
+        { fontBefore }
+      );
+      r.check(
+        'a removed key with no getter (webView.networkAvailable) warns that it keeps its value',
+        warned('android.webView.networkAvailable: removed, but it has no getter'),
+        warnings
+      );
     }
   } finally {
-    console.warn = warn;
+    stop();
   }
   r.done();
 }
@@ -1680,7 +1715,9 @@ async function navigation(h: Harness) {
   const asked: string[] = [];
   let lastAskAt = 0;
   const lastNavigation = () => h.events.navigations[h.events.navigations.length - 1];
-  h.setProps({ onOpenExternal: (url) => void external.push(url) });
+  h.setProps({
+    onOpenExternal: recordExternal(external),
+  });
   h.setAsk((request) => {
     asked.push(request.url);
     lastAskAt = Date.now();
@@ -1762,7 +1799,7 @@ async function navigation(h: Harness) {
     external
   );
   h.setProps({
-    onOpenExternal: (url) => void external.push(url),
+    onOpenExternal: recordExternal(external),
     ios: { preferences: { javaScriptCanOpenWindowsAutomatically: true } },
     android: { settings: { javaScriptCanOpenWindowsAutomatically: true } },
   });
@@ -1901,7 +1938,7 @@ async function navigation(h: Harness) {
     // Nothing opened externally, so the intent: is reported as blocked; the fallback reports its own allow.
     r.check('the intent: itself is reported as block', own.decision?.action === 'block', own);
   }
-  const handedBack = await sendExternal('handed-back', (url) => {
+  const handedBack = await sendExternal('handed-back', ({ url }) => {
     external.push(url);
     return false;
   });
@@ -1914,9 +1951,12 @@ async function navigation(h: Harness) {
       (Platform.OS === 'ios' || (handedBack.loaded && handedBack.fallback?.rule === 1)),
     handedBack
   );
-  const handled = await sendExternal('handled', (url) => void external.push(url));
+  const handled = await sendExternal('handled', ({ url }) => {
+    external.push(url);
+    return true;
+  });
   r.check(
-    'onOpenExternal returning nothing has opened it: reported external, no fallback',
+    'onOpenExternal returning true has opened it: reported external, no fallback',
     handled.external.length === 1 &&
       handled.decision?.action === 'external' &&
       handled.fallback === undefined &&
@@ -1927,17 +1967,29 @@ async function navigation(h: Harness) {
 }
 
 /**
- * The `injectedScripts` prop: when its scripts run, in which frames, and that a change applies from the next load.
+ * The `injectedScripts` prop: when its scripts run, in which frames and on which origins, and that a change applies
+ * from the next load.
  */
 async function injection(h: Harness) {
   const r = reporter('injection', WEBVIEW.injectedScripts);
   h.setProps({
     injectedScripts: [
-      { code: 'window.__injectedStart = true;', allFrames: true },
-      { code: 'window.__mainOnly = true; window.__marker = "one";' },
+      {
+        code: 'window.__injectedStart = true;\nfunction __globalFn() {}',
+        allFrames: true,
+        origins: ['*'],
+      },
+      { code: 'window.__mainOnly = true; window.__marker = "one";', origins: ['*'] },
       {
         code: `addEventListener('DOMContentLoaded', () => (window.__injectedEnd = !!document.getElementById('end')));`,
+        origins: ['*'],
       },
+      {
+        code: 'window.__scoped = true;\nfunction __scopedFn() {}',
+        allFrames: true,
+        origins: [h.pages],
+      },
+      { code: 'window.__elsewhere = true;', allFrames: true, origins: ['https://example.com'] },
     ],
   });
   await sleep(500);
@@ -1954,7 +2006,24 @@ async function injection(h: Harness) {
   })()`)) as { start: boolean; mainOnly: boolean; top: boolean };
   r.check('an allFrames script runs in iframes', frame.start, frame);
   r.check('a script runs in the main frame only by default', frame.top && !frame.mainOnly, frame);
-  h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";' }] });
+  const scoped = (await h.ref.current?.evaluate(`(() => {
+    const w = document.querySelector('iframe').contentWindow;
+    return {
+      main: window.__scoped === true, frame: w.__scoped === true, elsewhere: window.__elsewhere === true || w.__elsewhere === true,
+      scopedFn: typeof __scopedFn, globalFn: typeof __globalFn,
+    };
+  })()`)) as Record<string, unknown>;
+  r.check(
+    'a scoped script runs on its origins only, main frame and iframes',
+    scoped['main'] === true && scoped['frame'] === true && scoped['elsewhere'] === false,
+    scoped
+  );
+  r.check(
+    "a scoped script's declarations stay local; with '*' they are global",
+    scoped['scopedFn'] === 'undefined' && scoped['globalFn'] === 'function',
+    scoped
+  );
+  h.setProps({ injectedScripts: [{ code: 'window.__marker = "two";', origins: ['*'] }] });
   await sleep(500);
   r.check(
     'a changed script waits for the next navigation',
@@ -2053,8 +2122,8 @@ async function downloadsSuite(h: Harness) {
     const failed = await waitFor(h, () => h.events.downloadFailures.length > failures, 20000);
     const failure = h.events.downloadFailures[failures];
     r.check(
-      'a blob above the size cap reports a failure with a reason',
-      failed && failure?.reason.includes('larger than') === true,
+      'a blob above the size cap reports a data failure with a description',
+      failed && failure?.kind === 'data' && failure.description.includes('larger than'),
       failure
     );
     // Far more than one reply can carry: the page reads it in chunks.
@@ -2073,7 +2142,10 @@ async function downloadsSuite(h: Harness) {
   }
 
   const opened: string[] = [];
-  h.setProps({ onDownload: undefined, onOpenExternal: (url) => void opened.push(url) });
+  h.setProps({
+    onDownload: undefined,
+    onOpenExternal: recordExternal(opened),
+  });
   await sleep(300);
   const events = () => h.events.downloads.length + h.events.downloadFailures.length;
   const before = events();
@@ -2305,6 +2377,10 @@ async function fullscreen(h: Harness) {
 /** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
 async function sampleExtension(h: Harness) {
   const r = reporter('sampleExtension');
+  const mountEnds = h.events.documentEnds.length;
+  await recreate(h, {}, true);
+  const phantom = h.events.documentEnds.slice(mountEnds).filter((end) => end.url === '');
+  r.check('the first commit after mount ends no Document', phantom.length === 0, phantom);
   // WebKit moves its back-forward list to the next page a moment before it reports the commit, so what a handler sees
   // can depend on timing: several same-origin navigations of each kind, each ending the page before it.
   const misses: unknown[] = [];
@@ -2362,8 +2438,8 @@ async function sampleExtension(h: Harness) {
     await h.ref.current?.hook('noSuchHook', 'count').catch(errorCode),
   ];
   r.check(
-    'ref.hook rejects with hook_not_handled when no attached hook handles the method',
-    unhandled.every((code) => code === 'hook_not_handled'),
+    'ref.hook rejects with not_found when no attached hook handles the method',
+    unhandled.every((code) => code === 'not_found'),
     unhandled
   );
   // A changed value reaches the attached hook (onOptionsChange), which stamps the page under the new name.
@@ -2401,16 +2477,61 @@ async function sampleExtension(h: Harness) {
       h.events.hookEvents
     );
   }
-  // HTTP auth, which the core declines: the hook's delegate (client) answers it.
-  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } }, true);
+  // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
+  h.setProps({ onHookEvent: () => new Promise<never>(() => {}) });
+  await sleep(100);
+  const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
+  await sleep(200);
+  await recreate(h, {}, true);
+  const unmounted = await Promise.race([held, sleep(3000).then(() => 'still pending')]);
+  r.check(
+    'unmount rejects a ref.hook in flight with navigated',
+    unmounted === 'navigated',
+    unmounted
+  );
+  // HTTP auth, which the core declines: the hook's delegate (client) answers it. Its key turns on after creation, and a
+  // hook without configure attaches then.
+  await recreate(h, { hookOptions: { 'sample.pageCounter': true } }, true);
+  h.setProps({ hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } });
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
-  r.check('its delegate answers HTTP auth', auth === 'authorized', auth);
+  r.check(
+    'a key turned on after creation attaches its hook: its delegate answers HTTP auth',
+    auth === 'authorized',
+    auth
+  );
+  // A hook with configure can't attach to a WebView that exists: its key turned on late warns and attaches nothing.
+  await recreate(h, { hookOptions: { 'sample.hookAuth': true } }, true);
+  const warnings = captureWarnings();
+  try {
+    h.setProps({ hookOptions: { 'sample.hookAuth': true, 'sample.pageCounter': true } });
+    await until(() => warnings.warned('hookOptions.sample.pageCounter'), 3000, 100);
+  } finally {
+    warnings.stop();
+  }
+  const late = await h.ref.current?.hook('sample.pageCounter', 'count').catch(errorCode);
+  r.check(
+    'a key turned on after creation whose hook has configure warns and attaches nothing',
+    late === 'not_found' && warnings.warned('attaches only when the WebView is created'),
+    { late, warnings: warnings.lines }
+  );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(
     h,
-    { hookOptions: { 'sample.pageCounter': true, 'sample.hookDialogs': true } },
+    {
+      hookOptions: {
+        'sample.pageCounter': true,
+        'sample.hookDialogs': true,
+        'sample.subclass': true,
+      },
+    },
     true
+  );
+  const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
+  r.check(
+    "its webViewClass (webViewFactory) makes the WebView it's enabled on",
+    made === (Platform.OS === 'ios' ? 'SampleWKWebView' : 'SampleWebView'),
+    made
   );
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
@@ -2435,7 +2556,71 @@ async function sampleExtension(h: Harness) {
       : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
   const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
   r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
+  await hookSeams(h, r);
   r.done();
+}
+
+/** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
+async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
+  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
+  if (Platform.OS === 'ios') {
+    const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
+    r.check(
+      'its refreshControl, styled at attach, is the one pullToRefresh shows',
+      tinted === true,
+      tinted
+    );
+  }
+  if (Platform.OS === 'android') {
+    await openPage(h, fresh(h, '/media.html'));
+    const [downloads, events] = [h.events.downloads.length, h.events.hookEvents.length];
+    await click(h, 'attachment');
+    const taken = await until(
+      () => h.events.hookEvents.slice(events).includes('sample.seams.download'),
+      10000
+    );
+    await click(h, 'blob');
+    const passed = await waitFor(h, () => h.events.downloads.length > downloads, 20000);
+    r.check(
+      'its onDownloadStart handler takes an http download from onDownload and passes a blob: one on',
+      !!taken && passed && h.events.downloads.length === downloads + 1,
+      { taken, downloads: h.events.downloads.length - downloads }
+    );
+    // Its second touch listener counts a down and a cancel that its first one doesn't consume.
+    const touches = await h.ref.current?.hook('sample.seams', 'touch').catch(errorCode);
+    r.check('its touch listeners share the slot, in order', touches === 2, touches);
+    h.loadSource({ html: '<div style="height: 5000px">tall</div>', baseUrl: h.pages });
+    const scrolled = await until(
+      async () => (await h.ref.current?.evaluate('(scrollTo(0, 400), scrollY > 0)')) === true,
+      5000
+    );
+    const both = await until(
+      () =>
+        ['scrollA', 'scrollB'].every((name) =>
+          h.events.hookEvents.includes(`sample.seams.${name}`)
+        ),
+      3000
+    );
+    r.check(
+      'its two scroll listeners both get the scroll',
+      !!scrolled && !!both,
+      h.events.hookEvents
+    );
+    const closed = await seams.closedViews();
+    await recreate(h, {}, true);
+    const now = await until(async () => {
+      const count = await seams.closedViews();
+      return count > closed && count;
+    }, 3000);
+    r.check(
+      'its onDestroyed handler runs once its WebView is destroyed at unmount',
+      now === closed + 1,
+      {
+        closed,
+        now,
+      }
+    );
+  }
 }
 
 /** First-load headers, declined HTTP auth, shared cookies, download failures. */

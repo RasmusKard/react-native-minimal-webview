@@ -1,20 +1,34 @@
+import { createContext, runInContext } from 'node:vm';
 import { type RefObject, act, createRef, useState } from 'react';
-import { Platform, Text } from 'react-native';
+import { AppState, Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
 import { WebView } from '../WebView';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { createWebViewRef, useWebViewState } from '../refStore';
-import type { Bridge, NavigationState, WebViewProps, WebViewRef, WebViewRefObject } from '../types';
+import type {
+  Bridge,
+  NavigationRequest,
+  NavigationState,
+  SettingValue,
+  WebViewProps,
+  WebViewRef,
+  WebViewRefObject,
+} from '../types';
 
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
+const mockEvaluate = jest.fn(async (_script: string) => '{"a":1}');
+const mockHook = jest.fn(async (name: string, method: string, args: string) =>
+  JSON.stringify({ name, method, args })
+);
 const mockBridgePost = jest.fn<void, [json: string]>();
 const mockMount = jest.fn();
 const mockNativeModule = {
   defaultUserAgent: 'Mozilla/5.0 (Android)',
   warmUp: jest.fn(),
   preconnect: jest.fn(),
+  setWebContentsDebuggingEnabled: jest.fn(),
 };
 // The view is a host element of the name WebView.tsx asks for (MinimalWebView), whose ref has the native `answer`,
 // `navigate`, `bridgePost`, `evaluate`, `get`, `call` and `hook` methods; `get`, `call` and `hook` echo their request as
@@ -33,12 +47,11 @@ jest.mock('expo', () => {
           answer: mockAnswer,
           navigate: mockNavigate,
           bridgePost: mockBridgePost,
-          evaluate: async () => '{"a":1}',
+          evaluate: mockEvaluate,
           get: async (path: string) => JSON.stringify({ get: path }),
           call: async (path: string, args: string, completion: string | null) =>
             JSON.stringify({ call: path, args, completion }),
-          hook: async (name: string, method: string, args: string) =>
-            JSON.stringify({ name, method, args }),
+          hook: mockHook,
         }));
         return createElement(name, props);
       },
@@ -98,21 +111,39 @@ describe('WebView', () => {
     expect((await render({ sharedCookies: true })).native?.sharedCookies).toBeUndefined();
   });
 
-  it('defaultUserAgent is null, and warmUp and preconnect do nothing, on iOS', () => {
-    WebView.warmUp();
-    WebView.preconnect('https://example.com');
-    expect(WebView.defaultUserAgent).toBeNull();
-    expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
-    expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
+  it('sends defaultNavigationRules, the native vectors’ defaults, for unset or empty rules', async () => {
+    const vectors = jest.requireActual<{ rulesets: Record<string, unknown> }>(
+      './vectors/navigation-rules.json'
+    );
+    expect(WebView.defaultNavigationRules).toEqual(vectors.rulesets.defaults);
+    expect(Object.isFrozen(WebView.defaultNavigationRules[0]?.scheme)).toBe(true);
+    for (const navigationRules of [undefined, []])
+      expect((await render({ navigationRules })).native?.navigationRules).toBe(
+        WebView.defaultNavigationRules
+      );
+    const rules = [{ scheme: ['myapp'], action: 'external' as const }];
+    expect((await render({ navigationRules: rules })).native?.navigationRules).toBe(rules);
   });
 
-  it("defaultUserAgent, warmUp and preconnect are the native module's on Android", () => {
+  it('WebView.android: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
+    WebView.android.warmUp();
+    WebView.android.preconnect('https://example.com');
+    WebView.android.setWebContentsDebuggingEnabled(true);
+    expect(WebView.android.defaultUserAgent).toBeNull();
+    expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
+    expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
+    expect(mockNativeModule.setWebContentsDebuggingEnabled).not.toHaveBeenCalled();
+  });
+
+  it("WebView.android is the native module's on Android", () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    WebView.warmUp();
-    WebView.preconnect('https://example.com');
-    expect(WebView.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
+    WebView.android.warmUp();
+    WebView.android.preconnect('https://example.com');
+    WebView.android.setWebContentsDebuggingEnabled(false);
+    expect(WebView.android.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
     expect(mockNativeModule.warmUp).toHaveBeenCalledTimes(1);
     expect(mockNativeModule.preconnect).toHaveBeenCalledWith('https://example.com');
+    expect(mockNativeModule.setWebContentsDebuggingEnabled).toHaveBeenCalledWith(false);
   });
 });
 
@@ -312,6 +343,60 @@ describe('bridge', () => {
   });
 });
 
+describe('injectedScripts', () => {
+  const code = 'function secret() {}\nconst local = 1;\nwindow.ran = true;';
+  const nativeCode = async (origins: string[]) => {
+    const { native } = await render({ injectedScripts: [{ code, allFrames: true, origins }] });
+    const scripts = native?.['injectedScripts'] as { code: string }[];
+    expect(scripts).toEqual([{ code: expect.any(String) as string, allFrames: true }]);
+    return scripts[0]!.code;
+  };
+  /** Runs `script` as a document-start script in a frame of `origin`, after `before` patched its built-ins. */
+  const run = (script: string, origin: string, before = '') => {
+    const frame = createContext({ location: { origin } });
+    runInContext('window = globalThis;', frame);
+    runInContext(before, frame);
+    runInContext(script, frame);
+    return runInContext(
+      '({ ran: window.ran === true, secret: typeof secret, local: typeof local })',
+      frame
+    ) as Record<string, unknown>;
+  };
+
+  it("sends a script with '*' unchanged and without origins", async () => {
+    expect(await nativeCode(['https://example.com', '*'])).toBe(code);
+  });
+
+  it('runs a scoped script only on its origins, and its declarations stay inside it', async () => {
+    const script = await nativeCode(['https://example.com', 'https://*.example.org:8443']);
+    const local = { secret: 'undefined', local: 'undefined' };
+    expect(run(script, 'https://example.com')).toEqual({ ran: true, ...local });
+    expect(run(script, 'https://a.b.example.org:8443')).toEqual({ ran: true, ...local });
+    for (const origin of ['https://example.org:8443', 'https://evil.com', 'null'])
+      expect(run(script, origin)).toEqual({ ran: false, ...local });
+  });
+
+  it("is not fooled by a frame's patched built-ins", async () => {
+    const script = await nativeCode(['https://example.com']);
+    const patch = `
+      String.prototype.toLowerCase = () => 'https://example.com';
+      String.prototype.endsWith = String.prototype.startsWith = String.prototype.includes = () => true;
+      Array.prototype.some = Array.prototype.includes = () => true;
+      Array.prototype.indexOf = () => 0;
+      Object.defineProperty(Object.prototype, 'any', { get: () => true });`;
+    expect(run(script, 'https://evil.com', patch).ran).toBe(false);
+  });
+
+  it('throws at render for a script without origins or with an invalid rule', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const scripts = (origins: unknown) => [{ code, origins }] as WebViewProps['injectedScripts'];
+    await expect(render({ injectedScripts: scripts(undefined) })).rejects.toThrow('needs origins');
+    await expect(render({ injectedScripts: scripts(['example.com']) })).rejects.toThrow(
+      'invalid origins ["example.com"]'
+    );
+  });
+});
+
 describe('ref.hook', () => {
   it('sends the arguments as JSON and parses the reply', async () => {
     const ref = createRef<WebViewRef>();
@@ -373,6 +458,13 @@ describe('platform settings', () => {
     });
   });
 
+  it('send a root’s other keys among its own, a generated key winning', async () => {
+    // The types refuse a generated key under other; JavaScript can still send one.
+    const other: Record<string, SettingValue> = { nope: 1, bounces: true };
+    const settings = await settingsOf({ ios: { scrollView: { bounces: false, other } } });
+    expect(settings.scrollView).toEqual({ nope: 1, bounces: false });
+  });
+
   type Configuration = NonNullable<WebViewProps['ios']>['configuration'];
   /** Renders one ios.configuration, then another, counting the native mounts. */
   const changeConfiguration = async (
@@ -415,7 +507,7 @@ describe('platform settings', () => {
     it('are the defaults alone without props', async () => {
       expect(await settingsOf({})).toEqual({
         settings: { userAgentString: null },
-        webView: { webContentsDebuggingEnabled: true },
+        webView: {},
       });
     });
 
@@ -424,13 +516,13 @@ describe('platform settings', () => {
         userAgent: 'Agent/1',
         android: {
           settings: { userAgentString: 'Overridden/0', textZoom: 120 },
-          webView: { webContentsDebuggingEnabled: false, overScrollMode: 2 },
+          webView: { overScrollMode: 2 },
         },
         ios: { webView: { inspectable: false } },
       });
       expect(settings).toEqual({
         settings: { userAgentString: 'Agent/1', textZoom: 120 },
-        webView: { webContentsDebuggingEnabled: false, overScrollMode: 2 },
+        webView: { overScrollMode: 2 },
       });
     });
 
@@ -506,7 +598,13 @@ describe('page requests', () => {
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
     await fire('core.fullscreenChange', { active: true });
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true }, undefined);
-    const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
+    const failure = {
+      ok: false,
+      kind: 'http',
+      filename: 'a.txt',
+      url: 'https://a.test/a',
+      statusCode: 404,
+    };
     await fire('core.download', failure);
     expect(onDownload).toHaveBeenCalledWith(failure, undefined);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
@@ -521,7 +619,7 @@ describe('page requests', () => {
       .mockRejectedValueOnce(new Error('no'));
     const { fire, native } = await renderRequests({
       onNavigationRequest,
-      onOpenExternal: () => {},
+      onOpenExternal: () => true,
     });
     expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
     const request = {
@@ -620,31 +718,37 @@ describe('page requests', () => {
     await asked;
   });
 
-  it('asks onOpenExternal with the URL alone and answers its result: false, else null', async () => {
+  it('asks onOpenExternal with the request and answers its result; a throw answers null, which opens nothing', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     const onOpenExternal = jest
-      .fn<boolean | void, [string]>()
+      .fn<boolean | Promise<boolean>, [NavigationRequest, AbortSignal]>()
       .mockReturnValueOnce(false)
-      .mockReturnValueOnce(undefined)
+      .mockResolvedValueOnce(true)
       .mockImplementationOnce(() => {
         throw new Error('no');
       });
     const { fire } = await renderRequests({ onOpenExternal });
-    await fire('core.openExternal', { url: 'intent://a#Intent;end' }, 1);
+    const request = (url: string) => ({
+      url,
+      mainFrame: true,
+      newWindow: false,
+      userInitiated: true,
+    });
+    await fire('core.openExternal', request('intent://a#Intent;end'), 1);
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: false });
-    await fire('core.openExternal', { url: 'tel:1' }, 2);
-    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
-    await fire('core.openExternal', { url: 'tel:2' }, 3);
+    await fire('core.openExternal', request('tel:1'), 2);
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: true });
+    await fire('core.openExternal', request('tel:2'), 3);
+    // Native counts anything but false as opened by the app, so null opens nothing.
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[minimal-rn-webview] onOpenExternal failed',
       expect.any(Error)
     );
-    expect(onOpenExternal.mock.calls.map(([url]) => url)).toEqual([
-      'intent://a#Intent;end',
-      'tel:1',
-      'tel:2',
-    ]);
+    const signal: unknown = expect.any(AbortSignal);
+    expect(onOpenExternal.mock.calls).toEqual(
+      ['intent://a#Intent;end', 'tel:1', 'tel:2'].map((url) => [request(url), signal])
+    );
     error.mockRestore();
   });
 });
@@ -728,9 +832,18 @@ describe('navigation state across remounts', () => {
       completion: null,
     });
     expect(await ref.current?.call('clearCache')).toMatchObject({ args: '[]' });
+    // The completion shape comes from the SDK headers' table; an unlisted selector gets none, so native rejects it.
+    expect(await ref.current?.call('httpCookieStore.getAllCookies:')).toEqual({
+      call: 'httpCookieStore.getAllCookies:',
+      args: '[]',
+      completion: 'value',
+    });
     expect(
-      await ref.current?.call('webView.x:completionHandler:', [], { completion: 'error' })
-    ).toEqual({ call: 'webView.x:completionHandler:', args: '[]', completion: 'error' });
+      await ref.current?.call('webView.restoreData:completionHandler:', [{ data: '' }])
+    ).toMatchObject({ completion: 'error' });
+    expect(await ref.current?.call('webView.x:completionHandler:')).toMatchObject({
+      completion: null,
+    });
     const stale = ref.current;
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
@@ -743,6 +856,88 @@ describe('navigation state across remounts', () => {
       () => stale?.hook('sample', 'count'),
     ])
       await expect(call()).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
+  it('retries a ref method each frame while Android has not registered the view, then rejects with unavailable', async () => {
+    const frames = jest.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((run) => {
+      run(0);
+      return 0;
+    });
+    const fail = (code: string) => () => Promise.reject(Object.assign(new Error(code), { code }));
+    const ref = createWebViewRef();
+    const root = createRoot();
+    await act(async () =>
+      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+
+    mockEvaluate.mockClear();
+    mockEvaluate
+      .mockImplementationOnce(fail('ERR_VIEW_NOT_FOUND'))
+      .mockImplementationOnce(fail('ERR_VIEW_NOT_FOUND'));
+    expect(await ref.current?.evaluate('1')).toEqual({ a: 1 });
+    expect(mockEvaluate).toHaveBeenCalledTimes(3);
+    expect(frames).toHaveBeenCalledTimes(2);
+
+    mockEvaluate.mockClear();
+    frames.mockClear();
+    mockEvaluate.mockImplementation(fail('ERR_VIEW_NOT_FOUND'));
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    expect(frames.mock.calls.length).toBeGreaterThan(30);
+    expect(mockEvaluate).toHaveBeenCalledTimes(frames.mock.calls.length + 1);
+
+    // In the background no frame comes, so it rejects at once.
+    mockEvaluate.mockClear();
+    frames.mockClear();
+    // react-native's jest mock makes currentState a function, so replaceProperty can't swap it.
+    const { currentState } = AppState;
+    Object.assign(AppState, { currentState: 'background' });
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    expect(frames).not.toHaveBeenCalled();
+    Object.assign(AppState, { currentState });
+
+    // Other errors are not retried.
+    mockEvaluate.mockClear();
+    mockEvaluate.mockImplementation(fail('script_error'));
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'script_error' });
+    expect(mockEvaluate).toHaveBeenCalledTimes(1);
+
+    // An unmount ends a retry in progress with the documented code.
+    mockEvaluate.mockClear();
+    mockEvaluate.mockImplementation(fail('ERR_VIEW_NOT_FOUND'));
+    const stale = ref.current;
+    let unmounted: Promise<void> | undefined;
+    frames.mockImplementation((run) => {
+      unmounted = act(async () => root.unmount()).then(() => run(0));
+      return 0;
+    });
+    await expect(stale?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    await unmounted;
+    expect(mockEvaluate).toHaveBeenCalledTimes(1);
+    mockEvaluate.mockImplementation(async () => '{"a":1}');
+  });
+
+  it('rejects a ref call still pending at unmount with navigated, and ignores the late answer', async () => {
+    let reply: ((json: string) => void) | undefined;
+    mockHook.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          reply = resolve;
+        })
+    );
+    const ref = createWebViewRef();
+    const root = createRoot();
+    await act(async () =>
+      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+    const stale = ref.current;
+    const pending = stale?.hook('probe', 'never').catch((error: unknown) => error);
+    const answered = await stale?.hook('probe', 'now');
+    expect(answered).toMatchObject({ method: 'now' });
+
+    await act(async () => root.unmount());
+    expect(await pending).toMatchObject({ code: 'navigated' });
+    reply?.('1');
+    await expect(stale?.hook('probe', 'after')).rejects.toMatchObject({ code: 'unavailable' });
   });
 
   it('getState and subscribe follow attach, detach and re-attach; detach resets to the initial state', async () => {

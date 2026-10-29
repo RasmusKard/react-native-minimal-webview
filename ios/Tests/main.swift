@@ -1,8 +1,10 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DocumentScope dispatch cases and the Asks contract. Not part of the pod (see the podspec).
+// and Recovery.swift, the DelegateProxy routing, the DocumentScope dispatch cases, the Asks contract and ReadAccess's
+// roots. Not part of the pod (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
-//     ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+//     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation
+import WebKit
 
 func fail(_ message: String) -> Never {
   print("ERROR \(message)")
@@ -96,7 +98,20 @@ if late != [.closing] {
   scopeFailures += 1
   print("FAIL document scope late registrant: \(late)")
 }
-print("\(2 - scopeFailures)/2 document scope cases pass")
+// A skipsOpening registrant doesn't hear the commit that opens a Document with none open: the first, or the one after
+// a crash. Every other end, a crash or close with none open included, reaches it.
+let opening = DocumentScope()
+var skipped: [DocumentScope.End] = []
+var unskipped: [DocumentScope.End] = []
+opening.register(skipsOpening: true) { skipped.append($0) }
+opening.register { unskipped.append($0) }
+let openingEnds: [DocumentScope.End] = [.committed, .committed, .crashed, .crashed, .committed, .committed, .closing]
+openingEnds.forEach(opening.end)
+if skipped != [.committed, .crashed, .crashed, .committed, .closing] || unskipped != openingEnds {
+  scopeFailures += 1
+  print("FAIL document scope opening: \(skipped), \(unskipped)")
+}
+print("\(3 - scopeFailures)/3 document scope cases pass")
 
 // Asks: each ask is answered once, by JS or with nil when native gives up; JS hears of a cancel except at closing.
 var askFailures = 0
@@ -173,4 +188,85 @@ for testCase in guardCases {
 }
 let recoveryCount = sourceCases.count + guardCases.count
 print("\(recoveryCount - recoveryFailures)/\(recoveryCount) recovery cases pass")
-exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures == 0 ? 0 : 1)
+
+// DelegateProxy routing: each callback goes to the list of the protocol that declares it, and the action policy to the
+// first navigation delegate with either variant. The WebKit objects are never touched by the fakes.
+final class Core: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.download) }
+  @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
+}
+final class PlainPolicy: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.cancel) }
+}
+final class PreferencesPolicy: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, preferences: WKWebpagePreferences, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy, WKWebpagePreferences) -> Void) { decisionHandler(.allow, preferences) }
+}
+final class NavigationWithAlert: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
+}
+final class UIWithAlertAndPolicy: NSObject, WKUIDelegate {
+  @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.cancel) }
+}
+
+var proxyFailures = 0
+var proxyCount = 0
+func proxyCheck(_ name: String, _ ok: Bool) {
+  proxyCount += 1
+  if !ok {
+    proxyFailures += 1
+    print("FAIL proxy \(name)")
+  }
+}
+let core = Core()
+let webView = class_createInstance(WKWebView.self, 0) as! WKWebView
+let navAction = class_createInstance(WKNavigationAction.self, 0) as! WKNavigationAction
+let alertPanel = NSSelectorFromString("webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:")
+func decided(_ proxy: DelegateProxy) -> WKNavigationActionPolicy? {
+  var policy: WKNavigationActionPolicy?
+  proxy.webView(webView, decidePolicyFor: navAction, preferences: WKWebpagePreferences()) { chosen, _ in policy = chosen }
+  return policy
+}
+func proxy(_ navigation: [WKNavigationDelegate], _ ui: [WKUIDelegate] = []) -> DelegateProxy {
+  let proxy = DelegateProxy(core: core)
+  (proxy.navigationDelegates, proxy.uiDelegates) = (navigation, ui)
+  return proxy
+}
+let plain = PlainPolicy()
+let preferring = PreferencesPolicy()
+proxyCheck("no hook: the core decides", decided(proxy([])) == .download)
+proxyCheck("plain before preferences: plain decides", decided(proxy([plain, preferring])) == .cancel)
+proxyCheck("preferences before plain: preferences decides", decided(proxy([preferring, plain])) == .allow)
+proxyCheck("a UI delegate's action policy is ignored", decided(proxy([], [UIWithAlertAndPolicy()])) == .download)
+proxyCheck("the proxy answers the preferences variant", proxy([]).responds(to: #selector(DelegateProxy.webView(_:decidePolicyFor:preferences:decisionHandler:))))
+let uiAlert = UIWithAlertAndPolicy()
+proxyCheck("an earlier UI delegate's alert beats a navigation delegate's", proxy([NavigationWithAlert()], [uiAlert]).forwardingTarget(for: alertPanel) as AnyObject? === uiAlert)
+proxyCheck("a navigation delegate's alert is not an alert owner", proxy([NavigationWithAlert()]).forwardingTarget(for: alertPanel) as AnyObject? === core)
+print("\(proxyCount - proxyFailures)/\(proxyCount) proxy cases pass")
+
+// (name, file, readAccessRoot, the expected root, whether a warning)
+let readCases: [(String, String, String?, String, Bool)] = [
+  ("no root: the file's directory", "file:///a/site/index.html", nil, "file:///a/site/", false),
+  ("the file's own directory", "file:///a/site/index.html", "file:///a/site/", "file:///a/site/", false),
+  ("an ancestor", "file:///a/site/pages/index.html", "file:///a/", "file:///a/", false),
+  ("no trailing slash", "file:///a/site/pages/index.html", "file:///a/site", "file:///a/site", false),
+  ("the file itself", "file:///a/site/index.html", "file:///a/site/index.html", "file:///a/site/index.html", false),
+  ("a sibling with the root's name as prefix", "file:///a/site2/index.html", "file:///a/site", "file:///a/site2/", true),
+  ("a subdirectory, not an ancestor", "file:///a/site/index.html", "file:///a/site/pages/", "file:///a/site/", true),
+  ("`..` out of the root", "file:///a/site/../other/index.html", "file:///a/site/", "file:///a/other/", true),
+  ("an https: root", "file:///a/site/index.html", "https://example.com/", "file:///a/site/", true),
+  ("a bare path", "file:///a/site/index.html", "/a/", "file:///a/site/", true),
+  ("not a URL", "file:///a/site/index.html", "", "file:///a/site/", true),
+]
+var readFailures = 0
+for (name, file, root, expected, warns) in readCases {
+  let access = ReadAccess.root(for: URL(string: file)!, root)
+  // loadFileURL raises for a non-file read root: every result must be a file URL.
+  if !access.root.isFileURL || access.root.standardizedFileURL != URL(string: expected)!.standardizedFileURL
+    || (access.warning != nil) != warns {
+    readFailures += 1
+    print("FAIL read root, \(name): got \(access.root.absoluteString), warning \(access.warning ?? "none")")
+  }
+}
+print("\(readCases.count - readFailures)/\(readCases.count) read root cases pass")
+exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures + proxyFailures + readFailures == 0 ? 0 : 1)

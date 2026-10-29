@@ -11,6 +11,7 @@ func check(_ name: String, _ actual: Any?, _ expected: Any?) {
   if got != want { failures += 1; print("FAIL \(name): expected \(want), got \(got)") }
 }
 func thrown(_ body: () throws -> Any) -> Any { do { return try body() } catch { return (error as? PlatformError)?.message ?? error } }
+func code(_ body: () throws -> Any) -> String? { do { _ = try body(); return nil } catch { return (error as? PlatformError)?.code } }
 
 let settings = PlatformSettings()
 let configuration = WKWebViewConfiguration()
@@ -66,15 +67,55 @@ check("a root that isn't an object", settings.apply(["preferences": 1], webView:
 rejects("configuration", "suppressesIncrementalRendering", false, "read once when the WebView is created; remount with a new key to change it")
 check("a rejection is reported once", reason("configuration", "suppressesIncrementalRendering", false), nil)
 
+// A removed key goes back to its value before the first write; a configuration key stays (removing it recreates the
+// WebView).
+let removal = PlatformSettings()
+let created = WKWebViewConfiguration()
+_ = removal.apply(["configuration": ["suppressesIncrementalRendering": true]], webView: nil, configuration: created)
+let fresh = WKWebView(frame: .zero, configuration: created)
+let prefs = fresh.configuration.preferences
+_ = removal.apply(["preferences": ["minimumFontSize": 12.0, "allowFileAccessFromFileURLs": true], "scrollView": ["bounces": false]], webView: fresh)
+_ = removal.apply(["preferences": ["minimumFontSize": 16.0]], webView: fresh)
+check("a removed root's key goes back", fresh.scrollView.bounces, true)
+check("a removed private key goes back", prefs.value(forKey: "allowFileAccessFromFileURLs") as? Bool, false)
+check("a key still there keeps its value", prefs.minimumFontSize, 16.0)
+check("restoring reports nothing", removal.apply(["preferences": [:]], webView: fresh).count, 0)
+check("to the value before the first write, not the last", prefs.minimumFontSize, 0.0)
+check("a removed configuration key stays", fresh.configuration.suppressesIncrementalRendering, true)
+_ = removal.apply(["preferences": ["minimumFontSize": 20.0]], webView: fresh)
+_ = removal.apply([:], webView: fresh)
+check("a key added again is captured again", prefs.minimumFontSize, 0.0)
+
 check("get without a key", thrown { try settings.get("minimumFontSize", webView: view) }, "use root.key")
 check("get on an unknown root", thrown { try settings.get("nope.key", webView: view) }, "unknown root: use \(PlatformSettings.roots)")
 check("get an unknown key", thrown { try settings.get("webView.nope", webView: view) }, "no such property webView.nope")
+check("get without a key is not_found", code { try settings.get("minimumFontSize", webView: view) }, "not_found")
+check("get on an unknown root is not_found", code { try settings.get("nope.key", webView: view) }, "not_found")
+check("get an unknown key is not_found", code { try settings.get("webView.nope", webView: view) }, "not_found")
+check("call an unknown root is not_found", code { try settings.call("nope.reload", args: [], completion: nil, webView: view) { _, _ in } }, "not_found")
+check("call an unknown selector", thrown { try settings.call("webView.nope:", args: [1.0], completion: nil, webView: view) { _, _ in } }, "WKWebView has no method nope:")
+check("call an unknown selector is not_found", code { try settings.call("webView.nope:", args: [1.0], completion: nil, webView: view) { _, _ in } }, "not_found")
 var result: String?
 check("call", thrown { try settings.call("preferences.setMinimumFontSize:", args: [14.0], completion: nil, webView: view) { result = $0 ?? $1 } }, ())
 check("call resolved", result, "null")
 check("call set", view.configuration.preferences.minimumFontSize, 14.0)
 check("call refused", thrown { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "reload is owned by the core, or private")
+check("a refused selector is native_error", code { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "native_error")
 check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], completion: nil, webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
+/// A method per completion-handler shape the Swift tests can't get from WebKit without a page load.
+final class Completions: NSObject {
+  @objc func reportCount(_ handler: @escaping (Int) -> Void) { handler(3) }
+  @objc func fail(_ handler: @escaping (NSError?) -> Void) { handler(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "nope"])) }
+}
+/// What MRWInvoke settled with: the error, else the result.
+func invoke(_ selector: Selector, _ completion: String?) -> String? {
+  var settled: String?
+  MRWInvoke(Completions(), selector, [], completion) { value, error in settled = error ?? value.map { "\($0)" } }
+  return settled
+}
+check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")
+check("an error completion rejects with its description", invoke(#selector(Completions.fail(_:)), "error"), "nope")
+check("a block selector without a shape rejects", invoke(#selector(Completions.reportCount(_:)), nil), "the method takes a completion handler this package's SDK headers don't list: write a native hook")
 check("NaN as JSON throws", (thrown { try PlatformSettings.json { Double.nan } } as? String)?.hasPrefix("NSInvalidArgumentException:"), true)
 print("\(cases - failures)/\(cases) platform settings cases pass")
 exit(failures == 0 ? 0 : 1)

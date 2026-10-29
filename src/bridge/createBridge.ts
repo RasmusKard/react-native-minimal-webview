@@ -6,7 +6,7 @@ import type {
   BridgeOptions,
   BridgeSender,
 } from '../types';
-import { bridgeError, createEndpoint, parseOrigin } from './endpoint';
+import { codedError, createEndpoint, invalidOrigins } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
@@ -34,8 +34,8 @@ const MAX_QUEUE = 1000;
  * `bridge` prop.
  *
  * The type arguments type the method names, params, results and event payloads of `call`, `handle`, `emit` and `on`;
- * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws for an invalid
- * origin rule or timeout.
+ * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an `Error` for an
+ * invalid origin rule or timeout.
  * @see [Bridge example](../../guides/examples.md#the-bridge)
  * @group Bridge
  */
@@ -44,7 +44,7 @@ export function createBridge<
   Events extends BridgeEventMap = BridgeEventMap,
 >(options: BridgeOptions): Bridge<Methods, Events> {
   // `*` or what the page client parses: addWebMessageListener's rules minus custom schemes.
-  const invalid = options.allowedOrigins.filter((rule) => rule !== '*' && !parseOrigin(rule));
+  const invalid = invalidOrigins(options.allowedOrigins);
   if (invalid.length) {
     throw new Error(
       `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
@@ -153,7 +153,7 @@ export function createBridge<
     handle: endpoint.handle,
     call(method, params, callOptions) {
       if (unavailable)
-        return Promise.reject(bridgeError({ code: 'unavailable', message: unavailableMessage }));
+        return Promise.reject(codedError({ code: 'unavailable', message: unavailableMessage }));
       return endpoint.call(method, params, callOptions);
     },
     emit: endpoint.emit,

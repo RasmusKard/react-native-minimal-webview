@@ -22,7 +22,7 @@ import type {
   PermissionRequest,
   PermissionResource,
   ProcessGoneEvent,
-  WebViewErrorCode,
+  ErrorCode,
   WebViewSource,
 } from '../types';
 
@@ -49,7 +49,12 @@ const FUNCTION = /\b(?:AsyncFunction|Function|Constant)\("(\w+)"\)/g;
 const events = (text: string) => names(text.match(/\bEvents\(([^)]*)\)/)?.[1] ?? '', /"(\w+)"/g);
 
 const IOS_ONLY_PROPS = ['sharedCookies'];
-const ANDROID_ONLY_FUNCTIONS = ['defaultUserAgent', 'preconnect', 'warmUp'];
+const ANDROID_ONLY_FUNCTIONS = [
+  'defaultUserAgent',
+  'preconnect',
+  'setWebContentsDebuggingEnabled',
+  'warmUp',
+];
 const ANDROID_ONLY_REQUESTS = ['fileRequest', 'fullscreenChange'];
 
 test('both platforms define the same props, events and functions, except the documented platform-only ones', () => {
@@ -122,17 +127,20 @@ const download = { ok: 1, uri: 1, filename: 1, mimeType: 1, url: 1 } satisfies R
   keyof Download,
   1
 >;
-const failure = { ok: 1, filename: 1, url: 1, reason: 1 } satisfies Record<
-  keyof DownloadFailure,
+const failure = { ok: 1, kind: 1, filename: 1, url: 1, description: 1 } satisfies Record<
+  keyof Exclude<DownloadFailure, { kind: 'http' }>,
+  1
+>;
+const httpFailure = { ok: 1, kind: 1, filename: 1, url: 1, statusCode: 1 } satisfies Record<
+  keyof Extract<DownloadFailure, { kind: 'http' }>,
   1
 >;
 const permission = { origin: 1, resources: 1 } satisfies Record<keyof PermissionRequest, 1>;
 const file = { accept: 1, multiple: 1, capture: 1 } satisfies Record<keyof FileRequest, 1>;
 const fullscreen = { active: 1 } satisfies Record<keyof FullscreenChangeEvent, 1>;
-// No type: JS reads `payload['message']`, `payload['askId']` and `payload['url']` untyped.
+// No type: JS reads `payload['message']` and `payload['askId']` untyped.
 const warning = { message: 1 };
 const askCancelled = { askId: 1 };
-const openExternal = { url: 1 };
 // onNavigation's payload is the navigation request's (its own row) plus these, added at the emit site.
 const decision = Object.fromEntries(
   Object.keys(navigation)
@@ -184,16 +192,17 @@ const PAYLOADS: Record<Platform, Row[]> = {
       keys: request,
     },
     {
+      // Sent as `fields(request)`, like `core.navigationRequest`.
       event: 'core.openExternal',
       file: 'MinimalWebViewNavigation.kt',
-      emitSite: /"core\.openExternal",/g,
-      keys: openExternal,
+      emitSite: /fun fields\(/g,
+      keys: request,
     },
     {
       event: 'core.download',
       file: 'requests/Downloads.kt',
       emitSite: /"core\.download",/g,
-      keys: [download, failure],
+      keys: [download, failure, httpFailure],
     },
     {
       event: 'core.permissionRequest',
@@ -269,10 +278,11 @@ const PAYLOADS: Record<Platform, Row[]> = {
       keys: request,
     },
     {
+      // Sent as `request.payload`, like `core.navigationRequest`.
       event: 'core.openExternal',
-      file: 'MinimalWebView+Navigation.swift',
-      emitSite: /"core\.openExternal",/g,
-      keys: openExternal,
+      file: 'NavigationRules.swift',
+      emitSite: /var payload: \[String: Any\] \{/g,
+      keys: request,
     },
     {
       event: 'core.download',
@@ -345,11 +355,13 @@ const outcome = { finished: 1, failed: 1, cancelled: 1 } satisfies Record<
   1
 >;
 const kind = { network: 1, ssl: 1, http: 1 } satisfies Record<LoadErrorEvent['kind'], 1>;
-const source = { uri: 1, headers: 1, body: 1, html: 1, baseUrl: 1 } satisfies Record<
+const downloadKind = { network: 1, http: 1, data: 1 } satisfies Record<DownloadFailure['kind'], 1>;
+const source = { uri: 1, headers: 1, body: 1, readAccessRoot: 1, html: 1, baseUrl: 1 } satisfies Record<
   AllKeys<WebViewSource>,
   1
 >;
-const script = { code: 1, allFrames: 1 } satisfies Record<keyof InjectedScript, 1>;
+// `origins` stays in JS: WebView.tsx folds it into the code.
+const script = { code: 1, allFrames: 1 } satisfies Record<keyof Omit<InjectedScript, 'origins'>, 1>;
 const iosRoots = {
   configuration: 1,
   preferences: 1,
@@ -375,8 +387,10 @@ const codes = {
   native_error: 1,
   navigated: 1,
   unavailable: 1,
-  hook_not_handled: 1,
-} satisfies Record<WebViewErrorCode, 1>;
+  not_found: 1,
+  timeout: 1,
+  handler_error: 1,
+} satisfies Record<ErrorCode, 1>;
 
 type ValueRow = {
   name: string;
@@ -391,7 +405,7 @@ type ValueRow = {
 };
 // The `value` matches inside every `site` match must be exactly `keys`, bar what the platform `lacks`.
 const FIELD = /@Field (?:val|var) (\w+)/g;
-const CODE = /(?:reject\(|failure\(|EvaluateError\((?:code: )?)"\w+"/g;
+const CODE = /(?:reject\(|failure\(|EvaluateError\(|PlatformException\(|code: )"\w+"/g;
 const VALUES: Record<Platform, ValueRow[]> = {
   android: [
     {
@@ -401,6 +415,12 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: /outcome = [^\n/]*|-> "\w+"/g,
     },
     { name: 'error kind', keys: kind, site: /reportError\("\w+"/g },
+    {
+      name: 'download failure kind',
+      keys: downloadKind,
+      files: ['requests/Downloads.kt'],
+      site: /(?<="kind" to )"\w+"|"network" else "data"/g,
+    },
     {
       name: 'WebViewSource fields',
       keys: source,
@@ -428,11 +448,23 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: / to "\w+"|listOf\("\w+"\)/g,
     },
     { name: 'rule actions', keys: actions, site: /val actions = setOf\([^)]*\)/g },
-    { name: 'error codes', keys: codes, site: CODE },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
   ],
   ios: [
     { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*/g },
-    { name: 'error kind', keys: kind, site: /(?<="kind": )[^,]*/g },
+    {
+      name: 'error kind',
+      keys: kind,
+      files: ['MinimalWebView.swift'],
+      site: /(?<="kind": )[^,]*/g,
+    },
+    {
+      name: 'download failure kind',
+      keys: downloadKind,
+      files: ['Downloads.swift'],
+      site: /(?<="kind": )[^,]*/g,
+      lacks: ['http'],
+    },
     {
       name: 'WebViewSource fields',
       keys: source,
@@ -459,7 +491,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       lacks: ['geolocation', 'protectedMedia'],
     },
     { name: 'rule actions', keys: actions, site: /let actions: Set<String> = \[[^\]]*\]/g },
-    { name: 'error codes', keys: codes, site: CODE },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
   ],
 };
 
@@ -508,9 +540,9 @@ test('the bridge transport has the names the page client uses', () => {
   expect(page).toContain(`${receive}: receive,`);
 });
 
-// What only one platform's hooks get: Android's clients, iOS's delegates.
-const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients'];
-const IOS_ONLY_CONTEXT = ['navigationDelegates', 'uiDelegates'];
+// What only one platform's hooks get.
+const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients', 'onDestroyed', 'onDownloadStart', 'scrollListeners', 'touchListeners'];
+const IOS_ONLY_CONTEXT = ['navigationDelegates', 'refreshControl', 'uiDelegates'];
 
 test("a hook's WebViewContext has the same members on both platforms, bar the platform-only ones", () => {
   const members = (path: string, start: RegExp) => {

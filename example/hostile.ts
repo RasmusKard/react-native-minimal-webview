@@ -2,7 +2,7 @@
 // holds. The page is test-pages/hostile.html, on the allowed origin (localhost:8090), on another one (127.0.0.1:8090),
 // and over https with a self-signed certificate (localhost:8443).
 import { Directory, File, Paths } from 'expo-file-system';
-import type { BridgeSender, Download, DownloadFailure } from 'minimal-rn-webview';
+import type { BridgeSender, Download, DownloadResult } from 'minimal-rn-webview';
 import { Platform } from 'react-native';
 
 import {
@@ -11,6 +11,7 @@ import {
   fresh,
   idle,
   openPage,
+  recordExternal,
   reporter,
   sleep,
   tapPoint,
@@ -52,7 +53,8 @@ async function gesture({ h, r, android }: Suite, id: string) {
 
 /**
  * T2, T3: an iframe (same-origin or not) and a main frame outside allowedOrigins get no bridge, and the messages they
- * forge through the platform transport reach no handler. F2: injectedScripts run there too. F3: an evaluate a page
+ * forge through the platform transport reach no handler. F2: a script scoped to the app's origin doesn't run there.
+ * F3: an evaluate a page
  * holds pending.
  */
 async function bridgeGate({ h, r }: Suite) {
@@ -65,7 +67,13 @@ async function bridgeGate({ h, r }: Suite) {
   const unlisten = h.bridge.on('hostileEvent', (payload) => events.push(payload));
   try {
     h.setProps({
-      injectedScripts: [{ code: 'window.__hostileInjected = location.origin;', allFrames: true }],
+      injectedScripts: [
+        {
+          code: 'function __hostileScoped() {}\nwindow.__hostileInjected = location.origin;',
+          allFrames: true,
+          origins: [h.pages],
+        },
+      ],
     });
     await sleep(300);
     await openPage(h, fresh(h, '/hostile.html?frames=1'));
@@ -111,12 +119,20 @@ async function bridgeGate({ h, r }: Suite) {
     );
     r.info('T2 bridge transports on the non-allowed main frame', probe);
 
-    const injected = await evaluate(h, 'window.__hostileInjected');
+    const injected = (await evaluate(
+      h,
+      '[window.__hostileInjected ?? null, typeof __hostileScoped]'
+    )) as unknown[] | undefined;
     r.since(
       WEBVIEW.injectedScripts,
-      'F2 an injected script runs on a non-allowed origin, and (allFrames) in its cross-origin iframes',
-      all(injected === OTHER, frame('cross')?.injected === OTHER),
-      { injected, frame: frame('cross') }
+      "F2 a script scoped to the app's origin skips a non-allowed main frame and (allFrames) cross-origin iframes, leaving no function there",
+      all(
+        injected?.[0] === null,
+        injected?.[1] === 'undefined',
+        frame('cross')?.injected === null,
+        frame('same')?.injected === h.pages
+      ),
+      { injected, cross: frame('cross'), same: frame('same') }
     );
 
     // A page can hold an evaluate pending: it settles only when the page goes.
@@ -195,7 +211,9 @@ async function staleAnswer({ h, r }: Suite) {
 async function newWindows(suite: Suite) {
   const { h, r, android } = suite;
   const external: string[] = [];
-  h.setProps({ onOpenExternal: (url) => void external.push(url) });
+  h.setProps({
+    onOpenExternal: recordExternal(external),
+  });
   h.setRules([
     { newWindow: true, action: 'allow' },
     { scheme: ['http', 'https'], action: 'allow' },
@@ -244,10 +262,16 @@ async function newWindows(suite: Suite) {
   }
 }
 
-/** F1: with no rules, a page sends the main frame to a custom scheme with no gesture: it goes external. */
-async function defaultScheme({ h, r }: Suite) {
+/**
+ * F1: with no rules, a page that sends the main frame to a custom scheme with no gesture is blocked; a tapped link to
+ * one goes external, and one through a 302 is recorded.
+ */
+async function defaultScheme(suite: Suite) {
+  const { h, r } = suite;
   const external: string[] = [];
-  h.setProps({ onOpenExternal: (url) => void external.push(url) });
+  h.setProps({
+    onOpenExternal: recordExternal(external),
+  });
   h.setRules(undefined);
   await sleep(300);
   const page = fresh(h, '/hostile.html');
@@ -255,20 +279,35 @@ async function defaultScheme({ h, r }: Suite) {
   const url = 'mrwhostile://open?from=script';
   const navigations = h.events.navigations.length;
   await evaluate(h, `(location.href = ${JSON.stringify(url)}, 1)`);
-  await until(() => external.length > 0, 3000);
+  await until(() => h.events.navigations.slice(navigations).some((n) => n.url === url), 3000);
   await sleep(300);
   const decision = h.events.navigations.slice(navigations).find((n) => n.url === url);
   r.check(
-    'F1 with no rules, a scripted custom-scheme navigation is reported as not user-initiated, the page stays',
-    all(decision?.mainFrame === true, decision?.userInitiated === false, h.state().url === page),
+    'F1 with no rules, a scripted custom-scheme navigation is blocked and never reaches onOpenExternal',
+    all(
+      decision?.mainFrame === true,
+      decision?.userInitiated === false,
+      decision?.action === 'block',
+      external.length === 0,
+      h.state().url === page
+    ),
     { decision, external }
   );
+  const tapped = async (id: string, target: string) => {
+    const before = h.events.navigations.length;
+    const clicked = await gesture(suite, id);
+    await until(() => h.events.navigations.slice(before).some((n) => n.url === target), 5000);
+    return { clicked, decision: h.events.navigations.slice(before).find((n) => n.url === target) };
+  };
+  const tap = await tapped('scheme-tap', 'mrwhostile://open?from=tap');
+  r.check(
+    'F1 with no rules, a tapped custom-scheme link goes to onOpenExternal',
+    all(tap.decision?.action === 'external', external.includes('mrwhostile://open?from=tap')),
+    { ...tap, external }
+  );
   r.info(
-    'F1 no gesture gate: with no rules the scripted URL went to onOpenExternal (or else the OS)',
-    {
-      action: decision?.action,
-      external,
-    }
+    'F1 with no rules, a tapped link through a 302 to a custom scheme',
+    await tapped('scheme-redirect', 'mrwhostile://open?from=redirect')
   );
 }
 
@@ -335,7 +374,7 @@ async function download(h: Harness, id: string) {
     20000
   );
   return (h.events.downloads[ok] ?? h.events.downloadFailures[failed]) as
-    Download | DownloadFailure | undefined;
+    DownloadResult | undefined;
 }
 
 /** In a directory of its own (Android's cache/downloads/<n>/, iOS's tmp/<UUID>/), and not named `.` or `..`. */
@@ -421,7 +460,7 @@ async function heldBlob({ h, r, android }: Suite) {
   r.since(
     WEBVIEW.evaluate,
     'F3 a blob download the page never lets finish waits for the page, and fails when it navigates',
-    all(held, failure?.reason.includes('navigated') === true),
+    all(held, failure?.kind === 'data' && failure.description.includes('navigated')),
     { held, failure }
   );
   r.info('F3 the held blob download', { held, failure });
@@ -463,9 +502,13 @@ async function fileScope({ h, r, android }: Suite) {
     r.info("T8 decisions for the page's file: navigation", decisions);
 
     /** Loads `file` as the source: [its text, then whether its dir, the dir above, Documents, /etc/hosts loaded]. */
-    const read = async (file: File) => {
+    const read = async (
+      file: File,
+      readAccessRoot?: string,
+      load = () => h.loadSource({ uri: file.uri, readAccessRoot })
+    ) => {
       const loads = h.events.loads.length;
-      h.loadSource({ uri: file.uri });
+      load();
       await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s));
       await sleep(300);
       return (await evaluate(
@@ -476,17 +519,48 @@ async function fileScope({ h, r, android }: Suite) {
     if (!android) {
       const scope = await read(first!);
       // Without the WebContent sandbox (the simulator) WebKit reads any file: only a device can check the read root.
-      if (Array.isArray(scope) && scope[3] === true)
+      if (Array.isArray(scope) && scope[3] === true) {
         r.info(
           'T8 iOS: the file: source read outside its directory, Documents too: no WebContent sandbox',
           scope
         );
-      else
+        return;
+      }
+      r.check(
+        'T8 a file: source reads its own directory, not the one above it',
+        JSON.stringify(scope) === '["local",true,false,false,false]',
+        scope
+      );
+      const wide = await read(second!, dir.uri);
+      r.check(
+        'T8 source.readAccessRoot widens what a file: source reads to that directory, no further',
+        JSON.stringify(wide) === '["local",true,true,false,false]',
+        wide
+      );
+      // A retry of a failed file: load goes through the core's own load, which must keep the root too.
+      const late = new File(site, 'late.html');
+      await read(late, dir.uri);
+      await late.write(html);
+      const retried = await read(late, dir.uri, () => h.ref.current?.reload());
+      r.check(
+        "T8 reload() after a failed file: load keeps the source's readAccessRoot",
+        JSON.stringify(retried) === '["local",true,true,false,false]',
+        retried
+      );
+      const warnings: string[] = [];
+      const warn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(' '));
+      try {
+        const fallback = await read(first!, 'https://example.com/');
         r.check(
-          'T8 a file: source reads its own directory, not the one above it',
-          JSON.stringify(scope) === '["local",true,false,false,false]',
-          scope
+          "T8 a readAccessRoot that isn't a file: URL warns, and the file's directory applies",
+          JSON.stringify(fallback) === '["local",true,false,false,false]' &&
+            warnings.some((line) => line.includes('readAccessRoot')),
+          { fallback, warnings }
         );
+      } finally {
+        console.warn = warn;
+      }
       return;
     }
     const errors = h.events.errors.length;
@@ -511,7 +585,7 @@ async function fileScope({ h, r, android }: Suite) {
   }
 }
 
-/** In run order; the Android taps all come from newWindows (five). */
+/** In run order; the Android taps all come from newWindows (five) and defaultScheme (two). */
 const BLOCKS = [
   bridgeGate,
   staleAnswer,

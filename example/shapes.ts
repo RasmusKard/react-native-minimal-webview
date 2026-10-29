@@ -16,6 +16,7 @@ import {
   fresh,
   idle,
   openPage,
+  recordExternal,
   reporter,
   sleep,
   tapPoint,
@@ -111,7 +112,11 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
         return inCheckout ? 'allow' : 'external';
       });
       h.setProps({
-        ...(external ? { onOpenExternal: (url: string) => void host.external.push(url) } : {}),
+        ...(external
+          ? {
+              onOpenExternal: recordExternal(host.external),
+            }
+          : {}),
         ...(downloads ? {} : { onDownload: undefined }),
       });
       await sleep(300);
@@ -539,7 +544,7 @@ async function schemeDefaults({ r, s, android }: Shape) {
 
   await s.use('none');
   await hub(s);
-  await s.click('tel');
+  await s.tap('tel'); // the default rules open other schemes only from a gesture
   await until(() => decision(s, 'tel:') !== undefined, 3000);
   const main = { external: s.external.join(), decision: s.decisions.at(-1) };
   s.clear();
@@ -547,10 +552,10 @@ async function schemeDefaults({ r, s, android }: Shape) {
   await sleep(1000);
   const framed = decision(s, 'tel:+3725550000');
   r.check(
-    'E10 schemes: with no rules, tel: goes external from the main frame and is blocked from an iframe',
+    'E10 schemes: with no rules, a tapped tel: goes external from the main frame and is blocked from an iframe',
     all(
       main.external === 'tel:+3725551234',
-      has(main.decision, { action: 'external', rule: null }),
+      has(main.decision, { action: 'external', rule: 2 }),
       tapped !== null,
       s.external.length === 0,
       android

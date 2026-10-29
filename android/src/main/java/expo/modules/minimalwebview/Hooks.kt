@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.content.Context
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
@@ -21,15 +22,14 @@ import java.util.concurrent.ConcurrentHashMap
  * complete ones.
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
- * [WebViewContext.chromeClients] instead), the bridge's web message listener and document-start scripts, and the
- * download listener.
+ * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
+ * [WebViewContext.scrollListeners]), the bridge's web message listener and document-start scripts, and the download
+ * listener ([WebViewContext.onDownloadStart]).
  */
 object MinimalWebViewHooks {
-  /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
-  var webViewFactory: (Context) -> WebView = { WebView(it) }
-
   internal class Hook(
     val key: String,
+    val webViewFactory: ((Context) -> WebView)?,
     val configure: ((WebView, WebViewContext) -> Unit)?,
     val attach: (WebView, WebViewContext) -> (() -> Unit)?
   )
@@ -40,21 +40,32 @@ object MinimalWebViewHooks {
    * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global, so prefix
    * yours with your package's name: a second hook under a key throws [IllegalStateException] (a minified build may
    * replace the first instead). The same `register` call running again replaces its hook: a JS reload creates the
-   * modules anew, and their `OnCreate` runs again. `core` is reserved and refused: the package's own events are named
-   * `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
+   * modules anew, and their `OnCreate` runs again. A helper that calls `register` for other code is one call, so a
+   * second hook under a key through it replaces the first silently. `core` is reserved and refused: the package's own
+   * events are named `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value, to the WebView that replaces it after a renderer crash. To switch a hook on and off, keep
-   * its key enabled and put the switch in its value (`{ enabled: false }`).
+   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash.
+   * Without [configure] or [webViewFactory], it also attaches when its key is enabled after the WebView was made, after
+   * the hooks attached already.
    *
+   * @param webViewFactory makes each WebView that enables this hook, a subclass that overrides what WebView lets it:
+   *   the first one, and the one that replaces it after a renderer crash. Null leaves it to the other hooks. A view
+   *   whose enabled hooks name different factories (the same object is one) is made by the first one's, in
+   *   registration order, and warns (`core.warning`) naming the hooks whose factory it didn't use; those still attach,
+   *   so check the class `attach` gets. A WebView is never remade for a factory: when [key] is turned on after the
+   *   first WebView was made, this hook doesn't attach, and a warning says so.
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
-   *   (`WebViewCompat.setProfile` goes here).
+   *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
+   *   state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over the settings it was created with. It returns what to run when that WebView goes away, after the
-   *   [WebViewContext.onDocumentEnd] that gives the reason, or null.
+   *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before the
+   *   package's: no `window.nativeBridge` and no `injectedScripts` yet (on iOS yours run after them).
    */
   fun register(
     key: String,
+    webViewFactory: ((Context) -> WebView)? = null,
     configure: ((WebView, WebViewContext) -> Unit)? = null,
     attach: (WebView, WebViewContext) -> (() -> Unit)?
   ) {
@@ -62,7 +73,7 @@ object MinimalWebViewHooks {
       Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
       return
     }
-    val hook = Hook(key, configure, attach)
+    val hook = Hook(key, webViewFactory, configure, attach)
     val index = hooks.indexOfFirst { it.key == key }
     if (index < 0) {
       hooks += hook
@@ -89,17 +100,39 @@ internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String
   hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
 
 /**
- * Whether a `hookOptions` change from [old] to [value] turns on [key], one the WebView was not created with ([keys]):
- * no hook attaches for it, and a warning says so.
+ * Which of [attaching] makes the WebView: the first with a factory, or null for a plain WebView. Second, the keys of the
+ * others whose factory is a different object.
+ */
+internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<MinimalWebViewHooks.Hook?, List<String>> {
+  val named = attaching.filter { it.webViewFactory != null }
+  val maker = named.firstOrNull()
+  return maker to named.filter { it.webViewFactory !== maker?.webViewFactory }.map { it.key }
+}
+
+/**
+ * Whether a `hookOptions` change from [old] to [value] turns on [key], one that is not attached ([keys]): its hook
+ * attaches now, or [lateAttachWarning] says why not.
  */
 internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
   key !in keys && !enables(old) && enables(value)
 
+/** Why the [hook] registered under [key] can't attach to a WebView that exists already, or null when it can. */
+internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = when {
+  hook == null -> "hookOptions.$key: no hook is registered under this key"
+  // configure runs before the package sets the WebView up, and a factory makes it: too late for one that exists.
+  hook.configure != null || hook.webViewFactory != null -> {
+    val why = if (hook.configure != null) "configure" else "a webViewFactory"
+    "hookOptions.$key: its hook has $why, so it attaches only when the WebView is created"
+  }
+  else -> null
+}
+
 /**
  * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that
  * attach: after a renderer crash, the new WebView's `attach` registers them again. [emit] and [ask] can be called from
- * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its view
- * closed does nothing.
+ * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its attach
+ * ended (the view closed, or a renderer crash replaced the WebView) does nothing: its [emit] reaches nothing and its
+ * [ask] answers null at once.
  */
 interface WebViewContext {
   /**
@@ -125,6 +158,10 @@ interface WebViewContext {
    * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's
    * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
    * `onReceivedError`.
+   *
+   * With WebView 146 and later, `onPageStarted` comes after the commit that ends the Document, so `url` is already the
+   * new page. A new window the rules allow loads in place with `loadUrl`, which doesn't reach
+   * `shouldOverrideUrlLoading` (on iOS that load reaches the deciding delegate).
    */
   val clients: MutableList<WebViewClient>
 
@@ -134,13 +171,23 @@ interface WebViewContext {
    */
   val chromeClients: MutableList<WebChromeClient>
 
+  /**
+   * The hooks' touch listeners, in order, called until one returns true: that one consumes the touch, which neither the
+   * later listeners nor the WebView get.
+   */
+  val touchListeners: MutableList<View.OnTouchListener>
+
+  /** The hooks' scroll listeners: each one gets every scroll change, in order. */
+  val scrollListeners: MutableList<View.OnScrollChangeListener>
+
   /** Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS. */
   fun emit(name: String, payload: Map<String, Any?>)
 
   /**
    * Sends the event and waits for JS's answer: the `onHookEvent` handler's return value, a promise awaited. A throw or
    * no handler answers null. There is no timeout: an ask still open when the Document ends answers null, and one made
-   * after the view closed answers null at once. A number answers as a `Double`.
+   * after the context's attach ended answers null at once. An ask made before the WebView's first commit (in `attach`)
+   * belongs to the Document that commit opens. A number answers as a `Double`.
    */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
@@ -157,11 +204,44 @@ interface WebViewContext {
   fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
 
   /**
+   * Runs [handler] once this attach's WebView is destroyed: with `CLOSING` at unmount, or with `CRASHED` after a
+   * renderer crash, before the WebView that replaces it is configured. Native state that must outlive the WebView (a
+   * `ProfileStore` profile) is released here. The context does nothing by then.
+   */
+  fun onDestroyed(handler: (DocumentScope.End) -> Unit)
+
+  /**
+   * Offers [handler] each download the page starts, with `DownloadListener`'s arguments (an unknown disposition or MIME
+   * type is empty), before the `onDownload` prop and the core's opening it externally. Return true to take it: neither
+   * of those gets it then. The hooks are offered it in registration order, and the first that takes it ends the round.
+   */
+  fun onDownloadStart(
+    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
+  )
+
+  /**
    * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
    * `Long` or `Double`) and calls `reply` exactly once, with a value JSON can encode. One handler per method: the last
    * one wins.
    */
   fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
+}
+
+/** Whether a [HookContext]'s attach is still there; main thread only. */
+internal class Attachment {
+  private var detached = false
+
+  fun detach() {
+    detached = true
+  }
+
+  fun emit(send: () -> Unit) {
+    if (!detached) send()
+  }
+
+  fun ask(onAnswer: (Any?) -> Unit, send: () -> Unit) {
+    if (detached) onAnswer(null) else send()
+  }
 }
 
 /**
@@ -175,14 +255,24 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val url get() = view.url
   override val clients get() = view.clients
   override val chromeClients get() = view.chromeClients
+  override val touchListeners get() = view.touchListeners
+  override val scrollListeners get() = view.scrollListeners
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
   private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val destroyedHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val downloadHandlers = mutableListOf<(String, String, String, String, Long) -> Boolean>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
-  override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
+  private val attachment = Attachment()
+
+  /** The attach ended: the emits and asks that follow reach nothing. */
+  fun detach() = attachment.detach()
+
+  override fun emit(name: String, payload: Map<String, Any?>) =
+    onMain { attachment.emit { view.emit("$key.$name", payload) } }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { view.asks.ask("$key.$name", payload, onAnswer) }
+    onMain { attachment.ask(onAnswer) { view.asks.ask("$key.$name", payload, onAnswer) } }
 
   override fun onOptionsChange(handler: (Any?) -> Unit) {
     optionsHandlers += handler
@@ -190,6 +280,16 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
 
   override fun onDocumentEnd(handler: (DocumentScope.End) -> Unit) {
     documentEndHandlers += handler
+  }
+
+  override fun onDestroyed(handler: (DocumentScope.End) -> Unit) {
+    destroyedHandlers += handler
+  }
+
+  override fun onDownloadStart(
+    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
+  ) {
+    downloadHandlers += handler
   }
 
   override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
@@ -202,6 +302,12 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   }
 
   fun documentEnded(reason: DocumentScope.End) = documentEndHandlers.forEach { it(reason) }
+
+  fun destroyed(reason: DocumentScope.End) = destroyedHandlers.forEach { it(reason) }
+
+  /** Whether one of this hook's download handlers took the download. */
+  fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =
+    downloadHandlers.any { it(url, userAgent, contentDisposition, mimeType, contentLength) }
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {

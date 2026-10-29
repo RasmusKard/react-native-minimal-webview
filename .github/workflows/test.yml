@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v7
       - run: >-
           swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift
-          ios/Recovery.swift ios/Tests/main.swift -o rules && ./rules
+          ios/Recovery.swift ios/ReadAccess.swift ios/Tests/main.swift -o rules && ./rules
 
   # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites
   # (example/harness.ts), which need an emulator and a simulator: see .github/CONTRIBUTING.md.
