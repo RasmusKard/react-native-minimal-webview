@@ -24,8 +24,7 @@ public class SampleExtensionModule: Module {
         }
         return nil
       }
-      // Page requests only a hook can take over (the harness's fixtures): the first delegate that implements HTTP
-      // auth or the alert panel answers it.
+      // Page requests only a hook can take over (the harness's fixtures): HTTP auth and the alert panel.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context in
         context.navigationDelegates.append(HookAuth())
         return nil

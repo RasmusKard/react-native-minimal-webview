@@ -13,6 +13,7 @@ import {
 } from '@minimal-rn-webview/extensions';
 import { IOSConstants } from 'minimal-rn-webview';
 import { Platform } from 'react-native';
+import { sampleHook } from 'sample-extension';
 
 import {
   type Harness,
@@ -129,6 +130,20 @@ async function auth(h: Harness, r: Reporter) {
     off === 'unauthorized',
     off
   );
+  if (!ios) return;
+  // Its delegate comes first (its package registers first) and passes on the challenge after its credential fails.
+  h.setProps({
+    extensions: [basicAuthCredential({ username: 'u', password: 'wrong' }), sampleHook('hookAuth')],
+  });
+  await sleep(300);
+  await openPage(h, fresh(h, '/auth?chain=1'));
+  const chained = await text(h, 'auth');
+  r.check(
+    "a challenge basicAuthCredential passes on reaches a later hook's delegate, which signs in",
+    chained === 'authorized',
+    chained
+  );
+  h.setProps({});
 }
 
 async function dialogs(h: Harness, r: Reporter) {

@@ -94,7 +94,10 @@ public protocol WebViewContext: AnyObject {
   /// `onDownload` and opening an untaken download externally.
   /// Every other callback the core implements reaches the core, then every delegate that implements it;
   /// `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation` reach every delegate too.
-  /// Any other callback (an authentication challenge) goes only to the first delegate that implements it.
+  /// An authentication challenge goes to each delegate that implements it, in order, until one answers other than
+  /// `.performDefaultHandling`, and gets WebKit's default handling when none does. The next delegate gets it only once
+  /// the one before has called its completion handler, which each must call exactly once, as WebKit requires.
+  /// Any other callback goes only to the first delegate that implements it.
   /// While `onDownload` is set, a delegate whose `didBecome` sets `download.delegate` takes the download from the core,
   /// and `onDownload` gets nothing for it.
   var navigationDelegates: [WKNavigationDelegate] { get set }
