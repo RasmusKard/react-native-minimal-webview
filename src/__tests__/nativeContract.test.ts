@@ -49,7 +49,12 @@ const FUNCTION = /\b(?:AsyncFunction|Function|Constant)\("(\w+)"\)/g;
 const events = (text: string) => names(text.match(/\bEvents\(([^)]*)\)/)?.[1] ?? '', /"(\w+)"/g);
 
 const IOS_ONLY_PROPS = ['sharedCookies'];
-const ANDROID_ONLY_FUNCTIONS = ['defaultUserAgent', 'preconnect', 'warmUp'];
+const ANDROID_ONLY_FUNCTIONS = [
+  'defaultUserAgent',
+  'preconnect',
+  'setWebContentsDebuggingEnabled',
+  'warmUp',
+];
 const ANDROID_ONLY_REQUESTS = ['fileRequest', 'fullscreenChange'];
 
 test('both platforms define the same props, events and functions, except the documented platform-only ones', () => {

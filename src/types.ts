@@ -524,8 +524,8 @@ export type AndroidSettings = {
    * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
    * `acceptThirdPartyCookies`.
    *
-   * `webContentsDebuggingEnabled` is process-wide.
-   * @default `{ webContentsDebuggingEnabled: __DEV__ }`
+   * `webContentsDebuggingEnabled` is refused: it is process-wide, set with
+   * {@link WebView.android.setWebContentsDebuggingEnabled}.
    */
   webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
@@ -605,8 +605,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Android settings by setter name; see {@link AndroidSettings}.
    *
-   * A key you remove keeps its value until the WebView is recreated, unless the package sets it
-   * (`webContentsDebuggingEnabled`, `userAgentString`): that one goes back to the package's default. The `userAgent`
+   * A key you remove keeps its value until the WebView is recreated, unless the package sets it (`userAgentString`):
+   * that one goes back to the package's default. The `userAgent`
    * prop wins over the same key here.
    * @android
    */
@@ -855,7 +855,8 @@ export type WebViewRef = {
    * navigates (`setInteractionState:` too), runs a script, starts a download or sets a delegate, and private (`_`),
    * KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`, `new…` and reference-counting selectors; on Android (in
    * `get` too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
-   * `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers` and `evaluateJavascript`.
+   * `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers`, `evaluateJavascript` and
+   * `setWebContentsDebuggingEnabled`.
    *
    * On iOS two mistakes the signature can't catch crash the app: a wrong `completion` shape, and an object argument of
    * the wrong class; for a method that takes another object, write a native hook.
