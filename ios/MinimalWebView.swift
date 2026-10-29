@@ -11,8 +11,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onProcessGone = EventDispatcher()
   let onNavigation = EventDispatcher()
 
-  // Props, applied together in applyProps(). The bridge, the hooks that attach and the `configuration` settings are
-  // fixed at mount: they are read once, when the WKWebView is created.
+  // Props, applied together in applyProps(). The bridge, the hooks with a configure step and the `configuration`
+  // settings are fixed at mount: they are read once, when the WKWebView is created.
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
@@ -62,7 +62,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var programmaticUrl: URL?
   private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
   let document = DocumentScope()
-  /// The enabled hooks' contexts in registration order, for the life of the WKWebView: a hook may keep its own.
+  /// The attached hooks' contexts in attach order, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [HookContext] = []
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
   var askedAndAllowed: [Bool: Set<String>] = [:]
@@ -438,7 +438,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 /// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
 /// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
 extension MinimalWebView {
-  /// Tells each attached hook whose value changed. A key that was not there when the WKWebView was made attaches nothing.
+  /// Tells each attached hook whose value changed, and attaches a hook without `configure` whose key turns on.
   private func optionsChanged(from old: [String: Any]) {
     for key in Set(old.keys).union(hookOptions.keys) {
       let value = hookOptions[key]
@@ -446,9 +446,22 @@ extension MinimalWebView {
       if let context = hookContexts.first(where: { $0.key == key }) {
         context.optionsChanged(value)
       } else if !enables(old[key]), enables(value) {
-        emit("core.warning", ["message": "hookOptions.\(key): added after the WebView was created, so no hook attaches for it"])
+        attachLate(key)
       }
     }
+  }
+
+  private func attachLate(_ key: String) {
+    guard let webView, let hook = MinimalWebViewHooks.hooks.first(where: { $0.key == key }) else {
+      return emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
+    }
+    // configure edits the configuration the WKWebView was created from: too late for this one.
+    guard hook.configure == nil else {
+      return emit("core.warning", ["message": "hookOptions.\(key): its hook has configure, so it attaches only when the WebView is created"])
+    }
+    let context = HookContext(hook, self)
+    hookContexts.append(context)
+    if let detach = hook.attach(webView, context) { detachers.append(detach) }
   }
 
   func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {

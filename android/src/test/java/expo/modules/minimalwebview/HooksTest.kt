@@ -13,6 +13,7 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -114,12 +115,20 @@ class HooksTest {
   }
 
   @Test
-  fun `a key turned on after creation is added late, and one the WebView was created with never is`() {
-    val created = setOf("a")
-    assertTrue(addedLate("b", null, mapOf("enabled" to false), created))
-    assertTrue(addedLate("b", false, 0.0, created))
-    assertFalse("on already, so warned already", addedLate("b", true, mapOf("enabled" to false), created))
-    assertFalse("turned off", addedLate("b", true, false, created))
-    assertFalse("created with it, so attached or reported then", addedLate("a", false, true, created))
+  fun `a key turned on while not attached is added late, and an attached one never is`() {
+    val attached = setOf("a")
+    assertTrue(addedLate("b", null, mapOf("enabled" to false), attached))
+    assertTrue(addedLate("b", false, 0.0, attached))
+    assertFalse("on already, so attached or warned already", addedLate("b", true, mapOf("enabled" to false), attached))
+    assertFalse("turned off", addedLate("b", true, false, attached))
+    assertFalse("attached, so its hook gets the change", addedLate("a", false, true, attached))
+  }
+
+  @Test
+  fun `a late key attaches a hook without configure, and warns for one with configure or none`() {
+    assertNull(lateAttachWarning("a", hook("a")))
+    val configured = MinimalWebViewHooks.Hook("b", { _, _ -> }) { _, _ -> null }
+    assertTrue(lateAttachWarning("b", configured).orEmpty().contains("attaches only when the WebView is created"))
+    assertTrue(lateAttachWarning("typo", null).orEmpty().contains("no hook is registered"))
   }
 }

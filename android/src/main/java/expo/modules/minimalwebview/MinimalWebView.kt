@@ -84,9 +84,9 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   private val downloads = Downloads(this)
-  /** The `hookOptions` keys the first WebView was made with: they pick the hooks, also for one after a crash. */
+  /** The enabled `hookOptions` keys the first WebView was made with, and those attached later: they pick the hooks, also for one after a crash. */
   private var hookKeys: Set<String>? = null
-  /** The hooks' contexts for the current WebView, in registration order. */
+  /** The hooks' contexts for the current WebView, in attach order. */
   private var hookContexts: List<HookContext> = emptyList()
   /** What the attach hooks returned, run before their WebView goes away. */
   private var detachers: List<() -> Unit> = emptyList()
@@ -257,6 +257,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun attachHooks() {
     detachers = hookContexts.mapNotNull { it.hook.attach(webView, it) }
+    enableFavicons()
+  }
+
+  private fun enableFavicons() {
     if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
       WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
     ) {
@@ -272,7 +276,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     chromeClients.clear()
   }
 
-  /** Tells each attached hook whose value changed. A key that was not there when the WebView was made attaches nothing. */
+  /** Tells each attached hook whose value changed, and attaches a hook without `configure` whose key turns on. */
   private fun optionsChanged(old: Map<String, Any?>) {
     for (key in old.keys + hookOptions.keys) {
       val value = hookOptions[key]
@@ -281,9 +285,21 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       if (context != null) {
         context.optionsChanged(value)
       } else if (addedLate(key, old[key], value, hookKeys.orEmpty())) {
-        warn("hookOptions.$key: added after the WebView was created, so no hook attaches for it")
+        attachLate(key)
       }
     }
+  }
+
+  private fun attachLate(key: String) {
+    val hook = MinimalWebViewHooks.hooks.find { it.key == key }
+    lateAttachWarning(key, hook)?.let { return warn(it) }
+    hookKeys = hookKeys.orEmpty() + key
+    // The WebView the recovery builds attaches it with the others.
+    if (recovering || hook == null) return
+    val context = HookContext(hook, this)
+    hookContexts = hookContexts + context
+    hook.attach(webView, context)?.let { detachers = detachers + it }
+    enableFavicons()
   }
 
   /** The handler a hook registered with `context.handle` for [method], if it is attached. */

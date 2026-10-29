@@ -44,8 +44,8 @@ object MinimalWebViewHooks {
    * `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value, to the WebView that replaces it after a renderer crash. To switch a hook on and off, keep
-   * its key enabled and put the switch in its value (`{ enabled: false }`).
+   * with the current value, to the WebView that replaces it after a renderer crash. Without [configure], it also
+   * attaches when its key is enabled after the WebView was made, after the hooks attached already.
    *
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
    *   (`WebViewCompat.setProfile` goes here).
@@ -89,11 +89,19 @@ internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String
   hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
 
 /**
- * Whether a `hookOptions` change from [old] to [value] turns on [key], one the WebView was not created with ([keys]):
- * no hook attaches for it, and a warning says so.
+ * Whether a `hookOptions` change from [old] to [value] turns on [key], one that is not attached ([keys]): its hook
+ * attaches now, or [lateAttachWarning] says why not.
  */
 internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
   key !in keys && !enables(old) && enables(value)
+
+/** Why the [hook] registered under [key] can't attach to a WebView that exists already, or null when it can. */
+internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = when {
+  hook == null -> "hookOptions.$key: no hook is registered under this key"
+  // configure runs before the package sets the WebView up: too late for one that exists.
+  hook.configure != null -> "hookOptions.$key: its hook has configure, so it attaches only when the WebView is created"
+  else -> null
+}
 
 /**
  * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that

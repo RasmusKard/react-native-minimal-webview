@@ -27,7 +27,8 @@ public enum MinimalWebViewHooks {
   /// - Parameters:
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
-  ///     scripts you add stay, after the package's.
+  ///     scripts you add stay, after the package's. Without it, the hook also attaches when its key is enabled after
+  ///     the WKWebView was made, after the hooks attached already.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
   ///     `onDocumentEnd(.closing)`, or nil.
@@ -92,7 +93,6 @@ public protocol WebViewContext: AnyObject {
   /// answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
   /// Runs `handler` with this hook's new `hookOptions` value each time it changes, live; nil when the key is removed.
-  /// To switch a hook on and off, keep its key enabled and put the switch in its value (`{ enabled: false }`).
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
   /// Runs `handler` at each end of the Document (`DocumentScope`), after the core's own resets: per-page state belongs
   /// here.
