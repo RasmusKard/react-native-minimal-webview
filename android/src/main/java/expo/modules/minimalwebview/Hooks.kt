@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.content.Context
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
@@ -21,8 +22,9 @@ import java.util.concurrent.ConcurrentHashMap
  * complete ones.
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
- * [WebViewContext.chromeClients] instead), the bridge's web message listener and document-start scripts, and the
- * download listener.
+ * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
+ * [WebViewContext.scrollListeners]), the bridge's web message listener and document-start scripts, and the download
+ * listener ([WebViewContext.onDownloadStart]).
  */
 object MinimalWebViewHooks {
   /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
@@ -48,7 +50,8 @@ object MinimalWebViewHooks {
    * its key enabled and put the switch in its value (`{ enabled: false }`).
    *
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
-   *   (`WebViewCompat.setProfile` goes here).
+   *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
+   *   state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over the settings it was created with. It returns what to run when that WebView goes away, after the
    *   [WebViewContext.onDocumentEnd] that gives the reason, or null.
@@ -135,6 +138,15 @@ interface WebViewContext {
    */
   val chromeClients: MutableList<WebChromeClient>
 
+  /**
+   * The hooks' touch listeners, in order, called until one returns true: that one consumes the touch, which neither the
+   * later listeners nor the WebView get.
+   */
+  val touchListeners: MutableList<View.OnTouchListener>
+
+  /** The hooks' scroll listeners: each one gets every scroll change, in order. */
+  val scrollListeners: MutableList<View.OnScrollChangeListener>
+
   /** Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS. */
   fun emit(name: String, payload: Map<String, Any?>)
 
@@ -156,6 +168,22 @@ interface WebViewContext {
    * here.
    */
   fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
+
+  /**
+   * Runs [handler] once this attach's WebView is destroyed: with `CLOSING` at unmount, or with `CRASHED` after a
+   * renderer crash, before the WebView that replaces it is configured. Native state that must outlive the WebView (a
+   * `ProfileStore` profile) is released here. The context does nothing by then.
+   */
+  fun onDestroyed(handler: (DocumentScope.End) -> Unit)
+
+  /**
+   * Offers [handler] each download the page starts, with `DownloadListener`'s arguments (an unknown disposition or MIME
+   * type is empty), before the `onDownload` prop and the core's opening it externally. Return true to take it: neither
+   * of those gets it then. The hooks are offered it in registration order, and the first that takes it ends the round.
+   */
+  fun onDownloadStart(
+    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
+  )
 
   /**
    * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
@@ -193,8 +221,12 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val url get() = view.url
   override val clients get() = view.clients
   override val chromeClients get() = view.chromeClients
+  override val touchListeners get() = view.touchListeners
+  override val scrollListeners get() = view.scrollListeners
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
   private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val destroyedHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val downloadHandlers = mutableListOf<(String, String, String, String, Long) -> Boolean>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
   private val attachment = Attachment()
@@ -216,6 +248,16 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     documentEndHandlers += handler
   }
 
+  override fun onDestroyed(handler: (DocumentScope.End) -> Unit) {
+    destroyedHandlers += handler
+  }
+
+  override fun onDownloadStart(
+    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
+  ) {
+    downloadHandlers += handler
+  }
+
   override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
     handlers[method] = handler
   }
@@ -226,6 +268,12 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   }
 
   fun documentEnded(reason: DocumentScope.End) = documentEndHandlers.forEach { it(reason) }
+
+  fun destroyed(reason: DocumentScope.End) = destroyedHandlers.forEach { it(reason) }
+
+  /** Whether one of this hook's download handlers took the download. */
+  fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =
+    downloadHandlers.any { it(url, userAgent, contentDisposition, mimeType, contentLength) }
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {

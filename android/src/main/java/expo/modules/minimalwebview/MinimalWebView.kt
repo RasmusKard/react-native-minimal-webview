@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -79,6 +80,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   // detach write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
+  val touchListeners = mutableListOf<View.OnTouchListener>()
+  val scrollListeners = mutableListOf<View.OnScrollChangeListener>()
   val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
@@ -141,10 +144,16 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
-    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
-      if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
+      val taken = hookContexts.any {
+        it.downloadStarted(url, userAgent, download.contentDisposition, download.mimeType, contentLength)
+      }
+      if (!taken && !downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
+    // View's slots hold one listener each: the hooks share them through their lists.
+    view.setOnTouchListener { v, event -> touchListeners.any { it.onTouch(v, event) } }
+    view.setOnScrollChangeListener { v, x, y, oldX, oldY -> scrollListeners.forEach { it.onScrollChange(v, x, y, oldX, oldY) } }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
   }
 
@@ -264,13 +273,18 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     }
   }
 
-  private fun detachHooks() {
+  /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
+  private fun detachHooks(): List<HookContext> {
+    val detached = hookContexts
     detachers.forEach { it() }
     detachers = emptyList()
     hookContexts.forEach { it.detach() }
     hookContexts = emptyList()
     clients.clear()
     chromeClients.clear()
+    touchListeners.clear()
+    scrollListeners.clear()
+    return detached
   }
 
   /** Tells each attached hook whose value changed. A key that was not there when the WebView was made attaches nothing. */
@@ -309,13 +323,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
     document.end(End.CRASHED)
-    detachHooks()
+    val detached = detachHooks()
     val dead = webView
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
     val restorable = !showsSource(source, url)
     val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
     refresher.content.removeView(dead)
     dead.destroy()
+    detached.forEach { it.destroyed(End.CRASHED) }
     pendingRecovery = Recovery(reload, history)
     // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
     if (loading) outcome = "failed"
@@ -362,10 +377,13 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingRecovery = null
     waiting -= this
     document.end(End.CLOSING)
-    detachHooks()
+    val detached = detachHooks()
     downloads.detach()
     webView.stopLoading()
     webView.destroy()
+    // shortcut: still in the layout here, unlike after a crash; if ProfileStore.deleteProfile in onDestroyed throws
+    // "in use" on a device, remove the WebView from refresher.content before destroy() first.
+    detached.forEach { it.destroyed(End.CLOSING) }
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {

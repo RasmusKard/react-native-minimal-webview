@@ -27,7 +27,8 @@ public enum MinimalWebViewHooks {
   /// - Parameters:
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
-  ///     scripts you add stay, after the package's.
+  ///     scripts you add stay, after the package's. It gets the same context that `attach` gets next, so state it
+  ///     makes can be keyed by the context.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
   ///     `onDocumentEnd(.closing)`, or nil.
@@ -89,6 +90,9 @@ public protocol WebViewContext: AnyObject {
   /// Each callback goes only to the list of the protocol that declares it: a navigation delegate's alert panel or a UI
   /// delegate's action policy is never called.
   var uiDelegates: [WKUIDelegate] { get set }
+  /// The control `pullToRefresh` shows: the same one for the view's life, shown or not; nil once the view has closed.
+  /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
+  var refreshControl: UIRefreshControl? { get }
   /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event as `emit` does and calls `onAnswer` with the JS handler's return value, a promise awaited. It
@@ -134,6 +138,8 @@ final class HookContext: WebViewContext {
     get { view?.uiDelegates ?? [] }
     set { view?.uiDelegates = newValue }
   }
+
+  var refreshControl: UIRefreshControl? { view?.refreshControl }
 
   func emit(_ event: String, _ payload: [String: Any]) {
     onMain { [self] in view?.emit("\(key).\(event)", payload) }

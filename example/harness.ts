@@ -19,6 +19,7 @@ import type {
 } from 'minimal-rn-webview';
 import { WebView, IOSConstants } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
+import { seams } from 'sample-extension';
 
 import { hostile } from './hostile';
 import { perf, perfCold } from './perf';
@@ -2443,7 +2444,56 @@ async function sampleExtension(h: Harness) {
       : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
   const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
   r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
+  await hookSeams(h, r);
   r.done();
+}
+
+/** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
+async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
+  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
+  if (Platform.OS === 'ios') {
+    const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
+    r.check('its refreshControl, styled at attach, is the one pullToRefresh shows', tinted === true, tinted);
+  }
+  if (Platform.OS === 'android') {
+    await openPage(h, fresh(h, '/media.html'));
+    const [downloads, events] = [h.events.downloads.length, h.events.hookEvents.length];
+    await click(h, 'attachment');
+    const taken = await until(
+      () => h.events.hookEvents.slice(events).includes('sample.seams.download'),
+      10000
+    );
+    await click(h, 'blob');
+    const passed = await waitFor(h, () => h.events.downloads.length > downloads, 20000);
+    r.check(
+      'its onDownloadStart handler takes an http download from onDownload and passes a blob: one on',
+      !!taken && passed && h.events.downloads.length === downloads + 1,
+      { taken, downloads: h.events.downloads.length - downloads }
+    );
+    // Its second touch listener counts a down and a cancel that its first one doesn't consume.
+    const touches = await h.ref.current?.hook('sample.seams', 'touch').catch(errorCode);
+    r.check('its touch listeners share the slot, in order', touches === 2, touches);
+    h.loadSource({ html: '<div style="height: 5000px">tall</div>', baseUrl: h.pages });
+    const scrolled = await until(
+      async () => (await h.ref.current?.evaluate('(scrollTo(0, 400), scrollY > 0)')) === true,
+      5000
+    );
+    const both = await until(
+      () => ['scrollA', 'scrollB'].every((name) => h.events.hookEvents.includes(`sample.seams.${name}`)),
+      3000
+    );
+    r.check('its two scroll listeners both get the scroll', !!scrolled && !!both, h.events.hookEvents);
+    const closed = await seams.closedViews();
+    await recreate(h, {}, true);
+    const now = await until(async () => {
+      const count = await seams.closedViews();
+      return count > closed && count;
+    }, 3000);
+    r.check('its onDestroyed handler runs once its WebView is destroyed at unmount', now === closed + 1, {
+      closed,
+      now,
+    });
+  }
 }
 
 /** First-load headers, declined HTTP auth, shared cookies, download failures. */

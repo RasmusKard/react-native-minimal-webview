@@ -757,6 +757,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Without this prop, an http(s) download opens externally (`onOpenExternal` or the system browser, without the page's
    * session), and a `data:` or `blob:` one is dropped. A PDF is a download on Android; iOS shows it inline.
+   *
+   * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
+   * reaches neither this prop nor the external fallback.
    */
   onDownload?: (result: Download | DownloadFailure) => void;
   /**

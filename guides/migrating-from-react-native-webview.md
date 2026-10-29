@@ -25,7 +25,7 @@ props that became something else, and what has no equivalent. The [requirements]
 | iOS directional lock | On | UIKit's: off | `ios.scrollView.directionalLockEnabled: true` |
 | Debugging | iOS off; Android on in debug builds | On in `__DEV__`, on both | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` |
 | iOS universal links | A tapped one opens the app that claims it | Loads in place, as on Android | An `external` rule for the host |
-| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)) |
+| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)); on Android a [native hook](examples.md#native-hooks) can take the download first (`onDownloadStart`) and hand it to `DownloadManager` |
 | Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing: a `reload()` in `onProcessGone` loads the page twice |
 | Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end | Every `injectedScripts` entry runs at document start | Wrap the code in `addEventListener('DOMContentLoaded', …)` |
@@ -80,9 +80,9 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])` and the like; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, custom JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
+| `basicAuthCredential`, custom JS dialogs, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `downloadingMessage`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
-| `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload`; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
+| `scrollEnabled` (Android), `autoManageStatusBarEnabled`, `useSharedProcessPool`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: inject CSS `overflow: hidden`; iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
 
 The props whose setting has another name:
 
@@ -207,7 +207,7 @@ const [error, setError] = useState<LoadErrorEvent | null>(null);
 
 An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
 in `allowedOrigins`. For offsets during a bounce or a pinch, a native hook observes `scrollView.contentOffset` on iOS
-and `setOnScrollChangeListener` on Android.
+and adds a listener to `context.scrollListeners` on Android.
 
 ```tsx
 const scroll = {

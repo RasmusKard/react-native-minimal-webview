@@ -96,7 +96,7 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td>Downloads</td>
 <td>Android saves to Downloads with <code>DownloadManager</code></td>
 <td>Opens externally without <code>onDownload</code>; with it, a file in the app's cache</td>
-<td><code>onDownload</code> (<a href="Examples.html#page-requests">page requests</a>)</td>
+<td><code>onDownload</code> (<a href="Examples.html#page-requests">page requests</a>); on Android a <a href="Examples.html#native-hooks">native hook</a> can take the download first (<code>onDownloadStart</code>) and hand it to <code>DownloadManager</code></td>
 </tr>
 <tr>
 <td>Renderer crash</td>
@@ -205,7 +205,7 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td>On Android <code>call('webView.clearCache', [true])</code> and the like; on iOS <code>call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)</code> clears the cache, and the back-forward list can't be cleared</td>
 </tr>
 <tr>
-<td><code>basicAuthCredential</code>, custom JS dialogs, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>keyboardDisplayRequiresUserAction</code>, <code>hideKeyboardAccessoryView</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>nativeConfig</code></td>
+<td><code>basicAuthCredential</code>, custom JS dialogs, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>keyboardDisplayRequiresUserAction</code>, <code>hideKeyboardAccessoryView</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>downloadingMessage</code>, <code>nativeConfig</code></td>
 <td>A <a href="Examples.html#native-hooks">native hook</a></td>
 </tr>
 <tr>
@@ -213,8 +213,8 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td><code>ios.configuration.websiteDataStore: 'nonPersistent'</code>; on Android the clearing calls react-native-webview makes (<a href="#incognito">below</a>)</td>
 </tr>
 <tr>
-<td><code>scrollEnabled</code> (Android), <code>autoManageStatusBarEnabled</code>, <code>useSharedProcessPool</code>, <code>downloadingMessage</code>, <code>ignoreSilentHardwareSwitch</code>, <code>enableApplePay</code></td>
-<td>Not supported: inject CSS <code>overflow: hidden</code>; iOS uses WebKit's own fullscreen; <code>WKProcessPool</code> has had no effect since iOS 15; show your own UI in <code>onDownload</code>; react-native-webview keeps a silent <code>&lt;audio&gt;</code> playing for it; Apple Pay works with scripts injected since iOS 16</td>
+<td><code>scrollEnabled</code> (Android), <code>autoManageStatusBarEnabled</code>, <code>useSharedProcessPool</code>, <code>ignoreSilentHardwareSwitch</code>, <code>enableApplePay</code></td>
+<td>Not supported: inject CSS <code>overflow: hidden</code>; iOS uses WebKit's own fullscreen; <code>WKProcessPool</code> has had no effect since iOS 15; react-native-webview keeps a silent <code>&lt;audio&gt;</code> playing for it; Apple Pay works with scripts injected since iOS 16</td>
 </tr>
 </tbody>
 </table>
@@ -322,7 +322,7 @@ not a failed load: the site's own page shows, so the recipe skips <code>kind: 'h
 <h2 id="scroll-position" class="tsd-anchor-link">Scroll position<a href="#scroll-position" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
 in <code>allowedOrigins</code>. For offsets during a bounce or a pinch, a native hook observes <code>scrollView.contentOffset</code> on iOS
-and <code>setOnScrollChangeListener</code> on Android.</p>
+and adds a listener to <code>context.scrollListeners</code> on Android.</p>
 <pre><code class="tsx"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">scroll</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-2">code:</span><span class="hl-1"> </span><span class="hl-3">`let queued = false;</span><br/><span class="hl-3">  addEventListener(&#39;scroll&#39;, () =&gt; {</span><br/><span class="hl-3">    if (queued) return;</span><br/><span class="hl-3">    queued = true;</span><br/><span class="hl-3">    requestAnimationFrame(() =&gt; { queued = false; window.nativeBridge?.emit(&#39;scroll&#39;, { x: scrollX, y: scrollY }); });</span><br/><span class="hl-3">  }, { passive: true });`</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-0">as</span><span class="hl-1"> </span><span class="hl-4">const</span><span class="hl-1">;</span><br/><br/><span class="hl-6">&lt;</span><span class="hl-7">WebView</span><span class="hl-1"> </span><span class="hl-8">bridge</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-2">bridge</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-8">injectedScripts</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">[</span><span class="hl-2">scroll</span><span class="hl-9">]</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-13">…</span><span class="hl-1"> </span><span class="hl-6">/&gt;</span><br/><span class="hl-5">useEffect</span><span class="hl-1">(() </span><span class="hl-4">=&gt;</span><span class="hl-1"> </span><span class="hl-2">bridge</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;scroll&#39;</span><span class="hl-1">, (</span><span class="hl-2">position</span><span class="hl-1">) </span><span class="hl-4">=&gt;</span><span class="hl-1"> </span><span class="hl-5">onScroll</span><span class="hl-1">(</span><span class="hl-2">position</span><span class="hl-1"> </span><span class="hl-0">as</span><span class="hl-1"> { </span><span class="hl-2">x</span><span class="hl-1">: </span><span class="hl-7">number</span><span class="hl-1">; </span><span class="hl-2">y</span><span class="hl-1">: </span><span class="hl-7">number</span><span class="hl-1"> })), [</span><span class="hl-2">bridge</span><span class="hl-1">]);</span>
 </code><button type="button">Copy</button></pre>
 
