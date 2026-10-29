@@ -36,6 +36,8 @@ export function Browser() {
   `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
 - [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md): what differs, and recipes for what
   has no prop
+- [minimal-rn-webview-extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/): a second package, in
+  `extensions/`, that brings back react-native-webview props such as `basicAuthCredential` and `onScroll` as native hooks
 - [Development](https://github.com/RasmusKard/minimal-rn-webview/blob/main/.github/CONTRIBUTING.md): setup, the checks and the on-device suites
 
 ## Android System WebView versions
