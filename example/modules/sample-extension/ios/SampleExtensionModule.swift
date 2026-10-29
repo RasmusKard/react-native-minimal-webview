@@ -34,6 +34,12 @@ public class SampleExtensionModule: Module {
         context.uiDelegates.append(HookDialogs(context: context))
         return nil
       }
+      // Each WebView that enables this hook is made from its subclass; others stay plain WKWebViews.
+      MinimalWebViewHooks.register("sample.subclass", webViewClass: SampleWKWebView.self) { webView, context in
+        let name = String(describing: type(of: webView))
+        context.handle("class") { _, reply in reply(name) }
+        return nil
+      }
       PerfProbe.register()
       // The refresh control exists before `pullToRefresh` shows it, so it can be styled at attach.
       MinimalWebViewHooks.register("sample.seams") { webView, context in
@@ -47,6 +53,9 @@ public class SampleExtensionModule: Module {
     AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
   }
 }
+
+/// The `sample.subclass` hook's class: an override of what WKWebView lets a subclass change would go here.
+private final class SampleWKWebView: WKWebView {}
 
 /// The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx).
 private let authHosts: Set<String> = ["localhost"]
