@@ -177,12 +177,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// Loads a request the app started, not the page: it skips the navigation rules. A file URL goes through loadFileURL
-  /// with its directory as the read root, so the page's own assets load (load(_:) can't read local files).
-  // shortcut: the read root is the file's directory; add a source field if a site needs a wider one
+  /// with the source's read root, so the page's own assets load (load(_:) can't read local files).
   func loadProgrammatic(_ request: URLRequest) {
     programmaticUrl = request.url
     if let url = request.url, url.isFileURL {
-      webView?.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+      let access = ReadAccess.root(for: url, source?.readAccessRoot)
+      if let warning = access.warning { emit("core.warning", ["message": warning]) }
+      webView?.loadFileURL(url, allowingReadAccessTo: access.root)
     } else {
       webView?.load(request)
     }

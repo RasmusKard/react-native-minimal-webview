@@ -1,7 +1,8 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DocumentScope dispatch cases and the Asks contract. Not part of the pod (see the podspec).
+// and Recovery.swift, the DocumentScope dispatch cases, the Asks contract and ReadAccess's roots. Not part of the pod
+// (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
-//     ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+//     ios/Recovery.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation
 
 func fail(_ message: String) -> Never {
@@ -173,4 +174,30 @@ for testCase in guardCases {
 }
 let recoveryCount = sourceCases.count + guardCases.count
 print("\(recoveryCount - recoveryFailures)/\(recoveryCount) recovery cases pass")
-exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures == 0 ? 0 : 1)
+
+// (name, file, readAccessRoot, the expected root, whether a warning)
+let readCases: [(String, String, String?, String, Bool)] = [
+  ("no root: the file's directory", "file:///a/site/index.html", nil, "file:///a/site/", false),
+  ("the file's own directory", "file:///a/site/index.html", "file:///a/site/", "file:///a/site/", false),
+  ("an ancestor", "file:///a/site/pages/index.html", "file:///a/", "file:///a/", false),
+  ("no trailing slash", "file:///a/site/pages/index.html", "file:///a/site", "file:///a/site", false),
+  ("the file itself", "file:///a/site/index.html", "file:///a/site/index.html", "file:///a/site/index.html", false),
+  ("a sibling with the root's name as prefix", "file:///a/site2/index.html", "file:///a/site", "file:///a/site2/", true),
+  ("a subdirectory, not an ancestor", "file:///a/site/index.html", "file:///a/site/pages/", "file:///a/site/", true),
+  ("`..` out of the root", "file:///a/site/../other/index.html", "file:///a/site/", "file:///a/other/", true),
+  ("an https: root", "file:///a/site/index.html", "https://example.com/", "file:///a/site/", true),
+  ("a bare path", "file:///a/site/index.html", "/a/", "file:///a/site/", true),
+  ("not a URL", "file:///a/site/index.html", "", "file:///a/site/", true),
+]
+var readFailures = 0
+for (name, file, root, expected, warns) in readCases {
+  let access = ReadAccess.root(for: URL(string: file)!, root)
+  // loadFileURL raises for a non-file read root: every result must be a file URL.
+  if !access.root.isFileURL || access.root.standardizedFileURL != URL(string: expected)!.standardizedFileURL
+    || (access.warning != nil) != warns {
+    readFailures += 1
+    print("FAIL read root, \(name): got \(access.root.absoluteString), warning \(access.warning ?? "none")")
+  }
+}
+print("\(readCases.count - readFailures)/\(readCases.count) read root cases pass")
+exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures + readFailures == 0 ? 0 : 1)

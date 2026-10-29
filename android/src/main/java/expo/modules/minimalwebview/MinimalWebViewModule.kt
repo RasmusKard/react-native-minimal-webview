@@ -206,6 +206,8 @@ internal data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
   @Field val body: String? = null,
+  // Unused on Android: here so that a change loads the source again, as on iOS.
+  @Field val readAccessRoot: String? = null,
   @Field val html: String? = null,
   @Field val baseUrl: String? = null
 ) : Record

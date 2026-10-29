@@ -463,9 +463,13 @@ async function fileScope({ h, r, android }: Suite) {
     r.info("T8 decisions for the page's file: navigation", decisions);
 
     /** Loads `file` as the source: [its text, then whether its dir, the dir above, Documents, /etc/hosts loaded]. */
-    const read = async (file: File) => {
+    const read = async (
+      file: File,
+      readAccessRoot?: string,
+      load = () => h.loadSource({ uri: file.uri, readAccessRoot })
+    ) => {
       const loads = h.events.loads.length;
-      h.loadSource({ uri: file.uri });
+      load();
       await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s));
       await sleep(300);
       return (await evaluate(
@@ -476,17 +480,48 @@ async function fileScope({ h, r, android }: Suite) {
     if (!android) {
       const scope = await read(first!);
       // Without the WebContent sandbox (the simulator) WebKit reads any file: only a device can check the read root.
-      if (Array.isArray(scope) && scope[3] === true)
+      if (Array.isArray(scope) && scope[3] === true) {
         r.info(
           'T8 iOS: the file: source read outside its directory, Documents too: no WebContent sandbox',
           scope
         );
-      else
+        return;
+      }
+      r.check(
+        'T8 a file: source reads its own directory, not the one above it',
+        JSON.stringify(scope) === '["local",true,false,false,false]',
+        scope
+      );
+      const wide = await read(second!, dir.uri);
+      r.check(
+        'T8 source.readAccessRoot widens what a file: source reads to that directory, no further',
+        JSON.stringify(wide) === '["local",true,true,false,false]',
+        wide
+      );
+      // A retry of a failed file: load goes through the core's own load, which must keep the root too.
+      const late = new File(site, 'late.html');
+      await read(late, dir.uri);
+      await late.write(html);
+      const retried = await read(late, dir.uri, () => h.ref.current?.reload());
+      r.check(
+        "T8 reload() after a failed file: load keeps the source's readAccessRoot",
+        JSON.stringify(retried) === '["local",true,true,false,false]',
+        retried
+      );
+      const warnings: string[] = [];
+      const warn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(' '));
+      try {
+        const fallback = await read(first!, 'https://example.com/');
         r.check(
-          'T8 a file: source reads its own directory, not the one above it',
-          JSON.stringify(scope) === '["local",true,false,false,false]',
-          scope
+          "T8 a readAccessRoot that isn't a file: URL warns, and the file's directory applies",
+          JSON.stringify(fallback) === '["local",true,false,false,false]' &&
+            warnings.some((line) => line.includes('readAccessRoot')),
+          { fallback, warnings }
         );
+      } finally {
+        console.warn = warn;
+      }
       return;
     }
     const errors = h.events.errors.length;
