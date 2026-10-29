@@ -50,7 +50,8 @@ object MinimalWebViewHooks {
    * its key enabled and put the switch in its value (`{ enabled: false }`).
    *
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
-   *   (`WebViewCompat.setProfile` goes here).
+   *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
+   *   state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over the settings it was created with. It returns what to run when that WebView goes away, after the
    *   [WebViewContext.onDocumentEnd] that gives the reason, or null.

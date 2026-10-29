@@ -27,7 +27,8 @@ public enum MinimalWebViewHooks {
   /// - Parameters:
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
-  ///     scripts you add stay, after the package's.
+  ///     scripts you add stay, after the package's. It gets the same context that `attach` gets next, so state it
+  ///     makes can be keyed by the context.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
   ///     `onDocumentEnd(.closing)`, or nil.
