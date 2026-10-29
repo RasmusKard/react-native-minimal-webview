@@ -2522,6 +2522,30 @@ async function sampleExtension(h: Harness) {
     late === 'not_found' && warnings.warned('attaches only when the WebView is created'),
     { late, warnings: warnings.lines }
   );
+  // A hook that takes the navigation decision switches off the navigation rules: a warning says so, once per WebView.
+  const taking =
+    Platform.OS === 'ios'
+      ? 'webView:decidePolicyForNavigationAction:decisionHandler:: a hook delegate'
+      : 'shouldOverrideUrlLoading: a hook client';
+  const taken = `${taking} takes it, so navigationRules, their defaults and onNavigationRequest don't apply to navigations`;
+  const takenWarnings = captureWarnings();
+  try {
+    await recreate(h, { extensions: [sampleHook('hookNavigation')] }, true);
+    for (const n of [1, 2]) {
+      const to = fresh(h, `/spa.html?taken=${n}`);
+      await h.ref.current?.evaluate(`(location.href = '${to}', 1)`).catch(errorCode);
+      await waitFor(h, (s) => s.url === to && idle(s), 5000);
+    }
+    await until(() => takenWarnings.warned(taken), 3000, 100);
+  } finally {
+    takenWarnings.stop();
+  }
+  const takenLines = takenWarnings.lines.filter((line) => line.includes(taken));
+  r.check(
+    'a hook that takes the navigation decision warns once that the navigation rules do not apply',
+    takenLines.length === 1,
+    takenWarnings.lines
+  );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(h, { extensions: [sampleHook('hookDialogs'), sampleHook('subclass')] }, true);
   const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
