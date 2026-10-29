@@ -356,7 +356,7 @@ const outcome = { finished: 1, failed: 1, cancelled: 1 } satisfies Record<
 >;
 const kind = { network: 1, ssl: 1, http: 1 } satisfies Record<LoadErrorEvent['kind'], 1>;
 const downloadKind = { network: 1, http: 1, data: 1 } satisfies Record<DownloadFailure['kind'], 1>;
-const source = { uri: 1, headers: 1, body: 1, html: 1, baseUrl: 1 } satisfies Record<
+const source = { uri: 1, headers: 1, body: 1, readAccessRoot: 1, html: 1, baseUrl: 1 } satisfies Record<
   AllKeys<WebViewSource>,
   1
 >;
