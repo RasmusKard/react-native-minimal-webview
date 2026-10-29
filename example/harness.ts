@@ -2443,6 +2443,10 @@ async function sampleExtension(h: Harness) {
 /** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
 async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
+  if (Platform.OS === 'ios') {
+    const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
+    r.check('its refreshControl, styled at attach, is the one pullToRefresh shows', tinted === true, tinted);
+  }
   if (Platform.OS === 'android') {
     await openPage(h, fresh(h, '/media.html'));
     const [downloads, events] = [h.events.downloads.length, h.events.hookEvents.length];

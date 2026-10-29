@@ -86,6 +86,9 @@ public protocol WebViewContext: AnyObject {
   /// Your UI delegates, in order, by the same rules. Their decisions are `createWebViewWith`, the alert, confirm and
   /// prompt panels and the media capture permission; `webViewDidClose` reaches every delegate.
   var uiDelegates: [WKUIDelegate] { get set }
+  /// The control `pullToRefresh` shows: the same one for the view's life, shown or not; nil once the view has closed.
+  /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
+  var refreshControl: UIRefreshControl? { get }
   /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event as `emit` does and calls `onAnswer` with the JS handler's return value, a promise awaited. It
@@ -131,6 +134,8 @@ final class HookContext: WebViewContext {
     get { view?.uiDelegates ?? [] }
     set { view?.uiDelegates = newValue }
   }
+
+  var refreshControl: UIRefreshControl? { view?.refreshControl }
 
   func emit(_ event: String, _ payload: [String: Any]) {
     onMain { [self] in view?.emit("\(key).\(event)", payload) }
