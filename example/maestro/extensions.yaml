@@ -1,0 +1,12 @@
+appId: expo.modules.minimalwebview.example
+name: extensions
+env:
+  SUITE: extensions
+---
+# The menu check: a long press on the page's text (it fills the page), then the custom item.
+- runFlow: subflows/launch.yaml
+- runFlow: { file: subflows/await.yaml, env: { N: 1 } }
+- longPressOn: { point: "50%, 30%" }
+- extendedWaitUntil: { visible: Highlight, timeout: 10000 }
+- tapOn: { text: Highlight, waitToSettleTimeoutMs: 200 }
+- runFlow: subflows/finish.yaml
