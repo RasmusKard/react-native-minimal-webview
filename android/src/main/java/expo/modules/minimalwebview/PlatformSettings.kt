@@ -1,6 +1,7 @@
 package expo.modules.minimalwebview
 
 import android.webkit.CookieManager
+import android.webkit.ValueCallback
 import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
@@ -101,8 +102,12 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     return toJson(value)
   }
 
-  /** `root.method` with [args]: a public method the core doesn't own, its result as JSON. Throws a [PlatformException]. */
-  fun call(path: String, args: List<Any?>): String = resolve(path).let { (targets, name) -> call(targets, name, args) }
+  /** `root.method` with [args], a public method the core doesn't own ([call]). Throws a [PlatformException]. */
+  fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
+    val (targets, name) = resolve(path)
+    if (name in OWNED) throw problem("$name is owned by the core")
+    if (!call(targets, name, args, reply)) throw problem("no public method $path takes these arguments")
+  }
 
   /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
   private fun resolve(path: String): Pair<List<Target>, String> {
@@ -167,15 +172,29 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
     }
 
-    /** [key]'s getter value (`getKey`, `isKey` or a non-void `key()`) on the first target that has one, or [NONE]. */
-    private fun read(targets: List<Target>, key: String): Any? {
-      val capital = key.replaceFirstChar { it.uppercaseChar() }
+    /**
+     * Calls the first method [name] of [targets] that takes [args], and [reply] gets its result as JSON; when none does,
+     * the first that also takes a trailing `ValueCallback`, and [reply] gets the value it reports. False when no method
+     * fits. [reply] gets the JSON as a function that throws a [PlatformException] for a value JSON can't carry.
+     */
+    fun call(targets: List<Target>, name: String, args: List<Any?>, reply: (() -> String) -> Unit): Boolean {
+      val result = invokeFirst(targets, name, args) { true }
+      if (result !== NONE) {
+        reply { toJson(result) }
+        return true
+      }
+      // The callback runs later, outside the caller's try: the receiver converts, so it can reject instead of crashing.
+      val callback = ValueCallback<Any?> { value -> reply { toJson(value) } }
+      return invokeFirst(targets, name, args + callback) { it.parameterTypes.lastOrNull() == ValueCallback::class.java } !== NONE
+    }
+
+    /** The result of the first method [name] of [targets] that [accepts] and takes [values], or [NONE] when none does. */
+    private fun invokeFirst(targets: List<Target>, name: String, values: List<Any?>, accepts: (Method) -> Boolean): Any? {
       for (target in targets) {
         for (method in target.cls.methods) {
-          val getter = method.name == "get$capital" || method.name == "is$capital"
-          if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
-          val args = arguments(method, target, emptyList()) ?: continue
-          return invoke(method, target, args)
+          if (method.name != name || !accepts(method)) continue
+          val arguments = arguments(method, target, values) ?: continue
+          return invoke(method, target, arguments)
         }
       }
       return NONE

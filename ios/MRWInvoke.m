@@ -143,6 +143,7 @@ static id MRWBlock(NSString *completion, void (^resolve)(id, NSString *)) {
     return [^(id value, NSError *error) { resolve(value, error.localizedDescription); } copy];
   }
   if ([completion isEqualToString:@"error"]) return [^(NSError *error) { resolve(NSNull.null, error.localizedDescription); } copy];
+  if ([completion isEqualToString:@"number"]) return [^(NSInteger value) { resolve(@(value), nil); } copy];
   return nil;
 }
 
@@ -167,7 +168,7 @@ void MRWInvoke(id target, SEL selector, NSArray *args, NSString *completion, voi
     resolve(raised ? nil : json, error ?: raised);
   };
   id block = takesBlock ? MRWBlock(completion, once) : nil;
-  if (takesBlock && !block) return once(nil, @"the method takes a completion handler: pass its shape as `completion` (void, value, valueError or error)");
+  if (takesBlock && !block) return once(nil, @"the method takes a completion handler this package's SDK headers don't list: write a native hook");
   NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
   NSMutableArray *keep = [NSMutableArray new];
   invocation.target = target;

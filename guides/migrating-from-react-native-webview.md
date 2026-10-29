@@ -165,7 +165,7 @@ const [source, setSource] = useState<WebViewSource>({ uri: 'about:blank' });
 useEffect(() => {
   (async () => {
     if (Platform.OS === 'android') {
-      await ref.current?.call('cookieManager.removeAllCookies', [null]); // app-wide, as on react-native-webview
+      await ref.current?.call('cookieManager.removeAllCookies'); // app-wide, as on react-native-webview
       await ref.current?.call('webView.clearCache', [true]);
     }
     setSource({ uri: 'https://example.com' });

@@ -881,8 +881,14 @@ export type WebViewRef = {
    * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
    * `resumeTimers` and `evaluateJavascript`.
    *
-   * On iOS two mistakes the signature can't catch crash the app: a wrong `completion` shape, and an object argument of
-   * the wrong class; for a method that takes another object, write a native hook.
+   * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
+   * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
+   * SDK headers, or reports something other than an object, an error or an integer, rejects with `native_error`. On
+   * Android, a method that takes `args` as they are wins over one that also takes a callback, and a `null` in the
+   * callback's place passes none.
+   *
+   * On iOS one mistake the signature can't catch crashes the app: an object argument of the wrong class; for a method
+   * that takes another object, write a native hook.
    *
    * @param args The method's arguments. On iOS they are converted by its signature: booleans, numbers, strings, the
    * structs as objects, `null` for nil, and `{ set: [...] }`, `{ date: seconds }`, `{ data: base64 }` or
@@ -890,9 +896,6 @@ export type WebViewRef = {
    * `NSHTTPCookie`'s keys: `Name`, `Value`, `Domain` and `Path` are required; `Max-Age` (seconds, as a string),
    * `Secure`, `HttpOnly` and `SameSite` are some of the optional ones. A tag that can't make its object (`{ data }`
    * that isn't base64, a `{ cookie }` without a required key) rejects with `native_error`.
-   * @param options `completion` (iOS) is the shape of the selector's trailing completion handler: `'void'` for `(void)`
-   * resolves `null`; `'value'` for `(id)` resolves the value; `'valueError'` for `(id, NSError *)` resolves the value
-   * or rejects with the error; `'error'` for `(NSError *)` resolves `null` or rejects with the error.
    * @returns On iOS: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage`
    * as a base64 PNG, the structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds), and arrays,
    * sets and dictionaries of them. On Android: primitives, strings, and lists and maps of them. Any other object is
@@ -903,11 +906,7 @@ export type WebViewRef = {
    * await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true]); // iOS
    * ```
    */
-  call(
-    method: string,
-    args?: unknown[],
-    options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
-  ): Promise<unknown>;
+  call(method: string, args?: unknown[]): Promise<unknown>;
   /**
    * Calls the `method` handler the native hook `name` registered with `context.handle`, with `args`, and resolves with
    * its reply; both cross as JSON.

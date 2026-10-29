@@ -1472,24 +1472,22 @@ async function settings(h: Harness) {
         'get rejects for an unknown property',
         (await get('scrollView.nope')) === 'not_found'
       );
-      const call = (
-        method: string,
-        args?: unknown[],
-        options?: { completion?: 'void' | 'value' | 'valueError' | 'error' }
-      ) => h.ref.current?.call(method, args, options).catch(errorCode);
+      const call = (method: string, args?: unknown[]) =>
+        h.ref.current?.call(method, args).catch(errorCode);
       // The site data clear below removes this cookie.
       const value = String(Date.now());
       const setCookie = (cookie: Record<string, string>) =>
-        call('httpCookieStore.setCookie:completionHandler:', [{ cookie }], { completion: 'void' });
+        call('httpCookieStore.setCookie:completionHandler:', [{ cookie }]);
       const stored = await setCookie({
         Name: 'mrwCall',
         Value: value,
         Domain: 'localhost',
         Path: '/',
       });
-      const cookies = (await call('httpCookieStore.getAllCookies:', [], {
-        completion: 'value',
-      })) as { Name: string; Value: string }[] | string | undefined;
+      const cookies = (await call('httpCookieStore.getAllCookies:')) as
+        | { Name: string; Value: string }[]
+        | string
+        | undefined;
       r.check(
         'call takes { cookie } and resolves an NSHTTPCookie as its properties',
         stored === null &&
@@ -1505,8 +1503,7 @@ async function settings(h: Harness) {
       const before = await page('document.cookie');
       const cleared = await call(
         'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-        [{ set: [IOSConstants.WebsiteDataType.cookies] }, { date: 0 }],
-        { completion: 'void' }
+        [{ set: [IOSConstants.WebsiteDataType.cookies] }, { date: 0 }]
       );
       r.check(
         'call clears site data (a void completion handler)',
@@ -1515,17 +1512,13 @@ async function settings(h: Harness) {
           (await page('document.cookie')) === '',
         { before, cleared }
       );
-      const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null], {
-        completion: 'valueError',
-      });
+      const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null]);
       r.check(
         'call resolves NSData as base64 (valueError)',
         typeof pdf === 'string' && pdf.length > 100 && pdf.startsWith('JVBERi0'),
         String(pdf).slice(0, 20)
       );
-      const png = await call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], {
-        completion: 'valueError',
-      });
+      const png = await call('webView.takeSnapshotWithConfiguration:completionHandler:', [null]);
       r.check(
         'call resolves a UIImage as a PNG (valueError)',
         typeof png === 'string' && png.startsWith('iVBORw0KGgo'),
@@ -1533,21 +1526,23 @@ async function settings(h: Harness) {
       );
       const records = await call(
         'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
-        [{ set: [IOSConstants.WebsiteDataType.localStorage] }],
-        { completion: 'value' }
+        [{ set: [IOSConstants.WebsiteDataType.localStorage] }]
       );
       r.check('call resolves a value completion handler', Array.isArray(records), records);
-      // iOS 18 selectors: below it they reject with not_found, as the floor should.
+      const playback = await call('webView.requestMediaPlaybackStateWithCompletionHandler:');
+      r.check(
+        'call resolves an integer completion handler (no media: none)',
+        playback === IOSConstants.MediaPlaybackState.none,
+        playback
+      );
+      // iOS 18 selectors: below it they reject with native_error, as the floor should.
       if (parseFloat(String(Platform.Version)) >= 18) {
         await page(`sessionStorage.setItem('mrw', '1')`);
         const session = await call(
           'webView.fetchDataOfTypes:completionHandler:',
-          [IOSConstants.WebViewDataType.sessionStorage],
-          { completion: 'valueError' }
+          [IOSConstants.WebViewDataType.sessionStorage]
         );
-        const restored = await call('webView.restoreData:completionHandler:', [{ data: session }], {
-          completion: 'error',
-        });
+        const restored = await call('webView.restoreData:completionHandler:', [{ data: session }]);
         r.check(
           'call takes NSData and an error completion handler',
           typeof session === 'string' && session.length > 0 && restored === null,
@@ -1660,14 +1655,22 @@ async function settings(h: Harness) {
         'get refuses a core-owned method, and the WebView still works',
         (await get('webView.destroy')) === 'native_error' && (await page('1+1')) === 2
       );
+      const origin = String(await page('location.origin'));
+      const set = await call('cookieManager.setCookie', [origin, 'mrwSet=2']);
+      const read = await call('cookieManager.getCookie', [origin]);
+      r.check(
+        'call sets and reads a cookie through cookieManager',
+        set === null && String(read).includes('mrwSet=2'),
+        { set, read }
+      );
       await page(`(document.cookie = 'mrw=1; path=/')`);
       const before = await page('document.cookie');
-      const removed = await call('cookieManager.removeAllCookies', [null]);
-      await sleep(500);
+      // No callback in the args: the call resolves once the cookies are gone, with whether there were any.
+      const removed = await call('cookieManager.removeAllCookies');
       r.check(
-        'call clears cookies through cookieManager',
+        'call awaits a ValueCallback: cookieManager.removeAllCookies',
         String(before).includes('mrw=1') &&
-          removed === null &&
+          removed === true &&
           (await page('document.cookie')) === '',
         { before, removed }
       );
