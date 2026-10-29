@@ -98,8 +98,9 @@ internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
 /**
  * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that
  * attach: after a renderer crash, the new WebView's `attach` registers them again. [emit] and [ask] can be called from
- * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its view
- * closed does nothing.
+ * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its attach
+ * ended (the view closed, or a renderer crash replaced the WebView) does nothing: its [emit] reaches nothing and its
+ * [ask] answers null at once.
  */
 interface WebViewContext {
   /**
@@ -140,7 +141,7 @@ interface WebViewContext {
   /**
    * Sends the event and waits for JS's answer: the `onHookEvent` handler's return value, a promise awaited. A throw or
    * no handler answers null. There is no timeout: an ask still open when the Document ends answers null, and one made
-   * after the view closed answers null at once. A number answers as a `Double`.
+   * after the context's attach ended answers null at once. A number answers as a `Double`.
    */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
@@ -164,6 +165,23 @@ interface WebViewContext {
   fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
 }
 
+/** Whether a [HookContext]'s attach is still there; main thread only. */
+internal class Attachment {
+  private var detached = false
+
+  fun detach() {
+    detached = true
+  }
+
+  fun emit(send: () -> Unit) {
+    if (!detached) send()
+  }
+
+  fun ask(onAnswer: (Any?) -> Unit, send: () -> Unit) {
+    if (detached) onAnswer(null) else send()
+  }
+}
+
 /**
  * A hook's view of the WebView, one per hook and WebView: the core's context with the hook's key on its events. The
  * handlers live here, so the WebView after a crash gets the ones its `attach` registers again.
@@ -179,10 +197,16 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
-  override fun emit(name: String, payload: Map<String, Any?>) = onMain { view.emit("$key.$name", payload) }
+  private val attachment = Attachment()
+
+  /** The attach ended: the emits and asks that follow reach nothing. */
+  fun detach() = attachment.detach()
+
+  override fun emit(name: String, payload: Map<String, Any?>) =
+    onMain { attachment.emit { view.emit("$key.$name", payload) } }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { view.asks.ask("$key.$name", payload, onAnswer) }
+    onMain { attachment.ask(onAnswer) { view.asks.ask("$key.$name", payload, onAnswer) } }
 
   override fun onOptionsChange(handler: (Any?) -> Unit) {
     optionsHandlers += handler
