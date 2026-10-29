@@ -267,6 +267,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private fun detachHooks() {
     detachers.forEach { it() }
     detachers = emptyList()
+    hookContexts.forEach { it.detach() }
     hookContexts = emptyList()
     clients.clear()
     chromeClients.clear()
