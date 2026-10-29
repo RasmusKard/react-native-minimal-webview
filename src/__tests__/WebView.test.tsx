@@ -511,7 +511,13 @@ describe('page requests', () => {
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
     await fire('core.fullscreenChange', { active: true });
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true }, undefined);
-    const failure = { filename: 'a.txt', url: null, reason: 'HTTP 404' };
+    const failure = {
+      ok: false,
+      kind: 'http',
+      filename: 'a.txt',
+      url: 'https://a.test/a',
+      statusCode: 404,
+    };
     await fire('core.download', failure);
     expect(onDownload).toHaveBeenCalledWith(failure, undefined);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
