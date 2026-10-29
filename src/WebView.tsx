@@ -10,6 +10,7 @@ import type {
   HookEvent,
   LoadErrorEvent,
   NavigationEvent,
+  NavigationRule,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
@@ -267,7 +268,9 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       settings={settings}
       pullToRefresh={props.pullToRefresh}
       sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
-      navigationRules={props.navigationRules}
+      navigationRules={
+        props.navigationRules?.length ? props.navigationRules : WebView.defaultNavigationRules
+      }
       injectedScripts={props.injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
@@ -383,7 +386,8 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
 }
 
 /**
- * What `WebView` carries besides the component: `preconnect`, `warmUp` and `defaultUserAgent`.
+ * What `WebView` carries besides the component: `preconnect`, `warmUp`, `defaultUserAgent` and
+ * `defaultNavigationRules`.
  * @group WebView
  * @hideGroups
  */
@@ -395,6 +399,13 @@ export declare namespace WebView {
    * @android
    */
   const defaultUserAgent: string | null;
+  /**
+   * The rules for an unset or empty `navigationRules`: `file:` is blocked, http(s) loads in place, and any other scheme
+   * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
+   * Anything else, a subframe's or one without a gesture, is blocked. Frozen; spread it after your own rules to keep
+   * it.
+   */
+  const defaultNavigationRules: readonly NavigationRule[];
   /**
    * Starts WebView (loads its code, starts Chromium) before any WebView mounts, on a background thread where the
    * device's WebView supports that, so the first WebView mounts sooner.
@@ -421,7 +432,16 @@ export declare namespace WebView {
 Object.defineProperty(WebView, 'defaultUserAgent', {
   get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });
+const freeze = <T extends object>(value: T): T => {
+  Object.values(value).forEach((field) => typeof field === 'object' && freeze(field as object));
+  return Object.freeze(value);
+};
 Object.assign(WebView, {
+  defaultNavigationRules: freeze<NavigationRule[]>([
+    { scheme: ['file'], action: 'block' },
+    { scheme: ['http', 'https'], action: 'allow' },
+    { mainFrame: true, userInitiated: true, action: 'external' },
+  ]),
   warmUp: (): void => {
     if (Platform.OS === 'android') nativeModule().warmUp();
   },
