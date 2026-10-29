@@ -1,8 +1,9 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DocumentScope dispatch cases and the Asks contract. Not part of the pod (see the podspec).
+// and Recovery.swift, the DelegateProxy routing, the DocumentScope dispatch cases and the Asks contract. Not part of the pod (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
-//     ios/Recovery.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+//     ios/Recovery.swift ios/DelegateProxy.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation
+import WebKit
 
 func fail(_ message: String) -> Never {
   print("ERROR \(message)")
@@ -173,4 +174,59 @@ for testCase in guardCases {
 }
 let recoveryCount = sourceCases.count + guardCases.count
 print("\(recoveryCount - recoveryFailures)/\(recoveryCount) recovery cases pass")
-exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures == 0 ? 0 : 1)
+
+// DelegateProxy routing: each callback goes to the list of the protocol that declares it, and the action policy to the
+// first navigation delegate with either variant. The WebKit objects are never touched by the fakes.
+final class Core: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.download) }
+  @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
+}
+final class PlainPolicy: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.cancel) }
+}
+final class PreferencesPolicy: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, preferences: WKWebpagePreferences, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy, WKWebpagePreferences) -> Void) { decisionHandler(.allow, preferences) }
+}
+final class NavigationWithAlert: NSObject, WKNavigationDelegate {
+  @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
+}
+final class UIWithAlertAndPolicy: NSObject, WKUIDelegate {
+  @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
+  @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.cancel) }
+}
+
+var proxyFailures = 0
+var proxyCount = 0
+func proxyCheck(_ name: String, _ ok: Bool) {
+  proxyCount += 1
+  if !ok {
+    proxyFailures += 1
+    print("FAIL proxy \(name)")
+  }
+}
+let core = Core()
+let webView = class_createInstance(WKWebView.self, 0) as! WKWebView
+let navAction = class_createInstance(WKNavigationAction.self, 0) as! WKNavigationAction
+let alertPanel = NSSelectorFromString("webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:")
+func decided(_ proxy: DelegateProxy) -> WKNavigationActionPolicy? {
+  var policy: WKNavigationActionPolicy?
+  proxy.webView(webView, decidePolicyFor: navAction, preferences: WKWebpagePreferences()) { chosen, _ in policy = chosen }
+  return policy
+}
+func proxy(_ navigation: [WKNavigationDelegate], _ ui: [WKUIDelegate] = []) -> DelegateProxy {
+  let proxy = DelegateProxy(core: core)
+  (proxy.navigationDelegates, proxy.uiDelegates) = (navigation, ui)
+  return proxy
+}
+let plain = PlainPolicy()
+let preferring = PreferencesPolicy()
+proxyCheck("no hook: the core decides", decided(proxy([])) == .download)
+proxyCheck("plain before preferences: plain decides", decided(proxy([plain, preferring])) == .cancel)
+proxyCheck("preferences before plain: preferences decides", decided(proxy([preferring, plain])) == .allow)
+proxyCheck("a UI delegate's action policy is ignored", decided(proxy([], [UIWithAlertAndPolicy()])) == .download)
+proxyCheck("the proxy answers the preferences variant", proxy([]).responds(to: #selector(DelegateProxy.webView(_:decidePolicyFor:preferences:decisionHandler:))))
+let uiAlert = UIWithAlertAndPolicy()
+proxyCheck("an earlier UI delegate's alert beats a navigation delegate's", proxy([NavigationWithAlert()], [uiAlert]).forwardingTarget(for: alertPanel) as AnyObject? === uiAlert)
+proxyCheck("a navigation delegate's alert is not an alert owner", proxy([NavigationWithAlert()]).forwardingTarget(for: alertPanel) as AnyObject? === core)
+print("\(proxyCount - proxyFailures)/\(proxyCount) proxy cases pass")
+exit(failures + originFailures + scopeFailures + askFailures + recoveryFailures + proxyFailures == 0 ? 0 : 1)

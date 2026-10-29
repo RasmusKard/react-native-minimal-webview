@@ -73,10 +73,11 @@ public protocol WebViewContext: AnyObject {
   /// Your navigation delegates, in order. Set them in `attach`: WebKit reads what a delegate responds to when it is
   /// assigned, and the core re-assigns itself after each change to the list.
   /// The navigation action and response policies, decisions the core makes, go to the first delegate that implements
-  /// them, and the core steps aside. A delegate that takes the action policy decides navigations instead of the
-  /// navigation rules, which still decide new windows unless a UI delegate takes `createWebViewWith`. One that takes
-  /// the response policy switches off `onError`'s `http` errors, `onDownload` and opening an untaken download
-  /// externally.
+  /// them, and the core steps aside. The action policy goes to the first delegate that implements either of its
+  /// variants (with or without `preferences`), and that delegate's own variant is called. A delegate that takes the
+  /// action policy decides navigations instead of the navigation rules, which still decide new windows unless a UI
+  /// delegate takes `createWebViewWith`. One that takes the response policy switches off `onError`'s `http` errors,
+  /// `onDownload` and opening an untaken download externally.
   /// Every other callback the core implements reaches the core, then every delegate that implements it;
   /// `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation` reach every delegate too.
   /// Any other callback (an authentication challenge) goes only to the first delegate that implements it.
@@ -85,6 +86,8 @@ public protocol WebViewContext: AnyObject {
   var navigationDelegates: [WKNavigationDelegate] { get set }
   /// Your UI delegates, in order, by the same rules. Their decisions are `createWebViewWith`, the alert, confirm and
   /// prompt panels and the media capture permission; `webViewDidClose` reaches every delegate.
+  /// Each callback goes only to the list of the protocol that declares it: a navigation delegate's alert panel or a UI
+  /// delegate's action policy is never called.
   var uiDelegates: [WKUIDelegate] { get set }
   /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])
