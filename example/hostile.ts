@@ -11,6 +11,7 @@ import {
   fresh,
   idle,
   openPage,
+  recordExternal,
   reporter,
   sleep,
   tapPoint,
@@ -211,10 +212,7 @@ async function newWindows(suite: Suite) {
   const { h, r, android } = suite;
   const external: string[] = [];
   h.setProps({
-    onOpenExternal: ({ url }) => {
-      external.push(url);
-      return true;
-    },
+    onOpenExternal: recordExternal(external),
   });
   h.setRules([
     { newWindow: true, action: 'allow' },
@@ -272,10 +270,7 @@ async function defaultScheme(suite: Suite) {
   const { h, r } = suite;
   const external: string[] = [];
   h.setProps({
-    onOpenExternal: ({ url }) => {
-      external.push(url);
-      return true;
-    },
+    onOpenExternal: recordExternal(external),
   });
   h.setRules(undefined);
   await sleep(300);
