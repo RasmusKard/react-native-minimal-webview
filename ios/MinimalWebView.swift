@@ -428,7 +428,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
-  /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is always true on iOS.
+  /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is null on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     document.end(.crashed)
@@ -438,7 +438,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       // Any other page: reload() relaunches the process with the back-forward list's item, so history stays.
       if onSource || webView.backForwardList.currentItem == nil, let source { load(source) } else { reload() }
     }
-    onProcessGone(["didCrash": true, "recovered": recovered])
+    onProcessGone(["didCrash": NSNull(), "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }
