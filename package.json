@@ -34,7 +34,7 @@
     "mutation": "stryker run .config/stryker.config.json",
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
-    "gen:defaults": "node .github/scripts/gen-defaults.mts",
+    "gen:defaults": "tsdoc-defaults",
     "docs": "typedoc && typedoc --options .config/typedoc-extensions.json",
     "docs:check": "typedoc --out build/docs && typedoc --options .config/typedoc-extensions.json --out build/docs/extensions && (git diff --no-index --exit-code build/docs docs || (echo 'docs is stale: run npm run docs' && exit 1))"
   },
@@ -70,6 +70,7 @@
     "react": "19.3.0",
     "react-native": "0.88.0",
     "test-renderer": "1.3.1",
+    "tsdoc-defaults": "^0.1.0",
     "typedoc": "0.28.20",
     "typescript": "~6.0.3"
   },
