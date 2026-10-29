@@ -74,7 +74,8 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone` |
 | `renderLoading`, `renderError`, `startInLoadingState` | Your own views over the WebView ([below](#loading-and-error-screens)) |
 | `onScroll`, `onContentSizeChange` | An injected script that reports over the bridge ([below](#scroll-position)) |
-| `source={require('./page.html')}`, `allowingReadAccessToURL` | A `file://` uri from expo-asset (`localUri`) |
+| `source={require('./page.html')}` | A `file://` uri from expo-asset (`localUri`) |
+| `allowingReadAccessToURL` | `source.readAccessRoot` |
 | `source.method`, `source.body` | `source.body` makes the request a POST |
 | `onFileDownload` | `onDownload`, on both platforms: the core saves the file |
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
