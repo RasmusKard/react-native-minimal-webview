@@ -70,6 +70,11 @@ export async function extensions(h: Harness) {
   r.done();
 }
 
+// Browsers reuse an origin's credentials for any realm, and other suites sign in on localhost: the declines use an origin
+// nobody signs in on, and the sign-in one of its own (the emulator's host alias, the simulator's IPv6 loopback).
+const DECLINED = 'http://127.0.0.1:8090';
+const SIGNED_IN = ios ? 'http://[::1]:8090' : 'http://10.0.2.2:8090';
+
 async function inert(h: Harness, r: Reporter) {
   await recreate(h, {}, true);
   const made = await webViewClass(h);
@@ -78,7 +83,7 @@ async function inert(h: Harness, r: Reporter) {
     typeof made === 'string' && !made.includes('MenuW'),
     made
   );
-  await openPage(h, fresh(h, '/auth?t=ext-none'));
+  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-none`));
   const auth = await text(h, 'auth');
   r.check('with no extension prop, HTTP auth is declined as the core does', auth === 'unauthorized', auth);
   h.events.hookEvents.length = 0;
@@ -95,12 +100,12 @@ async function inert(h: Harness, r: Reporter) {
 async function auth(h: Harness, r: Reporter) {
   h.setProps({ basicAuthCredential: { username: 'u', password: 'p' } });
   await sleep(300);
-  await openPage(h, fresh(h, '/auth?t=ext-on'));
+  await openPage(h, fresh(h, `${SIGNED_IN}/auth?t=ext-on`));
   const on = await text(h, 'auth');
   r.check('basicAuthCredential, set after mount, answers HTTP basic auth', on === 'authorized', on);
   h.setProps({});
   await sleep(300);
-  await openPage(h, fresh(h, '/auth?t=ext-removed'));
+  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-removed`));
   const off = await text(h, 'auth');
   r.check('basicAuthCredential removed: HTTP auth is declined again', off === 'unauthorized', off);
 }
