@@ -40,15 +40,8 @@ internal object NavigationRules {
     // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
     if (request.newWindow && (scheme in internalSchemes || scheme == "file")) return Decision("block", null)
     if (scheme in internalSchemes) return Decision("allow", null)
-    if (rules.isNullOrEmpty()) {
-      val action = when (scheme) {
-        "http", "https" -> "allow"
-        "file" -> "block"
-        // An iframe (an ad) must not launch apps, so only the main frame goes external.
-        else -> if (request.mainFrame) "external" else "block"
-      }
-      return Decision(action, null)
-    }
+    // JS sends WebView.defaultNavigationRules when the prop has none, so none here matches nothing.
+    if (rules.isNullOrEmpty()) return Decision("block", null)
     val parts = parts(scheme, request.url)
     val index = rules.indexOfFirst { matches(it, parts, request) }
     return if (index < 0) Decision("block", null) else Decision((rules[index]["action"] as? String)?.takeIf { it in actions } ?: "block", index)

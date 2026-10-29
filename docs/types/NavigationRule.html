@@ -89,7 +89,8 @@ value, and <code>name=value</code> only that exact value.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">userInitiated</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p>A user gesture started it (Android <code>hasGesture()</code>, iOS <code>.linkActivated</code>).</p>
 <p>A <code>location.href</code> change or <code>window.open</code> from a click handler is true on Android, but false on iOS, where only a
-tapped link is.</p>
+tapped link is. A redirect of a load the core starts itself (an allowed new window, and on Android an allowed
+<code>ask</code>) is never user-initiated.</p>
 </div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">

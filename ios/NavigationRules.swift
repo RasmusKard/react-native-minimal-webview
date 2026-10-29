@@ -52,14 +52,8 @@ enum NavigationRules {
     // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
     if request.newWindow, internalSchemes.contains(scheme) || scheme == "file" { return Decision(action: "block", rule: nil) }
     if internalSchemes.contains(scheme) { return Decision(action: "allow", rule: nil) }
-    guard let rules, !rules.isEmpty else {
-      switch scheme {
-      case "http", "https": return Decision(action: "allow", rule: nil)
-      case "file": return Decision(action: "block", rule: nil)
-      // An iframe (an ad) must not launch apps, so only the main frame goes external.
-      default: return Decision(action: request.mainFrame ? "external" : "block", rule: nil)
-      }
-    }
+    // JS sends WebView.defaultNavigationRules when the prop has none, so none here matches nothing.
+    guard let rules, !rules.isEmpty else { return Decision(action: "block", rule: nil) }
     // ponytail: an unparseable URL has no host and path "/", so only rules without host conditions match it
     let components = URLComponents(string: request.url)
     // encodedHost keeps an IDNA host in its xn-- form; `host` would decode it.

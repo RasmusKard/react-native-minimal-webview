@@ -69,6 +69,8 @@
 <button id="open-blob" onclick="log('click open-blob'); window.open(blob(sentinel('__hostileBlob')))">window.open blob:</button>
 <button id="open-file" onclick="log('click open-file'); window.open('file:///etc/hosts')">window.open file:</button>
 <a id="blank-data" target="_blank" onclick="log('click blank-data')">target=_blank data:</a>
+<a id="scheme-tap" href="mrwhostile://open?from=tap" onclick="log('click scheme-tap')">tapped custom scheme</a>
+<a id="scheme-redirect" href="/redirect?to=mrwhostile%3A%2F%2Fopen%3Ffrom%3Dredirect" onclick="log('click scheme-redirect')">custom scheme through a 302</a>
 <a id="dl-traversal" href="/download?name=..%2F..%2Fevil.txt">download named ../../evil.txt</a>
 <a id="dl-dotdot" href="/download?name=..">download named ..</a>
 <a id="dl-moved">download redirected to another host</a>

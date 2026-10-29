@@ -1,6 +1,21 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false, asked [] (URLs an `ask` already allowed) and canAsk true (something can answer an `ask`). `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to an internal scheme (about, blob, data, javascript) or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules (null or []), http(s) allows, file: blocks, anything else is external in the main frame and blocked in a subframe; (3) with rules, the first rule whose set fields all match wins, and no match blocks; a rule action other than allow, block, external or ask blocks; (4) an `ask` blocks when canAsk is false, else allows when the URL is in asked. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path, or any path of a URL without an authority (`myapp:/abs`), counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`. `answers`: an `ask` answer of allow, block or external stands; anything else blocks.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false, asked [] (URLs an `ask` already allowed) and canAsk true (something can answer an `ask`). `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to an internal scheme (about, blob, data, javascript) or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules (null or []) nothing matches, so the rest blocks: for an unset or empty prop JS sends the `defaults` ruleset, which equals WebView.defaultNavigationRules; (3) with rules, the first rule whose set fields all match wins, and no match blocks; a rule action other than allow, block, external or ask blocks; (4) an `ask` blocks when canAsk is false, else allows when the URL is in asked. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path, or any path of a URL without an authority (`myapp:/abs`), counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`. `answers`: an `ask` answer of allow, block or external stands; anything else blocks.",
   "rulesets": {
+    "defaults": [
+      {
+        "scheme": ["file"],
+        "action": "block"
+      },
+      {
+        "scheme": ["http", "https"],
+        "action": "allow"
+      },
+      {
+        "mainFrame": true,
+        "userInitiated": true,
+        "action": "external"
+      }
+    ],
     "app": [
       {
         "scheme": ["tel", "mailto", "sms"],
@@ -103,55 +118,44 @@
   },
   "cases": [
     {
-      "name": "no rules: https allows",
-      "rules": null,
+      "name": "defaults: https allows",
+      "rules": "defaults",
       "request": {
         "url": "https://example.com/"
       },
       "expect": {
         "action": "allow",
-        "rule": null
+        "rule": 1
       }
     },
     {
-      "name": "no rules: http allows",
-      "rules": null,
+      "name": "defaults: http allows",
+      "rules": "defaults",
       "request": {
         "url": "http://localhost:8090/a"
       },
       "expect": {
         "action": "allow",
-        "rule": null
+        "rule": 1
       }
     },
     {
-      "name": "no rules: tel in the main frame is external",
-      "rules": null,
-      "request": {
-        "url": "tel:+3725551234"
-      },
-      "expect": {
-        "action": "external",
-        "rule": null
-      }
-    },
-    {
-      "name": "no rules: intent in the main frame is external",
-      "rules": null,
-      "request": {
-        "url": "intent://scan/#Intent;scheme=zxing;package=com.example;end"
-      },
-      "expect": {
-        "action": "external",
-        "rule": null
-      }
-    },
-    {
-      "name": "no rules: tel in a subframe blocks",
-      "rules": null,
+      "name": "defaults: a tapped tel in the main frame is external",
+      "rules": "defaults",
       "request": {
         "url": "tel:+3725551234",
-        "mainFrame": false
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "external",
+        "rule": 2
+      }
+    },
+    {
+      "name": "defaults: a tel in the main frame without a gesture blocks",
+      "rules": "defaults",
+      "request": {
+        "url": "tel:+3725551234"
       },
       "expect": {
         "action": "block",
@@ -159,8 +163,44 @@
       }
     },
     {
-      "name": "no rules: custom scheme in a subframe blocks",
-      "rules": null,
+      "name": "defaults: a tapped intent in the main frame is external",
+      "rules": "defaults",
+      "request": {
+        "url": "intent://scan/#Intent;scheme=zxing;package=com.example;end",
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "external",
+        "rule": 2
+      }
+    },
+    {
+      "name": "defaults: an intent in the main frame without a gesture blocks",
+      "rules": "defaults",
+      "request": {
+        "url": "intent://scan/#Intent;scheme=zxing;package=com.example;end"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "defaults: a tapped tel in a subframe blocks",
+      "rules": "defaults",
+      "request": {
+        "url": "tel:+3725551234",
+        "mainFrame": false,
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "defaults: a custom scheme in a subframe blocks",
+      "rules": "defaults",
       "request": {
         "url": "myapp://open",
         "mainFrame": false
@@ -171,25 +211,38 @@
       }
     },
     {
-      "name": "no rules: custom scheme in the main frame is external",
-      "rules": null,
+      "name": "defaults: a tapped custom scheme in the main frame is external",
+      "rules": "defaults",
+      "request": {
+        "url": "myapp://open",
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "external",
+        "rule": 2
+      }
+    },
+    {
+      "name": "defaults: a custom scheme in the main frame without a gesture blocks",
+      "rules": "defaults",
       "request": {
         "url": "myapp://open"
       },
       "expect": {
-        "action": "external",
+        "action": "block",
         "rule": null
       }
     },
     {
-      "name": "no rules: file blocks",
-      "rules": null,
+      "name": "defaults: a tapped file blocks",
+      "rules": "defaults",
       "request": {
-        "url": "file:///etc/hosts"
+        "url": "file:///etc/hosts",
+        "userInitiated": true
       },
       "expect": {
         "action": "block",
-        "rule": null
+        "rule": 0
       }
     },
     {
@@ -334,14 +387,27 @@
       }
     },
     {
-      "name": "new window: mailto goes through the rules (external by default)",
-      "rules": null,
+      "name": "new window: a tapped mailto is external by default",
+      "rules": "defaults",
+      "request": {
+        "url": "mailto:a@b.test",
+        "newWindow": true,
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "external",
+        "rule": 2
+      }
+    },
+    {
+      "name": "new window: a mailto without a gesture blocks by default",
+      "rules": "defaults",
       "request": {
         "url": "mailto:a@b.test",
         "newWindow": true
       },
       "expect": {
-        "action": "external",
+        "action": "block",
         "rule": null
       }
     },
@@ -823,13 +889,26 @@
       }
     },
     {
-      "name": "empty rules are the same as none",
+      "name": "empty rules match nothing",
       "rules": "empty",
       "request": {
-        "url": "tel:+3725551234"
+        "url": "https://example.com/",
+        "userInitiated": true
       },
       "expect": {
-        "action": "external",
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules match nothing",
+      "rules": null,
+      "request": {
+        "url": "tel:+3725551234",
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "block",
         "rule": null
       }
     },

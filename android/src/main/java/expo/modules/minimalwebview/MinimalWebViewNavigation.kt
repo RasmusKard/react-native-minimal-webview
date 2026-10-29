@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.FileUriExposedException
 import android.os.Message
 import android.util.Log
 import android.webkit.RenderProcessGoneDetail
@@ -105,7 +106,8 @@ internal class MinimalWebViewNavigation(
 
   /**
    * Opens a URL outside the WebView. Returns false when it could not be opened (the caller reports `block`): a page
-   * controls the URL, so a malformed intent (bad syntax, launchFlags=zz) or a refused activity must not crash the app.
+   * controls the URL, so a malformed intent (bad syntax, launchFlags=zz), a refused activity or a `file:` URL (which
+   * Android refuses to hand to another app) must not crash the app.
    */
   private fun open(url: String): Boolean {
     val intent = try {
@@ -121,6 +123,8 @@ internal class MinimalWebViewNavigation(
     } catch (e: ActivityNotFoundException) {
       openFallback(intent, url, e)
     } catch (e: SecurityException) {
+      failed("not allowed to open $url", e)
+    } catch (e: FileUriExposedException) {
       failed("not allowed to open $url", e)
     }
   }
