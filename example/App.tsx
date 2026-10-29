@@ -3,13 +3,15 @@ import {
   type WebViewProps,
   type LoadErrorEvent,
   type WebViewSource,
-  WebView,
+  WebView as CoreWebView,
   createBridge,
   type PermissionRequest,
   type FileRequest,
   useWebViewState,
   createWebViewRef,
 } from 'minimal-rn-webview';
+// The extensions package's WebView, so that every suite also runs with its hooks off.
+import { WebView, type WebViewProps as ExtendedProps } from 'minimal-rn-webview-extensions';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
@@ -66,7 +68,7 @@ export default function App() {
   const [extraWebViews, setExtraWebViews] = useState(0);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
-  const [extraProps, setProps] = useState<Partial<WebViewProps>>({});
+  const [extraProps, setProps] = useState<Partial<ExtendedProps>>({});
   const [driverRequest, setDriverRequest] = useState('');
   const [error, setError] = useState<LoadFailure | null>(null);
   useEffect(() => {
@@ -163,7 +165,7 @@ export default function App() {
             android={{
               webView: { acceptThirdPartyCookies: true },
               settings: {
-                userAgentString: `${WebView.android.defaultUserAgent} MinimalWebViewExample/1.0`,
+                userAgentString: `${CoreWebView.android.defaultUserAgent} MinimalWebViewExample/1.0`,
               },
             }}
             onError={(event) => {
@@ -190,7 +192,7 @@ export default function App() {
       {extraWebViews > 0 ? (
         <View style={styles.extras}>
           {Array.from({ length: extraWebViews }, (_, k) => (
-            <WebView key={k} source={{ uri: `${PAGES}/?extra=${k}` }} style={styles.webview} />
+            <CoreWebView key={k} source={{ uri: `${PAGES}/?extra=${k}` }} style={styles.webview} />
           ))}
         </View>
       ) : null}
