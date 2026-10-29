@@ -26,6 +26,7 @@ const mockNativeModule = {
   defaultUserAgent: 'Mozilla/5.0 (Android)',
   warmUp: jest.fn(),
   preconnect: jest.fn(),
+  setWebContentsDebuggingEnabled: jest.fn(),
 };
 // The view is a host element of the name WebView.tsx asks for (MinimalWebView), whose ref has the native `answer`,
 // `navigate`, `bridgePost`, `evaluate`, `get`, `call` and `hook` methods; `get`, `call` and `hook` echo their request as
@@ -108,21 +109,25 @@ describe('WebView', () => {
     expect((await render({ sharedCookies: true })).native?.sharedCookies).toBeUndefined();
   });
 
-  it('defaultUserAgent is null, and warmUp and preconnect do nothing, on iOS', () => {
+  it('WebView.android: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
     WebView.android.warmUp();
     WebView.android.preconnect('https://example.com');
+    WebView.android.setWebContentsDebuggingEnabled(true);
     expect(WebView.android.defaultUserAgent).toBeNull();
     expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
     expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
+    expect(mockNativeModule.setWebContentsDebuggingEnabled).not.toHaveBeenCalled();
   });
 
-  it("defaultUserAgent, warmUp and preconnect are the native module's on Android", () => {
+  it("WebView.android is the native module's on Android", () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     WebView.android.warmUp();
     WebView.android.preconnect('https://example.com');
+    WebView.android.setWebContentsDebuggingEnabled(false);
     expect(WebView.android.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
     expect(mockNativeModule.warmUp).toHaveBeenCalledTimes(1);
     expect(mockNativeModule.preconnect).toHaveBeenCalledWith('https://example.com');
+    expect(mockNativeModule.setWebContentsDebuggingEnabled).toHaveBeenCalledWith(false);
   });
 });
 
@@ -432,7 +437,7 @@ describe('platform settings', () => {
     it('are the defaults alone without props', async () => {
       expect(await settingsOf({})).toEqual({
         settings: { userAgentString: null },
-        webView: { webContentsDebuggingEnabled: true },
+        webView: {},
       });
     });
 
@@ -441,13 +446,13 @@ describe('platform settings', () => {
         userAgent: 'Agent/1',
         android: {
           settings: { userAgentString: 'Overridden/0', textZoom: 120 },
-          webView: { webContentsDebuggingEnabled: false, overScrollMode: 2 },
+          webView: { overScrollMode: 2 },
         },
         ios: { webView: { inspectable: false } },
       });
       expect(settings).toEqual({
         settings: { userAgentString: 'Agent/1', textZoom: 120 },
-        webView: { webContentsDebuggingEnabled: false, overScrollMode: 2 },
+        webView: { overScrollMode: 2 },
       });
     });
 

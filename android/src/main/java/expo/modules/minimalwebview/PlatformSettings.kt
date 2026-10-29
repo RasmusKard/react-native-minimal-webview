@@ -96,17 +96,31 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws with the reason. */
   fun get(path: String): String {
     val (targets, key) = resolve(path)
-    if (key in OWNED) throw problem("$key is owned by the core")
-    val value = read(targets, key)
-    if (value === NONE) throw problem("no public getter for $path")
-    return toJson(value)
+    if (key in OWNED) throw problem("$key is ${owned(key)}")
+    val capital = key.replaceFirstChar { it.uppercaseChar() }
+    for (target in targets) {
+      for (method in target.cls.methods) {
+        val getter = method.name == "get$capital" || method.name == "is$capital"
+        if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
+        val args = arguments(method, target, emptyList()) ?: continue
+        return toJson(invoke(method, target, args))
+      }
+    }
+    throw problem("no public getter for $path")
   }
 
   /** `root.method` with [args], a public method the core doesn't own ([call]). Throws a [PlatformException]. */
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
-    if (name in OWNED) throw problem("$name is owned by the core")
-    if (!call(targets, name, args, reply)) throw problem("no public method $path takes these arguments")
+    if (name in OWNED) throw problem("$name is ${owned(name)}")
+    for (target in targets) {
+      for (method in target.cls.methods) {
+        if (method.name != name) continue
+        val arguments = arguments(method, target, args) ?: continue
+        return toJson(invoke(method, target, arguments))
+      }
+    }
+    throw problem("no public method $path takes these arguments")
   }
 
   /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
@@ -136,24 +150,27 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     }
 
     /**
-     * Methods the core owns: its clients, listeners, scripts, loads and navigations, and the WebView's lifetime and timers;
-     * the page's JS goes through `evaluate` and the bridge.
+     * Methods the core owns: its clients, listeners, scripts, loads and navigations, the WebView's lifetime and timers,
+     * and the process-wide debugging switch; the page's JS goes through `evaluate` and the bridge.
      */
     val OWNED = setOf(
       "setWebViewClient", "setWebChromeClient", "setDownloadListener", "addJavascriptInterface",
       "removeJavascriptInterface", "addWebMessageListener", "removeWebMessageListener", "addDocumentStartJavaScript",
       "destroy", "removeAllViews", "pauseTimers", "resumeTimers", "loadUrl", "loadData", "loadDataWithBaseURL",
-      "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript"
+      "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript",
+      "setWebContentsDebuggingEnabled"
     )
 
-    /**
-     * Calls [key]'s setter on the first target that takes [value], running [before] just before it; returns the
-     * problem, or null when it was set.
-     */
-    fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
+    /** The JS function that replaces an owned method, for its rejection reason. */
+    private val REPLACED = mapOf("setWebContentsDebuggingEnabled" to "WebView.android.setWebContentsDebuggingEnabled")
+
+    fun owned(name: String) = "owned by the core" + REPLACED[name]?.let { ": use $it" }.orEmpty()
+
+    /** Calls [key]'s setter on the first target that takes [value]; returns the problem, or null when it was set. */
+    fun set(targets: List<Target>, key: String, value: Any?): String? {
       if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
       val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
-      if (setter in OWNED) return "owned by the core"
+      if (setter in OWNED) return owned(setter)
       var seen = false
       for (target in targets) {
         for (method in target.cls.methods) {

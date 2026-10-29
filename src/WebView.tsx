@@ -157,6 +157,7 @@ const nativeModule = () =>
     defaultUserAgent: string;
     warmUp(): void;
     preconnect(url: string): Promise<void>;
+    setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
 
 /** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
@@ -405,7 +406,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },
-    webView: { ...DEFAULTS.AndroidSettings.webView, ...webView },
+    webView: { ...webView },
   };
 }
 
@@ -477,6 +478,15 @@ export declare namespace WebView {
      * @android
      */
     function preconnect(url: string): void;
+    /**
+     * Turns remote debugging (`chrome://inspect`) of every WebView in the app on or off.
+     *
+     * Until it is called, it is on when the app is debuggable (a debug build) and off otherwise. Called before any
+     * WebView exists, it applies when the first one is made, so it doesn't start WebView. No-op on iOS, where
+     * `ios.webView.inspectable` sets it per WebView.
+     * @android
+     */
+    function setWebContentsDebuggingEnabled(enabled: boolean): void;
   }
 }
 const android = {
@@ -485,6 +495,9 @@ const android = {
   },
   preconnect: (url: string): void => {
     if (Platform.OS === 'android') void nativeModule().preconnect(url);
+  },
+  setWebContentsDebuggingEnabled: (enabled: boolean): void => {
+    if (Platform.OS === 'android') void nativeModule().setWebContentsDebuggingEnabled(enabled);
   },
 };
 Object.defineProperty(android, 'defaultUserAgent', {
