@@ -42,10 +42,12 @@ object MinimalWebViewHooks {
    * replace the first instead). The same `register` call running again replaces its hook: a JS reload creates the
    * modules anew, and their `OnCreate` runs again. A helper that calls `register` for other code is one call, so a
    * second hook under a key through it replaces the first silently. `core` is reserved and refused: the package's own
-   * events are named `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
+   * events are named `core.…`. Hooks run in registration order, which across packages is autolinking's (packages
+   * sorted by name), so an earlier hook's clients come first.
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash.
+   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash, in
+   * registration order even for a key that was enabled late.
    * Without [configure] or [webViewFactory], it also attaches when its key is enabled after the WebView was made, after
    * the hooks attached already.
    *
