@@ -16,8 +16,12 @@ this package has never heard of.</p>
 <p>The keys the SDK headers list autocomplete, with their <code>@since</code>. A value must fit the property's type: enums and
 option sets by raw value (from <a href="../modules/IOSConstants.html" class="tsd-kind-namespace">IOSConstants</a>), structs as objects, a <code>UIColor</code> as <code>#rrggbb</code> or <code>#rrggbbaa</code>,
 an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'default'</code> or <code>'nonPersistent'</code>.</p>
-<p>A key that doesn't fit, or a private (<code>_</code>) one, is skipped with a warning; nothing here can crash the app. A root's
-default keys are the package's, and yours go over them. Read one back with the ref's <a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
+<p>A key that doesn't fit, a private (<code>_</code>) one, or one the device's iOS lacks (its <code>@since</code> is newer) is skipped with a
+warning; nothing here can crash the app. So is a property UIKit declares without runtime metadata, such as
+<code>webView.opaque</code>: set it with <code>call('webView.setOpaque:', [false])</code>.</p>
+<p>A root's default keys are the package's, and yours go over them; a key the package doesn't set keeps WebKit's
+default. WebKit has no mixed-content setting: it applies its own policy. Read a key back with the ref's
+<a href="WebViewRef.html#get" class="tsd-kind-method">get</a>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">

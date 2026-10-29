@@ -11,7 +11,8 @@
 <li><a href="" aria-current="page">NavigationRule</a></li></ul>
 <h1>Type Alias NavigationRule</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>One navigation rule. Every field it sets must match; for a list, one matching entry is enough.</p>
+<div class="tsd-comment tsd-typography"><p>One navigation rule. Every field it sets must match; for a list, one matching entry is enough. A field left out
+matches anything; a flag set to <code>false</code> matches only the requests without it.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
@@ -43,8 +44,9 @@
 <h3 class="tsd-anchor-link" id="action"><span>action</span><a href="#action" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">action</span><span class="tsd-signature-symbol">:</span> <a href="NavigationAction.html" class="tsd-signature-type tsd-kind-type-alias">NavigationAction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;ask&quot;</span></div>
 <div class="tsd-comment tsd-typography"><p><code>ask</code> calls <code>onNavigationRequest</code>.</p>
-<p>On Android it works only for the main frame (elsewhere it is <code>block</code>), waits for the next frame, and loads an
-allowed navigation again, without the page's referrer policy or the gesture flag.</p>
+<p>On Android, which can't hold a navigation until JS answers, it works only for the main frame (elsewhere it is
+<code>block</code>): the navigation is cancelled, and an allowed one loads again after the answer, without the page's referrer
+policy or the gesture flag.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="host"><span>host</span><a href="#host" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>

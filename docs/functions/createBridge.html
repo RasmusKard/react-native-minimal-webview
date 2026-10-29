@@ -18,8 +18,8 @@
 <div class="tsd-comment tsd-typography"><p>Creates a promise-based RPC channel to <code>window.nativeBridge</code> in the pages of <code>allowedOrigins</code>, for one WebView's
 <code>bridge</code> prop.</p>
 <p>The type arguments type the method names, params, results and event payloads of <code>call</code>, <code>handle</code>, <code>emit</code> and <code>on</code>;
-nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws for an invalid
-origin rule or timeout.</p>
+nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an <code>Error</code> for an
+invalid origin rule or timeout.</p>
 </div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>

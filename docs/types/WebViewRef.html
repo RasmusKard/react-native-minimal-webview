@@ -12,8 +12,9 @@
 <h1>Type Alias WebViewRef</h1></div>
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>A WebView's ref.</p>
-<p>A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and <code>evaluate</code>, <code>get</code>,
-<code>call</code> and <code>hook</code> reject with <code>unavailable</code>.</p>
+<p>A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and a new call to
+<code>evaluate</code>, <code>get</code>, <code>call</code> or <code>hook</code> rejects with <code>unavailable</code>. That is for new calls: a <code>hook</code> call already pending
+at unmount stays pending (see <a href="#hook" class="tsd-kind-method">hook</a>).</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">WebViewRef</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-call-signature" href="#call-1">call</a><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">completion</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">&quot;void&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;value&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;valueError&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;error&quot;</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#evaluate-1">evaluate</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">script</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#get-1">get</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#goback-1">goBack</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#goforward-1">goForward</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#hook-1">hook</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#reload-1">reload</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#stoploading-1">stopLoading</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
 <section class="tsd-panel-group tsd-index-group">
@@ -41,9 +42,10 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="call-1"><span class="tsd-kind-call-signature">call</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">completion</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">&quot;void&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;value&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;valueError&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;error&quot;</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#call-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Calls a platform method, <code>root.method</code>, and resolves with its result through JSON.</p>
-<p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (then <code>WebViewCompat</code>'s),
-<code>cookieManager</code> or <code>webStorage</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Calls a platform method, <code>root.method</code>, and resolves with its result through JSON. It acts on the WebView as it is
+when the call arrives: a navigation doesn't reject it.</p>
+<p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (inherited <code>View</code> methods
+too, then <code>WebViewCompat</code>'s), <code>cookieManager</code> or <code>webStorage</code>.</p>
 <p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>.</p>
 <p>Rejects with <code>native_error</code> for an unknown method, a wrong argument count, an argument that doesn't fit, a method
 that raises, a result JSON can't carry (iOS: <code>NaN</code>), and what the core owns: on iOS every selector that loads,
@@ -59,7 +61,8 @@ the wrong class; for a method that takes another object, write a native hook.</p
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">method</span>: <span class="tsd-signature-type">string</span></span></li>
 <li><span><span class="tsd-kind-parameter">args</span>: <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span></span>
-<div class="tsd-comment tsd-typography"><p>The method's arguments. On iOS they are converted by its signature: booleans, numbers, strings, the
+<div class="tsd-comment tsd-typography"><p>The method's arguments. On Android: booleans, numbers, strings, and <code>null</code> for an object parameter
+such as a <code>Paint</code>. On iOS they are converted by its signature: booleans, numbers, strings, the
 structs as objects, <code>null</code> for nil, and <code>{ set: [...] }</code>, <code>{ date: seconds }</code>, <code>{ data: base64 }</code> or
 <code>{ cookie: properties }</code> for an <code>NSSet</code>, <code>NSDate</code>, <code>NSData</code> or <code>NSHTTPCookie</code>. A cookie's properties are
 <code>NSHTTPCookie</code>'s keys: <code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code> (seconds, as a string),
@@ -69,7 +72,8 @@ that isn't base64, a <code>{ cookie }</code> without a required key) rejects wit
 <li><span><span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">completion</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">&quot;void&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;value&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;valueError&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;error&quot;</span> <span class="tsd-signature-symbol">}</span></span>
 <div class="tsd-comment tsd-typography"><p><code>completion</code> (iOS) is the shape of the selector's trailing completion handler: <code>'void'</code> for <code>(void)</code>
 resolves <code>null</code>; <code>'value'</code> for <code>(id)</code> resolves the value; <code>'valueError'</code> for <code>(id, NSError *)</code> resolves the value
-or rejects with the error; <code>'error'</code> for <code>(NSError *)</code> resolves <code>null</code> or rejects with the error.</p>
+or rejects with the error; <code>'error'</code> for <code>(NSError *)</code> resolves <code>null</code> or rejects with the error. A selector that
+takes a handler rejects with <code>native_error</code> without it; for any other selector, and on Android, it is ignored.</p>
 </div></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><p>On iOS: numbers, strings, an <code>NSURL</code> as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code>
 as a base64 PNG, the structs as objects, an <code>NSHTTPCookie</code> as its properties (<code>Expires</code> in seconds), and arrays,
@@ -109,7 +113,7 @@ hold a call until it navigates.</p>
 <p>The roots are those of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a> and <a href="AndroidSettings.html" class="tsd-kind-type-alias">AndroidSettings</a>, plus <code>websiteDataStore</code> and
 <code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android, <code>textZoom</code> reads
 <code>getTextZoom()</code>, <code>isTextZoom()</code> or a non-void <code>textZoom()</code>. Rejects with <code>native_error</code> for one it can't read, or
-that the core owns.</p>
+that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't reject it.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -128,7 +132,7 @@ that the core owns.</p>
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="goback-1"><span class="tsd-kind-call-signature">goBack</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#goback-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Goes back one page, when <code>canGoBack</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Goes back one page; does nothing unless <code>canGoBack</code>.</p>
 <p>On Android, as Chrome's back button, it also skips the history entries a page added without a user gesture
 (<code>pushState</code>, a hash change) and the page that added them.</p>
 </div>
@@ -139,7 +143,7 @@ that the core owns.</p>
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="goforward-1"><span class="tsd-kind-call-signature">goForward</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#goforward-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Goes forward one page, when <code>canGoForward</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Goes forward one page; does nothing unless <code>canGoForward</code>.</p>
 </div>
 </div></li></ul></section>
 <section class="tsd-panel tsd-member">
@@ -151,7 +155,8 @@ that the core owns.</p>
 <div class="tsd-comment tsd-typography"><p>Calls the <code>method</code> handler the native hook <code>name</code> registered with <code>context.handle</code>, with <code>args</code>, and resolves with
 its reply; both cross as JSON.</p>
 <p>Rejects with <code>hook_not_handled</code>, or <code>native_error</code> when the reply can't cross as JSON. A handler that never replies
-leaves the promise pending: nothing settles it on navigation, a crash or unmount.</p>
+leaves the promise pending: nothing settles it on navigation, a crash or unmount. Only a call made after the unmount
+rejects, with <code>unavailable</code>.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>

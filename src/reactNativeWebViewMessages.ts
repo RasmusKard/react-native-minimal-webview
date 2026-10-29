@@ -8,7 +8,8 @@ import type { InjectedScript } from './types';
  * The page's `window.ReactNativeWebView.postMessage(data)` arrives as `String(data)`, and what you emit reaches the
  * page as a `message` event on `window` on iOS and on `document` on Android, as react-native-webview does.
  *
- * It needs the `bridge` prop: only the main frame of the pages in `allowedOrigins` gets `window.ReactNativeWebView`.
+ * It needs the `bridge` prop: only the main frame of the pages in `allowedOrigins` gets `window.ReactNativeWebView`,
+ * and only `postMessage`: there is no `injectedObjectJson`.
  * @example
  * ```tsx
  * const bridge = createBridge({ allowedOrigins: ['https://example.com'] });
