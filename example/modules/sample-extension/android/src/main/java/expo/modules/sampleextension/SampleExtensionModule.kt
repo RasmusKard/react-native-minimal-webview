@@ -47,7 +47,9 @@ class SampleExtensionModule : Module() {
         null
       }
       PerfProbe.register()
+      Seams.register()
     }
+    AsyncFunction("closedViews") { Seams.closed }.runOnQueue(Queues.MAIN)
     // The perf suite's frame-gap probe (PerfProbe.kt): module functions, so they work without a hook too.
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)

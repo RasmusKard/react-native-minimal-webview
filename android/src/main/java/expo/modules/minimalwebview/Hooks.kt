@@ -158,6 +158,13 @@ interface WebViewContext {
   fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
 
   /**
+   * Runs [handler] once this attach's WebView is destroyed: with `CLOSING` at unmount, or with `CRASHED` after a
+   * renderer crash, before the WebView that replaces it is configured. Native state that must outlive the WebView (a
+   * `ProfileStore` profile) is released here. The context does nothing by then.
+   */
+  fun onDestroyed(handler: (DocumentScope.End) -> Unit)
+
+  /**
    * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
    * `Long` or `Double`) and calls `reply` exactly once, with a value JSON can encode. One handler per method: the last
    * one wins.
@@ -195,6 +202,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val chromeClients get() = view.chromeClients
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
   private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val destroyedHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
   private val attachment = Attachment()
@@ -216,6 +224,10 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     documentEndHandlers += handler
   }
 
+  override fun onDestroyed(handler: (DocumentScope.End) -> Unit) {
+    destroyedHandlers += handler
+  }
+
   override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
     handlers[method] = handler
   }
@@ -226,6 +238,8 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   }
 
   fun documentEnded(reason: DocumentScope.End) = documentEndHandlers.forEach { it(reason) }
+
+  fun destroyed(reason: DocumentScope.End) = destroyedHandlers.forEach { it(reason) }
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {
