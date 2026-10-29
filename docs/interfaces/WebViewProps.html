@@ -127,6 +127,8 @@ one to a new window loads in place on iOS and doesn't load on Android.</p>
 when no app handles it, its <code>S.browser_fallback_url</code> goes through the rules and the <code>intent:</code> itself is reported as
 <code>block</code>.</p>
 <p>A change applies from the next navigation.</p>
+<p>A native hook can take these decisions, defaults included: see <code>WebViewContext.clients</code> (Android) and
+<code>navigationDelegates</code> (iOS).</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">

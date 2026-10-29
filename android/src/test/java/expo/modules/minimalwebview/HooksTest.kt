@@ -165,6 +165,25 @@ class HooksTest {
   }
 
   @Test
+  fun `a client that takes a decision the app's props make warns once, naming what stops applying`() {
+    val warnings = mutableListOf<String>()
+    val deciders = Deciders { warnings += it }
+    val overriding = { client: String -> client == "navigation" }
+    assertNull(deciders.first("shouldOverrideUrlLoading", listOf("plain"), overriding))
+    assertTrue(warnings.isEmpty())
+    // The same callback again, as after a crash's recovery attaches the same clients: no second warning.
+    repeat(2) { assertEquals("navigation", deciders.first("shouldOverrideUrlLoading", listOf("plain", "navigation"), overriding)) }
+    deciders.first("onReceivedHttpAuthRequest", listOf("navigation"), overriding)
+    assertEquals(
+      listOf(
+        "shouldOverrideUrlLoading: a hook client takes it, so navigationRules, their defaults and onNavigationRequest " +
+          "don't apply to navigations"
+      ),
+      warnings
+    )
+  }
+
+  @Test
   fun `a detached attachment drops emits and answers asks null at once`() {
     val attachment = Attachment()
     var sent = 0
