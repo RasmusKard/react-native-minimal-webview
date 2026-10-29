@@ -253,6 +253,13 @@ export const waitFor = async (
 ) => (await until(() => predicate(h.state()), ms, 50)) === true;
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+/** An `onOpenExternal` that records each URL in `into` and answers that the app opened it. */
+export const recordExternal =
+  (into: string[]): WebViewProps['onOpenExternal'] =>
+  ({ url }) => {
+    into.push(url);
+    return true;
+  };
 /** Allows every `ask`, with `rules` ahead of a catch-all http(s) allow; returns the asked URLs. */
 const allowAsks = async (h: Harness, rules: NavigationRule[]) => {
   const asked: string[] = [];
@@ -1489,9 +1496,7 @@ async function settings(h: Harness) {
         Path: '/',
       });
       const cookies = (await call('httpCookieStore.getAllCookies:')) as
-        | { Name: string; Value: string }[]
-        | string
-        | undefined;
+        { Name: string; Value: string }[] | string | undefined;
       r.check(
         'call takes { cookie } and resolves an NSHTTPCookie as its properties',
         stored === null &&
@@ -1528,10 +1533,9 @@ async function settings(h: Harness) {
         typeof png === 'string' && png.startsWith('iVBORw0KGgo'),
         String(png).slice(0, 20)
       );
-      const records = await call(
-        'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:',
-        [{ set: [IOSConstants.WebsiteDataType.localStorage] }]
-      );
+      const records = await call('websiteDataStore.fetchDataRecordsOfTypes:completionHandler:', [
+        { set: [IOSConstants.WebsiteDataType.localStorage] },
+      ]);
       r.check('call resolves a value completion handler', Array.isArray(records), records);
       const playback = await call('webView.requestMediaPlaybackStateWithCompletionHandler:');
       r.check(
@@ -1542,10 +1546,9 @@ async function settings(h: Harness) {
       // iOS 18 selectors: below it they reject with not_found, as the floor should.
       if (parseFloat(String(Platform.Version)) >= 18) {
         await page(`sessionStorage.setItem('mrw', '1')`);
-        const session = await call(
-          'webView.fetchDataOfTypes:completionHandler:',
-          [IOSConstants.WebViewDataType.sessionStorage]
-        );
+        const session = await call('webView.fetchDataOfTypes:completionHandler:', [
+          IOSConstants.WebViewDataType.sessionStorage,
+        ]);
         const restored = await call('webView.restoreData:completionHandler:', [{ data: session }]);
         r.check(
           'call takes NSData and an error completion handler',
@@ -1679,10 +1682,7 @@ async function settings(h: Harness) {
         { before, removed }
       );
       r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
-      r.check(
-        'call rejects an unknown root',
-        (await call('clearCache', [true])) === 'not_found'
-      );
+      r.check('call rejects an unknown root', (await call('clearCache', [true])) === 'not_found');
       // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
       h.setProps({ android: { webView: { other: { backgroundColor: 0 } } } });
       await sleep(500);
@@ -1716,10 +1716,7 @@ async function navigation(h: Harness) {
   let lastAskAt = 0;
   const lastNavigation = () => h.events.navigations[h.events.navigations.length - 1];
   h.setProps({
-    onOpenExternal: ({ url }) => {
-      external.push(url);
-      return true;
-    },
+    onOpenExternal: recordExternal(external),
   });
   h.setAsk((request) => {
     asked.push(request.url);
@@ -1802,10 +1799,7 @@ async function navigation(h: Harness) {
     external
   );
   h.setProps({
-    onOpenExternal: ({ url }) => {
-      external.push(url);
-      return true;
-    },
+    onOpenExternal: recordExternal(external),
     ios: { preferences: { javaScriptCanOpenWindowsAutomatically: true } },
     android: { settings: { javaScriptCanOpenWindowsAutomatically: true } },
   });
@@ -2150,10 +2144,7 @@ async function downloadsSuite(h: Harness) {
   const opened: string[] = [];
   h.setProps({
     onDownload: undefined,
-    onOpenExternal: ({ url }) => {
-      opened.push(url);
-      return true;
-    },
+    onOpenExternal: recordExternal(opened),
   });
   await sleep(300);
   const events = () => h.events.downloads.length + h.events.downloadFailures.length;
@@ -2493,7 +2484,11 @@ async function sampleExtension(h: Harness) {
   await sleep(200);
   await recreate(h, {}, true);
   const unmounted = await Promise.race([held, sleep(3000).then(() => 'still pending')]);
-  r.check('unmount rejects a ref.hook in flight with navigated', unmounted === 'navigated', unmounted);
+  r.check(
+    'unmount rejects a ref.hook in flight with navigated',
+    unmounted === 'navigated',
+    unmounted
+  );
   // HTTP auth, which the core declines: the hook's delegate (client) answers it. Its key turns on after creation, and a
   // hook without configure attaches then.
   await recreate(h, { hookOptions: { 'sample.pageCounter': true } }, true);
@@ -2523,7 +2518,13 @@ async function sampleExtension(h: Harness) {
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(
     h,
-    { hookOptions: { 'sample.pageCounter': true, 'sample.hookDialogs': true, 'sample.subclass': true } },
+    {
+      hookOptions: {
+        'sample.pageCounter': true,
+        'sample.hookDialogs': true,
+        'sample.subclass': true,
+      },
+    },
     true
   );
   const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
@@ -2564,7 +2565,11 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
   if (Platform.OS === 'ios') {
     const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
-    r.check('its refreshControl, styled at attach, is the one pullToRefresh shows', tinted === true, tinted);
+    r.check(
+      'its refreshControl, styled at attach, is the one pullToRefresh shows',
+      tinted === true,
+      tinted
+    );
   }
   if (Platform.OS === 'android') {
     await openPage(h, fresh(h, '/media.html'));
@@ -2590,20 +2595,31 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
       5000
     );
     const both = await until(
-      () => ['scrollA', 'scrollB'].every((name) => h.events.hookEvents.includes(`sample.seams.${name}`)),
+      () =>
+        ['scrollA', 'scrollB'].every((name) =>
+          h.events.hookEvents.includes(`sample.seams.${name}`)
+        ),
       3000
     );
-    r.check('its two scroll listeners both get the scroll', !!scrolled && !!both, h.events.hookEvents);
+    r.check(
+      'its two scroll listeners both get the scroll',
+      !!scrolled && !!both,
+      h.events.hookEvents
+    );
     const closed = await seams.closedViews();
     await recreate(h, {}, true);
     const now = await until(async () => {
       const count = await seams.closedViews();
       return count > closed && count;
     }, 3000);
-    r.check('its onDestroyed handler runs once its WebView is destroyed at unmount', now === closed + 1, {
-      closed,
-      now,
-    });
+    r.check(
+      'its onDestroyed handler runs once its WebView is destroyed at unmount',
+      now === closed + 1,
+      {
+        closed,
+        now,
+      }
+    );
   }
 }
 

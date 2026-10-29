@@ -16,6 +16,7 @@ import {
   fresh,
   idle,
   openPage,
+  recordExternal,
   reporter,
   sleep,
   tapPoint,
@@ -113,10 +114,7 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
       h.setProps({
         ...(external
           ? {
-              onOpenExternal: ({ url }) => {
-                host.external.push(url);
-                return true;
-              },
+              onOpenExternal: recordExternal(host.external),
             }
           : {}),
         ...(downloads ? {} : { onDownload: undefined }),
