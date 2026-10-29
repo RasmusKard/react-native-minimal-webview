@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.content.Context
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
@@ -21,8 +22,9 @@ import java.util.concurrent.ConcurrentHashMap
  * complete ones.
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
- * [WebViewContext.chromeClients] instead), the bridge's web message listener and document-start scripts, and the
- * download listener ([WebViewContext.onDownloadStart] instead).
+ * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
+ * [WebViewContext.scrollListeners]), the bridge's web message listener and document-start scripts, and the download
+ * listener ([WebViewContext.onDownloadStart]).
  */
 object MinimalWebViewHooks {
   /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
@@ -135,6 +137,15 @@ interface WebViewContext {
    */
   val chromeClients: MutableList<WebChromeClient>
 
+  /**
+   * The hooks' touch listeners, in order, called until one returns true: that one consumes the touch, which neither the
+   * later listeners nor the WebView get.
+   */
+  val touchListeners: MutableList<View.OnTouchListener>
+
+  /** The hooks' scroll listeners: each one gets every scroll change, in order. */
+  val scrollListeners: MutableList<View.OnScrollChangeListener>
+
   /** Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS. */
   fun emit(name: String, payload: Map<String, Any?>)
 
@@ -209,6 +220,8 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val url get() = view.url
   override val clients get() = view.clients
   override val chromeClients get() = view.chromeClients
+  override val touchListeners get() = view.touchListeners
+  override val scrollListeners get() = view.scrollListeners
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
   private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentScope.End) -> Unit>()

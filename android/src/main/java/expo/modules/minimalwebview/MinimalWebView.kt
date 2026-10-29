@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -79,6 +80,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   // detach write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
+  val touchListeners = mutableListOf<View.OnTouchListener>()
+  val scrollListeners = mutableListOf<View.OnScrollChangeListener>()
   val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
@@ -148,6 +151,9 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       }
       if (!taken && !downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
+    // View's slots hold one listener each: the hooks share them through their lists.
+    view.setOnTouchListener { v, event -> touchListeners.any { it.onTouch(v, event) } }
+    view.setOnScrollChangeListener { v, x, y, oldX, oldY -> scrollListeners.forEach { it.onScrollChange(v, x, y, oldX, oldY) } }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
   }
 
@@ -276,6 +282,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     hookContexts = emptyList()
     clients.clear()
     chromeClients.clear()
+    touchListeners.clear()
+    scrollListeners.clear()
     return detached
   }
 
