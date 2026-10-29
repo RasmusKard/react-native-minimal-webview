@@ -1,3 +1,4 @@
+import { requireNativeModule } from 'expo';
 import type { HookEvent } from 'react-native-minimal-webview';
 
 /**
@@ -19,3 +20,6 @@ export type PageCounterEvent =
 
 export const isPageCounterEvent = (event: HookEvent): event is PageCounterEvent =>
   event.name.startsWith('sample.pageCounter.');
+
+/** The `sample.seams` hook's counter (Android): how many of its WebViews were destroyed at unmount. */
+export const seams = requireNativeModule<{ closedViews(): Promise<number> }>('SampleExtension');

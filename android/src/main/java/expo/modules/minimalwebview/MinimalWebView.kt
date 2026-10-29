@@ -264,13 +264,16 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     }
   }
 
-  private fun detachHooks() {
+  /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
+  private fun detachHooks(): List<HookContext> {
+    val detached = hookContexts
     detachers.forEach { it() }
     detachers = emptyList()
     hookContexts.forEach { it.detach() }
     hookContexts = emptyList()
     clients.clear()
     chromeClients.clear()
+    return detached
   }
 
   /** Tells each attached hook whose value changed. A key that was not there when the WebView was made attaches nothing. */
@@ -309,13 +312,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
     document.end(End.CRASHED)
-    detachHooks()
+    val detached = detachHooks()
     val dead = webView
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
     val restorable = !showsSource(source, url)
     val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
     refresher.content.removeView(dead)
     dead.destroy()
+    detached.forEach { it.destroyed(End.CRASHED) }
     pendingRecovery = Recovery(reload, history)
     // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
     if (loading) outcome = "failed"
@@ -362,10 +366,13 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingRecovery = null
     waiting -= this
     document.end(End.CLOSING)
-    detachHooks()
+    val detached = detachHooks()
     downloads.detach()
     webView.stopLoading()
     webView.destroy()
+    // shortcut: still in the layout here, unlike after a crash; if ProfileStore.deleteProfile in onDestroyed throws
+    // "in use" on a device, remove the WebView from refresher.content before destroy() first.
+    detached.forEach { it.destroyed(End.CLOSING) }
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {

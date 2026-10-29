@@ -510,8 +510,8 @@ test('the bridge transport has the names the page client uses', () => {
   expect(page).toContain(`${receive}: receive,`);
 });
 
-// What only one platform's hooks get: Android's clients, iOS's delegates.
-const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients'];
+// What only one platform's hooks get.
+const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients', 'onDestroyed'];
 const IOS_ONLY_CONTEXT = ['navigationDelegates', 'uiDelegates'];
 
 test("a hook's WebViewContext has the same members on both platforms, bar the platform-only ones", () => {
