@@ -78,7 +78,7 @@ async function inert(h: Harness, r: Reporter) {
     typeof made === 'string' && !made.includes('MenuW'),
     made
   );
-  await openPage(h, fresh(h, '/auth?ext=none'));
+  await openPage(h, fresh(h, '/auth?t=ext-none'));
   const auth = await text(h, 'auth');
   r.check('with no extension prop, HTTP auth is declined as the core does', auth === 'unauthorized', auth);
   h.events.hookEvents.length = 0;
@@ -95,12 +95,12 @@ async function inert(h: Harness, r: Reporter) {
 async function auth(h: Harness, r: Reporter) {
   h.setProps({ basicAuthCredential: { username: 'u', password: 'p' } });
   await sleep(300);
-  await openPage(h, fresh(h, '/auth?ext=on'));
+  await openPage(h, fresh(h, '/auth?t=ext-on'));
   const on = await text(h, 'auth');
   r.check('basicAuthCredential, set after mount, answers HTTP basic auth', on === 'authorized', on);
   h.setProps({});
   await sleep(300);
-  await openPage(h, fresh(h, '/auth?ext=removed'));
+  await openPage(h, fresh(h, '/auth?t=ext-removed'));
   const off = await text(h, 'auth');
   r.check('basicAuthCredential removed: HTTP auth is declined again', off === 'unauthorized', off);
 }
