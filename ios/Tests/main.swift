@@ -97,7 +97,20 @@ if late != [.closing] {
   scopeFailures += 1
   print("FAIL document scope late registrant: \(late)")
 }
-print("\(2 - scopeFailures)/2 document scope cases pass")
+// A skipsOpening registrant doesn't hear the commit that opens a Document with none open: the first, or the one after
+// a crash. Every other end, a crash or close with none open included, reaches it.
+let opening = DocumentScope()
+var skipped: [DocumentScope.End] = []
+var unskipped: [DocumentScope.End] = []
+opening.register(skipsOpening: true) { skipped.append($0) }
+opening.register { unskipped.append($0) }
+let openingEnds: [DocumentScope.End] = [.committed, .committed, .crashed, .crashed, .committed, .committed, .closing]
+openingEnds.forEach(opening.end)
+if skipped != [.committed, .crashed, .crashed, .committed, .closing] || unskipped != openingEnds {
+  scopeFailures += 1
+  print("FAIL document scope opening: \(skipped), \(unskipped)")
+}
+print("\(3 - scopeFailures)/3 document scope cases pass")
 
 // Asks: each ask is answered once, by JS or with nil when native gives up; JS hears of a cancel except at closing.
 var askFailures = 0
