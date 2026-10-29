@@ -46,13 +46,21 @@ has the rest.
 To change an extension, or to take only one, copy it into a module of your own:
 
 1. `npx create-expo-module --local <name>`.
-2. Copy the extension's folder into it: the `.swift` file into `ios/`, the `.kt` file into `android/src/main/java/`, and
-   `index.ts`, the function that returns its `HookExtension`, into `src/`. Call its `register()` from your module's
-   `OnCreate`.
-3. Add the core as a dependency: `s.dependency 'MinimalWebView'` in the podspec, and
+2. Copy the extension's folder into it: the `.swift` file into `ios/`, the `.kt` file next to your module's
+   `<Name>Module.kt` (in `android/src/main/java/`), and `index.ts`, the function that returns its `HookExtension`, into
+   `src/`.
+3. In the `.kt` file, change the `package` line to the one in your `<Name>Module.kt`.
+4. Register the hook: in both `<Name>Module.swift` and `<Name>Module.kt`, add
+   `OnCreate { BasicAuthCredential.register() }` (the extension's own name) to the module's `definition()`. The copies
+   are in your module and its package, so they need no import.
+5. Add the core as a dependency: `s.dependency 'MinimalWebView'` in the podspec, and
    `implementation project(':minimal-rn-webview')` in `android/build.gradle`.
-4. Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.
-5. Rebuild the app.
+6. Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.
+7. Rebuild the app.
 
-While this package is installed too, a key you forgot to rename fails at launch with "two hooks are registered under …:
-prefix yours with your package's name".
+The Swift keeps its type names: they belong to your module. A changed `hideKeyboardAccessoryView` needs a `suffix` of
+its own too, since the runtime class it makes is found by that name.
+
+While this package is installed too, a `package` line you forgot to change fails the Android build with a duplicate
+class, and a key you forgot to rename fails at launch with "two hooks are registered under …: prefix yours with your
+package's name".

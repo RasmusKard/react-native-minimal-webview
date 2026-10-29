@@ -74,16 +74,23 @@ has the rest.</p>
 <p>To change an extension, or to take only one, copy it into a module of your own:</p>
 <ol>
 <li><code>npx create-expo-module --local &lt;name&gt;</code>.</li>
-<li>Copy the extension's folder into it: the <code>.swift</code> file into <code>ios/</code>, the <code>.kt</code> file into <code>android/src/main/java/</code>, and
-<code>index.ts</code>, the function that returns its <code>HookExtension</code>, into <code>src/</code>. Call its <code>register()</code> from your module's
-<code>OnCreate</code>.</li>
+<li>Copy the extension's folder into it: the <code>.swift</code> file into <code>ios/</code>, the <code>.kt</code> file next to your module's
+<code>&lt;Name&gt;Module.kt</code> (in <code>android/src/main/java/</code>), and <code>index.ts</code>, the function that returns its <code>HookExtension</code>, into
+<code>src/</code>.</li>
+<li>In the <code>.kt</code> file, change the <code>package</code> line to the one in your <code>&lt;Name&gt;Module.kt</code>.</li>
+<li>Register the hook: in both <code>&lt;Name&gt;Module.swift</code> and <code>&lt;Name&gt;Module.kt</code>, add
+<code>OnCreate { BasicAuthCredential.register() }</code> (the extension's own name) to the module's <code>definition()</code>. The copies
+are in your module and its package, so they need no import.</li>
 <li>Add the core as a dependency: <code>s.dependency 'MinimalWebView'</code> in the podspec, and
 <code>implementation project(':minimal-rn-webview')</code> in <code>android/build.gradle</code>.</li>
 <li>Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.</li>
 <li>Rebuild the app.</li>
 </ol>
-<p>While this package is installed too, a key you forgot to rename fails at launch with &quot;two hooks are registered under …:
-prefix yours with your package's name&quot;.</p>
+<p>The Swift keeps its type names: they belong to your module. A changed <code>hideKeyboardAccessoryView</code> needs a <code>suffix</code> of
+its own too, since the runtime class it makes is found by that name.</p>
+<p>While this package is installed too, a <code>package</code> line you forgot to change fails the Android build with a duplicate
+class, and a key you forgot to rename fails at launch with &quot;two hooks are registered under …: prefix yours with your
+package's name&quot;.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">
