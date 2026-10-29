@@ -24,7 +24,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var settings: [String: Any] = [:]
   let platformSettings = PlatformSettings()
   var pullToRefresh = false
-  private lazy var refreshControl: UIRefreshControl = {
+  private(set) lazy var refreshControl: UIRefreshControl = {
     let control = UIRefreshControl()
     control.addAction(UIAction { [weak self] _ in self?.reload() }, for: .valueChanged)
     return control
