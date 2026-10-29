@@ -109,11 +109,24 @@ describe('WebView', () => {
     expect((await render({ sharedCookies: true })).native?.sharedCookies).toBeUndefined();
   });
 
-  it('WebView.android: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
-    WebView.android.warmUp();
-    WebView.android.preconnect('https://example.com');
-    WebView.android.setWebContentsDebuggingEnabled(true);
-    expect(WebView.android.defaultUserAgent).toBeNull();
+  it('sends defaultNavigationRules, the native vectors’ defaults, for unset or empty rules', async () => {
+    const vectors = jest.requireActual<{ rulesets: Record<string, unknown> }>(
+      './vectors/navigation-rules.json'
+    );
+    expect(WebView.defaultNavigationRules).toEqual(vectors.rulesets.defaults);
+    expect(Object.isFrozen(WebView.defaultNavigationRules[0]?.scheme)).toBe(true);
+    for (const navigationRules of [undefined, []])
+      expect((await render({ navigationRules })).native?.navigationRules).toBe(
+        WebView.defaultNavigationRules
+      );
+    const rules = [{ scheme: ['myapp'], action: 'external' as const }];
+    expect((await render({ navigationRules: rules })).native?.navigationRules).toBe(rules);
+  });
+
+  it('defaultUserAgent is null, and warmUp and preconnect do nothing, on iOS', () => {
+    WebView.warmUp();
+    WebView.preconnect('https://example.com');
+    expect(WebView.defaultUserAgent).toBeNull();
     expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
     expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
     expect(mockNativeModule.setWebContentsDebuggingEnabled).not.toHaveBeenCalled();
