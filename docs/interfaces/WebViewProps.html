@@ -79,10 +79,11 @@ over), so make it once (<code>useMemo</code>). A bridge serves one mounted WebVi
 <h3 class="tsd-anchor-link" id="hookoptions"><span>hook<wbr/>Options</span><a href="#hookoptions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">hookOptions</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>Each native hook's value by its key.</p>
-<p>A key whose value is not null, undefined or false when the WebView is created attaches its hook, and a later change
-reaches that hook live, without recreating the WebView. A key added later attaches nothing (a warning says so), so
-a hook you switch on and off keeps its key, with the switch in its value. A key no hook is registered under warns:
-pass a one-platform hook's key on that platform only.</p>
+<p>A key whose value is not null, undefined or false attaches its hook, and a later change reaches that hook live,
+without recreating the WebView; removing the key passes the hook null, and it stays attached. A key turned on
+after the WebView was created attaches its hook then, unless the hook has a <code>configure</code> step or its own WebView
+class (<code>webViewClass</code>, <code>webViewFactory</code>): that one attaches only when the WebView is created, and a warning says so. A key no hook is registered under warns: pass a
+one-platform hook's key on that platform only.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
