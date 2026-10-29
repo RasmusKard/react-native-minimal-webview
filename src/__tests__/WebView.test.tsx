@@ -7,6 +7,7 @@ import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { createWebViewRef, useWebViewState } from '../refStore';
 import type {
   Bridge,
+  NavigationRequest,
   NavigationState,
   SettingValue,
   WebViewProps,
@@ -563,7 +564,7 @@ describe('page requests', () => {
       .mockRejectedValueOnce(new Error('no'));
     const { fire, native } = await renderRequests({
       onNavigationRequest,
-      onOpenExternal: () => {},
+      onOpenExternal: () => true,
     });
     expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
     const request = {
@@ -662,31 +663,37 @@ describe('page requests', () => {
     await asked;
   });
 
-  it('asks onOpenExternal with the URL alone and answers its result: false, else null', async () => {
+  it('asks onOpenExternal with the request and answers its result; a throw answers null, which opens nothing', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     const onOpenExternal = jest
-      .fn<boolean | void, [string]>()
+      .fn<boolean | Promise<boolean>, [NavigationRequest, AbortSignal]>()
       .mockReturnValueOnce(false)
-      .mockReturnValueOnce(undefined)
+      .mockResolvedValueOnce(true)
       .mockImplementationOnce(() => {
         throw new Error('no');
       });
     const { fire } = await renderRequests({ onOpenExternal });
-    await fire('core.openExternal', { url: 'intent://a#Intent;end' }, 1);
+    const request = (url: string) => ({
+      url,
+      mainFrame: true,
+      newWindow: false,
+      userInitiated: true,
+    });
+    await fire('core.openExternal', request('intent://a#Intent;end'), 1);
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: false });
-    await fire('core.openExternal', { url: 'tel:1' }, 2);
-    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
-    await fire('core.openExternal', { url: 'tel:2' }, 3);
+    await fire('core.openExternal', request('tel:1'), 2);
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: true });
+    await fire('core.openExternal', request('tel:2'), 3);
+    // Native counts anything but false as opened by the app, so null opens nothing.
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[minimal-rn-webview] onOpenExternal failed',
       expect.any(Error)
     );
-    expect(onOpenExternal.mock.calls.map(([url]) => url)).toEqual([
-      'intent://a#Intent;end',
-      'tel:1',
-      'tel:2',
-    ]);
+    const signal: unknown = expect.any(AbortSignal);
+    expect(onOpenExternal.mock.calls).toEqual(
+      ['intent://a#Intent;end', 'tel:1', 'tel:2'].map((url) => [request(url), signal])
+    );
     error.mockRestore();
   });
 });

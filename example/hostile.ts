@@ -195,7 +195,12 @@ async function staleAnswer({ h, r }: Suite) {
 async function newWindows(suite: Suite) {
   const { h, r, android } = suite;
   const external: string[] = [];
-  h.setProps({ onOpenExternal: (url) => void external.push(url) });
+  h.setProps({
+    onOpenExternal: ({ url }) => {
+      external.push(url);
+      return true;
+    },
+  });
   h.setRules([
     { newWindow: true, action: 'allow' },
     { scheme: ['http', 'https'], action: 'allow' },
@@ -251,7 +256,12 @@ async function newWindows(suite: Suite) {
 async function defaultScheme(suite: Suite) {
   const { h, r } = suite;
   const external: string[] = [];
-  h.setProps({ onOpenExternal: (url) => void external.push(url) });
+  h.setProps({
+    onOpenExternal: ({ url }) => {
+      external.push(url);
+      return true;
+    },
+  });
   h.setRules(undefined);
   await sleep(300);
   const page = fresh(h, '/hostile.html');

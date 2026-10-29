@@ -96,7 +96,7 @@ extension MinimalWebView {
     guard action == "external" else { return report(request, action, rule) }
     guard requestHandlers.contains("openExternal") else { return open(request, rule) }
     // A page that moved on first answers nil, which counts as opened. No timeout: nothing waits for the answer.
-    asks.ask("core.openExternal", ["url": request.url]) { [weak self] answer in
+    asks.ask("core.openExternal", request.payload) { [weak self] answer in
       if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, "external", rule) }
     }
   }
