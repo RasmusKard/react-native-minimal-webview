@@ -11,6 +11,10 @@ internal object Seams {
 
   fun register() = MinimalWebViewHooks.register("sample.seams") { _, context ->
     context.onDestroyed { reason -> if (reason == DocumentScope.End.CLOSING) closed++ }
+    // Takes http(s) downloads and passes the rest (blob:, data:) on to the core.
+    context.onDownloadStart { url, _, _, _, _ ->
+      url.startsWith("http").also { taken -> if (taken) context.emit("download", emptyMap()) }
+    }
     null
   }
 }

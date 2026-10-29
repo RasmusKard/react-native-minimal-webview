@@ -132,6 +132,8 @@ or HTTP auth, so such a download can fail or save a login page, and it fails abo
 and for <code>blob:</code> on a WebView older than 83.</p>
 <p>Without this prop, an http(s) download opens externally (<code>onOpenExternal</code> or the system browser, without the page's
 session), and a <code>data:</code> or <code>blob:</code> one is dropped. A PDF is a download on Android; iOS shows it inline.</p>
+<p>On Android a native hook's <code>WebViewContext.onDownloadStart</code> is offered each download first, and one it takes
+reaches neither this prop nor the external fallback.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="onerror"><span>on<wbr/>Error</span><a href="#onerror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>

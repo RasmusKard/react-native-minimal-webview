@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
  * [WebViewContext.chromeClients] instead), the bridge's web message listener and document-start scripts, and the
- * download listener.
+ * download listener ([WebViewContext.onDownloadStart] instead).
  */
 object MinimalWebViewHooks {
   /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
@@ -165,6 +165,15 @@ interface WebViewContext {
   fun onDestroyed(handler: (DocumentScope.End) -> Unit)
 
   /**
+   * Offers [handler] each download the page starts, with `DownloadListener`'s arguments (an unknown disposition or MIME
+   * type is empty), before the `onDownload` prop and the core's opening it externally. Return true to take it: neither
+   * of those gets it then. The hooks are offered it in registration order, and the first that takes it ends the round.
+   */
+  fun onDownloadStart(
+    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
+  )
+
+  /**
    * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
    * `Long` or `Double`) and calls `reply` exactly once, with a value JSON can encode. One handler per method: the last
    * one wins.
@@ -203,6 +212,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
   private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val downloadHandlers = mutableListOf<(String, String, String, String, Long) -> Boolean>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
   private val attachment = Attachment()
@@ -228,6 +238,12 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     destroyedHandlers += handler
   }
 
+  override fun onDownloadStart(
+    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
+  ) {
+    downloadHandlers += handler
+  }
+
   override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
     handlers[method] = handler
   }
@@ -240,6 +256,10 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   fun documentEnded(reason: DocumentScope.End) = documentEndHandlers.forEach { it(reason) }
 
   fun destroyed(reason: DocumentScope.End) = destroyedHandlers.forEach { it(reason) }
+
+  /** Whether one of this hook's download handlers took the download. */
+  fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =
+    downloadHandlers.any { it(url, userAgent, contentDisposition, mimeType, contentLength) }
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {

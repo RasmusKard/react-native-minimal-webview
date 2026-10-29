@@ -141,9 +141,12 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     configure(view.settings)
     view.webViewClient = Client(this, navigation)
     view.webChromeClient = ChromeClient(this, navigation)
-    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+    view.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
       val download = DownloadInfo(url, userAgent, contentDisposition.orEmpty(), mimeType.orEmpty())
-      if (!downloads.onDownloadStart(download)) navigation.openDownload(url)
+      val taken = hookContexts.any {
+        it.downloadStarted(url, userAgent, download.contentDisposition, download.mimeType, contentLength)
+      }
+      if (!taken && !downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
   }
