@@ -33,9 +33,11 @@ public enum MinimalWebViewHooks {
   ///     The hidden view `window.open('')` gets is always a plain WKWebView.
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
-  ///     scripts you add stay, after the package's. `window.open('')` opens a throwaway WKWebView from this
-  ///     configuration: your user scripts run in it and your script message handlers get its messages, so compare
-  ///     `message.webView` with the WKWebView `attach` gets.
+  ///     scripts you add stay, after the package's. It gets the same context that `attach` gets next, so state it
+  ///     makes can be keyed by the context. Without it or `webViewClass`, the hook also attaches when its key is
+  ///     enabled after the WKWebView was made, after the hooks attached already. `window.open('')` opens a throwaway
+  ///     WKWebView from this configuration: your user scripts run in it and your script message handlers get its
+  ///     messages, so compare `message.webView` with the WKWebView `attach` gets.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
   ///     `onDocumentEnd(.closing)`, or nil. A web content process crash reloads the same WKWebView in place, so nothing
@@ -98,6 +100,8 @@ public protocol WebViewContext: AnyObject {
   var navigationDelegates: [WKNavigationDelegate] { get set }
   /// Your UI delegates, in order, by the same rules. Their decisions are `createWebViewWith`, the alert, confirm and
   /// prompt panels and the media capture permission; `webViewDidClose` reaches every delegate.
+  /// Each callback goes only to the list of the protocol that declares it: a navigation delegate's alert panel or a UI
+  /// delegate's action policy is never called.
   /// A delegate that holds a panel's completion handler unanswered should set `webView.accessibilityElementsHidden`
   /// meanwhile, as the core does for its own panels: an accessibility query (XCTest's) into the blocked page hangs.
   var uiDelegates: [WKUIDelegate] { get set }

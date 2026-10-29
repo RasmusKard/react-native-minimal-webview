@@ -45,8 +45,9 @@ object MinimalWebViewHooks {
    * events are named `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash. To
-   * switch a hook on and off, keep its key enabled and put the switch in its value (`{ enabled: false }`).
+   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash.
+   * Without [configure] or [webViewFactory], it also attaches when its key is enabled after the WebView was made, after
+   * the hooks attached already.
    *
    * @param webViewFactory makes each WebView that enables this hook, a subclass that overrides what WebView lets it:
    *   the first one, and the one that replaces it after a renderer crash. Null leaves it to the other hooks. A view
@@ -97,6 +98,16 @@ internal fun enables(value: Any?) = value != null && value != false
  */
 internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>) =
   hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
+
+/**
+ * Which of [attaching] makes the WebView: the first with a factory, or null for a plain WebView. Second, the keys of the
+ * others whose factory is a different object.
+ */
+internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<MinimalWebViewHooks.Hook?, List<String>> {
+  val named = attaching.filter { it.webViewFactory != null }
+  val maker = named.firstOrNull()
+  return maker to named.filter { it.webViewFactory !== maker?.webViewFactory }.map { it.key }
+}
 
 /**
  * Whether a `hookOptions` change from [old] to [value] turns on [key], one that is not attached ([keys]): its hook
@@ -175,8 +186,8 @@ interface WebViewContext {
   /**
    * Sends the event and waits for JS's answer: the `onHookEvent` handler's return value, a promise awaited. A throw or
    * no handler answers null. There is no timeout: an ask still open when the Document ends answers null, and one made
-   * after the view closed answers null at once. An ask made before the WebView's first commit (in `attach`) belongs to
-   * the Document that commit opens. A number answers as a `Double`.
+   * after the context's attach ended answers null at once. An ask made before the WebView's first commit (in `attach`)
+   * belongs to the Document that commit opens. A number answers as a `Double`.
    */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 

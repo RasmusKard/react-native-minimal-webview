@@ -24,10 +24,10 @@ props that became something else, and what has no equivalent. The [requirements]
 | iOS data detectors | Phone numbers | None | `ios.configuration.dataDetectorTypes: IOSConstants.DataDetectorTypes.phoneNumber` |
 | iOS content insets | `contentInsetAdjustmentBehavior: never`, no automatic indicator insets | UIKit's: `automatic`, and the indicator insets follow | `ios.scrollView.contentInsetAdjustmentBehavior` and `automaticallyAdjustsScrollIndicatorInsets` |
 | iOS directional lock | On | UIKit's: off | `ios.scrollView.directionalLockEnabled: true` |
-| Debugging | Off (`webviewDebuggingEnabled`) | On in `__DEV__`, on both | `ios.webView.inspectable`, `android.webView.webContentsDebuggingEnabled` |
+| Debugging | Off (`webviewDebuggingEnabled`) | iOS on in `__DEV__`; Android on in debug builds | `ios.webView.inspectable`, `WebView.android.setWebContentsDebuggingEnabled` |
 | iOS universal links | A tapped one opens the app that claims it | Loads in place, as on Android | An `external` rule for the host |
-| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)) |
-| Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone` with `recovered` true | Nothing when `recovered` is true: a `reload()` then loads the page twice. When it is false (a POST `source`, or more than 3 crashes in 60 s), only `reload()` recovers |
+| Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)); on Android a [native hook](examples.md#native-hooks) can take the download first (`onDownloadStart`) and hand it to `DownloadManager` |
+| Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing when `recovered` is true: a `reload()` then loads the page twice. When it is false (a POST `source`, or more than 3 crashes in 60 s), only `reload()` recovers |
 | Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end, on every origin | Every `injectedScripts` entry runs at document start, on its `origins` | Wrap the code in `addEventListener('DOMContentLoaded', …)`; list the origins, or `['*']` |
 | Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own on iOS, which keeps the page before it; Android shows WebView's own error page ([`onError`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror)) | The error screen [below](#loading-and-error-screens) |
@@ -82,10 +82,10 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])`, `call('webView.clearHistory')`, `call('webView.clearFormData')` and `call('webView.requestFocus')`; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `nativeConfig`, and custom JS dialogs (react-native-webview has no prop for them) | A [native hook](examples.md#native-hooks) |
+| `basicAuthCredential`, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `keyboardDisplayRequiresUserAction`, `hideKeyboardAccessoryView`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `downloadingMessage`, `nativeConfig`, and custom JS dialogs (react-native-webview has no prop for them) | A [native hook](examples.md#native-hooks) |
 | `nestedScrollEnabled` | A native hook with a touch listener that calls `requestDisallowInterceptTouchEvent(true)` on the WebView's parent. `android.webView.nestedScrollingEnabled` doesn't do it: the parent still takes the swipe |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
-| `autoManageStatusBarEnabled`, `useSharedProcessPool`, `downloadingMessage`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; show your own UI in `onDownload`; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
+| `autoManageStatusBarEnabled`, `useSharedProcessPool`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
 
 The props whose setting has another name:
 
@@ -101,7 +101,7 @@ The props whose setting has another name:
 | `saveFormDataDisabled` | `android.settings.saveFormData: false` (a no-op since API 26, there too) |
 | `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs` | `android.settings.<the same name>`; on iOS `ios.preferences.allowFileAccessFromFileURLs` and `ios.configuration.allowUniversalAccessFromFileURLs` |
 | `androidLayerType` | `call('webView.setLayerType', [type, null])`, `type` 0, 1 or 2 (`View.LAYER_TYPE_*`); again after a renderer crash |
-| `style={{ backgroundColor: 'transparent' }}` | `android.webView.backgroundColor: 0` (not an autocompleting key, but any public setter works); on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (the `ios.webView.opaque` key is [skipped with a warning](https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html)) |
+| `style={{ backgroundColor: 'transparent' }}` | `android.webView.other.backgroundColor: 0`; on iOS `call('webView.setOpaque:', [false])` once mounted, again when it remounts (the `ios.webView.opaque` key is [skipped with a warning](https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html)) |
 | `containerStyle` | A `View` around the WebView |
 
 ## What else changes

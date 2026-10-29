@@ -4,6 +4,7 @@ import android.webkit.ValueCallback
 import expo.modules.minimalwebview.PlatformSettings.Target
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
@@ -22,6 +23,8 @@ class PlatformSettingsTest {
     fun setTag(v: Any) { values += v }
     fun setUnsupported(v: Int): Unit = throw UnsupportedOperationException("$v")
     fun setFailing(v: Int): Unit = throw IllegalStateException("boom $v")
+    fun getUnsupported(): Int = throw UnsupportedOperationException()
+    fun getNaN() = Double.NaN
     var pending: ValueCallback<Boolean>? = null
     fun put(a: String, b: String) { values += "$a=$b" }
     fun put(a: String, b: String, done: ValueCallback<Boolean>?) { values += "$a=$b later"; pending = done }

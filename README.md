@@ -17,8 +17,9 @@ architecture only.
 53+ (React Native 0.79+, React 19), the new architecture. A bare React Native app needs the `expo` package
 (`npx install-expo-modules@latest`). On Android, some features need a newer
 [Android System WebView](#android-system-webview-versions). On a current Xcode, SDK 53 apps need React Native's `fmt`
-pod built as C++17 (a Podfile `post_install` hook that sets its `CLANG_CXX_LANGUAGE_STANDARD` to `c++17`). The build is ESM: Jest consumers add `react-native-minimal-webview` to
-`transformIgnorePatterns` (with jest-expo, to its `node_modules/(?!...)` allowlist).
+pod built as C++17 (a Podfile `post_install` hook that sets its `CLANG_CXX_LANGUAGE_STANDARD` to `c++17`). The build
+is ESM: Jest consumers add `react-native-minimal-webview` to `transformIgnorePatterns` (with jest-expo, to its
+`node_modules/(?!...)` allowlist).
 
 ```tsx
 import { WebView } from 'react-native-minimal-webview';

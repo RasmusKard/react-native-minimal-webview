@@ -1,19 +1,14 @@
 // The bridge wire format. The RN side parses with it; the page client imports only its types.
 import type { ErrorCode } from '../types';
 
-const ERROR_CODES = ['timeout', 'not_found', 'handler_error', 'navigated', 'unavailable'] as const;
-/**
- * Why a bridge call rejected.
- *
- * - `timeout`: no answer in time.
- * - `not_found`: no handler for the method.
- * - `handler_error`: the handler threw or rejected (the `message` is its error's), or a script talking to the bridge's
- *   transport itself sent a code not listed here.
- * - `navigated`: the page navigated or crashed, or the WebView unmounted, while the call was pending.
- * - `unavailable`: the WebView lacks the features the bridge needs (Android System WebView older than 101).
- * @useDeclaredType
- * @group Bridge
- */
+/** The codes a bridge call rejects with: the page may send only these. */
+const ERROR_CODES = [
+  'timeout',
+  'not_found',
+  'handler_error',
+  'navigated',
+  'unavailable',
+] as const satisfies readonly ErrorCode[];
 export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 
 /**

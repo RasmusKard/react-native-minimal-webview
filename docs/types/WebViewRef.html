@@ -12,9 +12,10 @@
 <h1>Type Alias WebViewRef</h1></div>
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>A WebView's ref.</p>
-<p>A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and a new call to
-<code>evaluate</code>, <code>get</code>, <code>call</code> or <code>hook</code> rejects with <code>unavailable</code>. That is for new calls: a <code>hook</code> call already pending
-at unmount stays pending (see <a href="#hook" class="tsd-kind-method">hook</a>).</p>
+<p>A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and <code>evaluate</code>, <code>get</code>,
+<code>call</code> and <code>hook</code> reject with <code>unavailable</code>, and one still pending when the WebView unmounts rejects with <code>navigated</code>.</p>
+<p>Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
+effect can come before the view exists), then reject with <code>unavailable</code>; in the background they don't wait.</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">WebViewRef</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-call-signature" href="#call-1">call</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#evaluate-1">evaluate</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">script</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#get-1">get</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#goback-1">goBack</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#goforward-1">goForward</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#hook-1">hook</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#reload-1">reload</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#stoploading-1">stopLoading</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
 <section class="tsd-panel-group tsd-index-group">
@@ -47,15 +48,22 @@ when the call arrives: a navigation doesn't reject it.</p>
 <p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (inherited <code>View</code> methods
 too, then <code>WebViewCompat</code>'s), <code>cookieManager</code> or <code>webStorage</code>.</p>
 <p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>.</p>
-<p>Rejects with <code>native_error</code> for an unknown method, a wrong argument count, an argument that doesn't fit, a method
-that raises, a result JSON can't carry (iOS: <code>NaN</code>), and what the core owns: on iOS every selector that loads,
-navigates (<code>setInteractionState:</code> too), runs a script, starts a download or sets a delegate, and private (<code>_</code>),
-KVC, KVO, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>, <code>mutable…</code>, <code>new…</code> and reference-counting selectors; on Android (in
-<code>get</code> too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
-<code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>, <code>resumeTimers</code>, <code>evaluateJavascript</code> and
+<p>Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an unknown root or method (Android: or none of that name takes
+these arguments); <code>unavailable</code> for a compat method this WebView doesn't support (Android); <code>native_error</code> for a
+wrong argument count, an argument that doesn't fit, a method that raises, a result JSON can't carry (<code>NaN</code>), and
+what the core owns: on iOS every selector that loads, navigates (<code>setInteractionState:</code> too), runs a script, starts
+a download or sets a delegate, and private (<code>_</code>), KVC, KVO, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>, <code>mutable…</code>,
+<code>new…</code> and reference-counting selectors; on Android (in <code>get</code> too) the loads, navigations, clients, JavaScript
+interfaces, web message listeners, document-start scripts, <code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>,
+<code>resumeTimers</code>, <code>evaluateJavascript</code> and
 <code>setWebContentsDebuggingEnabled</code>.</p>
-<p>On iOS two mistakes the signature can't catch crash the app: a wrong <code>completion</code> shape, and an object argument of
-the wrong class; for a method that takes another object, write a native hook.</p>
+<p>A trailing completion handler (iOS) or <code>ValueCallback</code> (Android) is left out of <code>args</code>: the call resolves with what
+it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
+SDK headers, or reports something other than an object, an error or an integer, rejects with <code>native_error</code>. On
+Android, a method that takes <code>args</code> as they are wins over one that also takes a callback, and a <code>null</code> in the
+callback's place passes none.</p>
+<p>On iOS one mistake the signature can't catch crashes the app: an object argument of the wrong class; for a method
+that takes another object, write a native hook.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -69,12 +77,6 @@ structs as objects, <code>null</code> for nil, and <code>{ set: [...] }</code>, 
 <code>NSHTTPCookie</code>'s keys: <code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code> (seconds, as a string),
 <code>Secure</code>, <code>HttpOnly</code> and <code>SameSite</code> are some of the optional ones. A tag that can't make its object (<code>{ data }</code>
 that isn't base64, a <code>{ cookie }</code> without a required key) rejects with <code>native_error</code>.</p>
-</div></li>
-<li><span><span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">completion</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">&quot;void&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;value&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;valueError&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;error&quot;</span> <span class="tsd-signature-symbol">}</span></span>
-<div class="tsd-comment tsd-typography"><p><code>completion</code> (iOS) is the shape of the selector's trailing completion handler: <code>'void'</code> for <code>(void)</code>
-resolves <code>null</code>; <code>'value'</code> for <code>(id)</code> resolves the value; <code>'valueError'</code> for <code>(id, NSError *)</code> resolves the value
-or rejects with the error; <code>'error'</code> for <code>(NSError *)</code> resolves <code>null</code> or rejects with the error. A selector that
-takes a handler rejects with <code>native_error</code> without it; for any other selector, and on Android, it is ignored.</p>
 </div></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><p>On iOS: numbers, strings, an <code>NSURL</code> as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code>
 as a base64 PNG, the structs as objects, an <code>NSHTTPCookie</code> as its properties (<code>Expires</code> in seconds), and arrays,
@@ -83,7 +85,7 @@ sets and dictionaries of them. On Android: primitives, strings, and lists and ma
 
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;webView.clearCache&#39;</span><span class="hl-1">, [</span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-16">// Android</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.setContentOffset:animated:&#39;</span><span class="hl-1">, [{ </span><span class="hl-2">x:</span><span class="hl-1"> </span><span class="hl-10">0</span><span class="hl-1">, </span><span class="hl-2">y:</span><span class="hl-1"> </span><span class="hl-10">100</span><span class="hl-1"> }, </span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-16">// iOS</span>
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;webView.clearCache&#39;</span><span class="hl-1">, [</span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-12">// Android</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.setContentOffset:animated:&#39;</span><span class="hl-1">, [{ </span><span class="hl-2">x:</span><span class="hl-1"> </span><span class="hl-10">0</span><span class="hl-1">, </span><span class="hl-2">y:</span><span class="hl-1"> </span><span class="hl-10">100</span><span class="hl-1"> }, </span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-12">// iOS</span>
 </code><button type="button">Copy</button></pre>
 
 </div></div></div></li></ul></section>
@@ -113,8 +115,10 @@ hold a call until it navigates.</p>
 <div class="tsd-comment tsd-typography"><p>A platform setting read by name, through JSON as <a href="#call" class="tsd-kind-method">call</a> converts results.</p>
 <p>The roots are those of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a> and <a href="AndroidSettings.html" class="tsd-kind-type-alias">AndroidSettings</a>, plus <code>websiteDataStore</code> and
 <code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android, <code>textZoom</code> reads
-<code>getTextZoom()</code>, <code>isTextZoom()</code> or a non-void <code>textZoom()</code>. Rejects with <code>native_error</code> for one it can't read, or
-that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't reject it.</p>
+<code>getTextZoom()</code>, <code>isTextZoom()</code> or a non-void <code>textZoom()</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an
+unknown root or key, <code>unavailable</code> for one this WebView doesn't support (Android), and <code>native_error</code> for one it
+can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
+reject it.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -123,7 +127,7 @@ that the core owns. It reads the WebView as it is when the call arrives: a navig
 
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example-1">Example<a href="#example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">bounces</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.bounces&#39;</span><span class="hl-1">); </span><span class="hl-16">// iOS</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">textZoom</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;settings.textZoom&#39;</span><span class="hl-1">); </span><span class="hl-16">// Android</span>
+<h4 class="tsd-anchor-link" id="example-1">Example<a href="#example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">bounces</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.bounces&#39;</span><span class="hl-1">); </span><span class="hl-12">// iOS</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">textZoom</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;settings.textZoom&#39;</span><span class="hl-1">); </span><span class="hl-12">// Android</span>
 </code><button type="button">Copy</button></pre>
 
 </div></div></div></li></ul></section>
@@ -155,9 +159,9 @@ that the core owns. It reads the WebView as it is when the call arrives: a navig
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Calls the <code>method</code> handler the native hook <code>name</code> registered with <code>context.handle</code>, with <code>args</code>, and resolves with
 its reply; both cross as JSON.</p>
-<p>Rejects with <code>hook_not_handled</code>, or <code>native_error</code> when the reply can't cross as JSON. A handler that never replies
-leaves the promise pending: nothing settles it on navigation, a crash or unmount. Only a call made after the unmount
-rejects, with <code>unavailable</code>.</p>
+<p>The reply converts as <code>call</code>'s results do: an object JSON can't carry is <code>null</code>, and <code>NaN</code> rejects with
+<code>native_error</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> when no attached hook <code>name</code> handles <code>method</code>. A
+navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount does.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>

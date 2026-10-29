@@ -164,33 +164,12 @@ const title = await ref.current?.evaluate('document.title'); // an expression, n
 await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
 ```
 
-## Cookies
-
-Cookies are platform objects, reached through `call`. Android's `CookieManager` is shared by every WebView in the app.
-On iOS the WebView's own cookie store takes an `NSHTTPCookie`, as `{ cookie: properties }` (the required keys and the
-completion shapes are in [`call`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call)); the
-[`sharedCookies`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#sharedcookies) prop copies
-`HTTPCookieStorage` into it instead.
-
-```tsx
-// Android
-await ref.current?.call('cookieManager.setCookie', ['https://example.com', 'session=abc; Path=/; Secure']);
-const header = await ref.current?.call('cookieManager.getCookie', ['https://example.com']); // 'session=abc'
-
-// iOS
-await ref.current?.call(
-  'httpCookieStore.setCookie:completionHandler:',
-  [{ cookie: { Name: 'session', Value: 'abc', Domain: 'example.com', Path: '/' } }],
-  { completion: 'void' }
-);
-const cookies = await ref.current?.call('httpCookieStore.getAllCookies:', [], { completion: 'value' }); // [{ Name, Value, … }]
-```
-
 ## Local files
 
 An `html` string takes a `baseUrl` that its relative URLs resolve against. A file is a `file://` uri, such as an
-expo-asset's `localUri`: iOS gives the page read access to the file's directory, and Android needs `allowFileAccess`,
-which lets a `file:` page read any file the app can. `file:///android_asset/…` needs no setting.
+expo-asset's `localUri`: iOS gives the page read access to the file's directory (an ancestor in `readAccessRoot`
+widens it), and Android needs `allowFileAccess`, which lets a `file:` page read any file the app can.
+`file:///android_asset/…` needs no setting.
 
 ```tsx
 const [assets] = useAssets(require('./page.html'));

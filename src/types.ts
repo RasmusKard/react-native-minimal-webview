@@ -664,9 +664,10 @@ export type CodedError = Error & { code: ErrorCode };
  * The ones from React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch
  * events) go to the native view.
  *
- * A callback can be added, changed or removed while the WebView is mounted: the page requests (`onNavigationRequest`,
- * `onOpenExternal`, `onFileRequest`, `onPermissionRequest`, `onDownload`, `onFullscreenChange`) check for their prop
- * when the request comes, so a request without one gets the default described on its prop.
+ * Every `on…` callback is read when its event or request comes, so adding, changing or removing one applies to the
+ * next, and a request without one gets the default described on its prop. One that answers a request and throws (or
+ * rejects) is logged with `console.error` and gives the refusing answer: `onNavigationRequest` `block`,
+ * `onOpenExternal` nothing opened, `onFileRequest` cancel, `onPermissionRequest` deny, `onHookEvent` null.
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop: iOS shows a `UIAlertController` titled with the
  * frame's host, one at a time, and Android WebView's own dialogs; an auth challenge is declined, so the site's 401 page
@@ -692,18 +693,18 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Android settings by setter name; see {@link AndroidSettings}.
    *
-   * A key you remove keeps its value until the WebView is recreated, unless the package sets it (`userAgentString`):
-   * that one goes back to the package's default. The `userAgent`
-   * prop wins over the same key here.
+   * A key you remove goes back to the value it had before you first set it: the package's (see
+   * {@link AndroidSettings.settings}) or the platform's. A key with no getter, such as `geolocationEnabled`, keeps its
+   * value until the WebView is recreated, with a warning. The `userAgent` prop wins over the same key here.
    * @android
    */
   android?: AndroidSettings;
   /**
    * Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). Without it, those
-   * keys are `null`, which is the platform's own user agent; a change applies from the next load.
+   * keys are `null`, which is the platform's own user agent.
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
-   * `android.settings.userAgentString` to `WebView.defaultUserAgent` plus your suffix.
+   * `android.settings.userAgentString` to `WebView.android.defaultUserAgent` plus your suffix.
    *
    * A change applies from the next navigation.
    */
@@ -717,7 +718,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   injectedScripts?: InjectedScript[];
   /**
    * Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
-   * and with no match the navigation is blocked. A change applies to the navigations decided after it.
+   * and with no match the navigation is blocked.
    *
    * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}, which open other schemes externally only when a
    * user gesture started them. A page that launches an app without one is blocked: from a script or timer, and on iOS
@@ -745,10 +746,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Answers `ask` rules within 1 s.
    *
-   * A late, missing or other answer is `block` (a throw too, with a `console.error`), as is one still pending when
-   * another page commits. `signal` aborts at that 1 s mark and at that commit. Without this prop, `ask` is `block`.
-   * Until the next commit, a URL it allowed isn't asked again on a redirect back to it (Android), or when the same kind
-   * of frame loads it again (iOS).
+   * A late, missing or other answer is `block`, as is one still pending when another page commits; `signal` aborts at
+   * the timeout and at that commit. Without this prop, `ask` is `block`. Until the next commit, a URL it allowed isn't
+   * asked again on a redirect back to it (Android), or when the same kind of frame loads it again (iOS).
    */
   onNavigationRequest?: (
     request: NavigationRequest,
@@ -792,7 +792,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   onHookEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
   /**
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
-   * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead. A change applies at once.
+   * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
+   *
+   * A change applies at once.
    * @default `false`
    */
   pullToRefresh?: boolean;
@@ -814,9 +816,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * iOS always shows WebKit's picker, which needs `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`.
    *
-   * A throw or rejection cancels the request, with a `console.error`. `signal` aborts when native stops waiting (the
-   * page moved on, crashed or unmounted), and a late answer is dropped; until it settles, the page's next file request
-   * waits.
+   * `signal` aborts when native stops waiting (the page moved on, crashed or unmounted), and a late answer is dropped;
+   * until it settles, the page's next file request waits.
    * @android
    */
   onFileRequest?: (
@@ -841,9 +842,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * `NSCameraUsageDescription` and `NSMicrophoneUsageDescription`, Android the `CAMERA` and `RECORD_AUDIO` manifest
    * permissions. Android keeps a location answer until the page changes.
    *
-   * Anything but true denies, a throw or rejection too (with a `console.error`). `signal` aborts when native stops
-   * waiting (the page moved on, crashed or unmounted, or Android withdrew the request), and a late answer is dropped;
-   * until it settles, the page's next request of the same kind waits.
+   * Anything but true denies. `signal` aborts when native stops waiting (the page moved on, crashed or unmounted, or
+   * Android withdrew the request), and a late answer is dropped; until it settles, the page's next request of the same
+   * kind waits.
    */
   onPermissionRequest?: (
     request: PermissionRequest,
@@ -912,9 +913,11 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
 /**
  * A WebView's ref.
  *
- * A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and a new call to
- * `evaluate`, `get`, `call` or `hook` rejects with `unavailable`. That is for new calls: a `hook` call already pending
- * at unmount stays pending (see {@link WebViewRef.hook | hook}).
+ * A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and `evaluate`, `get`,
+ * `call` and `hook` reject with `unavailable`, and one still pending when the WebView unmounts rejects with `navigated`.
+ *
+ * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
+ * effect can come before the view exists), then reject with `unavailable`; in the background they don't wait.
  * @group WebView
  */
 export type WebViewRef = {
@@ -950,8 +953,10 @@ export type WebViewRef = {
    *
    * The roots are those of {@link IOSSettings} and {@link AndroidSettings}, plus `websiteDataStore` and
    * `httpCookieStore` on iOS and `cookieManager` and `webStorage` on Android. On Android, `textZoom` reads
-   * `getTextZoom()`, `isTextZoom()` or a non-void `textZoom()`. Rejects with `native_error` for one it can't read, or
-   * that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't reject it.
+   * `getTextZoom()`, `isTextZoom()` or a non-void `textZoom()`. Rejects with a {@link CodedError}: `not_found` for an
+   * unknown root or key, `unavailable` for one this WebView doesn't support (Android), and `native_error` for one it
+   * can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
+   * reject it.
    * @example
    * ```ts
    * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
@@ -968,12 +973,14 @@ export type WebViewRef = {
    *
    * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`.
    *
-   * Rejects with `native_error` for an unknown method, a wrong argument count, an argument that doesn't fit, a method
-   * that raises, a result JSON can't carry (iOS: `NaN`), and what the core owns: on iOS every selector that loads,
-   * navigates (`setInteractionState:` too), runs a script, starts a download or sets a delegate, and private (`_`),
-   * KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`, `new…` and reference-counting selectors; on Android (in
-   * `get` too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
-   * `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers`, `evaluateJavascript` and
+   * Rejects with a {@link CodedError}: `not_found` for an unknown root or method (Android: or none of that name takes
+   * these arguments); `unavailable` for a compat method this WebView doesn't support (Android); `native_error` for a
+   * wrong argument count, an argument that doesn't fit, a method that raises, a result JSON can't carry (`NaN`), and
+   * what the core owns: on iOS every selector that loads, navigates (`setInteractionState:` too), runs a script, starts
+   * a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`,
+   * `new…` and reference-counting selectors; on Android (in `get` too) the loads, navigations, clients, JavaScript
+   * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
+   * `resumeTimers`, `evaluateJavascript` and
    * `setWebContentsDebuggingEnabled`.
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
@@ -992,10 +999,6 @@ export type WebViewRef = {
    * `NSHTTPCookie`'s keys: `Name`, `Value`, `Domain` and `Path` are required; `Max-Age` (seconds, as a string),
    * `Secure`, `HttpOnly` and `SameSite` are some of the optional ones. A tag that can't make its object (`{ data }`
    * that isn't base64, a `{ cookie }` without a required key) rejects with `native_error`.
-   * @param options `completion` (iOS) is the shape of the selector's trailing completion handler: `'void'` for `(void)`
-   * resolves `null`; `'value'` for `(id)` resolves the value; `'valueError'` for `(id, NSError *)` resolves the value
-   * or rejects with the error; `'error'` for `(NSError *)` resolves `null` or rejects with the error. A selector that
-   * takes a handler rejects with `native_error` without it; for any other selector, and on Android, it is ignored.
    * @returns On iOS: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage`
    * as a base64 PNG, the structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds), and arrays,
    * sets and dictionaries of them. On Android: primitives, strings, and lists and maps of them. Any other object is
@@ -1011,9 +1014,9 @@ export type WebViewRef = {
    * Calls the `method` handler the native hook `name` registered with `context.handle`, with `args`, and resolves with
    * its reply; both cross as JSON.
    *
-   * Rejects with `hook_not_handled`, or `native_error` when the reply can't cross as JSON. A handler that never replies
-   * leaves the promise pending: nothing settles it on navigation, a crash or unmount. Only a call made after the unmount
-   * rejects, with `unavailable`.
+   * The reply converts as `call`'s results do: an object JSON can't carry is `null`, and `NaN` rejects with
+   * `native_error`. Rejects with a {@link CodedError}: `not_found` when no attached hook `name` handles `method`. A
+   * navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount does.
    */
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };

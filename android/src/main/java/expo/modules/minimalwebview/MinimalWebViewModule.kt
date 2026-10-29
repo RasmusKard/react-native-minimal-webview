@@ -179,7 +179,10 @@ private fun hook(view: MinimalWebView, name: String, method: String, args: Strin
   }
 }
 
-/** Runs [body], which resolves [promise]; anything it throws rejects with `native_error`, a dead WebView with `unavailable`. */
+/**
+ * Runs [body], which resolves [promise]. A [PlatformException] it throws rejects with its code, anything else with
+ * `native_error`, and a dead WebView with `unavailable`.
+ */
 private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Unit) =
   if (view.recovering) {
     promise.reject("unavailable", RECOVERING, null)
