@@ -109,7 +109,9 @@ class MinimalWebViewModule : Module() {
         native(view, promise) { promise.resolve(view.platformSettings.get(path)) }
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
-        native(view, promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>, promise::resolve) }
+        native(view, promise) {
+          view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) { json -> native(view, promise) { promise.resolve(json()) } }
+        }
         // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)

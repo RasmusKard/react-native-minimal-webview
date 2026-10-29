@@ -29,6 +29,8 @@ class PlatformSettingsTest {
     fun put(a: String, b: String) { values += "$a=$b" }
     fun put(a: String, b: String, done: ValueCallback<Boolean>?) { values += "$a=$b later"; pending = done }
     fun clear(done: ValueCallback<Boolean>?) { values += "clear"; pending = done }
+    var measured: ValueCallback<Double>? = null
+    fun measure(done: ValueCallback<Double>?) { measured = done }
     fun echo(v: Any?) = v
   }
   private object FakeCompat {
@@ -57,7 +59,7 @@ class PlatformSettingsTest {
   /** What `call` replied with, and whether a method fit. */
   private fun call(fake: Fake, name: String, vararg args: Any?): Pair<MutableList<String>, Boolean> {
     val replies = mutableListOf<String>()
-    return replies to PlatformSettings.call(listOf(Target(Fake::class.java, fake, null)), name, args.toList()) { replies += it }
+    return replies to PlatformSettings.call(listOf(Target(Fake::class.java, fake, null)), name, args.toList()) { replies += it() }
   }
 
   @Test
@@ -77,6 +79,9 @@ class PlatformSettingsTest {
     assertEquals(emptyList<String>(), replies) // not before the callback reports
     checkNotNull(fake.pending) { "call passed clear no callback" }.onReceiveValue(true)
     assertEquals(listOf("true"), replies)
+    // A reported value JSON can't carry rejects in the reply, where the caller can still handle it.
+    call(fake, "measure")
+    assertEquals("native_error", code { checkNotNull(fake.measured) { "no callback" }.onReceiveValue(Double.NaN) })
   }
 
   @Test
@@ -115,7 +120,7 @@ class PlatformSettingsTest {
     val targets = listOf(Target(Fake::class.java, fake, null))
     val settings = PlatformSettings { if (it == "settings") targets else null }
     val replies = mutableListOf<String>()
-    settings.call("settings.setInt", listOf(1)) { replies += it }
+    settings.call("settings.setInt", listOf(1)) { replies += it() }
     assertEquals(listOf("null"), replies)
     assertEquals(listOf<Any?>(1), fake.values)
     assertEquals("not_found", code { PlatformSettings.get(targets, "missing") })

@@ -97,7 +97,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   fun get(path: String): String = resolve(path).let { (targets, key) -> get(targets, key) }
 
   /** `root.method` with [args], a public method the core doesn't own ([call]). Throws a [PlatformException]. */
-  fun call(path: String, args: List<Any?>, reply: (String) -> Unit) {
+  fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")
     if (!call(targets, name, args, reply)) throw notFound("no public method $path takes these arguments")
@@ -152,15 +152,16 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     /**
      * Calls the first method [name] of [targets] that takes [args], and [reply] gets its result as JSON; when none does,
      * the first that also takes a trailing `ValueCallback`, and [reply] gets the value it reports. False when no method
-     * fits.
+     * fits. [reply] gets the JSON as a function that throws a [PlatformException] for a value JSON can't carry.
      */
-    fun call(targets: List<Target>, name: String, args: List<Any?>, reply: (String) -> Unit): Boolean {
+    fun call(targets: List<Target>, name: String, args: List<Any?>, reply: (() -> String) -> Unit): Boolean {
       val result = invokeFirst(targets, name, args) { true }
       if (result !== NONE) {
-        reply(toJson(result))
+        reply { toJson(result) }
         return true
       }
-      val callback = ValueCallback<Any?> { reply(toJson(it)) }
+      // The callback runs later, outside the caller's try: the receiver converts, so it can reject instead of crashing.
+      val callback = ValueCallback<Any?> { value -> reply { toJson(value) } }
       return invokeFirst(targets, name, args + callback) { it.parameterTypes.lastOrNull() == ValueCallback::class.java } !== NONE
     }
 
