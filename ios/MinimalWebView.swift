@@ -446,7 +446,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 /// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
 /// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
 extension MinimalWebView {
-  /// Tells each attached hook whose value changed, and attaches a hook without `configure` whose key turns on.
+  /// Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewClass` whose key turns on.
   private func optionsChanged(from old: [String: Any]) {
     for key in Set(old.keys).union(hookOptions.keys) {
       let value = hookOptions[key]
@@ -463,9 +463,10 @@ extension MinimalWebView {
     guard let webView, let hook = MinimalWebViewHooks.hooks.first(where: { $0.key == key }) else {
       return emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
     }
-    // configure edits the configuration the WKWebView was created from: too late for this one.
-    guard hook.configure == nil else {
-      return emit("core.warning", ["message": "hookOptions.\(key): its hook has configure, so it attaches only when the WebView is created"])
+    // configure edits the configuration the WKWebView was created from, and webViewClass makes it: too late for this one.
+    guard hook.configure == nil, hook.webViewClass == nil else {
+      let why = hook.configure != nil ? "configure" : "a webViewClass"
+      return emit("core.warning", ["message": "hookOptions.\(key): its hook has \(why), so it attaches only when the WebView is created"])
     }
     let context = HookContext(hook, self)
     hookContexts.append(context)

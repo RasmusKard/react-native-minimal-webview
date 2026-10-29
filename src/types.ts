@@ -680,8 +680,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A key whose value is not null, undefined or false attaches its hook, and a later change reaches that hook live,
    * without recreating the WebView; removing the key passes the hook null, and it stays attached. A key turned on
-   * after the WebView was created attaches its hook then, unless the hook has a `configure` step: that one attaches
-   * only when the WebView is created, and a warning says so. A key no hook is registered under warns: pass a
+   * after the WebView was created attaches its hook then, unless the hook has a `configure` step or its own WebView
+   * class (`webViewClass`, `webViewFactory`): that one attaches only when the WebView is created, and a warning says so. A key no hook is registered under warns: pass a
    * one-platform hook's key on that platform only.
    * @see [Native hooks example](../guides/examples.md#native-hooks)
    */

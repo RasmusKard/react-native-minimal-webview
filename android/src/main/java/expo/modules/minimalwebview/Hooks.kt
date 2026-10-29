@@ -44,8 +44,9 @@ object MinimalWebViewHooks {
    * `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value, to the WebView that replaces it after a renderer crash. Without [configure], it also
-   * attaches when its key is enabled after the WebView was made, after the hooks attached already.
+   * with the current value, to the WebView that replaces it after a renderer crash. Without [configure] or
+   * [webViewFactory], it also attaches when its key is enabled after the WebView was made, after the hooks attached
+   * already.
    *
    * @param webViewFactory makes each WebView that enables this hook, a subclass that overrides what WebView lets it:
    *   the first one, and the one that replaces it after a renderer crash. Null leaves it to the other hooks. A view
@@ -116,8 +117,11 @@ internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
 /** Why the [hook] registered under [key] can't attach to a WebView that exists already, or null when it can. */
 internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = when {
   hook == null -> "hookOptions.$key: no hook is registered under this key"
-  // configure runs before the package sets the WebView up: too late for one that exists.
-  hook.configure != null -> "hookOptions.$key: its hook has configure, so it attaches only when the WebView is created"
+  // configure runs before the package sets the WebView up, and a factory makes it: too late for one that exists.
+  hook.configure != null || hook.webViewFactory != null -> {
+    val why = if (hook.configure != null) "configure" else "a webViewFactory"
+    "hookOptions.$key: its hook has $why, so it attaches only when the WebView is created"
+  }
   else -> null
 }
 

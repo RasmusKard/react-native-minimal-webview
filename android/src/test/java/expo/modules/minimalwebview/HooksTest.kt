@@ -137,10 +137,12 @@ class HooksTest {
   }
 
   @Test
-  fun `a late key attaches a hook without configure, and warns for one with configure or none`() {
+  fun `a late key attaches a hook without configure or a factory, and warns for one with either or none`() {
     assertNull(lateAttachWarning("a", hook("a")))
     val configured = MinimalWebViewHooks.Hook("b", null, { _, _ -> }) { _, _ -> null }
     assertTrue(lateAttachWarning("b", configured).orEmpty().contains("attaches only when the WebView is created"))
+    val made = hook("c") { WebView(it) }
+    assertTrue(lateAttachWarning("c", made).orEmpty().contains("attaches only when the WebView is created"))
     assertTrue(lateAttachWarning("typo", null).orEmpty().contains("no hook is registered"))
   }
 

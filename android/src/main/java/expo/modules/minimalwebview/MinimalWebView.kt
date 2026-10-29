@@ -296,7 +296,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     return detached
   }
 
-  /** Tells each attached hook whose value changed, and attaches a hook without `configure` whose key turns on. */
+  /** Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewFactory` whose key turns on. */
   private fun optionsChanged(old: Map<String, Any?>) {
     for (key in old.keys + hookOptions.keys) {
       val value = hookOptions[key]
