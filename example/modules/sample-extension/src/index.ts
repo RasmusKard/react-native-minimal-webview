@@ -1,14 +1,13 @@
 import { requireNativeModule } from 'expo';
-import type { HookEvent } from 'minimal-rn-webview';
+import type { HookEvent, HookExtension } from 'minimal-rn-webview';
 
 /**
- * The events of the sample page counter hook, which a WebView turns on with
- * `hookOptions={{ 'sample.pageCounter': true }}` (or `{ global: '__count' }` as the value, to rename the page global it
- * stamps). A native `context.emit('pageLoaded', …)` arrives in `onHookEvent` as `sample.pageCounter.pageLoaded`:
+ * The events of the sample page counter hook, for {@link pageCounter}'s `onEvent`. A native
+ * `context.emit('pageLoaded', …)` arrives as `sample.pageCounter.pageLoaded`:
  * - `pageLoaded`: each page load; the hook also stamps the count into the page's `window.__pageCount`.
  * - `redirect` (iOS) and `commitVisible` (Android): delegate callbacks the core doesn't implement itself.
  * - `documentEnd`: from `context.onDocumentEnd`, with `context.url` as it was there.
- * - `label`: an ask, answered by `onHookEvent`'s return value. `ref.hook('sample.pageCounter', 'label')` resolves with
+ * - `label`: an ask, answered by `onEvent`'s return value. `ref.hook('sample.pageCounter', 'label')` resolves with
  *   that answer, and `ref.hook('sample.pageCounter', 'count')` with the count.
  */
 export type PageCounterEvent =
@@ -18,8 +17,26 @@ export type PageCounterEvent =
   | HookEvent<'sample.pageCounter.documentEnd', { reason: 'committed' | 'crashed'; url: string }>
   | HookEvent<'sample.pageCounter.label', { count: number }>;
 
-export const isPageCounterEvent = (event: HookEvent): event is PageCounterEvent =>
-  event.name.startsWith('sample.pageCounter.');
+/**
+ * The page counter hook, for `useExtensions`. `{ global: '__count' }` renames the page global it stamps.
+ */
+export const pageCounter = (
+  options: true | { global: string } = true,
+  onEvent?: (event: PageCounterEvent, signal?: AbortSignal) => unknown
+): HookExtension => ({
+  key: 'sample.pageCounter',
+  options,
+  // Only this hook's events reach it, and they are its PageCounterEvents.
+  onEvent: onEvent && ((event, signal) => onEvent(event as PageCounterEvent, signal)),
+});
+
+/**
+ * One of the sample's hooks that take no options and send their events to the app's `onHookEvent`, for
+ * `useExtensions`.
+ */
+export const sampleHook = (
+  name: 'hookAuth' | 'hookDialogs' | 'subclass' | 'seams' | 'perf'
+): HookExtension => ({ key: `sample.${name}`, options: true });
 
 /** The `sample.seams` hook's counter (Android): how many of its WebViews were destroyed at unmount. */
 export const seams = requireNativeModule<{ closedViews(): Promise<number> }>('SampleExtension');

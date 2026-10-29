@@ -20,7 +20,7 @@ import type {
 } from 'minimal-rn-webview';
 import { WebView, IOSConstants } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
-import { seams } from 'sample-extension';
+import { pageCounter, sampleHook, seams } from 'sample-extension';
 
 import { extensions } from './extensions';
 import { hostile } from './hostile';
@@ -2453,7 +2453,7 @@ async function sampleExtension(h: Harness) {
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
-  h.setProps({ hookOptions: { 'sample.pageCounter': { global: '__liveCount' } } });
+  h.setProps({ extensions: [pageCounter({ global: '__liveCount' })] });
   const live = await until(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
@@ -2485,7 +2485,7 @@ async function sampleExtension(h: Harness) {
     );
   }
   // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
-  h.setProps({ onHookEvent: () => new Promise<never>(() => {}) });
+  h.setProps({ extensions: [pageCounter(true, () => new Promise<never>(() => {}))] });
   await sleep(100);
   const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
   await sleep(200);
@@ -2523,17 +2523,7 @@ async function sampleExtension(h: Harness) {
     { late, warnings: warnings.lines }
   );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
-  await recreate(
-    h,
-    {
-      hookOptions: {
-        'sample.pageCounter': true,
-        'sample.hookDialogs': true,
-        'sample.subclass': true,
-      },
-    },
-    true
-  );
+  await recreate(h, { extensions: [sampleHook('hookDialogs'), sampleHook('subclass')] }, true);
   const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
   r.check(
     "its webViewClass (webViewFactory) makes the WebView it's enabled on",
@@ -2569,7 +2559,7 @@ async function sampleExtension(h: Harness) {
 
 /** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
 async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
-  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
+  await recreate(h, { extensions: [sampleHook('seams')] }, true);
   if (Platform.OS === 'ios') {
     const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
     r.check(

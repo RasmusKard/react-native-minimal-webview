@@ -21,7 +21,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { isPageCounterEvent } from 'sample-extension';
+import { type PageCounterEvent, pageCounter } from 'sample-extension';
 
 import {
   SUITES,
@@ -59,6 +59,16 @@ const events: Harness['events'] = {
 };
 const pageEvents: unknown[] = [];
 const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
+
+/** The page counter's events, into the logs. */
+function onPageCounterEvent(event: PageCounterEvent) {
+  if (event.name === 'sample.pageCounter.pageLoaded') events.pageCounts.push(event.payload);
+  else if (event.name === 'sample.pageCounter.documentEnd') events.documentEnds.push(event.payload);
+  // The hook's ask: the return value is its answer.
+  else if (event.name === 'sample.pageCounter.label') return `page ${event.payload.count}`;
+  else events.hookEvents.push(event.name);
+  return undefined;
+}
 
 /** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
@@ -100,18 +110,8 @@ export default function App() {
     undefined
   );
   const { extensions = [], ...props } = extraProps;
-  const hooks = useExtensions(extensions, {
-    hookOptions: { 'sample.pageCounter': true },
-    onHookEvent: (event) => {
-      if (!isPageCounterEvent(event)) events.hookEvents.push(event.name);
-      else if (event.name === 'sample.pageCounter.pageLoaded')
-        events.pageCounts.push(event.payload);
-      else if (event.name === 'sample.pageCounter.documentEnd')
-        events.documentEnds.push(event.payload);
-      // The hook's ask: the return value is its answer.
-      else if (event.name === 'sample.pageCounter.label') return `page ${event.payload.count}`;
-      else events.hookEvents.push(event.name);
-    },
+  const hooks = useExtensions([pageCounter(true, onPageCounterEvent), ...extensions], {
+    onHookEvent: (event) => void events.hookEvents.push(event.name),
   });
   const harness: Harness = {
     pages: PAGES,
