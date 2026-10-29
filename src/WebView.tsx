@@ -291,7 +291,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       asks.set(askId, controller);
     }
     const value = await settle(
-      () => handler?.(request === 'onOpenExternal' ? payload['url'] : payload, controller?.signal),
+      () => handler?.(payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onHookEvent failed for ${name}`

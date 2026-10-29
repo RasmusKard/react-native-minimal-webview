@@ -111,7 +111,14 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
         return inCheckout ? 'allow' : 'external';
       });
       h.setProps({
-        ...(external ? { onOpenExternal: (url: string) => void host.external.push(url) } : {}),
+        ...(external
+          ? {
+              onOpenExternal: ({ url }) => {
+                host.external.push(url);
+                return true;
+              },
+            }
+          : {}),
         ...(downloads ? {} : { onDownload: undefined }),
       });
       await sleep(300);
