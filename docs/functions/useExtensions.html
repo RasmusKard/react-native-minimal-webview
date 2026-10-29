@@ -17,9 +17,10 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>The <code>hookOptions</code> and <code>onHookEvent</code> props that turn on the hooks of <code>extensions</code>, to spread onto the <code>WebView</code>.</p>
 <p><code>hookOptions</code> has each extension's <code>options</code> under its <code>key</code>, on top of <code>props.hookOptions</code>: an extension wins over
-a key of yours, and a later extension over an earlier one with the same key. Each event goes to the <code>onEvent</code> of the
-extension whose key its name starts with (<code>'&lt;key&gt;.'</code>; the longest key, when several do), and to <code>props.onHookEvent</code>
-when there is none or that extension has no <code>onEvent</code>. The handler's return value answers an ask.</p>
+a key of yours, and a later extension over an earlier one with the same key, which warns in development. Each event
+goes to the <code>onEvent</code> of the extension whose key its name starts with (<code>'&lt;key&gt;.'</code>; the longest key, when several do),
+and to <code>props.onHookEvent</code> when there is none or that extension has no <code>onEvent</code>. The handler's return value answers
+an ask.</p>
 <p>A false, null or undefined entry is left out, so <code>on &amp;&amp; extension(…)</code> switches one on and off: its key leaves
 <code>hookOptions</code>. The result is the same object while the options are the same JSON, so a render with new handlers sends
 native nothing; the latest handlers always take the events.</p>

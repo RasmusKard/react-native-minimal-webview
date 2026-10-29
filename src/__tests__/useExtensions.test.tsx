@@ -27,10 +27,16 @@ const ext = (key: string, options: unknown, onEvent?: HookExtension['onEvent']):
 
 describe('useExtensions', () => {
   it("merges the extensions' options over the app's hookOptions, a later extension winning", async () => {
-    const { result } = await mount([ext('a', 1), ext('b', { x: [1] }), ext('a', 2)], {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result, render } = await mount([ext('a', 1), ext('b', { x: [1] }), ext('a', 2)], {
       hookOptions: { b: 'mine', c: true },
     });
     expect(result().hookOptions).toEqual({ a: 2, b: { x: [1] }, c: true });
+    await render([ext('a', 1), ext('b', true), ext('a', 3)]);
+    expect(warn.mock.calls).toEqual([
+      ['[minimal-rn-webview] useExtensions: two extensions have the key a; the later one wins'],
+    ]);
+    warn.mockRestore();
   });
 
   it('routes each event to the extension its name starts with, the longest key first, and returns its answer', async () => {
@@ -69,7 +75,9 @@ describe('useExtensions', () => {
   it('leaves out falsy entries, so a switched-off key leaves hookOptions and its events go to the app', async () => {
     const own = jest.fn();
     const app = jest.fn();
-    const { render, result } = await mount([ext('a', true, own), ext('b', 1)], { onHookEvent: app });
+    const { render, result } = await mount([ext('a', true, own), ext('b', 1)], {
+      onHookEvent: app,
+    });
     for (const off of [false, null, undefined] as const) {
       await render([off, ext('b', 1)], { onHookEvent: app });
       expect(result().hookOptions).toEqual({ b: 1 });

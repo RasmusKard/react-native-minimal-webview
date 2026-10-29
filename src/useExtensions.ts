@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
 import type { HookEvent, HookExtension, WebViewProps } from './types';
 
@@ -6,9 +6,10 @@ import type { HookEvent, HookExtension, WebViewProps } from './types';
  * The `hookOptions` and `onHookEvent` props that turn on the hooks of `extensions`, to spread onto the `WebView`.
  *
  * `hookOptions` has each extension's `options` under its `key`, on top of `props.hookOptions`: an extension wins over
- * a key of yours, and a later extension over an earlier one with the same key. Each event goes to the `onEvent` of the
- * extension whose key its name starts with (`'<key>.'`; the longest key, when several do), and to `props.onHookEvent`
- * when there is none or that extension has no `onEvent`. The handler's return value answers an ask.
+ * a key of yours, and a later extension over an earlier one with the same key, which warns in development. Each event
+ * goes to the `onEvent` of the extension whose key its name starts with (`'<key>.'`; the longest key, when several do),
+ * and to `props.onHookEvent` when there is none or that extension has no `onEvent`. The handler's return value answers
+ * an ask.
  *
  * A false, null or undefined entry is left out, so `on && extension(…)` switches one on and off: its key leaves
  * `hookOptions`. The result is the same object while the options are the same JSON, so a render with new handlers sends
@@ -21,6 +22,15 @@ export function useExtensions(
   props: Pick<WebViewProps, 'hookOptions' | 'onHookEvent'> = {}
 ): Required<Pick<WebViewProps, 'hookOptions' | 'onHookEvent'>> {
   const on = extensions.filter((extension): extension is HookExtension => !!extension);
+  const keys = on.map(({ key }) => key);
+  const repeated = JSON.stringify([...new Set(keys.filter((key, i) => keys.indexOf(key) !== i))]);
+  useEffect(() => {
+    if (!__DEV__) return;
+    for (const key of JSON.parse(repeated) as string[])
+      console.warn(
+        `[minimal-rn-webview] useExtensions: two extensions have the key ${key}; the later one wins`
+      );
+  }, [repeated]);
   const latest = useRef({ on, props });
   useLayoutEffect(() => {
     latest.current = { on, props };
