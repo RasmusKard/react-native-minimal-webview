@@ -621,14 +621,7 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
  *
  * A package with a native hook exports a function that returns one, so that an app turns the hook on by passing it to
  * `useExtensions`.
- * @example
- * ```ts
- * const pageCounter = (onLoaded: (count: number) => void): HookExtension => ({
- *   key: 'myPackage.pageCounter',
- *   options: true,
- *   onEvent: ({ name, payload }) => name === 'myPackage.pageCounter.pageLoaded' && onLoaded(payload.count as number),
- * });
- * ```
+ * @see [Native hooks example](../guides/examples.md#native-hooks)
  * @group Native hooks
  */
 export type HookExtension = {

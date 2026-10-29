@@ -16,57 +16,53 @@ the app, since the package has native code:</p>
 <pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">expo</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">minimal-rn-webview</span><span class="hl-1"> </span><span class="hl-2">@minimal-rn-webview/extensions</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Its <code>WebView</code> takes the core's props and the ones below:</p>
-<pre><code class="tsx"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">WebView</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@minimal-rn-webview/extensions&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">&lt;</span><span class="hl-6">WebView</span><br/><span class="hl-1">  </span><span class="hl-7">source</span><span class="hl-1">=</span><span class="hl-8">{</span><span class="hl-9">{ </span><span class="hl-4">uri:</span><span class="hl-9"> </span><span class="hl-2">&#39;https://example.com&#39;</span><span class="hl-9"> }</span><span class="hl-8">}</span><br/><span class="hl-1">  </span><span class="hl-7">basicAuthCredential</span><span class="hl-1">=</span><span class="hl-8">{</span><span class="hl-9">{ </span><span class="hl-4">username:</span><span class="hl-9"> </span><span class="hl-2">&#39;user&#39;</span><span class="hl-9">, </span><span class="hl-4">password:</span><span class="hl-9"> </span><span class="hl-2">&#39;secret&#39;</span><span class="hl-9"> }</span><span class="hl-8">}</span><br/><span class="hl-1">  </span><span class="hl-7">onScroll</span><span class="hl-1">=</span><span class="hl-8">{</span><span class="hl-9">({ </span><span class="hl-4">nativeEvent</span><span class="hl-9"> }) </span><span class="hl-8">=&gt;</span><span class="hl-9"> </span><span class="hl-4">console</span><span class="hl-9">.</span><span class="hl-0">log</span><span class="hl-9">(</span><span class="hl-4">nativeEvent</span><span class="hl-9">.</span><span class="hl-4">contentOffset</span><span class="hl-9">.</span><span class="hl-4">y</span><span class="hl-9">)</span><span class="hl-8">}</span><br/><span class="hl-5">/&gt;</span><span class="hl-1">;</span>
+<p>Each extension is a function whose result goes to the core's
+<a href="https://rasmuskard.github.io/minimal-rn-webview/functions/useExtensions.html"><code>useExtensions</code></a>:</p>
+<pre><code class="tsx"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">basicAuthCredential</span><span class="hl-1">, </span><span class="hl-4">onScroll</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@minimal-rn-webview/extensions&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">WebView</span><span class="hl-1">, </span><span class="hl-4">useExtensions</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;minimal-rn-webview&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">hooks</span><span class="hl-1"> = </span><span class="hl-0">useExtensions</span><span class="hl-1">([</span><br/><span class="hl-1">  </span><span class="hl-0">basicAuthCredential</span><span class="hl-1">({ </span><span class="hl-4">username:</span><span class="hl-1"> </span><span class="hl-2">&#39;user&#39;</span><span class="hl-1">, </span><span class="hl-4">password:</span><span class="hl-1"> </span><span class="hl-2">&#39;secret&#39;</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-0">onScroll</span><span class="hl-1">(({ </span><span class="hl-4">nativeEvent</span><span class="hl-1"> }) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">nativeEvent</span><span class="hl-1">.</span><span class="hl-4">contentOffset</span><span class="hl-1">.</span><span class="hl-4">y</span><span class="hl-1">)),</span><br/><span class="hl-1">]);</span><br/><span class="hl-7">&lt;</span><span class="hl-8">WebView</span><span class="hl-1"> </span><span class="hl-9">source</span><span class="hl-1">=</span><span class="hl-5">{</span><span class="hl-10">{ </span><span class="hl-4">uri:</span><span class="hl-10"> </span><span class="hl-2">&#39;https://example.com&#39;</span><span class="hl-10"> }</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-5">{</span><span class="hl-1">...</span><span class="hl-4">hooks</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-7">/&gt;</span><span class="hl-1">;</span>
 </code><button type="button">Copy</button></pre>
 
-<h2 id="props" class="tsd-anchor-link">Props<a href="#props" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h2 id="extensions" class="tsd-anchor-link">Extensions<a href="#extensions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <table>
 <thead>
 <tr>
-<th>Prop</th>
+<th>Function</th>
 <th>Platforms</th>
 <th>Folder</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#basicauthcredential"><code>basicAuthCredential</code></a></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/basicAuthCredential.html"><code>basicAuthCredential(credential)</code></a></td>
 <td>iOS, Android</td>
 <td><code>basicAuthCredential</code></td>
 </tr>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#ondialog"><code>onDialog</code></a> (not a react-native-webview prop)</td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/dialogs.html"><code>dialogs(onDialog)</code></a></td>
 <td>iOS, Android</td>
 <td><code>dialogs</code></td>
 </tr>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#menuitems"><code>menuItems</code></a>, <a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#oncustommenuselection"><code>onCustomMenuSelection</code></a></td>
-<td>iOS, Android</td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/menuItems.html"><code>menuItems({ items, suppress, onSelect })</code></a></td>
+<td>iOS, Android (<code>suppress</code>: iOS)</td>
 <td><code>menuItems</code></td>
 </tr>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#suppressmenuitems"><code>suppressMenuItems</code></a></td>
-<td>iOS</td>
-<td><code>menuItems</code></td>
-</tr>
-<tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#onscroll"><code>onScroll</code></a></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/onScroll.html"><code>onScroll(handler)</code></a></td>
 <td>iOS, Android</td>
 <td><code>onScroll</code></td>
 </tr>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#hidekeyboardaccessoryview"><code>hideKeyboardAccessoryView</code></a></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/hideKeyboardAccessoryView.html"><code>hideKeyboardAccessoryView()</code></a></td>
 <td>iOS</td>
 <td><code>hideKeyboardAccessoryView</code></td>
 </tr>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#nestedscrollenabled"><code>nestedScrollEnabled</code></a></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/nestedScrollEnabled.html"><code>nestedScrollEnabled()</code></a></td>
 <td>Android</td>
 <td><code>nestedScrollEnabled</code></td>
 </tr>
 <tr>
-<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#androidlayertype"><code>androidLayerType</code></a></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/androidLayerType.html"><code>androidLayerType(type)</code></a></td>
 <td>Android</td>
 <td><code>androidLayerType</code></td>
 </tr>
@@ -79,11 +75,11 @@ has the rest.</p>
 <ol>
 <li><code>npx create-expo-module --local &lt;name&gt;</code>.</li>
 <li>Copy the extension's folder into it: the <code>.swift</code> file into <code>ios/</code>, the <code>.kt</code> file into <code>android/src/main/java/</code>, and
-<code>index.ts</code>, its <code>hookOptions</code> value and events, into <code>src/</code>. Call its <code>register()</code> from your module's <code>OnCreate</code>.</li>
+<code>index.ts</code>, the function that returns its <code>HookExtension</code>, into <code>src/</code>. Call its <code>register()</code> from your module's
+<code>OnCreate</code>.</li>
 <li>Add the core as a dependency: <code>s.dependency 'MinimalWebView'</code> in the podspec, and
 <code>implementation project(':minimal-rn-webview')</code> in <code>android/build.gradle</code>.</li>
-<li>Prefix the hook key with your own name, in the Swift, the Kotlin and the TS, and use the new key: in <code>hookOptions</code>,
-and in the names of the events <code>onHookEvent</code> gets (<code>&lt;key&gt;.&lt;event&gt;</code>).</li>
+<li>Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.</li>
 <li>Rebuild the app.</li>
 </ol>
 <p>While this package is installed too, a key you forgot to rename fails at launch with &quot;two hooks are registered under …:
@@ -105,7 +101,7 @@ prefix yours with your package's name&quot;.</p>
 <div class="tsd-accordion-details"><a href="#minimal-rn-webviewextensions"><span>@minimal-<wbr/>rn-<wbr/>webview/extensions</span></a>
 <ul>
 <li><a href="#setup"><span>Setup</span></a></li>
-<li><a href="#props"><span>Props</span></a></li>
+<li><a href="#extensions"><span>Extensions</span></a></li>
 <li><a href="#vendoring-an-extension"><span>Vendoring an extension</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/minimal-rn-webview" class="tsd-nav-link">GitHub</a></nav>

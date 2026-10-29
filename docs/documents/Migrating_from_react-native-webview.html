@@ -215,8 +215,32 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td>On Android <code>call('webView.clearCache', [true])</code>, <code>call('webView.clearHistory')</code>, <code>call('webView.clearFormData')</code> and <code>call('webView.requestFocus')</code>; on iOS <code>call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)</code> clears the cache, and the back-forward list can't be cleared</td>
 </tr>
 <tr>
-<td><code>basicAuthCredential</code>, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>onScroll</code>, <code>hideKeyboardAccessoryView</code>, <code>nestedScrollEnabled</code>, <code>androidLayerType</code>, and custom JS dialogs (react-native-webview has no prop for them)</td>
-<td>The props of the same name on the <code>WebView</code> of <a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/">@minimal-rn-webview/extensions</a>, whose <code>onDialog</code> answers the dialogs</td>
+<td><code>basicAuthCredential</code></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/basicAuthCredential.html"><code>basicAuthCredential(credential)</code></a> of <a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/">@minimal-rn-webview/extensions</a>, passed to <code>useExtensions</code>, as are the functions below</td>
+</tr>
+<tr>
+<td><code>menuItems</code>, <code>suppressMenuItems</code>, <code>onCustomMenuSelection</code></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/menuItems.html"><code>menuItems({ items, suppress, onSelect })</code></a></td>
+</tr>
+<tr>
+<td><code>onScroll</code></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/onScroll.html"><code>onScroll(handler)</code></a></td>
+</tr>
+<tr>
+<td><code>hideKeyboardAccessoryView</code></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/hideKeyboardAccessoryView.html"><code>hideKeyboardAccessoryView()</code></a></td>
+</tr>
+<tr>
+<td><code>nestedScrollEnabled</code></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/nestedScrollEnabled.html"><code>nestedScrollEnabled()</code></a></td>
+</tr>
+<tr>
+<td><code>androidLayerType</code></td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/androidLayerType.html"><code>androidLayerType(type)</code></a></td>
+</tr>
+<tr>
+<td>Custom JS dialogs (react-native-webview has no prop for them)</td>
+<td><a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/dialogs.html"><code>dialogs(onDialog)</code></a></td>
 </tr>
 <tr>
 <td><code>keyboardDisplayRequiresUserAction</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>downloadingMessage</code>, <code>nativeConfig</code></td>
@@ -335,8 +359,8 @@ not a failed load: the site's own page shows, so the recipe skips <code>kind: 'h
 
 <h2 id="scroll-position" class="tsd-anchor-link">Scroll position<a href="#scroll-position" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
-in <code>allowedOrigins</code>. For the offsets during a bounce or a pinch too, use the <code>onScroll</code> of
-<a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#onscroll">@minimal-rn-webview/extensions</a>.</p>
+in <code>allowedOrigins</code>. For the offsets during a bounce or a pinch too, use
+<a href="https://rasmuskard.github.io/minimal-rn-webview/extensions/functions/onScroll.html"><code>onScroll</code></a> of @minimal-rn-webview/extensions.</p>
 <pre><code class="tsx"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">scroll</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-2">code:</span><span class="hl-1"> </span><span class="hl-3">`let queued = false;</span><br/><span class="hl-3">  addEventListener(&#39;scroll&#39;, () =&gt; {</span><br/><span class="hl-3">    if (queued) return;</span><br/><span class="hl-3">    queued = true;</span><br/><span class="hl-3">    requestAnimationFrame(() =&gt; { queued = false; window.nativeBridge?.emit(&#39;scroll&#39;, { x: scrollX, y: scrollY }); });</span><br/><span class="hl-3">  }, { passive: true });`</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">origins:</span><span class="hl-1"> [</span><span class="hl-3">&#39;*&#39;</span><span class="hl-1">], </span><span class="hl-12">// the bridge scopes it</span><br/><span class="hl-1">} </span><span class="hl-0">as</span><span class="hl-1"> </span><span class="hl-4">const</span><span class="hl-1">;</span><br/><br/><span class="hl-6">&lt;</span><span class="hl-7">WebView</span><span class="hl-1"> </span><span class="hl-8">bridge</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-2">bridge</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-8">injectedScripts</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">[</span><span class="hl-2">scroll</span><span class="hl-9">]</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-13">…</span><span class="hl-1"> </span><span class="hl-6">/&gt;</span><br/><span class="hl-5">useEffect</span><span class="hl-1">(() </span><span class="hl-4">=&gt;</span><span class="hl-1"> </span><span class="hl-2">bridge</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;scroll&#39;</span><span class="hl-1">, (</span><span class="hl-2">position</span><span class="hl-1">) </span><span class="hl-4">=&gt;</span><span class="hl-1"> </span><span class="hl-5">onScroll</span><span class="hl-1">(</span><span class="hl-2">position</span><span class="hl-1"> </span><span class="hl-0">as</span><span class="hl-1"> { </span><span class="hl-2">x</span><span class="hl-1">: </span><span class="hl-7">number</span><span class="hl-1">; </span><span class="hl-2">y</span><span class="hl-1">: </span><span class="hl-7">number</span><span class="hl-1"> })), [</span><span class="hl-2">bridge</span><span class="hl-1">]);</span>
 </code><button type="button">Copy</button></pre>
 
