@@ -1,5 +1,5 @@
 import { type RefObject, act, createRef, useState } from 'react';
-import { Platform, Text } from 'react-native';
+import { AppState, Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
 import { WebView } from '../WebView';
@@ -9,6 +9,7 @@ import type { Bridge, NavigationState, WebViewProps, WebViewRef, WebViewRefObjec
 
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
+const mockEvaluate = jest.fn(async (_script: string) => '{"a":1}');
 const mockBridgePost = jest.fn<void, [json: string]>();
 const mockMount = jest.fn();
 const mockNativeModule = {
@@ -33,7 +34,7 @@ jest.mock('expo', () => {
           answer: mockAnswer,
           navigate: mockNavigate,
           bridgePost: mockBridgePost,
-          evaluate: async () => '{"a":1}',
+          evaluate: mockEvaluate,
           get: async (path: string) => JSON.stringify({ get: path }),
           call: async (path: string, args: string, completion: string | null) =>
             JSON.stringify({ call: path, args, completion }),
@@ -743,6 +744,64 @@ describe('navigation state across remounts', () => {
       () => stale?.hook('sample', 'count'),
     ])
       await expect(call()).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
+  it('retries a ref method each frame while Android has not registered the view, then rejects with unavailable', async () => {
+    const frames = jest.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((run) => {
+      run(0);
+      return 0;
+    });
+    const fail = (code: string) => () => Promise.reject(Object.assign(new Error(code), { code }));
+    const ref = createWebViewRef();
+    const root = createRoot();
+    await act(async () =>
+      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+
+    mockEvaluate.mockClear();
+    mockEvaluate
+      .mockImplementationOnce(fail('ERR_VIEW_NOT_FOUND'))
+      .mockImplementationOnce(fail('ERR_VIEW_NOT_FOUND'));
+    expect(await ref.current?.evaluate('1')).toEqual({ a: 1 });
+    expect(mockEvaluate).toHaveBeenCalledTimes(3);
+    expect(frames).toHaveBeenCalledTimes(2);
+
+    mockEvaluate.mockClear();
+    frames.mockClear();
+    mockEvaluate.mockImplementation(fail('ERR_VIEW_NOT_FOUND'));
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    expect(frames.mock.calls.length).toBeGreaterThan(30);
+    expect(mockEvaluate).toHaveBeenCalledTimes(frames.mock.calls.length + 1);
+
+    // In the background no frame comes, so it rejects at once.
+    mockEvaluate.mockClear();
+    frames.mockClear();
+    // react-native's jest mock makes currentState a function, so replaceProperty can't swap it.
+    const { currentState } = AppState;
+    Object.assign(AppState, { currentState: 'background' });
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    expect(frames).not.toHaveBeenCalled();
+    Object.assign(AppState, { currentState });
+
+    // Other errors are not retried.
+    mockEvaluate.mockClear();
+    mockEvaluate.mockImplementation(fail('script_error'));
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'script_error' });
+    expect(mockEvaluate).toHaveBeenCalledTimes(1);
+
+    // An unmount ends a retry in progress with the documented code.
+    mockEvaluate.mockClear();
+    mockEvaluate.mockImplementation(fail('ERR_VIEW_NOT_FOUND'));
+    const stale = ref.current;
+    let unmounted: Promise<void> | undefined;
+    frames.mockImplementation((run) => {
+      unmounted = act(async () => root.unmount()).then(() => run(0));
+      return 0;
+    });
+    await expect(stale?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    await unmounted;
+    expect(mockEvaluate).toHaveBeenCalledTimes(1);
+    mockEvaluate.mockImplementation(async () => '{"a":1}');
   });
 
   it('getState and subscribe follow attach, detach and re-attach; detach resets to the initial state', async () => {
