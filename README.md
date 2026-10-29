@@ -7,17 +7,17 @@ architecture only.
 - **Native owns the navigation state:** `useWebViewState(ref)` gives the committed URL, a pending load, the title,
   progress and history.
 - **A promise bridge** between React Native and the page, for the origins you allow.
-- **Page requests work without a prop:** a prop answers the file chooser and permissions, or hears about fullscreen
-  video and downloads; JS dialogs and HTTP auth go to a native hook.
+- **Page requests have defaults:** a prop answers the file chooser and permissions (Android denies them without one),
+  or hears about fullscreen video and downloads; JS dialogs and HTTP auth go to a native hook.
 - **Every platform setting by name:** `ios={{ scrollView: { bounces: false } }}`, `android={{ settings: { textZoom: 120 } }}`.
-- **The app owns device APIs:** no OS permission prompts, pickers or config plugin of its own, and no dependency on
-  expo-camera or similar packages.
+- **The app owns device APIs:** no OS permission requests, pickers or config plugin of its own, and no dependency on
+  expo-camera or similar packages. Without a prop to answer, iOS shows WebKit's own prompts and picker.
 
 **Requirements:** iOS 17.0+, Android API 29+ (`minSdkVersion 29`, for example with `expo-build-properties`), Expo SDK
 53+ (React Native 0.79+, React 19), the new architecture. A bare React Native app needs the `expo` package
 (`npx install-expo-modules@latest`). On Android, some features need a newer
 [Android System WebView](#android-system-webview-versions). On a current Xcode, SDK 53 apps need React Native's `fmt`
-pod built as C++17 (a Podfile `post_install` hook). The build is ESM: Jest consumers add `react-native-minimal-webview` to
+pod built as C++17 (a Podfile `post_install` hook that sets its `CLANG_CXX_LANGUAGE_STANDARD` to `c++17`). The build is ESM: Jest consumers add `react-native-minimal-webview` to
 `transformIgnorePatterns` (with jest-expo, to its `node_modules/(?!...)` allowlist).
 
 ```tsx
