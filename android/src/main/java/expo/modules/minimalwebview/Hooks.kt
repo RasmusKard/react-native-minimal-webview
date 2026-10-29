@@ -134,8 +134,9 @@ internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = w
 }
 
 /**
- * Picks the hook client that gets a decision callback: the first of the clients that override it. When more than one
- * does, it calls [warn] with a `core.warning` message naming the callback, once per callback.
+ * Picks the hook client that gets a decision callback: the first of the clients that override it. It calls [warn] with
+ * a `core.warning` message naming the callback, once per callback and reason: when more than one client overrides it,
+ * and when one takes a decision the core makes from the app's props or their defaults ([TAKEN]).
  */
 internal class Deciders(private val warn: (String) -> Unit) {
   // Concurrent: shouldInterceptRequest decides on Chromium's IO thread.
@@ -146,7 +147,24 @@ internal class Deciders(private val warn: (String) -> Unit) {
     if (overriding.size > 1 && warned.add(callback)) {
       warn("$callback: more than one hook client overrides it; only the first one gets it")
     }
+    val lost = TAKEN[callback]
+    if (lost != null && overriding.isNotEmpty() && warned.add("$callback taken")) {
+      warn("$callback: a hook client takes it, so $lost")
+    }
     return overriding.firstOrNull()
+  }
+
+  private companion object {
+    /** The decisions the core makes from the app's props or their defaults, by callback: what stops applying. */
+    val TAKEN = mapOf(
+      "shouldOverrideUrlLoading" to "navigationRules, their defaults and onNavigationRequest don't apply to navigations",
+      "onCreateWindow" to "navigationRules, their defaults and onNavigationRequest don't apply to new windows",
+      "onReceivedSslError" to "the core doesn't cancel SSL errors or report them to onError",
+      "onPermissionRequest" to "onPermissionRequest and the default deny don't apply",
+      "onGeolocationPermissionsShowPrompt" to "onPermissionRequest and the default deny don't apply to location",
+      "onShowFileChooser" to "onFileRequest doesn't apply",
+      "onShowCustomView" to "the core's fullscreen and onFullscreenChange don't apply"
+    )
   }
 }
 
@@ -174,8 +192,12 @@ interface WebViewContext {
    * The hook clients, in order; add yours in `attach`. A callback that returns a decision (the `deciding` calls in
    * MinimalWebViewClients.kt) goes to the first client that overrides it, instead of the core and the app's props: a
    * client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
-   * decide new windows unless a chrome client overrides `onCreateWindow`. A decision more than one client overrides
-   * still goes only to the first, and a `core.warning` names it, once per WebView, when it first comes. Every other
+   * decide new windows unless a chrome client overrides `onCreateWindow`. Taking a decision the core makes from the
+   * app's props or their defaults switches them off, the default navigation rules' security checks included, and a
+   * `core.warning` names the callback and what stops applying: `shouldOverrideUrlLoading`, `onCreateWindow`,
+   * `onReceivedSslError` and, on a chrome client, `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`,
+   * `onShowFileChooser` and `onShowCustomView`. A decision more than one client overrides still goes only to the first,
+   * and a `core.warning` names it. Each warning comes once per WebView, when its decision first comes. Every other
    * callback reaches the core first, then each client that overrides it. `shouldInterceptRequest` runs on a background
    * thread.
    *
