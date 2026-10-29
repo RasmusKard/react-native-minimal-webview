@@ -22,15 +22,20 @@ public enum MinimalWebViewHooks {
   /// Registers the hook for `key`; call it from your module's `OnCreate`, before the first WebView. Hooks are
   /// configured and attached in registration order. Keys are global, so prefix yours with your package's name: a
   /// second hook under a key stops the app (`fatalError`, naming the key and both call sites). The same call running
-  /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. `core` is reserved
-  /// and refused: the package's own events are named `core.…`.
+  /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. A helper that
+  /// calls `register` for other code is one call site, so a second hook under a key through it replaces the first
+  /// silently: pass the helper's caller's `file` and `line` on. `core` is reserved and refused: the package's own
+  /// events are named `core.…`.
   /// - Parameters:
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
-  ///     scripts you add stay, after the package's.
+  ///     scripts you add stay, after the package's. `window.open('')` opens a throwaway WKWebView from this
+  ///     configuration: your user scripts run in it and your script message handlers get its messages, so compare
+  ///     `message.webView` with the WKWebView `attach` gets.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
-  ///     `onDocumentEnd(.closing)`, or nil.
+  ///     `onDocumentEnd(.closing)`, or nil. A web content process crash reloads the same WKWebView in place, so nothing
+  ///     attaches again and the context and its handlers stay (Android attaches to the replacement WebView).
   ///   - file: With `line`, the call site that tells a reload from a second hook: leave both to their defaults.
   public static func register(
     _ key: String,
@@ -64,6 +69,8 @@ func enables(_ value: Any?) -> Bool {
 /// and its `ask` answers nil at once.
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
+/// The context holds the handlers you register (`onOptionsChange`, `onDocumentEnd`, `handle`): an object they capture
+/// that also holds the context strongly is a cycle and is never freed, so hold the context weakly.
 public protocol WebViewContext: AnyObject {
   /// This hook's `hookOptions` value, the one that enabled it; after a change, the new one.
   var options: Any? { get }
@@ -85,6 +92,8 @@ public protocol WebViewContext: AnyObject {
   var navigationDelegates: [WKNavigationDelegate] { get set }
   /// Your UI delegates, in order, by the same rules. Their decisions are `createWebViewWith`, the alert, confirm and
   /// prompt panels and the media capture permission; `webViewDidClose` reaches every delegate.
+  /// A delegate that holds a panel's completion handler unanswered should set `webView.accessibilityElementsHidden`
+  /// meanwhile, as the core does for its own panels: an accessibility query (XCTest's) into the blocked page hangs.
   var uiDelegates: [WKUIDelegate] { get set }
   /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])

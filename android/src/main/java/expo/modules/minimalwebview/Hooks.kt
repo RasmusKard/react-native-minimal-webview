@@ -40,18 +40,20 @@ object MinimalWebViewHooks {
    * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global, so prefix
    * yours with your package's name: a second hook under a key throws [IllegalStateException] (a minified build may
    * replace the first instead). The same `register` call running again replaces its hook: a JS reload creates the
-   * modules anew, and their `OnCreate` runs again. `core` is reserved and refused: the package's own events are named
-   * `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
+   * modules anew, and their `OnCreate` runs again. A helper that calls `register` for other code is one call, so a
+   * second hook under a key through it replaces the first silently. `core` is reserved and refused: the package's own
+   * events are named `core.…`. Hooks run in registration order, so an earlier hook's clients come first.
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value, to the WebView that replaces it after a renderer crash. To switch a hook on and off, keep
-   * its key enabled and put the switch in its value (`{ enabled: false }`).
+   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash. To
+   * switch a hook on and off, keep its key enabled and put the switch in its value (`{ enabled: false }`).
    *
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
    *   (`WebViewCompat.setProfile` goes here).
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over the settings it was created with. It returns what to run when that WebView goes away, after the
-   *   [WebViewContext.onDocumentEnd] that gives the reason, or null.
+   *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before the
+   *   package's: no `window.nativeBridge` and no `injectedScripts` yet (on iOS yours run after them).
    */
   fun register(
     key: String,
@@ -125,6 +127,10 @@ interface WebViewContext {
    * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's
    * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
    * `onReceivedError`.
+   *
+   * With WebView 146 and later, `onPageStarted` comes after the commit that ends the Document, so `url` is already the
+   * new page. A new window the rules allow loads in place with `loadUrl`, which doesn't reach
+   * `shouldOverrideUrlLoading` (on iOS that load reaches the deciding delegate).
    */
   val clients: MutableList<WebViewClient>
 
