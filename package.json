@@ -34,7 +34,7 @@
     "mutation": "stryker run .config/stryker.config.json",
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
-    "gen:defaults": "tsdoc-defaults src/types.ts",
+    "gen:defaults": "tsdoc-defaults",
     "docs": "typedoc && typedoc --options .config/typedoc-extensions.json",
     "docs:check": "typedoc --out build/docs && typedoc --options .config/typedoc-extensions.json --out build/docs/extensions && (git diff --no-index --exit-code build/docs docs || (echo 'docs is stale: run npm run docs' && exit 1))"
   },
