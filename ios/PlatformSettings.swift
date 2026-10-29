@@ -21,12 +21,17 @@ import WebKit
 final class PlatformSettings {
   /// "root.key" -> the last value applied or rejected, so an unchanged value is neither applied nor reported again.
   private var applied: [String: NSObject] = [:]
+  /// "root.key" of a live root -> its value before the first write (NSNull for nil), set back when the key is removed.
+  private var originals: [String: Any] = [:]
 
   /// Applies `settings`. While creating (`configuration` given, no WebView yet) only the `configuration` root applies;
-  /// live, every other root does, and a changed `configuration` key is reported once. Returns the rejected keys.
+  /// live, every other root does, a changed `configuration` key is reported once, and a key applied before and missing
+  /// now goes back to its value before the first write. Returns the rejected keys.
   func apply(_ settings: [String: Any], webView: WKWebView?, configuration: WKWebViewConfiguration? = nil) -> [[String: String]] {
     var rejected: [[String: String]] = []
     let creating = configuration != nil
+    // Before the new values, so restoring one (a scroll view's inset) can't undo another (its offset).
+    if !creating { rejected += restore(removedFrom: settings, webView: webView) }
     for (rootName, entries) in settings {
       guard let entries = entries as? [String: Any] else {
         rejected.append(["key": rootName, "reason": "not an object"])
@@ -47,10 +52,29 @@ final class PlatformSettings {
           rejected.append(["key": id, "reason": "unknown root: use \(Self.roots)"])
           continue
         }
-        if let reason = set(object, key, value) { rejected.append(["key": id, "reason": reason]) }
+        if let reason = set(object, key, value, original: isConfiguration ? nil : id) {
+          rejected.append(["key": id, "reason": reason])
+        }
       }
     }
     return rejected
+  }
+
+  /// Forgets each applied key `settings` no longer has and sets its original value back; returns those that failed.
+  private func restore(removedFrom settings: [String: Any], webView: WKWebView?) -> [[String: String]] {
+    let present = Set(settings.flatMap { rootName, entries in
+      ((entries as? [String: Any])?.keys).map { $0.map { "\(rootName).\($0)" } } ?? []
+    })
+    return applied.keys.filter { !present.contains($0) }.compactMap { id in
+      applied[id] = nil
+      guard let original = originals.removeValue(forKey: id), let dot = id.firstIndex(of: "."),
+        let object = root(String(id[..<dot]), webView: webView, configuration: nil) else { return nil }
+      let key = String(id[id.index(after: dot)...])
+      // shortcut: a null_resettable property (underPageBackgroundColor) comes back as the value read, not as "follow the
+      // default"; set nil for those if one matters.
+      let reason = MRWCatchException { object.setValue(original is NSNull ? nil : original, forKey: key) }
+      return reason.map { ["key": id, "reason": "removed, but restoring it failed: \($0)"] }
+    }
   }
 
   /// `root.key` through KVC, as JSON. Throws a `PlatformError` with the reason when it can't.
@@ -129,16 +153,20 @@ final class PlatformSettings {
     }
   }
 
-  /// Sets one property, or returns why not. The property's type encoding (`TB`, `TQ`, `T@"NSString"`,
-  /// `T{UIEdgeInsets=dddd}`, …) decides what the value may be.
-  private func set(_ object: NSObject, _ key: String, _ value: Any) -> String? {
+  /// Sets one property, or returns why not; with `original`, first keeps the value it replaces under that id unless one
+  /// is kept already. The property's type encoding (`TB`, `TQ`, `T@"NSString"`, `T{UIEdgeInsets=dddd}`, …) decides what
+  /// the value may be.
+  private func set(_ object: NSObject, _ key: String, _ value: Any, original id: String?) -> String? {
     guard !key.hasPrefix("_"), !key.contains(".") else { return "private and nested keys are not allowed" }
     guard let attributes = Self.attributes(object, key) else { return "no such property" }
     guard let first = attributes.first, first.hasPrefix("T") else { return "no type" }
     if attributes.contains("R") { return "read-only" }
     let type = String(first.dropFirst())
     guard let coerced = Self.coerce(value, type) else { return "a \(type) property can't take \(value)" }
-    return MRWCatchException { object.setValue(coerced is NSNull ? nil : coerced, forKey: key) }
+    return MRWCatchException {
+      if let id, originals[id] == nil { originals[id] = object.value(forKey: key) ?? NSNull() }
+      object.setValue(coerced is NSNull ? nil : coerced, forKey: key)
+    }
   }
 
   /// The attributes of `object`'s property `key` (`TB`, `R`, …), or nil when it has none.

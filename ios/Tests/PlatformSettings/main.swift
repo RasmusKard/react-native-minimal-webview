@@ -67,6 +67,25 @@ check("a root that isn't an object", settings.apply(["preferences": 1], webView:
 rejects("configuration", "suppressesIncrementalRendering", false, "read once when the WebView is created; remount with a new key to change it")
 check("a rejection is reported once", reason("configuration", "suppressesIncrementalRendering", false), nil)
 
+// A removed key goes back to its value before the first write; a configuration key stays (removing it recreates the
+// WebView).
+let removal = PlatformSettings()
+let created = WKWebViewConfiguration()
+_ = removal.apply(["configuration": ["suppressesIncrementalRendering": true]], webView: nil, configuration: created)
+let fresh = WKWebView(frame: .zero, configuration: created)
+let prefs = fresh.configuration.preferences
+_ = removal.apply(["preferences": ["minimumFontSize": 12.0, "allowFileAccessFromFileURLs": true], "scrollView": ["bounces": false]], webView: fresh)
+_ = removal.apply(["preferences": ["minimumFontSize": 16.0]], webView: fresh)
+check("a removed root's key goes back", fresh.scrollView.bounces, true)
+check("a removed private key goes back", prefs.value(forKey: "allowFileAccessFromFileURLs") as? Bool, false)
+check("a key still there keeps its value", prefs.minimumFontSize, 16.0)
+check("restoring reports nothing", removal.apply(["preferences": [:]], webView: fresh).count, 0)
+check("to the value before the first write, not the last", prefs.minimumFontSize, 0.0)
+check("a removed configuration key stays", fresh.configuration.suppressesIncrementalRendering, true)
+_ = removal.apply(["preferences": ["minimumFontSize": 20.0]], webView: fresh)
+_ = removal.apply([:], webView: fresh)
+check("a key added again is captured again", prefs.minimumFontSize, 0.0)
+
 check("get without a key", thrown { try settings.get("minimumFontSize", webView: view) }, "use root.key")
 check("get on an unknown root", thrown { try settings.get("nope.key", webView: view) }, "unknown root: use \(PlatformSettings.roots)")
 check("get an unknown key", thrown { try settings.get("webView.nope", webView: view) }, "no such property webView.nope")

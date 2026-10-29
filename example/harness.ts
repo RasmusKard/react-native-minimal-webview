@@ -200,7 +200,7 @@ export function pollForSuites(get: () => Harness) {
 
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
- * props, the event logs, and a new WebView (a platform settings key is not reset by its absence).
+ * props, the event logs, and a new WebView (an Android settings key with no getter is not reset by its absence).
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -1427,6 +1427,10 @@ async function settings(h: Harness) {
         (await page('scrollY')) === 30,
         await page('scrollY')
       );
+      r.check(
+        'a removed key (preferences.minimumFontSize) goes back to its start-up value',
+        (await get('preferences.minimumFontSize')) === 0
+      );
       const width = (await page('innerWidth')) as number;
       h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
       await sleep(500);
@@ -1588,6 +1592,7 @@ async function settings(h: Harness) {
     } else {
       const payment = () => page(`typeof PaymentRequest`);
       const paymentBefore = await payment();
+      const fontBefore = await get('settings.minimumFontSize');
       h.setProps({
         android: {
           settings: { minimumFontSize: 30, paymentRequestEnabled: true, other: { nope: 1 } },
@@ -1623,7 +1628,7 @@ async function settings(h: Harness) {
       // The renderer process keeps navigator.onLine for later WebViews: put it back.
       h.setProps({
         android: {
-          settings: { minimumFontSize: 'big' as never },
+          settings: { minimumFontSize: 'big' as never, paymentRequestEnabled: true },
           webView: { networkAvailable: true },
         },
       });
@@ -1677,6 +1682,16 @@ async function settings(h: Harness) {
       r.check(
         'android.webView.backgroundColor 0 (transparent) applies without a warning',
         !warned('android.webView.backgroundColor'),
+        warnings
+      );
+      r.check(
+        'a removed key (settings.minimumFontSize) goes back to its start-up value',
+        (await get('settings.minimumFontSize')) === fontBefore,
+        { fontBefore }
+      );
+      r.check(
+        'a removed key with no getter (webView.networkAvailable) warns that it keeps its value',
+        warned('android.webView.networkAvailable: removed, but it has no getter'),
         warnings
       );
     }

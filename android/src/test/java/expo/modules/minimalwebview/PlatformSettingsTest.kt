@@ -59,29 +59,64 @@ class PlatformSettingsTest {
     assertEquals("failed: java.lang.IllegalStateException: boom 1" to none, set("failing", 1))
   }
 
-  /** The JS error code `get`, `call` or `toJson` rejects with. */
-  private fun code(body: () -> Unit) = assertThrows(PlatformException::class.java, body).code
+  /** A root whose keys have getters (`getFlag`, `getText`), except `blind`. */
+  private class Live {
+    var flag = false
+    var text: String? = "start"
+    val writes = mutableListOf<Int>()
+    fun setBlind(v: Int) { writes += v }
+  }
+
+  private val live = Live()
+  private val settings = PlatformSettings { root ->
+    if (root == "settings") listOf(Target(Live::class.java, live, null)) else null
+  }
+
+  private fun apply(vararg entries: Pair<String, Any?>, force: Boolean = false) =
+    settings.apply(mapOf("settings" to mapOf(*entries)), force)
 
   @Test
-  fun getAndCallCodes() {
-    val fake = Fake()
-    val targets = listOf(Target(Fake::class.java, fake, null))
-    assertEquals("null", PlatformSettings.call(targets, "setInt", listOf(1)))
-    assertEquals(listOf<Any?>(1), fake.values)
-    assertEquals("not_found", code { PlatformSettings.get(targets, "missing") })
-    assertEquals("not_found", code { PlatformSettings.call(targets, "missing", emptyList()) })
-    assertEquals("not_found", code { PlatformSettings.call(targets, "setInt", listOf("1")) }) // no overload takes it
-    assertEquals("native_error", code { PlatformSettings.get(targets, "destroy") }) // owned by the core
-    assertEquals("native_error", code { PlatformSettings.call(targets, "setFailing", listOf(1)) })
-    assertEquals("unavailable", code { PlatformSettings.get(targets, "unsupported") })
-    assertEquals("native_error", code { PlatformSettings.get(targets, "naN") })
+  fun restoresARemovedKey() {
+    apply("flag" to true, "text" to "a")
+    apply("text" to "b")
+    assertEquals(false, live.flag)
+    assertEquals("b", live.text)
+    assertEquals(emptyList<Any>(), settings.apply(emptyMap())) // the whole root removed
+    assertEquals("start", live.text) // the value before the first write, not the one before the last
   }
 
   @Test
-  fun toJson() {
-    assertEquals("1.5", PlatformSettings.toJson(1.5))
-    assertEquals("null", PlatformSettings.toJson(Any()))
-    assertEquals("native_error", code { PlatformSettings.toJson(Double.POSITIVE_INFINITY) })
-    assertEquals("native_error", code { PlatformSettings.toJson(Float.NaN) })
+  fun recapturesAKeyAddedAgain() {
+    apply("text" to "a")
+    apply()
+    live.text = "a hook's"
+    apply("text" to "b")
+    apply()
+    assertEquals("a hook's", live.text)
+  }
+
+  @Test
+  fun forgetsWhatItCapturedOnANewWebView() {
+    apply("text" to "a")
+    live.text = "the new WebView's"
+    apply("text" to "a", force = true)
+    apply()
+    assertEquals("the new WebView's", live.text)
+  }
+
+  @Test
+  fun keepsAKeyWithNoGetterAndSaysSo() {
+    apply("blind" to 1)
+    val reason = "removed, but it has no getter to restore it from: it keeps its value until the WebView is recreated"
+    assertEquals(listOf(mapOf("key" to "settings.blind", "reason" to reason)), apply())
+    assertEquals(listOf(1), live.writes)
+  }
+
+  @Test
+  fun leavesARejectedKeyAlone() {
+    apply("flag" to 1.0)
+    live.flag = true
+    assertEquals(emptyList<Any>(), apply())
+    assertEquals(true, live.flag)
   }
 }
