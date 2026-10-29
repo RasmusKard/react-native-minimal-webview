@@ -122,4 +122,21 @@ class HooksTest {
     assertFalse("turned off", addedLate("b", true, false, created))
     assertFalse("created with it, so attached or reported then", addedLate("a", false, true, created))
   }
+
+  @Test
+  fun `a detached attachment drops emits and answers asks null at once`() {
+    val attachment = Attachment()
+    var sent = 0
+    val answers = mutableListOf<Any?>()
+    attachment.emit { sent++ }
+    attachment.ask({ answers += it }) { sent++ }
+    assertEquals(2, sent)
+    assertTrue(answers.isEmpty())
+
+    attachment.detach()
+    attachment.emit { sent++ }
+    attachment.ask({ answers += it }) { sent++ }
+    assertEquals(2, sent)
+    assertEquals(listOf<Any?>(null), answers)
+  }
 }
