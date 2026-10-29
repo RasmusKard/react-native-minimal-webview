@@ -479,6 +479,8 @@ export type IOSSettings = {
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
    * The `WKWebView`, live.
+   *
+   * `customUserAgent: null` is WebKit's default user agent, with `applicationNameForUserAgent` appended.
    * @default `{ customUserAgent: null, inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
@@ -516,7 +518,7 @@ export type AndroidSettings = {
    * Each new WebView starts with `javaScriptEnabled`, `domStorageEnabled`, `supportMultipleWindows` and
    * `builtInZoomControls` on; `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and
    * `downloadFaviconsEnabled` off; `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`; and, with WebView 146 and newer,
-   * `backForwardCacheEnabled` on.
+   * `backForwardCacheEnabled` on. `userAgentString: null` is WebView's default user agent.
    * @default `{ userAgentString: null }`
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
@@ -629,7 +631,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`).
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
-   * `android.settings.userAgentString` to `WebView.defaultUserAgent` plus your suffix.
+   * `android.settings.userAgentString` to `WebView.android.defaultUserAgent` plus your suffix.
    */
   userAgent?: string;
   /**
