@@ -633,7 +633,7 @@ export type FullscreenChangeEvent = { active: boolean };
  *   listed here.
  * - `script_error`: `evaluate`'s script threw, rejected or didn't parse.
  * - `native_error`: the platform refused or failed the call: a member the core owns or a private one, wrong arguments,
- *   a missing `completion`, a native exception or `NSError`, or a result JSON can't carry (`NaN`).
+ *   a completion handler `call` can't await, a native exception or `NSError`, or a result JSON can't carry (`NaN`).
  * - `navigated`: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
  *   it may have run: retry only what is safe to repeat.
  * - `unavailable`: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
