@@ -5,7 +5,14 @@ import { createRoot } from 'test-renderer';
 import { WebView } from '../WebView';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { createWebViewRef, useWebViewState } from '../refStore';
-import type { Bridge, NavigationState, WebViewProps, WebViewRef, WebViewRefObject } from '../types';
+import type {
+  Bridge,
+  NavigationState,
+  SettingValue,
+  WebViewProps,
+  WebViewRef,
+  WebViewRefObject,
+} from '../types';
 
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
@@ -371,6 +378,13 @@ describe('platform settings', () => {
       },
       scrollView: { bounces: false },
     });
+  });
+
+  it('send a root’s other keys among its own, a generated key winning', async () => {
+    // The types refuse a generated key under other; JavaScript can still send one.
+    const other: Record<string, SettingValue> = { nope: 1, bounces: true };
+    const settings = await settingsOf({ ios: { scrollView: { bounces: false, other } } });
+    expect(settings.scrollView).toEqual({ nope: 1, bounces: false });
   });
 
   type Configuration = NonNullable<WebViewProps['ios']>['configuration'];

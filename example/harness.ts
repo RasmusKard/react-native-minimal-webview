@@ -1377,8 +1377,8 @@ async function settings(h: Harness) {
         ios: {
           configuration,
           preferences,
-          scrollView: { nope: 1 },
-          webView: { _private: 1, URL: 'x' },
+          scrollView: { other: { nope: 1 } },
+          webView: { other: { _private: 1, URL: 'x' } },
         },
       });
       r.check('a WKPreferences number applies', (await fontSize()) === '30px', await fontSize());
@@ -1577,8 +1577,8 @@ async function settings(h: Harness) {
       const paymentBefore = await payment();
       h.setProps({
         android: {
-          settings: { minimumFontSize: 30, paymentRequestEnabled: true, nope: 1 },
-          webView: { networkAvailable: false, _private: 1, webViewClient: null },
+          settings: { minimumFontSize: 30, paymentRequestEnabled: true, other: { nope: 1 } },
+          webView: { networkAvailable: false, other: { _private: 1, webViewClient: null } },
         },
       });
       await sleep(500);
@@ -1659,7 +1659,7 @@ async function settings(h: Harness) {
         (await call('clearCache', [true])) === 'native_error'
       );
       // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
-      h.setProps({ android: { webView: { backgroundColor: 0 } } });
+      h.setProps({ android: { webView: { other: { backgroundColor: 0 } } } });
       await sleep(500);
       r.check(
         'android.webView.backgroundColor 0 (transparent) applies without a warning',

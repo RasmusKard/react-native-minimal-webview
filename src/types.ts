@@ -426,15 +426,21 @@ export type SettingValue =
   boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
 
 /**
- * A settings root: its generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers) plus,
- * untyped, any other key the platform has.
+ * A settings root: its generated keys ({@link IOSSettingKeys}, {@link AndroidSettingKeys}, from the SDK headers), so a
+ * misspelled key fails to compile, and `other` for the keys they lack.
  * @group Platform settings
  */
-export type SettingsRoot<Keys> = Keys & Record<string, SettingValue | undefined>;
+export type SettingsRoot<Keys> = Keys & {
+  /**
+   * Any other key the platform has (a newer SDK's, one the headers don't list), untyped. It is set as if it were at
+   * the root; a generated key can't go here.
+   */
+  other?: Record<string, SettingValue | undefined> & { [K in keyof Keys]?: never };
+};
 
 /**
  * WebKit settings by Objective-C property name, set with Key-Value Coding, so any public property works, including ones
- * this package has never heard of.
+ * this package has never heard of (under a root's `other`).
  *
  * The keys the SDK headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
  * option sets by raw value (from {@link IOSConstants}), structs as objects, a `UIColor` as `#rrggbb` or `#rrggbbaa`,
@@ -461,18 +467,22 @@ export type IOSSettings = {
    * `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
    * reloads and the navigation state starts over).
    *
-   * The default lets a `<video playsinline>` play inline. The private `allowUniversalAccessFromFileURLs` is accepted,
-   * for react-native-webview parity: it lets a `file:` page read any URL.
+   * The default lets a `<video playsinline>` play inline.
    * @default `{ allowsInlineMediaPlayback: true }`
    */
-  configuration?: SettingsRoot<IOSSettingKeys['configuration']>;
-  /**
-   * `WKPreferences` (`configuration.preferences`), live.
-   *
-   * The private `allowFileAccessFromFileURLs` is accepted, for react-native-webview parity: it lets a `file:` page read
-   * other `file:` URLs.
-   */
-  preferences?: SettingsRoot<IOSSettingKeys['preferences']>;
+  configuration?: SettingsRoot<
+    IOSSettingKeys['configuration'] & {
+      /** Private, accepted for react-native-webview parity: it lets a `file:` page read any URL. */
+      allowUniversalAccessFromFileURLs?: boolean;
+    }
+  >;
+  /** `WKPreferences` (`configuration.preferences`), live. */
+  preferences?: SettingsRoot<
+    IOSSettingKeys['preferences'] & {
+      /** Private, accepted for react-native-webview parity: it lets a `file:` page read other `file:` URLs. */
+      allowFileAccessFromFileURLs?: boolean;
+    }
+  >;
   /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
@@ -486,7 +496,7 @@ export type IOSSettings = {
 
 /**
  * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
- * newer SDK or androidx.webkit adds.
+ * newer SDK or androidx.webkit adds (under a root's `other`).
  *
  * The keys the SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
  *

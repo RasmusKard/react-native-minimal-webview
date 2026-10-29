@@ -330,6 +330,14 @@ function viewPropsOf(props: WebViewProps): ViewProps {
   return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
+/** Each root's keys with its `other` ones among them, as native takes them; a generated key wins. */
+const flattened = (
+  roots: Record<string, { other?: NativeSettings[string] } | undefined> = {}
+): NativeSettings =>
+  Object.fromEntries(
+    Object.entries(roots).map(([name, { other, ...keys } = {}]) => [name, { ...other, ...keys }])
+  );
+
 /**
  * The platform's settings for native: the package's defaults, the app's `ios` or `android` roots over them, and
  * `userAgent` on top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
@@ -338,7 +346,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
   const set = (value: string | undefined, key: string) =>
     value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
-    const { configuration, webView, ...rest } = props.ios ?? {};
+    const { configuration, webView, ...rest } = flattened(props.ios);
     return {
       ...rest,
       configuration: { ...DEFAULTS.IOSSettings.configuration, ...configuration },
@@ -349,7 +357,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
       },
     };
   }
-  const { settings, webView } = props.android ?? {};
+  const { settings, webView } = flattened(props.android);
   return {
     settings: {
       ...DEFAULTS.AndroidSettings.settings,
