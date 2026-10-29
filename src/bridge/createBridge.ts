@@ -1,4 +1,3 @@
-import { DEFAULTS } from '../defaults.generated';
 import type {
   Bridge,
   BridgeEventMap,
@@ -6,6 +5,7 @@ import type {
   BridgeOptions,
   BridgeSender,
 } from '../types';
+import { DEFAULTS } from '../types.defaults';
 import { codedError, createEndpoint, invalidOrigins } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';

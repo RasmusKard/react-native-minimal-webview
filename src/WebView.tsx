@@ -5,7 +5,6 @@ import { AppState, Platform, type ViewProps } from 'react-native';
 import { CONNECTION } from './bridge/createBridge';
 import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
 import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
-import { DEFAULTS } from './defaults.generated';
 import { iosCompletions } from './platform.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
@@ -20,6 +19,7 @@ import type {
   WebViewProps,
   WebViewRef,
 } from './types';
+import { DEFAULTS } from './types.defaults';
 
 type Native<T> = { nativeEvent: T };
 /** The native view's event props, by name and payload. */
@@ -420,11 +420,12 @@ function platformSettings(props: WebViewProps): NativeSettings {
     value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
     const { configuration, webView, ...rest } = flattened(props.ios);
+    const defaults = flattened(DEFAULTS.IOSSettings);
     return {
       ...rest,
-      configuration: { ...DEFAULTS.IOSSettings.configuration, ...configuration },
+      configuration: { ...defaults.configuration, ...configuration },
       webView: {
-        ...DEFAULTS.IOSSettings.webView,
+        ...defaults.webView,
         ...webView,
         ...set(props.userAgent, 'customUserAgent'),
       },
@@ -433,7 +434,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
   const { settings, webView } = flattened(props.android);
   return {
     settings: {
-      ...DEFAULTS.AndroidSettings.settings,
+      ...flattened(DEFAULTS.AndroidSettings).settings,
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },

@@ -2,7 +2,7 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["../src/index.ts"],
   "out": "../docs",
-  "plugin": ["../.github/scripts/typedoc-plugin.mts"],
+  "plugin": ["../.github/scripts/typedoc-plugin.mts", "tsdoc-defaults/typedoc"],
   "customCss": "typedoc.css",
   "readme": "../README.md",
   "headings": { "readme": false },
