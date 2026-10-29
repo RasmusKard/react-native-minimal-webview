@@ -1,6 +1,6 @@
 import { requireNativeModule, requireNativeView } from 'expo';
 import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, type ViewProps } from 'react-native';
+import { AppState, Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
@@ -189,20 +189,33 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const gone = (): never => {
       throw bridgeError({ code: 'unavailable', message: 'the WebView is gone' });
     };
+    // Android can run a view function before Expo has registered the view and reject it with ERR_VIEW_NOT_FOUND:
+    // try again each frame for about a second. An unmount ends the loop, as `call` then finds no view; so does the
+    // background, where no frame comes.
+    const mounted = async (call: () => Promise<string> | undefined) => {
+      for (let frame = 0; ; frame++) {
+        try {
+          return parsed(await (call() ?? gone()));
+        } catch (error) {
+          if ((error as { code?: string }).code !== 'ERR_VIEW_NOT_FOUND') throw error;
+          if (frame === 60 || AppState.currentState === 'background') gone();
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+      }
+    };
     return {
       goBack: () => void native.current?.navigate('back'),
       goForward: () => void native.current?.navigate('forward'),
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
-      evaluate: async (script) => parsed(await (native.current?.evaluate(script) ?? gone())),
-      get: async (key) => parsed(await (native.current?.get(key) ?? gone())),
-      call: async (method, args = [], options) =>
-        parsed(
-          await (native.current?.call(method, JSON.stringify(args), options?.completion ?? null) ??
-            gone())
+      evaluate: (script) => mounted(() => native.current?.evaluate(script)),
+      get: (key) => mounted(() => native.current?.get(key)),
+      call: (method, args = [], options) =>
+        mounted(() =>
+          native.current?.call(method, JSON.stringify(args), options?.completion ?? null)
         ),
-      hook: async (name, method, args = []) =>
-        parsed(await (native.current?.hook(name, method, JSON.stringify(args)) ?? gone())),
+      hook: (name, method, args = []) =>
+        mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
   useAttach(ref, handle, lastRef, attachmentRef);
