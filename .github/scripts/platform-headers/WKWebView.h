@@ -40,17 +40,34 @@ typedef NS_ENUM(NSInteger, WKFullscreenState) {
 @property (nonatomic, readonly, nullable) SecTrustRef serverTrust API_AVAILABLE(macos(10.12), ios(10.0));
 @property (nonatomic, readonly) BOOL canGoBack;
 @property (nonatomic, readonly) BOOL canGoForward;
+- (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(WK_SWIFT_UI_ACTOR void (^ _Nullable)(id WK_NULLABLE_RESULT, NSError * _Nullable error))completionHandler;
+- (void)evaluateJavaScript:(NSString *)javaScriptString inFrame:(nullable WKFrameInfo *)frame inContentWorld:(WKContentWorld *)contentWorld completionHandler:(WK_SWIFT_UI_ACTOR void (^ _Nullable)(id WK_NULLABLE_RESULT, NSError * _Nullable error))completionHandler NS_REFINED_FOR_SWIFT API_AVAILABLE(macos(11.0), ios(14.0));
+- (void)callAsyncJavaScript:(NSString *)functionBody arguments:(nullable NSDictionary<NSString *, id> *)arguments inFrame:(nullable WKFrameInfo *)frame inContentWorld:(WKContentWorld *)contentWorld completionHandler:(WK_SWIFT_UI_ACTOR void (^ _Nullable)(id WK_NULLABLE_RESULT result, NSError * _Nullable error))completionHandler NS_REFINED_FOR_SWIFT API_AVAILABLE(macos(11.0), ios(14.0));
+- (void)closeAllMediaPresentationsWithCompletionHandler:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_AVAILABLE(macos(12.0), ios(15.0));
+- (void)pauseAllMediaPlaybackWithCompletionHandler:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_AVAILABLE(macos(12.0), ios(15.0));
 #ifndef __swift__
+- (void)pauseAllMediaPlayback:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_DEPRECATED_WITH_REPLACEMENT("pauseAllMediaPlaybackWithCompletionHandler:", macos(11.3, 12.0), ios(14.5, 15.0));
 #endif
+- (void)setAllMediaPlaybackSuspended:(BOOL)suspended completionHandler:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_AVAILABLE(macos(12.0), ios(15.0));
 #ifndef __swift__
+- (void)resumeAllMediaPlayback:(WK_SWIFT_UI_ACTOR void (^ _Nullable)(void))completionHandler API_DEPRECATED_WITH_REPLACEMENT("setAllMediaPlaybackSuspended:completionHandler:", macos(11.3, 12.0), ios(14.5, 15.0));
+- (void)suspendAllMediaPlayback:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_DEPRECATED_WITH_REPLACEMENT("setAllMediaPlaybackSuspended:completionHandler:", macos(11.3, 12.0), ios(14.5, 15.0));
 #endif
+- (void)requestMediaPlaybackStateWithCompletionHandler:(WK_SWIFT_UI_ACTOR void (^)(WKMediaPlaybackState))completionHandler API_AVAILABLE(macos(12.0), ios(15.0));
 #ifndef __swift__
+- (void)requestMediaPlaybackState:(WK_SWIFT_UI_ACTOR void (^)(WKMediaPlaybackState))completionHandler API_DEPRECATED_WITH_REPLACEMENT("requestMediaPlaybackStateWithCompletionHandler:", macos(11.3, 12.0), ios(14.5, 15.0));
 #endif
 @property (nonatomic, readonly) WKMediaCaptureState cameraCaptureState API_AVAILABLE(macos(12.0), ios(15.0));
 @property (nonatomic, readonly) WKMediaCaptureState microphoneCaptureState API_AVAILABLE(macos(12.0), ios(15.0));
+- (void)setCameraCaptureState:(WKMediaCaptureState)state completionHandler:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_AVAILABLE(macos(12.0), ios(15.0));
+- (void)setMicrophoneCaptureState:(WKMediaCaptureState)state completionHandler:(WK_SWIFT_UI_ACTOR void (^_Nullable)(void))completionHandler API_AVAILABLE(macos(12.0), ios(15.0));
 #if TARGET_OS_IPHONE
+- (void)takeSnapshotWithConfiguration:(nullable WKSnapshotConfiguration *)snapshotConfiguration completionHandler:(WK_SWIFT_UI_ACTOR void (^)(UIImage * _Nullable snapshotImage, NSError * _Nullable error))completionHandler WK_SWIFT_ASYNC_NAME(takeSnapshot(configuration:)) API_AVAILABLE(ios(11.0));
 #else
+- (void)takeSnapshotWithConfiguration:(nullable WKSnapshotConfiguration *)snapshotConfiguration completionHandler:(WK_SWIFT_UI_ACTOR void (^)(NSImage * _Nullable snapshotImage, NSError * _Nullable error))completionHandler WK_SWIFT_ASYNC_NAME(takeSnapshot(configuration:)) API_AVAILABLE(macos(10.13));
 #endif
+- (void)createPDFWithConfiguration:(nullable WKPDFConfiguration *)pdfConfiguration completionHandler:(WK_SWIFT_UI_ACTOR void (^)(NSData * _Nullable pdfDocumentData, NSError * _Nullable error))completionHandler NS_REFINED_FOR_SWIFT API_AVAILABLE(macos(11.0), ios(14.0));
+- (void)createWebArchiveDataWithCompletionHandler:(WK_SWIFT_UI_ACTOR void (^)(NSData * _Nullable, NSError * _Nullable))completionHandler NS_REFINED_FOR_SWIFT API_AVAILABLE(macos(11.0), ios(14.0));
 @property (nonatomic) BOOL allowsBackForwardNavigationGestures;
 @property (nullable, nonatomic, copy) NSString *customUserAgent API_AVAILABLE(macos(10.11), ios(9.0));
 @property (nonatomic) BOOL allowsLinkPreview API_AVAILABLE(macos(10.11), ios(9.0));
@@ -62,6 +79,9 @@ typedef NS_ENUM(NSInteger, WKFullscreenState) {
 @property (nonatomic) CGFloat magnification;
 #endif
 @property (nonatomic) CGFloat pageZoom API_AVAILABLE(macos(11.0), ios(14.0));
+- (void)findString:(NSString *)string withConfiguration:(nullable WKFindConfiguration *)configuration completionHandler:(WK_SWIFT_UI_ACTOR void (^)(WKFindResult *result))completionHandler NS_REFINED_FOR_SWIFT API_AVAILABLE(macos(11.0), ios(14.0));
+- (void)startDownloadUsingRequest:(NSURLRequest *)request completionHandler:(WK_SWIFT_UI_ACTOR void(^)(WKDownload *))completionHandler API_AVAILABLE(macos(11.3), ios(14.5));
+- (void)resumeDownloadFromResumeData:(NSData *)resumeData completionHandler:(WK_SWIFT_UI_ACTOR void(^)(WKDownload *))completionHandler API_AVAILABLE(macos(11.3), ios(14.5));
 @property (nonatomic, nullable, copy) NSString *mediaType API_AVAILABLE(macos(11.0), ios(14.0));
 @property (nonatomic, nullable, copy) id interactionState API_AVAILABLE(macos(12.0), ios(15.0));
 @property (nonatomic, readonly) BOOL isBlockedByScreenTime API_AVAILABLE(macos(26.0), ios(26.0)) API_UNAVAILABLE(visionos);
@@ -97,6 +117,8 @@ typedef NS_ENUM(NSInteger, WKFullscreenState) {
 typedef NS_OPTIONS(NSUInteger, WKWebViewDataType) {
     WKWebViewDataTypeSessionStorage = 1 << 0
 } API_AVAILABLE(macos(26.0), ios(26.0), visionos(26.0));
+- (void)fetchDataOfTypes:(WKWebViewDataType)dataTypes completionHandler:(WK_SWIFT_UI_ACTOR void (^)(NSData * _Nullable data, NSError * _Nullable error))completionHandler NS_SWIFT_NAME(fetchData(of:completionHandler:)) API_AVAILABLE(macos(26.0), ios(26.0), visionos(26.0));
+- (void)restoreData:(NSData *)data completionHandler:(WK_SWIFT_UI_ACTOR void(^)(NSError * _Nullable error))completionHandler NS_SWIFT_NAME(restoreData(_:completionHandler:)) API_AVAILABLE(macos(26.0), ios(26.0), visionos(26.0));
 #if TARGET_OS_OSX
 @property (nonatomic) NSEdgeInsets obscuredContentInsets API_AVAILABLE(macos(26.0));
 #else
@@ -104,6 +126,7 @@ typedef NS_OPTIONS(NSUInteger, WKWebViewDataType) {
 #endif
 #if defined(TARGET_OS_VISION) && TARGET_OS_VISION
 @property (nullable, nonatomic, weak) id <WKImmersiveEnvironmentDelegate> immersiveEnvironmentDelegate API_AVAILABLE(visionos(27.0));
+- (void)dismissImmersiveEnvironmentWithCompletionHandler:(NS_SWIFT_UI_ACTOR void (^)(void))completionHandler NS_SWIFT_ASYNC_NAME(dismissImmersiveEnvironment()) API_AVAILABLE(visionos(27.0));
 #endif
 #if TARGET_OS_OSX && __MAC_OS_X_VERSION_MIN_REQUIRED >= 270000
 @property (strong, nullable) NSRefreshController *refreshController API_AVAILABLE(macos(27.0));

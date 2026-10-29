@@ -30,6 +30,12 @@ const IOS_ROOTS = {
   webView: 'WKWebView',
   scrollView: 'UIScrollView',
 };
+/** The `call` roots whose classes have completion-handler methods, for `iosCompletions`. */
+const COMPLETION_ROOTS = {
+  webView: 'WKWebView',
+  websiteDataStore: 'WKWebsiteDataStore',
+  httpCookieStore: 'WKHTTPCookieStore',
+};
 const ANDROID_CLASSES = ['WebSettings', 'WebView', 'CookieManager'];
 /** One `<class>` block of api-versions.xml. */
 const classBlock = (api: string, name: string) =>
@@ -46,11 +52,14 @@ async function importInputs() {
     .trim();
   const frameworks = `${sdk}/System/Library/Frameworks`;
   const headers = [
-    ...WEBKIT_HEADERS.map((name) => `${frameworks}/WebKit.framework/Headers/${name}.h`),
+    ...[...new Set([...WEBKIT_HEADERS, ...Object.values(COMPLETION_ROOTS)])].map(
+      (name) => `${frameworks}/WebKit.framework/Headers/${name}.h`
+    ),
     `${frameworks}/UIKit.framework/Headers/UIScrollView.h`,
   ];
   for (const path of headers) {
-    // The preprocessor lines, the interfaces, their properties, the enum blocks and the string constants.
+    // The preprocessor lines, the interfaces, their properties, the instance methods that take a block, the enum
+    // blocks and the string constants.
     let inEnum = false;
     const lines = readFileSync(path, 'utf8')
       .split('\n')
@@ -62,7 +71,7 @@ async function importInputs() {
         inEnum = /^typedef NS_(ENUM|OPTIONS)\b/.test(line);
         return (
           inEnum ||
-          /^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b|^@(interface|end)\b|^@property\b|^WK_EXTERN NSString \* const /.test(
+          /^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b|^@(interface|end)\b|^@property\b|^- \(.*\^|^WK_EXTERN NSString \* const /.test(
             line
           )
         );
@@ -316,6 +325,68 @@ function websiteDataTypes(text: string) {
   return Object.fromEntries(entries) as Record<string, string>;
 }
 
+// iOS completion handlers, for `call`
+
+/** The completion-handler shapes MRWInvoke makes a block for (MRWInvoke.h). */
+type Completion = 'void' | 'value' | 'valueError' | 'error' | 'number';
+
+/** A block's parameter list (`NSData * _Nullable data, NSError * _Nullable error`) as a shape, or null for none. */
+function completionShape(params: string, integerEnums: Set<string>): Completion | null {
+  const list = params
+    .split(',')
+    .map((p) => p.replace(/\b(_Nullable|_Nonnull|nullable|nonnull|WK_NULLABLE_RESULT)\b/g, '').trim())
+    .filter((p) => p && p !== 'void');
+  const object = (p: string) => p.includes('*') || /^id\b/.test(p);
+  const error = (p: string) => /^NSError\s*\*/.test(p);
+  const integer = (p: string) => /^(NSInteger|NSUInteger)\b/.test(p) || integerEnums.has(p.split(/\s/)[0]);
+  const [first, second] = list;
+  if (!first) return 'void';
+  if (list.length === 1) return error(first) ? 'error' : object(first) ? 'value' : integer(first) ? 'number' : null;
+  return list.length === 2 && object(first) && error(second) ? 'valueError' : null;
+}
+
+/** An Objective-C method declaration after `- (void)` as its selector and its parameters' types. */
+function selectorParts(declaration: string) {
+  const labels: string[] = [];
+  const types: string[] = [];
+  let rest = declaration;
+  for (let label = rest.match(/^\s*(\w+):\(/); label; label = rest.match(/^\s*(\w+):\(/)) {
+    let i = label[0].length;
+    for (let depth = 1; depth; i++) depth += rest[i] === '(' ? 1 : rest[i] === ')' ? -1 : 0;
+    labels.push(label[1]);
+    types.push(rest.slice(label[0].length, i - 1));
+    rest = rest.slice(i).replace(/^\s*\w+/, '');
+  }
+  return { selector: labels.map((l) => `${l}:`).join(''), types, macros: rest };
+}
+
+/** The selector and completion shape of each method in one `@interface` block whose last parameter is a block. */
+function interfaceCompletions(block: string, integerEnums: Set<string>) {
+  const shapes: [string, Completion][] = [];
+  for (const [, declaration] of block.matchAll(/^- \(void\)(.*);/gm)) {
+    const { selector, types, macros } = selectorParts(declaration);
+    const params = types.at(-1)?.match(/\(\^[^)]*\)\s*\((.*)\)$/)?.[1];
+    const shape = params === undefined ? null : completionShape(params, integerEnums);
+    if (shape && iosAvailability(macros)) shapes.push([selector, shape]);
+  }
+  return shapes;
+}
+
+/** `root.selector` -> the completion shape of each iOS instance method whose last parameter is a block. */
+function iosCompletions(text: string) {
+  const integerEnums = new Set(
+    [...text.matchAll(/typedef NS_ENUM\s*\(\s*NSU?Integer\s*,\s*(\w+)\s*\)/g)].map(([, name]) => name)
+  );
+  const shapes: Record<string, string> = {};
+  for (const [root, cls] of Object.entries(COMPLETION_ROOTS)) {
+    for (const [block] of text.matchAll(new RegExp(`^@interface ${cls}\\b[^]*?^@end`, 'gm'))) {
+      for (const [selector, shape] of interfaceCompletions(block, integerEnums))
+        shapes[`'${root}.${selector}'`] = `'${shape}'`;
+    }
+  }
+  return shapes;
+}
+
 // Android
 
 /** JVM descriptors of the one-argument setter parameters the reflection channel takes. */
@@ -398,6 +469,9 @@ async function generate() {
   const ios = [...WEBKIT_HEADERS, 'UIScrollView']
     .map((name) => iosLines(read(`${name}.h`)))
     .join('\n');
+  const completionHeaders = Object.values(COMPLETION_ROOTS)
+    .map((name) => iosLines(read(`${name}.h`)))
+    .join('\n');
   const xml = read('android-webkit-api.xml');
   const androidx = read('androidx-webkit-api.txt');
   const constants = read('android-webkit-constants.txt');
@@ -467,6 +541,11 @@ export const IOSConstants = ${object({
     '/** @enum */\nWebsiteDataType':
       object(websiteDataTypes(ios)),
   })} as const;
+
+/** The completion-handler shape of each WebKit method \`call\` reaches, by \`root.selector\`, for MRWInvoke. */
+export const iosCompletions: Record<string, 'void' | 'value' | 'valueError' | 'error' | 'number'> = ${object(
+    iosCompletions(completionHeaders)
+  )};
 
 /**
  * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants:

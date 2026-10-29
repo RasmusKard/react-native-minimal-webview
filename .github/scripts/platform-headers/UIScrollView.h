@@ -60,6 +60,7 @@ typedef NS_ENUM(NSInteger, UIScrollViewContentInsetAdjustmentBehavior) {
 @property(nonatomic)         UIEdgeInsets                 scrollIndicatorInsets; // use the setter only, as a convenience for setting both verticalScrollIndicatorInsets and horizontalScrollIndicatorInsets to the same value. if those properties have been set to different values, the return value of this getter (deprecated) is undefined.
 @property(nonatomic)         UIScrollViewDecelerationRate decelerationRate API_AVAILABLE(ios(3.0));
 @property(nonatomic)         UIScrollViewIndexDisplayMode indexDisplayMode API_AVAILABLE(tvos(10.2)) API_UNAVAILABLE(watchos);
+- (void)withScrollIndicatorsShownForContentOffsetChanges:(void (NS_NOESCAPE ^)(void))changes API_AVAILABLE(ios(17.4)) API_UNAVAILABLE(watchos);
 @property (nonatomic, readonly) UIScrollEdgeEffect *topEdgeEffect API_AVAILABLE(ios(26.0), tvos(26.0), visionos(26.0)) API_UNAVAILABLE(watchos);
 @property (nonatomic, readonly) UIScrollEdgeEffect *leftEdgeEffect API_AVAILABLE(ios(26.0), tvos(26.0), visionos(26.0)) API_UNAVAILABLE(watchos);
 @property (nonatomic, readonly) UIScrollEdgeEffect *bottomEdgeEffect API_AVAILABLE(ios(26.0), tvos(26.0), visionos(26.0)) API_UNAVAILABLE(watchos);

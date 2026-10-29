@@ -585,6 +585,44 @@ export const IOSConstants = {
   },
 } as const;
 
+/** The completion-handler shape of each WebKit method `call` reaches, by `root.selector`, for MRWInvoke. */
+export const iosCompletions: Record<string, 'void' | 'value' | 'valueError' | 'error' | 'number'> =
+  {
+    'webView.evaluateJavaScript:completionHandler:': 'valueError',
+    'webView.evaluateJavaScript:inFrame:inContentWorld:completionHandler:': 'valueError',
+    'webView.callAsyncJavaScript:arguments:inFrame:inContentWorld:completionHandler:': 'valueError',
+    'webView.closeAllMediaPresentationsWithCompletionHandler:': 'void',
+    'webView.pauseAllMediaPlaybackWithCompletionHandler:': 'void',
+    'webView.pauseAllMediaPlayback:': 'void',
+    'webView.setAllMediaPlaybackSuspended:completionHandler:': 'void',
+    'webView.resumeAllMediaPlayback:': 'void',
+    'webView.suspendAllMediaPlayback:': 'void',
+    'webView.requestMediaPlaybackStateWithCompletionHandler:': 'number',
+    'webView.requestMediaPlaybackState:': 'number',
+    'webView.setCameraCaptureState:completionHandler:': 'void',
+    'webView.setMicrophoneCaptureState:completionHandler:': 'void',
+    'webView.takeSnapshotWithConfiguration:completionHandler:': 'valueError',
+    'webView.createPDFWithConfiguration:completionHandler:': 'valueError',
+    'webView.createWebArchiveDataWithCompletionHandler:': 'valueError',
+    'webView.findString:withConfiguration:completionHandler:': 'value',
+    'webView.startDownloadUsingRequest:completionHandler:': 'value',
+    'webView.resumeDownloadFromResumeData:completionHandler:': 'value',
+    'webView.fetchDataOfTypes:completionHandler:': 'valueError',
+    'webView.restoreData:completionHandler:': 'error',
+    'websiteDataStore.fetchDataRecordsOfTypes:completionHandler:': 'value',
+    'websiteDataStore.removeDataOfTypes:forDataRecords:completionHandler:': 'void',
+    'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:': 'void',
+    'websiteDataStore.fetchDataOfTypes:completionHandler:': 'valueError',
+    'websiteDataStore.restoreData:completionHandler:': 'error',
+    'httpCookieStore.getAllCookies:': 'value',
+    'httpCookieStore.getCookiesForURL:completionHandler:': 'value',
+    'httpCookieStore.setCookie:completionHandler:': 'void',
+    'httpCookieStore.setCookies:completionHandler:': 'void',
+    'httpCookieStore.deleteCookie:completionHandler:': 'void',
+    'httpCookieStore.setCookiePolicy:completionHandler:': 'void',
+    'httpCookieStore.getCookiePolicy:': 'number',
+  };
+
 /**
  * The `WebSettings`, `WebView`, `WebSettingsCompat` and `WebViewCompat` constants:
  * `settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }`.
