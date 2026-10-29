@@ -99,6 +99,10 @@ internal fun enables(value: Any?) = value != null && value != false
 internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>) =
   hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
 
+/** [keys] in the order of the [registered] hook keys, then the keys no hook is registered under, sorted. */
+internal fun inRegistrationOrder(keys: Set<String>, registered: List<String>) =
+  registered.filter { it in keys } + (keys - registered.toSet()).sorted()
+
 /**
  * Which of [attaching] makes the WebView: the first with a factory, or null for a plain WebView. Second, the keys of the
  * others whose factory is a different object.

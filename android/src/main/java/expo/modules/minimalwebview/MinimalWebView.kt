@@ -302,7 +302,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   /** Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewFactory` whose key turns on. */
   private fun optionsChanged(old: Map<String, Any?>) {
-    for (key in old.keys + hookOptions.keys) {
+    for (key in inRegistrationOrder(old.keys + hookOptions.keys, MinimalWebViewHooks.hooks.map { it.key })) {
       val value = hookOptions[key]
       if (old[key] == value) continue
       val context = hookContexts.find { it.key == key }

@@ -123,3 +123,9 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     "webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:"
   ].map(NSSelectorFromString)
 }
+
+/// `keys` in the order of the `registered` hook keys, then the keys no hook is registered under, sorted: hooks whose keys
+/// turn on together attach in registration order, which orders their delegates.
+func inRegistrationOrder(_ keys: Set<String>, _ registered: [String]) -> [String] {
+  registered.filter(keys.contains) + keys.subtracting(registered).sorted()
+}
