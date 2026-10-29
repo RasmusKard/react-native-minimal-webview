@@ -32,5 +32,4 @@ export type {
   IOSSettingKeys,
   UIEdgeInsets,
 } from './platform.generated';
-export type { BridgeErrorCode } from './bridge/protocol';
 export * from './types';

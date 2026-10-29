@@ -11,6 +11,7 @@ func check(_ name: String, _ actual: Any?, _ expected: Any?) {
   if got != want { failures += 1; print("FAIL \(name): expected \(want), got \(got)") }
 }
 func thrown(_ body: () throws -> Any) -> Any { do { return try body() } catch { return (error as? PlatformError)?.message ?? error } }
+func code(_ body: () throws -> Any) -> String? { do { _ = try body(); return nil } catch { return (error as? PlatformError)?.code } }
 
 let settings = PlatformSettings()
 let configuration = WKWebViewConfiguration()
@@ -69,11 +70,18 @@ check("a rejection is reported once", reason("configuration", "suppressesIncreme
 check("get without a key", thrown { try settings.get("minimumFontSize", webView: view) }, "use root.key")
 check("get on an unknown root", thrown { try settings.get("nope.key", webView: view) }, "unknown root: use \(PlatformSettings.roots)")
 check("get an unknown key", thrown { try settings.get("webView.nope", webView: view) }, "no such property webView.nope")
+check("get without a key is not_found", code { try settings.get("minimumFontSize", webView: view) }, "not_found")
+check("get on an unknown root is not_found", code { try settings.get("nope.key", webView: view) }, "not_found")
+check("get an unknown key is not_found", code { try settings.get("webView.nope", webView: view) }, "not_found")
+check("call an unknown root is not_found", code { try settings.call("nope.reload", args: [], completion: nil, webView: view) { _, _ in } }, "not_found")
+check("call an unknown selector", thrown { try settings.call("webView.nope:", args: [1.0], completion: nil, webView: view) { _, _ in } }, "WKWebView has no method nope:")
+check("call an unknown selector is not_found", code { try settings.call("webView.nope:", args: [1.0], completion: nil, webView: view) { _, _ in } }, "not_found")
 var result: String?
 check("call", thrown { try settings.call("preferences.setMinimumFontSize:", args: [14.0], completion: nil, webView: view) { result = $0 ?? $1 } }, ())
 check("call resolved", result, "null")
 check("call set", view.configuration.preferences.minimumFontSize, 14.0)
 check("call refused", thrown { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "reload is owned by the core, or private")
+check("a refused selector is native_error", code { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "native_error")
 check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], completion: nil, webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
 check("NaN as JSON throws", (thrown { try PlatformSettings.json { Double.nan } } as? String)?.hasPrefix("NSInvalidArgumentException:"), true)
 print("\(cases - failures)/\(cases) platform settings cases pass")

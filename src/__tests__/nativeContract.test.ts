@@ -22,7 +22,7 @@ import type {
   PermissionRequest,
   PermissionResource,
   ProcessGoneEvent,
-  WebViewErrorCode,
+  ErrorCode,
   WebViewSource,
 } from '../types';
 
@@ -375,8 +375,10 @@ const codes = {
   native_error: 1,
   navigated: 1,
   unavailable: 1,
-  hook_not_handled: 1,
-} satisfies Record<WebViewErrorCode, 1>;
+  not_found: 1,
+  timeout: 1,
+  handler_error: 1,
+} satisfies Record<ErrorCode, 1>;
 
 type ValueRow = {
   name: string;
@@ -391,7 +393,7 @@ type ValueRow = {
 };
 // The `value` matches inside every `site` match must be exactly `keys`, bar what the platform `lacks`.
 const FIELD = /@Field (?:val|var) (\w+)/g;
-const CODE = /(?:reject\(|failure\(|EvaluateError\((?:code: )?)"\w+"/g;
+const CODE = /(?:reject\(|failure\(|EvaluateError\(|PlatformException\(|code: )"\w+"/g;
 const VALUES: Record<Platform, ValueRow[]> = {
   android: [
     {
@@ -428,7 +430,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: / to "\w+"|listOf\("\w+"\)/g,
     },
     { name: 'rule actions', keys: actions, site: /val actions = setOf\([^)]*\)/g },
-    { name: 'error codes', keys: codes, site: CODE },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
   ],
   ios: [
     { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*/g },
@@ -459,7 +461,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       lacks: ['geolocation', 'protectedMedia'],
     },
     { name: 'rule actions', keys: actions, site: /let actions: Set<String> = \[[^\]]*\]/g },
-    { name: 'error codes', keys: codes, site: CODE },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
   ],
 };
 

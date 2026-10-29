@@ -2,6 +2,7 @@
 // handlers and events, and the origin-rule parser. The transport, the `ready` handshake and the document tokens are
 // each side's own. The page client is compiled with this file into one script (.github/scripts/build-page-client.mts),
 // so it imports only types.
+import type { ErrorCode } from '../types';
 import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
 /**
@@ -31,8 +32,8 @@ type Pending = {
   sent: boolean;
 };
 
-/** A `BridgeCallError` (types.ts): what a call rejects with. */
-export const bridgeError = ({ code, message }: { code: BridgeErrorCode; message: string }) =>
+/** A `CodedError` (types.ts): what a ref method or bridge call rejects with. */
+export const codedError = ({ code, message }: { code: ErrorCode; message: string }) =>
   Object.assign(new Error(message), { code });
 
 /**
@@ -64,7 +65,7 @@ export function createEndpoint<Sender = void>(
                 () => {
                   pending.delete(id);
                   reject(
-                    bridgeError({ code: 'timeout', message: `${method} timed out after ${ms} ms` })
+                    codedError({ code: 'timeout', message: `${method} timed out after ${ms} ms` })
                   );
                 },
                 Math.min(ms, 2 ** 31 - 1)
@@ -93,7 +94,7 @@ export function createEndpoint<Sender = void>(
       for (const [id, call] of pending) {
         if (only && !only(call)) continue;
         clearTimeout(call.timer);
-        call.reject(bridgeError({ code, message }));
+        call.reject(codedError({ code, message }));
         pending.delete(id);
       }
     },
@@ -123,7 +124,7 @@ export function createEndpoint<Sender = void>(
           pending.delete(message.id);
           clearTimeout(call.timer);
           if (message.kind === 'result') call.resolve(message.value);
-          else call.reject(bridgeError(message.error));
+          else call.reject(codedError(message.error));
         }
       }
     },
