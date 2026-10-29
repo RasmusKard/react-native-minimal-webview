@@ -124,7 +124,7 @@ export const WEBVIEW = {
 let webViewMajor: number | undefined;
 /** The Android System WebView's major version, from its default user agent (no page needed); 0 on iOS. */
 const androidWebView = () =>
-  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.defaultUserAgent ?? '')?.[1] ?? 0));
+  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.android.defaultUserAgent ?? '')?.[1] ?? 0));
 
 /** A suite's checks and INFO lines. With a `floor` (a `WEBVIEW` value) each `check` is a `since(floor, …)`. */
 export function reporter(suite: string, floor = 0) {
@@ -1342,7 +1342,7 @@ async function mountSettings(h: Harness) {
     h,
     Platform.OS === 'ios'
       ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
-      : { android: { settings: { userAgentString: `${WebView.defaultUserAgent} Remounted/9` } } },
+      : { android: { settings: { userAgentString: `${WebView.android.defaultUserAgent} Remounted/9` } } },
     Platform.OS === 'android'
   );
   const remountedVh = await viewportHeight(h);
