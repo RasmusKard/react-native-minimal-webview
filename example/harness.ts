@@ -1680,7 +1680,12 @@ async function navigation(h: Harness) {
   const asked: string[] = [];
   let lastAskAt = 0;
   const lastNavigation = () => h.events.navigations[h.events.navigations.length - 1];
-  h.setProps({ onOpenExternal: (url) => void external.push(url) });
+  h.setProps({
+    onOpenExternal: ({ url }) => {
+      external.push(url);
+      return true;
+    },
+  });
   h.setAsk((request) => {
     asked.push(request.url);
     lastAskAt = Date.now();
@@ -1762,7 +1767,10 @@ async function navigation(h: Harness) {
     external
   );
   h.setProps({
-    onOpenExternal: (url) => void external.push(url),
+    onOpenExternal: ({ url }) => {
+      external.push(url);
+      return true;
+    },
     ios: { preferences: { javaScriptCanOpenWindowsAutomatically: true } },
     android: { settings: { javaScriptCanOpenWindowsAutomatically: true } },
   });
@@ -1901,7 +1909,7 @@ async function navigation(h: Harness) {
     // Nothing opened externally, so the intent: is reported as blocked; the fallback reports its own allow.
     r.check('the intent: itself is reported as block', own.decision?.action === 'block', own);
   }
-  const handedBack = await sendExternal('handed-back', (url) => {
+  const handedBack = await sendExternal('handed-back', ({ url }) => {
     external.push(url);
     return false;
   });
@@ -1914,9 +1922,12 @@ async function navigation(h: Harness) {
       (Platform.OS === 'ios' || (handedBack.loaded && handedBack.fallback?.rule === 1)),
     handedBack
   );
-  const handled = await sendExternal('handled', (url) => void external.push(url));
+  const handled = await sendExternal('handled', ({ url }) => {
+    external.push(url);
+    return true;
+  });
   r.check(
-    'onOpenExternal returning nothing has opened it: reported external, no fallback',
+    'onOpenExternal returning true has opened it: reported external, no fallback',
     handled.external.length === 1 &&
       handled.decision?.action === 'external' &&
       handled.fallback === undefined &&
@@ -2073,7 +2084,13 @@ async function downloadsSuite(h: Harness) {
   }
 
   const opened: string[] = [];
-  h.setProps({ onDownload: undefined, onOpenExternal: (url) => void opened.push(url) });
+  h.setProps({
+    onDownload: undefined,
+    onOpenExternal: ({ url }) => {
+      opened.push(url);
+      return true;
+    },
+  });
   await sleep(300);
   const events = () => h.events.downloads.length + h.events.downloadFailures.length;
   const before = events();

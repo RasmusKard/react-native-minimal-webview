@@ -98,7 +98,7 @@ internal class MinimalWebViewNavigation(
     val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
     if ("openExternal" !in owner.requestHandlers) return report(open(request.url))
     // A page that moved on first answers null, which counts as opened. No timeout: nothing waits for the answer.
-    owner.asks.ask("core.openExternal", mapOf("url" to request.url)) { answer ->
+    owner.asks.ask("core.openExternal", fields(request)) { answer ->
       report(answer != false || open(request.url))
     }
   }

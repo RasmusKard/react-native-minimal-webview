@@ -117,7 +117,7 @@ export type NavigationRule = {
 };
 
 /**
- * A navigation an `ask` rule puts to `onNavigationRequest`.
+ * A navigation an `ask` rule puts to `onNavigationRequest`, or an `external` one to `onOpenExternal`.
  * @group Navigation
  */
 export type NavigationRequest = {
@@ -579,6 +579,11 @@ export type CodedError = Error & { code: WebViewErrorCode };
  * The ones from React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch
  * events) go to the native view.
  *
+ * Every `on…` callback is read when its event or request comes, so adding, changing or removing one applies to the
+ * next. One that answers a request and throws (or rejects) is logged with `console.error` and gives the refusing
+ * answer: `onNavigationRequest` `block`, `onOpenExternal` nothing opened, `onFileRequest` cancel,
+ * `onPermissionRequest` deny, `onHookEvent` null.
+ *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop: iOS shows a `UIAlertController` titled with the
  * frame's host, one at a time, and Android WebView's own dialogs; an auth challenge is declined, so the site's 401 page
  * shows. A native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sample-extension`).
@@ -614,6 +619,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
    * `android.settings.userAgentString` to `WebView.defaultUserAgent` plus your suffix.
+   *
+   * A change applies from the next navigation.
    */
   userAgent?: string;
   /**
@@ -639,14 +646,16 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
    * when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
    * `block`.
+   *
+   * A change applies from the next navigation.
    * @see [Navigation rules example](../guides/examples.md#navigation-rules)
    */
   navigationRules?: NavigationRule[];
   /**
    * Answers `ask` rules within 1 s.
    *
-   * A late, missing or other answer is `block`, as is one still pending when another page commits, and `signal` then
-   * aborts. Without this prop, `ask` is `block`. Until the next commit, a URL it allowed isn't asked again on a
+   * A late, missing or other answer is `block`, as is one still pending when another page commits; `signal` aborts at
+   * the timeout and at that commit. Without this prop, `ask` is `block`. Until the next commit, a URL it allowed isn't asked again on a
    * redirect back to it (Android), or when the same kind of frame loads it again (iOS).
    */
   onNavigationRequest?: (
@@ -656,12 +665,13 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
    *
-   * Return false (a promise is awaited) to hand one back: the core then opens it as it does without this prop, an
-   * `intent:`'s fallback URL included. Anything else, a throw too, means you opened it. Default: the system browser or
-   * app for the URL, opened without asking `canOpenURL` first, so no `LSApplicationQueriesSchemes` (iOS) or `<queries>`
-   * (Android) entries are needed.
+   * Return true (a promise is awaited) when you opened it, or false to hand it back: the core then opens it as it does
+   * without this prop, an `intent:`'s fallback URL included. `signal` aborts when native stops waiting (the page moved
+   * on, crashed or unmounted), and then nothing opens it. Default: the system browser or app for the URL, opened
+   * without asking `canOpenURL` first, so no `LSApplicationQueriesSchemes` (iOS) or `<queries>` (Android) entries are
+   * needed.
    */
-  onOpenExternal?: (url: string) => boolean | void | Promise<boolean | void>;
+  onOpenExternal?: (request: NavigationRequest, signal: AbortSignal) => boolean | Promise<boolean>;
   /**
    * The bridge to the page, from `createBridge`.
    *
@@ -682,14 +692,16 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * An event from a native hook.
    *
-   * For an `ask`, the return value (a promise is awaited) is the answer; `undefined` or a throw answers null. `signal`
-   * is set only for an `ask`, and aborts when native stops waiting for the answer: an ask has no timeout, but one still
-   * open when the page goes away is answered null.
+   * For an `ask`, the return value (a promise is awaited) is the answer; `undefined` answers null. `signal` is set only
+   * for an `ask`, and aborts when native stops waiting for the answer: an ask has no timeout, but one still open when
+   * the page goes away is answered null.
    */
   onHookEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
   /**
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
    * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
+   *
+   * A change applies at once.
    */
   pullToRefresh?: boolean;
   /**
