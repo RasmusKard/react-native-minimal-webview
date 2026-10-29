@@ -7,6 +7,7 @@ import type {
   Download,
   DownloadFailure,
   FileRequest,
+  HookExtension,
   NavigationEvent,
   NavigationRule,
   ProcessGoneEvent,
@@ -19,11 +20,17 @@ import type {
 } from 'react-native-minimal-webview';
 import { WebView, IOSConstants } from 'react-native-minimal-webview';
 import { AppState, Platform } from 'react-native';
-import { seams } from 'sample-extension';
+import { pageCounter, sampleHook, seams } from 'sample-extension';
 
+import { extensions } from './extensions';
 import { hostile } from './hostile';
 import { perf, perfCold } from './perf';
 import { shapes } from './shapes';
+
+/** Extra WebView props for a suite, and `extensions`, which App passes to `useExtensions` after its own. */
+export type HarnessProps = Partial<WebViewProps> & {
+  extensions?: (HookExtension | false | null | undefined)[];
+};
 
 export type Harness = {
   pages: string;
@@ -46,7 +53,7 @@ export type Harness = {
   ) => void;
   setPermission: (handler: ((request: PermissionRequest) => Promise<boolean>) | undefined) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
-  setProps: (props: Partial<WebViewProps>) => void;
+  setProps: (props: HarnessProps) => void;
   /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
   setExtraWebViews: (n: number) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
@@ -230,7 +237,7 @@ export async function until<T>(
 }
 
 /** Collects each `console.warn` line (the WebView's warnings among them) until `stop` restores `console.warn`. */
-function captureWarnings() {
+export function captureWarnings() {
   const lines: string[] = [];
   const warn = console.warn;
   console.warn = (...args: unknown[]) => {
@@ -489,7 +496,7 @@ async function reissue(h: Harness) {
   r.done();
 }
 
-const errorCode = (error: unknown) => (error as { code?: string }).code;
+export const errorCode = (error: unknown) => (error as { code?: string }).code;
 
 /** Starts a page-side `nativeBridge.call` and waits for its outcome; `script_error` on a page without the bridge. */
 async function pageCall(h: Harness, method: string, params: unknown) {
@@ -882,7 +889,7 @@ export const fresh = (h: Harness, path: string) =>
  * that don't recreate it (`hookOptions`, whose keys pick the hooks with configure only when it is created), it
  * remounts too.
  */
-async function recreate(h: Harness, props: Partial<WebViewProps>, remount = false) {
+export async function recreate(h: Harness, props: HarnessProps, remount = false) {
   const loads = h.events.loads.length;
   h.setProps(props);
   if (remount) h.remount();
@@ -903,7 +910,7 @@ export async function openPage(h: Harness, uri: string, ms = 15000) {
 }
 
 /** Runs `act`, then waits for the lines the page adds to `window.testLog`; null when none come within `ms`. */
-async function pageLog(h: Harness, act: () => unknown, ms = 10000) {
+export async function pageLog(h: Harness, act: () => unknown, ms = 10000) {
   const before = ((await h.ref.current?.evaluate('window.testLog.length')) as number) ?? 0;
   await act();
   return (
@@ -915,7 +922,7 @@ async function pageLog(h: Harness, act: () => unknown, ms = 10000) {
 }
 
 /** An element's text, '' when it is missing. */
-const text = async (h: Harness, id: string) =>
+export const text = async (h: Harness, id: string) =>
   (await h.ref.current?.evaluate(
     `document.getElementById(${JSON.stringify(id)})?.textContent ?? ''`
   )) as string;
@@ -2446,7 +2453,7 @@ async function sampleExtension(h: Harness) {
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
-  h.setProps({ hookOptions: { 'sample.pageCounter': { global: '__liveCount' } } });
+  h.setProps({ extensions: [pageCounter({ global: '__liveCount' })] });
   const live = await until(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
@@ -2478,7 +2485,7 @@ async function sampleExtension(h: Harness) {
     );
   }
   // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
-  h.setProps({ onHookEvent: () => new Promise<never>(() => {}) });
+  h.setProps({ extensions: [pageCounter(true, () => new Promise<never>(() => {}))] });
   await sleep(100);
   const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
   await sleep(200);
@@ -2516,17 +2523,7 @@ async function sampleExtension(h: Harness) {
     { late, warnings: warnings.lines }
   );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
-  await recreate(
-    h,
-    {
-      hookOptions: {
-        'sample.pageCounter': true,
-        'sample.hookDialogs': true,
-        'sample.subclass': true,
-      },
-    },
-    true
-  );
+  await recreate(h, { extensions: [sampleHook('hookDialogs'), sampleHook('subclass')] }, true);
   const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
   r.check(
     "its webViewClass (webViewFactory) makes the WebView it's enabled on",
@@ -2562,7 +2559,7 @@ async function sampleExtension(h: Harness) {
 
 /** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
 async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
-  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
+  await recreate(h, { extensions: [sampleHook('seams')] }, true);
   if (Platform.OS === 'ios') {
     const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
     r.check(
@@ -2911,6 +2908,7 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
   ua,
   dialogs,
   sampleExtension,
+  extensions,
   ptr,
   network,
   sources,

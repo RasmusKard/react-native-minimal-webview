@@ -12,7 +12,7 @@
  * @groupDescription Page requests
  * File pickers, permission prompts and downloads the page starts.
  * @groupDescription Native hooks
- * What native hooks send to `onHookEvent`.
+ * Turning native hooks on with `useExtensions`, and what they send to `onHookEvent`.
  * @groupDescription Platform settings
  * WebKit and Android WebView properties, set by name through the `ios` and `android` props.
  * @document ../guides/examples.md
@@ -21,6 +21,7 @@
  */
 export { WebView } from './WebView';
 export { createWebViewRef, useWebViewState } from './refStore';
+export { useExtensions } from './useExtensions';
 export { createBridge } from './bridge/createBridge';
 export { reactNativeWebViewMessages } from './reactNativeWebViewMessages';
 export { AndroidConstants, IOSConstants } from './platform.generated';

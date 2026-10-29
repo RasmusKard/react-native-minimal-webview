@@ -1,0 +1,11 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "podspecPath": "MinimalWebViewExtensions.podspec",
+    "modules": ["MinimalWebViewExtensionsModule"]
+  },
+  "android": {
+    "path": ".",
+    "modules": ["expo.modules.minimalwebviewextensions.MinimalWebViewExtensionsModule"]
+  }
+}

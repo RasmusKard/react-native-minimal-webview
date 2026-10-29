@@ -1,0 +1,29 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.minimalwebviewextensions'
+version = '0.1.0' // expo-autolinking requires it
+
+// The project is the package folder itself (expo-module.config.json's android.path): keep Gradle's output apart from
+// tsc's build/ output.
+layout.buildDirectory = file('build/gradle')
+
+android {
+  namespace "expo.modules.minimalwebviewextensions"
+  defaultConfig {
+    minSdkVersion 29
+    versionName project.version // Expo SDK 53's module plugin requires it
+  }
+  sourceSets {
+    main {
+      // The module, then one folder per extension, each with its Kotlin beside its Swift and TS.
+      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'menuItems', 'onScroll', 'nestedScrollEnabled', 'androidLayerType']
+    }
+  }
+}
+
+dependencies {
+  implementation project(':react-native-minimal-webview')
+}

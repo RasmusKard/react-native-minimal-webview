@@ -617,6 +617,26 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
 };
 
 /**
+ * A native hook's JS side, for {@link useExtensions}: its key, its `hookOptions` value, and what takes its events.
+ *
+ * A package with a native hook exports a function that returns one, so that an app turns the hook on by passing it to
+ * `useExtensions`.
+ * @see [Native hooks example](../guides/examples.md#native-hooks)
+ * @group Native hooks
+ */
+export type HookExtension = {
+  /** The key the hook is registered under. */
+  key: string;
+  /** Its value in `hookOptions`. */
+  options: unknown;
+  /**
+   * Each of the hook's events (`'<key>.<event name>'`), as `onHookEvent` gets them: for an `ask`, the return value is
+   * the answer. Without it, they go to the app's `onHookEvent`.
+   */
+  onEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
+};
+
+/**
  * A fullscreen change, for `onFullscreenChange`.
  * @android
  * @group Events
@@ -772,7 +792,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    */
   bridge?: Bridge;
   /**
-   * Each native hook's value by its key.
+   * Each native hook's value by its key; {@link useExtensions} makes it, and `onHookEvent`, from extensions.
    *
    * A key whose value is not null, undefined or false attaches its hook, and a later change reaches that hook live,
    * without recreating the WebView; removing the key passes the hook null, and it stays attached. A key turned on
