@@ -3,7 +3,7 @@ package expo.modules.minimalwebviewextensions
 import android.view.View
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/** The hook behind the `androidLayerType` prop; its value is the layer type's name. */
+/** The hook behind `androidLayerType()`; its value is the layer type's name. */
 internal object AndroidLayerType {
   const val KEY = "@minimal-rn-webview/extensions.androidLayerType"
   private val TYPES = mapOf("software" to View.LAYER_TYPE_SOFTWARE, "hardware" to View.LAYER_TYPE_HARDWARE)

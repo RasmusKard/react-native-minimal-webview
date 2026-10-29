@@ -6,13 +6,13 @@ import android.webkit.WebViewClient
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 
-/** The hook behind the `basicAuthCredential` prop; its value is the credential. */
+/** The hook behind `basicAuthCredential()`; its value is the credential. */
 internal object BasicAuthCredential {
   const val KEY = "@minimal-rn-webview/extensions.basicAuthCredential"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     val client = Client(context)
-    // A listed client answers every request: listed only while the prop is set, so the core declines them again.
+    // A listed client answers every request: listed only while it is on, so the core declines them again.
     val list = { on: Boolean ->
       context.clients.remove(client)
       if (on) context.clients.add(client)

@@ -1,14 +1,14 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind the `basicAuthCredential` prop; its value is the credential.
+/// The hook behind `basicAuthCredential()`; its value is the credential.
 enum BasicAuthCredential {
   static let key = "@minimal-rn-webview/extensions.basicAuthCredential"
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in
       let delegate = Delegate(context)
-      // A listed delegate answers every challenge: listed only while the prop is set, so the core declines them again.
+      // A listed delegate answers every challenge: listed only while it is on, so the core declines them again.
       let list = { [weak context] (on: Bool) in
         context?.navigationDelegates.removeAll { $0 === delegate }
         if on { context?.navigationDelegates.append(delegate) }

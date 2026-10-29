@@ -1,6 +1,5 @@
 // The on-device suites (SUITES, at the end). Each result is logged as `[harness <platform>] PASS|FAIL|INFO ...` to the
 // JS console and to the test pages server, which prints it.
-import type { WebViewProps as ExtendedProps } from '@minimal-rn-webview/extensions';
 import { Directory, File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
@@ -8,6 +7,7 @@ import type {
   Download,
   DownloadFailure,
   FileRequest,
+  HookExtension,
   NavigationEvent,
   NavigationRule,
   ProcessGoneEvent,
@@ -26,6 +26,11 @@ import { extensions } from './extensions';
 import { hostile } from './hostile';
 import { perf, perfCold } from './perf';
 import { shapes } from './shapes';
+
+/** Extra WebView props for a suite, and `extensions`, which App passes to `useExtensions` after its own. */
+export type HarnessProps = Partial<WebViewProps> & {
+  extensions?: (HookExtension | false | null | undefined)[];
+};
 
 export type Harness = {
   pages: string;
@@ -48,7 +53,7 @@ export type Harness = {
   ) => void;
   setPermission: (handler: ((request: PermissionRequest) => Promise<boolean>) | undefined) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
-  setProps: (props: Partial<ExtendedProps>) => void;
+  setProps: (props: HarnessProps) => void;
   /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
   setExtraWebViews: (n: number) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
@@ -884,7 +889,7 @@ export const fresh = (h: Harness, path: string) =>
  * that don't recreate it (`hookOptions`, whose keys pick the hooks with configure only when it is created), it
  * remounts too.
  */
-export async function recreate(h: Harness, props: Partial<ExtendedProps>, remount = false) {
+export async function recreate(h: Harness, props: HarnessProps, remount = false) {
   const loads = h.events.loads.length;
   h.setProps(props);
   if (remount) h.remount();

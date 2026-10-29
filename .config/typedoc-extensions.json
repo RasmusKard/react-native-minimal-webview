@@ -6,5 +6,5 @@
   "out": "../docs/extensions",
   "readme": "../extensions/README.md",
   "name": "@minimal-rn-webview/extensions",
-  "groupOrder": ["WebView", "Props", "Events"]
+  "groupOrder": ["Extensions", "Values", "Events"]
 }

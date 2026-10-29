@@ -1,8 +1,15 @@
-// The extensions suite: @minimal-rn-webview/extensions' props on App's WebView, which is that package's.
-import type {
-  CustomMenuSelectionEvent,
-  Dialog,
-  ScrollEvent,
+// The extensions suite: @minimal-rn-webview/extensions' functions, through App's useExtensions.
+import {
+  type CustomMenuSelectionEvent,
+  type Dialog,
+  type ScrollEvent,
+  androidLayerType,
+  basicAuthCredential,
+  dialogs as dialogsExtension,
+  hideKeyboardAccessoryView,
+  menuItems,
+  nestedScrollEnabled,
+  onScroll,
 } from '@minimal-rn-webview/extensions';
 import { IOSConstants } from 'minimal-rn-webview';
 import { Platform } from 'react-native';
@@ -31,19 +38,25 @@ const MENU = [{ label: 'Highlight', key: 'hl' }];
 /** Loads `body` as an html source and waits until it is the page. */
 async function loadHtml(h: Harness, body: string) {
   const title = `ext-${Date.now()}`;
-  h.loadSource({ html: `<!doctype html>${VIEWPORT}<title>${title}</title>${body}`, baseUrl: h.pages });
-  return !!(await until(async () => (await h.ref.current?.evaluate('document.title')) === title, 10000));
+  h.loadSource({
+    html: `<!doctype html>${VIEWPORT}<title>${title}</title>${body}`,
+    baseUrl: h.pages,
+  });
+  return !!(await until(
+    async () => (await h.ref.current?.evaluate('document.title')) === title,
+    10000
+  ));
 }
 
 /** The WebView's class, from its `description` (iOS) or `toString()` (Android). */
 const webViewClass = async (h: Harness) =>
   await h.ref.current?.call(ios ? 'webView.description' : 'webView.toString').catch(errorCode);
 
-/** `hookOptions` events of this package that reached App's `onHookEvent`, the ones no prop took. */
+/** Events of this package's hooks that reached App's `onHookEvent`, the ones no extension took. */
 const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.startsWith(KEY));
 
 /**
- * Each prop's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
+ * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
  * driver's long press (maestro/extensions.yaml); the keyboard accessory bar and nested scrolling are left to a person.
  */
 export async function extensions(h: Harness) {
@@ -79,26 +92,30 @@ async function inert(h: Harness, r: Reporter) {
   await recreate(h, {}, true);
   const made = await webViewClass(h);
   r.check(
-    "with no extension prop, the WebView isn't made from the menu hook's class",
+    "with no extension, the WebView isn't made from the menu hook's class",
     typeof made === 'string' && !made.includes('MenuW'),
     made
   );
   await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-none`));
   const auth = await text(h, 'auth');
-  r.check('with no extension prop, HTTP auth is declined as the core does', auth === 'unauthorized', auth);
+  r.check(
+    'with no extension, HTTP auth is declined as the core does',
+    auth === 'unauthorized',
+    auth
+  );
   h.events.hookEvents.length = 0;
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
   await h.ref.current?.evaluate('scrollTo(0, 400)');
   await sleep(1000);
   r.check(
-    'with no extension prop, no extension hook sends an event: a scroll sends none',
+    'with no extension, no extension hook sends an event: a scroll sends none',
     strayEvents(h).length === 0,
     strayEvents(h)
   );
 }
 
 async function auth(h: Harness, r: Reporter) {
-  h.setProps({ basicAuthCredential: { username: 'u', password: 'p' } });
+  h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'p' })] });
   await sleep(300);
   await openPage(h, fresh(h, `${SIGNED_IN}/auth?t=ext-on`));
   const on = await text(h, 'auth');
@@ -107,16 +124,22 @@ async function auth(h: Harness, r: Reporter) {
   await sleep(300);
   await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-removed`));
   const off = await text(h, 'auth');
-  r.check('basicAuthCredential removed: HTTP auth is declined again', off === 'unauthorized', off);
+  r.check(
+    'basicAuthCredential switched off: HTTP auth is declined again',
+    off === 'unauthorized',
+    off
+  );
 }
 
 async function dialogs(h: Harness, r: Reporter) {
   const seen: Dialog[] = [];
   h.setProps({
-    onDialog: (dialog) => {
-      seen.push(dialog);
-      return dialog.type === 'prompt' ? 'typed' : true;
-    },
+    extensions: [
+      dialogsExtension((dialog) => {
+        seen.push(dialog);
+        return dialog.type === 'prompt' ? 'typed' : true;
+      }),
+    ],
   });
   await openPage(h, fresh(h, '/dialogs.html'));
   for (const [id, expected] of [
@@ -128,7 +151,11 @@ async function dialogs(h: Harness, r: Reporter) {
       // Not awaited: on iOS evaluate doesn't return while a dialog blocks the page.
       void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('${id}').click(), 0)`);
     });
-    r.check(`onDialog answers the ${id}, and the page gets the answer`, lines?.join() === expected, lines);
+    r.check(
+      `onDialog answers the ${id}, and the page gets the answer`,
+      lines?.join() === expected,
+      lines
+    );
   }
   const got = seen.map(({ type, message, defaultValue }) => [type, message, defaultValue]);
   r.check(
@@ -152,10 +179,16 @@ async function scroll(h: Harness, r: Reporter) {
       contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
     },
   };
-  h.setProps({ ios: insets, onScroll: ({ nativeEvent }) => scrolls.push(nativeEvent) });
+  h.setProps({
+    ios: insets,
+    extensions: [onScroll(({ nativeEvent }) => scrolls.push(nativeEvent))],
+  });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
   await h.ref.current?.evaluate('scrollTo(0, 400)');
-  const at = await until(() => scrolls.find(({ contentOffset }) => Math.abs(contentOffset.y - 400) < 1), 3000);
+  const at = await until(
+    () => scrolls.find(({ contentOffset }) => Math.abs(contentOffset.y - 400) < 1),
+    3000
+  );
   r.check(
     'onScroll, set after mount, gets the offset, and a content size taller than the view',
     !!at && at.contentSize.height > at.layoutMeasurement.height,
@@ -167,8 +200,10 @@ async function scroll(h: Harness, r: Reporter) {
   await h.ref.current?.evaluate('scrollTo(0, 800)');
   await sleep(1000);
   r.check(
-    'onScroll removed: its hook sends nothing more',
-    scrolls.length === count && strayEvents(h).length === 0 && h.events.hookEvents.length === events,
+    'onScroll switched off: its hook sends nothing more',
+    scrolls.length === count &&
+      strayEvents(h).length === 0 &&
+      h.events.hookEvents.length === events,
     { more: scrolls.length - count, stray: strayEvents(h) }
   );
 }
@@ -177,7 +212,11 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   const chosen: CustomMenuSelectionEvent['nativeEvent'][] = [];
   await recreate(
     h,
-    { menuItems: MENU, onCustomMenuSelection: ({ nativeEvent }) => chosen.push(nativeEvent) },
+    {
+      extensions: [
+        menuItems({ items: MENU, onSelect: ({ nativeEvent }) => chosen.push(nativeEvent) }),
+      ],
+    },
     true
   );
   const made = await webViewClass(h);
@@ -194,12 +233,12 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   r.info('LONGPRESS', 'then Highlight');
   const selection = await until(() => chosen[0], 30000);
   r.check(
-    'a long press shows the item, and choosing it calls onCustomMenuSelection with the selected text',
+    'a long press shows the item, and choosing it calls onSelect with the selected text',
     selection?.key === 'hl' && selection.label === 'Highlight' && selection.selectedText.length > 0,
     selection
   );
   await recreate(h, {}, true);
-  h.setProps({ menuItems: MENU });
+  h.setProps({ extensions: [menuItems({ items: MENU })] });
   await until(() => warnings.warned(`hookOptions.${KEY}.menuItems`), 3000);
   r.check(
     'menuItems set after creation warns that its hook attaches only when the WebView is created',
@@ -214,7 +253,7 @@ async function keyboard(h: Harness, r: Reporter) {
     await h.ref.current
       ?.evaluate("(document.getElementById('i').focus(), document.activeElement.id)")
       .catch(errorCode);
-  h.setProps({ hideKeyboardAccessoryView: true });
+  h.setProps({ extensions: [hideKeyboardAccessoryView()] });
   await loadHtml(h, '<input id="i">');
   const hidden = await focus();
   h.setProps({});
@@ -222,28 +261,36 @@ async function keyboard(h: Harness, r: Reporter) {
   await loadHtml(h, '<input id="i">');
   const shown = await focus();
   r.check(
-    'hideKeyboardAccessoryView on and then removed: the page still focuses its input',
+    'hideKeyboardAccessoryView on and then off: the page still focuses its input',
     hidden === 'i' && shown === 'i',
     { hidden, shown }
   );
-  r.info('hideKeyboardAccessoryView', 'the bar shows only with the software keyboard: check it by hand');
+  r.info(
+    'hideKeyboardAccessoryView',
+    'the bar shows only with the software keyboard: check it by hand'
+  );
 }
 
 async function android(h: Harness, r: Reporter) {
   const layer = async () => await h.ref.current?.call('webView.getLayerType').catch(errorCode);
   const types: unknown[] = [];
   for (const type of ['software', 'hardware', undefined] as const) {
-    h.setProps({ androidLayerType: type });
+    h.setProps({ extensions: [type && androidLayerType(type)] });
     const expected = { software: 1, hardware: 2, none: 0 }[type ?? 'none'];
-    types.push((await until(async () => (await layer()) === expected, 3000)) ? expected : await layer());
+    types.push(
+      (await until(async () => (await layer()) === expected, 3000)) ? expected : await layer()
+    );
   }
   r.check(
-    'androidLayerType, set after mount, sets the layer type live; removed, none again',
+    'androidLayerType, set after mount, sets the layer type live; off, none again',
     JSON.stringify(types) === '[1,2,0]',
     types
   );
-  h.setProps({ nestedScrollEnabled: true });
+  h.setProps({ extensions: [nestedScrollEnabled()] });
   await sleep(300);
-  r.info('nestedScrollEnabled', 'needs a scrolling parent, which the example has none of: check it by hand');
+  r.info(
+    'nestedScrollEnabled',
+    'needs a scrolling parent, which the example has none of: check it by hand'
+  );
   h.setProps({});
 }

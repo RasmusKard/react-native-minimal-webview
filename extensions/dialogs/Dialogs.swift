@@ -1,14 +1,14 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind the `onDialog` prop: each alert, confirm and prompt is an ask, which the page waits for.
+/// The hook behind `dialogs()`: each alert, confirm and prompt is an ask, which the page waits for.
 enum Dialogs {
   static let key = "@minimal-rn-webview/extensions.dialogs"
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in
       let delegate = Delegate(context)
-      // A listed delegate takes every dialog: listed only while the prop is set, so the core's dialogs come back.
+      // A listed delegate takes every dialog: listed only while it is on, so the core's dialogs come back.
       let list = { [weak context] (on: Bool) in
         context?.uiDelegates.removeAll { $0 === delegate }
         if on { context?.uiDelegates.append(delegate) }

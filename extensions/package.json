@@ -1,7 +1,7 @@
 {
   "name": "@minimal-rn-webview/extensions",
   "version": "0.1.0",
-  "description": "react-native-webview props for minimal-rn-webview, as native hooks",
+  "description": "react-native-webview props for minimal-rn-webview, as native hooks for its useExtensions",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "exports": {

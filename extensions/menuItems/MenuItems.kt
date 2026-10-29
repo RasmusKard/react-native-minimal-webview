@@ -11,7 +11,7 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 import org.json.JSONArray
 
 /**
- * The hook behind `menuItems` and `onCustomMenuSelection`; its value is `{ items }`. The selection's action mode is
+ * The hook behind `menuItems()`; its value is `{ items }`. The selection's action mode is
  * WebView's own `startActionMode`, so the hook makes its WebViews with [MenuWebView].
  */
 internal object MenuItems {

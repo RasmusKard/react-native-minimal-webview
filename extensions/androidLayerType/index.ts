@@ -1,8 +1,20 @@
-import type { Extension } from '../src/extension';
+import type { HookExtension } from 'minimal-rn-webview';
+import { Platform } from 'react-native';
 
-export const androidLayerType: Extension = {
-  key: '@minimal-rn-webview/extensions.androidLayerType',
-  platform: 'android',
-  props: ['androidLayerType'],
-  options: (props) => props.androidLayerType,
-};
+/**
+ * A layer type of Android's `View.setLayerType`, for {@link androidLayerType}.
+ * @android
+ * @group Values
+ */
+export type AndroidLayerType = 'none' | 'software' | 'hardware';
+
+/**
+ * Sets the WebView's layer type, and keeps it on the WebView that replaces one whose renderer crashed:
+ * react-native-webview's `androidLayerType`. Switched off, the layer type is `'none'` again. Null on iOS.
+ * @android
+ * @group Extensions
+ */
+export const androidLayerType = (type: AndroidLayerType): HookExtension | null =>
+  Platform.OS === 'android'
+    ? { key: '@minimal-rn-webview/extensions.androidLayerType', options: type }
+    : null;

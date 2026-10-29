@@ -3,7 +3,7 @@ package expo.modules.minimalwebviewextensions
 import android.view.View
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/** The hook behind the `onScroll` prop: each scroll change, as react-native-webview's event, in dp. */
+/** The hook behind `onScroll()`: each scroll change, as react-native-webview's event, in dp. */
 internal object OnScroll {
   const val KEY = "@minimal-rn-webview/extensions.onScroll"
 

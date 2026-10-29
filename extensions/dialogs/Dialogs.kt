@@ -7,13 +7,13 @@ import android.webkit.WebView
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 
-/** The hook behind the `onDialog` prop: each alert, confirm and prompt is an ask, which the page waits for. */
+/** The hook behind `dialogs()`: each alert, confirm and prompt is an ask, which the page waits for. */
 internal object Dialogs {
   const val KEY = "@minimal-rn-webview/extensions.dialogs"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     val client = Client(context)
-    // A listed chrome client takes every dialog: listed only while the prop is set, so WebView's dialogs come back.
+    // A listed chrome client takes every dialog: listed only while it is on, so WebView's dialogs come back.
     val list = { on: Boolean ->
       context.chromeClients.remove(client)
       if (on) context.chromeClients.add(client)
