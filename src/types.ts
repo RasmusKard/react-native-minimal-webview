@@ -18,7 +18,7 @@ import type {
 export type WebViewSource =
   | {
       /**
-       * A `file://` URL gets read access to its directory on iOS; Android needs `android.settings.allowFileAccess`,
+       * A `file://` URL reads only within `readAccessRoot` on iOS; Android needs `android.settings.allowFileAccess`,
        * which lets a `file:` page read any file the app can.
        */
       uri: string;
@@ -35,6 +35,12 @@ export type WebViewSource =
        * ```
        */
       body?: string;
+      /**
+       * For a `file://` `uri`, the `file://` directory the page may read, which must contain the file. Without it, or
+       * when it isn't a `file:` URL or doesn't contain the file (a warning says so), the file's directory.
+       * @ios
+       */
+      readAccessRoot?: string;
     }
   | {
       /** The page's HTML. */
