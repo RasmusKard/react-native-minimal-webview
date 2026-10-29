@@ -6,13 +6,11 @@ import WebKit
 /// Don't touch the WKWebView's own `navigationDelegate` and `uiDelegate` (use the context's lists), or the bridge's
 /// script message handler and user scripts.
 public enum MinimalWebViewHooks {
-  /// The class each WebView is made from; a subclass can override what WKWebView lets it.
-  public static var webViewClass: WKWebView.Type = WKWebView.self
-
   struct Hook {
     let key: String
     /// Where it was registered, `#fileID:#line`: the same place again is a JS reload, not a second hook.
     let site: String
+    let webViewClass: WKWebView.Type?
     let configure: ((WKWebViewConfiguration, WebViewContext) -> Void)?
     let attach: (WKWebView, WebViewContext) -> (() -> Void)?
   }
@@ -25,6 +23,12 @@ public enum MinimalWebViewHooks {
   /// again replaces its hook: a JS reload creates the modules anew, and their `OnCreate` runs again. `core` is reserved
   /// and refused: the package's own events are named `core.…`.
   /// - Parameters:
+  ///   - webViewClass: The WKWebView subclass to make each WebView that enables this hook from, so it can override
+  ///     what WKWebView lets it; nil leaves the class to the other hooks. A view whose enabled hooks name different
+  ///     classes is made from the first one's, in registration order, and sends a `core.warning` naming the hooks whose
+  ///     class it didn't use; those still attach, so check the class `attach` gets. A WebView is never remade for a
+  ///     class: when `key` is turned on after the WKWebView was made, this hook doesn't attach, and a warning says so.
+  ///     The hidden view `window.open('')` gets is always a plain WKWebView.
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
   ///     scripts you add stay, after the package's. It gets the same context that `attach` gets next, so state it
@@ -35,13 +39,14 @@ public enum MinimalWebViewHooks {
   ///   - file: With `line`, the call site that tells a reload from a second hook: leave both to their defaults.
   public static func register(
     _ key: String,
+    webViewClass: WKWebView.Type? = nil,
     configure: ((WKWebViewConfiguration, WebViewContext) -> Void)? = nil,
     attach: @escaping (WKWebView, WebViewContext) -> (() -> Void)?,
     file: String = #fileID,
     line: Int = #line
   ) {
     guard key != "core" else { return NSLog("[minimal-rn-webview] the hook key `core` is reserved: the hook is not registered") }
-    let hook = Hook(key: key, site: "\(file):\(line)", configure: configure, attach: attach)
+    let hook = Hook(key: key, site: "\(file):\(line)", webViewClass: webViewClass, configure: configure, attach: attach)
     guard let index = hooks.firstIndex(where: { $0.key == key }) else { return hooks.append(hook) }
     guard hooks[index].site == hook.site else {
       fatalError(

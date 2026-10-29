@@ -27,11 +27,9 @@ import java.util.concurrent.ConcurrentHashMap
  * listener ([WebViewContext.onDownloadStart]).
  */
 object MinimalWebViewHooks {
-  /** Makes each WebView: the first one, and a new one after the render process dies. A subclass can override what WebView lets it. */
-  var webViewFactory: (Context) -> WebView = { WebView(it) }
-
   internal class Hook(
     val key: String,
+    val webViewFactory: ((Context) -> WebView)?,
     val configure: ((WebView, WebViewContext) -> Unit)?,
     val attach: (WebView, WebViewContext) -> (() -> Unit)?
   )
@@ -49,6 +47,12 @@ object MinimalWebViewHooks {
    * with the current value, to the WebView that replaces it after a renderer crash. To switch a hook on and off, keep
    * its key enabled and put the switch in its value (`{ enabled: false }`).
    *
+   * @param webViewFactory makes each WebView that enables this hook, a subclass that overrides what WebView lets it:
+   *   the first one, and the one that replaces it after a renderer crash. Null leaves it to the other hooks. A view
+   *   whose enabled hooks name different factories (the same object is one) is made by the first one's, in
+   *   registration order, and warns (`core.warning`) naming the hooks whose factory it didn't use; those still attach,
+   *   so check the class `attach` gets. A WebView is never remade for a factory: when [key] is turned on after the
+   *   first WebView was made, this hook doesn't attach, and a warning says so.
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
    *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
    *   state it makes can be keyed by the context.
@@ -58,6 +62,7 @@ object MinimalWebViewHooks {
    */
   fun register(
     key: String,
+    webViewFactory: ((Context) -> WebView)? = null,
     configure: ((WebView, WebViewContext) -> Unit)? = null,
     attach: (WebView, WebViewContext) -> (() -> Unit)?
   ) {
@@ -65,7 +70,7 @@ object MinimalWebViewHooks {
       Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
       return
     }
-    val hook = Hook(key, configure, attach)
+    val hook = Hook(key, webViewFactory, configure, attach)
     val index = hooks.indexOfFirst { it.key == key }
     if (index < 0) {
       hooks += hook
@@ -90,6 +95,16 @@ internal fun enables(value: Any?) = value != null && value != false
  */
 internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>) =
   hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
+
+/**
+ * Which of [attaching] makes the WebView: the first with a factory, or null for a plain WebView. Second, the keys of the
+ * others whose factory is a different object.
+ */
+internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<MinimalWebViewHooks.Hook?, List<String>> {
+  val named = attaching.filter { it.webViewFactory != null }
+  val maker = named.firstOrNull()
+  return maker to named.filter { it.webViewFactory !== maker?.webViewFactory }.map { it.key }
+}
 
 /**
  * Whether a `hookOptions` change from [old] to [value] turns on [key], one the WebView was not created with ([keys]):

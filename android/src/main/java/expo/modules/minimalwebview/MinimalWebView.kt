@@ -132,13 +132,16 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     document.register(skipsOpening = true) { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
 
-  private fun createWebView() = MinimalWebViewHooks.webViewFactory(context).also { view ->
+  private fun createWebView(): WebView {
     val first = hookKeys == null
     val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
     val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keys)
+    val (maker, unused) = pickFactory(attaching)
+    val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
     hookContexts = attaching.map { HookContext(it, this) }
     // A typo, or a hook's module not linked or not rebuilt. Once: the WebView after a crash has the same keys.
     if (first) unregistered.forEach { warn("hookOptions.$it: no hook is registered under this key") }
+    if (first) unused.forEach { warn("hookOptions.$it: its webViewFactory is not used, ${maker?.key}'s is") }
     // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
@@ -156,6 +159,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     view.setOnTouchListener { v, event -> touchListeners.any { it.onTouch(v, event) } }
     view.setOnScrollChangeListener { v, x, y, oldX, oldY -> scrollListeners.forEach { it.onScrollChange(v, x, y, oldX, oldY) } }
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
+    return view
   }
 
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used

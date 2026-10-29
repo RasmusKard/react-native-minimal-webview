@@ -1,5 +1,6 @@
 package expo.modules.minimalwebview
 
+import android.content.Context
 import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
@@ -19,7 +20,7 @@ import org.junit.Test
 
 /**
  * `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. Which hooks
- * a WebView's `hookOptions` attach, and which registrations under a key that is taken fail.
+ * a WebView's `hookOptions` attach, which one's factory makes it, and which registrations under a key that is taken fail.
  */
 class HooksTest {
   private class Plain : WebViewClient()
@@ -49,7 +50,8 @@ class HooksTest {
   private val safeBrowsing = arrayOf(WebView::class.java, WebResourceRequest::class.java, Integer.TYPE, SafeBrowsingResponse::class.java)
   private val url = arrayOf(WebView::class.java, WebResourceRequest::class.java)
 
-  private fun hook(key: String) = MinimalWebViewHooks.Hook(key, null) { _, _ -> null }
+  private fun hook(key: String, factory: ((Context) -> WebView)? = null) =
+    MinimalWebViewHooks.Hook(key, factory, null) { _, _ -> null }
 
   @Test
   fun `a plain subclass overrides only what it declares`() {
@@ -93,6 +95,16 @@ class HooksTest {
     val (attaching, unregistered) = selectHooks(listOf(hook("b"), hook("a"), hook("c")), setOf("a", "b", "typo"))
     assertEquals(listOf("b", "a"), attaching.map { it.key })
     assertEquals(setOf("typo"), unregistered)
+  }
+
+  @Test
+  fun `the first attaching hook with a factory makes the WebView, and a different one is reported`() {
+    val shared: (Context) -> WebView = { WebView(it) }
+    val other: (Context) -> WebView = { WebView(it) }
+    assertEquals(null to emptyList<String>(), pickFactory(listOf(hook("a"), hook("b"))))
+    val (maker, unused) = pickFactory(listOf(hook("a"), hook("b", shared), hook("c", other), hook("d", shared)))
+    assertEquals("b", maker?.key)
+    assertEquals("the same object on two hooks is one factory", listOf("c"), unused)
   }
 
   @Test
