@@ -796,6 +796,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
  *
  * A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and `evaluate`, `get`,
  * `call` and `hook` reject with `unavailable`.
+ *
+ * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
+ * effect can come before the view exists), then reject with `unavailable`.
  * @group WebView
  */
 export type WebViewRef = {
