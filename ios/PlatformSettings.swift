@@ -55,14 +55,14 @@ final class PlatformSettings {
 
   /// `root.key` through KVC, as JSON. Throws a `PlatformError` with the reason when it can't.
   func get(_ path: String, webView: WKWebView) throws -> String {
-    guard let dot = path.firstIndex(of: ".") else { throw PlatformError("use root.key") }
+    guard let dot = path.firstIndex(of: ".") else { throw PlatformError("use root.key", code: "not_found") }
     let rootName = String(path[..<dot])
     let key = String(path[path.index(after: dot)...])
     guard let object = root(rootName, webView: webView, configuration: webView.configuration) else {
-      throw PlatformError("unknown root: use \(Self.roots)")
+      throw PlatformError("unknown root: use \(Self.roots)", code: "not_found")
     }
     guard !key.hasPrefix("_"), !key.contains("."), Self.attributes(object, key) != nil else {
-      throw PlatformError("no such property \(path)")
+      throw PlatformError("no such property \(path)", code: "not_found")
     }
     return try Self.json { MRWJsonable(object.value(forKey: key)) }
   }
@@ -70,13 +70,16 @@ final class PlatformSettings {
   /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
   /// `completion` names the block shape of a selector that ends in a completion handler (MRWInvoke.h).
   func call(_ path: String, args: [Any], completion: String?, webView: WKWebView, resolve: @escaping (String?, String?) -> Void) throws {
-    guard let dot = path.lastIndex(of: ".") else { throw PlatformError("use root.selector:") }
+    guard let dot = path.lastIndex(of: ".") else { throw PlatformError("use root.selector:", code: "not_found") }
     let selector = String(path[path.index(after: dot)...])
     guard let object = root(String(path[..<dot]), webView: webView, configuration: webView.configuration) else {
-      throw PlatformError("unknown root: use \(Self.roots)")
+      throw PlatformError("unknown root: use \(Self.roots)", code: "not_found")
     }
     guard !Self.refused.contains(where: selector.hasPrefix) else {
       throw PlatformError("\(selector) is owned by the core, or private")
+    }
+    guard object.responds(to: NSSelectorFromString(selector)) else {
+      throw PlatformError("\(type(of: object)) has no method \(selector)", code: "not_found")
     }
     MRWInvoke(object, NSSelectorFromString(selector), args, completion) { result, error in
       guard error == nil, let result else { return resolve(nil, error ?? "the result is not JSON") }
@@ -206,7 +209,12 @@ final class PlatformSettings {
 
 }
 
+/// Why `get` or `call` failed; `code` is the JS error code (`not_found` or `native_error`).
 struct PlatformError: Error {
   let message: String
-  init(_ message: String) { self.message = message }
+  let code: String
+  init(_ message: String, code: String = "native_error") {
+    self.message = message
+    self.code = code
+  }
 }

@@ -2,7 +2,6 @@ import type { Ref } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { BridgeConnection, CONNECTION } from './bridge/createBridge';
-import type { BridgeErrorCode } from './bridge/protocol';
 import type {
   AndroidSettingKeys,
   CGPoint,
@@ -251,12 +250,6 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
 ) => Result | Promise<Result>;
 
 /**
- * What a bridge call rejects with: an `Error` whose `code` says why.
- * @group Bridge
- */
-export type BridgeCallError = Error & { code: BridgeErrorCode };
-
-/**
  * The methods either side may call, for `createBridge<Methods>`.
  *
  * One map covers both directions, so a method is named once, whichever side handles it. A `type`, not an `interface`
@@ -288,7 +281,7 @@ export type BridgeEventMap = Record<string, unknown>;
  * the same origin; the page's own calls work earlier. Messages have no size limit.
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
- * and `on`, and its calls reject with an `Error` whose `code` is a {@link BridgeErrorCode}.
+ * and `on`, and its calls reject with a {@link CodedError}.
  * @see [Bridge example](../guides/examples.md#the-bridge)
  * @group Bridge
  */
@@ -308,9 +301,8 @@ export type Bridge<
   /**
    * Calls a method the page registered with `nativeBridge.handle`.
    *
-   * Rejects with a {@link BridgeCallError}; after `navigated` the page may have handled the call already, so retry only
-   * calls that are safe to repeat. `timeoutMs` overrides the bridge's for this call, and one that isn't 0 or more
-   * rejects with a plain `RangeError`.
+   * Rejects with a {@link CodedError}: `timeout`, `not_found`, `handler_error`, `navigated` or `unavailable`.
+   * `timeoutMs` overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain `RangeError`.
    */
   call<M extends keyof Methods & string>(
     method: M,
@@ -553,25 +545,39 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
 export type FullscreenChangeEvent = { active: boolean };
 
 /**
- * Why a ref method rejected.
+ * Why a ref method or a bridge call rejected. Each code means the same on every method that rejects with it.
  *
+ * - `timeout`: a bridge call got no answer in time.
+ * - `not_found`: nothing by that name answers: no bridge handler for the method, no attached hook `name` handling
+ *   `method`, or no such root, key, method or selector (on this OS or WebView version too), or a malformed path.
+ * - `handler_error`: a bridge handler threw or rejected (the `message` is its error's), or the page sent a code not
+ *   listed here.
  * - `script_error`: `evaluate`'s script threw, rejected or didn't parse.
- * - `native_error`: the platform refused or failed a `get`, `call` or `hook`.
- * - `navigated`: the page went away before `evaluate` finished.
- * - `unavailable`: the WebView lacks the features it needs (`evaluate` on an Android System WebView older than 83), is
- *   gone, or is being rebuilt after its renderer died (Android, while the app is in the background or the view
- *   detached).
- * - `hook_not_handled`: no attached hook handles the `hook` method.
+ * - `native_error`: the platform refused or failed the call: a member the core owns or a private one, wrong arguments,
+ *   a missing `completion`, a native exception or `NSError`, or a result JSON can't carry (`NaN`).
+ * - `navigated`: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
+ *   it may have run: retry only what is safe to repeat.
+ * - `unavailable`: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
+ *   died (Android), or lacks the feature (`evaluate` on an Android System WebView older than 83, the bridge older than
+ *   101, a compat method this WebView doesn't support).
+ *
+ * A programming error, such as an argument of the wrong type, can reject with a plain `TypeError` instead.
  * @group WebView
  */
-export type WebViewErrorCode =
-  'script_error' | 'native_error' | 'navigated' | 'unavailable' | 'hook_not_handled';
+export type ErrorCode =
+  | 'timeout'
+  | 'not_found'
+  | 'handler_error'
+  | 'script_error'
+  | 'native_error'
+  | 'navigated'
+  | 'unavailable';
 
 /**
- * What a ref method rejects with: an `Error` whose `code` says why.
+ * What a ref method or a bridge call rejects with: an `Error` whose `code` says why.
  * @group WebView
  */
-export type CodedError = Error & { code: WebViewErrorCode };
+export type CodedError = Error & { code: ErrorCode };
 
 /**
  * The WebView's props.
@@ -795,7 +801,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
  * A WebView's ref.
  *
  * A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and `evaluate`, `get`,
- * `call` and `hook` reject with `unavailable`.
+ * `call` and `hook` reject with `unavailable`, and one still pending when the WebView unmounts rejects with `navigated`.
  *
  * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
  * effect can come before the view exists), then reject with `unavailable`.
@@ -834,8 +840,9 @@ export type WebViewRef = {
    *
    * The roots are those of {@link IOSSettings} and {@link AndroidSettings}, plus `websiteDataStore` and
    * `httpCookieStore` on iOS and `cookieManager` and `webStorage` on Android. On Android, `textZoom` reads
-   * `getTextZoom()`, `isTextZoom()` or a non-void `textZoom()`. Rejects with `native_error` for one it can't read, or
-   * that the core owns.
+   * `getTextZoom()`, `isTextZoom()` or a non-void `textZoom()`. Rejects with a {@link CodedError}: `not_found` for an
+   * unknown root or key, `unavailable` for one this WebView doesn't support (Android), and `native_error` for one it
+   * can't read or that the core owns.
    * @example
    * ```ts
    * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
@@ -851,12 +858,14 @@ export type WebViewRef = {
    *
    * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`.
    *
-   * Rejects with `native_error` for an unknown method, a wrong argument count, an argument that doesn't fit, a method
-   * that raises, a result JSON can't carry (iOS: `NaN`), and what the core owns: on iOS every selector that loads,
-   * navigates (`setInteractionState:` too), runs a script, starts a download or sets a delegate, and private (`_`),
-   * KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`, `new…` and reference-counting selectors; on Android (in
-   * `get` too) the loads, navigations, clients, JavaScript interfaces, web message listeners, document-start scripts,
-   * `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers` and `evaluateJavascript`.
+   * Rejects with a {@link CodedError}: `not_found` for an unknown root or method (Android: or none of that name takes
+   * these arguments); `unavailable` for a compat method this WebView doesn't support (Android); `native_error` for a
+   * wrong argument count, an argument that doesn't fit, a method that raises, a result JSON can't carry (`NaN`), and
+   * what the core owns: on iOS every selector that loads, navigates (`setInteractionState:` too), runs a script, starts
+   * a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`,
+   * `new…` and reference-counting selectors; on Android (in `get` too) the loads, navigations, clients, JavaScript
+   * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
+   * `resumeTimers` and `evaluateJavascript`.
    *
    * On iOS two mistakes the signature can't catch crash the app: a wrong `completion` shape, and an object argument of
    * the wrong class; for a method that takes another object, write a native hook.
@@ -889,8 +898,9 @@ export type WebViewRef = {
    * Calls the `method` handler the native hook `name` registered with `context.handle`, with `args`, and resolves with
    * its reply; both cross as JSON.
    *
-   * Rejects with `hook_not_handled`, or `native_error` when the reply can't cross as JSON. A handler that never replies
-   * leaves the promise pending: nothing settles it on navigation, a crash or unmount.
+   * The reply converts as `call`'s results do: an object JSON can't carry is `null`, and `NaN` rejects with
+   * `native_error`. Rejects with a {@link CodedError}: `not_found` when no attached hook `name` handles `method`. A
+   * navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount does.
    */
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };

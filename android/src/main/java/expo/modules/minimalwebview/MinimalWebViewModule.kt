@@ -158,7 +158,7 @@ private fun navigate(view: MinimalWebView, action: String) {
 private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) {
   if (view.recovering) return promise.reject("unavailable", RECOVERING, null)
   val handler = view.hookHandler(name, method)
-    ?: return promise.reject("hook_not_handled", "no attached hook `$name` handles `$method`", null)
+    ?: return promise.reject("not_found", "no attached hook `$name` handles `$method`", null)
   try {
     handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { PlatformSettings.toJson(it) } }
   } catch (e: Exception) {
@@ -166,7 +166,10 @@ private fun hook(view: MinimalWebView, name: String, method: String, args: Strin
   }
 }
 
-/** Resolves with [body]'s JSON; anything it throws rejects with `native_error`, a dead WebView with `unavailable`. */
+/**
+ * Resolves with [body]'s JSON. A [PlatformException] rejects with its code, anything else it throws with `native_error`,
+ * and a dead WebView with `unavailable`.
+ */
 private inline fun native(view: MinimalWebView, promise: Promise, body: () -> String) =
   if (view.recovering) {
     promise.reject("unavailable", RECOVERING, null)
@@ -174,7 +177,7 @@ private inline fun native(view: MinimalWebView, promise: Promise, body: () -> St
     try {
       promise.resolve(body())
     } catch (e: Exception) {
-      promise.reject("native_error", e.message, e)
+      promise.reject((e as? PlatformException)?.code ?: "native_error", e.message, e)
     }
   }
 
