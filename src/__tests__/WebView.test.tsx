@@ -1,3 +1,4 @@
+import { createContext, runInContext } from 'node:vm';
 import { type RefObject, act, createRef, useState } from 'react';
 import { AppState, Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
@@ -337,6 +338,60 @@ describe('bridge', () => {
     expect(mockMount).toHaveBeenCalledTimes(1);
     await show(newBridge());
     expect(mockMount).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('injectedScripts', () => {
+  const code = 'function secret() {}\nconst local = 1;\nwindow.ran = true;';
+  const nativeCode = async (origins: string[]) => {
+    const { native } = await render({ injectedScripts: [{ code, allFrames: true, origins }] });
+    const scripts = native?.['injectedScripts'] as { code: string }[];
+    expect(scripts).toEqual([{ code: expect.any(String) as string, allFrames: true }]);
+    return scripts[0]!.code;
+  };
+  /** Runs `script` as a document-start script in a frame of `origin`, after `before` patched its built-ins. */
+  const run = (script: string, origin: string, before = '') => {
+    const frame = createContext({ location: { origin } });
+    runInContext('window = globalThis;', frame);
+    runInContext(before, frame);
+    runInContext(script, frame);
+    return runInContext(
+      '({ ran: window.ran === true, secret: typeof secret, local: typeof local })',
+      frame
+    ) as Record<string, unknown>;
+  };
+
+  it("sends a script with '*' unchanged and without origins", async () => {
+    expect(await nativeCode(['https://example.com', '*'])).toBe(code);
+  });
+
+  it('runs a scoped script only on its origins, and its declarations stay inside it', async () => {
+    const script = await nativeCode(['https://example.com', 'https://*.example.org:8443']);
+    const local = { secret: 'undefined', local: 'undefined' };
+    expect(run(script, 'https://example.com')).toEqual({ ran: true, ...local });
+    expect(run(script, 'https://a.b.example.org:8443')).toEqual({ ran: true, ...local });
+    for (const origin of ['https://example.org:8443', 'https://evil.com', 'null'])
+      expect(run(script, origin)).toEqual({ ran: false, ...local });
+  });
+
+  it("is not fooled by a frame's patched built-ins", async () => {
+    const script = await nativeCode(['https://example.com']);
+    const patch = `
+      String.prototype.toLowerCase = () => 'https://example.com';
+      String.prototype.endsWith = String.prototype.startsWith = String.prototype.includes = () => true;
+      Array.prototype.some = Array.prototype.includes = () => true;
+      Array.prototype.indexOf = () => 0;
+      Object.defineProperty(Object.prototype, 'any', { get: () => true });`;
+    expect(run(script, 'https://evil.com', patch).ran).toBe(false);
+  });
+
+  it('throws at render for a script without origins or with an invalid rule', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const scripts = (origins: unknown) => [{ code, origins }] as WebViewProps['injectedScripts'];
+    await expect(render({ injectedScripts: scripts(undefined) })).rejects.toThrow('needs origins');
+    await expect(render({ injectedScripts: scripts(['example.com']) })).rejects.toThrow(
+      'invalid origins ["example.com"]'
+    );
   });
 });
 

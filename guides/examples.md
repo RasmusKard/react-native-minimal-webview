@@ -157,7 +157,7 @@ the real `source` after the call resolves.
 ## Scripts
 
 ```tsx
-<WebView injectedScripts={[{ code: `window.config = ${JSON.stringify(config)}` }]} … />; // at document start, before the page's scripts
+<WebView injectedScripts={[{ code: `window.config = ${JSON.stringify(config)}`, origins: ['https://example.com'] }]} … />; // at document start, before the page's scripts
 
 const title = await ref.current?.evaluate('document.title'); // an expression, not statements
 await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);

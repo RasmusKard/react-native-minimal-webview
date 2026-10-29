@@ -6,7 +6,7 @@ import type {
   BridgeOptions,
   BridgeSender,
 } from '../types';
-import { codedError, createEndpoint, parseOrigin } from './endpoint';
+import { bridgeError, createEndpoint, invalidOrigins } from './endpoint';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
@@ -44,7 +44,7 @@ export function createBridge<
   Events extends BridgeEventMap = BridgeEventMap,
 >(options: BridgeOptions): Bridge<Methods, Events> {
   // `*` or what the page client parses: addWebMessageListener's rules minus custom schemes.
-  const invalid = options.allowedOrigins.filter((rule) => rule !== '*' && !parseOrigin(rule));
+  const invalid = invalidOrigins(options.allowedOrigins);
   if (invalid.length) {
     throw new Error(
       `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`

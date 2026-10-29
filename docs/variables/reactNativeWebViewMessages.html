@@ -14,7 +14,8 @@
 <div class="tsd-comment tsd-typography"><p>react-native-webview's messaging, for <code>injectedScripts</code>, carried by the bridge event <code>rnw</code>.</p>
 <p>The page's <code>window.ReactNativeWebView.postMessage(data)</code> arrives as <code>String(data)</code>, and what you emit reaches the
 page as a <code>message</code> event on <code>window</code> on iOS and on <code>document</code> on Android, as react-native-webview does.</p>
-<p>It needs the <code>bridge</code> prop: only the main frame of the pages in <code>allowedOrigins</code> gets <code>window.ReactNativeWebView</code>.</p>
+<p>It needs the <code>bridge</code> prop: only the main frame of the pages in <code>allowedOrigins</code> gets <code>window.ReactNativeWebView</code>.
+Its <code>origins</code> are <code>['*']</code>, since the bridge already scopes it.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">

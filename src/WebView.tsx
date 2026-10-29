@@ -3,12 +3,14 @@ import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from '
 import { AppState, Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
-import { codedError } from './bridge/endpoint';
+import { bridgeError, invalidOrigins, originForms } from './bridge/endpoint';
+import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
 import { DEFAULTS } from './defaults.generated';
 import { iosCompletions } from './platform.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookEvent,
+  InjectedScript,
   LoadErrorEvent,
   NavigationEvent,
   NavigationRule,
@@ -111,7 +113,9 @@ const OWN_SET: Set<string> &
 type NativeSettings = Record<string, Record<string, SettingValue | undefined>>;
 
 type NativeProps = ViewProps &
-  Pick<WebViewProps, 'source' | 'navigationRules' | 'injectedScripts' | 'pullToRefresh'> & {
+  Pick<WebViewProps, 'source' | 'navigationRules' | 'pullToRefresh'> & {
+    /** With each script's `origins` in its code (`nativeScripts`). */
+    injectedScripts: Omit<InjectedScript, 'origins'>[] | undefined;
     ref: Ref<NativeMethods>;
     /** iOS only: Android's CookieManager is already shared. */
     sharedCookies: boolean | undefined;
@@ -252,6 +256,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
 
   // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
+  const injectedScripts = useMemo(
+    () => nativeScripts(props.injectedScripts),
+    [props.injectedScripts]
+  );
   const connection = props.bridge?.[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
@@ -310,10 +318,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       settings={settings}
       pullToRefresh={props.pullToRefresh}
       sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
-      navigationRules={
-        props.navigationRules?.length ? props.navigationRules : WebView.defaultNavigationRules
-      }
-      injectedScripts={props.injectedScripts}
+      navigationRules={props.navigationRules}
+      injectedScripts={injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={props.hookOptions && withoutNulls(props.hookOptions)}
@@ -330,6 +336,27 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       }
     />
   );
+}
+
+/**
+ * The scripts as native runs them: one whose `origins` lack `*` runs inside a function, so that even its function
+ * declarations take effect only where the guard lets it run.
+ */
+function nativeScripts(scripts: InjectedScript[] | undefined) {
+  return scripts?.map(({ code, allFrames, origins }) => {
+    if (!Array.isArray(origins))
+      throw new Error("injectedScripts: every script needs origins (['*'] for every origin)");
+    const invalid = invalidOrigins(origins);
+    if (invalid.length) {
+      throw new Error(
+        `injectedScripts: invalid origins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
+      );
+    }
+    const forms = originForms(origins);
+    if (forms.any) return { code, allFrames };
+    const guard = `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
+    return { code: `if (${guard}) (() => {\n${code}\n})();`, allFrames };
+  });
 }
 
 /** The page requests with a prop set, as a new array only when that set changes. */

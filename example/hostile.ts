@@ -52,7 +52,8 @@ async function gesture({ h, r, android }: Suite, id: string) {
 
 /**
  * T2, T3: an iframe (same-origin or not) and a main frame outside allowedOrigins get no bridge, and the messages they
- * forge through the platform transport reach no handler. F2: injectedScripts run there too. F3: an evaluate a page
+ * forge through the platform transport reach no handler. F2: a script scoped to the app's origin doesn't run there.
+ * F3: an evaluate a page
  * holds pending.
  */
 async function bridgeGate({ h, r }: Suite) {
@@ -65,7 +66,13 @@ async function bridgeGate({ h, r }: Suite) {
   const unlisten = h.bridge.on('hostileEvent', (payload) => events.push(payload));
   try {
     h.setProps({
-      injectedScripts: [{ code: 'window.__hostileInjected = location.origin;', allFrames: true }],
+      injectedScripts: [
+        {
+          code: 'function __hostileScoped() {}\nwindow.__hostileInjected = location.origin;',
+          allFrames: true,
+          origins: [h.pages],
+        },
+      ],
     });
     await sleep(300);
     await openPage(h, fresh(h, '/hostile.html?frames=1'));
@@ -111,12 +118,20 @@ async function bridgeGate({ h, r }: Suite) {
     );
     r.info('T2 bridge transports on the non-allowed main frame', probe);
 
-    const injected = await evaluate(h, 'window.__hostileInjected');
+    const injected = (await evaluate(
+      h,
+      '[window.__hostileInjected ?? null, typeof __hostileScoped]'
+    )) as unknown[] | undefined;
     r.since(
       WEBVIEW.injectedScripts,
-      'F2 an injected script runs on a non-allowed origin, and (allFrames) in its cross-origin iframes',
-      all(injected === OTHER, frame('cross')?.injected === OTHER),
-      { injected, frame: frame('cross') }
+      "F2 a script scoped to the app's origin skips a non-allowed main frame and (allFrames) cross-origin iframes, leaving no function there",
+      all(
+        injected?.[0] === null,
+        injected?.[1] === 'undefined',
+        frame('cross')?.injected === null,
+        frame('same')?.injected === h.pages
+      ),
+      { injected, cross: frame('cross'), same: frame('same') }
     );
 
     // A page can hold an evaluate pending: it settles only when the page goes.
