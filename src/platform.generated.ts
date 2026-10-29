@@ -255,7 +255,7 @@ export type AndroidSettingKeys = {
     /** @since 1 */
     cacheMode?: number;
     /** @since 1 */
-    cursiveFontFamily?: string;
+    cursiveFontFamily?: string | null;
     /**
      * @since 5
      * @deprecated since API 35
@@ -265,13 +265,13 @@ export type AndroidSettingKeys = {
      * @since 5
      * @deprecated since API 19
      */
-    databasePath?: string;
+    databasePath?: string | null;
     /** @since 1 */
     defaultFixedFontSize?: number;
     /** @since 1 */
     defaultFontSize?: number;
     /** @since 1 */
-    defaultTextEncodingName?: string;
+    defaultTextEncodingName?: string | null;
     /** @since 24 */
     disabledActionModeMenuItems?: number;
     /** @since 11 */
@@ -284,9 +284,9 @@ export type AndroidSettingKeys = {
      */
     enableSmoothTransition?: boolean;
     /** @since 1 */
-    fantasyFontFamily?: string;
+    fantasyFontFamily?: string | null;
     /** @since 1 */
-    fixedFontFamily?: string;
+    fixedFontFamily?: string | null;
     /**
      * @since 29
      * @deprecated since API 33
@@ -296,7 +296,7 @@ export type AndroidSettingKeys = {
      * @since 5
      * @deprecated since API 24
      */
-    geolocationDatabasePath?: string;
+    geolocationDatabasePath?: string | null;
     /** @since 5 */
     geolocationEnabled?: boolean;
     /** @since 1 */
@@ -327,7 +327,7 @@ export type AndroidSettingKeys = {
     /** @since 26 */
     safeBrowsingEnabled?: boolean;
     /** @since 1 */
-    sansSerifFontFamily?: string;
+    sansSerifFontFamily?: string | null;
     /**
      * @since 1
      * @deprecated since API 26
@@ -339,9 +339,9 @@ export type AndroidSettingKeys = {
      */
     savePassword?: boolean;
     /** @since 1 */
-    serifFontFamily?: string;
+    serifFontFamily?: string | null;
     /** @since 1 */
-    standardFontFamily?: string;
+    standardFontFamily?: string | null;
     /** @since 1 */
     supportMultipleWindows?: boolean;
     /** @since 1 */
@@ -351,7 +351,7 @@ export type AndroidSettingKeys = {
     /** @since 1 */
     useWideViewPort?: boolean;
     /** @since 3 */
-    userAgentString?: string;
+    userAgentString?: string | null;
     /** `WebSettingsCompat`, WebView feature `ATTRIBUTION_REGISTRATION_BEHAVIOR` */
     attributionRegistrationBehavior?: number;
     /** `WebSettingsCompat`, WebView feature `BACK_FORWARD_CACHE` */
@@ -381,7 +381,7 @@ export type AndroidSettingKeys = {
   /** `WebView`, then `WebViewCompat`, then `CookieManager`, then `View`'s scroll setters */
   webView: {
     /** @since 28 */
-    dataDirectorySuffix?: string;
+    dataDirectorySuffix?: string | null;
     /**
      * @since 1
      * @deprecated since API 23
@@ -404,7 +404,7 @@ export type AndroidSettingKeys = {
     /** `WebViewCompat`, WebView feature `MUTE_AUDIO` */
     audioMuted?: boolean;
     /** `WebViewCompat`, WebView feature `MULTI_PROFILE` */
-    profile?: string;
+    profile?: string | null;
     /**
      * `CookieManager`
      * @since 21
