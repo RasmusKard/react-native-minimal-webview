@@ -349,7 +349,8 @@ const source = { uri: 1, headers: 1, body: 1, html: 1, baseUrl: 1 } satisfies Re
   AllKeys<WebViewSource>,
   1
 >;
-const script = { code: 1, allFrames: 1 } satisfies Record<keyof InjectedScript, 1>;
+// `origins` stays in JS: WebView.tsx folds it into the code.
+const script = { code: 1, allFrames: 1 } satisfies Record<keyof Omit<InjectedScript, 'origins'>, 1>;
 const iosRoots = {
   configuration: 1,
   preferences: 1,

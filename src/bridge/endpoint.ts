@@ -1,7 +1,7 @@
 // One side of the bridge, the same in RN (createBridge.ts) and in the page (pageClient.ts): calls with timeouts,
-// handlers and events, and the origin-rule parser. The transport, the `ready` handshake and the document tokens are
-// each side's own. The page client is compiled with this file into one script (.github/scripts/build-page-client.mts),
-// so it imports only types.
+// handlers and events, and the origin rules (parser, validator, matcher). The transport, the `ready` handshake and the
+// document tokens are each side's own. The page client is compiled with this file into one script
+// (.github/scripts/build-page-client.mts), so it imports only types.
 import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
 /**
@@ -22,6 +22,50 @@ export const parseOrigin = (text: string) => {
     }
   );
 };
+
+/** The rules that are neither `*` nor what `parseOrigin` takes. */
+export const invalidOrigins = (rules: string[]) =>
+  rules.filter((rule) => rule !== '*' && !parseOrigin(rule));
+
+/** Origin rules in `location.origin` form, for `matchesOrigin`: exact origins, and wildcards as prefix and suffix. */
+export type OriginForms = { any: boolean; exact: string[]; wild: [string, string][] };
+
+/** `rules` in the form `matchesOrigin` compares; a rule `parseOrigin` rejects is left out, so it matches nothing. */
+export const originForms = (rules: string[]): OriginForms => {
+  const forms: OriginForms = { any: rules.includes('*'), exact: [], wild: [] };
+  for (const rule of rules) {
+    const r = parseOrigin(rule);
+    if (!r) continue;
+    const rest = r.host + (r.port === (r.scheme === 'https' ? 443 : 80) ? '' : `:${r.port}`);
+    if (r.wildcard) forms.wild.push([`${r.scheme}://`, `.${rest}`]);
+    else forms.exact.push(`${r.scheme}://${rest}`);
+  }
+  return forms;
+};
+
+/** Whether `text` holds `part` at index `at`, compared character by character. */
+function hasAt(text: string, part: string, at: number) {
+  for (let k = 0; k < part.length; k++) if (text[at + k] !== part[k]) return false;
+  return true;
+}
+
+/**
+ * Whether `origin`, as `location.origin` serializes it, matches `forms`. Only `===`, indexing and `length`, no
+ * built-in method: it runs at document start in frames whose built-ins another same-origin frame may have patched.
+ */
+export function matchesOrigin(forms: OriginForms, origin: string) {
+  if (forms.any) return true;
+  for (let i = 0; i < forms.exact.length; i++) if (forms.exact[i] === origin) return true;
+  for (let i = 0; i < forms.wild.length; i++) {
+    const prefix = forms.wild[i]![0];
+    const suffix = forms.wild[i]![1];
+    const start = origin.length - suffix.length;
+    // At least one character of subdomain between the two.
+    if (start > prefix.length && hasAt(origin, prefix, 0) && hasAt(origin, suffix, start))
+      return true;
+  }
+  return false;
+}
 
 type Pending = {
   resolve(value: unknown): void;
