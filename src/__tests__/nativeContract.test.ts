@@ -509,7 +509,7 @@ test('the bridge transport has the names the page client uses', () => {
 });
 
 // What only one platform's hooks get.
-const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients', 'onDestroyed'];
+const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients', 'onDestroyed', 'onDownloadStart'];
 const IOS_ONLY_CONTEXT = ['navigationDelegates', 'uiDelegates'];
 
 test("a hook's WebViewContext has the same members on both platforms, bar the platform-only ones", () => {

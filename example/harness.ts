@@ -2444,6 +2444,20 @@ async function sampleExtension(h: Harness) {
 async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
   if (Platform.OS === 'android') {
+    await openPage(h, fresh(h, '/media.html'));
+    const [downloads, events] = [h.events.downloads.length, h.events.hookEvents.length];
+    await click(h, 'attachment');
+    const taken = await until(
+      () => h.events.hookEvents.slice(events).includes('sample.seams.download'),
+      10000
+    );
+    await click(h, 'blob');
+    const passed = await waitFor(h, () => h.events.downloads.length > downloads, 20000);
+    r.check(
+      'its onDownloadStart handler takes an http download from onDownload and passes a blob: one on',
+      !!taken && passed && h.events.downloads.length === downloads + 1,
+      { taken, downloads: h.events.downloads.length - downloads }
+    );
     const closed = await seams.closedViews();
     await recreate(h, {}, true);
     const now = await until(async () => {
