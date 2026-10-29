@@ -1,5 +1,5 @@
 import { type RefObject, act, createRef, useState } from 'react';
-import { Platform, Text } from 'react-native';
+import { AppState, Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
 import { WebView } from '../WebView';
@@ -772,6 +772,16 @@ describe('navigation state across remounts', () => {
     await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
     expect(frames.mock.calls.length).toBeGreaterThan(30);
     expect(mockEvaluate).toHaveBeenCalledTimes(frames.mock.calls.length + 1);
+
+    // In the background no frame comes, so it rejects at once.
+    mockEvaluate.mockClear();
+    frames.mockClear();
+    // react-native's jest mock makes currentState a function, so replaceProperty can't swap it.
+    const { currentState } = AppState;
+    Object.assign(AppState, { currentState: 'background' });
+    await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
+    expect(frames).not.toHaveBeenCalled();
+    Object.assign(AppState, { currentState });
 
     // Other errors are not retried.
     mockEvaluate.mockClear();

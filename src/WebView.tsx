@@ -1,6 +1,6 @@
 import { requireNativeModule, requireNativeView } from 'expo';
 import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, type ViewProps } from 'react-native';
+import { AppState, Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
 import { bridgeError } from './bridge/endpoint';
@@ -190,14 +190,15 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       throw bridgeError({ code: 'unavailable', message: 'the WebView is gone' });
     };
     // Android can run a view function before Expo has registered the view and reject it with ERR_VIEW_NOT_FOUND:
-    // try again each frame for about a second. An unmount ends the loop, as `call` then finds no view.
+    // try again each frame for about a second. An unmount ends the loop, as `call` then finds no view; so does the
+    // background, where no frame comes.
     const mounted = async (call: () => Promise<string> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
           return parsed(await (call() ?? gone()));
         } catch (error) {
           if ((error as { code?: string }).code !== 'ERR_VIEW_NOT_FOUND') throw error;
-          if (frame === 60) gone();
+          if (frame === 60 || AppState.currentState === 'background') gone();
           await new Promise((resolve) => requestAnimationFrame(resolve));
         }
       }

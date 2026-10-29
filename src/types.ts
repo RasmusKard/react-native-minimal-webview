@@ -798,7 +798,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
  * `call` and `hook` reject with `unavailable`.
  *
  * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
- * effect can come before the view exists), then reject with `unavailable`.
+ * effect can come before the view exists), then reject with `unavailable`; in the background they don't wait.
  * @group WebView
  */
 export type WebViewRef = {
