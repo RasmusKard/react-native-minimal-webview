@@ -1,4 +1,4 @@
-# minimal-rn-webview-extensions
+# @minimal-rn-webview/extensions
 
 react-native-webview props for [minimal-rn-webview](https://github.com/RasmusKard/minimal-rn-webview), each brought back
 by a native hook of its own.
@@ -9,13 +9,13 @@ It has the core's [requirements](https://github.com/RasmusKard/minimal-rn-webvie
 the app, since the package has native code:
 
 ```sh
-npx expo install minimal-rn-webview minimal-rn-webview-extensions
+npx expo install minimal-rn-webview @minimal-rn-webview/extensions
 ```
 
 Its `WebView` takes the core's props and the ones below:
 
 ```tsx
-import { WebView } from 'minimal-rn-webview-extensions';
+import { WebView } from '@minimal-rn-webview/extensions';
 
 <WebView
   source={{ uri: 'https://example.com' }}

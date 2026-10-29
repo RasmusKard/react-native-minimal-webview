@@ -5,7 +5,7 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /** The hook behind the `androidLayerType` prop; its value is the layer type's name. */
 internal object AndroidLayerType {
-  const val KEY = "minimal-rn-webview-extensions.androidLayerType"
+  const val KEY = "@minimal-rn-webview/extensions.androidLayerType"
   private val TYPES = mapOf("software" to View.LAYER_TYPE_SOFTWARE, "hardware" to View.LAYER_TYPE_HARDWARE)
 
   // Attach runs again on the WebView that replaces a crashed one, so it gets the layer type too.

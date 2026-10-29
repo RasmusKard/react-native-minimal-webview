@@ -9,7 +9,7 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
  * not to intercept it, so a scrolling parent leaves the gesture to the page. The listener never consumes the touch.
  */
 internal object NestedScrollEnabled {
-  const val KEY = "minimal-rn-webview-extensions.nestedScrollEnabled"
+  const val KEY = "@minimal-rn-webview/extensions.nestedScrollEnabled"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     context.touchListeners += View.OnTouchListener { view, _ ->

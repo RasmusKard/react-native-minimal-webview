@@ -8,7 +8,7 @@ import expo.modules.minimalwebview.WebViewContext
 
 /** The hook behind the `basicAuthCredential` prop; its value is the credential. */
 internal object BasicAuthCredential {
-  const val KEY = "minimal-rn-webview-extensions.basicAuthCredential"
+  const val KEY = "@minimal-rn-webview/extensions.basicAuthCredential"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     val client = Client(context)

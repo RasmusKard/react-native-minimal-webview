@@ -3,7 +3,7 @@ import WebKit
 
 /// The hook behind the `onDialog` prop: each alert, confirm and prompt is an ask, which the page waits for.
 enum Dialogs {
-  static let key = "minimal-rn-webview-extensions.dialogs"
+  static let key = "@minimal-rn-webview/extensions.dialogs"
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in

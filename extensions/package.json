@@ -1,5 +1,5 @@
 {
-  "name": "minimal-rn-webview-extensions",
+  "name": "@minimal-rn-webview/extensions",
   "version": "0.1.0",
   "description": "react-native-webview props for minimal-rn-webview, as native hooks",
   "main": "build/src/index.js",
@@ -25,6 +25,9 @@
     "build.gradle",
     "expo-module.config.json"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "prepack": "tsc"
   },

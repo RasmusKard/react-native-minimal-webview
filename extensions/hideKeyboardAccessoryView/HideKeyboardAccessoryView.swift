@@ -6,7 +6,7 @@ import WebKit
 /// (the view that owns the keyboard) gets a runtime subclass whose `inputAccessoryView` is nil, and its own class back
 /// when the prop is removed or the view goes away. Not the WKWebView's class, which the core observes with KVO.
 enum HideKeyboardAccessoryView {
-  static let key = "minimal-rn-webview-extensions.hideKeyboardAccessoryView"
+  static let key = "@minimal-rn-webview/extensions.hideKeyboardAccessoryView"
   private static let suffix = "_MinimalWebViewExtensionsNoAccessory"
 
   static func register() {

@@ -15,7 +15,7 @@ import org.json.JSONArray
  * WebView's own `startActionMode`, so the hook makes its WebViews with [MenuWebView].
  */
 internal object MenuItems {
-  const val KEY = "minimal-rn-webview-extensions.menuItems"
+  const val KEY = "@minimal-rn-webview/extensions.menuItems"
   private val factory: (Context) -> WebView = ::MenuWebView
 
   fun register() = MinimalWebViewHooks.register(KEY, webViewFactory = factory) { webView, context ->

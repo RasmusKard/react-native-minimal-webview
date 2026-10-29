@@ -1,10 +1,10 @@
-// The extensions suite: minimal-rn-webview-extensions' props on App's WebView, which is that package's.
-import { IOSConstants } from 'minimal-rn-webview';
+// The extensions suite: @minimal-rn-webview/extensions' props on App's WebView, which is that package's.
 import type {
   CustomMenuSelectionEvent,
   Dialog,
   ScrollEvent,
-} from 'minimal-rn-webview-extensions';
+} from '@minimal-rn-webview/extensions';
+import { IOSConstants } from 'minimal-rn-webview';
 import { Platform } from 'react-native';
 
 import {
@@ -23,7 +23,7 @@ import {
 
 type Reporter = ReturnType<typeof reporter>;
 
-const KEY = 'minimal-rn-webview-extensions';
+const KEY = '@minimal-rn-webview/extensions';
 const ios = Platform.OS === 'ios';
 const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">';
 const MENU = [{ label: 'Highlight', key: 'hl' }];

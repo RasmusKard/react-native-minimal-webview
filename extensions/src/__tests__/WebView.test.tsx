@@ -11,7 +11,7 @@ jest.mock('minimal-rn-webview', () => ({ WebView: (props: CoreWebViewProps) => m
   virtual: true,
 });
 
-const K = 'minimal-rn-webview-extensions';
+const K = '@minimal-rn-webview/extensions';
 const source = { uri: 'https://example.com' };
 
 async function render(props: Partial<WebViewProps>) {

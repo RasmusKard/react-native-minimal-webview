@@ -12,7 +12,7 @@
 npm install && (cd example && npm install)
 ```
 
-The root `npm install` also sets up `extensions/`, the `minimal-rn-webview-extensions` package, as an npm workspace.
+The root `npm install` also sets up `extensions/`, the `@minimal-rn-webview/extensions` package, as an npm workspace.
 
 In `example/`, `npx expo run:android --no-bundler` or `npx expo run:ios --no-bundler --device <udid>` builds and
 installs the example app, and generates `example/android` or `example/ios` the first time.

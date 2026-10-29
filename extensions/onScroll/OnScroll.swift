@@ -3,7 +3,7 @@ import WebKit
 
 /// The hook behind the `onScroll` prop: each change of the scroll view's offset, as react-native-webview's event.
 enum OnScroll {
-  static let key = "minimal-rn-webview-extensions.onScroll"
+  static let key = "@minimal-rn-webview/extensions.onScroll"
 
   static func register() {
     MinimalWebViewHooks.register(key) { webView, context in

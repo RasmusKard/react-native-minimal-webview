@@ -5,7 +5,7 @@ import WebKit
 /// The hook behind `menuItems`, `suppressMenuItems` and `onCustomMenuSelection`; its value is `{ items, suppress }`.
 /// The menu needs overrides on the WKWebView itself, so the hook makes its WebViews from `MenuWKWebView`.
 enum MenuItems {
-  static let key = "minimal-rn-webview-extensions.menuItems"
+  static let key = "@minimal-rn-webview/extensions.menuItems"
 
   static func register() {
     MinimalWebViewHooks.register(key, webViewClass: MenuWKWebView.self) { webView, context in

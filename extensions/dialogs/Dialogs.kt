@@ -9,7 +9,7 @@ import expo.modules.minimalwebview.WebViewContext
 
 /** The hook behind the `onDialog` prop: each alert, confirm and prompt is an ask, which the page waits for. */
 internal object Dialogs {
-  const val KEY = "minimal-rn-webview-extensions.dialogs"
+  const val KEY = "@minimal-rn-webview/extensions.dialogs"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     val client = Client(context)

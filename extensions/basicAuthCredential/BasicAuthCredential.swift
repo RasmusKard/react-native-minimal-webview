@@ -3,7 +3,7 @@ import WebKit
 
 /// The hook behind the `basicAuthCredential` prop; its value is the credential.
 enum BasicAuthCredential {
-  static let key = "minimal-rn-webview-extensions.basicAuthCredential"
+  static let key = "@minimal-rn-webview/extensions.basicAuthCredential"
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in

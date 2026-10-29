@@ -82,7 +82,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | File input, `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onFileRequest` (Android; iOS shows WebKit's picker), `onPermissionRequest` ([page requests](examples.md#page-requests)) |
 | `clearCache`, `clearHistory`, `clearFormData`, `requestFocus` | On Android `call('webView.clearCache', [true])`, `call('webView.clearHistory')`, `call('webView.clearFormData')` and `call('webView.requestFocus')`; on iOS `call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)` clears the cache, and the back-forward list can't be cleared |
-| `basicAuthCredential`, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `onScroll`, `hideKeyboardAccessoryView`, `nestedScrollEnabled`, `androidLayerType`, and custom JS dialogs (react-native-webview has no prop for them) | The props of the same name on the `WebView` of [minimal-rn-webview-extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/), whose `onDialog` answers the dialogs |
+| `basicAuthCredential`, `menuItems`, `onCustomMenuSelection`, `suppressMenuItems`, `onScroll`, `hideKeyboardAccessoryView`, `nestedScrollEnabled`, `androidLayerType`, and custom JS dialogs (react-native-webview has no prop for them) | The props of the same name on the `WebView` of [@minimal-rn-webview/extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/), whose `onDialog` answers the dialogs |
 | `keyboardDisplayRequiresUserAction`, `removeIosKeyboardObserver`, `refreshControlLightMode`, `downloadingMessage`, `nativeConfig` | A [native hook](examples.md#native-hooks) |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; on Android the clearing calls react-native-webview makes ([below](#incognito)) |
 | `autoManageStatusBarEnabled`, `useSharedProcessPool`, `ignoreSilentHardwareSwitch`, `enableApplePay` | Not supported: iOS uses WebKit's own fullscreen; `WKProcessPool` has had no effect since iOS 15; react-native-webview keeps a silent `<audio>` playing for it; Apple Pay works with scripts injected since iOS 16 |
@@ -213,7 +213,7 @@ const [error, setError] = useState<LoadErrorEvent | null>(null);
 
 An injected script reports the main frame's scroll position over the bridge, at most once per frame, for the pages
 in `allowedOrigins`. For the offsets during a bounce or a pinch too, use the `onScroll` of
-[minimal-rn-webview-extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#onscroll).
+[@minimal-rn-webview/extensions](https://rasmuskard.github.io/minimal-rn-webview/extensions/interfaces/ExtensionProps.html#onscroll).
 
 ```tsx
 const scroll = {

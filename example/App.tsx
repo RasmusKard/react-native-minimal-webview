@@ -1,3 +1,4 @@
+import { WebView, type WebViewProps as ExtendedProps } from '@minimal-rn-webview/extensions';
 import {
   type NavigationRule,
   type WebViewProps,
@@ -11,7 +12,6 @@ import {
   createWebViewRef,
 } from 'minimal-rn-webview';
 // The extensions package's WebView, so that every suite also runs with its hooks off.
-import { WebView, type WebViewProps as ExtendedProps } from 'minimal-rn-webview-extensions';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,

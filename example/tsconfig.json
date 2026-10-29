@@ -5,7 +5,7 @@
     "paths": {
       "minimal-rn-webview": ["../src/index"],
       "minimal-rn-webview/*": ["../src/*"],
-      "minimal-rn-webview-extensions": ["../extensions/src/index"]
+      "@minimal-rn-webview/extensions": ["../extensions/src/index"]
     }
   }
 }

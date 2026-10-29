@@ -1,5 +1,6 @@
 // The on-device suites (SUITES, at the end). Each result is logged as `[harness <platform>] PASS|FAIL|INFO ...` to the
 // JS console and to the test pages server, which prints it.
+import type { WebViewProps as ExtendedProps } from '@minimal-rn-webview/extensions';
 import { Directory, File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import type {
@@ -18,7 +19,6 @@ import type {
   WebViewSource,
 } from 'minimal-rn-webview';
 import { WebView, IOSConstants } from 'minimal-rn-webview';
-import type { WebViewProps as ExtendedProps } from 'minimal-rn-webview-extensions';
 import { AppState, Platform } from 'react-native';
 import { seams } from 'sample-extension';
 

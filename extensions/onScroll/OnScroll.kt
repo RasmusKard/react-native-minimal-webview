@@ -5,7 +5,7 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /** The hook behind the `onScroll` prop: each scroll change, as react-native-webview's event, in dp. */
 internal object OnScroll {
-  const val KEY = "minimal-rn-webview-extensions.onScroll"
+  const val KEY = "@minimal-rn-webview/extensions.onScroll"
 
   // The content size is View's protected scroll range: a subclass could read it too, but a hook with a webViewFactory
   // can't attach to a WebView that exists already.
