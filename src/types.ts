@@ -103,7 +103,8 @@ export type NavigationRule = {
    * A user gesture started it (Android `hasGesture()`, iOS `.linkActivated`).
    *
    * A `location.href` change or `window.open` from a click handler is true on Android, but false on iOS, where only a
-   * tapped link is.
+   * tapped link is. A redirect of a load the core starts itself (an allowed new window, and on Android an allowed
+   * `ask`) is never user-initiated.
    */
   userInitiated?: boolean;
   /**
@@ -138,8 +139,9 @@ export type NavigationEvent = NavigationRequest & {
   /** Without `onOpenExternal`, or when it returns false, an `external` URL that no app opens is reported as `block`. */
   action: NavigationAction;
   /**
-   * Index of the matching rule in `navigationRules`, or null when no rule did (a default, or a download opened
-   * externally).
+   * Index of the matching rule in `navigationRules`, or in {@link WebView.defaultNavigationRules} when that is unset or
+   * `[]`; null when no rule decided (none matched, a scheme that always loads in place or is always blocked, or a
+   * download opened externally).
    */
   rule: number | null;
 };
@@ -665,9 +667,16 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
    * and with no match the navigation is blocked.
    *
-   * With no rules (or `[]`), http(s) loads in place, `file:` is blocked, and other schemes open externally from the
-   * main frame, with or without a user gesture (rules can require one with `userInitiated: true`), and are blocked from
-   * a subframe. `about:`, `blob:`, `data:` and `javascript:` always load in place.
+   * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}, which open other schemes externally only when a
+   * user gesture started them. A page that launches an app without one is blocked: from a script or timer, and on iOS
+   * also from a click handler or from a redirect after a form POST (an OAuth `myapp://callback`). To let your scheme
+   * through, put a rule ahead of the defaults:
+   *
+   * ```ts
+   * navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...WebView.defaultNavigationRules]}
+   * ```
+   *
+   * `about:`, `blob:`, `data:` and `javascript:` always load in place.
    *
    * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
    * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
@@ -678,7 +687,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * `block`.
    * @see [Navigation rules example](../guides/examples.md#navigation-rules)
    */
-  navigationRules?: NavigationRule[];
+  navigationRules?: readonly NavigationRule[];
   /**
    * Answers `ask` rules within 1 s.
    *

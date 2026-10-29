@@ -244,8 +244,12 @@ async function newWindows(suite: Suite) {
   }
 }
 
-/** F1: with no rules, a page sends the main frame to a custom scheme with no gesture: it goes external. */
-async function defaultScheme({ h, r }: Suite) {
+/**
+ * F1: with no rules, a page that sends the main frame to a custom scheme with no gesture is blocked; a tapped link to
+ * one goes external, and one through a 302 is recorded.
+ */
+async function defaultScheme(suite: Suite) {
+  const { h, r } = suite;
   const external: string[] = [];
   h.setProps({ onOpenExternal: (url) => void external.push(url) });
   h.setRules(undefined);
@@ -255,20 +259,35 @@ async function defaultScheme({ h, r }: Suite) {
   const url = 'mrwhostile://open?from=script';
   const navigations = h.events.navigations.length;
   await evaluate(h, `(location.href = ${JSON.stringify(url)}, 1)`);
-  await until(() => external.length > 0, 3000);
+  await until(() => h.events.navigations.slice(navigations).some((n) => n.url === url), 3000);
   await sleep(300);
   const decision = h.events.navigations.slice(navigations).find((n) => n.url === url);
   r.check(
-    'F1 with no rules, a scripted custom-scheme navigation is reported as not user-initiated, the page stays',
-    all(decision?.mainFrame === true, decision?.userInitiated === false, h.state().url === page),
+    'F1 with no rules, a scripted custom-scheme navigation is blocked and never reaches onOpenExternal',
+    all(
+      decision?.mainFrame === true,
+      decision?.userInitiated === false,
+      decision?.action === 'block',
+      external.length === 0,
+      h.state().url === page
+    ),
     { decision, external }
   );
+  const tapped = async (id: string, target: string) => {
+    const before = h.events.navigations.length;
+    const clicked = await gesture(suite, id);
+    await until(() => h.events.navigations.slice(before).some((n) => n.url === target), 5000);
+    return { clicked, decision: h.events.navigations.slice(before).find((n) => n.url === target) };
+  };
+  const tap = await tapped('scheme-tap', 'mrwhostile://open?from=tap');
+  r.check(
+    'F1 with no rules, a tapped custom-scheme link goes to onOpenExternal',
+    all(tap.decision?.action === 'external', external.includes('mrwhostile://open?from=tap')),
+    { ...tap, external }
+  );
   r.info(
-    'F1 no gesture gate: with no rules the scripted URL went to onOpenExternal (or else the OS)',
-    {
-      action: decision?.action,
-      external,
-    }
+    'F1 with no rules, a tapped link through a 302 to a custom scheme',
+    await tapped('scheme-redirect', 'mrwhostile://open?from=redirect')
   );
 }
 
@@ -511,7 +530,7 @@ async function fileScope({ h, r, android }: Suite) {
   }
 }
 
-/** In run order; the Android taps all come from newWindows (five). */
+/** In run order; the Android taps all come from newWindows (five) and defaultScheme (two). */
 const BLOCKS = [
   bridgeGate,
   staleAnswer,

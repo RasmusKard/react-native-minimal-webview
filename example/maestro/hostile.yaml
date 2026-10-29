@@ -3,14 +3,14 @@ name: hostile
 env:
   SUITE: hostile
 ---
-# Android: real taps where the harness asks (iOS clicks from script): the five new-window buttons and links.
+# Android: real taps where the harness asks (iOS clicks from script): the five new-window buttons and links, then the two custom-scheme links.
 - runFlow: subflows/launch.yaml
 - runFlow:
     when: { platform: Android }
     commands:
       - evalScript: ${output.tap = 0}
       - repeat:
-          times: 5
+          times: 7
           commands:
             - evalScript: ${output.tap = output.tap + 1}
             - runFlow: { file: subflows/await.yaml, env: { N: "${output.tap}" } }

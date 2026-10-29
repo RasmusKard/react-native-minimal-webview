@@ -11,11 +11,18 @@
 <li><a href="" aria-current="page">WebView</a></li></ul>
 <h1>Namespace WebView</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>What <code>WebView</code> carries besides the component: <a href="WebView.android.html" class="tsd-kind-namespace">WebView.android</a>.</p>
+<div class="tsd-comment tsd-typography"><p>What <code>WebView</code> carries besides the component: <a href="WebView.android.html" class="tsd-kind-namespace">WebView.android</a> and <code>defaultNavigationRules</code>.</p>
 </div></section>
 <details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Namespaces"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
 <h2 class="tsd-anchor-link" id="namespaces">Namespaces<a href="#namespaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary><dl class="tsd-member-summaries"><dt class="tsd-member-summary tsd-is-android" id="android"><span class="tsd-member-summary-name"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Namespace"><use href="../assets/icons.svg#icon-4"></use></svg><a href="WebView.android.html">android</a><a href="#android" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></span></dt><dd class="tsd-member-summary tsd-is-android">
 <div class="tsd-comment tsd-typography"><p>Android's process-wide WebView functions. On iOS they do nothing, and <code>defaultUserAgent</code> is null.</p>
+</div></dd></dl></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Variables"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="variables">Variables<a href="#variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary><dl class="tsd-member-summaries"><dt class="tsd-member-summary" id="defaultnavigationrules"><span class="tsd-member-summary-name"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Variable"><use href="../assets/icons.svg#icon-32"></use></svg><a href="../variables/WebView.defaultNavigationRules.html">defaultNavigationRules</a><a href="#defaultnavigationrules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></span></dt><dd class="tsd-member-summary">
+<div class="tsd-comment tsd-typography"><p>The rules for an unset or empty <code>navigationRules</code>: <code>file:</code> is blocked, http(s) loads in place, and any other scheme
+opens externally from the main frame when a user gesture started it (<a href="../types/NavigationRule.html#userinitiated" class="tsd-kind-property">NavigationRule.userInitiated</a>).
+Anything else, a subframe's or one without a gesture, is blocked. Frozen; spread it after your own rules to keep
+it.</p>
 </div></dd></dl></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -32,7 +39,9 @@
 <h3>On This Page</h3></summary>
 <div class="tsd-accordion-details">
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Namespaces"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Namespaces</summary>
-<div><a href="#android" class="tsd-is-android"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Namespace"><use href="../assets/icons.svg#icon-4"></use></svg><span>android</span></a></div></details></div></details></div>
+<div><a href="#android" class="tsd-is-android"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Namespace"><use href="../assets/icons.svg#icon-4"></use></svg><span>android</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Variables"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Variables</summary>
+<div><a href="#defaultnavigationrules"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Variable"><use href="../assets/icons.svg#icon-32"></use></svg><span>default<wbr/>Navigation<wbr/>Rules</span></a></div></details></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/minimal-rn-webview" class="tsd-nav-link">GitHub</a></nav>
 <nav class="tsd-navigation"><a href="../modules.html">minimal-rn-webview</a>
