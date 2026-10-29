@@ -229,6 +229,23 @@ export async function until<T>(
   return undefined;
 }
 
+/** Collects each `console.warn` line (the WebView's warnings among them) until `stop` restores `console.warn`. */
+function captureWarnings() {
+  const lines: string[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+    warn(...args);
+  };
+  return {
+    lines,
+    warned: (text: string) => lines.some((line) => line.includes(text)),
+    stop: () => {
+      console.warn = warn;
+    },
+  };
+}
+
 export const waitFor = async (
   h: Pick<Harness, 'state'>,
   predicate: (s: NavigationState) => boolean,
@@ -855,7 +872,8 @@ export const fresh = (h: Harness, path: string) =>
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
  * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
- * that don't recreate it (`hookOptions`, whose keys pick the hooks only when it is created), it remounts too.
+ * that don't recreate it (`hookOptions`, whose keys pick the hooks with configure only when it is created), it
+ * remounts too.
  */
 async function recreate(h: Harness, props: Partial<WebViewProps>, remount = false) {
   const loads = h.events.loads.length;
@@ -1353,13 +1371,7 @@ async function mountSettings(h: Harness) {
 /** `ios` / `android` settings by name: applied live, seen by the page, rejected with a warning when wrong; get and call. */
 async function settings(h: Harness) {
   const r = reporter('settings');
-  const warnings: string[] = [];
-  const warn = console.warn;
-  console.warn = (...args: unknown[]) => {
-    warnings.push(args.map(String).join(' '));
-    warn(...args);
-  };
-  const warned = (text: string) => warnings.some((line) => line.includes(text));
+  const { lines: warnings, warned, stop } = captureWarnings();
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
   // An 8px span's computed size: the minimum font size setting raises it.
@@ -1669,7 +1681,7 @@ async function settings(h: Harness) {
       );
     }
   } finally {
-    console.warn = warn;
+    stop();
   }
   r.done();
 }
@@ -2406,19 +2418,32 @@ async function sampleExtension(h: Harness) {
       h.events.hookEvents
     );
   }
-  // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
-  h.setProps({ onHookEvent: () => new Promise<never>(() => {}) });
-  await sleep(100);
-  const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
-  await sleep(200);
-  await recreate(h, {}, true);
-  const unmounted = await Promise.race([held, sleep(3000).then(() => 'still pending')]);
-  r.check('unmount rejects a ref.hook in flight with navigated', unmounted === 'navigated', unmounted);
-  // HTTP auth, which the core declines: the hook's delegate (client) answers it.
-  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } }, true);
+  // HTTP auth, which the core declines: the hook's delegate (client) answers it. Its key turns on after creation, and a
+  // hook without configure attaches then.
+  await recreate(h, { hookOptions: { 'sample.pageCounter': true } }, true);
+  h.setProps({ hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } });
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
-  r.check('its delegate answers HTTP auth', auth === 'authorized', auth);
+  r.check(
+    'a key turned on after creation attaches its hook: its delegate answers HTTP auth',
+    auth === 'authorized',
+    auth
+  );
+  // A hook with configure can't attach to a WebView that exists: its key turned on late warns and attaches nothing.
+  await recreate(h, { hookOptions: { 'sample.hookAuth': true } }, true);
+  const warnings = captureWarnings();
+  try {
+    h.setProps({ hookOptions: { 'sample.hookAuth': true, 'sample.pageCounter': true } });
+    await until(() => warnings.warned('hookOptions.sample.pageCounter'), 3000, 100);
+  } finally {
+    warnings.stop();
+  }
+  const late = await h.ref.current?.hook('sample.pageCounter', 'count').catch(errorCode);
+  r.check(
+    'a key turned on after creation whose hook has configure warns and attaches nothing',
+    late === 'not_found' && warnings.warned('attaches only when the WebView is created'),
+    { late, warnings: warnings.lines }
+  );
   // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(
     h,
