@@ -19,6 +19,7 @@ import type {
 } from 'minimal-rn-webview';
 import { WebView, IOSConstants } from 'minimal-rn-webview';
 import { AppState, Platform } from 'react-native';
+import { seams } from 'sample-extension';
 
 import { hostile } from './hostile';
 import { perf, perfCold } from './perf';
@@ -2435,7 +2436,25 @@ async function sampleExtension(h: Harness) {
       : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
   const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
   r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
+  await hookSeams(h, r);
   r.done();
+}
+
+/** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
+async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
+  await recreate(h, { hookOptions: { 'sample.pageCounter': true, 'sample.seams': true } }, true);
+  if (Platform.OS === 'android') {
+    const closed = await seams.closedViews();
+    await recreate(h, {}, true);
+    const now = await until(async () => {
+      const count = await seams.closedViews();
+      return count > closed && count;
+    }, 3000);
+    r.check('its onDestroyed handler runs once its WebView is destroyed at unmount', now === closed + 1, {
+      closed,
+      now,
+    });
+  }
 }
 
 /** First-load headers, declined HTTP auth, shared cookies, download failures. */
