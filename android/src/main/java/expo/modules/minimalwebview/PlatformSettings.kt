@@ -53,41 +53,17 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     return rejected
   }
 
-  /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws with the reason. */
-  fun get(path: String): String {
-    val (targets, key) = resolve(path)
-    if (key in OWNED) throw problem("$key is owned by the core")
-    val capital = key.replaceFirstChar { it.uppercaseChar() }
-    for (target in targets) {
-      for (method in target.cls.methods) {
-        val getter = method.name == "get$capital" || method.name == "is$capital"
-        if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
-        val args = arguments(method, target, emptyList()) ?: continue
-        return toJson(invoke(method, target, args))
-      }
-    }
-    throw problem("no public getter for $path")
-  }
+  /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
+  fun get(path: String): String = resolve(path).let { (targets, key) -> get(targets, key) }
 
-  /** `root.method` with [args]: a public method the core doesn't own, its result as JSON. Throws with the reason. */
-  fun call(path: String, args: List<Any?>): String {
-    val (targets, name) = resolve(path)
-    if (name in OWNED) throw problem("$name is owned by the core")
-    for (target in targets) {
-      for (method in target.cls.methods) {
-        if (method.name != name) continue
-        val arguments = arguments(method, target, args) ?: continue
-        return toJson(invoke(method, target, arguments))
-      }
-    }
-    throw problem("no public method $path takes these arguments")
-  }
+  /** `root.method` with [args]: a public method the core doesn't own, its result as JSON. Throws a [PlatformException]. */
+  fun call(path: String, args: List<Any?>): String = resolve(path).let { (targets, name) -> call(targets, name, args) }
 
   /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
   private fun resolve(path: String): Pair<List<Target>, String> {
     val parts = path.split('.', limit = 2)
-    if (parts.size != 2) throw problem("use root.key")
-    return (targets(parts[0]) ?: throw problem("unknown root: use settings, webView, cookieManager or webStorage")) to parts[1]
+    if (parts.size != 2) throw notFound("use root.key")
+    return (targets(parts[0]) ?: throw notFound("unknown root: use settings, webView, cookieManager or webStorage")) to parts[1]
   }
 
   private fun targets(root: String): List<Target>? = when (root) {
@@ -118,6 +94,34 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
       "destroy", "removeAllViews", "pauseTimers", "resumeTimers", "loadUrl", "loadData", "loadDataWithBaseURL",
       "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript"
     )
+
+    /** [key]'s getter on the first of [targets] that has one, as JSON. */
+    fun get(targets: List<Target>, key: String): String {
+      if (key in OWNED) throw problem("$key is owned by the core")
+      val capital = key.replaceFirstChar { it.uppercaseChar() }
+      for (target in targets) {
+        for (method in target.cls.methods) {
+          val getter = method.name == "get$capital" || method.name == "is$capital"
+          if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
+          val args = arguments(method, target, emptyList()) ?: continue
+          return toJson(invoke(method, target, args))
+        }
+      }
+      throw notFound("no public getter for $key")
+    }
+
+    /** The first method [name] of [targets] that takes [args], its result as JSON. */
+    fun call(targets: List<Target>, name: String, args: List<Any?>): String {
+      if (name in OWNED) throw problem("$name is owned by the core")
+      for (target in targets) {
+        for (method in target.cls.methods) {
+          if (method.name != name) continue
+          val arguments = arguments(method, target, args) ?: continue
+          return toJson(invoke(method, target, arguments))
+        }
+      }
+      throw notFound("no public method $name takes these arguments")
+    }
 
     /** Calls [key]'s setter on the first target that takes [value]; returns the problem, or null when it was set. */
     fun set(targets: List<Target>, key: String, value: Any?): String? {
@@ -177,16 +181,26 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
       method.invoke(target.receiver, *args)
     } catch (e: InvocationTargetException) {
       val cause = e.cause ?: e
-      throw problem(if (cause is UnsupportedOperationException) "not supported by this WebView" else "failed: $cause")
+      throw if (cause is UnsupportedOperationException) {
+        PlatformException("unavailable", "not supported by this WebView")
+      } else {
+        problem("failed: $cause")
+      }
     } catch (e: IllegalAccessException) {
       throw problem("not accessible: ${e.message}")
     }
 
-    private fun problem(reason: String) = IllegalArgumentException(reason)
+    private fun problem(reason: String) = PlatformException("native_error", reason)
 
-    /** A getter's or method's result as JSON: primitives, strings, lists and maps of them; anything else is null. */
+    private fun notFound(reason: String) = PlatformException("not_found", reason)
+
+    /**
+     * A getter's or method's result as JSON: primitives, strings, lists and maps of them; anything else is null. A
+     * non-finite number throws: JSON has none.
+     */
     fun toJson(value: Any?): String = when (value) {
       null, is Unit -> "null"
+      is Double, is Float -> if ((value as Number).toDouble().isFinite()) value.toString() else throw problem("$value is not JSON")
       is Boolean, is Number -> value.toString()
       is String -> JSONObject.quote(value)
       is Map<*, *> -> JSONObject(value.mapKeys { it.key.toString() }.mapValues { jsonable(it.value) }).toString()
@@ -203,3 +217,6 @@ internal class PlatformSettings(private val owner: MinimalWebView) {
     }
   }
 }
+
+/** Why [PlatformSettings.get] or [PlatformSettings.call] failed; [code] is the JS error code. */
+internal class PlatformException(val code: String, message: String) : IllegalArgumentException(message)

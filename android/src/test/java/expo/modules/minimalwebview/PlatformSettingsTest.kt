@@ -2,6 +2,7 @@ package expo.modules.minimalwebview
 
 import expo.modules.minimalwebview.PlatformSettings.Target
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /** `PlatformSettings.set` on a fake: a JS value coerced to each parameter type, and the reason for each rejection. */
@@ -17,6 +18,8 @@ class PlatformSettingsTest {
     fun setTag(v: Any) { values += v }
     fun setUnsupported(v: Int): Unit = throw UnsupportedOperationException("$v")
     fun setFailing(v: Int): Unit = throw IllegalStateException("boom $v")
+    fun getUnsupported(): Int = throw UnsupportedOperationException()
+    fun getNaN() = Double.NaN
   }
   private object FakeCompat {
     @JvmStatic fun setZoom(fake: Fake, v: Int) { fake.values += v }
@@ -54,5 +57,31 @@ class PlatformSettingsTest {
     assertEquals("owned by the core" to none, set("webViewClient", 1))
     assertEquals("not supported by this WebView" to none, set("unsupported", 1))
     assertEquals("failed: java.lang.IllegalStateException: boom 1" to none, set("failing", 1))
+  }
+
+  /** The JS error code `get`, `call` or `toJson` rejects with. */
+  private fun code(body: () -> Unit) = assertThrows(PlatformException::class.java, body).code
+
+  @Test
+  fun getAndCallCodes() {
+    val fake = Fake()
+    val targets = listOf(Target(Fake::class.java, fake, null))
+    assertEquals("null", PlatformSettings.call(targets, "setInt", listOf(1)))
+    assertEquals(listOf<Any?>(1), fake.values)
+    assertEquals("not_found", code { PlatformSettings.get(targets, "missing") })
+    assertEquals("not_found", code { PlatformSettings.call(targets, "missing", emptyList()) })
+    assertEquals("not_found", code { PlatformSettings.call(targets, "setInt", listOf("1")) }) // no overload takes it
+    assertEquals("native_error", code { PlatformSettings.get(targets, "destroy") }) // owned by the core
+    assertEquals("native_error", code { PlatformSettings.call(targets, "setFailing", listOf(1)) })
+    assertEquals("unavailable", code { PlatformSettings.get(targets, "unsupported") })
+    assertEquals("native_error", code { PlatformSettings.get(targets, "naN") })
+  }
+
+  @Test
+  fun toJson() {
+    assertEquals("1.5", PlatformSettings.toJson(1.5))
+    assertEquals("null", PlatformSettings.toJson(Any()))
+    assertEquals("native_error", code { PlatformSettings.toJson(Double.POSITIVE_INFINITY) })
+    assertEquals("native_error", code { PlatformSettings.toJson(Float.NaN) })
   }
 }

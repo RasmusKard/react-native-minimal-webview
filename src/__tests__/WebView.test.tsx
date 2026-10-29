@@ -10,6 +10,9 @@ import type { Bridge, NavigationState, WebViewProps, WebViewRef, WebViewRefObjec
 const mockAnswer = jest.fn();
 const mockNavigate = jest.fn();
 const mockEvaluate = jest.fn(async (_script: string) => '{"a":1}');
+const mockHook = jest.fn(async (name: string, method: string, args: string) =>
+  JSON.stringify({ name, method, args })
+);
 const mockBridgePost = jest.fn<void, [json: string]>();
 const mockMount = jest.fn();
 const mockNativeModule = {
@@ -38,8 +41,7 @@ jest.mock('expo', () => {
           get: async (path: string) => JSON.stringify({ get: path }),
           call: async (path: string, args: string, completion: string | null) =>
             JSON.stringify({ call: path, args, completion }),
-          hook: async (name: string, method: string, args: string) =>
-            JSON.stringify({ name, method, args }),
+          hook: mockHook,
         }));
         return createElement(name, props);
       },
@@ -802,6 +804,30 @@ describe('navigation state across remounts', () => {
     await unmounted;
     expect(mockEvaluate).toHaveBeenCalledTimes(1);
     mockEvaluate.mockImplementation(async () => '{"a":1}');
+  });
+
+  it('rejects a ref call still pending at unmount with navigated, and ignores the late answer', async () => {
+    let reply: ((json: string) => void) | undefined;
+    mockHook.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          reply = resolve;
+        })
+    );
+    const ref = createWebViewRef();
+    const root = createRoot();
+    await act(async () =>
+      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+    const stale = ref.current;
+    const pending = stale?.hook('probe', 'never').catch((error: unknown) => error);
+    const answered = await stale?.hook('probe', 'now');
+    expect(answered).toMatchObject({ method: 'now' });
+
+    await act(async () => root.unmount());
+    expect(await pending).toMatchObject({ code: 'navigated' });
+    reply?.('1');
+    await expect(stale?.hook('probe', 'after')).rejects.toMatchObject({ code: 'unavailable' });
   });
 
   it('getState and subscribe follow attach, detach and re-attach; detach resets to the initial state', async () => {
