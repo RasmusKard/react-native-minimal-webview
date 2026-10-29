@@ -5,6 +5,7 @@ import { AppState, Platform, type ViewProps } from 'react-native';
 import { CONNECTION } from './bridge/createBridge';
 import { codedError } from './bridge/endpoint';
 import { DEFAULTS } from './defaults.generated';
+import { iosCompletions } from './platform.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookEvent,
@@ -143,7 +144,7 @@ export type NativeMethods = {
   get(path: string): Promise<string>;
   /**
    * Calls a platform method: the JSON of its result. `argsJson` is JSON, so that a `null` argument survives the native
-   * conversion. `completion` is iOS's handler shape.
+   * conversion. `completion` is the iOS selector's handler shape, from the SDK headers; Android ignores it.
    */
   call(path: string, argsJson: string, completion: string | null): Promise<string>;
   /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `call`. */
@@ -234,11 +235,12 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       goForward: () => void native.current?.navigate('forward'),
       reload: () => void native.current?.navigate('reload'),
       stopLoading: () => void native.current?.navigate('stop'),
-      evaluate: (script) => mounted(() => native.current?.evaluate(script)),
-      get: (key) => mounted(() => native.current?.get(key)),
-      call: (method, args = [], options) =>
-        mounted(() =>
-          native.current?.call(method, JSON.stringify(args), options?.completion ?? null)
+      evaluate: async (script) => parsed(await (native.current?.evaluate(script) ?? gone())),
+      get: async (key) => parsed(await (native.current?.get(key) ?? gone())),
+      call: async (method, args = []) =>
+        parsed(
+          await (native.current?.call(method, JSON.stringify(args), iosCompletions[method] ?? null) ??
+            gone())
         ),
       hook: (name, method, args = []) =>
         mounted(() => native.current?.hook(name, method, JSON.stringify(args))),

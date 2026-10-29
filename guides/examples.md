@@ -128,16 +128,31 @@ Any setting by its platform name, and any public method through `call`.
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
 // Android: a public method of settings, webView, cookieManager or webStorage
 await ref.current?.call('webView.clearCache', [true]);
-await ref.current?.call('cookieManager.removeAllCookies', [null]);
-// iOS: an Objective-C selector; a trailing completion handler needs its shape
+await ref.current?.call('cookieManager.removeAllCookies'); // resolves once they're gone
+// iOS: an Objective-C selector
 await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
-await ref.current?.call(
-  'websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:',
-  [{ set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] }, { date: 0 }],
-  { completion: 'void' }
-);
-const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null], { completion: 'valueError' }); // base64
+await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
+  { set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] },
+  { date: 0 },
+]);
+const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null]); // base64
 ```
+
+## Cookies
+
+```tsx
+// iOS: the WebView's data store (`sharedCookies` syncs it with the app's)
+await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
+  { cookie: { Name: 'session', Value: token, Domain: 'example.com', Path: '/', Secure: 'TRUE' } },
+]);
+const cookies = await ref.current?.call('httpCookieStore.getAllCookies:'); // [{ Name, Value, Domain, Path, … }]
+// Android: the app-wide CookieManager
+await ref.current?.call('cookieManager.setCookie', ['https://example.com', `session=${token}; Secure`]);
+const header = await ref.current?.call('cookieManager.getCookie', ['https://example.com']); // 'session=…; other=…'
+```
+
+The calls need a mounted WebView: to set a cookie before the first page, mount with `{ uri: 'about:blank' }` and set
+the real `source` after the call resolves.
 
 ## Scripts
 
