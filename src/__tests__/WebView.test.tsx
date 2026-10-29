@@ -745,9 +745,18 @@ describe('navigation state across remounts', () => {
       completion: null,
     });
     expect(await ref.current?.call('clearCache')).toMatchObject({ args: '[]' });
+    // The completion shape comes from the SDK headers' table; an unlisted selector gets none, so native rejects it.
+    expect(await ref.current?.call('httpCookieStore.getAllCookies:')).toEqual({
+      call: 'httpCookieStore.getAllCookies:',
+      args: '[]',
+      completion: 'value',
+    });
     expect(
-      await ref.current?.call('webView.x:completionHandler:', [], { completion: 'error' })
-    ).toEqual({ call: 'webView.x:completionHandler:', args: '[]', completion: 'error' });
+      await ref.current?.call('webView.restoreData:completionHandler:', [{ data: '' }])
+    ).toMatchObject({ completion: 'error' });
+    expect(await ref.current?.call('webView.x:completionHandler:')).toMatchObject({
+      completion: null,
+    });
     const stale = ref.current;
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();

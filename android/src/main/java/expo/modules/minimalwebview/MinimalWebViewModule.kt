@@ -110,10 +110,10 @@ class MinimalWebViewModule : Module() {
 
       AsyncFunction("navigate") { view: MinimalWebView, action: String -> navigate(view, action) }.runOnQueue(Queues.MAIN)
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
-        native(view, promise) { view.platformSettings.get(path) }
+        native(view, promise) { promise.resolve(view.platformSettings.get(path)) }
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
-        native(view, promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) }
+        native(view, promise) { view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>, promise::resolve) }
         // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
@@ -160,22 +160,22 @@ private fun hook(view: MinimalWebView, name: String, method: String, args: Strin
   val handler = view.hookHandler(name, method)
     ?: return promise.reject("not_found", "no attached hook `$name` handles `$method`", null)
   try {
-    handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { PlatformSettings.toJson(it) } }
+    handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } }
   } catch (e: Exception) {
     promise.reject("native_error", e.message, e)
   }
 }
 
 /**
- * Resolves with [body]'s JSON. A [PlatformException] rejects with its code, anything else it throws with `native_error`,
- * and a dead WebView with `unavailable`.
+ * Runs [body], which resolves [promise]. A [PlatformException] it throws rejects with its code, anything else with
+ * `native_error`, and a dead WebView with `unavailable`.
  */
-private inline fun native(view: MinimalWebView, promise: Promise, body: () -> String) =
+private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Unit) =
   if (view.recovering) {
     promise.reject("unavailable", RECOVERING, null)
   } else {
     try {
-      promise.resolve(body())
+      body()
     } catch (e: Exception) {
       promise.reject((e as? PlatformException)?.code ?: "native_error", e.message, e)
     }

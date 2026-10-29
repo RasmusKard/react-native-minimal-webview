@@ -102,6 +102,20 @@ check("call set", view.configuration.preferences.minimumFontSize, 14.0)
 check("call refused", thrown { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "reload is owned by the core, or private")
 check("a refused selector is native_error", code { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "native_error")
 check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], completion: nil, webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
+/// A method per completion-handler shape the Swift tests can't get from WebKit without a page load.
+final class Completions: NSObject {
+  @objc func reportCount(_ handler: @escaping (Int) -> Void) { handler(3) }
+  @objc func fail(_ handler: @escaping (NSError?) -> Void) { handler(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "nope"])) }
+}
+/// What MRWInvoke settled with: the error, else the result.
+func invoke(_ selector: Selector, _ completion: String?) -> String? {
+  var settled: String?
+  MRWInvoke(Completions(), selector, [], completion) { value, error in settled = error ?? value.map { "\($0)" } }
+  return settled
+}
+check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")
+check("an error completion rejects with its description", invoke(#selector(Completions.fail(_:)), "error"), "nope")
+check("a block selector without a shape rejects", invoke(#selector(Completions.reportCount(_:)), nil), "the method takes a completion handler this package's SDK headers don't list: write a native hook")
 check("NaN as JSON throws", (thrown { try PlatformSettings.json { Double.nan } } as? String)?.hasPrefix("NSInvalidArgumentException:"), true)
 print("\(cases - failures)/\(cases) platform settings cases pass")
 exit(failures == 0 ? 0 : 1)
