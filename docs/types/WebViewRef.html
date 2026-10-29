@@ -43,9 +43,10 @@ effect can come before the view exists), then reject with <code>unavailable</cod
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="call-1"><span class="tsd-kind-call-signature">call</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">method</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#call-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Calls a platform method, <code>root.method</code>, and resolves with its result through JSON.</p>
-<p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (then <code>WebViewCompat</code>'s),
-<code>cookieManager</code> or <code>webStorage</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Calls a platform method, <code>root.method</code>, and resolves with its result through JSON. It acts on the WebView as it is
+when the call arrives: a navigation doesn't reject it.</p>
+<p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (inherited <code>View</code> methods
+too, then <code>WebViewCompat</code>'s), <code>cookieManager</code> or <code>webStorage</code>.</p>
 <p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>.</p>
 <p>Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an unknown root or method (Android: or none of that name takes
 these arguments); <code>unavailable</code> for a compat method this WebView doesn't support (Android); <code>native_error</code> for a
@@ -69,7 +70,8 @@ that takes another object, write a native hook.</p>
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">method</span>: <span class="tsd-signature-type">string</span></span></li>
 <li><span><span class="tsd-kind-parameter">args</span>: <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span></span>
-<div class="tsd-comment tsd-typography"><p>The method's arguments. On iOS they are converted by its signature: booleans, numbers, strings, the
+<div class="tsd-comment tsd-typography"><p>The method's arguments. On Android: booleans, numbers, strings, and <code>null</code> for an object parameter
+such as a <code>Paint</code>. On iOS they are converted by its signature: booleans, numbers, strings, the
 structs as objects, <code>null</code> for nil, and <code>{ set: [...] }</code>, <code>{ date: seconds }</code>, <code>{ data: base64 }</code> or
 <code>{ cookie: properties }</code> for an <code>NSSet</code>, <code>NSDate</code>, <code>NSData</code> or <code>NSHTTPCookie</code>. A cookie's properties are
 <code>NSHTTPCookie</code>'s keys: <code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code> (seconds, as a string),
@@ -115,7 +117,8 @@ hold a call until it navigates.</p>
 <code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android, <code>textZoom</code> reads
 <code>getTextZoom()</code>, <code>isTextZoom()</code> or a non-void <code>textZoom()</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an
 unknown root or key, <code>unavailable</code> for one this WebView doesn't support (Android), and <code>native_error</code> for one it
-can't read or that the core owns.</p>
+can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
+reject it.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -134,7 +137,7 @@ can't read or that the core owns.</p>
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="goback-1"><span class="tsd-kind-call-signature">goBack</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#goback-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Goes back one page, when <code>canGoBack</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Goes back one page; does nothing unless <code>canGoBack</code>.</p>
 <p>On Android, as Chrome's back button, it also skips the history entries a page added without a user gesture
 (<code>pushState</code>, a hash change) and the page that added them.</p>
 </div>
@@ -145,7 +148,7 @@ can't read or that the core owns.</p>
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="goforward-1"><span class="tsd-kind-call-signature">goForward</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#goforward-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Goes forward one page, when <code>canGoForward</code>.</p>
+<div class="tsd-comment tsd-typography"><p>Goes forward one page; does nothing unless <code>canGoForward</code>.</p>
 </div>
 </div></li></ul></section>
 <section class="tsd-panel tsd-member">

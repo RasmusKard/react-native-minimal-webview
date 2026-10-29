@@ -63,6 +63,12 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td><code>ios.configuration.allowsAirPlayForMediaPlayback: false</code></td>
 </tr>
 <tr>
+<td>iOS picture-in-picture</td>
+<td>Off</td>
+<td>WebKit's</td>
+<td><code>ios.configuration.allowsPictureInPictureMediaPlayback: false</code></td>
+</tr>
+<tr>
 <td>iOS data detectors</td>
 <td>Phone numbers</td>
 <td>None</td>
@@ -82,7 +88,7 @@ props that became something else, and what has no equivalent. The <a href="../">
 </tr>
 <tr>
 <td>Debugging</td>
-<td>iOS off; Android on in debug builds</td>
+<td>Off (<code>webviewDebuggingEnabled</code>)</td>
 <td>iOS on in <code>__DEV__</code>; Android on in debug builds</td>
 <td><code>ios.webView.inspectable</code>, <code>WebView.android.setWebContentsDebuggingEnabled</code></td>
 </tr>
@@ -102,7 +108,7 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td>Renderer crash</td>
 <td>Reported; the app reloads or remounts</td>
 <td>The core reloads, and reports <code>onProcessGone({ recovered: true })</code></td>
-<td>Nothing: a <code>reload()</code> in <code>onProcessGone</code> loads the page twice</td>
+<td>Nothing when <code>recovered</code> is true: a <code>reload()</code> then loads the page twice. When it is false (a POST <code>source</code>, or more than 3 crashes in 60 s), only <code>reload()</code> recovers</td>
 </tr>
 <tr>
 <td>Messaging</td>
@@ -206,19 +212,23 @@ props that became something else, and what has no equivalent. The <a href="../">
 </tr>
 <tr>
 <td><code>clearCache</code>, <code>clearHistory</code>, <code>clearFormData</code>, <code>requestFocus</code></td>
-<td>On Android <code>call('webView.clearCache', [true])</code> and the like; on iOS <code>call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)</code> clears the cache, and the back-forward list can't be cleared</td>
+<td>On Android <code>call('webView.clearCache', [true])</code>, <code>call('webView.clearHistory')</code>, <code>call('webView.clearFormData')</code> and <code>call('webView.requestFocus')</code>; on iOS <code>call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', …)</code> clears the cache, and the back-forward list can't be cleared</td>
 </tr>
 <tr>
-<td><code>basicAuthCredential</code>, custom JS dialogs, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>keyboardDisplayRequiresUserAction</code>, <code>hideKeyboardAccessoryView</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>downloadingMessage</code>, <code>nativeConfig</code></td>
+<td><code>basicAuthCredential</code>, <code>menuItems</code>, <code>onCustomMenuSelection</code>, <code>suppressMenuItems</code>, <code>keyboardDisplayRequiresUserAction</code>, <code>hideKeyboardAccessoryView</code>, <code>removeIosKeyboardObserver</code>, <code>refreshControlLightMode</code>, <code>downloadingMessage</code>, <code>nativeConfig</code>, and custom JS dialogs (react-native-webview has no prop for them)</td>
 <td>A <a href="Examples.html#native-hooks">native hook</a></td>
+</tr>
+<tr>
+<td><code>nestedScrollEnabled</code></td>
+<td>A native hook with a touch listener that calls <code>requestDisallowInterceptTouchEvent(true)</code> on the WebView's parent. <code>android.webView.nestedScrollingEnabled</code> doesn't do it: the parent still takes the swipe</td>
 </tr>
 <tr>
 <td><code>incognito</code></td>
 <td><code>ios.configuration.websiteDataStore: 'nonPersistent'</code>; on Android the clearing calls react-native-webview makes (<a href="#incognito">below</a>)</td>
 </tr>
 <tr>
-<td><code>scrollEnabled</code> (Android), <code>autoManageStatusBarEnabled</code>, <code>useSharedProcessPool</code>, <code>ignoreSilentHardwareSwitch</code>, <code>enableApplePay</code></td>
-<td>Not supported: inject CSS <code>overflow: hidden</code>; iOS uses WebKit's own fullscreen; <code>WKProcessPool</code> has had no effect since iOS 15; react-native-webview keeps a silent <code>&lt;audio&gt;</code> playing for it; Apple Pay works with scripts injected since iOS 16</td>
+<td><code>autoManageStatusBarEnabled</code>, <code>useSharedProcessPool</code>, <code>ignoreSilentHardwareSwitch</code>, <code>enableApplePay</code></td>
+<td>Not supported: iOS uses WebKit's own fullscreen; <code>WKProcessPool</code> has had no effect since iOS 15; react-native-webview keeps a silent <code>&lt;audio&gt;</code> playing for it; Apple Pay works with scripts injected since iOS 16</td>
 </tr>
 </tbody>
 </table>
@@ -231,6 +241,10 @@ props that became something else, and what has no equivalent. The <a href="../">
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>scrollEnabled</code> (iOS only in react-native-webview)</td>
+<td><code>ios.scrollView.scrollEnabled</code></td>
+</tr>
 <tr>
 <td><code>showsVerticalScrollIndicator</code>, <code>showsHorizontalScrollIndicator</code></td>
 <td><code>ios.scrollView.&lt;the same name&gt;</code>; <code>android.webView.verticalScrollBarEnabled</code>, <code>horizontalScrollBarEnabled</code></td>
@@ -264,16 +278,12 @@ props that became something else, and what has no equivalent. The <a href="../">
 <td><code>android.settings.&lt;the same name&gt;</code>; on iOS <code>ios.preferences.allowFileAccessFromFileURLs</code> and <code>ios.configuration.allowUniversalAccessFromFileURLs</code></td>
 </tr>
 <tr>
-<td><code>nestedScrollEnabled</code></td>
-<td><code>android.webView.nestedScrollingEnabled</code></td>
-</tr>
-<tr>
 <td><code>androidLayerType</code></td>
 <td><code>call('webView.setLayerType', [type, null])</code>, <code>type</code> 0, 1 or 2 (<code>View.LAYER_TYPE_*</code>); again after a renderer crash</td>
 </tr>
 <tr>
 <td><code>style={{ backgroundColor: 'transparent' }}</code></td>
-<td><code>android.webView.other.backgroundColor: 0</code>; on iOS <code>call('webView.setOpaque:', [false])</code> once mounted, again when it remounts (<code>ios.webView.opaque</code> is refused)</td>
+<td><code>android.webView.other.backgroundColor: 0</code>; on iOS <code>call('webView.setOpaque:', [false])</code> once mounted, again when it remounts (the <code>ios.webView.opaque</code> key is <a href="https://rasmuskard.github.io/minimal-rn-webview/types/IOSSettings.html">skipped with a warning</a>)</td>
 </tr>
 <tr>
 <td><code>containerStyle</code></td>
@@ -283,6 +293,10 @@ props that became something else, and what has no equivalent. The <a href="../">
 </table>
 <h2 id="what-else-changes" class="tsd-anchor-link">What else changes<a href="#what-else-changes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
+<li><code>source</code>, <code>style</code>, <code>userAgent</code>, <code>onError</code> and the ref's <code>goBack</code>, <code>goForward</code>, <code>reload</code> and <code>stopLoading</code> keep their
+names. <code>onNavigationStateChange</code> keeps its name too, but fires on every state change (progress and title as well),
+and <code>useWebView2</code> (Windows) has no counterpart. <code>lackPermissionToDownloadMessage</code> is moot: a download lands in the
+app's cache and needs no storage permission.</li>
 <li>The <code>LSApplicationQueriesSchemes</code> (iOS) and <code>&lt;queries&gt;</code> (Android) entries you added for the schemes a page opens can
 go (<a href="https://rasmuskard.github.io/minimal-rn-webview/interfaces/WebViewProps.html#onopenexternal"><code>onOpenExternal</code></a>).</li>
 <li>After a server redirect the rules block, the state is the page before it with <code>outcome</code> <code>cancelled</code>.
