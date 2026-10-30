@@ -1044,8 +1044,8 @@ export type WebViewRef = {
    *   a delegate, and private (`_`), KVC, `willChange…`, `didChange…`, `performSelector`, `init…`, `copy…`,
    *   `mutable…`, `new…` and reference-counting selectors.
    * - Android (in `get` too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
-   *   document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers`, `evaluateJavascript` and
-   *   `setWebContentsDebuggingEnabled`.
+   *   document-start scripts, the touch, scroll-change and navigation listeners, `destroy`, `removeAllViews`,
+   *   `pauseTimers`, `resumeTimers`, `evaluateJavascript` and `setWebContentsDebuggingEnabled`.
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
    * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
@@ -1053,8 +1053,9 @@ export type WebViewRef = {
    * Android, a method that takes `args` as they are wins over one that also takes a callback, and a `null` in the
    * callback's place passes none.
    *
-   * On iOS one mistake the signature can't catch crashes the app: an object argument of the wrong class; for a method
-   * that takes another object, write a native hook.
+   * One mistake the signature can't catch crashes the app: on iOS an object argument of the wrong class, and on Android
+   * a `null` listener or callback other than the trailing `ValueCallback`, once WebView calls it. For a method that
+   * takes another object, write a native hook.
    *
    * @param args The method's arguments.
    *

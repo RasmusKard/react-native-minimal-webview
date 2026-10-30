@@ -138,7 +138,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       "removeJavascriptInterface", "addWebMessageListener", "removeWebMessageListener", "addDocumentStartJavaScript",
       "destroy", "removeAllViews", "pauseTimers", "resumeTimers", "loadUrl", "loadData", "loadDataWithBaseURL",
       "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript",
-      "setWebContentsDebuggingEnabled"
+      "setWebContentsDebuggingEnabled", "setOnTouchListener", "setOnScrollChangeListener", "addNavigationListener"
     )
 
     /** [key]'s getter on the first of [targets] that has one, as JSON. */
