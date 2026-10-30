@@ -1,6 +1,7 @@
 // The `shapes` suite: the flows apps are built from (a hybrid site, OAuth, 3-D Secure, new windows, schemes, documents,
 // uploads, an SPA), each pinned to its expectation per platform. The checks drive a ShapeHost, so another WebView
 // library can run the same checks under the same names.
+import { BackHandler, Platform } from 'react-native';
 import type {
   FileRequest,
   NavigationEvent,
@@ -8,7 +9,6 @@ import type {
   NavigationState,
   PermissionRequest,
 } from 'react-native-minimal-webview';
-import { BackHandler, Platform } from 'react-native';
 
 import {
   type Harness,

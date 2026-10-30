@@ -4,8 +4,8 @@
 // measurements drive a PerfHost, so another WebView library can run them unchanged. All numbers come from a Debug
 // build with Metro.
 import { requireNativeModule } from 'expo';
-import type { NavigationRule } from 'react-native-minimal-webview';
 import { Platform } from 'react-native';
+import type { NavigationRule } from 'react-native-minimal-webview';
 
 import { type Harness, launchMarks, openPage, reporter, sleep, until } from './harness';
 

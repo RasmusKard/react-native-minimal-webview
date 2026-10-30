@@ -1,3 +1,13 @@
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Button,
+  type HostInstance,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   type NavigationRule,
   type WebViewProps,
@@ -11,16 +21,6 @@ import {
   useWebViewState,
   createWebViewRef,
 } from 'react-native-minimal-webview';
-import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Button,
-  type HostInstance,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
 import { type PageCounterEvent, pageCounter } from 'sample-extension';
 
 import {
