@@ -1069,7 +1069,7 @@ export type WebViewRef = {
    * its object (`{ data }` that isn't base64, a `{ cookie }` without a required key) rejects with `native_error`.
    * @returns The result, as below; any other object is `null`.
    *
-   * - Android: primitives, strings, and lists and maps of them.
+   * - Android: primitives, strings, and lists, arrays and maps of them.
    * - iOS: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage` as a
    *   base64 PNG, the structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds), and arrays, sets
    *   and dictionaries of them.

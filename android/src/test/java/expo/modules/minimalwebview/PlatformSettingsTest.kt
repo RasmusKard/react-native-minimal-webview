@@ -143,6 +143,11 @@ class PlatformSettingsTest {
     assertEquals("null", PlatformSettings.toJson(Any()))
     assertEquals("native_error", code { PlatformSettings.toJson(Double.POSITIVE_INFINITY) })
     assertEquals("native_error", code { PlatformSettings.toJson(Float.NaN) })
+    assertEquals("native_error", code { PlatformSettings.toJson(listOf(1, Double.NaN)) })
+    assertEquals("native_error", code { PlatformSettings.toJson(mapOf("a" to listOf(Float.POSITIVE_INFINITY))) })
+    assertEquals("""["a",[1,"b"],null]""", PlatformSettings.toJson(listOf("a", arrayOf(1, "b"), Any())))
+    assertEquals("\"quoted\\\"\"", PlatformSettings.toJson("quoted\""))
+    assertEquals("null", PlatformSettings.toJson(null))
   }
 
   /** A root whose keys have getters (`getFlag`, `getText`), except `blind`. */
