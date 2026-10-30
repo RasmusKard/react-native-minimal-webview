@@ -78,11 +78,6 @@ npm install react-native-minimal-webview   # or: yarn add, pnpm add
 | Expo SDK | 53 (React Native 0.79, React 19) |
 | Architecture | New architecture only |
 
-### Build notes
-
-- Expo SDK 53 on a current Xcode: build React Native's `fmt` pod as C++17, in a Podfile `post_install` hook.
-- Jest: the build is ESM, so add `react-native-minimal-webview` to `transformIgnorePatterns`.
-
 ## Usage
 
 ```tsx

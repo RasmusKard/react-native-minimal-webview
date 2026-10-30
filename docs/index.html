@@ -109,11 +109,6 @@ module.</li>
 </tr>
 </tbody>
 </table>
-<h3 id="build-notes" class="tsd-anchor-link">Build notes<a href="#build-notes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<ul>
-<li>Expo SDK 53 on a current Xcode: build React Native's <code>fmt</code> pod as C++17, in a Podfile <code>post_install</code> hook.</li>
-<li>Jest: the build is ESM, so add <code>react-native-minimal-webview</code> to <code>transformIgnorePatterns</code>.</li>
-</ul>
 <h2 id="usage" class="tsd-anchor-link">Usage<a href="#usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <pre><code class="tsx"><span class="hl-9">import</span><span class="hl-2"> { </span><span class="hl-6">WebView</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-11">&#39;react-native-minimal-webview&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-9">export</span><span class="hl-2"> </span><span class="hl-4">function</span><span class="hl-2"> </span><span class="hl-10">Browser</span><span class="hl-2">() {</span><br/><span class="hl-2">  </span><span class="hl-9">return</span><span class="hl-2"> </span><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><span class="hl-2"> </span><span class="hl-3">source</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">uri:</span><span class="hl-5"> </span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-5"> }</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-3">style</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">flex:</span><span class="hl-5"> </span><span class="hl-7">1</span><span class="hl-5"> }</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-0">/&gt;</span><span class="hl-2">;</span><br/><span class="hl-2">}</span>
 </code><button type="button">Copy</button></pre>
@@ -198,8 +193,7 @@ bridge or <code>injectedScripts</code> logs a warning. Each feature's TSDoc name
 <li><a href="#install"><span>Install</span></a></li>
 <li>
 <ul>
-<li><a href="#requirements"><span>Requirements</span></a></li>
-<li><a href="#build-notes"><span>Build notes</span></a></li></ul></li>
+<li><a href="#requirements"><span>Requirements</span></a></li></ul></li>
 <li><a href="#usage"><span>Usage</span></a></li>
 <li><a href="#android-system-webview-versions"><span>Android <wbr/>System <wbr/>Web<wbr/>View versions</span></a></li>
 <li><a href="#contributing"><span>Contributing</span></a></li></ul></div></details></div>
