@@ -1,7 +1,6 @@
 # react-native-minimal-webview
 
-A WebView component for React Native, in place of react-native-webview. It decides navigations in native code, talks
-to the page over a typed promise bridge, and takes any iOS or Android WebView setting by its platform name.
+A React Native WebView that hands you the iOS and Android WebView APIs, instead of wrapping each one in a prop.
 
 It runs on iOS and Android, on the new architecture, as an Expo module.
 
@@ -15,29 +14,37 @@ It runs on iOS and Android, on the new architecture, as an Expo module.
 
 ## Why it exists
 
-react-native-webview wraps each platform API it supports in a prop of its own. An API it doesn't wrap means waiting
-for an upstream PR to be merged, or patching or forking the package, even when the change is one platform call.
+react-native-webview wraps each platform API in a prop of its own. When one isn't wrapped, you wait for an upstream
+PR, or patch or fork the package, even if the change is one platform call.
 
-The WebView APIs on iOS and Android don't need that layer, so this package passes them through instead:
+This package passes the platform APIs through instead:
 
-- `ios` and `android` props set any setting by its platform name: `ios={{ scrollView: { bounces: false } }}`.
-- The ref's `get` and `call` read properties and call methods by name: `call('webView.clearCache', [true])`.
-- A [native hook](guides/examples.md#native-hooks), in your own Swift or Kotlin module, gets the `WKWebView` or
-  `WebView` itself, for logic beyond one call.
+- `ios` and `android` props: any setting, by its platform name.
+- The ref's `get` and `call`: properties and methods, by name.
+- [Native hooks](guides/examples.md#native-hooks): the `WKWebView` or `WebView` itself, in your own Swift or Kotlin
+  module.
 
-A thin core keeps up with the platforms. A setting or method a new SDK adds works without a release of this package;
-regenerating the types from the SDK headers only adds autocomplete for the settings.
+```tsx
+<WebView
+  ios={{ scrollView: { bounces: false } }}
+  android={{ settings: { textZoom: 120 } }}
+  …
+/>;
+await ref.current?.call('webView.clearCache', [true]); // Android
+```
+
+A thin core keeps up with the platforms. A setting or method a new SDK adds works without a release of this package.
 
 ## What it changes from react-native-webview
 
-The core keeps what the platforms don't give you as a single API:
+The core adds only what the platform APIs lack:
 
 | | react-native-webview | react-native-minimal-webview |
 |---|---|---|
-| Deciding a navigation | `onShouldStartLoadWithRequest`: a JS round trip for each one | `navigationRules`, matched in native code; `onNavigation` reports the outcome |
-| Talking to the page | `postMessage` strings, open to every page | A typed promise bridge, open only to its `allowedOrigins` |
-| Navigation state | You keep it from `onNavigationStateChange` | `useWebViewState(ref)`: URL, title, progress, `canGoBack` and more |
-| Camera and microphone for the page | Android asks the OS and grants them itself | Your app asks the OS (expo-camera) and answers `onPermissionRequest` |
+| Navigation decisions | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively |
+| Page messaging | `postMessage` strings, any page | Typed promise bridge, `allowedOrigins` only |
+| Navigation state | Tracked by you | `useWebViewState(ref)` |
+| Page camera and microphone | Android grants them itself | Your app answers `onPermissionRequest` |
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
@@ -63,7 +70,7 @@ npm install react-native-minimal-webview   # or: yarn add, pnpm add
 
 ### Requirements
 
-| | Minimum |
+| Platform | Minimum |
 |---|---|
 | iOS | 17.0 |
 | Android | API 29: `minSdkVersion 29`, for example with `expo-build-properties` |
@@ -71,11 +78,10 @@ npm install react-native-minimal-webview   # or: yarn add, pnpm add
 | Expo SDK | 53 (React Native 0.79, React 19) |
 | Architecture | New architecture only |
 
-Expo SDK 53 on a current Xcode: build React Native's `fmt` pod as C++17, with a Podfile `post_install` hook that sets
-its `CLANG_CXX_LANGUAGE_STANDARD` to `c++17`.
+### Build notes
 
-Jest: the build is ESM, so add `react-native-minimal-webview` to `transformIgnorePatterns` (with jest-expo, to its
-`node_modules/(?!...)` allowlist).
+- Expo SDK 53 on a current Xcode: build React Native's `fmt` pod as C++17, in a Podfile `post_install` hook.
+- Jest: the build is ESM, so add `react-native-minimal-webview` to `transformIgnorePatterns`.
 
 ## Usage
 
@@ -99,7 +105,7 @@ Then pick what you need:
 | Run a script on every page | [Scripts](guides/examples.md#scripts) |
 | Load bundled HTML | [Local files](guides/examples.md#local-files) |
 | Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
-| Use the native `WKWebView` or `WebView` | [Native hooks](guides/examples.md#native-hooks); the API is in [`Hooks.swift`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and [`Hooks.kt`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt) |
+| Use the native `WKWebView` or `WebView` | [Native hooks](guides/examples.md#native-hooks), API in [`Hooks.swift`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and [`Hooks.kt`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt) |
 | Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) |
 
 ## Android System WebView versions

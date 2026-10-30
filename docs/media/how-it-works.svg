@@ -3,15 +3,15 @@
   <desc id="desc">The app passes rules and settings to the native WebView core and gets state and events back. The core decides each navigation the page makes without asking JS. The bridge carries promise calls and events between the app and pages on allowed origins.</desc>
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
-    .title { font-size: 15px; font-weight: 600; }
-    .sub { font-size: 12px; fill: #59636e; }
-    .item { font-size: 13px; }
-    .label { font-size: 12px; fill: #59636e; }
+    .title { font-size: 17px; font-weight: 600; }
+    .sub { font-size: 13px; fill: #59636e; }
+    .item { font-size: 15px; }
+    .label { font-size: 13px; fill: #59636e; }
     .box { fill: #f6f8fa; stroke: #d1d9e0; stroke-width: 1.5; }
     .core { fill: #ddf4ff; stroke: #54aeff; stroke-width: 1.5; }
     .arrow { stroke: #59636e; stroke-width: 1.5; fill: none; }
     .bridge { stroke: #0969da; stroke-width: 1.5; fill: none; stroke-dasharray: 6 4; }
-    .bridge-label { font-size: 12px; fill: #0969da; }
+    .bridge-label { font-size: 14px; fill: #0969da; }
     .head { fill: #59636e; }
     .bridge-head { fill: #0969da; }
     @media (prefers-color-scheme: dark) {
