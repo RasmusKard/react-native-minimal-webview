@@ -175,7 +175,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// Settings keys that could not be applied, as warnings: JS logs them with console.warn.
   private func report(_ rejected: [[String: String]]) {
     for entry in rejected {
-      emit("core.warning", ["message": "ios.\(entry["key"] ?? ""): \(entry["reason"] ?? "")"])
+      warn("ios.\(entry["key"] ?? ""): \(entry["reason"] ?? "")")
     }
   }
 
@@ -185,7 +185,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     programmaticUrl = request.url
     if let url = request.url, url.isFileURL {
       let access = ReadAccess.root(for: url, source?.readAccessRoot)
-      if let warning = access.warning { emit("core.warning", ["message": warning]) }
+      if let warning = access.warning { warn(warning) }
       webView?.loadFileURL(url, allowingReadAccessTo: access.root)
     } else {
       webView?.load(request)
@@ -218,7 +218,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     for context in hookContexts { context.hook.configure?(configuration, context) }
     // A typo, or a hook's module not linked or not rebuilt.
     for key in hookOptions.keys where enables(hookOptions[key]) && !hookContexts.contains(where: { $0.key == key }) {
-      emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
+      warn("hookOptions.\(key): no hook is registered under this key")
     }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
@@ -227,7 +227,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let classes = hookContexts.compactMap { context in context.hook.webViewClass.map { (context.key, $0) } }
     let webViewClass = classes.first?.1 ?? WKWebView.self
     for (key, other) in classes where other != webViewClass {
-      emit("core.warning", ["message": "hookOptions.\(key): its webViewClass is not used, \(classes[0].0)'s is"])
+      warn("hookOptions.\(key): its webViewClass is not used, \(classes[0].0)'s is")
     }
     let webView = webViewClass.init(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -462,12 +462,12 @@ extension MinimalWebView {
 
   private func attachLate(_ key: String) {
     guard let webView, let hook = MinimalWebViewHooks.hooks.first(where: { $0.key == key }) else {
-      return emit("core.warning", ["message": "hookOptions.\(key): no hook is registered under this key"])
+      return warn("hookOptions.\(key): no hook is registered under this key")
     }
     // configure edits the configuration the WKWebView was created from, and webViewClass makes it: too late for this one.
     guard hook.configure == nil, hook.webViewClass == nil else {
       let why = hook.configure != nil ? "configure" : "a webViewClass"
-      return emit("core.warning", ["message": "hookOptions.\(key): its hook has \(why), so it attaches only when the WebView is created"])
+      return warn("hookOptions.\(key): its hook has \(why), so it attaches only when the WebView is created")
     }
     let context = HookContext(hook, self)
     hookContexts.append(context)
@@ -500,14 +500,18 @@ extension MinimalWebView {
 
   private func warnDecisions() {
     for name in proxy.sharedDecisions where warnedDecisions.insert(name).inserted {
-      emit("core.warning", ["message": "\(name): more than one hook delegate implements it; only the first one gets it"])
+      warn("\(name): more than one hook delegate implements it; only the first one gets it")
     }
     for (name, lost) in proxy.takenDecisions where warnedDecisions.insert("\(name) taken").inserted {
-      emit("core.warning", ["message": "\(name): a hook delegate takes it, so \(lost)"])
+      warn("\(name): a hook delegate takes it, so \(lost)")
     }
   }
 
   func emit(_ name: String, _ payload: [String: Any]) {
     onHookEvent(["name": name, "payload": payload])
+  }
+
+  func warn(_ message: String) {
+    emit("core.warning", ["message": message])
   }
 }
