@@ -62,16 +62,17 @@ method that raises, a result JSON can't carry (<code>NaN</code>), or a method th
 a delegate, and private (<code>_</code>), KVC, <code>willChange…</code>, <code>didChange…</code>, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>,
 <code>mutable…</code>, <code>new…</code> and reference-counting selectors.</li>
 <li>Android (in <code>get</code> too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
-document-start scripts, <code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>, <code>resumeTimers</code>, <code>evaluateJavascript</code> and
-<code>setWebContentsDebuggingEnabled</code>.</li>
+document-start scripts, the touch, scroll-change and navigation listeners, <code>destroy</code>, <code>removeAllViews</code>,
+<code>pauseTimers</code>, <code>resumeTimers</code>, <code>evaluateJavascript</code> and <code>setWebContentsDebuggingEnabled</code>.</li>
 </ul>
 <p>A trailing completion handler (iOS) or <code>ValueCallback</code> (Android) is left out of <code>args</code>: the call resolves with what
 it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
 SDK headers, or reports something other than an object, an error or an integer, rejects with <code>native_error</code>. On
 Android, a method that takes <code>args</code> as they are wins over one that also takes a callback, and a <code>null</code> in the
 callback's place passes none.</p>
-<p>On iOS one mistake the signature can't catch crashes the app: an object argument of the wrong class; for a method
-that takes another object, write a native hook.</p>
+<p>One mistake the signature can't catch crashes the app: on iOS an object argument of the wrong class, and on Android
+a <code>null</code> listener or callback other than the trailing <code>ValueCallback</code>, once WebView calls it. For a method that
+takes another object, write a native hook.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -91,7 +92,7 @@ its object (<code>{ data }</code> that isn't base64, a <code>{ cookie }</code> w
 </div></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><p>The result, as below; any other object is <code>null</code>.</p>
 <ul>
-<li>Android: primitives, strings, and lists and maps of them.</li>
+<li>Android: primitives, strings, and lists, arrays and maps of them.</li>
 <li>iOS: numbers, strings, an <code>NSURL</code> as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code> as a
 base64 PNG, the structs as objects, an <code>NSHTTPCookie</code> as its properties (<code>Expires</code> in seconds), and arrays, sets
 and dictionaries of them.</li>
