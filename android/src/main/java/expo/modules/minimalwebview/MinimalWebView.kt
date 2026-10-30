@@ -122,9 +122,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // What belongs to the Document (DocumentScope), reset in this order at every end. The asks last: their callbacks
-    // are hook and Chromium code, and a throw there must not skip the core's own resets. The asks and the hooks skip
-    // the commit that opens a Document with none open: what a hook starts in attach belongs to the Document it opens.
+    // Reset in this order at every end; the asks last, so a throw in hook or Chromium code can't skip the core's
+    // resets.
     document.register { fileUpload.cancel() }
     document.register { navigation.documentEnded() }
     document.register { scripts.documentEnded(it) }
@@ -497,7 +496,7 @@ internal fun crashAllowsReload(times: ArrayDeque<Long>, now: Long): Boolean {
   return times.size <= MAX_CRASHES_PER_WINDOW
 }
 
-// ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
+// shortcut: a fixed crash-loop guard, make it a prop if an app needs a different policy
 private const val MAX_CRASHES_PER_WINDOW = 3
 private const val CRASH_WINDOW_MS = 60_000L
 private const val SAME_CRASH_MS = 100L

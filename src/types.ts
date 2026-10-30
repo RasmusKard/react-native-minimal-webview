@@ -107,7 +107,7 @@ export type NavigationRule = {
    */
   newWindow?: boolean;
   /**
-   * A user gesture started it (Android `hasGesture()`, iOS `.linkActivated`).
+   * A user gesture started it.
    *
    * A `location.href` change or `window.open` from a click handler is true on Android, but false on iOS, where only a
    * tapped link is. A redirect of a load the core starts itself (an allowed new window, and on Android an allowed
@@ -314,7 +314,8 @@ export type BridgeEventMap = Record<string, unknown>;
  * Attach it with the `bridge` prop. What it sends waits for the page's `DOMContentLoaded`, so the handlers and
  * listeners of the page's synchronous and deferred scripts are in place, and never reaches a later page, even one on
  * the same origin. A call or event made while no WebView is mounted with the bridge waits the same way (a call's
- * timeout runs meanwhile; the latest 1000 are kept), and unmounting rejects the calls in flight with `navigated`. The
+ * timeout runs meanwhile; the latest 1000 are kept, and an older call rejects at its timeout, or never settles with
+ * `timeoutMs: 0`), and unmounting rejects the calls in flight with `navigated`. The
  * page's own calls don't wait: one made before React Native has registered its method rejects with `not_found`.
  * Handlers and listeners belong to the bridge, not to a WebView: they stay across unmounts. Messages have no size
  * limit.
@@ -449,8 +450,8 @@ export type Download = {
  * A download that could not be saved; `kind` says why:
  * - `network`: connecting or reading the response failed, or a redirect was refused.
  * - `http`: the response had an error status (Android only: iOS saves what the server sent).
- * - `data`: the content: a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or a file
- *   above 100 MB.
+ * - `data`: the content: a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or
+ *   (Android) a file above 100 MB.
  * @group Page requests
  */
 export type DownloadFailure =
@@ -492,8 +493,8 @@ export type SettingsRoot<Keys> = Keys & {
 };
 
 /**
- * WebKit settings by Objective-C property name, set with Key-Value Coding, so any public property works, including ones
- * this package has never heard of (under a root's `other`).
+ * WebKit settings by Objective-C property name. Any public property works, including ones this package has never heard
+ * of (under a root's `other`).
  *
  * The keys the SDK headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
  * option sets by raw value (from {@link IOSConstants}), structs as objects, a `UIColor` as `#rrggbb` or `#rrggbbaa`,
@@ -524,8 +525,6 @@ export type IOSSettings = {
   /**
    * `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
    * reloads and the navigation state starts over).
-   *
-   * The default lets a `<video playsinline>` play inline.
    * @default `{ allowsInlineMediaPlayback: true }`
    */
   configuration?: SettingsRoot<
@@ -555,8 +554,8 @@ export type IOSSettings = {
 };
 
 /**
- * Android settings by setter name without `set`, applied by reflection, so any public setter works, including ones a
- * newer SDK or androidx.webkit adds (under a root's `other`).
+ * Android settings by setter name without `set`. Any public setter works, including ones a newer SDK or androidx.webkit
+ * adds (under a root's `other`).
  *
  * The keys the SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
  *
@@ -631,7 +630,7 @@ export type HookExtension = {
   options: unknown;
   /**
    * Each of the hook's events (`'<key>.<event name>'`), as `onHookEvent` gets them: for an `ask`, the return value is
-   * the answer. Without it, they go to the app's `onHookEvent`.
+   * the answer.
    */
   onEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
 };
@@ -657,8 +656,8 @@ export type FullscreenChangeEvent = { active: boolean };
  * - `navigated`: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
  *   it may have run: retry only what is safe to repeat.
  * - `unavailable`: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
- *   died (Android), or lacks the feature (`evaluate` on an Android System WebView older than 83, the bridge older than
- *   101, a compat method this WebView doesn't support).
+ *   died (Android), or lacks the feature (the method's TSDoc names the Android System WebView it needs, or a compat
+ *   method this WebView doesn't support).
  *
  * A programming error, such as an argument of the wrong type, can reject with a plain `TypeError` instead.
  * @group WebView
@@ -691,7 +690,7 @@ export type CodedError = Error & { code: ErrorCode };
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop: iOS shows a `UIAlertController` titled with the
  * frame's host, one at a time, and Android WebView's own dialogs; an auth challenge is declined, so the site's 401 page
- * shows. A native hook takes them over (`HookDialogs` and `HookAuth` in `example/modules/sample-extension`).
+ * shows. `dialogs` and `basicAuthCredential` of @react-native-minimal-webview/extensions take them over, or a native hook does.
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
@@ -705,8 +704,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * WebKit settings by property name; see {@link IOSSettings}.
    *
-   * A key you remove goes back to the value it had before you first set it: the package's default or WebKit's. The
-   * `userAgent` prop wins over the same key here.
+   * A key you remove goes back to the value it had before you first set it: the package's default or WebKit's.
    * @ios
    */
   ios?: IOSSettings;
@@ -715,13 +713,13 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A key you remove goes back to the value it had before you first set it: the package's (see
    * {@link AndroidSettings.settings}) or the platform's. A key with no getter, such as `geolocationEnabled`, keeps its
-   * value until the WebView is recreated, with a warning. The `userAgent` prop wins over the same key here.
+   * value until the WebView is recreated, with a warning.
    * @android
    */
   android?: AndroidSettings;
   /**
-   * Replaces the whole user agent (`ios.webView.customUserAgent`, `android.settings.userAgentString`). Without it, those
-   * keys are `null`, which is the platform's own user agent.
+   * Replaces the whole user agent, over `ios.webView.customUserAgent` and `android.settings.userAgentString`. Without
+   * it, those keys apply; unset, they are the platform's own user agent.
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
    * `android.settings.userAgentString` to `WebView.android.defaultUserAgent` plus your suffix.
@@ -740,10 +738,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
    * and with no match the navigation is blocked.
    *
-   * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}, which open other schemes externally only when a
-   * user gesture started them. A page that launches an app without one is blocked: from a script or timer, and on iOS
-   * also from a click handler or from a redirect after a form POST (an OAuth `myapp://callback`). To let your scheme
-   * through, put a rule ahead of the defaults:
+   * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}. To let your app's scheme through, put a rule
+   * ahead of them:
    *
    * ```ts
    * navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...WebView.defaultNavigationRules]}
@@ -792,6 +788,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Read when the WebView is created: another bridge recreates it (the page reloads and the navigation state starts
    * over), so make it once (`useMemo`). A bridge serves one mounted WebView at a time: attaching it to a second throws.
+   *
+   * On Android with a WebView older than 101 there is no bridge: calls reject with `unavailable`, and a warning says
+   * so, once per process.
    */
   bridge?: Bridge;
   /**
@@ -800,8 +799,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * A key whose value is not null, undefined or false attaches its hook, and a later change reaches that hook live,
    * without recreating the WebView; removing the key passes the hook null, and it stays attached. A key turned on
    * after the WebView was created attaches its hook then, unless the hook has a `configure` step or its own WebView
-   * class (`webViewClass`, `webViewFactory`): that one attaches only when the WebView is created, and a warning says so. A key no hook is registered under warns: pass a
-   * one-platform hook's key on that platform only.
+   * class (`webViewClass`, `webViewFactory`): that one attaches only when the WebView is created, and a warning says
+   * so. A key no hook is registered under warns: pass a one-platform hook's key on that platform only.
    * @see [Native hooks example](../guides/examples.md#native-hooks)
    */
   hookOptions?: Record<string, unknown>;
@@ -897,8 +896,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Every change to the navigation state.
    *
-   * Changes that arrive together are combined into one call: those within 16 ms on Android, within one main-thread turn
-   * on iOS. `loading` going true is never combined away, so a load that starts and fails at once still reports both.
+   * Changes that arrive together may be combined into one call; `loading` going true is never combined away, so a load
+   * that starts and fails at once still reports both.
    */
   onNavigationStateChange?: (state: NavigationState) => void;
   /**
@@ -968,15 +967,15 @@ export type WebViewRef = {
    * Resolves with its value through JSON: `null` for what JSON can't encode (a function, `NaN`, a cycle), a `Date` as
    * its ISO string. The value is the page's, so treat it as page data. Rejects with a {@link CodedError}:
    * `script_error` (with the script's error message), `navigated` or `unavailable`. There is no timeout: a page can
-   * hold a call until it navigates.
+   * hold a call until it navigates. On Android with a WebView older than 83 it rejects with `unavailable`.
    */
   evaluate(script: string): Promise<unknown>;
   /**
    * A platform setting read by name, through JSON as {@link WebViewRef.call | call} converts results.
    *
    * The roots are those of {@link IOSSettings} and {@link AndroidSettings}, plus `websiteDataStore` and
-   * `httpCookieStore` on iOS and `cookieManager` and `webStorage` on Android. On Android, `textZoom` reads
-   * `getTextZoom()`, `isTextZoom()` or a non-void `textZoom()`. Rejects with a {@link CodedError}: `not_found` for an
+   * `httpCookieStore` on iOS and `cookieManager` and `webStorage` on Android. On Android a key is the getter's name
+   * without `get` or `is`. Rejects with a {@link CodedError}: `not_found` for an
    * unknown root or key, `unavailable` for one this WebView doesn't support (Android), and `native_error` for one it
    * can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
    * reject it.
@@ -1003,8 +1002,7 @@ export type WebViewRef = {
    * a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`,
    * `new…` and reference-counting selectors; on Android (in `get` too) the loads, navigations, clients, JavaScript
    * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
-   * `resumeTimers`, `evaluateJavascript` and
-   * `setWebContentsDebuggingEnabled`.
+   * `resumeTimers`, `evaluateJavascript` and `setWebContentsDebuggingEnabled`.
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
    * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's

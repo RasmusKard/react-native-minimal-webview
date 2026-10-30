@@ -94,10 +94,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
-    // What belongs to the Document (DocumentScope), reset in this order at every end. `closing` comes from invalidate,
-    // at unmount. In the deinit fallback self is already nil, so only the asks end (captured without the view): WebKit
-    // throws for a decision handler released uncalled. The asks and the hooks skip the commit that opens a Document
-    // with none open: what a hook starts in attach, or after a crash, belongs to the Document that commit opens.
+    // Reset in this order at every end. In the deinit fallback self is already nil, so only the asks end (captured
+    // without the view): WebKit throws for a decision handler released uncalled.
     document.register(skipsOpening: true) { [asks] in asks.documentEnded($0) }
     document.register { [weak self] _ in self?.failEvaluations() }
     document.register { [weak self] reason in

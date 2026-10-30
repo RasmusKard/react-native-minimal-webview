@@ -3,24 +3,28 @@
 /**
  * An iOS struct the settings channel carries as an object.
  * @group Platform settings
+ * @ios
  */
 export type UIEdgeInsets = { top: number; left: number; bottom: number; right: number };
 
 /**
  * An iOS struct the settings channel carries as an object.
  * @group Platform settings
+ * @ios
  */
 export type CGPoint = { x: number; y: number };
 
 /**
  * An iOS struct the settings channel carries as an object.
  * @group Platform settings
+ * @ios
  */
 export type CGSize = { width: number; height: number };
 
 /**
  * An iOS struct the settings channel carries as an object.
  * @group Platform settings
+ * @ios
  */
 export type CGRect = { x: number; y: number; width: number; height: number };
 
@@ -30,6 +34,7 @@ export type CGRect = { x: number; y: number; width: number; height: number };
  *
  * `@since` is the iOS version. A key a newer SDK adds goes under the root's `other`.
  * @group Platform settings
+ * @ios
  */
 export type IOSSettingKeys = {
   /** `WKWebViewConfiguration` */
@@ -226,6 +231,7 @@ export type IOSSettingKeys = {
  *
  * `@since` is the API level. A key a newer SDK or androidx.webkit adds goes under the root's `other`.
  * @group Platform settings
+ * @android
  */
 export type AndroidSettingKeys = {
   /** `WebSettings`, then `WebSettingsCompat` */
@@ -496,6 +502,7 @@ export type AndroidSettingKeys = {
  * `WebsiteDataType` has the data type names the `websiteDataStore` methods take, for `call`; `WebViewDataType` is
  * the option set `webView.fetchDataOfTypes:` takes.
  * @group Platform settings
+ * @ios
  * @namespace
  * @hideGroups
  */
@@ -655,6 +662,7 @@ export const iosCompletions: Record<string, 'void' | 'value' | 'valueError' | 'e
  * The `WebSettings`, `WebView`, `WebSettingsCompat` and `WebViewCompat` constants:
  * `settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }`.
  * @group Platform settings
+ * @android
  * @namespace
  * @hideGroups
  */

@@ -54,7 +54,7 @@ enum NavigationRules {
     if internalSchemes.contains(scheme) { return Decision(action: "allow", rule: nil) }
     // JS sends WebView.defaultNavigationRules when the prop has none, so none here matches nothing.
     guard let rules, !rules.isEmpty else { return Decision(action: "block", rule: nil) }
-    // ponytail: an unparseable URL has no host and path "/", so only rules without host conditions match it
+    // shortcut: an unparseable URL has no host and path "/", so only host-less rules match, parse it if one must
     let components = URLComponents(string: request.url)
     // encodedHost keeps an IDNA host in its xn-- form; `host` would decode it.
     var host = (components?.encodedHost ?? components?.host)?.lowercased()

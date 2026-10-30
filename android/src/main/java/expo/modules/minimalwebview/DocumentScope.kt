@@ -5,9 +5,7 @@ package expo.modules.minimalwebview
  * restore or a failed load's error page too) and ends at the next commit, a renderer crash, or the view closing. The
  * first commit after a WebView is made (at mount or after a crash) opens one and ends nothing. It doesn't end at a
  * same-document or sub-frame navigation, a load that never commits (a stop, a download, a 204), the view leaving the
- * window or the app going to the background. What belongs to it registers here once, and the view reports each end:
- * one scope instead of a reset list per trigger, which disagreed per trigger and per platform. Public for [End], which
- * hooks get.
+ * window or the app going to the background. What belongs to it registers here once, and the view reports each end.
  */
 class DocumentScope internal constructor() {
   /** Why a Document ended. */
