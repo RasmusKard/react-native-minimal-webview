@@ -56,7 +56,7 @@ function onInboxNotification() {
 <WebView
   source={{ uri: 'https://example.com' }}
   navigationRules={[
-    { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides, within 1 s
+    { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
     { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
@@ -166,10 +166,8 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 
 ## Local files
 
-An `html` string takes a `baseUrl` that its relative URLs resolve against. A file is a `file://` uri, such as an
-expo-asset's `localUri`: iOS gives the page read access to the file's directory (an ancestor in `readAccessRoot`
-widens it), and Android needs `allowFileAccess`, which lets a `file:` page read any file the app can.
-`file:///android_asset/…` needs no setting.
+An `html` string takes a `baseUrl`; a file is a `file://` uri, such as an expo-asset's `localUri`. See
+[`WebViewSource`](https://rasmuskard.github.io/minimal-rn-webview/types/WebViewSource.html) for each platform's file access.
 
 ```tsx
 const [assets] = useAssets(require('./page.html'));

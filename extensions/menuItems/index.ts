@@ -49,10 +49,10 @@ export type CustomMenuSelectionEvent = {
  * `items` replace the system's items, `onSelect` gets the one chosen, and on iOS `suppress` hides system items. Null
  * when neither is set on this platform (`suppress` alone on Android).
  *
- * Turn it on when the WebView is created: a WebView created without it gets no menu from it until it is created again,
- * and the core warns. Once it has, a change, switching it off included, applies to the next menu. Its hook makes the
- * WebView from a class of its own, so when another hook's `webViewClass` or `webViewFactory`, registered earlier,
- * makes it instead, there is no menu and the core warns. On iOS the items are added to WebKit's own selection menu.
+ * Turn it on when the WebView is created. Once it has, a change, switching it off included, applies to the next menu.
+ * Its hook makes the WebView from a class of its own, so when another hook's `webViewClass` or `webViewFactory`,
+ * registered earlier, makes it instead, there is no menu and the core warns. On iOS the items are added to WebKit's own
+ * selection menu.
  * @group Extensions
  */
 export function menuItems(menu: {

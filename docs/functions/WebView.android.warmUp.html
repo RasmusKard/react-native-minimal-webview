@@ -18,13 +18,9 @@
 <div class="tsd-signature tsd-anchor-link" id="warmup"><span class="tsd-kind-call-signature">warmUp</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#warmup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Starts WebView before any WebView mounts, so the first WebView mounts sooner.</p>
-<p>With the androidx.webkit feature <code>ASYNC_WEBVIEW_STARTUP</code> it loads WebView's code and starts Chromium on a
-background thread; without it, it only loads the code there, and Chromium starts on the UI thread as the first
-WebView mounts.</p>
 <p>It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
-pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing.
-WebView starts once per app, and React Native's first <code>fetch</code> starts it too (its cookie jar is WebView's
-<code>CookieManager</code>). No-op on iOS.</p>
+pushed. Calling it at mount gains nothing. WebView starts once per app, and React Native's first <code>fetch</code> starts
+it too.</p>
 </div>
 </div></li></ul></section></div>
 <div class="col-sidebar">
