@@ -82,7 +82,7 @@ module.</li>
 <table>
 <thead>
 <tr>
-<th>Platform</th>
+<th>Requirement</th>
 <th>Minimum</th>
 </tr>
 </thead>
@@ -96,16 +96,24 @@ module.</li>
 <td>API 29: <code>minSdkVersion 29</code>, for example with <code>expo-build-properties</code></td>
 </tr>
 <tr>
-<td>Android System WebView</td>
-<td>Some features need a newer one (<a href="#android-system-webview-versions">below</a>)</td>
-</tr>
-<tr>
 <td>Expo SDK</td>
 <td>53 (React Native 0.79, React 19)</td>
 </tr>
 <tr>
 <td>Architecture</td>
 <td>New architecture only</td>
+</tr>
+<tr>
+<td>Android System WebView, for <code>evaluate</code> and <code>blob:</code> downloads</td>
+<td>83</td>
+</tr>
+<tr>
+<td>Android System WebView, for the bridge and <code>injectedScripts</code></td>
+<td>101</td>
+</tr>
+<tr>
+<td>Android System WebView, for <code>pendingUrl</code> and events of loads that never commit</td>
+<td>146</td>
 </tr>
 </tbody>
 </table>
@@ -164,11 +172,6 @@ module.</li>
 </tr>
 </tbody>
 </table>
-<h2 id="android-system-webview-versions" class="tsd-anchor-link">Android System WebView versions<a href="#android-system-webview-versions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<p>On Android, what a device can do depends on its WebView, not its API level. Android System WebView updates apart from
-the OS, through the Play Store; Huawei and Fire OS devices ship their own builds.</p>
-<p>The core checks each feature at run time. On an older WebView, the feature is off and nothing crashes. Losing the
-bridge or <code>injectedScripts</code> logs a warning. Each feature's TSDoc names the WebView it needs.</p>
 <h2 id="contributing" class="tsd-anchor-link">Contributing<a href="#contributing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md">CONTRIBUTING.md</a> has the setup, the checks and the on-device suites.</p>
 </div></div>
@@ -195,7 +198,6 @@ bridge or <code>injectedScripts</code> logs a warning. Each feature's TSDoc name
 <ul>
 <li><a href="#requirements"><span>Requirements</span></a></li></ul></li>
 <li><a href="#usage"><span>Usage</span></a></li>
-<li><a href="#android-system-webview-versions"><span>Android <wbr/>System <wbr/>Web<wbr/>View versions</span></a></li>
 <li><a href="#contributing"><span>Contributing</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/react-native-minimal-webview" class="tsd-nav-link">GitHub</a></nav>

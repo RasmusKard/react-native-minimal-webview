@@ -70,13 +70,15 @@ npm install react-native-minimal-webview   # or: yarn add, pnpm add
 
 ### Requirements
 
-| Platform | Minimum |
+| Requirement | Minimum |
 |---|---|
 | iOS | 17.0 |
 | Android | API 29: `minSdkVersion 29`, for example with `expo-build-properties` |
-| Android System WebView | Some features need a newer one ([below](#android-system-webview-versions)) |
 | Expo SDK | 53 (React Native 0.79, React 19) |
 | Architecture | New architecture only |
+| Android System WebView, for `evaluate` and `blob:` downloads | 83 |
+| Android System WebView, for the bridge and `injectedScripts` | 101 |
+| Android System WebView, for `pendingUrl` and events of loads that never commit | 146 |
 
 ## Usage
 
@@ -102,14 +104,6 @@ Then pick what you need:
 | Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
 | Use the native `WKWebView` or `WebView` | [Native hooks](guides/examples.md#native-hooks), API in [`Hooks.swift`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and [`Hooks.kt`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt) |
 | Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) |
-
-## Android System WebView versions
-
-On Android, what a device can do depends on its WebView, not its API level. Android System WebView updates apart from
-the OS, through the Play Store; Huawei and Fire OS devices ship their own builds.
-
-The core checks each feature at run time. On an older WebView, the feature is off and nothing crashes. Losing the
-bridge or `injectedScripts` logs a warning. Each feature's TSDoc names the WebView it needs.
 
 ## Contributing
 
