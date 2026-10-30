@@ -27,7 +27,9 @@ internal object BasicAuthCredential {
       val credential = context.options as? Map<*, *>
       val user = credential?.get("username") as? String
       val password = credential?.get("password") as? String
-      if (user != null && password != null) handler.proceed(user, password) else handler.cancel()
+      // False once the server rejected the credential for this request: Chromium would otherwise ask again forever.
+      val usable = handler.useHttpAuthUsernamePassword()
+      if (usable && user != null && password != null) handler.proceed(user, password) else handler.cancel()
     }
   }
 }
