@@ -13,16 +13,31 @@ It runs on iOS and Android, on the new architecture, as an Expo module.
 
 ![The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins](guides/how-it-works.svg)
 
+## Why it exists
+
+react-native-webview wraps each platform API it supports in a prop of its own. An API it doesn't wrap means waiting
+for an upstream PR to be merged, or patching or forking the package, even when the change is one platform call.
+
+The WebView APIs on iOS and Android don't need that layer, so this package passes them through instead:
+
+- `ios` and `android` props set any setting by its platform name: `ios={{ scrollView: { bounces: false } }}`.
+- The ref's `get` and `call` read properties and call methods by name: `call('webView.clearCache', [true])`.
+- A [native hook](guides/examples.md#native-hooks), in your own Swift or Kotlin module, gets the `WKWebView` or
+  `WebView` itself, for logic beyond one call.
+
+A thin core keeps up with the platforms. A setting or method a new SDK adds works without a release of this package;
+regenerating the types from the SDK headers only adds autocomplete for the settings.
+
 ## What it changes from react-native-webview
+
+The core keeps what the platforms don't give you as a single API:
 
 | | react-native-webview | react-native-minimal-webview |
 |---|---|---|
 | Deciding a navigation | `onShouldStartLoadWithRequest`: a JS round trip for each one | `navigationRules`, matched in native code; `onNavigation` reports the outcome |
 | Talking to the page | `postMessage` strings, open to every page | A typed promise bridge, open only to its `allowedOrigins` |
-| Platform settings | One prop per setting it wraps | Any setting by its platform name: `ios={{ scrollView: { bounces: false } }}` |
 | Navigation state | You keep it from `onNavigationStateChange` | `useWebViewState(ref)`: URL, title, progress, `canGoBack` and more |
 | Camera and microphone for the page | Android asks the OS and grants them itself | Your app asks the OS (expo-camera) and answers `onPermissionRequest` |
-| Anything else | A patch or a fork | A native hook in your own Swift or Kotlin module |
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 

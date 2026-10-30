@@ -17,7 +17,20 @@ to the page over a typed promise bridge, and takes any iOS or Android WebView se
 <a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">Extensions</a> ·
 <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE">MIT license</a></p>
 <p><img src="media/how-it-works.svg" alt="The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins"></p>
+<h2 id="why-it-exists" class="tsd-anchor-link">Why it exists<a href="#why-it-exists" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>react-native-webview wraps each platform API it supports in a prop of its own. An API it doesn't wrap means waiting
+for an upstream PR to be merged, or patching or forking the package, even when the change is one platform call.</p>
+<p>The WebView APIs on iOS and Android don't need that layer, so this package passes them through instead:</p>
+<ul>
+<li><code>ios</code> and <code>android</code> props set any setting by its platform name: <code>ios={{ scrollView: { bounces: false } }}</code>.</li>
+<li>The ref's <code>get</code> and <code>call</code> read properties and call methods by name: <code>call('webView.clearCache', [true])</code>.</li>
+<li>A <a href="documents/Examples.html#native-hooks">native hook</a>, in your own Swift or Kotlin module, gets the <code>WKWebView</code> or
+<code>WebView</code> itself, for logic beyond one call.</li>
+</ul>
+<p>A thin core keeps up with the platforms. A setting or method a new SDK adds works without a release of this package;
+regenerating the types from the SDK headers only adds autocomplete for the settings.</p>
 <h2 id="what-it-changes-from-react-native-webview" class="tsd-anchor-link">What it changes from react-native-webview<a href="#what-it-changes-from-react-native-webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>The core keeps what the platforms don't give you as a single API:</p>
 <table>
 <thead>
 <tr>
@@ -38,11 +51,6 @@ to the page over a typed promise bridge, and takes any iOS or Android WebView se
 <td>A typed promise bridge, open only to its <code>allowedOrigins</code></td>
 </tr>
 <tr>
-<td>Platform settings</td>
-<td>One prop per setting it wraps</td>
-<td>Any setting by its platform name: <code>ios={{ scrollView: { bounces: false } }}</code></td>
-</tr>
-<tr>
 <td>Navigation state</td>
 <td>You keep it from <code>onNavigationStateChange</code></td>
 <td><code>useWebViewState(ref)</code>: URL, title, progress, <code>canGoBack</code> and more</td>
@@ -51,11 +59,6 @@ to the page over a typed promise bridge, and takes any iOS or Android WebView se
 <td>Camera and microphone for the page</td>
 <td>Android asks the OS and grants them itself</td>
 <td>Your app asks the OS (expo-camera) and answers <code>onPermissionRequest</code></td>
-</tr>
-<tr>
-<td>Anything else</td>
-<td>A patch or a fork</td>
-<td>A native hook in your own Swift or Kotlin module</td>
 </tr>
 </tbody>
 </table>
@@ -187,6 +190,7 @@ bridge or <code>injectedScripts</code> logs a warning. Each feature's TSDoc name
 <h3>On This Page</h3></summary>
 <div class="tsd-accordion-details"><a href="#react-native-minimal-webview"><span>react-<wbr/>native-<wbr/>minimal-<wbr/>webview</span></a>
 <ul>
+<li><a href="#why-it-exists"><span>Why it exists</span></a></li>
 <li><a href="#what-it-changes-from-react-native-webview"><span>What it changes from react-<wbr/>native-<wbr/>webview</span></a></li>
 <li><a href="#when-to-use-something-else"><span>When to use something else</span></a></li>
 <li><a href="#install"><span>Install</span></a></li>
