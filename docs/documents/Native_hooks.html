@@ -57,8 +57,9 @@
 
 <p>This creates <code>modules/page-counter</code> in your app. A hook in a published package works the same way.</p>
 <h3 id="2-depend-on-the-core" class="tsd-anchor-link">2. Depend on the core<a href="#2-depend-on-the-core" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<p>In the module's podspec, in <code>ios/</code>:</p>
-<pre><code class="ruby"><span class="hl-2">s.</span><span class="hl-10">dependency</span><span class="hl-2"> </span><span class="hl-11">&#39;MinimalWebView&#39;</span>
+<p>In <code>ios/PageCounter.podspec</code>, replace the template's <code>s.platforms</code> with the core's iOS 17.0, or importing the core
+fails to compile, and add the core:</p>
+<pre><code class="ruby"><span class="hl-2">s.</span><span class="hl-10">platforms</span><span class="hl-2"> = { </span><span class="hl-4">:ios</span><span class="hl-2"> =&gt; </span><span class="hl-11">&#39;17.0&#39;</span><span class="hl-2"> }</span><br/><span class="hl-2">s.</span><span class="hl-10">dependency</span><span class="hl-2"> </span><span class="hl-11">&#39;MinimalWebView&#39;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>In the module's <code>android/build.gradle</code>:</p>
@@ -76,7 +77,8 @@
 </code><button type="button">Copy</button></pre>
 
 <h3 id="5-describe-the-hook-to-js" class="tsd-anchor-link">5. Describe the hook to JS<a href="#5-describe-the-hook-to-js" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<p>In the module's <code>index.ts</code>, export a function that returns its <a href="https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html"><code>HookExtension</code></a>:</p>
+<p>Replace the generated <code>index.ts</code> with a function that returns the hook's <a href="https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html"><code>HookExtension</code></a>, and delete the
+generated <code>src/</code>: it holds the template's view and module wrappers, which nothing imports now.</p>
 <pre><code class="ts"><span class="hl-9">import</span><span class="hl-2"> </span><span class="hl-9">type</span><span class="hl-2"> { </span><span class="hl-6">HookEvent</span><span class="hl-2">, </span><span class="hl-6">HookExtension</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-11">&#39;react-native-minimal-webview&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-4">type</span><span class="hl-2"> </span><span class="hl-1">PageLoaded</span><span class="hl-2"> = </span><span class="hl-1">HookEvent</span><span class="hl-2">&lt;</span><span class="hl-11">&#39;myApp.pageCounter.pageLoaded&#39;</span><span class="hl-2">, { </span><span class="hl-6">count</span><span class="hl-2">: </span><span class="hl-1">number</span><span class="hl-2"> }&gt;;</span><br/><br/><span class="hl-9">export</span><span class="hl-2"> </span><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-10">pageCounter</span><span class="hl-2"> = (</span><span class="hl-10">onLoaded</span><span class="hl-2">: (</span><span class="hl-6">count</span><span class="hl-2">: </span><span class="hl-1">number</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-1">void</span><span class="hl-2">): </span><span class="hl-1">HookExtension</span><span class="hl-2"> </span><span class="hl-4">=&gt;</span><span class="hl-2"> ({</span><br/><span class="hl-2">  </span><span class="hl-6">key:</span><span class="hl-2"> </span><span class="hl-11">&#39;myApp.pageCounter&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">options:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2">, </span><span class="hl-12">// its hookOptions value: anything but null, undefined or false turns it on</span><br/><span class="hl-2">  </span><span class="hl-10">onEvent</span><span class="hl-6">:</span><span class="hl-2"> (</span><span class="hl-6">event</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-9">if</span><span class="hl-2"> (</span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">name</span><span class="hl-2"> !== </span><span class="hl-11">&#39;myApp.pageCounter.pageLoaded&#39;</span><span class="hl-2">) </span><span class="hl-9">return</span><span class="hl-2">;</span><br/><span class="hl-2">    </span><span class="hl-10">onLoaded</span><span class="hl-2">((</span><span class="hl-6">event</span><span class="hl-2"> </span><span class="hl-9">as</span><span class="hl-2"> </span><span class="hl-1">PageLoaded</span><span class="hl-2">).</span><span class="hl-6">payload</span><span class="hl-2">.</span><span class="hl-6">count</span><span class="hl-2">);</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">});</span>
 </code><button type="button">Copy</button></pre>
 
@@ -120,10 +122,10 @@
 <ul>
 <li>A callback the core also handles reaches the core first, then each hook that implements it.</li>
 <li>A decision, such as whether a navigation loads or a page gets the camera, goes to the first hook that implements it.</li>
+<li>On iOS, an auth challenge goes to each hook in turn, until one answers.</li>
 <li>A hook that takes a decision switches off the props that make it, such as <code>navigationRules</code> or
 <code>onPermissionRequest</code>. A warning in the console names what stopped applying.</li>
 </ul>
-<p>Hooks attach in registration order. Across packages that is autolinking's order: packages sorted by name.</p>
 <p>Leave alone what the core owns: the delegate and client slots, and the bridge's scripts and message handler. The full
 routing rules are on <code>navigationDelegates</code> in <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift"><code>Hooks.swift</code></a> and <code>clients</code> in <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt"><code>Hooks.kt</code></a>.</p>
 <h2 id="lifecycle" class="tsd-anchor-link">Lifecycle<a href="#lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
@@ -197,11 +199,6 @@ routing rules are on <code>navigationDelegates</code> in <a href="https://github
 <td>Your own WebView class</td>
 <td><code>webViewClass:</code></td>
 <td><code>webViewFactory =</code></td>
-</tr>
-<tr>
-<td>After a renderer crash</td>
-<td>The same view: nothing attaches again</td>
-<td>A new view: <code>attach</code> runs again</td>
 </tr>
 <tr>
 <td>Only on this platform</td>

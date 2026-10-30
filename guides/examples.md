@@ -74,7 +74,7 @@ function onInboxNotification() {
 
 ```tsx
 import { useEffect, useMemo } from 'react';
-import { Button, Share } from 'react-native';
+import { Button, Platform, Share } from 'react-native';
 import { WebView, createBridge } from 'react-native-minimal-webview';
 
 type Methods = {
@@ -94,7 +94,8 @@ export function Shop() {
   useEffect(
     () =>
       bridge.handle('share', async ({ url }) => {
-        const { action } = await Share.share({ url });
+        // Android shares only `message`
+        const { action } = await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
         return action === Share.sharedAction;
       }),
     [bridge]
@@ -163,11 +164,10 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
 
 // Android: a public method of settings, webView, cookieManager or webStorage
-await ref.current?.call('webView.clearCache', [true]);
+await ref.current?.call('webStorage.deleteAllData');
 await ref.current?.call('cookieManager.removeAllCookies'); // resolves once they're gone
 
 // iOS: an Objective-C selector
-await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
 await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
   { set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] },
   { date: 0 },
@@ -300,7 +300,8 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 
 ### Downloads
 
-`preview()` opens the file in Quick Look on iOS, and in an app that takes its type on Android.
+`preview()` needs expo-file-system 58 or later. It opens the file in Quick Look on iOS, and in an app that takes its
+type on Android.
 
 ```tsx
 import { File } from 'expo-file-system';

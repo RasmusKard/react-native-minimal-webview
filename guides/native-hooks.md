@@ -42,9 +42,11 @@ This creates `modules/page-counter` in your app. A hook in a published package w
 
 ### 2. Depend on the core
 
-In the module's podspec, in `ios/`:
+In `ios/PageCounter.podspec`, replace the template's `s.platforms` with the core's iOS 17.0, or importing the core
+fails to compile, and add the core:
 
 ```ruby
+s.platforms = { :ios => '17.0' }
 s.dependency 'MinimalWebView'
 ```
 
@@ -135,7 +137,8 @@ private class PageCounter(private val context: WebViewContext) : WebViewClient()
 
 ### 5. Describe the hook to JS
 
-In the module's `index.ts`, export a function that returns its [`HookExtension`][HookExtension]:
+Replace the generated `index.ts` with a function that returns the hook's [`HookExtension`][HookExtension], and delete the
+generated `src/`: it holds the template's view and module wrappers, which nothing imports now.
 
 ```ts
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
@@ -205,10 +208,9 @@ The core keeps the WebView's own delegate and client slots. Your hook adds to th
 
 - A callback the core also handles reaches the core first, then each hook that implements it.
 - A decision, such as whether a navigation loads or a page gets the camera, goes to the first hook that implements it.
+- On iOS, an auth challenge goes to each hook in turn, until one answers.
 - A hook that takes a decision switches off the props that make it, such as `navigationRules` or
   `onPermissionRequest`. A warning in the console names what stopped applying.
-
-Hooks attach in registration order. Across packages that is autolinking's order: packages sorted by name.
 
 Leave alone what the core owns: the delegate and client slots, and the bridge's scripts and message handler. The full
 routing rules are on `navigationDelegates` in [`Hooks.swift`][swift] and `clients` in [`Hooks.kt`][kotlin].
@@ -241,7 +243,6 @@ routing rules are on `navigationDelegates` in [`Hooks.swift`][swift] and `client
 | Callbacks go in | `navigationDelegates`, `uiDelegates` | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
 | `configure` gets | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up |
 | Your own WebView class | `webViewClass:` | `webViewFactory =` |
-| After a renderer crash | The same view: nothing attaches again | A new view: `attach` runs again |
 | Only on this platform | `refreshControl` | `onDownloadStart`, `onDestroyed` |
 
 ## Reference

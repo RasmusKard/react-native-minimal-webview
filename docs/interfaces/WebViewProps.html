@@ -146,8 +146,7 @@ or HTTP auth, so a download that needs them can fail, or save the server's login
 above 100 MB, on a redirect off https, and for <code>blob:</code> on a WebView older than 83.</p>
 <p>Without this prop, an http(s) download opens externally (<code>onOpenExternal</code> or the system browser, without the page's
 session), and a <code>data:</code> or <code>blob:</code> one is dropped. A PDF is a download on Android; iOS shows it inline.</p>
-<p>On iOS an iframe's file response is not a download, only the main frame's; <code>&lt;a download&gt;</code> and <code>blob:</code> downloads
-are, from any frame.</p>
+<p>On iOS a file response is a download only in the main frame; an <code>&lt;a download&gt;</code> link is one from any frame.</p>
 <p>On Android a native hook's <code>WebViewContext.onDownloadStart</code> is offered each download first, and one it takes
 reaches neither this prop nor the external fallback.</p>
 </div></section>

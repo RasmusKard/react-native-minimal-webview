@@ -70,8 +70,8 @@ policy or the gesture flag.</p>
 <p>One to <code>data:</code>, <code>blob:</code>, <code>javascript:</code>, <code>about:</code> or <code>file:</code> is always blocked (on Android, WebView may still run a
 <code>javascript:</code> one's script, with the page's origin), and one opened with no URL (<code>window.open('')</code>) is decided when
 the page first sends it to one, or dropped when that doesn't happen within 5 s.</p>
-<p>On Android, one without a user gesture reaches the rules only with
-<code>android.settings.javaScriptCanOpenWindowsAutomatically</code> on; otherwise WebView drops it unreported.</p>
+<p>One opened without a user gesture reaches the rules only with <code>javaScriptCanOpenWindowsAutomatically</code> on
+(<code>ios.preferences</code>, <code>android.settings</code>; off by default); otherwise WebKit or WebView drops it unreported.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="path"><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>

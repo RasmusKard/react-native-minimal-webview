@@ -117,7 +117,7 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 <td>Renderer crash</td>
 <td>Reported</td>
 <td>The core reloads (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onprocessgone"><code>onProcessGone</code></a>)</td>
-<td>Nothing; drop your <code>reload()</code></td>
+<td>Keep <code>reload()</code> only for <code>recovered: false</code></td>
 </tr>
 <tr>
 <td>Messaging</td>
@@ -151,8 +151,8 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 </tr>
 </tbody>
 </table>
-<p>When <code>recovered</code> is true, the core has reloaded already, and a <code>reload()</code> of yours loads the page twice. Call it only
-when <code>recovered</code> is false (<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered">why</a>).</p>
+<p>When <code>recovered</code> is true, the core reloads the page itself, so a <code>reload()</code> of yours loads it twice
+(<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered">when it reloads</a>).</p>
 <h2 id="props-that-became-something-else" class="tsd-anchor-link">Props that became something else<a href="#props-that-became-something-else" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <table>
 <thead>
@@ -267,31 +267,31 @@ which you pass to <code>useExtensions</code>:</p>
 <tbody>
 <tr>
 <td><code>basicAuthCredential</code></td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/basicAuthCredential.html"><code>basicAuthCredential(credential)</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/basicAuthCredential.html"><code>basicAuthCredential</code></a></td>
 </tr>
 <tr>
 <td><code>menuItems</code>, <code>suppressMenuItems</code>, <code>onCustomMenuSelection</code></td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/menuItems.html"><code>menuItems({ items, suppress, onSelect })</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/menuItems.html"><code>menuItems</code></a></td>
 </tr>
 <tr>
 <td><code>onScroll</code></td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/onScroll.html"><code>onScroll(handler)</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/onScroll.html"><code>onScroll</code></a></td>
 </tr>
 <tr>
 <td><code>hideKeyboardAccessoryView</code></td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/hideKeyboardAccessoryView.html"><code>hideKeyboardAccessoryView()</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/hideKeyboardAccessoryView.html"><code>hideKeyboardAccessoryView</code></a></td>
 </tr>
 <tr>
 <td><code>nestedScrollEnabled</code></td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/nestedScrollEnabled.html"><code>nestedScrollEnabled()</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/nestedScrollEnabled.html"><code>nestedScrollEnabled</code></a></td>
 </tr>
 <tr>
 <td><code>androidLayerType</code></td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/androidLayerType.html"><code>androidLayerType(type)</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/androidLayerType.html"><code>androidLayerType</code></a></td>
 </tr>
 <tr>
 <td>JS dialogs (no prop)</td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/dialogs.html"><code>dialogs(onDialog)</code></a></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/dialogs.html"><code>dialogs</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -372,7 +372,7 @@ which you pass to <code>useExtensions</code>:</p>
 </tr>
 <tr>
 <td><code>style={{ backgroundColor: 'transparent' }}</code></td>
-<td><code>call('webView.setOpaque:', [false])</code> after each mount (<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html">why</a>)</td>
+<td><code>call('webView.setOpaque:', [false])</code> after each mount and <code>configuration</code> or <code>bridge</code> change (<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html">why</a>)</td>
 <td><code>webView.other.backgroundColor: 0</code></td>
 </tr>
 </tbody>
@@ -409,8 +409,6 @@ which you pass to <code>useExtensions</code>:</p>
 </tbody>
 </table>
 <h2 id="what-else-changes" class="tsd-anchor-link">What else changes<a href="#what-else-changes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<p><code>source</code>, <code>style</code>, <code>userAgent</code>, <code>onError</code> and the ref's <code>goBack</code>, <code>goForward</code>, <code>reload</code> and <code>stopLoading</code> keep their
-names.</p>
 <p><code>onNavigationStateChange</code> keeps its name, but fires on every state change, progress and title included.</p>
 <p>Remove the <code>LSApplicationQueriesSchemes</code> (iOS) and <code>&lt;queries&gt;</code> (Android) entries you added for the schemes a page opens
 (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onopenexternal"><code>onOpenExternal</code></a>).</p>
@@ -432,23 +430,20 @@ react-native-webview reports the redirecting URL as still loading (iOS), or the 
 <h2 id="injectjavascript" class="tsd-anchor-link">injectJavaScript<a href="#injectjavascript" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>evaluate</code> takes an expression, not statements, and resolves with its value
 (<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#evaluate"><code>evaluate</code></a>).</p>
-<pre><code class="ts"><span class="hl-12">// was: ref.current.injectJavaScript(`document.body.style.background = &#39;red&#39;; true;`)</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">evaluate</span><span class="hl-2">(</span><span class="hl-11">`(() =&gt; { document.body.style.background = &#39;red&#39;; })()`</span><span class="hl-2">);</span><br/><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-13">title</span><span class="hl-2"> = </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">evaluate</span><span class="hl-2">(</span><span class="hl-11">&#39;document.title&#39;</span><span class="hl-2">);</span>
-</code><button type="button">Copy</button></pre>
-
+<p>Wrap the statements you passed <code>injectJavaScript</code> in a function you call, without the trailing <code>true;</code>, as in the
+<a href="Examples.html#scripts">scripts example</a>.</p>
 <h2 id="postmessage-and-onmessage" class="tsd-anchor-link">postMessage and onMessage<a href="#postmessage-and-onmessage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>The <a href="Examples.html#the-bridge">bridge</a> replaces both, with calls that return promises, and events, in both directions. It
 serves only the origins you allow.</p>
 <p>Pages that use <code>window.ReactNativeWebView.postMessage</code> and <code>message</code> events keep working with
 <a href="https://rasmuskard.github.io/react-native-minimal-webview/variables/reactNativeWebViewMessages.html"><code>reactNativeWebViewMessages</code></a>
-in <code>injectedScripts</code>:</p>
-<pre><code class="tsx"><span class="hl-9">import</span><span class="hl-2"> { </span><span class="hl-6">createBridge</span><span class="hl-2">, </span><span class="hl-6">reactNativeWebViewMessages</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-11">&#39;react-native-minimal-webview&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-13">bridge</span><span class="hl-2"> = </span><span class="hl-10">useMemo</span><span class="hl-2">(() </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">createBridge</span><span class="hl-2">({ </span><span class="hl-6">allowedOrigins:</span><span class="hl-2"> [</span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-2">] }), []);</span><br/><span class="hl-10">useEffect</span><span class="hl-2">(() </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-6">bridge</span><span class="hl-2">.</span><span class="hl-10">on</span><span class="hl-2">(</span><span class="hl-11">&#39;rnw&#39;</span><span class="hl-2">, (</span><span class="hl-6">data</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">handleMessage</span><span class="hl-2">(</span><span class="hl-6">data</span><span class="hl-2"> </span><span class="hl-9">as</span><span class="hl-2"> </span><span class="hl-1">string</span><span class="hl-2">)), [</span><span class="hl-6">bridge</span><span class="hl-2">]); </span><span class="hl-12">// was onMessage</span><br/><span class="hl-6">bridge</span><span class="hl-2">.</span><span class="hl-10">emit</span><span class="hl-2">(</span><span class="hl-11">&#39;rnw&#39;</span><span class="hl-2">, </span><span class="hl-6">message</span><span class="hl-2">); </span><span class="hl-12">// was ref.current.postMessage(message)</span><br/><br/><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><span class="hl-2"> </span><span class="hl-3">source</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">uri:</span><span class="hl-5"> </span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-5"> }</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-3">bridge</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-6">bridge</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-3">injectedScripts</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">[</span><span class="hl-6">reactNativeWebViewMessages</span><span class="hl-5">]</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-0">/&gt;</span>
-</code><button type="button">Copy</button></pre>
-
+in <code>injectedScripts</code>. Its example shows what replaces <code>onMessage</code> and <code>postMessage</code>.</p>
 <h2 id="incognito" class="tsd-anchor-link">incognito<a href="#incognito" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>On iOS, a non-persistent data store keeps the WebView's cookies, cache and storage, and they go with the WebView.</p>
-<p>Android has no incognito WebView. react-native-webview's <code>incognito</code> clears the app-wide cookies and the cache, and
-turns the cache off. This recipe does the same before the page loads.</p>
-<p>The calls need a mounted WebView, so the first <code>source</code> is blank:</p>
+<p>Android has no incognito WebView. react-native-webview's <code>incognito</code> clears the app-wide cookies and the cache, turns
+the cache off, and turns form-data saving off, which does nothing since API 26. This recipe does the rest before the
+page loads.</p>
+<p>The first <code>source</code> is blank, as for <a href="Examples.html#before-the-first-page">cookies before the first page</a>:</p>
 <pre><code class="tsx"><span class="hl-4">const</span><span class="hl-2"> [</span><span class="hl-13">source</span><span class="hl-2">, </span><span class="hl-13">setSource</span><span class="hl-2">] = </span><span class="hl-10">useState</span><span class="hl-2">&lt;</span><span class="hl-1">WebViewSource</span><span class="hl-2">&gt;({ </span><span class="hl-6">uri:</span><span class="hl-2"> </span><span class="hl-11">&#39;about:blank&#39;</span><span class="hl-2"> });</span><br/><span class="hl-10">useEffect</span><span class="hl-2">(() </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">  (</span><span class="hl-4">async</span><span class="hl-2"> () </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-9">if</span><span class="hl-2"> (</span><span class="hl-6">Platform</span><span class="hl-2">.</span><span class="hl-13">OS</span><span class="hl-2"> === </span><span class="hl-11">&#39;android&#39;</span><span class="hl-2">) {</span><br/><span class="hl-2">      </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;cookieManager.removeAllCookies&#39;</span><span class="hl-2">); </span><span class="hl-12">// app-wide, as in react-native-webview</span><br/><span class="hl-2">      </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;webView.clearCache&#39;</span><span class="hl-2">, [</span><span class="hl-4">true</span><span class="hl-2">]);</span><br/><span class="hl-2">    }</span><br/><span class="hl-2">    </span><span class="hl-10">setSource</span><span class="hl-2">({ </span><span class="hl-6">uri:</span><span class="hl-2"> </span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-2"> });</span><br/><span class="hl-2">  })();</span><br/><span class="hl-2">}, []);</span><br/><br/><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><br/><span class="hl-2">  </span><span class="hl-3">ref</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-6">ref</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">source</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-6">source</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">ios</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">configuration:</span><span class="hl-5"> { </span><span class="hl-6">websiteDataStore:</span><span class="hl-5"> </span><span class="hl-11">&#39;nonPersistent&#39;</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">android</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">settings:</span><span class="hl-5"> { </span><span class="hl-6">cacheMode:</span><span class="hl-5"> </span><span class="hl-6">AndroidConstants</span><span class="hl-5">.</span><span class="hl-6">WebSettings</span><span class="hl-5">.</span><span class="hl-13">LOAD_NO_CACHE</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-0">/&gt;</span>
 </code><button type="button">Copy</button></pre>
 

@@ -9,14 +9,13 @@
 <div class="tsd-page-title"></div>
 <div class="tsd-panel tsd-typography"><h1 id="react-native-minimal-webview" class="tsd-anchor-link">react-native-minimal-webview<a href="#react-native-minimal-webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
 <p>A React Native WebView that hands you the iOS and Android WebView APIs, instead of wrapping each one in a prop.</p>
-<p>It runs on iOS and Android, on the new architecture, as an Expo module.</p>
+<p>It runs on iOS and Android as an Expo module.</p>
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/modules.html">API reference</a> ·
 <a href="documents/Examples.html">Examples</a> ·
 <a href="documents/Native_hooks.html">Native hooks</a> ·
 <a href="documents/Migrating_from_react-native-webview.html">Migrating from react-native-webview</a> ·
 <a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">Extensions</a> ·
 <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE">MIT license</a></p>
-<p><img src="media/how-it-works.svg" alt="The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins"></p>
 <h2 id="why-it-exists" class="tsd-anchor-link">Why it exists<a href="#why-it-exists" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>react-native-webview wraps each platform API in a prop of its own. When one isn't wrapped, you wait for an upstream
 PR, or patch or fork the package, even if the change is one platform call.</p>
@@ -27,11 +26,14 @@ PR, or patch or fork the package, even if the change is one platform call.</p>
 <li><a href="documents/Native_hooks.html">Native hooks</a>: the <code>WKWebView</code> or <code>WebView</code> itself, in your own Swift or Kotlin
 module.</li>
 </ul>
-<pre><code class="tsx"><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><br/><span class="hl-2">  </span><span class="hl-3">ios</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">scrollView:</span><span class="hl-5"> { </span><span class="hl-6">bounces:</span><span class="hl-5"> </span><span class="hl-4">false</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">android</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">settings:</span><span class="hl-5"> { </span><span class="hl-6">textZoom:</span><span class="hl-5"> </span><span class="hl-7">120</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-8">…</span><br/><span class="hl-0">/&gt;</span><span class="hl-2">;</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;webView.clearCache&#39;</span><span class="hl-2">, [</span><span class="hl-4">true</span><span class="hl-2">]); </span><span class="hl-12">// Android</span>
+<pre><code class="tsx"><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><br/><span class="hl-2">  </span><span class="hl-3">ios</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">scrollView:</span><span class="hl-5"> { </span><span class="hl-6">bounces:</span><span class="hl-5"> </span><span class="hl-4">false</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">android</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">settings:</span><span class="hl-5"> { </span><span class="hl-6">textZoom:</span><span class="hl-5"> </span><span class="hl-7">120</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-8">…</span><br/><span class="hl-0">/&gt;</span><span class="hl-2">;</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;webView.pageDown&#39;</span><span class="hl-2">, [</span><span class="hl-4">true</span><span class="hl-2">]); </span><span class="hl-12">// Android</span>
 </code><button type="button">Copy</button></pre>
 
-<p>A thin core keeps up with the platforms. A setting or method a new SDK adds works without a release of this package.</p>
+<p>A setting or method a newer SDK adds works without a release of this package, untyped: under a settings root's
+<code>other</code>, or through <code>call</code>. On iOS it has to be visible to Objective-C
+(<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html">limits</a>).</p>
 <h2 id="what-it-changes-from-react-native-webview" class="tsd-anchor-link">What it changes from react-native-webview<a href="#what-it-changes-from-react-native-webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><img src="media/how-it-works.svg" alt="The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins"></p>
 <p>The core adds only what the platform APIs lack:</p>
 <table>
 <thead>
@@ -54,12 +56,12 @@ module.</li>
 </tr>
 <tr>
 <td>Navigation state</td>
-<td>Tracked by you</td>
+<td><code>onNavigationStateChange</code> events you keep in state</td>
 <td><code>useWebViewState(ref)</code></td>
 </tr>
 <tr>
 <td>Page camera and microphone</td>
-<td>Android grants them itself</td>
+<td>Granted to any page on Android once the app has the OS permission</td>
 <td>Your app answers <code>onPermissionRequest</code></td>
 </tr>
 </tbody>
@@ -76,7 +78,7 @@ module.</li>
 
 <p>Then rebuild the app (<code>npx expo run:ios</code>, <code>npx expo run:android</code>).</p>
 <p>A bare React Native app adds Expo modules first, then installs with its package manager:</p>
-<pre><code class="sh"><span class="hl-10">npx</span><span class="hl-2"> </span><span class="hl-11">install-expo-modules@latest</span><br/><span class="hl-10">npm</span><span class="hl-2"> </span><span class="hl-11">install</span><span class="hl-2"> </span><span class="hl-11">react-native-minimal-webview</span><span class="hl-2">   </span><span class="hl-12"># or: yarn add, pnpm add</span>
+<pre><code class="sh"><span class="hl-10">npx</span><span class="hl-2"> </span><span class="hl-11">install-expo-modules@latest</span><br/><span class="hl-10">npm</span><span class="hl-2"> </span><span class="hl-11">install</span><span class="hl-2"> </span><span class="hl-11">react-native-minimal-webview</span><span class="hl-2">   </span><span class="hl-12"># or: yarn add, pnpm add</span><br/><span class="hl-10">npx</span><span class="hl-2"> </span><span class="hl-11">pod-install</span>
 </code><button type="button">Copy</button></pre>
 
 <h3 id="requirements" class="tsd-anchor-link">Requirements<a href="#requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -90,15 +92,11 @@ module.</li>
 <tbody>
 <tr>
 <td>iOS</td>
-<td>17.0</td>
+<td>17.0: <code>ios.deploymentTarget '17.0'</code>, for example with <code>expo-build-properties</code></td>
 </tr>
 <tr>
 <td>Android</td>
 <td>API 29: <code>minSdkVersion 29</code>, for example with <code>expo-build-properties</code></td>
-</tr>
-<tr>
-<td>Android System WebView</td>
-<td>Some features need a newer one (<a href="documents/Android_System_WebView_versions.html">which</a>)</td>
 </tr>
 <tr>
 <td>Expo SDK</td>
@@ -110,6 +108,7 @@ module.</li>
 </tr>
 </tbody>
 </table>
+<p>Some features need a newer Android System WebView: <a href="documents/Android_System_WebView_versions.html">which ones</a>.</p>
 <h2 id="usage" class="tsd-anchor-link">Usage<a href="#usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <pre><code class="tsx"><span class="hl-9">import</span><span class="hl-2"> { </span><span class="hl-6">WebView</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-11">&#39;react-native-minimal-webview&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-9">export</span><span class="hl-2"> </span><span class="hl-4">function</span><span class="hl-2"> </span><span class="hl-10">Browser</span><span class="hl-2">() {</span><br/><span class="hl-2">  </span><span class="hl-9">return</span><span class="hl-2"> </span><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><span class="hl-2"> </span><span class="hl-3">source</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">uri:</span><span class="hl-5"> </span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-5"> }</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-3">style</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">flex:</span><span class="hl-5"> </span><span class="hl-7">1</span><span class="hl-5"> }</span><span class="hl-4">}</span><span class="hl-2"> </span><span class="hl-0">/&gt;</span><span class="hl-2">;</span><br/><span class="hl-2">}</span>
 </code><button type="button">Copy</button></pre>

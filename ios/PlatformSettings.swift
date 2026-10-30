@@ -129,9 +129,9 @@ final class PlatformSettings {
   }
 
   /// Selector prefixes `call` refuses: what the ref and the core own (every load, navigation, script, download and
-  /// delegate selector), private API, the plumbing that would reach either (KVC, KVO, performSelector), object
-  /// lifecycle (init, copy, new: a re-initialized live object, or a +1 result MRWInvoke would leak) and reference
-  /// counting. `mutable` covers `mutableCopy` and KVC's `mutableArrayValueForKey:` and its kin.
+  /// delegate selector), private API, the plumbing that would reach either (KVC, KVO's willChange/didChange,
+  /// performSelector), object lifecycle (init, copy, new: a re-initialized live object, or a +1 result MRWInvoke would
+  /// leak) and reference counting. `mutable` covers `mutableCopy` and KVC's `mutableArrayValueForKey:` and its kin.
   private static let refused = [
     "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
     "setInteractionState", "setNavigationDelegate", "setUIDelegate", "setDelegate", "setValue", "setValuesForKeys", "valueForKey",

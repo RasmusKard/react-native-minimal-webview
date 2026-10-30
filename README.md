@@ -2,7 +2,7 @@
 
 A React Native WebView that hands you the iOS and Android WebView APIs, instead of wrapping each one in a prop.
 
-It runs on iOS and Android, on the new architecture, as an Expo module.
+It runs on iOS and Android as an Expo module.
 
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html) ·
 [Examples](guides/examples.md) ·
@@ -10,8 +10,6 @@ It runs on iOS and Android, on the new architecture, as an Expo module.
 [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md) ·
 [Extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) ·
 [MIT license](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE)
-
-![The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins](guides/how-it-works.svg)
 
 ## Why it exists
 
@@ -31,12 +29,16 @@ This package passes the platform APIs through instead:
   android={{ settings: { textZoom: 120 } }}
   …
 />;
-await ref.current?.call('webView.clearCache', [true]); // Android
+await ref.current?.call('webView.pageDown', [true]); // Android
 ```
 
-A thin core keeps up with the platforms. A setting or method a new SDK adds works without a release of this package.
+A setting or method a newer SDK adds works without a release of this package, untyped: under a settings root's
+`other`, or through `call`. On iOS it has to be visible to Objective-C
+([limits](https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html)).
 
 ## What it changes from react-native-webview
+
+![The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins](guides/how-it-works.svg)
 
 The core adds only what the platform APIs lack:
 
@@ -44,8 +46,8 @@ The core adds only what the platform APIs lack:
 |---|---|---|
 | Navigation decisions | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively |
 | Page messaging | `postMessage` strings, any page | Typed promise bridge, `allowedOrigins` only |
-| Navigation state | Tracked by you | `useWebViewState(ref)` |
-| Page camera and microphone | Android grants them itself | Your app answers `onPermissionRequest` |
+| Navigation state | `onNavigationStateChange` events you keep in state | `useWebViewState(ref)` |
+| Page camera and microphone | Granted to any page on Android once the app has the OS permission | Your app answers `onPermissionRequest` |
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
@@ -67,17 +69,19 @@ A bare React Native app adds Expo modules first, then installs with its package 
 ```sh
 npx install-expo-modules@latest
 npm install react-native-minimal-webview   # or: yarn add, pnpm add
+npx pod-install
 ```
 
 ### Requirements
 
 | Platform | Minimum |
 |---|---|
-| iOS | 17.0 |
+| iOS | 17.0: `ios.deploymentTarget '17.0'`, for example with `expo-build-properties` |
 | Android | API 29: `minSdkVersion 29`, for example with `expo-build-properties` |
-| Android System WebView | Some features need a newer one ([which](guides/android-system-webview.md)) |
 | Expo SDK | 53 (React Native 0.79, React 19) |
 | Architecture | New architecture only |
+
+Some features need a newer Android System WebView: [which ones](guides/android-system-webview.md).
 
 ## Usage
 

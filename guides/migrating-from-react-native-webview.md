@@ -61,15 +61,15 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | Android fullscreen video | Off | On ([`onFullscreenChange`][onfullscreenchange]) | A native hook that takes `onShowCustomView` |
 | iOS universal links | Open the app that claims them | Load in place | An `external` rule for the host |
 | Downloads | Android: saved to Downloads | Open externally, or [`onDownload`][ondownload] saves them | A native hook's `onDownloadStart` (Android) |
-| Renderer crash | Reported | The core reloads ([`onProcessGone`][onprocessgone]) | Nothing; drop your `reload()` |
+| Renderer crash | Reported | The core reloads ([`onProcessGone`][onprocessgone]) | Keep `reload()` only for `recovered: false` |
 | Messaging | Every page; on Android every frame | `allowedOrigins`, main frame | An iframe's: a native hook |
 | Injected script | Document end, every origin | Document start, its `origins` | `addEventListener('DOMContentLoaded', …)`; `origins: ['*']` |
 | Failed load | An error view over the page | iOS keeps the old page, Android shows its own | The [error screen](#loading-and-error-screens) |
 | Android file input | Offers the camera when the app has its permission | The system chooser, which ignores `capture` | [`onFileRequest`][onfilerequest] |
 | Android camera, microphone, location | Granted to every page, after asking the OS | Denied | [`onPermissionRequest`][onpermissionrequest] |
 
-When `recovered` is true, the core has reloaded already, and a `reload()` of yours loads the page twice. Call it only
-when `recovered` is false ([why](https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered)).
+When `recovered` is true, the core reloads the page itself, so a `reload()` of yours loads it twice
+([when it reloads](https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered)).
 
 ## Props that became something else
 
@@ -107,13 +107,13 @@ which you pass to `useExtensions`:
 
 | react-native-webview | Here |
 |---|---|
-| `basicAuthCredential` | [`basicAuthCredential(credential)`][basicauthcredential] |
-| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems({ items, suppress, onSelect })`][menuitems] |
-| `onScroll` | [`onScroll(handler)`][onscroll] |
-| `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView()`][hidekeyboardaccessoryview] |
-| `nestedScrollEnabled` | [`nestedScrollEnabled()`][nestedscrollenabled] |
-| `androidLayerType` | [`androidLayerType(type)`][androidlayertype] |
-| JS dialogs (no prop) | [`dialogs(onDialog)`][dialogs] |
+| `basicAuthCredential` | [`basicAuthCredential`][basicauthcredential] |
+| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems] |
+| `onScroll` | [`onScroll`][onscroll] |
+| `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview] |
+| `nestedScrollEnabled` | [`nestedScrollEnabled`][nestedscrollenabled] |
+| `androidLayerType` | [`androidLayerType`][androidlayertype] |
+| JS dialogs (no prop) | [`dialogs`][dialogs] |
 
 The settings with another name:
 
@@ -132,7 +132,7 @@ The settings with another name:
 | `saveFormDataDisabled` | | `settings.saveFormData: false`, a no-op since API 26 |
 | `allowFileAccessFromFileURLs` | `preferences.<the same name>` | `settings.<the same name>` |
 | `allowUniversalAccessFromFileURLs` | `configuration.<the same name>` | `settings.<the same name>` |
-| `style={{ backgroundColor: 'transparent' }}` | `call('webView.setOpaque:', [false])` after each mount ([why][iossettings]) | `webView.other.backgroundColor: 0` |
+| `style={{ backgroundColor: 'transparent' }}` | `call('webView.setOpaque:', [false])` after each mount and `configuration` or `bridge` change ([why][iossettings]) | `webView.other.backgroundColor: 0` |
 
 ## Props with no counterpart
 
@@ -145,9 +145,6 @@ The settings with another name:
 | `lackPermissionToDownloadMessage` | A download lands in the app's cache, which needs no permission |
 
 ## What else changes
-
-`source`, `style`, `userAgent`, `onError` and the ref's `goBack`, `goForward`, `reload` and `stopLoading` keep their
-names.
 
 `onNavigationStateChange` keeps its name, but fires on every state change, progress and title included.
 
@@ -190,11 +187,8 @@ react-native-webview reports the redirecting URL as still loading (iOS), or the 
 `evaluate` takes an expression, not statements, and resolves with its value
 ([`evaluate`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#evaluate)).
 
-```ts
-// was: ref.current.injectJavaScript(`document.body.style.background = 'red'; true;`)
-await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
-const title = await ref.current?.evaluate('document.title');
-```
+Wrap the statements you passed `injectJavaScript` in a function you call, without the trailing `true;`, as in the
+[scripts example](examples.md#scripts).
 
 ## postMessage and onMessage
 
@@ -203,26 +197,17 @@ serves only the origins you allow.
 
 Pages that use `window.ReactNativeWebView.postMessage` and `message` events keep working with
 [`reactNativeWebViewMessages`](https://rasmuskard.github.io/react-native-minimal-webview/variables/reactNativeWebViewMessages.html)
-in `injectedScripts`:
-
-```tsx
-import { createBridge, reactNativeWebViewMessages } from 'react-native-minimal-webview';
-
-const bridge = useMemo(() => createBridge({ allowedOrigins: ['https://example.com'] }), []);
-useEffect(() => bridge.on('rnw', (data) => handleMessage(data as string)), [bridge]); // was onMessage
-bridge.emit('rnw', message); // was ref.current.postMessage(message)
-
-<WebView source={{ uri: 'https://example.com' }} bridge={bridge} injectedScripts={[reactNativeWebViewMessages]} />
-```
+in `injectedScripts`. Its example shows what replaces `onMessage` and `postMessage`.
 
 ## incognito
 
 On iOS, a non-persistent data store keeps the WebView's cookies, cache and storage, and they go with the WebView.
 
-Android has no incognito WebView. react-native-webview's `incognito` clears the app-wide cookies and the cache, and
-turns the cache off. This recipe does the same before the page loads.
+Android has no incognito WebView. react-native-webview's `incognito` clears the app-wide cookies and the cache, turns
+the cache off, and turns form-data saving off, which does nothing since API 26. This recipe does the rest before the
+page loads.
 
-The calls need a mounted WebView, so the first `source` is blank:
+The first `source` is blank, as for [cookies before the first page](examples.md#before-the-first-page):
 
 ```tsx
 const [source, setSource] = useState<WebViewSource>({ uri: 'about:blank' });

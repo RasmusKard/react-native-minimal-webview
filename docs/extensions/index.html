@@ -61,26 +61,26 @@ rebuild the app, since the package has native code:</p>
 </tbody>
 </table>
 <p>Each function's <a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">API reference</a> page has its
-behavior and limits. Its code is in the folder named after it: Swift, Kotlin and TS side by side.</p>
+behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.</p>
 <h2 id="vendoring-an-extension" class="tsd-anchor-link">Vendoring an extension<a href="#vendoring-an-extension" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>To change an extension, or to take only one, copy it into a module of your own:</p>
 <ol>
-<li><code>npx create-expo-module --local &lt;name&gt;</code>.</li>
+<li>Create the module, with the core as its dependency and iOS 17.0 as its platform: steps 1 and 2 of
+<a href="https://rasmuskard.github.io/react-native-minimal-webview/documents/Native_hooks.html#1-create-a-module">Native hooks</a>.</li>
 <li>Copy the extension's files into it:
 <ul>
 <li>the <code>.swift</code> file into <code>ios/</code></li>
 <li>the <code>.kt</code> file next to your module's <code>&lt;Name&gt;Module.kt</code>, in <code>android/src/main/java/</code></li>
-<li><code>index.ts</code>, the function that returns its <code>HookExtension</code>, into <code>src/</code>, and export it from your module's
-<code>index.ts</code></li>
+<li><code>index.ts</code>, the function that returns its <code>HookExtension</code>, into <code>src/</code> under the extension's name (such as
+<code>src/basicAuthCredential.ts</code>), and export it from your module's <code>index.ts</code></li>
 </ul>
 </li>
 <li>In the <code>.kt</code> file, change the <code>package</code> line to the one in your <code>&lt;Name&gt;Module.kt</code>.</li>
 <li>Register the hook in <code>&lt;Name&gt;Module.swift</code> and <code>&lt;Name&gt;Module.kt</code>, for each platform the extension has: add
 <code>OnCreate { BasicAuthCredential.register() }</code>, with the extension's own name, to the module's <code>definition()</code>. The
 copies are in your module and its package, so they need no import.</li>
-<li>Add the core as a dependency: <code>s.dependency 'MinimalWebView'</code> in the podspec, and
-<code>implementation project(':react-native-minimal-webview')</code> in <code>android/build.gradle</code>.</li>
-<li>Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.</li>
+<li>In the hook key, replace the <code>@react-native-minimal-webview/extensions</code> prefix with your package's name, in the
+Swift, the Kotlin and the TS.</li>
 <li>Rebuild the app.</li>
 </ol>
 <p>The Swift keeps its type names: they belong to your module.</p>

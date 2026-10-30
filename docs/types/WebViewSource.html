@@ -21,8 +21,8 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">body</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span></h5>
 <div class="tsd-comment tsd-typography"><p>Makes the request a POST with this form-urlencoded body.</p>
-<p>It goes as <code>application/x-www-form-urlencoded</code>. iOS sends <code>headers</code> with it, and their <code>Content-Type</code> wins;
-Android sends no <code>headers</code>.
+<p>Its <code>Content-Type</code> is <code>application/x-www-form-urlencoded</code> unless iOS <code>headers</code> set one; Android sends no
+<code>headers</code>.
 <code>reload()</code> sends the POST again; crash recovery doesn't (<code>onProcessGone</code> reports <code>recovered: false</code>).</p>
 </div>
 <div class="tsd-comment tsd-typography">

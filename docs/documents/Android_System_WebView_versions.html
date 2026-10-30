@@ -10,7 +10,8 @@
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
 <li><a href="" aria-current="page">Android System WebView versions</a></li></ul></div>
 <div class="tsd-panel tsd-typography"><h1 id="android-system-webview-versions" class="tsd-anchor-link">Android System WebView versions<a href="#android-system-webview-versions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1>
-<p>Some features need a newer Android System WebView than others. This page lists which, and what an older one does.</p>
+<p>Some features need a newer Android System WebView than others. This page lists which; each feature's API reference
+says what it does without one.</p>
 <p>Android System WebView updates apart from Android, through the Play Store, so a device's API level doesn't tell you
 its WebView. Huawei and Fire OS devices ship their own builds.</p>
 <p>The core checks each feature at run time. On an older WebView the feature is off, and nothing crashes.</p>
@@ -19,47 +20,45 @@ its WebView. Huawei and Fire OS devices ship their own builds.</p>
 <tr>
 <th>WebView</th>
 <th>Needed for</th>
-<th>On an older one</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>83</td>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#evaluate"><code>evaluate</code></a></td>
-<td>It rejects with <code>unavailable</code></td>
 </tr>
 <tr>
 <td>83</td>
 <td><code>blob:</code> downloads with <a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#ondownload"><code>onDownload</code></a></td>
-<td>They fail</td>
 </tr>
 <tr>
 <td>101</td>
 <td>The <a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#bridge">bridge</a></td>
-<td>Calls reject with <code>unavailable</code>, and a warning says so</td>
 </tr>
 <tr>
 <td>101</td>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#injectedscripts"><code>injectedScripts</code></a></td>
-<td>They don't run, and a warning says so</td>
 </tr>
 <tr>
 <td>146</td>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationState.html#pendingurl"><code>pendingUrl</code></a></td>
-<td>It is always null</td>
 </tr>
 <tr>
 <td>146</td>
-<td>Events of a load that never commits (a stop, a download, a failure)</td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onloadstart"><code>onLoadStart</code></a> and <code>onLoadEnd</code> don't fire</td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onloadstart"><code>onLoadStart</code></a> and <code>onLoadEnd</code> for a load that never commits: a stop, a download, a 204 or a blocked redirect</td>
 </tr>
 <tr>
 <td>146</td>
-<td>SSL errors on back and forward loads</td>
-<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror"><code>onError</code></a> doesn't get them</td>
+<td>SSL errors on back and forward loads in <a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror"><code>onError</code></a></td>
+</tr>
+<tr>
+<td>146</td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/types/AndroidSettings.html#settings"><code>backForwardCacheEnabled</code></a> on by default</td>
 </tr>
 </tbody>
 </table>
+<p>A <code>WebSettingsCompat</code> or <code>WebViewCompat</code> key, a compat method through <code>get</code> or <code>call</code>, and <code>WebView.android.preconnect</code>
+depend on an androidx.webkit feature instead of a WebView version. The keys' and <code>preconnect</code>'s TSDoc name it.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">

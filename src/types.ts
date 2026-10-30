@@ -29,8 +29,8 @@ export type WebViewSource =
       /**
        * Makes the request a POST with this form-urlencoded body.
        *
-       * It goes as `application/x-www-form-urlencoded`. iOS sends `headers` with it, and their `Content-Type` wins;
-       * Android sends no `headers`.
+       * Its `Content-Type` is `application/x-www-form-urlencoded` unless iOS `headers` set one; Android sends no
+       * `headers`.
        * `reload()` sends the POST again; crash recovery doesn't (`onProcessGone` reports `recovered: false`).
        * @example
        * ```ts
@@ -114,8 +114,8 @@ export type NavigationRule = {
    * `javascript:` one's script, with the page's origin), and one opened with no URL (`window.open('')`) is decided when
    * the page first sends it to one, or dropped when that doesn't happen within 5 s.
    *
-   * On Android, one without a user gesture reaches the rules only with
-   * `android.settings.javaScriptCanOpenWindowsAutomatically` on; otherwise WebView drops it unreported.
+   * One opened without a user gesture reaches the rules only with `javaScriptCanOpenWindowsAutomatically` on
+   * (`ios.preferences`, `android.settings`; off by default); otherwise WebKit or WebView drops it unreported.
    */
   newWindow?: boolean;
   /**
@@ -670,9 +670,9 @@ export type FullscreenChangeEvent = { active: boolean };
  * - `handler_error`: a bridge handler threw or rejected (the `message` is its error's), or the page answered with
  *   `script_error`, `native_error` or a code not listed here.
  * - `script_error`: `evaluate`'s script threw, rejected or didn't parse.
- * - `native_error`: the platform refused or failed the call: a member the core owns or a private one, wrong arguments
- *   (iOS), a completion handler `call` can't await, a native exception or `NSError`, or a result JSON can't carry
- *   (`NaN`).
+ * - `native_error`: the platform refused or failed the call: a member the core owns (or a private selector for an iOS
+ *   `call`), wrong arguments (iOS), a completion handler `call` can't await, a native exception or `NSError`, or a
+ *   result JSON can't carry (`NaN`).
  * - `navigated`: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
  *   it may have run: retry only what is safe to repeat.
  * - `unavailable`: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
@@ -910,8 +910,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Without this prop, an http(s) download opens externally (`onOpenExternal` or the system browser, without the page's
    * session), and a `data:` or `blob:` one is dropped. A PDF is a download on Android; iOS shows it inline.
    *
-   * On iOS an iframe's file response is not a download, only the main frame's; `<a download>` and `blob:` downloads
-   * are, from any frame.
+   * On iOS a file response is a download only in the main frame; an `<a download>` link is one from any frame.
    *
    * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
    * reaches neither this prop nor the external fallback.
@@ -1035,8 +1034,8 @@ export type WebViewRef = {
    *
    * - `not_found`: an unknown root or method (Android: or none of that name takes these arguments).
    * - `unavailable`: a compat method this WebView doesn't support (Android).
-   * - `native_error`: a wrong argument count or an argument of the wrong type (iOS), a method that raises, a result JSON
-   *   can't carry (`NaN`), or a method the core owns.
+   * - `native_error`: a wrong argument count or an argument that doesn't convert to its parameter's type (iOS), a
+   *   method that raises, a result JSON can't carry (`NaN`), or a method the core owns.
    *
    * The core owns:
    *

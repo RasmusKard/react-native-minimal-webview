@@ -30,7 +30,7 @@ const KEY = '@react-native-minimal-webview/extensions.dialogs';
  * There is no timeout: `signal` aborts when the page goes away first (a navigation, a crash, an unmount), and the
  * dialog is then dismissed.
  *
- * Without this extension, the core's native dialogs show.
+ * Without this extension, the default dialogs show, as `WebViewProps` describes.
  * @group Extensions
  */
 export const dialogs = (

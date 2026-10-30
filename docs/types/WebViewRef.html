@@ -53,8 +53,8 @@ too, then <code>WebViewCompat</code>'s), <code>cookieManager</code> or <code>web
 <ul>
 <li><code>not_found</code>: an unknown root or method (Android: or none of that name takes these arguments).</li>
 <li><code>unavailable</code>: a compat method this WebView doesn't support (Android).</li>
-<li><code>native_error</code>: a wrong argument count or an argument of the wrong type (iOS), a method that raises, a result JSON
-can't carry (<code>NaN</code>), or a method the core owns.</li>
+<li><code>native_error</code>: a wrong argument count or an argument that doesn't convert to its parameter's type (iOS), a
+method that raises, a result JSON can't carry (<code>NaN</code>), or a method the core owns.</li>
 </ul>
 <p>The core owns:</p>
 <ul>

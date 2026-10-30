@@ -41,26 +41,26 @@ export function Browser() {
 | [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/androidLayerType.html) | Android |
 
 Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) page has its
-behavior and limits. Its code is in the folder named after it: Swift, Kotlin and TS side by side.
+behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.
 
 ## Vendoring an extension
 
 To change an extension, or to take only one, copy it into a module of your own:
 
-1. `npx create-expo-module --local <name>`.
+1. Create the module, with the core as its dependency and iOS 17.0 as its platform: steps 1 and 2 of
+   [Native hooks](https://rasmuskard.github.io/react-native-minimal-webview/documents/Native_hooks.html#1-create-a-module).
 2. Copy the extension's files into it:
    - the `.swift` file into `ios/`
    - the `.kt` file next to your module's `<Name>Module.kt`, in `android/src/main/java/`
-   - `index.ts`, the function that returns its `HookExtension`, into `src/`, and export it from your module's
-     `index.ts`
+   - `index.ts`, the function that returns its `HookExtension`, into `src/` under the extension's name (such as
+     `src/basicAuthCredential.ts`), and export it from your module's `index.ts`
 3. In the `.kt` file, change the `package` line to the one in your `<Name>Module.kt`.
 4. Register the hook in `<Name>Module.swift` and `<Name>Module.kt`, for each platform the extension has: add
    `OnCreate { BasicAuthCredential.register() }`, with the extension's own name, to the module's `definition()`. The
    copies are in your module and its package, so they need no import.
-5. Add the core as a dependency: `s.dependency 'MinimalWebView'` in the podspec, and
-   `implementation project(':react-native-minimal-webview')` in `android/build.gradle`.
-6. Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.
-7. Rebuild the app.
+5. In the hook key, replace the `@react-native-minimal-webview/extensions` prefix with your package's name, in the
+   Swift, the Kotlin and the TS.
+6. Rebuild the app.
 
 The Swift keeps its type names: they belong to your module.
 
