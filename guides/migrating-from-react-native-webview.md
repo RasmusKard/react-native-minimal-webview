@@ -94,7 +94,7 @@ when `recovered` is false ([why](https://rasmuskard.github.io/react-native-minim
 | `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onPermissionRequest` |
 | `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus` | `call('webView.clearCache', [true])` and so on, on Android |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; Android [below](#incognito) |
-| `keyboardDisplayRequiresUserAction`, `removeIosKeyboardObserver` | A [native hook](examples.md#native-hooks) |
+| `keyboardDisplayRequiresUserAction`, `removeIosKeyboardObserver` | A [native hook](native-hooks.md) |
 | `refreshControlLightMode`, `downloadingMessage`, `onLoadSubResourceError`, `nativeConfig` | A native hook |
 | `containerStyle` | A `View` around the WebView |
 

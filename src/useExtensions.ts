@@ -17,7 +17,7 @@ import type { HookEvent, HookExtension, WebViewProps } from './types';
  * A false, null or undefined entry is left out, so `on && extension(…)` switches one on and off: its key leaves
  * `hookOptions`. The result is the same object while the options are the same JSON, so a render with new handlers sends
  * native nothing; the latest handlers always take the events.
- * @see [Native hooks example](../guides/examples.md#native-hooks)
+ * @see [Native hooks guide](../guides/native-hooks.md)
  * @group Native hooks
  */
 export function useExtensions(

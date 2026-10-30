@@ -639,7 +639,7 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
  *
  * A package with a native hook exports a function that returns one, so that an app turns the hook on by passing it to
  * `useExtensions`.
- * @see [Native hooks example](../guides/examples.md#native-hooks)
+ * @see [Native hooks guide](../guides/native-hooks.md)
  * @group Native hooks
  */
 export type HookExtension = {
@@ -827,7 +827,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * after the WebView was created attaches its hook then, unless the hook has a `configure` step or its own WebView
    * class (`webViewClass`, `webViewFactory`): that one attaches only when the WebView is created, and a warning says
    * so. A key no hook is registered under warns: pass a one-platform hook's key on that platform only.
-   * @see [Native hooks example](../guides/examples.md#native-hooks)
+   * @see [Native hooks guide](../guides/native-hooks.md)
    */
   hookOptions?: Record<string, unknown>;
   /**

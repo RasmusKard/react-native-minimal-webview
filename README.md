@@ -6,6 +6,7 @@ It runs on iOS and Android, on the new architecture, as an Expo module.
 
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html) ·
 [Examples](guides/examples.md) ·
+[Native hooks](guides/native-hooks.md) ·
 [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md) ·
 [Extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) ·
 [MIT license](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE)
@@ -21,7 +22,7 @@ This package passes the platform APIs through instead:
 
 - `ios` and `android` props: any setting, by its platform name.
 - The ref's `get` and `call`: properties and methods, by name.
-- [Native hooks](guides/examples.md#native-hooks): the `WKWebView` or `WebView` itself, in your own Swift or Kotlin
+- [Native hooks](guides/native-hooks.md): the `WKWebView` or `WebView` itself, in your own Swift or Kotlin
   module.
 
 ```tsx
@@ -70,15 +71,13 @@ npm install react-native-minimal-webview   # or: yarn add, pnpm add
 
 ### Requirements
 
-| Requirement | Minimum |
+| Platform | Minimum |
 |---|---|
 | iOS | 17.0 |
 | Android | API 29: `minSdkVersion 29`, for example with `expo-build-properties` |
+| Android System WebView | Some features need a newer one ([which](guides/android-system-webview.md)) |
 | Expo SDK | 53 (React Native 0.79, React 19) |
 | Architecture | New architecture only |
-| Android System WebView, for `evaluate` and `blob:` downloads | 83 |
-| Android System WebView, for the bridge and `injectedScripts` | 101 |
-| Android System WebView, for `pendingUrl` and events of loads that never commit | 146 |
 
 ## Usage
 
@@ -102,7 +101,7 @@ Then pick what you need:
 | Run a script on every page | [Scripts](guides/examples.md#scripts) |
 | Load bundled HTML | [Local files](guides/examples.md#local-files) |
 | Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
-| Use the native `WKWebView` or `WebView` | [Native hooks](guides/examples.md#native-hooks), API in [`Hooks.swift`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and [`Hooks.kt`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt) |
+| Use the native `WKWebView` or `WebView` | [Native hooks](guides/native-hooks.md) |
 | Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) |
 
 ## Contributing

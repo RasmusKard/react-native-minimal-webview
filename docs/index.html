@@ -12,6 +12,7 @@
 <p>It runs on iOS and Android, on the new architecture, as an Expo module.</p>
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/modules.html">API reference</a> ·
 <a href="documents/Examples.html">Examples</a> ·
+<a href="documents/Native_hooks.html">Native hooks</a> ·
 <a href="documents/Migrating_from_react-native-webview.html">Migrating from react-native-webview</a> ·
 <a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">Extensions</a> ·
 <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE">MIT license</a></p>
@@ -23,7 +24,7 @@ PR, or patch or fork the package, even if the change is one platform call.</p>
 <ul>
 <li><code>ios</code> and <code>android</code> props: any setting, by its platform name.</li>
 <li>The ref's <code>get</code> and <code>call</code>: properties and methods, by name.</li>
-<li><a href="documents/Examples.html#native-hooks">Native hooks</a>: the <code>WKWebView</code> or <code>WebView</code> itself, in your own Swift or Kotlin
+<li><a href="documents/Native_hooks.html">Native hooks</a>: the <code>WKWebView</code> or <code>WebView</code> itself, in your own Swift or Kotlin
 module.</li>
 </ul>
 <pre><code class="tsx"><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><br/><span class="hl-2">  </span><span class="hl-3">ios</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">scrollView:</span><span class="hl-5"> { </span><span class="hl-6">bounces:</span><span class="hl-5"> </span><span class="hl-4">false</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">android</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">settings:</span><span class="hl-5"> { </span><span class="hl-6">textZoom:</span><span class="hl-5"> </span><span class="hl-7">120</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-8">…</span><br/><span class="hl-0">/&gt;</span><span class="hl-2">;</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;webView.clearCache&#39;</span><span class="hl-2">, [</span><span class="hl-4">true</span><span class="hl-2">]); </span><span class="hl-12">// Android</span>
@@ -82,7 +83,7 @@ module.</li>
 <table>
 <thead>
 <tr>
-<th>Requirement</th>
+<th>Platform</th>
 <th>Minimum</th>
 </tr>
 </thead>
@@ -96,24 +97,16 @@ module.</li>
 <td>API 29: <code>minSdkVersion 29</code>, for example with <code>expo-build-properties</code></td>
 </tr>
 <tr>
+<td>Android System WebView</td>
+<td>Some features need a newer one (<a href="documents/Android_System_WebView_versions.html">which</a>)</td>
+</tr>
+<tr>
 <td>Expo SDK</td>
 <td>53 (React Native 0.79, React 19)</td>
 </tr>
 <tr>
 <td>Architecture</td>
 <td>New architecture only</td>
-</tr>
-<tr>
-<td>Android System WebView, for <code>evaluate</code> and <code>blob:</code> downloads</td>
-<td>83</td>
-</tr>
-<tr>
-<td>Android System WebView, for the bridge and <code>injectedScripts</code></td>
-<td>101</td>
-</tr>
-<tr>
-<td>Android System WebView, for <code>pendingUrl</code> and events of loads that never commit</td>
-<td>146</td>
 </tr>
 </tbody>
 </table>
@@ -164,7 +157,7 @@ module.</li>
 </tr>
 <tr>
 <td>Use the native <code>WKWebView</code> or <code>WebView</code></td>
-<td><a href="documents/Examples.html#native-hooks">Native hooks</a>, API in <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift"><code>Hooks.swift</code></a> and <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt"><code>Hooks.kt</code></a></td>
+<td><a href="documents/Native_hooks.html">Native hooks</a></td>
 </tr>
 <tr>
 <td>Bring back <code>basicAuthCredential</code>, <code>onScroll</code> and other react-native-webview props</td>
