@@ -115,7 +115,7 @@ so, once per process).</p>
 and with no match the navigation is blocked.</p>
 <p>Unset or <code>[]</code>, the rules are <a href="../variables/WebView.defaultNavigationRules.html" class="tsd-kind-variable">WebView.defaultNavigationRules</a>. To let your app's scheme through, put a rule
 ahead of them:</p>
-<pre><code class="ts"><span class="hl-2">navigationRules</span><span class="hl-1">={</span><span class="hl-2">[{ scheme: [</span><span class="hl-3">&#39;myapp&#39;</span><span class="hl-2">], action: </span><span class="hl-3">&#39;external&#39;</span><span class="hl-2"> }, </span><span class="hl-1">...</span><span class="hl-2">WebView.defaultNavigationRules]}</span>
+<pre><code class="ts"><span class="hl-5">navigationRules</span><span class="hl-1">={</span><span class="hl-5">[{ scheme: [</span><span class="hl-2">&#39;myapp&#39;</span><span class="hl-5">], action: </span><span class="hl-2">&#39;external&#39;</span><span class="hl-5"> }, </span><span class="hl-1">...</span><span class="hl-5">WebView.defaultNavigationRules]}</span>
 </code><button type="button">Copy</button></pre>
 
 <p><code>about:</code>, <code>blob:</code>, <code>data:</code> and <code>javascript:</code> always load in place.</p>

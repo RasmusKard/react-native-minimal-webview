@@ -8,46 +8,171 @@
 <div class="col-content">
 <div class="tsd-page-title"></div>
 <div class="tsd-panel tsd-typography"><h1 id="react-native-minimal-webview" class="tsd-anchor-link">react-native-minimal-webview<a href="#react-native-minimal-webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
-<p>A small, extensible WebView for React Native, built with the Expo Modules API (Swift and Kotlin), for the new
-architecture only.</p>
+<p>A WebView for React Native that decides navigations in native code, talks to the page over a typed promise bridge, and
+takes every iOS and Android WebView setting by its platform name. Built with the Expo Modules API, for the new
+architecture.</p>
+<p><a href="https://rasmuskard.github.io/react-native-minimal-webview/modules.html">API reference</a> ·
+<a href="documents/Examples.html">Examples</a> ·
+<a href="documents/Migrating_from_react-native-webview.html">Migrating from react-native-webview</a> ·
+<a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">Extensions</a> ·
+<a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE">MIT license</a></p>
+<p><img src="media/how-it-works.svg" alt="The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins"></p>
+<h2 id="what-it-changes-from-react-native-webview" class="tsd-anchor-link">What it changes from react-native-webview<a href="#what-it-changes-from-react-native-webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>react-native-webview asks JS about each navigation and wraps platform settings one prop at a time. This package
+matches navigations against rules in native code, and passes any setting through by name.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>react-native-webview</th>
+<th>react-native-minimal-webview</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Deciding a navigation</td>
+<td><code>onShouldStartLoadWithRequest</code>, a JS round trip each time. Android blocks the UI thread, then lets the navigation through on a timeout</td>
+<td><code>navigationRules</code>, matched natively. JS hears the outcome in <code>onNavigation</code></td>
+</tr>
+<tr>
+<td>Talking to the page</td>
+<td><code>postMessage</code> strings, from every page</td>
+<td>A typed promise bridge, only with <code>allowedOrigins</code></td>
+</tr>
+<tr>
+<td>Platform settings</td>
+<td>One prop per setting it wraps</td>
+<td>Any setting, typed: <code>ios={{ scrollView: { bounces: false } }}</code></td>
+</tr>
+<tr>
+<td>Navigation state</td>
+<td>You keep it from <code>onNavigationStateChange</code></td>
+<td><code>useWebViewState(ref)</code>: URL, title, progress, history</td>
+</tr>
+<tr>
+<td>File and camera requests</td>
+<td>Android asks for the camera permission itself</td>
+<td>Your app answers them, with libraries such as expo-image-picker</td>
+</tr>
+<tr>
+<td>Anything else</td>
+<td>A patch or a fork</td>
+<td>A native hook in your own Swift or Kotlin module</td>
+</tr>
+</tbody>
+</table>
+<p>The <a href="documents/Migrating_from_react-native-webview.html">migration guide</a> maps every react-native-webview prop.</p>
+<h2 id="when-to-use-something-else" class="tsd-anchor-link">When to use something else<a href="#when-to-use-something-else" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
-<li><strong>Native decides, JS is told:</strong> navigation rules run natively, with no JS round trip per navigation.</li>
-<li><strong>Native owns the navigation state:</strong> <code>useWebViewState(ref)</code> gives the committed URL, a pending load, the title,
-progress and history.</li>
-<li><strong>A promise bridge</strong> between React Native and the page, for the origins you allow.</li>
-<li><strong>Page requests have defaults:</strong> a prop answers the file chooser and permissions (Android denies them without one),
-or hears about fullscreen video and downloads; JS dialogs and HTTP auth go to a native hook.</li>
-<li><strong>Every platform setting by name:</strong> <code>ios={{ scrollView: { bounces: false } }}</code>, <code>android={{ settings: { textZoom: 120 } }}</code>.</li>
-<li><strong>The app owns device APIs:</strong> no OS permission requests, pickers or config plugin of its own, and no dependency on
-expo-camera or similar packages. Without a prop to answer, iOS shows WebKit's own prompts and picker.</li>
+<li>Old architecture, Windows, macOS or web: react-native-webview supports them, this package doesn't.</li>
+<li>Expo Go: the package has native code, so it needs a development build.</li>
 </ul>
-<p><strong>Requirements:</strong> iOS 17.0+, Android API 29+ (<code>minSdkVersion 29</code>, for example with <code>expo-build-properties</code>), Expo SDK
-53+ (React Native 0.79+, React 19), the new architecture. A bare React Native app needs the <code>expo</code> package
-(<code>npx install-expo-modules@latest</code>). On Android, some features need a newer
-<a href="#android-system-webview-versions">Android System WebView</a>. On a current Xcode, SDK 53 apps need React Native's <code>fmt</code>
-pod built as C++17 (a Podfile <code>post_install</code> hook that sets its <code>CLANG_CXX_LANGUAGE_STANDARD</code> to <code>c++17</code>). The build
-is ESM: Jest consumers add <code>react-native-minimal-webview</code> to <code>transformIgnorePatterns</code> (with jest-expo, to its
-<code>node_modules/(?!...)</code> allowlist).</p>
-<pre><code class="tsx"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">WebView</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;react-native-minimal-webview&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">export</span><span class="hl-1"> </span><span class="hl-4">function</span><span class="hl-1"> </span><span class="hl-5">Browser</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-0">return</span><span class="hl-1"> </span><span class="hl-6">&lt;</span><span class="hl-7">WebView</span><span class="hl-1"> </span><span class="hl-8">source</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">{ </span><span class="hl-2">uri:</span><span class="hl-9"> </span><span class="hl-3">&#39;https://example.com&#39;</span><span class="hl-9"> }</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-8">style</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-9">{ </span><span class="hl-2">flex:</span><span class="hl-9"> </span><span class="hl-10">1</span><span class="hl-9"> }</span><span class="hl-4">}</span><span class="hl-1"> </span><span class="hl-6">/&gt;</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+<h2 id="install" class="tsd-anchor-link">Install<a href="#install" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">expo</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">react-native-minimal-webview</span>
 </code><button type="button">Copy</button></pre>
 
-<h2 id="docs" class="tsd-anchor-link">Docs<a href="#docs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<ul>
-<li><a href="documents/Examples.html">Examples</a>: one per public interface, from the navigation state to native hooks</li>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/modules.html">API reference</a>, generated from the TSDoc. The native hook API is documented on
-<code>MinimalWebViewHooks</code> and <code>WebViewContext</code> in <code>ios/Hooks.swift</code> and <code>android/src/main/java/expo/modules/minimalwebview/Hooks.kt</code></li>
-<li><a href="documents/Migrating_from_react-native-webview.html">Migrating from react-native-webview</a>: what differs, and recipes for what
-has no prop</li>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">@react-native-minimal-webview/extensions</a>: a second package, in
-<code>extensions/</code>, that brings back react-native-webview props such as <code>basicAuthCredential</code> and <code>onScroll</code> as native hooks,
-for <code>useExtensions</code></li>
-<li><a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md">Development</a>: setup, the checks and the on-device suites</li>
-</ul>
+<p>Then rebuild the app (<code>npx expo run:ios</code>, <code>npx expo run:android</code>).</p>
+<p>A bare React Native app adds Expo modules first, then installs with its package manager:</p>
+<pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">install-expo-modules@latest</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">react-native-minimal-webview</span><span class="hl-1">   </span><span class="hl-3"># or: yarn add, pnpm add</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="requirements" class="tsd-anchor-link">Requirements<a href="#requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Minimum</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>iOS</td>
+<td>17.0</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 29: <code>minSdkVersion 29</code>, for example with <code>expo-build-properties</code></td>
+</tr>
+<tr>
+<td>Android System WebView</td>
+<td>Some features need a newer one (<a href="#android-system-webview-versions">below</a>)</td>
+</tr>
+<tr>
+<td>Expo SDK</td>
+<td>53 (React Native 0.79, React 19)</td>
+</tr>
+<tr>
+<td>Architecture</td>
+<td>New architecture only</td>
+</tr>
+</tbody>
+</table>
+<p>Expo SDK 53 on a current Xcode: build React Native's <code>fmt</code> pod as C++17, with a Podfile <code>post_install</code> hook that sets
+its <code>CLANG_CXX_LANGUAGE_STANDARD</code> to <code>c++17</code>.</p>
+<p>Jest: the build is ESM, so add <code>react-native-minimal-webview</code> to <code>transformIgnorePatterns</code> (with jest-expo, to its
+<code>node_modules/(?!...)</code> allowlist).</p>
+<h2 id="usage" class="tsd-anchor-link">Usage<a href="#usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="tsx"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">WebView</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;react-native-minimal-webview&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">Browser</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-4">return</span><span class="hl-1"> </span><span class="hl-7">&lt;</span><span class="hl-8">WebView</span><span class="hl-1"> </span><span class="hl-9">source</span><span class="hl-1">=</span><span class="hl-6">{</span><span class="hl-10">{ </span><span class="hl-5">uri:</span><span class="hl-10"> </span><span class="hl-2">&#39;https://example.com&#39;</span><span class="hl-10"> }</span><span class="hl-6">}</span><span class="hl-1"> </span><span class="hl-9">style</span><span class="hl-1">=</span><span class="hl-6">{</span><span class="hl-10">{ </span><span class="hl-5">flex:</span><span class="hl-10"> </span><span class="hl-11">1</span><span class="hl-10"> }</span><span class="hl-6">}</span><span class="hl-1"> </span><span class="hl-7">/&gt;</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Then pick what you need:</p>
+<table>
+<thead>
+<tr>
+<th>To</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Show the URL, progress or a back button</td>
+<td><a href="documents/Examples.html#navigation-state">Navigation state</a></td>
+</tr>
+<tr>
+<td>Keep the WebView on your sites, open the rest externally</td>
+<td><a href="documents/Examples.html#navigation-rules">Navigation rules</a></td>
+</tr>
+<tr>
+<td>Call the page from the app, and the app from the page</td>
+<td><a href="documents/Examples.html#the-bridge">The bridge</a></td>
+</tr>
+<tr>
+<td>Change a WebView setting</td>
+<td><a href="documents/Examples.html#platform-settings">Platform settings</a></td>
+</tr>
+<tr>
+<td>Share cookies with native requests</td>
+<td><a href="documents/Examples.html#cookies">Cookies</a></td>
+</tr>
+<tr>
+<td>Run a script on every page</td>
+<td><a href="documents/Examples.html#scripts">Scripts</a></td>
+</tr>
+<tr>
+<td>Load bundled HTML</td>
+<td><a href="documents/Examples.html#local-files">Local files</a></td>
+</tr>
+<tr>
+<td>Answer file pickers, permissions and downloads</td>
+<td><a href="documents/Examples.html#page-requests">Page requests</a></td>
+</tr>
+<tr>
+<td>Use the native <code>WKWebView</code> or <code>WebView</code></td>
+<td><a href="documents/Examples.html#native-hooks">Native hooks</a>, and <code>MinimalWebViewHooks</code> in <code>ios/Hooks.swift</code> and <code>android/src/main/java/expo/modules/minimalwebview/Hooks.kt</code></td>
+</tr>
+<tr>
+<td>Bring back <code>basicAuthCredential</code>, <code>onScroll</code> and other react-native-webview props</td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">@react-native-minimal-webview/extensions</a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="android-system-webview-versions" class="tsd-anchor-link">Android System WebView versions<a href="#android-system-webview-versions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<p>Android System WebView updates apart from the OS (through the Play Store; Huawei and Fire OS devices ship their own
-builds), so what a device can do depends on its WebView, not its API level. The core checks each feature at run time,
-and an older WebView loses the feature; nothing crashes. Losing the bridge or <code>injectedScripts</code> logs a warning. A
-feature's TSDoc names the WebView it needs.</p>
+<p>On Android, what a device can do depends on its WebView, not its API level. Android System WebView updates apart from
+the OS, through the Play Store; Huawei and Fire OS devices ship their own builds.</p>
+<p>The core checks each feature at run time. On an older WebView, the feature is off and nothing crashes. Losing the
+bridge or <code>injectedScripts</code> logs a warning. Each feature's TSDoc names the WebView it needs.</p>
+<h2 id="contributing" class="tsd-anchor-link">Contributing<a href="#contributing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md">CONTRIBUTING.md</a> has the setup, the checks and the on-device suites.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -64,8 +189,15 @@ feature's TSDoc names the WebView it needs.</p>
 <h3>On This Page</h3></summary>
 <div class="tsd-accordion-details"><a href="#react-native-minimal-webview"><span>react-<wbr/>native-<wbr/>minimal-<wbr/>webview</span></a>
 <ul>
-<li><a href="#docs"><span>Docs</span></a></li>
-<li><a href="#android-system-webview-versions"><span>Android <wbr/>System <wbr/>Web<wbr/>View versions</span></a></li></ul></div></details></div>
+<li><a href="#what-it-changes-from-react-native-webview"><span>What it changes from react-<wbr/>native-<wbr/>webview</span></a></li>
+<li><a href="#when-to-use-something-else"><span>When to use something else</span></a></li>
+<li><a href="#install"><span>Install</span></a></li>
+<li>
+<ul>
+<li><a href="#requirements"><span>Requirements</span></a></li></ul></li>
+<li><a href="#usage"><span>Usage</span></a></li>
+<li><a href="#android-system-webview-versions"><span>Android <wbr/>System <wbr/>Web<wbr/>View versions</span></a></li>
+<li><a href="#contributing"><span>Contributing</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/RasmusKard/react-native-minimal-webview" class="tsd-nav-link">GitHub</a></nav>
 <nav class="tsd-navigation"><a href="modules.html">react-native-minimal-webview</a>
