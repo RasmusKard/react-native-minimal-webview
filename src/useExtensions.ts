@@ -4,8 +4,9 @@ import type { HookEvent, HookExtension, WebViewProps } from './types';
 
 /**
  * The `hookOptions` and `onHookEvent` props that turn on the hooks of `extensions`, to spread onto the `WebView`.
+ *
  * Make one call per WebView, with every extension in its list: a second result spread onto the same WebView replaces
- * the first one's `onHookEvent`, and the first one's asks then answer null.
+ * the first one's props, so the first one's hooks are off.
  *
  * `hookOptions` has each extension's `options` under its `key`, on top of `props.hookOptions`: an extension wins over
  * a key of yours, and a later extension over an earlier one with the same key, which warns in development. Each event

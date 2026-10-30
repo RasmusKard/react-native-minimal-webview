@@ -18,10 +18,9 @@
 <div class="tsd-comment tsd-typography"><p>The text selection menu: react-native-webview's <code>menuItems</code>, <code>suppressMenuItems</code> and <code>onCustomMenuSelection</code>.
 <code>items</code> replace the system's items, <code>onSelect</code> gets the one chosen, and on iOS <code>suppress</code> hides system items. Null
 when neither is set on this platform (<code>suppress</code> alone on Android).</p>
-<p>Turn it on when the WebView is created. Once it has, a change, switching it off included, applies to the next menu.
-Its hook makes the WebView from a class of its own, so when another hook's <code>webViewClass</code> or <code>webViewFactory</code>,
-registered earlier, makes it instead, there is no menu and the core warns. On iOS the items are added to WebKit's own
-selection menu.</p>
+<p>Turn it on when the WebView is created. Once it has, a change, switching it off included, applies to the next menu.</p>
+<p>Its hook makes the WebView from a class of its own. When another hook's <code>webViewClass</code> or <code>webViewFactory</code>,
+registered earlier, makes it instead, there is no menu and the core warns.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>

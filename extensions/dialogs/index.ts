@@ -26,8 +26,11 @@ const KEY = '@react-native-minimal-webview/extensions.dialogs';
  *
  * The return value (a promise is awaited) is the answer: `true` accepts a confirm, a string is a prompt's text, and
  * anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.
- * There is no timeout: `signal` aborts when the page goes away first (a crash, an unmount), and the dialog is then
- * dismissed. Without it, the core's dialogs show.
+ *
+ * There is no timeout: `signal` aborts when the page goes away first (a navigation, a crash, an unmount), and the
+ * dialog is then dismissed.
+ *
+ * Without this extension, the core's native dialogs show.
  * @group Extensions
  */
 export const dialogs = (

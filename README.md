@@ -1,8 +1,9 @@
 # react-native-minimal-webview
 
-A WebView for React Native that decides navigations in native code, talks to the page over a typed promise bridge, and
-takes every iOS and Android WebView setting by its platform name. Built with the Expo Modules API, for the new
-architecture.
+A WebView component for React Native, in place of react-native-webview. It decides navigations in native code, talks
+to the page over a typed promise bridge, and takes any iOS or Android WebView setting by its platform name.
+
+It runs on iOS and Android, on the new architecture, as an Expo module.
 
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html) ·
 [Examples](guides/examples.md) ·
@@ -14,23 +15,20 @@ architecture.
 
 ## What it changes from react-native-webview
 
-react-native-webview asks JS about each navigation and wraps platform settings one prop at a time. This package
-matches navigations against rules in native code, and passes any setting through by name.
-
 | | react-native-webview | react-native-minimal-webview |
 |---|---|---|
-| Deciding a navigation | `onShouldStartLoadWithRequest`, a JS round trip each time. Android blocks the UI thread, then lets the navigation through on a timeout | `navigationRules`, matched natively. JS hears the outcome in `onNavigation` |
-| Talking to the page | `postMessage` strings, from every page | A typed promise bridge, only with `allowedOrigins` |
-| Platform settings | One prop per setting it wraps | Any setting, typed: `ios={{ scrollView: { bounces: false } }}` |
-| Navigation state | You keep it from `onNavigationStateChange` | `useWebViewState(ref)`: URL, title, progress, history |
-| File and camera requests | Android asks for the camera permission itself | Your app answers them, with libraries such as expo-image-picker |
+| Deciding a navigation | `onShouldStartLoadWithRequest`: a JS round trip for each one | `navigationRules`, matched in native code; `onNavigation` reports the outcome |
+| Talking to the page | `postMessage` strings, open to every page | A typed promise bridge, open only to its `allowedOrigins` |
+| Platform settings | One prop per setting it wraps | Any setting by its platform name: `ios={{ scrollView: { bounces: false } }}` |
+| Navigation state | You keep it from `onNavigationStateChange` | `useWebViewState(ref)`: URL, title, progress, `canGoBack` and more |
+| Camera and microphone for the page | Android asks the OS and grants them itself | Your app asks the OS (expo-camera) and answers `onPermissionRequest` |
 | Anything else | A patch or a fork | A native hook in your own Swift or Kotlin module |
 
-The [migration guide](guides/migrating-from-react-native-webview.md) maps every react-native-webview prop.
+The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
 ## When to use something else
 
-- Old architecture, Windows, macOS or web: react-native-webview supports them, this package doesn't.
+- Old architecture, Windows or macOS: react-native-webview supports them, this package doesn't. Neither runs on web.
 - Expo Go: the package has native code, so it needs a development build.
 
 ## Install
@@ -86,7 +84,7 @@ Then pick what you need:
 | Run a script on every page | [Scripts](guides/examples.md#scripts) |
 | Load bundled HTML | [Local files](guides/examples.md#local-files) |
 | Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
-| Use the native `WKWebView` or `WebView` | [Native hooks](guides/examples.md#native-hooks), and `MinimalWebViewHooks` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt` |
+| Use the native `WKWebView` or `WebView` | [Native hooks](guides/examples.md#native-hooks); the API is in [`Hooks.swift`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and [`Hooks.kt`](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt) |
 | Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) |
 
 ## Android System WebView versions

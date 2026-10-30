@@ -21,7 +21,8 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">body</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span></h5>
 <div class="tsd-comment tsd-typography"><p>Makes the request a POST with this form-urlencoded body.</p>
-<p>iOS sends <code>headers</code> with it and sets <code>Content-Type</code> when they don't; Android's <code>postUrl</code> sends neither.
+<p>It goes as <code>application/x-www-form-urlencoded</code>. iOS sends <code>headers</code> with it, and their <code>Content-Type</code> wins;
+Android sends no <code>headers</code>.
 <code>reload()</code> sends the POST again; crash recovery doesn't (<code>onProcessGone</code> reports <code>recovered: false</code>).</p>
 </div>
 <div class="tsd-comment tsd-typography">
@@ -41,7 +42,8 @@ when it isn't a <code>file:</code> URL or doesn't contain the file (a warning sa
 </div></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">uri</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5>
-<div class="tsd-comment tsd-typography"><p>A <code>file://</code> URL reads only within <code>readAccessRoot</code> on iOS; Android needs <code>android.settings.allowFileAccess</code>,
+<div class="tsd-comment tsd-typography"><p>The URL to load.</p>
+<p>A <code>file://</code> URL reads only within <code>readAccessRoot</code> on iOS; Android needs <code>android.settings.allowFileAccess</code>,
 which lets a <code>file:</code> page read any file the app can.</p>
 </div></li></ul></li>
 <li><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">baseUrl</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">html</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span>

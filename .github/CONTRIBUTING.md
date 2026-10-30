@@ -42,7 +42,7 @@ example/maestro/run.sh ios <simulator udid> bridge network   # only the named on
 
 Run the app on one device per platform at a time: every instance of a platform takes its suites from the same queue.
 
-Android emulators need a Google APIs system image, not a Play Store one, whose Play Store updates Android System WebView
+Android emulators need a Google APIs system image, not a Play Store one: the Play Store updates Android System WebView
 in the background. Start them with `-gpu host`, or they may render in software.
 
 ```sh
@@ -51,6 +51,8 @@ avdmanager create avd -n mrw-api37 -k 'system-images;android-37.1;google_apis_ps
 emulator -avd mrw-api37 -gpu host
 ```
 
-For the oldest supported versions: the `android-29` Google APIs image (API 29, WebView 91) and the `android-36` one
-(WebView 133), and the iOS 17.0 simulator runtime, whose dmg is in Apple's developer downloads
-(`xcrun simctl runtime add <dmg>` installs it).
+For the oldest supported versions:
+
+- Android API 29, WebView 91: the `android-29` Google APIs image
+- Android WebView 133: the `android-36` Google APIs image
+- iOS 17.0: the simulator runtime's dmg from Apple's developer downloads, installed with `xcrun simctl runtime add <dmg>`

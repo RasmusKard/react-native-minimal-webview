@@ -17,6 +17,6 @@
   "searchInComments": true,
   "includeHierarchySummary": false,
   "navigationLinks": { "GitHub": "https://github.com/RasmusKard/react-native-minimal-webview" },
-  "highlightLanguages": ["bash", "console", "css", "html", "javascript", "json", "jsonc", "json5", "yaml", "tsx", "typescript", "kotlin", "swift"],
+  "highlightLanguages": ["bash", "console", "css", "html", "javascript", "json", "jsonc", "json5", "yaml", "tsx", "typescript", "kotlin", "swift", "ruby", "groovy"],
   "groupOrder": ["Documents", "WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
 }

@@ -10,39 +10,41 @@ One example per public interface. What each prop, method and type does is in its
 ## Navigation state
 
 ```tsx
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { BackHandler, Button } from 'react-native';
 import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-webview';
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  const { url, loading, canGoBack } = useWebViewState(ref);
+  const { canGoBack } = useWebViewState(ref);
+
+  // Android's back button is the app's to handle
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!canGoBack) return false;
+      ref.current?.goBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [canGoBack]);
+
   return (
     <>
-      <Button title="back" disabled={!canGoBack} onPress={() => ref.current?.goBack()} />
+      <Button title="Back" disabled={!canGoBack} onPress={() => ref.current?.goBack()} />
       <WebView ref={ref} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />
     </>
   );
 }
 ```
 
-Android's back button is the app's: `goBack()` from a `BackHandler`.
+### Outside React
 
 ```tsx
-useEffect(() => {
-  const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-    if (!canGoBack) return false;
-    ref.current?.goBack();
-    return true;
-  });
-  return () => subscription.remove();
-}, [canGoBack]);
-```
+import { WebView, createWebViewRef } from 'react-native-minimal-webview';
 
-Outside React (a push notification handler), `createWebViewRef()` makes the ref at module level:
-
-```tsx
 export const webView = createWebViewRef();
 
+// A push notification handler, say
 function onInboxNotification() {
   if (webView.getState().url.startsWith('https://example.com/inbox')) webView.current?.reload();
 }
@@ -56,11 +58,12 @@ function onInboxNotification() {
 <WebView
   source={{ uri: 'https://example.com' }}
   navigationRules={[
+    { scheme: ['file'], action: 'block' },
     { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
     { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
-    { mainFrame: true, action: 'external' }, // other sites and new windows; any other subframe navigation is blocked
+    { mainFrame: true, userInitiated: true, action: 'external' }, // other sites and new windows, from a user gesture; anything else is blocked
   ]}
   onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'external')}
   onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
@@ -70,24 +73,46 @@ function onInboxNotification() {
 ## The bridge
 
 ```tsx
+import { useEffect, useMemo } from 'react';
+import { Button, Share } from 'react-native';
+import { WebView, createBridge } from 'react-native-minimal-webview';
+
 type Methods = {
   share: { params: { url: string }; result: boolean }; // handled in React Native
   getCartCount: { result: number }; // handled by the page
 };
 type Events = { themeChanged: 'light' | 'dark' };
 
-const bridge = useMemo(() => createBridge<Methods, Events>({ allowedOrigins: ['https://example.com'] }), []); // once: a new one recreates the WebView
-useEffect(
-  () => bridge.handle('share', async ({ url }, { origin }) => (await Share.share({ url })).action === Share.sharedAction), // returns the unsubscribe
-  [bridge]
-);
-<WebView bridge={bridge} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />;
+export function Shop() {
+  // Once: a new bridge recreates the WebView
+  const bridge = useMemo(
+    () => createBridge<Methods, Events>({ allowedOrigins: ['https://example.com'] }),
+    []
+  );
 
-const count = await bridge.call('getCartCount');
-bridge.emit('themeChanged', 'dark');
+  // handle returns the unsubscribe, which is the cleanup
+  useEffect(
+    () =>
+      bridge.handle('share', async ({ url }) => {
+        const { action } = await Share.share({ url });
+        return action === Share.sharedAction;
+      }),
+    [bridge]
+  );
+
+  return (
+    <>
+      <Button title="Dark" onPress={() => bridge.emit('themeChanged', 'dark')} />
+      <Button title="Cart" onPress={async () => console.log(await bridge.call('getCartCount'))} />
+      <WebView bridge={bridge} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />
+    </>
+  );
+}
 ```
 
-In the page:
+### In the page
+
+The page's `window.nativeBridge` is untyped; this declaration types it.
 
 ```ts
 declare global {
@@ -112,7 +137,10 @@ window.nativeBridge?.on('themeChanged', (theme) => applyTheme(theme));
 Any setting by its platform name, and any public method through `call`.
 
 ```tsx
+import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-webview';
+
 <WebView
+  source={{ uri: 'https://example.com' }}
   ios={{
     configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
     preferences: { minimumFontSize: 12 }, // WKPreferences
@@ -125,40 +153,63 @@ Any setting by its platform name, and any public method through `call`.
     webView: { overScrollMode: 2, acceptThirdPartyCookies: true }, // WebView, then WebViewCompat, then CookieManager
   }}
 />;
+```
 
+### Reading and calling
+
+`ref` is the WebView's ref, as in [Navigation state](#navigation-state).
+
+```ts
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
+
 // Android: a public method of settings, webView, cookieManager or webStorage
 await ref.current?.call('webView.clearCache', [true]);
 await ref.current?.call('cookieManager.removeAllCookies'); // resolves once they're gone
+
 // iOS: an Objective-C selector
 await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 200 }, true]);
 await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
   { set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] },
   { date: 0 },
 ]);
-const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [null]); // base64
+const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [
+  null,
+]); // base64
 ```
 
 ## Cookies
 
-```tsx
+Cookies go through `call`, as in [Platform settings](#platform-settings).
+
+```ts
 // iOS: the WebView's data store (`sharedCookies` syncs it with the app's)
 await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
   { cookie: { Name: 'session', Value: token, Domain: 'example.com', Path: '/', Secure: 'TRUE' } },
 ]);
 const cookies = await ref.current?.call('httpCookieStore.getAllCookies:'); // [{ Name, Value, Domain, Path, … }]
+
 // Android: the app-wide CookieManager
-await ref.current?.call('cookieManager.setCookie', ['https://example.com', `session=${token}; Secure`]);
+await ref.current?.call('cookieManager.setCookie', [
+  'https://example.com',
+  `session=${token}; Secure`,
+]);
 const header = await ref.current?.call('cookieManager.getCookie', ['https://example.com']); // 'session=…; other=…'
 ```
 
-The calls need a mounted WebView: to set a cookie before the first page, mount with `{ uri: 'about:blank' }` and set
-the real `source` after the call resolves.
+### Before the first page
+
+The calls need a mounted WebView. Mount it with `{ uri: 'about:blank' }`, and set the real `source` once the cookie is
+set.
 
 ## Scripts
 
 ```tsx
-<WebView injectedScripts={[{ code: `window.config = ${JSON.stringify(config)}`, origins: ['https://example.com'] }]} … />; // at document start, before the page's scripts
+<WebView
+  source={{ uri: 'https://example.com' }}
+  injectedScripts={[
+    { code: `window.config = ${JSON.stringify(config)}`, origins: ['https://example.com'] },
+  ]}
+/>;
 
 const title = await ref.current?.evaluate('document.title'); // an expression, not statements
 await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
@@ -166,90 +217,187 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 
 ## Local files
 
-An `html` string takes a `baseUrl`; a file is a `file://` uri, such as an expo-asset's `localUri`. See
-[`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewSource.html) for each platform's file access.
+A bundled file loads from its `file://` URI, such as expo-asset's `localUri`.
+[`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewSource.html) has each
+platform's file access.
 
 ```tsx
-const [assets] = useAssets(require('./page.html'));
+import { useAssets } from 'expo-asset';
+import { WebView } from 'react-native-minimal-webview';
 
-<WebView source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }} />;
-{assets?.[0]?.localUri && (
-  <WebView source={{ uri: assets[0].localUri }} android={{ settings: { allowFileAccess: true } }} />
-)}
+export function LocalPages() {
+  const [assets] = useAssets(require('./page.html'));
+  return (
+    <>
+      <WebView source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }} />
+      {assets?.[0]?.localUri && (
+        <WebView
+          source={{ uri: assets[0].localUri }}
+          android={{ settings: { allowFileAccess: true } }}
+        />
+      )}
+    </>
+  );
+}
 ```
 
 ## Page requests
 
-Each has a default without its prop (Android denies permissions); the prop answers it or is told afterwards.
+### File inputs
 
 ```tsx
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+
 <WebView
-  // <input type="file">, Android (iOS shows WebKit's picker): expo-image-picker for the camera, expo-document-picker else
+  source={{ uri: 'https://example.com' }}
   onFileRequest={async ({ accept, multiple, capture }) => {
     if (capture) {
       const photo = await ImagePicker.launchCameraAsync();
       return photo.canceled ? null : photo.assets.map((asset) => asset.uri);
     }
     const mimeTypes = accept.filter((type) => type.includes('/')); // the picker takes MIME types, not `.pdf`
-    const result = await DocumentPicker.getDocumentAsync({ type: mimeTypes.length ? mimeTypes : '*/*', multiple });
+    const result = await DocumentPicker.getDocumentAsync({
+      type: mimeTypes.length ? mimeTypes : '*/*',
+      multiple,
+    });
     return result.canceled ? null : result.assets.map((asset) => asset.uri);
   }}
-  // Ask the OS first (expo-camera), then grant
+/>;
+```
+
+### Permissions
+
+```tsx
+import { Camera } from 'expo-camera';
+
+<WebView
+  source={{ uri: 'https://meet.example.com' }}
   onPermissionRequest={async ({ origin, resources }) => {
-    if (origin !== 'https://meet.example.com' || !resources.every((resource) => resource === 'camera')) return false;
+    if (origin !== 'https://meet.example.com') return false;
+    if (resources.some((resource) => resource !== 'camera')) return false;
     return (await Camera.requestCameraPermissionsAsync()).granted;
   }}
-  // Fullscreen video (Android): let a portrait-locked app rotate, with expo-screen-orientation
+/>;
+```
+
+### Fullscreen video
+
+On Android, this lets a portrait-locked app rotate while a video is fullscreen.
+
+```tsx
+import * as ScreenOrientation from 'expo-screen-orientation';
+
+<WebView
+  source={{ uri: 'https://example.com' }}
   onFullscreenChange={({ active }) =>
-    active ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
+    active
+      ? ScreenOrientation.unlockAsync()
+      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
   }
-  // A download: open it (expo-file-system; Quick Look on iOS, an app on Android) or share it (expo-sharing)
-  onDownload={(result) => (result.ok ? new File(result.uri).preview() : console.warn('download failed', result.kind))}
-/>
+/>;
+```
+
+### Downloads
+
+`preview()` opens the file in Quick Look on iOS, and in an app that takes its type on Android.
+
+```tsx
+import { File } from 'expo-file-system';
+
+<WebView
+  source={{ uri: 'https://example.com' }}
+  onDownload={(result) =>
+    result.ok ? new File(result.uri).preview() : console.warn('download failed', result.kind)
+  }
+/>;
 ```
 
 ## Native hooks
 
-Anything the settings can't express is a few lines of Swift or Kotlin in your own Expo module (a
-[local module](https://docs.expo.dev/modules/get-started/), `npx create-expo-module@latest --local`, or a package): a
-hook gets the real `WKWebView` or `WebView` and chains its own delegates and clients. The module depends on this one:
-`s.dependency 'MinimalWebView'` in its podspec and `implementation project(':react-native-minimal-webview')` in its
-`build.gradle`. `example/modules/sample-extension` is a complete one.
+A native hook is Swift or Kotlin that gets the real `WKWebView` or `WebView`, for what the settings can't express. It
+chains its own delegates and clients to the core's.
+
+It lives in your own Expo module: a [local module](https://docs.expo.dev/modules/get-started/)
+(`npx create-expo-module@latest --local`) or a package.
+[sample-extension](https://github.com/RasmusKard/react-native-minimal-webview/tree/main/example/modules/sample-extension)
+is a complete one.
+
+### The module's dependency
+
+The podspec:
+
+```ruby
+s.dependency 'MinimalWebView'
+```
+
+The `build.gradle`:
+
+```groovy
+dependencies {
+  implementation project(':react-native-minimal-webview')
+}
+```
+
+### iOS
 
 ```swift
-// iOS, in your module's OnCreate
-MinimalWebViewHooks.register("myPackage.pageCounter", configure: { configuration, context in // before the WKWebView exists
+import MinimalWebView
+
+// In your module's OnCreate
+MinimalWebViewHooks.register("myPackage.pageCounter", configure: { configuration, _ in // before the WKWebView exists
   configuration.dataDetectorTypes = .phoneNumber
-}) { webView, context in // once it exists; returns a detach closure, or nil
+}) { _, context in // once it exists; returns a detach closure, or nil
   let counter = PageCounter(context: context) // a WKNavigationDelegate; it holds the context weakly (see `WebViewContext`)
   context.navigationDelegates.append(counter)
-  context.handle("count") { args, reply in reply(counter.count) }
-  context.onDocumentEnd { reason in counter.pageEnded() }
+  context.handle("count") { _, reply in reply(counter.count) }
+  context.onDocumentEnd { _ in counter.pageEnded() }
   return nil
 }
 ```
 
+### Android
+
 ```kotlin
-// Android, in your module's OnCreate
-MinimalWebViewHooks.register("myPackage.pageCounter") { webView, context -> // each WebView: the first, and any after a crash
+import expo.modules.minimalwebview.MinimalWebViewHooks
+
+// In your module's OnCreate
+MinimalWebViewHooks.register("myPackage.pageCounter") { _, context -> // each WebView: the first, and any after a crash
   context.clients += PageCounter(context) // a WebViewClient
   null // or { … }, run when it goes away
 }
 ```
 
-The module's JS exports a function that returns the hook's `HookExtension`, and the app passes it to `useExtensions`,
-as it does [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/)' functions:
+### The JS side
+
+The module exports a function that returns a
+[`HookExtension`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html). The app passes it
+to `useExtensions`, with the
+[@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) ones.
 
 ```tsx
 // In your module
+import type { HookExtension } from 'react-native-minimal-webview';
+
 export const pageCounter = (label: string, onLoaded: (count: number) => void): HookExtension => ({
   key: 'myPackage.pageCounter',
   options: { label }, // its hookOptions value, which enables the hook
-  onEvent: ({ name, payload }) => name === 'myPackage.pageCounter.pageLoaded' && onLoaded(payload.count as number),
+  onEvent: ({ name, payload }) => {
+    if (name === 'myPackage.pageCounter.pageLoaded') onLoaded(payload.count as number);
+  },
 });
+```
 
+```tsx
 // In the app
-const hooks = useExtensions([pageCounter('a', setCount), loggedIn && basicAuthCredential(credential)]);
+import { basicAuthCredential } from '@react-native-minimal-webview/extensions';
+import { WebView, useExtensions } from 'react-native-minimal-webview';
+
+const hooks = useExtensions([
+  pageCounter('a', setCount),
+  loggedIn && basicAuthCredential(credential),
+]);
 <WebView source={source} ref={ref} {...hooks} />;
+
 await ref.current?.hook('myPackage.pageCounter', 'count'); // the handler's reply
 ```

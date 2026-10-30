@@ -18,6 +18,8 @@ import type {
 export type WebViewSource =
   | {
       /**
+       * The URL to load.
+       *
        * A `file://` URL reads only within `readAccessRoot` on iOS; Android needs `android.settings.allowFileAccess`,
        * which lets a `file:` page read any file the app can.
        */
@@ -27,7 +29,8 @@ export type WebViewSource =
       /**
        * Makes the request a POST with this form-urlencoded body.
        *
-       * iOS sends `headers` with it and sets `Content-Type` when they don't; Android's `postUrl` sends neither.
+       * It goes as `application/x-www-form-urlencoded`. iOS sends `headers` with it, and their `Content-Type` wins;
+       * Android sends no `headers`.
        * `reload()` sends the POST again; crash recovery doesn't (`onProcessGone` reports `recovered: false`).
        * @example
        * ```ts
@@ -60,8 +63,10 @@ export type WebViewSource =
 export type NavigationAction = 'allow' | 'block' | 'external';
 
 /**
- * One navigation rule. Every field it sets must match; for a list, one matching entry is enough. A field left out
- * matches anything; a flag set to `false` matches only the requests without it.
+ * A pattern over a navigation's URL and kind, and what the navigations it matches do.
+ *
+ * Every field it sets must match; for a list, one matching entry is enough. A field left out matches anything; a flag
+ * set to `false` matches only the requests without it.
  * @example
  * ```ts
  * const navigationRules: NavigationRule[] = [
@@ -74,16 +79,16 @@ export type NavigationAction = 'allow' | 'block' | 'external';
  * @group Navigation
  */
 export type NavigationRule = {
-  /** Exact, case-insensitive. */
+  /** URL schemes without the `:` (`tel`), exact and case-insensitive. */
   scheme?: string[];
   /**
-   * Exact, or a `*.` suffix wildcard that matches subdomains only, not the domain itself.
+   * Hosts: exact, or a `*.` suffix wildcard that matches subdomains only, not the domain itself.
    *
    * Case, port, userinfo and a trailing dot are ignored.
    */
   host?: string[];
   /**
-   * Plain prefixes of the percent-encoded URL path, not whole segments.
+   * Path prefixes: plain prefixes of the percent-encoded URL path, not whole segments.
    *
    * A URL without an authority (`myapp:/open`) has the path `/`.
    */
@@ -93,10 +98,14 @@ export type NavigationRule = {
    * value, and `name=value` only that exact value.
    */
   query?: string[];
-  /** Android decides only an iframe's non-http(s) navigations, so a `mainFrame: false` rule for http(s) is iOS only. */
+  /**
+   * The main frame's navigation (true) or an iframe's (false).
+   *
+   * Android decides only an iframe's non-http(s) navigations, so a `mainFrame: false` rule for http(s) is iOS only.
+   */
   mainFrame?: boolean;
   /**
-   * `target=_blank` or `window.open`, a main-frame navigation.
+   * A `target=_blank` or `window.open` navigation, always a main-frame one.
    *
    * An allowed one loads in place: there is never a second WebView, so no `window.opener` (a native hook that takes
    * `createWebViewWith` on iOS or `onCreateWindow` on Android owns real popups).
@@ -104,6 +113,9 @@ export type NavigationRule = {
    * One to `data:`, `blob:`, `javascript:`, `about:` or `file:` is always blocked (on Android, WebView may still run a
    * `javascript:` one's script, with the page's origin), and one opened with no URL (`window.open('')`) is decided when
    * the page first sends it to one, or dropped when that doesn't happen within 5 s.
+   *
+   * On Android, one without a user gesture reaches the rules only with
+   * `android.settings.javaScriptCanOpenWindowsAutomatically` on; otherwise WebView drops it unreported.
    */
   newWindow?: boolean;
   /**
@@ -115,7 +127,7 @@ export type NavigationRule = {
    */
   userInitiated?: boolean;
   /**
-   * `ask` calls `onNavigationRequest`.
+   * What the navigations it matches do; `ask` puts each to `onNavigationRequest`.
    *
    * On Android, which can't hold a navigation until JS answers, it works only for the main frame (elsewhere it is
    * `block`): the navigation is cancelled, and an allowed one loads again after the answer, without the page's referrer
@@ -214,14 +226,16 @@ export type LoadErrorEvent =
  */
 export type ProcessGoneEvent = {
   /**
-   * False when the system killed the renderer for memory. Null on iOS: WebKit doesn't say, so test it with `=== true`
-   * or `=== false`, not as a condition.
+   * Whether the renderer crashed (true) or the system killed it for memory (false); null on iOS, where WebKit doesn't
+   * say.
+   *
+   * Test it with `=== true` or `=== false`, not as a condition.
    */
   didCrash: boolean | null;
   /**
-   * The core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground and the
-   * view on screen, with the history restored unless the `source` page was on screen, and with the props applied but
-   * not what `call` set.
+   * Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground
+   * and the view on screen, with the history restored unless the `source` page was on screen, and with the props
+   * applied but not what `call` set.
    *
    * False while a POST `source` is on screen, which, as in a browser, isn't sent again unasked (`reload()` sends it),
    * and after more than 3 crashes in 60 s, counted for the whole app on Android, until the next `reload()` (on iOS also
@@ -311,14 +325,16 @@ export type BridgeEventMap = Record<string, unknown>;
 /**
  * A promise-based RPC channel to `window.nativeBridge` in the page.
  *
- * Attach it with the `bridge` prop. What it sends waits for the page's `DOMContentLoaded`, so the handlers and
- * listeners of the page's synchronous and deferred scripts are in place, and never reaches a later page, even one on
- * the same origin. A call or event made while no WebView is mounted with the bridge waits the same way (a call's
- * timeout runs meanwhile; the latest 1000 are kept, and an older call rejects at its timeout, or never settles with
- * `timeoutMs: 0`), and unmounting rejects the calls in flight with `navigated`. The
- * page's own calls don't wait: one made before React Native has registered its method rejects with `not_found`.
- * Handlers and listeners belong to the bridge, not to a WebView: they stay across unmounts. Messages have no size
- * limit.
+ * Attach it with the `bridge` prop. Handlers and listeners belong to the bridge, not to a WebView: they stay across
+ * unmounts. Messages have no size limit.
+ *
+ * What it sends waits for the page's `DOMContentLoaded`, so the handlers and listeners of the page's synchronous and
+ * deferred scripts are in place, and never reaches a later page, even one on the same origin. The page's own calls
+ * don't wait: one made before React Native has registered its method rejects with `not_found`.
+ *
+ * A call or event made while no WebView is mounted with the bridge waits the same way. A call's timeout runs
+ * meanwhile, and only the latest 1000 are kept: an older call rejects at its timeout, or never settles without one.
+ * Unmounting rejects the calls in flight with `navigated`.
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
  * and `on`, and its calls reject with a {@link CodedError}.
@@ -447,11 +463,13 @@ export type Download = {
 };
 
 /**
- * A download that could not be saved; `kind` says why:
+ * A download that could not be saved; `kind` says why.
+ *
  * - `network`: connecting or reading the response failed, or a redirect was refused.
  * - `http`: the response had an error status (Android only: iOS saves what the server sent).
  * - `data`: the content: a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or
- *   (Android) a file above 100 MB.
+ *   (Android) a file above 100 MB or a `blob:` URL the main frame can't read (a cross-origin iframe's, or one already
+ *   revoked).
  * @group Page requests
  */
 export type DownloadFailure =
@@ -493,10 +511,10 @@ export type SettingsRoot<Keys> = Keys & {
 };
 
 /**
- * WebKit settings by Objective-C property name. Any public property works, including ones this package has never heard
- * of (under a root's `other`).
+ * WebKit settings by Objective-C property name.
  *
- * The keys the SDK headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
+ * Any public property works, including ones this package has never heard of (under a root's `other`). The keys the SDK
+ * headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
  * option sets by raw value (from {@link IOSConstants}), structs as objects, a `UIColor` as `#rrggbb` or `#rrggbbaa`,
  * an `NSURL` as a string, `websiteDataStore` as `'default'` or `'nonPersistent'`.
  *
@@ -505,8 +523,9 @@ export type SettingsRoot<Keys> = Keys & {
  * `webView.opaque`: set it with `call('webView.setOpaque:', [false])`.
  *
  * A root's default keys are the package's, and yours go over them; a key the package doesn't set keeps WebKit's
- * default. WebKit has no mixed-content setting: it applies its own policy. Read a key back with the ref's
- * {@link WebViewRef.get | get}.
+ * default. Read a key back with the ref's {@link WebViewRef.get | get}.
+ *
+ * WebKit has no mixed-content setting: it applies its own policy.
  * @example
  * ```tsx
  * <WebView
@@ -554,10 +573,10 @@ export type IOSSettings = {
 };
 
 /**
- * Android settings by setter name without `set`. Any public setter works, including ones a newer SDK or androidx.webkit
- * adds (under a root's `other`).
+ * Android settings by setter name without `set`.
  *
- * The keys the SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
+ * Any public setter works, including ones a newer SDK or androidx.webkit adds (under a root's `other`). The keys the
+ * SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
  *
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
  * nothing here can crash the app. A root's default keys are the package's, and yours go over them; a key the package
@@ -600,8 +619,8 @@ export type AndroidSettings = {
 
 /**
  * An event a native hook sent with `emit` or `ask`.
- *
- * `N` and `P` type one hook's events.
+ * @typeParam N - The event's name, to type one hook's events.
+ * @typeParam P - Its payload.
  * @example
  * ```ts
  * type PageLoaded = HookEvent<'pageCounter.pageLoaded', { count: number }>;
@@ -648,11 +667,12 @@ export type FullscreenChangeEvent = { active: boolean };
  * - `timeout`: a bridge call got no answer in time.
  * - `not_found`: nothing by that name answers: no bridge handler for the method, no attached hook `name` handling
  *   `method`, or no such root, key, method or selector (on this OS or WebView version too), or a malformed path.
- * - `handler_error`: a bridge handler threw or rejected (the `message` is its error's), or the page sent a code not
- *   listed here.
+ * - `handler_error`: a bridge handler threw or rejected (the `message` is its error's), or the page answered with
+ *   `script_error`, `native_error` or a code not listed here.
  * - `script_error`: `evaluate`'s script threw, rejected or didn't parse.
- * - `native_error`: the platform refused or failed the call: a member the core owns or a private one, wrong arguments,
- *   a completion handler `call` can't await, a native exception or `NSError`, or a result JSON can't carry (`NaN`).
+ * - `native_error`: the platform refused or failed the call: a member the core owns or a private one, wrong arguments
+ *   (iOS), a completion handler `call` can't await, a native exception or `NSError`, or a result JSON can't carry
+ *   (`NaN`).
  * - `navigated`: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
  *   it may have run: retry only what is safe to repeat.
  * - `unavailable`: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
@@ -678,7 +698,7 @@ export type ErrorCode =
 export type CodedError = Error & { code: ErrorCode };
 
 /**
- * The WebView's props.
+ * What the WebView loads, its settings, and the callbacks for its events and the page's requests.
  *
  * The ones from React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch
  * events) go to the native view.
@@ -688,9 +708,10 @@ export type CodedError = Error & { code: ErrorCode };
  * rejects) is logged with `console.error` and gives the refusing answer: `onNavigationRequest` `block`,
  * `onOpenExternal` nothing opened, `onFileRequest` cancel, `onPermissionRequest` deny, `onHookEvent` null.
  *
- * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop: iOS shows a `UIAlertController` titled with the
- * frame's host, one at a time, and Android WebView's own dialogs; an auth challenge is declined, so the site's 401 page
- * shows. `dialogs` and `basicAuthCredential` of @react-native-minimal-webview/extensions take them over, or a native hook does.
+ * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop. iOS shows a `UIAlertController` titled with the
+ * frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
+ * auth challenge is declined, so the site's 401 page shows. `dialogs` and `basicAuthCredential` of
+ * `@react-native-minimal-webview/extensions` take them over, or a native hook does.
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
@@ -728,7 +749,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    */
   userAgent?: string;
   /**
-   * Scripts to run at document start, before the page's own, in the frames of each script's `origins`.
+   * Scripts to run at document start, before the page's own, in the frames picked by each script's `allFrames` and
+   * `origins`.
    *
    * A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
    * so, once per process).
@@ -738,32 +760,35 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
    * and with no match the navigation is blocked.
    *
-   * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}. To let your app's scheme through, put a rule
-   * ahead of them:
-   *
-   * ```ts
-   * navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...WebView.defaultNavigationRules]}
-   * ```
+   * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}.
    *
    * `about:`, `blob:`, `data:` and `javascript:` always load in place.
    *
    * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
    * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
-   * one to a new window loads in place on iOS and doesn't load on Android.
+   * one to a new window loads in place on iOS, and on Android isn't shown (the request may still reach the server).
    *
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
-   * when no app handles it, its `S.browser_fallback_url` goes through the rules and the `intent:` itself is reported as
-   * `block`.
+   * when no app handles it, an http(s) `S.browser_fallback_url` goes through the rules (main frame, no user gesture),
+   * and the `intent:` itself is reported as `block`.
    *
    * A change applies from the next navigation.
    *
    * A native hook can take these decisions, defaults included: see `WebViewContext.clients` (Android) and
    * `navigationDelegates` (iOS).
+   * @example
+   * ```tsx
+   * <WebView
+   *   source={{ uri: 'https://example.com' }}
+   *   // myapp: opens externally even without a user gesture; everything else as by default
+   *   navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...WebView.defaultNavigationRules]}
+   * />
+   * ```
    * @see [Navigation rules example](../guides/examples.md#navigation-rules)
    */
   navigationRules?: readonly NavigationRule[];
   /**
-   * Answers `ask` rules within 1 s.
+   * Decides each navigation an `ask` rule matches, within 1 s.
    *
    * A late, missing or other answer is `block`, as is one still pending when another page commits; `signal` aborts at
    * the timeout and at that commit. Without this prop, `ask` is `block`. Until the next commit, a URL it allowed isn't
@@ -776,11 +801,12 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Opens `external` navigations, every one, an Android `intent:` URL included, before `onNavigation` reports them.
    *
-   * Return true (a promise is awaited) when you opened it, or false to hand it back: the core then opens it as it does
-   * without this prop, an `intent:`'s fallback URL included. `signal` aborts when native stops waiting (the page moved
-   * on, crashed or unmounted), and then nothing opens it. Default: the system browser or app for the URL, opened
-   * without asking `canOpenURL` first, so no `LSApplicationQueriesSchemes` (iOS) or `<queries>` (Android) entries are
-   * needed.
+   * Return false (a promise is awaited) to hand it back: the core then opens it as it does without this prop, an
+   * `intent:`'s fallback URL included. Any other answer, `undefined` too, means you opened it. `signal` aborts when
+   * native stops waiting (the page moved on, crashed or unmounted), and then nothing opens it.
+   *
+   * Without this prop, the system browser or app for the URL opens it, without asking `canOpenURL` first, so no
+   * `LSApplicationQueriesSchemes` (iOS) or `<queries>` (Android) entries are needed.
    */
   onOpenExternal?: (request: NavigationRequest, signal: AbortSignal) => boolean | Promise<boolean>;
   /**
@@ -816,7 +842,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
    * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
    *
-   * A change applies at once.
+   * It reloads as {@link WebViewRef.reload | reload()} does, a POST `source` included, but doesn't reset the crash
+   * guard. A change applies at once.
    * @default `false`
    */
   pullToRefresh?: boolean;
@@ -883,6 +910,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Without this prop, an http(s) download opens externally (`onOpenExternal` or the system browser, without the page's
    * session), and a `data:` or `blob:` one is dropped. A PDF is a download on Android; iOS shows it inline.
    *
+   * On iOS an iframe's file response is not a download, only the main frame's; `<a download>` and `blob:` downloads
+   * are, from any frame.
+   *
    * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
    * reaches neither this prop nor the external fallback.
    */
@@ -926,17 +956,17 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Gets the {@link WebViewRef}.
    *
-   * Give each mounted WebView its own ref: with two, the last mounted wins (with a warning in development) until it
-   * unmounts.
+   * Give each mounted WebView its own ref: one shared by two points at the last mounted (with a warning in
+   * development), and can turn null when either unmounts.
    */
   ref?: Ref<WebViewRef>;
 }
 
 /**
- * A WebView's ref.
+ * The methods a WebView's `ref` gets: navigation, scripts, and platform and hook calls.
  *
  * A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and `evaluate`, `get`,
- * `call` and `hook` reject with `unavailable`, and one still pending when the WebView unmounts rejects with `navigated`.
+ * `call` and `hook` reject with `unavailable`. One still pending when the WebView unmounts rejects with `navigated`.
  *
  * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
  * effect can come before the view exists), then reject with `unavailable`; in the background they don't wait.
@@ -971,14 +1001,19 @@ export type WebViewRef = {
    */
   evaluate(script: string): Promise<unknown>;
   /**
-   * A platform setting read by name, through JSON as {@link WebViewRef.call | call} converts results.
+   * Reads a platform setting, `root.key`, and resolves with its value through JSON, as {@link WebViewRef.call | call}
+   * converts results.
    *
    * The roots are those of {@link IOSSettings} and {@link AndroidSettings}, plus `websiteDataStore` and
    * `httpCookieStore` on iOS and `cookieManager` and `webStorage` on Android. On Android a key is the getter's name
-   * without `get` or `is`. Rejects with a {@link CodedError}: `not_found` for an
-   * unknown root or key, `unavailable` for one this WebView doesn't support (Android), and `native_error` for one it
-   * can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
-   * reject it.
+   * without `get` or `is`.
+   *
+   * It reads the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
+   * {@link CodedError}:
+   *
+   * - `not_found`: an unknown root or key, or on iOS a private (`_`) one.
+   * - `unavailable`: a key this WebView doesn't support (Android).
+   * - `native_error`: a key it can't read, or on Android one the core owns.
    * @example
    * ```ts
    * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
@@ -993,16 +1028,24 @@ export type WebViewRef = {
    * Android: a public method of `settings` (then `WebSettingsCompat`'s statics), `webView` (inherited `View` methods
    * too, then `WebViewCompat`'s), `cookieManager` or `webStorage`.
    *
-   * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`.
+   * iOS: an Objective-C selector on a root of {@link IOSSettings}, `websiteDataStore` or `httpCookieStore`. The
+   * `configuration` root is a copy, so a setter called on it changes nothing.
    *
-   * Rejects with a {@link CodedError}: `not_found` for an unknown root or method (Android: or none of that name takes
-   * these arguments); `unavailable` for a compat method this WebView doesn't support (Android); `native_error` for a
-   * wrong argument count, an argument that doesn't fit, a method that raises, a result JSON can't carry (`NaN`), and
-   * what the core owns: on iOS every selector that loads, navigates (`setInteractionState:` too), runs a script, starts
-   * a download or sets a delegate, and private (`_`), KVC, KVO, `performSelector`, `init…`, `copy…`, `mutable…`,
-   * `new…` and reference-counting selectors; on Android (in `get` too) the loads, navigations, clients, JavaScript
-   * interfaces, web message listeners, document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`,
-   * `resumeTimers`, `evaluateJavascript` and `setWebContentsDebuggingEnabled`.
+   * Rejects with a {@link CodedError}:
+   *
+   * - `not_found`: an unknown root or method (Android: or none of that name takes these arguments).
+   * - `unavailable`: a compat method this WebView doesn't support (Android).
+   * - `native_error`: a wrong argument count or an argument of the wrong type (iOS), a method that raises, a result JSON
+   *   can't carry (`NaN`), or a method the core owns.
+   *
+   * The core owns:
+   *
+   * - iOS: every selector that loads, navigates (`setInteractionState:` too), runs a script, starts a download or sets
+   *   a delegate, and private (`_`), KVC, `willChange…`, `didChange…`, `performSelector`, `init…`, `copy…`,
+   *   `mutable…`, `new…` and reference-counting selectors.
+   * - Android (in `get` too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
+   *   document-start scripts, `destroy`, `removeAllViews`, `pauseTimers`, `resumeTimers`, `evaluateJavascript` and
+   *   `setWebContentsDebuggingEnabled`.
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
    * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
@@ -1013,17 +1056,22 @@ export type WebViewRef = {
    * On iOS one mistake the signature can't catch crashes the app: an object argument of the wrong class; for a method
    * that takes another object, write a native hook.
    *
-   * @param args The method's arguments. On Android: booleans, numbers, strings, and `null` for an object parameter
-   * such as a `Paint`. On iOS they are converted by its signature: booleans, numbers, strings, the
-   * structs as objects, `null` for nil, and `{ set: [...] }`, `{ date: seconds }`, `{ data: base64 }` or
-   * `{ cookie: properties }` for an `NSSet`, `NSDate`, `NSData` or `NSHTTPCookie`. A cookie's properties are
-   * `NSHTTPCookie`'s keys: `Name`, `Value`, `Domain` and `Path` are required; `Max-Age` (seconds, as a string),
-   * `Secure`, `HttpOnly` and `SameSite` are some of the optional ones. A tag that can't make its object (`{ data }`
-   * that isn't base64, a `{ cookie }` without a required key) rejects with `native_error`.
-   * @returns On iOS: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage`
-   * as a base64 PNG, the structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds), and arrays,
-   * sets and dictionaries of them. On Android: primitives, strings, and lists and maps of them. Any other object is
-   * `null`.
+   * @param args The method's arguments.
+   *
+   * - Android: booleans, numbers, strings, and `null` for an object parameter such as a `Paint`.
+   * - iOS: converted by the selector's signature: booleans, numbers, strings, the structs as objects, `null` for nil,
+   *   and `{ set: [...] }`, `{ date: seconds }`, `{ data: base64 }` or `{ cookie: properties }` for an `NSSet`,
+   *   `NSDate`, `NSData` or `NSHTTPCookie`. A string stays an `NSString`, never an `NSURL` or `UIColor`.
+   *
+   * A cookie's properties are `NSHTTPCookie`'s keys: `Name`, `Value`, `Domain` and `Path` are required; `Max-Age`
+   * (seconds, as a string), `Secure`, `HttpOnly` and `SameSite` are some of the optional ones. A tag that can't make
+   * its object (`{ data }` that isn't base64, a `{ cookie }` without a required key) rejects with `native_error`.
+   * @returns The result, as below; any other object is `null`.
+   *
+   * - Android: primitives, strings, and lists and maps of them.
+   * - iOS: numbers, strings, an `NSURL` as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage` as a
+   *   base64 PNG, the structs as objects, an `NSHTTPCookie` as its properties (`Expires` in seconds), and arrays, sets
+   *   and dictionaries of them.
    * @example
    * ```ts
    * await ref.current?.call('webView.clearCache', [true]); // Android
@@ -1049,13 +1097,12 @@ export type WebViewRef = {
 export type WebViewRefObject = {
   /** The mounted WebView's ref, or null while none is mounted. */
   readonly current: WebViewRef | null;
-  /** The mounted WebView's navigation state, read synchronously; the initial state while none is mounted. */
+  /** The mounted WebView's navigation state, read synchronously. */
   getState(): NavigationState;
   /**
-   * Calls `listener` on every state change, including a WebView mounting or unmounting; a subscriber stays across
-   * remounts.
+   * Calls `listener` on every state change, including a WebView mounting or unmounting, and returns the unsubscribe.
    *
-   * Returns the unsubscribe.
+   * A subscriber stays across remounts.
    */
   subscribe(listener: () => void): () => void;
 };
