@@ -11,8 +11,8 @@ import {
   nestedScrollEnabled,
   onScroll,
 } from '@react-native-minimal-webview/extensions';
-import { IOSConstants } from 'react-native-minimal-webview';
 import { Platform } from 'react-native';
+import { IOSConstants } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
 import {

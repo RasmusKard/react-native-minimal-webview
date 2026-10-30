@@ -2,8 +2,8 @@
 // holds. The page is test-pages/hostile.html, on the allowed origin (localhost:8090), on another one (127.0.0.1:8090),
 // and over https with a self-signed certificate (localhost:8443).
 import { Directory, File, Paths } from 'expo-file-system';
-import type { BridgeSender, Download, DownloadResult } from 'react-native-minimal-webview';
 import { Platform } from 'react-native';
+import type { BridgeSender, Download, DownloadResult } from 'react-native-minimal-webview';
 
 import {
   type Harness,

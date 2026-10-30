@@ -49,8 +49,8 @@
   },
   "peerDependencies": {
     "expo": ">=53",
-    "react-native-minimal-webview": "0.1.0",
     "react": ">=19",
-    "react-native": ">=0.79"
+    "react-native": ">=0.79",
+    "react-native-minimal-webview": "0.1.0"
   }
 }

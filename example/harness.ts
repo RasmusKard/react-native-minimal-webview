@@ -2,6 +2,7 @@
 // JS console and to the test pages server, which prints it.
 import { Directory, File, Paths } from 'expo-file-system';
 import { getContentUriAsync } from 'expo-file-system/legacy';
+import { AppState, Platform } from 'react-native';
 import type {
   Bridge,
   Download,
@@ -19,7 +20,6 @@ import type {
   WebViewSource,
 } from 'react-native-minimal-webview';
 import { WebView, IOSConstants } from 'react-native-minimal-webview';
-import { AppState, Platform } from 'react-native';
 import { pageCounter, sampleHook, seams } from 'sample-extension';
 
 import { extensions } from './extensions';

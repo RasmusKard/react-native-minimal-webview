@@ -1,5 +1,5 @@
-import type { HookExtension } from 'react-native-minimal-webview';
 import { Platform } from 'react-native';
+import type { HookExtension } from 'react-native-minimal-webview';
 
 /**
  * Keeps a swipe that starts on the page for the page, inside a scrolling parent such as a `ScrollView`:
