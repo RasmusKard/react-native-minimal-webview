@@ -28,7 +28,7 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
     guard enabled else { return done() }
     let store = webView.configuration.websiteDataStore.httpCookieStore
     let group = DispatchGroup()
-    // ponytail: one setCookie per cookie; iOS 26's batch setCookies can replace this when the minimum allows
+    // shortcut: one setCookie per cookie, use iOS 26's batch setCookies once the minimum allows
     for cookie in HTTPCookieStorage.shared.cookies ?? [] {
       group.enter()
       store.setCookie(cookie) { group.leave() }

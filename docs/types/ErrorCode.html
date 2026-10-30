@@ -24,8 +24,8 @@ a completion handler <code>call</code> can't await, a native exception or <code>
 <li><code>navigated</code>: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
 it may have run: retry only what is safe to repeat.</li>
 <li><code>unavailable</code>: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
-died (Android), or lacks the feature (<code>evaluate</code> on an Android System WebView older than 83, the bridge older than
-101, a compat method this WebView doesn't support).</li>
+died (Android), or lacks the feature (the method's TSDoc names the Android System WebView it needs, or a compat
+method this WebView doesn't support).</li>
 </ul>
 <p>A programming error, such as an argument of the wrong type, can reject with a plain <code>TypeError</code> instead.</p>
 </div></div>

@@ -27,7 +27,7 @@ props that became something else, and what has no equivalent. The [requirements]
 | Debugging | Off (`webviewDebuggingEnabled`) | iOS on in `__DEV__`; Android on in debug builds | `ios.webView.inspectable`, `WebView.android.setWebContentsDebuggingEnabled` |
 | iOS universal links | A tapped one opens the app that claims it | Loads in place, as on Android | An `external` rule for the host |
 | Downloads | Android saves to Downloads with `DownloadManager` | Opens externally without `onDownload`; with it, a file in the app's cache | `onDownload` ([page requests](examples.md#page-requests)); on Android a [native hook](examples.md#native-hooks) can take the download first (`onDownloadStart`) and hand it to `DownloadManager` |
-| Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing when `recovered` is true: a `reload()` then loads the page twice. When it is false (a POST `source`, or more than 3 crashes in 60 s), only `reload()` recovers |
+| Renderer crash | Reported; the app reloads or remounts | The core reloads, and reports `onProcessGone({ recovered: true })` | Nothing when `recovered` is true: a `reload()` then loads the page twice. When it is false ([why](https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html)), `reload()` |
 | Messaging | Every page; every frame on Android, the main frame on iOS | Only `allowedOrigins`, main frame only | An iframe's messages need a native hook with a channel of its own |
 | Injected script | `injectedJavaScript` runs at document end, on every origin | Every `injectedScripts` entry runs at document start, on its `origins` | Wrap the code in `addEventListener('DOMContentLoaded', …)`; list the origins, or `['*']` |
 | Failed load | An "Error loading page" view replaces the page, with or without `renderError` | No error view of its own on iOS, which keeps the page before it; Android shows WebView's own error page ([`onError`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror)) | The error screen [below](#loading-and-error-screens) |
@@ -133,7 +133,7 @@ Navigation rules replace the callback.
   navigationRules={[
     { host: ['example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
-    { mainFrame: true, action: 'ask' }, // the rest: onNavigationRequest answers within 1 s, later counts as block
+    { mainFrame: true, action: 'ask' }, // the rest: onNavigationRequest answers
   ]}
   onNavigationRequest={({ url, newWindow, userInitiated }) => (isTrusted(url) ? 'allow' : 'external')}
 />

@@ -47,16 +47,14 @@ object MinimalWebViewHooks {
    *
    * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
    * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash, in
-   * registration order even for a key that was enabled late.
-   * Without [configure] or [webViewFactory], it also attaches when its key is enabled after the WebView was made, after
-   * the hooks attached already.
+   * registration order even for a key that was enabled late. A hook that attaches late comes after the hooks attached
+   * already.
    *
    * @param webViewFactory makes each WebView that enables this hook, a subclass that overrides what WebView lets it:
    *   the first one, and the one that replaces it after a renderer crash. Null leaves it to the other hooks. A view
    *   whose enabled hooks name different factories (the same object is one) is made by the first one's, in
    *   registration order, and warns (`core.warning`) naming the hooks whose factory it didn't use; those still attach,
-   *   so check the class `attach` gets. A WebView is never remade for a factory: when [key] is turned on after the
-   *   first WebView was made, this hook doesn't attach, and a warning says so.
+   *   so check the class `attach` gets.
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
    *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
    *   state it makes can be keyed by the context.
@@ -189,17 +187,16 @@ interface WebViewContext {
   val url: String
 
   /**
-   * The hook clients, in order; add yours in `attach`. A callback that returns a decision (the `deciding` calls in
-   * MinimalWebViewClients.kt) goes to the first client that overrides it, instead of the core and the app's props: a
-   * client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
-   * decide new windows unless a chrome client overrides `onCreateWindow`. Taking a decision the core makes from the
-   * app's props or their defaults switches them off, the default navigation rules' security checks included, and a
-   * `core.warning` names the callback and what stops applying: `shouldOverrideUrlLoading`, `onCreateWindow`,
-   * `onReceivedSslError` and, on a chrome client, `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`,
-   * `onShowFileChooser` and `onShowCustomView`. A decision more than one client overrides still goes only to the first,
-   * and a `core.warning` names it. Each warning comes once per WebView, when its decision first comes. Every other
-   * callback reaches the core first, then each client that overrides it. `shouldInterceptRequest` runs on a background
-   * thread.
+   * The hook clients, in order; add yours in `attach`. A callback that returns a decision goes to the first client that
+   * overrides it, instead of the core and the app's props: a client that overrides `shouldOverrideUrlLoading` decides
+   * navigations instead of the navigation rules, which still decide new windows unless a chrome client overrides
+   * `onCreateWindow`. Taking a decision the core makes from the app's props or their defaults switches them off, the
+   * default navigation rules' security checks included, and a `core.warning` names the callback and what stops
+   * applying: `shouldOverrideUrlLoading`, `onCreateWindow`, `onReceivedSslError` and, on a chrome client,
+   * `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser` and `onShowCustomView`. A decision
+   * more than one client overrides still goes only to the first, and a `core.warning` names it. Each warning comes once
+   * per WebView, when its decision first comes. Every other callback reaches the core first, then each client that
+   * overrides it. `shouldInterceptRequest` runs on a background thread.
    *
    * Overriding a variant the base class forwards to counts as overriding the callback: `WebViewClientCompat`'s
    * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's

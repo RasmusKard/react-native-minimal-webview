@@ -15,7 +15,8 @@
 <p>Attach it with the <code>bridge</code> prop. What it sends waits for the page's <code>DOMContentLoaded</code>, so the handlers and
 listeners of the page's synchronous and deferred scripts are in place, and never reaches a later page, even one on
 the same origin. A call or event made while no WebView is mounted with the bridge waits the same way (a call's
-timeout runs meanwhile; the latest 1000 are kept), and unmounting rejects the calls in flight with <code>navigated</code>. The
+timeout runs meanwhile; the latest 1000 are kept, and an older call rejects at its timeout, or never settles with
+<code>timeoutMs: 0</code>), and unmounting rejects the calls in flight with <code>navigated</code>. The
 page's own calls don't wait: one made before React Native has registered its method rejects with <code>not_found</code>.
 Handlers and listeners belong to the bridge, not to a WebView: they stay across unmounts. Messages have no size
 limit.</p>

@@ -30,8 +30,7 @@ export const CONNECTION = Symbol('bridgeConnection');
 const MAX_QUEUE = 1000;
 
 /**
- * Creates a promise-based RPC channel to `window.nativeBridge` in the pages of `allowedOrigins`, for one WebView's
- * `bridge` prop.
+ * Creates a {@link Bridge} to the pages of `allowedOrigins`, for one WebView's `bridge` prop.
  *
  * The type arguments type the method names, params, results and event payloads of `call`, `handle`, `emit` and `on`;
  * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an `Error` for an
@@ -76,7 +75,7 @@ export function createBridge<
       if (post && phase === 'ready') deliver(message);
       else {
         queue.push(message);
-        // ponytail: drop-oldest cap for a page that never becomes ready; a dropped call times out, or with timeoutMs 0 never settles
+        // shortcut: a dropped call isn't rejected (Bridge's TSDoc says so), reject it here if apps queue that much
         if (queue.length > MAX_QUEUE) queue.shift();
       }
     },

@@ -59,7 +59,7 @@ class MinimalWebViewModule : Module() {
     Name("MinimalWebView")
 
     // The fallback runs when the result reaches a recreated activity: the WebView that asked is gone.
-    // ponytail: if no result ever arrives (the activity died without one), choosers stay cancelled until relaunch.
+    // shortcut: choosers stay cancelled after an activity dies without a result, track the request if apps hit it
     RegisterActivityContracts {
       fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> chooserOpen = false }
     }

@@ -55,8 +55,7 @@ what the core owns: on iOS every selector that loads, navigates (<code>setIntera
 a download or sets a delegate, and private (<code>_</code>), KVC, KVO, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>, <code>mutable…</code>,
 <code>new…</code> and reference-counting selectors; on Android (in <code>get</code> too) the loads, navigations, clients, JavaScript
 interfaces, web message listeners, document-start scripts, <code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>,
-<code>resumeTimers</code>, <code>evaluateJavascript</code> and
-<code>setWebContentsDebuggingEnabled</code>.</p>
+<code>resumeTimers</code>, <code>evaluateJavascript</code> and <code>setWebContentsDebuggingEnabled</code>.</p>
 <p>A trailing completion handler (iOS) or <code>ValueCallback</code> (Android) is left out of <code>args</code>: the call resolves with what
 it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
 SDK headers, or reports something other than an object, an error or an integer, rejects with <code>native_error</code>. On
@@ -99,7 +98,7 @@ sets and dictionaries of them. On Android: primitives, strings, and lists and ma
 <p>Resolves with its value through JSON: <code>null</code> for what JSON can't encode (a function, <code>NaN</code>, a cycle), a <code>Date</code> as
 its ISO string. The value is the page's, so treat it as page data. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>:
 <code>script_error</code> (with the script's error message), <code>navigated</code> or <code>unavailable</code>. There is no timeout: a page can
-hold a call until it navigates.</p>
+hold a call until it navigates. On Android with a WebView older than 83 it rejects with <code>unavailable</code>.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -114,8 +113,8 @@ hold a call until it navigates.</p>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>A platform setting read by name, through JSON as <a href="#call" class="tsd-kind-method">call</a> converts results.</p>
 <p>The roots are those of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a> and <a href="AndroidSettings.html" class="tsd-kind-type-alias">AndroidSettings</a>, plus <code>websiteDataStore</code> and
-<code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android, <code>textZoom</code> reads
-<code>getTextZoom()</code>, <code>isTextZoom()</code> or a non-void <code>textZoom()</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an
+<code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android a key is the getter's name
+without <code>get</code> or <code>is</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an
 unknown root or key, <code>unavailable</code> for one this WebView doesn't support (Android), and <code>native_error</code> for one it
 can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
 reject it.</p>

@@ -19,6 +19,6 @@ enum Recovery {
   }
 }
 
-// ponytail: fixed crash-loop guard; make it a prop if an app needs a different policy
+// shortcut: a fixed crash-loop guard, make it a prop if an app needs a different policy
 private let maxCrashesPerWindow = 3
 private let crashWindow: TimeInterval = 60

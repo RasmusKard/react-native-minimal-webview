@@ -28,16 +28,14 @@ public enum MinimalWebViewHooks {
   ///   - webViewClass: The WKWebView subclass to make each WebView that enables this hook from, so it can override
   ///     what WKWebView lets it; nil leaves the class to the other hooks. A view whose enabled hooks name different
   ///     classes is made from the first one's, in registration order, and sends a `core.warning` naming the hooks whose
-  ///     class it didn't use; those still attach, so check the class `attach` gets. A WebView is never remade for a
-  ///     class: when `key` is turned on after the WKWebView was made, this hook doesn't attach, and a warning says so.
-  ///     The hidden view `window.open('')` gets is always a plain WKWebView.
+  ///     class it didn't use; those still attach, so check the class `attach` gets. The hidden view `window.open('')`
+  ///     gets is always a plain WKWebView.
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
   ///     `ios.configuration` settings and before the bridge, so replacing the user content controller is fine. User
   ///     scripts you add stay, after the package's. It gets the same context that `attach` gets next, so state it
-  ///     makes can be keyed by the context. Without it or `webViewClass`, the hook also attaches when its key is
-  ///     enabled after the WKWebView was made, after the hooks attached already. `window.open('')` opens a throwaway
-  ///     WKWebView from this configuration: your user scripts run in it and your script message handlers get its
-  ///     messages, so compare `message.webView` with the WKWebView `attach` gets.
+  ///     makes can be keyed by the context. A hook that attaches late comes after the hooks attached already.
+  ///     `window.open('')` opens a throwaway WKWebView from this configuration: your user scripts run in it and your
+  ///     script message handlers get its messages, so compare `message.webView` with the WKWebView `attach` gets.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over the settings
   ///     the WebView was created with. Returns a closure to run when the view goes away, after
   ///     `onDocumentEnd(.closing)`, or nil. A web content process crash reloads the same WKWebView in place, so nothing

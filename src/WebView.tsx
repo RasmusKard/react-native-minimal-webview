@@ -222,9 +222,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
           }
         );
       });
-    // Android can run a view function before Expo has registered the view and reject it with ERR_VIEW_NOT_FOUND:
-    // try again each frame for about a second. An unmount ends the loop, as `call` then finds no view; so does the
-    // background, where no frame comes.
+    // Android rejects a view function with ERR_VIEW_NOT_FOUND until Expo has registered the view: retry each frame.
     const mounted = async (call: () => Promise<string> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
@@ -374,10 +372,8 @@ const bridgeIds = new WeakMap<object, number>();
 let lastBridgeId = 0;
 
 /**
- * What native sets up once, when it creates the WebView: the bridge and the creation-time settings
- * (`ios.configuration`). As WebViewInstance's `key`, a change recreates the WebView, like a new `key` on the component
- * would: the page reloads from `source`, and the navigation state starts from the initial one. `hookOptions` is not
- * in it: native passes a changed value to its hook live.
+ * What native sets up once, at creation (the bridge, `ios.configuration`). As WebViewInstance's `key`, a change
+ * remounts it.
  */
 function creationKey(props: WebViewProps) {
   const bridge = props.bridge;
@@ -479,21 +475,16 @@ export declare namespace WebView {
      * Android's default user agent, for `android.settings.userAgentString` with a suffix.
      *
      * The first read loads WebView's code, on the JS thread: read it once `warmUp()` has had time or a WebView is
-     * mounted. Null on iOS, where `ios.configuration.applicationNameForUserAgent` appends.
+     * mounted. On iOS, `ios.configuration.applicationNameForUserAgent` appends.
      * @android
      */
     const defaultUserAgent: string | null;
     /**
      * Starts WebView before any WebView mounts, so the first WebView mounts sooner.
      *
-     * With the androidx.webkit feature `ASYNC_WEBVIEW_STARTUP` it loads WebView's code and starts Chromium on a
-     * background thread; without it, it only loads the code there, and Chromium starts on the UI thread as the first
-     * WebView mounts.
-     *
      * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
-     * pushed. A mounting WebView starts WebView itself, on the UI thread, so calling this at mount gains nothing.
-     * WebView starts once per app, and React Native's first `fetch` starts it too (its cookie jar is WebView's
-     * `CookieManager`). No-op on iOS.
+     * pushed. Calling it at mount gains nothing. WebView starts once per app, and React Native's first `fetch` starts
+     * it too.
      * @android
      */
     function warmUp(): void;
@@ -505,7 +496,7 @@ export declare namespace WebView {
      * mounted WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at
      * mount gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had
      * time or a WebView is mounted. Needs the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or
-     * `PRECONNECT`; without them, and on iOS, it does nothing. For prefetch and prerender, a native hook uses
+     * `PRECONNECT`; without them it does nothing. For prefetch and prerender, a native hook uses
      * `ProfileStore`.
      * @android
      */
@@ -514,7 +505,7 @@ export declare namespace WebView {
      * Turns remote debugging (`chrome://inspect`) of every WebView in the app on or off.
      *
      * Until it is called, it is on when the app is debuggable (a debug build) and off otherwise. Called before any
-     * WebView exists, it applies when the first one is made, so it doesn't start WebView. No-op on iOS, where
+     * WebView exists, it applies when the first one is made, so it doesn't start WebView. On iOS,
      * `ios.webView.inspectable` sets it per WebView.
      * @android
      */
@@ -523,8 +514,9 @@ export declare namespace WebView {
   /**
    * The rules for an unset or empty `navigationRules`: `file:` is blocked, http(s) loads in place, and any other scheme
    * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
-   * Anything else, a subframe's or one without a gesture, is blocked. Frozen; spread it after your own rules to keep
-   * it.
+   * Anything else, a subframe's or one without a gesture, is blocked: a page that launches an app from a script or
+   * timer, and on iOS also from a click handler or from a redirect after a form POST (an OAuth `myapp://callback`).
+   * Frozen; spread it after your own rules to keep it.
    */
   const defaultNavigationRules: readonly NavigationRule[];
 }

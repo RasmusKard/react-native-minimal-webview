@@ -23,7 +23,7 @@ later.</p>
 mounted WebView will go to. A WebView connects to its <code>source</code> itself as it mounts, so preconnecting <code>source</code> at
 mount gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once <code>warmUp()</code> has had
 time or a WebView is mounted. Needs the androidx.webkit features <code>MULTI_PROFILE</code> and <code>ENQUEUE_PRECONNECT</code> or
-<code>PRECONNECT</code>; without them, and on iOS, it does nothing. For prefetch and prerender, a native hook uses
+<code>PRECONNECT</code>; without them it does nothing. For prefetch and prerender, a native hook uses
 <code>ProfileStore</code>.</p>
 </div>
 <div class="tsd-parameters">

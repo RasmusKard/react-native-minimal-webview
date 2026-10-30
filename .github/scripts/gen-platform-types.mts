@@ -493,7 +493,7 @@ async function generate() {
 ${Object.entries(STRUCTS)
   .map(
     ([name, shape]) =>
-      `/**\n * An iOS struct the settings channel carries as an object.\n * @group Platform settings\n */\nexport type ${name} = ${shape};`
+      `/**\n * An iOS struct the settings channel carries as an object.\n * @group Platform settings\n * @ios\n */\nexport type ${name} = ${shape};`
   )
   .join('\n\n')}
 
@@ -503,6 +503,7 @@ ${Object.entries(STRUCTS)
  *
  * \`@since\` is the iOS version. A key a newer SDK adds goes under the root's \`other\`.
  * @group Platform settings
+ * @ios
  */
 export type IOSSettingKeys = ${object(
     Object.fromEntries(
@@ -519,6 +520,7 @@ export type IOSSettingKeys = ${object(
  *
  * \`@since\` is the API level. A key a newer SDK or androidx.webkit adds goes under the root's \`other\`.
  * @group Platform settings
+ * @android
  */
 export type AndroidSettingKeys = ${object({
     '/** `WebSettings`, then `WebSettingsCompat` */\nsettings': `{\n${members(
@@ -546,6 +548,7 @@ export type AndroidSettingKeys = ${object({
  * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
  * the option set \`webView.fetchDataOfTypes:\` takes.
  * @group Platform settings
+ * @ios
  * @namespace
  * @hideGroups
  */
@@ -564,6 +567,7 @@ export const iosCompletions: Record<string, 'void' | 'value' | 'valueError' | 'e
  * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants:
  * \`settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }\`.
  * @group Platform settings
+ * @android
  * @namespace
  * @hideGroups
  */
