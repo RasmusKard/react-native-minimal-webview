@@ -11,9 +11,9 @@
 <li><a href="" aria-current="page">WebViewRef</a></li></ul>
 <h1>Type Alias WebViewRef</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>A WebView's ref.</p>
+<div class="tsd-comment tsd-typography"><p>The methods a WebView's <code>ref</code> gets: navigation, scripts, and platform and hook calls.</p>
 <p>A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and <code>evaluate</code>, <code>get</code>,
-<code>call</code> and <code>hook</code> reject with <code>unavailable</code>, and one still pending when the WebView unmounts rejects with <code>navigated</code>.</p>
+<code>call</code> and <code>hook</code> reject with <code>unavailable</code>. One still pending when the WebView unmounts rejects with <code>navigated</code>.</p>
 <p>Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
 effect can come before the view exists), then reject with <code>unavailable</code>; in the background they don't wait.</p>
 </div></section>
@@ -47,15 +47,24 @@ effect can come before the view exists), then reject with <code>unavailable</cod
 when the call arrives: a navigation doesn't reject it.</p>
 <p>Android: a public method of <code>settings</code> (then <code>WebSettingsCompat</code>'s statics), <code>webView</code> (inherited <code>View</code> methods
 too, then <code>WebViewCompat</code>'s), <code>cookieManager</code> or <code>webStorage</code>.</p>
-<p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>.</p>
-<p>Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an unknown root or method (Android: or none of that name takes
-these arguments); <code>unavailable</code> for a compat method this WebView doesn't support (Android); <code>native_error</code> for a
-wrong argument count, an argument that doesn't fit, a method that raises, a result JSON can't carry (<code>NaN</code>), and
-what the core owns: on iOS every selector that loads, navigates (<code>setInteractionState:</code> too), runs a script, starts
-a download or sets a delegate, and private (<code>_</code>), KVC, KVO, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>, <code>mutable…</code>,
-<code>new…</code> and reference-counting selectors; on Android (in <code>get</code> too) the loads, navigations, clients, JavaScript
-interfaces, web message listeners, document-start scripts, <code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>,
-<code>resumeTimers</code>, <code>evaluateJavascript</code> and <code>setWebContentsDebuggingEnabled</code>.</p>
+<p>iOS: an Objective-C selector on a root of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>, <code>websiteDataStore</code> or <code>httpCookieStore</code>. The
+<code>configuration</code> root is a copy, so a setter called on it changes nothing.</p>
+<p>Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>:</p>
+<ul>
+<li><code>not_found</code>: an unknown root or method (Android: or none of that name takes these arguments).</li>
+<li><code>unavailable</code>: a compat method this WebView doesn't support (Android).</li>
+<li><code>native_error</code>: a wrong argument count or an argument that doesn't convert to its parameter's type (iOS), a
+method that raises, a result JSON can't carry (<code>NaN</code>), or a method the core owns.</li>
+</ul>
+<p>The core owns:</p>
+<ul>
+<li>iOS: every selector that loads, navigates (<code>setInteractionState:</code> too), runs a script, starts a download or sets
+a delegate, and private (<code>_</code>), KVC, <code>willChange…</code>, <code>didChange…</code>, <code>performSelector</code>, <code>init…</code>, <code>copy…</code>,
+<code>mutable…</code>, <code>new…</code> and reference-counting selectors.</li>
+<li>Android (in <code>get</code> too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
+document-start scripts, <code>destroy</code>, <code>removeAllViews</code>, <code>pauseTimers</code>, <code>resumeTimers</code>, <code>evaluateJavascript</code> and
+<code>setWebContentsDebuggingEnabled</code>.</li>
+</ul>
 <p>A trailing completion handler (iOS) or <code>ValueCallback</code> (Android) is left out of <code>args</code>: the call resolves with what
 it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
 SDK headers, or reports something other than an object, an error or an integer, rejects with <code>native_error</code>. On
@@ -69,22 +78,28 @@ that takes another object, write a native hook.</p>
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">method</span>: <span class="tsd-signature-type">string</span></span></li>
 <li><span><span class="tsd-kind-parameter">args</span>: <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">[]</span></span>
-<div class="tsd-comment tsd-typography"><p>The method's arguments. On Android: booleans, numbers, strings, and <code>null</code> for an object parameter
-such as a <code>Paint</code>. On iOS they are converted by its signature: booleans, numbers, strings, the
-structs as objects, <code>null</code> for nil, and <code>{ set: [...] }</code>, <code>{ date: seconds }</code>, <code>{ data: base64 }</code> or
-<code>{ cookie: properties }</code> for an <code>NSSet</code>, <code>NSDate</code>, <code>NSData</code> or <code>NSHTTPCookie</code>. A cookie's properties are
-<code>NSHTTPCookie</code>'s keys: <code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code> (seconds, as a string),
-<code>Secure</code>, <code>HttpOnly</code> and <code>SameSite</code> are some of the optional ones. A tag that can't make its object (<code>{ data }</code>
-that isn't base64, a <code>{ cookie }</code> without a required key) rejects with <code>native_error</code>.</p>
+<div class="tsd-comment tsd-typography"><p>The method's arguments.</p>
+<ul>
+<li>Android: booleans, numbers, strings, and <code>null</code> for an object parameter such as a <code>Paint</code>.</li>
+<li>iOS: converted by the selector's signature: booleans, numbers, strings, the structs as objects, <code>null</code> for nil,
+and <code>{ set: [...] }</code>, <code>{ date: seconds }</code>, <code>{ data: base64 }</code> or <code>{ cookie: properties }</code> for an <code>NSSet</code>,
+<code>NSDate</code>, <code>NSData</code> or <code>NSHTTPCookie</code>. A string stays an <code>NSString</code>, never an <code>NSURL</code> or <code>UIColor</code>.</li>
+</ul>
+<p>A cookie's properties are <code>NSHTTPCookie</code>'s keys: <code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code>
+(seconds, as a string), <code>Secure</code>, <code>HttpOnly</code> and <code>SameSite</code> are some of the optional ones. A tag that can't make
+its object (<code>{ data }</code> that isn't base64, a <code>{ cookie }</code> without a required key) rejects with <code>native_error</code>.</p>
 </div></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><p>On iOS: numbers, strings, an <code>NSURL</code> as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code>
-as a base64 PNG, the structs as objects, an <code>NSHTTPCookie</code> as its properties (<code>Expires</code> in seconds), and arrays,
-sets and dictionaries of them. On Android: primitives, strings, and lists and maps of them. Any other object is
-<code>null</code>.</p>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><p>The result, as below; any other object is <code>null</code>.</p>
+<ul>
+<li>Android: primitives, strings, and lists and maps of them.</li>
+<li>iOS: numbers, strings, an <code>NSURL</code> as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code> as a
+base64 PNG, the structs as objects, an <code>NSHTTPCookie</code> as its properties (<code>Expires</code> in seconds), and arrays, sets
+and dictionaries of them.</li>
+</ul>
 
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;webView.clearCache&#39;</span><span class="hl-1">, [</span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-12">// Android</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.setContentOffset:animated:&#39;</span><span class="hl-1">, [{ </span><span class="hl-2">x:</span><span class="hl-1"> </span><span class="hl-10">0</span><span class="hl-1">, </span><span class="hl-2">y:</span><span class="hl-1"> </span><span class="hl-10">100</span><span class="hl-1"> }, </span><span class="hl-4">true</span><span class="hl-1">]); </span><span class="hl-12">// iOS</span>
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;webView.clearCache&#39;</span><span class="hl-2">, [</span><span class="hl-4">true</span><span class="hl-2">]); </span><span class="hl-12">// Android</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;scrollView.setContentOffset:animated:&#39;</span><span class="hl-2">, [{ </span><span class="hl-6">x:</span><span class="hl-2"> </span><span class="hl-7">0</span><span class="hl-2">, </span><span class="hl-6">y:</span><span class="hl-2"> </span><span class="hl-7">100</span><span class="hl-2"> }, </span><span class="hl-4">true</span><span class="hl-2">]); </span><span class="hl-12">// iOS</span>
 </code><button type="button">Copy</button></pre>
 
 </div></div></div></li></ul></section>
@@ -111,13 +126,18 @@ hold a call until it navigates. On Android with a WebView older than 83 it rejec
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="get-1"><span class="tsd-kind-call-signature">get</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#get-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>A platform setting read by name, through JSON as <a href="#call" class="tsd-kind-method">call</a> converts results.</p>
+<div class="tsd-comment tsd-typography"><p>Reads a platform setting, <code>root.key</code>, and resolves with its value through JSON, as <a href="#call" class="tsd-kind-method">call</a>
+converts results.</p>
 <p>The roots are those of <a href="IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a> and <a href="AndroidSettings.html" class="tsd-kind-type-alias">AndroidSettings</a>, plus <code>websiteDataStore</code> and
 <code>httpCookieStore</code> on iOS and <code>cookieManager</code> and <code>webStorage</code> on Android. On Android a key is the getter's name
-without <code>get</code> or <code>is</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> for an
-unknown root or key, <code>unavailable</code> for one this WebView doesn't support (Android), and <code>native_error</code> for one it
-can't read or that the core owns. It reads the WebView as it is when the call arrives: a navigation doesn't
-reject it.</p>
+without <code>get</code> or <code>is</code>.</p>
+<p>It reads the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
+<a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>:</p>
+<ul>
+<li><code>not_found</code>: an unknown root or key, or on iOS a private (<code>_</code>) one.</li>
+<li><code>unavailable</code>: a key this WebView doesn't support (Android).</li>
+<li><code>native_error</code>: a key it can't read, or on Android one the core owns.</li>
+</ul>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -126,7 +146,7 @@ reject it.</p>
 
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example-1">Example<a href="#example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">bounces</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;scrollView.bounces&#39;</span><span class="hl-1">); </span><span class="hl-12">// iOS</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">textZoom</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">ref</span><span class="hl-1">.</span><span class="hl-2">current</span><span class="hl-1">?.</span><span class="hl-5">get</span><span class="hl-1">(</span><span class="hl-3">&#39;settings.textZoom&#39;</span><span class="hl-1">); </span><span class="hl-12">// Android</span>
+<h4 class="tsd-anchor-link" id="example-1">Example<a href="#example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-13">bounces</span><span class="hl-2"> = </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">get</span><span class="hl-2">(</span><span class="hl-11">&#39;scrollView.bounces&#39;</span><span class="hl-2">); </span><span class="hl-12">// iOS</span><br/><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-13">textZoom</span><span class="hl-2"> = </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">get</span><span class="hl-2">(</span><span class="hl-11">&#39;settings.textZoom&#39;</span><span class="hl-2">); </span><span class="hl-12">// Android</span>
 </code><button type="button">Copy</button></pre>
 
 </div></div></div></li></ul></section>

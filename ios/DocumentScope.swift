@@ -1,14 +1,17 @@
-/// A Document is the main-frame page on screen, from a navigation's commit (a back-forward-cache restore included) to
-/// the next commit, a web content process crash or the view closing. The first commit after the view is made, or after
-/// a crash, opens one and ends nothing. It doesn't end at a same-document or sub-frame navigation, a load that never
-/// commits (a stop, a download, a 204, a failure), the view leaving the window or the app going to the background. What
-/// belongs to it registers here once, and the view reports each end.
+/// A Document is the main-frame page on screen: from a navigation's commit, a back-forward-cache restore included, to
+/// the next commit, a web content process crash or the view closing. A hook hears each end in
+/// `WebViewContext.onDocumentEnd`.
+///
+/// The first commit after the view is made, or after a crash, opens one and ends nothing.
+///
+/// A Document doesn't end at a same-document navigation (`pushState`, `replaceState`, a hash change), a sub-frame
+/// navigation, a load that never commits (a stop, a download, a 204, a failure), the view leaving the window or the app
+/// going to the background.
 public final class DocumentScope {
+  /// Why a Document ended.
   public enum End {
     /// A main-frame navigation committed while a Document was open: a load, a form submit, back or forward, a reload,
-    /// an html source, a `window.open` loaded in place or a back-forward-cache restore. Not a same-document navigation
-    /// (`pushState`, `replaceState`, a hash change), a sub-frame's, or a load that never commits (a stop, a download,
-    /// a 204, a failure: its Document lives on).
+    /// an html source, a `window.open` loaded in place or a back-forward-cache restore.
     case committed
     /// The web content process died. The context stays, and the recovery's commit opens the next Document.
     case crashed

@@ -37,31 +37,35 @@ object MinimalWebViewHooks {
   internal val hooks = mutableListOf<Hook>()
 
   /**
-   * Registers the hook for [key], from your module's `OnCreate`, before the first WebView. Keys are global, so prefix
-   * yours with your package's name: a second hook under a key throws [IllegalStateException] (a minified build may
-   * replace the first instead). The same `register` call running again replaces its hook: a JS reload creates the
-   * modules anew, and their `OnCreate` runs again. A helper that calls `register` for other code is one call, so a
-   * second hook under a key through it replaces the first silently. `core` is reserved and refused: the package's own
-   * events are named `core.…`. Hooks run in registration order, which across packages is autolinking's (packages
-   * sorted by name), so an earlier hook's clients come first.
+   * Registers the hook for [key]. Call it from your module's `OnCreate`, before the first WebView.
    *
-   * The hook attaches to each WebView whose `hookOptions` enables [key] (the prop's TSDoc has the rules), and again,
-   * with the current value (null for a key removed since), to the WebView that replaces it after a renderer crash, in
-   * registration order even for a key that was enabled late. A hook that attaches late comes after the hooks attached
-   * already.
+   * Keys are global, so prefix yours with your package's name. A second hook under a key throws
+   * [IllegalStateException]; a minified build may replace the first instead. `core` is reserved for the package's own
+   * events: a hook under it is logged and not registered.
    *
-   * @param webViewFactory makes each WebView that enables this hook, a subclass that overrides what WebView lets it:
-   *   the first one, and the one that replaces it after a renderer crash. Null leaves it to the other hooks. A view
-   *   whose enabled hooks name different factories (the same object is one) is made by the first one's, in
-   *   registration order, and warns (`core.warning`) naming the hooks whose factory it didn't use; those still attach,
-   *   so check the class `attach` gets.
+   * The same `register` call running again replaces its hook: a JS reload creates the modules anew and runs their
+   * `OnCreate` again. A helper that calls `register` for other code is one call, so a second hook through it replaces
+   * the first silently.
+   *
+   * The hook attaches to each WebView whose `hookOptions` enables [key]; the prop's TSDoc has the rules. After a
+   * renderer crash it attaches again, with the current value (null for a key removed since), to the WebView that
+   * replaces the dead one.
+   *
+   * Hooks attach in registration order, which across packages is autolinking's (packages sorted by name), so an
+   * earlier hook's clients come first. A hook whose key turns on after the WebView was created attaches after the
+   * hooks attached already; after a crash it takes its place in registration order again.
+   *
+   * @param webViewFactory makes each WebView that enables this hook, the first one and each after a renderer crash, as
+   *   a subclass that overrides what WebView lets a subclass override. Null leaves it to the other hooks. When the
+   *   enabled hooks name different factories (the same object is one), the first one's in registration order makes the
+   *   WebView, and a `core.warning` names the others. Those still attach, so check the class `attach` gets.
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
    *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
    *   state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
-   *   sets wins over the settings it was created with. It returns what to run when that WebView goes away, after the
-   *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before the
-   *   package's: no `window.nativeBridge` and no `injectedScripts` yet (on iOS yours run after them).
+   *   sets wins over those settings. It returns what to run when that WebView goes away, after the
+   *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before
+   *   the package's, so `window.nativeBridge` and `injectedScripts` aren't there yet (on iOS yours run after them).
    */
   fun register(
     key: String,
@@ -167,11 +171,15 @@ internal class Deciders(private val warn: (String) -> Unit) {
 }
 
 /**
- * One WebView as one hook sees it. Each attach gets a new context, and the handlers registered on it belong to that
- * attach: after a renderer crash, the new WebView's `attach` registers them again. [emit] and [ask] can be called from
- * any thread, the rest from the main thread, where the handlers and the answers run. A context kept after its attach
- * ended (the view closed, or a renderer crash replaced the WebView) does nothing: its [emit] reaches nothing and its
- * [ask] answers null at once.
+ * One WebView as one hook sees it, for one attach.
+ *
+ * Each attach gets a new context, and the handlers registered on it belong to that attach: after a renderer crash, the
+ * new WebView's `attach` registers them again.
+ *
+ * Call [emit] and [ask] from any thread, and the rest on the main thread, where the handlers and the answers run.
+ *
+ * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing: its
+ * [emit] reaches nothing and its [ask] answers null at once.
  */
 interface WebViewContext {
   /**
@@ -187,25 +195,32 @@ interface WebViewContext {
   val url: String
 
   /**
-   * The hook clients, in order; add yours in `attach`. A callback that returns a decision goes to the first client that
-   * overrides it, instead of the core and the app's props: a client that overrides `shouldOverrideUrlLoading` decides
-   * navigations instead of the navigation rules, which still decide new windows unless a chrome client overrides
-   * `onCreateWindow`. Taking a decision the core makes from the app's props or their defaults switches them off, the
-   * default navigation rules' security checks included, and a `core.warning` names the callback and what stops
-   * applying: `shouldOverrideUrlLoading`, `onCreateWindow`, `onReceivedSslError` and, on a chrome client,
-   * `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser` and `onShowCustomView`. A decision
-   * more than one client overrides still goes only to the first, and a `core.warning` names it. Each warning comes once
-   * per WebView, when its decision first comes. Every other callback reaches the core first, then each client that
-   * overrides it. `shouldInterceptRequest` runs on a background thread.
+   * The hook clients, in order; add yours in `attach`.
+   *
+   * Each callback reaches the clients by one of these rules:
+   * - A callback that returns a decision goes to the first client that overrides it, instead of the core and the
+   *   app's props.
+   * - Every other callback reaches the core first, then each client that overrides it.
+   *
+   * Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation
+   * rules' security checks included, and a `core.warning` names the callback and what stops applying. Those decisions
+   * are `shouldOverrideUrlLoading`, `onCreateWindow` and `onReceivedSslError`, and on a chrome client
+   * `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser` and `onShowCustomView`.
+   *
+   * A client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
+   * decide new windows unless a chrome client overrides `onCreateWindow`. A new window the rules allow loads in place
+   * with `loadUrl`, which doesn't reach `shouldOverrideUrlLoading` (on iOS that load reaches the deciding delegate).
+   *
+   * A decision more than one client overrides still goes only to the first, and a `core.warning` names it. Each warning
+   * comes once per WebView, when its decision first comes.
    *
    * Overriding a variant the base class forwards to counts as overriding the callback: `WebViewClientCompat`'s
    * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's
    * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
    * `onReceivedError`.
    *
-   * With WebView 146 and later, `onPageStarted` comes after the commit that ends the Document, so `url` is already the
-   * new page. A new window the rules allow loads in place with `loadUrl`, which doesn't reach
-   * `shouldOverrideUrlLoading` (on iOS that load reaches the deciding delegate).
+   * `shouldInterceptRequest` runs on a background thread. With WebView 146 and later, `onPageStarted` comes after the
+   * commit that ends the Document, so `url` is already the new page.
    */
   val clients: MutableList<WebViewClient>
 
@@ -228,10 +243,12 @@ interface WebViewContext {
   fun emit(name: String, payload: Map<String, Any?>)
 
   /**
-   * Sends the event and waits for JS's answer: the `onHookEvent` handler's return value, a promise awaited. A throw or
-   * no handler answers null. There is no timeout: an ask still open when the Document ends answers null, and one made
-   * after the context's attach ended answers null at once. An ask made before the WebView's first commit (in `attach`)
-   * belongs to the Document that commit opens. A number answers as a `Double`.
+   * Sends the event as [emit] does, and calls [onAnswer] with JS's answer: the `onHookEvent` handler's return value, a
+   * promise awaited. A number answers as a `Double`.
+   *
+   * It answers null when the handler throws or there is none, or when the Document ends first; there is no timeout.
+   * One made after the context's attach ended answers null at once. An ask made before the WebView's first commit (in
+   * `attach`) belongs to the Document that commit opens.
    */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
@@ -249,15 +266,18 @@ interface WebViewContext {
 
   /**
    * Runs [handler] once this attach's WebView is destroyed: with `CLOSING` at unmount, or with `CRASHED` after a
-   * renderer crash, before the WebView that replaces it is configured. Native state that must outlive the WebView (a
-   * `ProfileStore` profile) is released here. The context does nothing by then.
+   * renderer crash, before the WebView that replaces it is configured. The context does nothing by then.
+   *
+   * Release here what must outlive the WebView, such as a `ProfileStore` profile.
    */
   fun onDestroyed(handler: (DocumentScope.End) -> Unit)
 
   /**
    * Offers [handler] each download the page starts, with `DownloadListener`'s arguments (an unknown disposition or MIME
-   * type is empty), before the `onDownload` prop and the core's opening it externally. Return true to take it: neither
-   * of those gets it then. The hooks are offered it in registration order, and the first that takes it ends the round.
+   * type is empty), before the `onDownload` prop and the core's opening it externally.
+   *
+   * Return true to take it: neither of those gets it then. The hooks are offered it in registration order, and the
+   * first that takes it ends the round.
    */
   fun onDownloadStart(
     handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean

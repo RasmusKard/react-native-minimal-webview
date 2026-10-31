@@ -81,8 +81,6 @@ function createAdapter(): Adapter {
 
 /**
  * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it.
- *
- * Its `current` is whichever WebView is mounted with it, and it keeps its subscribers across remounts.
  * @group WebView
  */
 export function createWebViewRef(): WebViewRefObject {
@@ -117,8 +115,6 @@ export function useAttach(
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
  * re-renders on every change, and follows a remount.
- *
- * The initial state (`url: ''`) while none is mounted.
  * @see [Navigation state example](../guides/examples.md#navigation-state)
  * @group Navigation
  */

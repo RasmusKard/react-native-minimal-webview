@@ -11,8 +11,8 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 import org.json.JSONArray
 
 /**
- * The hook behind `menuItems()`; its value is `{ items }`. The selection's action mode is
- * WebView's own `startActionMode`, so the hook makes its WebViews with [MenuWebView].
+ * The hook behind `menuItems()`; it reads `items` from its value (`suppress` is iOS only). The selection's action mode
+ * is WebView's own `startActionMode`, so the hook makes its WebViews with [MenuWebView].
  */
 internal object MenuItems {
   const val KEY = "@react-native-minimal-webview/extensions.menuItems"

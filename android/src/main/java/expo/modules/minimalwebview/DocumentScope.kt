@@ -1,11 +1,15 @@
 package expo.modules.minimalwebview
 
 /**
- * A Document is the main-frame page a WebView shows now: it begins when a navigation commits (a back-forward-cache
- * restore or a failed load's error page too) and ends at the next commit, a renderer crash, or the view closing. The
- * first commit after a WebView is made (at mount or after a crash) opens one and ends nothing. It doesn't end at a
- * same-document or sub-frame navigation, a load that never commits (a stop, a download, a 204), the view leaving the
- * window or the app going to the background. What belongs to it registers here once, and the view reports each end.
+ * A Document is the main-frame page a WebView shows now: from a navigation's commit, a back-forward-cache restore or a
+ * failed load's error page included, to the next commit, a renderer crash or the view closing. A hook hears each end
+ * in [WebViewContext.onDocumentEnd].
+ *
+ * The first commit after a WebView is made, at mount or after a crash, opens one and ends nothing.
+ *
+ * A Document doesn't end at a same-document navigation (`pushState`, `replaceState`, a hash change), a sub-frame
+ * navigation, a load that never commits (a stop, a download, a 204), the view leaving the window or the app going to
+ * the background.
  */
 class DocumentScope internal constructor() {
   /** Why a Document ended. */
@@ -13,8 +17,7 @@ class DocumentScope internal constructor() {
     /**
      * A main-frame navigation committed in the same WebView while a Document was open: a load, a form submit, back or
      * forward, a reload, an html source, a `window.open` loaded in place, a back-forward-cache restore or a failed
-     * load's error page. Not a same-document navigation (`pushState`, `replaceState`, a hash change), a sub-frame's,
-     * or a load that never commits (a stop, a download, a 204).
+     * load's error page.
      */
     COMMITTED,
 

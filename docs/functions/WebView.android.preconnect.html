@@ -21,10 +21,11 @@
 later.</p>
 <p>Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a
 mounted WebView will go to. A WebView connects to its <code>source</code> itself as it mounts, so preconnecting <code>source</code> at
-mount gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once <code>warmUp()</code> has had
-time or a WebView is mounted. Needs the androidx.webkit features <code>MULTI_PROFILE</code> and <code>ENQUEUE_PRECONNECT</code> or
-<code>PRECONNECT</code>; without them it does nothing. For prefetch and prerender, a native hook uses
-<code>ProfileStore</code>.</p>
+mount gains nothing.</p>
+<p>It starts WebView on the UI thread if nothing has yet, so call it once <code>warmUp()</code> has had time or a WebView is
+mounted.</p>
+<p>Needs the androidx.webkit features <code>MULTI_PROFILE</code> and <code>ENQUEUE_PRECONNECT</code> or <code>PRECONNECT</code>; without them it does
+nothing. For prefetch and prerender, a native hook uses <code>ProfileStore</code>.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
