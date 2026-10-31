@@ -1,13 +1,15 @@
 import WebKit
 
 /// Native hooks: Swift in your own Expo module that gets the real WKWebView behind each WebView, its creation-time
-/// configuration and a `WebViewContext`, with no protocol to implement. `example/modules/sample-extension` has complete
-/// ones.
+/// configuration and a ``WebViewContext``, with no protocol to implement.
+///
+/// The [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
+/// walks through one.
 ///
 /// A hook attaches to each WebView whose `hookOptions` enables its key; the prop's TSDoc has the rules.
 ///
-/// Leave alone what the core owns: the WKWebView's own `navigationDelegate` and `uiDelegate` (add to the context's
-/// lists instead), and the bridge's script message handler and user scripts.
+/// - Important: Leave alone what the core owns: the WKWebView's own `navigationDelegate` and `uiDelegate` (add to the
+///   context's lists instead), and the bridge's script message handler and user scripts.
 public enum MinimalWebViewHooks {
   struct Hook {
     let key: String
@@ -20,10 +22,11 @@ public enum MinimalWebViewHooks {
 
   private(set) static var hooks: [Hook] = []
 
-  /// Registers the hook for `key`. Call it from your module's `OnCreate`, before the first WebView.
+  /// Registers the hook for `key`.
   ///
-  /// Keys are global, so prefix yours with your package's name. A second hook under a key stops the app with
-  /// `fatalError`, naming the key and both call sites. `core` is reserved for the package's own events: a hook under it
+  /// Call it from your module's `OnCreate`, before the first WebView.
+  ///
+  /// A second hook under a key stops the app with `fatalError`, naming the key and both call sites. A hook under `core`
   /// is logged and not registered.
   ///
   /// The same call running again replaces its hook: a JS reload creates the modules anew and runs their `OnCreate`
@@ -34,6 +37,8 @@ public enum MinimalWebViewHooks {
   /// by name. A hook whose key turns on after the WebView was created attaches after the hooks attached already.
   ///
   /// - Parameters:
+  ///   - key: The `hookOptions` key that enables the hook. Keys are global, so prefix yours with your package's name;
+  ///     `core` is reserved for the package's own events.
   ///   - webViewClass: The WKWebView subclass that each WebView enabling this hook is made from, to override what
   ///     WKWebView lets a subclass override; nil leaves the class to the other hooks. When the enabled hooks name
   ///     different classes, the first one's in registration order makes the view, and a `core.warning` names the
@@ -46,10 +51,11 @@ public enum MinimalWebViewHooks {
   ///     user scripts run in it and your script message handlers get its messages, so compare `message.webView` with
   ///     the WKWebView `attach` gets.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Returns
-  ///     a closure to run when the view goes away, after `onDocumentEnd(.closing)`, or nil. A web content process crash
-  ///     reloads the same WKWebView, so nothing attaches again, and the context and its handlers stay (Android attaches
-  ///     again, to a new WebView).
+  ///     a closure to run when the view goes away, after ``WebViewContext/onDocumentEnd(_:)`` with
+  ///     ``DocumentScope/End/closing``, or nil. A web content process crash reloads the same WKWebView, so nothing
+  ///     attaches again, and the context and its handlers stay (Android attaches again, to a new WebView).
   ///   - file: With `line`, the call site that tells a reload from a second hook; leave both to their defaults.
+  ///   - line: The call site's line, with `file`.
   public static func register(
     _ key: String,
     webViewClass: WKWebView.Type? = nil,
@@ -80,24 +86,28 @@ func enables(_ value: Any?) -> Bool {
 
 /// One WebView as one hook sees it, for the life of the WKWebView.
 ///
-/// Call `emit` and `ask` from any thread, and the rest on the main thread, where `configure`, `attach`, the handlers
-/// and the answers run.
+/// Call ``emit(_:_:)`` and ``ask(_:_:_:)`` from any thread, and the rest on the main thread, where `configure`,
+/// `attach`, the handlers and the answers run.
 ///
-/// A context kept after the view closed does nothing, and its `ask` answers nil at once.
+/// A context kept after the view closed does nothing, and its ``ask(_:_:_:)`` answers nil at once.
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
 ///
-/// The context holds the handlers you register (`onOptionsChange`, `onDocumentEnd`, `handle`). An object they capture
-/// that also holds the context strongly makes a cycle that is never freed, so hold the context weakly.
+/// - Important: The context holds the handlers you register (``onOptionsChange(_:)``, ``onDocumentEnd(_:)``,
+///   ``handle(_:_:)``). An object they capture that also holds the context strongly makes a cycle that is never freed,
+///   so hold the context weakly.
 public protocol WebViewContext: AnyObject {
   /// This hook's `hookOptions` value, the one that enabled it; after a change, the new one.
   var options: Any? { get }
-  /// The committed URL, the one `useWebViewState` reports; empty before the first commit. Inside `onDocumentEnd` it
-  /// is still the page that ended.
+  /// The committed URL, the one `useWebViewState` reports; empty before the first commit.
+  ///
+  /// Inside ``onDocumentEnd(_:)`` it is still the page that ended.
   var url: String { get }
-  /// Your navigation delegates, in order. Set them in `attach`: WebKit reads what a delegate responds to when it is
-  /// assigned, and the core re-assigns itself after each change to the list.
+  /// Your navigation delegates, in order.
+  ///
+  /// Set them in `attach`: WebKit reads what a delegate responds to when it is assigned, and the core re-assigns itself
+  /// after each change to the list.
   ///
   /// Each callback reaches the delegates by one of these rules:
   /// - A decision, the action or the response policy, goes to the first delegate that implements it, instead of the
@@ -122,7 +132,7 @@ public protocol WebViewContext: AnyObject {
   /// While `onDownload` is set, a delegate whose `didBecome` sets `download.delegate` takes the download, and
   /// `onDownload` gets nothing for it.
   var navigationDelegates: [WKNavigationDelegate] { get set }
-  /// Your UI delegates, in order, by the rules of `navigationDelegates`.
+  /// Your UI delegates, in order, by the rules of ``navigationDelegates``.
   ///
   /// Their decisions are `createWebViewWith`, the alert, confirm and prompt panels and the media capture permission.
   /// Taking `createWebViewWith` stops the navigation rules and `onNavigationRequest` deciding new windows; taking the
@@ -136,22 +146,26 @@ public protocol WebViewContext: AnyObject {
   /// answers, as the core does for its own panels: an accessibility query (XCTest's) into the blocked page hangs.
   var uiDelegates: [WKUIDelegate] { get set }
   /// The control `pullToRefresh` shows: the same one for the view's life, shown or not; nil once the view has closed.
+  ///
   /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
   var refreshControl: UIRefreshControl? { get }
   /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
   func emit(_ name: String, _ payload: [String: Any])
-  /// Sends the event as `emit` does, and calls `onAnswer` with the JS handler's return value, a promise awaited.
+  /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the JS handler's return value, a promise
+  /// awaited.
   ///
   /// It answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout.
   /// An ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
   /// Runs `handler` with this hook's new `hookOptions` value each time it changes, live; nil when the key is removed.
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
-  /// Runs `handler` at each end of the Document (`DocumentScope`), after the core's own resets: per-page state belongs
-  /// here.
+  /// Runs `handler` at each end of the Document (``DocumentScope``), after the core's own resets: per-page state
+  /// belongs here.
   func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void)
   /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` exactly once, and
-  /// both cross as JSON. One handler per method: the last one wins.
+  /// both cross as JSON.
+  ///
+  /// One handler per method: the last one wins.
   func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: @escaping (Any?) -> Void) -> Void)
 }
 
