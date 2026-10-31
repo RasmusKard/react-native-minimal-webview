@@ -11,12 +11,13 @@
 <li><a href="" aria-current="page">NavigationRule</a></li></ul>
 <h1>Type Alias NavigationRule</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>One navigation rule. Every field it sets must match; for a list, one matching entry is enough. A field left out
-matches anything; a flag set to <code>false</code> matches only the requests without it.</p>
+<div class="tsd-comment tsd-typography"><p>A pattern over a navigation's URL and kind, and what the navigations it matches do.</p>
+<p>Every field it sets must match; for a list, one matching entry is enough. A field left out matches anything; a flag
+set to <code>false</code> matches only the requests without it.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-11">navigationRules</span><span class="hl-1">: </span><span class="hl-7">NavigationRule</span><span class="hl-1">[] = [</span><br/><span class="hl-1">  { </span><span class="hl-2">query:</span><span class="hl-1"> [</span><span class="hl-3">&#39;gad_source&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;utm_term=google&#39;</span><span class="hl-1">], </span><span class="hl-2">action:</span><span class="hl-1"> </span><span class="hl-3">&#39;block&#39;</span><span class="hl-1"> }, </span><span class="hl-12">// gad_source with any value, utm_term only =google</span><br/><span class="hl-1">  { </span><span class="hl-2">scheme:</span><span class="hl-1"> [</span><span class="hl-3">&#39;tel&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;mailto&#39;</span><span class="hl-1">], </span><span class="hl-2">action:</span><span class="hl-1"> </span><span class="hl-3">&#39;external&#39;</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-2">host:</span><span class="hl-1"> [</span><span class="hl-3">&#39;*.example.com&#39;</span><span class="hl-1">], </span><span class="hl-2">path:</span><span class="hl-1"> [</span><span class="hl-3">&#39;/checkout&#39;</span><span class="hl-1">], </span><span class="hl-2">action:</span><span class="hl-1"> </span><span class="hl-3">&#39;external&#39;</span><span class="hl-1"> }, </span><span class="hl-12">// shop.example.com/checkouts too</span><br/><span class="hl-1">  { </span><span class="hl-2">host:</span><span class="hl-1"> [</span><span class="hl-3">&#39;example.com&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;*.example.com&#39;</span><span class="hl-1">], </span><span class="hl-2">action:</span><span class="hl-1"> </span><span class="hl-3">&#39;allow&#39;</span><span class="hl-1"> }, </span><span class="hl-12">// *.example.com alone skips example.com</span><br/><span class="hl-1">];</span>
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-13">navigationRules</span><span class="hl-2">: </span><span class="hl-1">NavigationRule</span><span class="hl-2">[] = [</span><br/><span class="hl-2">  { </span><span class="hl-6">query:</span><span class="hl-2"> [</span><span class="hl-11">&#39;gad_source&#39;</span><span class="hl-2">, </span><span class="hl-11">&#39;utm_term=google&#39;</span><span class="hl-2">], </span><span class="hl-6">action:</span><span class="hl-2"> </span><span class="hl-11">&#39;block&#39;</span><span class="hl-2"> }, </span><span class="hl-12">// gad_source with any value, utm_term only =google</span><br/><span class="hl-2">  { </span><span class="hl-6">scheme:</span><span class="hl-2"> [</span><span class="hl-11">&#39;tel&#39;</span><span class="hl-2">, </span><span class="hl-11">&#39;mailto&#39;</span><span class="hl-2">], </span><span class="hl-6">action:</span><span class="hl-2"> </span><span class="hl-11">&#39;external&#39;</span><span class="hl-2"> },</span><br/><span class="hl-2">  { </span><span class="hl-6">host:</span><span class="hl-2"> [</span><span class="hl-11">&#39;*.example.com&#39;</span><span class="hl-2">], </span><span class="hl-6">path:</span><span class="hl-2"> [</span><span class="hl-11">&#39;/checkout&#39;</span><span class="hl-2">], </span><span class="hl-6">action:</span><span class="hl-2"> </span><span class="hl-11">&#39;external&#39;</span><span class="hl-2"> }, </span><span class="hl-12">// shop.example.com/checkouts too</span><br/><span class="hl-2">  { </span><span class="hl-6">host:</span><span class="hl-2"> [</span><span class="hl-11">&#39;example.com&#39;</span><span class="hl-2">, </span><span class="hl-11">&#39;*.example.com&#39;</span><span class="hl-2">], </span><span class="hl-6">action:</span><span class="hl-2"> </span><span class="hl-11">&#39;allow&#39;</span><span class="hl-2"> }, </span><span class="hl-12">// *.example.com alone skips example.com</span><br/><span class="hl-2">];</span>
 </code><button type="button">Copy</button></pre>
 
 </div></div></section>
@@ -43,7 +44,7 @@ matches anything; a flag set to <code>false</code> matches only the requests wit
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="action"><span>action</span><a href="#action" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">action</span><span class="tsd-signature-symbol">:</span> <a href="NavigationAction.html" class="tsd-signature-type tsd-kind-type-alias">NavigationAction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;ask&quot;</span></div>
-<div class="tsd-comment tsd-typography"><p><code>ask</code> calls <code>onNavigationRequest</code>.</p>
+<div class="tsd-comment tsd-typography"><p>What the navigations it matches do; <code>ask</code> puts each to <code>onNavigationRequest</code>.</p>
 <p>On Android, which can't hold a navigation until JS answers, it works only for the main frame (elsewhere it is
 <code>block</code>): the navigation is cancelled, and an allowed one loads again after the answer, without the page's referrer
 policy or the gesture flag.</p>
@@ -51,28 +52,31 @@ policy or the gesture flag.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="host"><span>host</span><a href="#host" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">host</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>Exact, or a <code>*.</code> suffix wildcard that matches subdomains only, not the domain itself.</p>
+<div class="tsd-comment tsd-typography"><p>Hosts: exact, or a <code>*.</code> suffix wildcard that matches subdomains only, not the domain itself.</p>
 <p>Case, port, userinfo and a trailing dot are ignored.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="mainframe"><span>main<wbr/>Frame</span><a href="#mainframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">mainFrame</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
-<div class="tsd-comment tsd-typography"><p>Android decides only an iframe's non-http(s) navigations, so a <code>mainFrame: false</code> rule for http(s) is iOS only.</p>
+<div class="tsd-comment tsd-typography"><p>The main frame's navigation (true) or an iframe's (false).</p>
+<p>Android decides only an iframe's non-http(s) navigations, so a <code>mainFrame: false</code> rule for http(s) is iOS only.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="newwindow"><span>new<wbr/>Window</span><a href="#newwindow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">newWindow</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
-<div class="tsd-comment tsd-typography"><p><code>target=_blank</code> or <code>window.open</code>, a main-frame navigation.</p>
+<div class="tsd-comment tsd-typography"><p>A <code>target=_blank</code> or <code>window.open</code> navigation, always a main-frame one.</p>
 <p>An allowed one loads in place: there is never a second WebView, so no <code>window.opener</code> (a native hook that takes
 <code>createWebViewWith</code> on iOS or <code>onCreateWindow</code> on Android owns real popups).</p>
 <p>One to <code>data:</code>, <code>blob:</code>, <code>javascript:</code>, <code>about:</code> or <code>file:</code> is always blocked (on Android, WebView may still run a
 <code>javascript:</code> one's script, with the page's origin), and one opened with no URL (<code>window.open('')</code>) is decided when
 the page first sends it to one, or dropped when that doesn't happen within 5 s.</p>
+<p>One opened without a user gesture reaches the rules only with <code>javaScriptCanOpenWindowsAutomatically</code> on
+(<code>ios.preferences</code>, <code>android.settings</code>; off by default); otherwise WebKit or WebView drops it unreported.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="path"><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>Plain prefixes of the percent-encoded URL path, not whole segments.</p>
+<div class="tsd-comment tsd-typography"><p>Path prefixes: plain prefixes of the percent-encoded URL path, not whole segments.</p>
 <p>A URL without an authority (<code>myapp:/open</code>) has the path <code>/</code>.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
@@ -84,7 +88,7 @@ value, and <code>name=value</code> only that exact value.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="scheme"><span>scheme</span><a href="#scheme" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheme</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>Exact, case-insensitive.</p>
+<div class="tsd-comment tsd-typography"><p>URL schemes without the <code>:</code> (<code>tel</code>), exact and case-insensitive.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="userinitiated"><span>user<wbr/>Initiated</span><a href="#userinitiated" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>

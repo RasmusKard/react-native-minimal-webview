@@ -475,7 +475,7 @@ export declare namespace WebView {
      * Android's default user agent, for `android.settings.userAgentString` with a suffix.
      *
      * The first read loads WebView's code, on the JS thread: read it once `warmUp()` has had time or a WebView is
-     * mounted. On iOS, `ios.configuration.applicationNameForUserAgent` appends.
+     * mounted.
      * @android
      */
     const defaultUserAgent: string | null;
@@ -494,10 +494,13 @@ export declare namespace WebView {
      *
      * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a
      * mounted WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at
-     * mount gains nothing. It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had
-     * time or a WebView is mounted. Needs the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or
-     * `PRECONNECT`; without them it does nothing. For prefetch and prerender, a native hook uses
-     * `ProfileStore`.
+     * mount gains nothing.
+     *
+     * It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a WebView is
+     * mounted.
+     *
+     * Needs the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or `PRECONNECT`; without them it does
+     * nothing. For prefetch and prerender, a native hook uses `ProfileStore`.
      * @android
      */
     function preconnect(url: string): void;
@@ -514,8 +517,10 @@ export declare namespace WebView {
   /**
    * The rules for an unset or empty `navigationRules`: `file:` is blocked, http(s) loads in place, and any other scheme
    * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
+   *
    * Anything else, a subframe's or one without a gesture, is blocked: a page that launches an app from a script or
    * timer, and on iOS also from a click handler or from a redirect after a form POST (an OAuth `myapp://callback`).
+   *
    * Frozen; spread it after your own rules to keep it.
    */
   const defaultNavigationRules: readonly NavigationRule[];

@@ -30,15 +30,16 @@
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="didcrash"><span>did<wbr/>Crash</span><a href="#didcrash" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">didCrash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></div>
-<div class="tsd-comment tsd-typography"><p>False when the system killed the renderer for memory. Null on iOS: WebKit doesn't say, so test it with <code>=== true</code>
-or <code>=== false</code>, not as a condition.</p>
+<div class="tsd-comment tsd-typography"><p>Whether the renderer crashed (true) or the system killed it for memory (false); null on iOS, where WebKit doesn't
+say.</p>
+<p>Test it with <code>=== true</code> or <code>=== false</code>, not as a condition.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="recovered"><span>recovered</span><a href="#recovered" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">recovered</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
-<div class="tsd-comment tsd-typography"><p>The core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground and the
-view on screen, with the history restored unless the <code>source</code> page was on screen, and with the props applied but
-not what <code>call</code> set.</p>
+<div class="tsd-comment tsd-typography"><p>Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground
+and the view on screen, with the history restored unless the <code>source</code> page was on screen, and with the props
+applied but not what <code>call</code> set.</p>
 <p>False while a POST <code>source</code> is on screen, which, as in a browser, isn't sent again unasked (<code>reload()</code> sends it),
 and after more than 3 crashes in 60 s, counted for the whole app on Android, until the next <code>reload()</code> (on iOS also
 a <code>source</code> change).</p>

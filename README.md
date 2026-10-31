@@ -1,25 +1,90 @@
 # react-native-minimal-webview
 
-A small, extensible WebView for React Native, built with the Expo Modules API (Swift and Kotlin), for the new
-architecture only.
+A React Native WebView that hands you the iOS and Android WebView APIs, instead of wrapping each one in a prop.
 
-- **Native decides, JS is told:** navigation rules run natively, with no JS round trip per navigation.
-- **Native owns the navigation state:** `useWebViewState(ref)` gives the committed URL, a pending load, the title,
-  progress and history.
-- **A promise bridge** between React Native and the page, for the origins you allow.
-- **Page requests have defaults:** a prop answers the file chooser and permissions (Android denies them without one),
-  or hears about fullscreen video and downloads; JS dialogs and HTTP auth go to a native hook.
-- **Every platform setting by name:** `ios={{ scrollView: { bounces: false } }}`, `android={{ settings: { textZoom: 120 } }}`.
-- **The app owns device APIs:** no OS permission requests, pickers or config plugin of its own, and no dependency on
-  expo-camera or similar packages. Without a prop to answer, iOS shows WebKit's own prompts and picker.
+It runs on iOS and Android as an Expo module.
 
-**Requirements:** iOS 17.0+, Android API 29+ (`minSdkVersion 29`, for example with `expo-build-properties`), Expo SDK
-53+ (React Native 0.79+, React 19), the new architecture. A bare React Native app needs the `expo` package
-(`npx install-expo-modules@latest`). On Android, some features need a newer
-[Android System WebView](#android-system-webview-versions). On a current Xcode, SDK 53 apps need React Native's `fmt`
-pod built as C++17 (a Podfile `post_install` hook that sets its `CLANG_CXX_LANGUAGE_STANDARD` to `c++17`). The build
-is ESM: Jest consumers add `react-native-minimal-webview` to `transformIgnorePatterns` (with jest-expo, to its
-`node_modules/(?!...)` allowlist).
+[API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html) ·
+[Examples](guides/examples.md) ·
+[Native hooks](guides/native-hooks.md) ·
+[Migrating from react-native-webview](guides/migrating-from-react-native-webview.md) ·
+[Extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) ·
+[MIT license](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE)
+
+## Why it exists
+
+react-native-webview wraps each platform API in a prop of its own. When one isn't wrapped, you wait for an upstream
+PR, or patch or fork the package, even if the change is one platform call.
+
+This package passes the platform APIs through instead:
+
+- `ios` and `android` props: any setting, by its platform name.
+- The ref's `get` and `call`: properties and methods, by name.
+- [Native hooks](guides/native-hooks.md): the `WKWebView` or `WebView` itself, in your own Swift or Kotlin
+  module.
+
+```tsx
+<WebView
+  ios={{ scrollView: { bounces: false } }}
+  android={{ settings: { textZoom: 120 } }}
+  …
+/>;
+await ref.current?.call('webView.pageDown', [true]); // Android
+```
+
+A setting or method a newer SDK adds works without a release of this package, untyped: under a settings root's
+`other`, or through `call`. On iOS it has to be visible to Objective-C, and a method with a completion handler the
+package's SDK headers don't have rejects
+([limits](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call)).
+
+## What it changes from react-native-webview
+
+![The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins](guides/how-it-works.svg)
+
+The core adds only what the platform APIs lack:
+
+| | react-native-webview | react-native-minimal-webview |
+|---|---|---|
+| Navigation decisions | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively |
+| Page messaging | `postMessage` strings, any page | Typed promise bridge, `allowedOrigins` only |
+| Navigation state | `onNavigationStateChange` events you keep in state | `useWebViewState(ref)` |
+| Page camera and microphone | Granted to any page on Android, after asking the OS | Your app answers `onPermissionRequest` |
+
+The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
+
+## When to use something else
+
+- Old architecture, Windows or macOS: react-native-webview supports them, this package doesn't. Neither runs on web.
+- Expo Go: the package has native code, so it needs a development build.
+
+## Install
+
+```sh
+npx expo install react-native-minimal-webview
+```
+
+Then rebuild the app (`npx expo run:ios`, `npx expo run:android`).
+
+A bare React Native app adds Expo modules first, then installs with its package manager:
+
+```sh
+npx install-expo-modules@latest
+npm install react-native-minimal-webview   # or: yarn add, pnpm add
+npx pod-install
+```
+
+### Requirements
+
+| Platform | Minimum |
+|---|---|
+| iOS | 17.0: `ios.deploymentTarget: '17.0'`, for example with `expo-build-properties` |
+| Android | API 29: `android.minSdkVersion: 29`, for example with `expo-build-properties` |
+| Expo SDK | 53 (React Native 0.79, React 19) |
+| Architecture | New architecture only |
+
+Some features need a newer Android System WebView: [which ones](guides/android-system-webview.md).
+
+## Usage
 
 ```tsx
 import { WebView } from 'react-native-minimal-webview';
@@ -29,21 +94,21 @@ export function Browser() {
 }
 ```
 
-## Docs
+Then pick what you need:
 
-- [Examples](guides/examples.md): one per public interface, from the navigation state to native hooks
-- [API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html), generated from the TSDoc. The native hook API is documented on
-  `MinimalWebViewHooks` and `WebViewContext` in `ios/Hooks.swift` and `android/src/main/java/expo/modules/minimalwebview/Hooks.kt`
-- [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md): what differs, and recipes for what
-  has no prop
-- [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/): a second package, in
-  `extensions/`, that brings back react-native-webview props such as `basicAuthCredential` and `onScroll` as native hooks,
-  for `useExtensions`
-- [Development](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md): setup, the checks and the on-device suites
+| To | See |
+|---|---|
+| Show the URL, progress or a back button | [Navigation state](guides/examples.md#navigation-state) |
+| Keep the WebView on your sites, open the rest externally | [Navigation rules](guides/examples.md#navigation-rules) |
+| Call the page from the app, and the app from the page | [The bridge](guides/examples.md#the-bridge) |
+| Change a WebView setting | [Platform settings](guides/examples.md#platform-settings) |
+| Share cookies with native requests | [Cookies](guides/examples.md#cookies) |
+| Run a script on every page | [Scripts](guides/examples.md#scripts) |
+| Load bundled HTML | [Local files](guides/examples.md#local-files) |
+| Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
+| Use the native `WKWebView` or `WebView` | [Native hooks](guides/native-hooks.md) |
+| Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) |
 
-## Android System WebView versions
+## Contributing
 
-Android System WebView updates apart from the OS (through the Play Store; Huawei and Fire OS devices ship their own
-builds), so what a device can do depends on its WebView, not its API level. The core checks each feature at run time,
-and an older WebView loses the feature; nothing crashes. Losing the bridge or `injectedScripts` logs a warning. A
-feature's TSDoc names the WebView it needs.
+[CONTRIBUTING.md](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md) has the setup, the checks and the on-device suites.

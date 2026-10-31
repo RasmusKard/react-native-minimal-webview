@@ -8,17 +8,17 @@
 <div class="col-content">
 <div class="tsd-page-title"></div>
 <div class="tsd-panel tsd-typography"><h1 id="react-native-minimal-webviewextensions" class="tsd-anchor-link">@react-native-minimal-webview/extensions<a href="#react-native-minimal-webviewextensions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
-<p>react-native-webview props for <a href="https://github.com/RasmusKard/react-native-minimal-webview">react-native-minimal-webview</a>, each brought back
-by a native hook of its own.</p>
+<p>Native hooks for <a href="https://github.com/RasmusKard/react-native-minimal-webview">react-native-minimal-webview</a> that bring
+back react-native-webview props, such as <code>onScroll</code> and <code>basicAuthCredential</code>, and add JS-answered dialogs.</p>
 <h2 id="setup" class="tsd-anchor-link">Setup<a href="#setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<p>It has the core's <a href="https://github.com/RasmusKard/react-native-minimal-webview#readme">requirements</a>. Install both, then rebuild
-the app, since the package has native code:</p>
+<p>It has the core's <a href="https://github.com/RasmusKard/react-native-minimal-webview#requirements">requirements</a>. Install both, then
+rebuild the app, since the package has native code:</p>
 <pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">expo</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">react-native-minimal-webview</span><span class="hl-1"> </span><span class="hl-2">@react-native-minimal-webview/extensions</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Each extension is a function whose result goes to the core's
 <a href="https://rasmuskard.github.io/react-native-minimal-webview/functions/useExtensions.html"><code>useExtensions</code></a>:</p>
-<pre><code class="tsx"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">basicAuthCredential</span><span class="hl-1">, </span><span class="hl-4">onScroll</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@react-native-minimal-webview/extensions&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">WebView</span><span class="hl-1">, </span><span class="hl-4">useExtensions</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;react-native-minimal-webview&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">hooks</span><span class="hl-1"> = </span><span class="hl-0">useExtensions</span><span class="hl-1">([</span><br/><span class="hl-1">  </span><span class="hl-0">basicAuthCredential</span><span class="hl-1">({ </span><span class="hl-4">username:</span><span class="hl-1"> </span><span class="hl-2">&#39;user&#39;</span><span class="hl-1">, </span><span class="hl-4">password:</span><span class="hl-1"> </span><span class="hl-2">&#39;secret&#39;</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-0">onScroll</span><span class="hl-1">(({ </span><span class="hl-4">nativeEvent</span><span class="hl-1"> }) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">nativeEvent</span><span class="hl-1">.</span><span class="hl-4">contentOffset</span><span class="hl-1">.</span><span class="hl-4">y</span><span class="hl-1">)),</span><br/><span class="hl-1">]);</span><br/><span class="hl-7">&lt;</span><span class="hl-8">WebView</span><span class="hl-1"> </span><span class="hl-9">source</span><span class="hl-1">=</span><span class="hl-5">{</span><span class="hl-10">{ </span><span class="hl-4">uri:</span><span class="hl-10"> </span><span class="hl-2">&#39;https://example.com&#39;</span><span class="hl-10"> }</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-5">{</span><span class="hl-1">...</span><span class="hl-4">hooks</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-7">/&gt;</span><span class="hl-1">;</span>
+<pre><code class="tsx"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">basicAuthCredential</span><span class="hl-1">, </span><span class="hl-4">onScroll</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@react-native-minimal-webview/extensions&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">WebView</span><span class="hl-1">, </span><span class="hl-4">useExtensions</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;react-native-minimal-webview&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-5">function</span><span class="hl-1"> </span><span class="hl-0">Browser</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">hooks</span><span class="hl-1"> = </span><span class="hl-0">useExtensions</span><span class="hl-1">([</span><br/><span class="hl-1">    </span><span class="hl-0">basicAuthCredential</span><span class="hl-1">({ </span><span class="hl-4">username:</span><span class="hl-1"> </span><span class="hl-2">&#39;user&#39;</span><span class="hl-1">, </span><span class="hl-4">password:</span><span class="hl-1"> </span><span class="hl-2">&#39;secret&#39;</span><span class="hl-1"> }),</span><br/><span class="hl-1">    </span><span class="hl-0">onScroll</span><span class="hl-1">(({ </span><span class="hl-4">nativeEvent</span><span class="hl-1"> }) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">nativeEvent</span><span class="hl-1">.</span><span class="hl-4">contentOffset</span><span class="hl-1">.</span><span class="hl-4">y</span><span class="hl-1">)),</span><br/><span class="hl-1">  ]);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">&lt;</span><span class="hl-8">WebView</span><span class="hl-1"> </span><span class="hl-9">source</span><span class="hl-1">=</span><span class="hl-5">{</span><span class="hl-10">{ </span><span class="hl-4">uri:</span><span class="hl-10"> </span><span class="hl-2">&#39;https://example.com&#39;</span><span class="hl-10"> }</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-9">style</span><span class="hl-1">=</span><span class="hl-5">{</span><span class="hl-10">{ </span><span class="hl-4">flex:</span><span class="hl-10"> </span><span class="hl-11">1</span><span class="hl-10"> }</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-5">{</span><span class="hl-1">...</span><span class="hl-4">hooks</span><span class="hl-5">}</span><span class="hl-1"> </span><span class="hl-7">/&gt;</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
 </code><button type="button">Copy</button></pre>
 
 <h2 id="extensions" class="tsd-anchor-link">Extensions<a href="#extensions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
@@ -27,69 +27,67 @@ the app, since the package has native code:</p>
 <tr>
 <th>Function</th>
 <th>Platforms</th>
-<th>Folder</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/basicAuthCredential.html"><code>basicAuthCredential(credential)</code></a></td>
 <td>iOS, Android</td>
-<td><code>basicAuthCredential</code></td>
 </tr>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/dialogs.html"><code>dialogs(onDialog)</code></a></td>
 <td>iOS, Android</td>
-<td><code>dialogs</code></td>
 </tr>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/menuItems.html"><code>menuItems({ items, suppress, onSelect })</code></a></td>
 <td>iOS, Android (<code>suppress</code>: iOS)</td>
-<td><code>menuItems</code></td>
 </tr>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/onScroll.html"><code>onScroll(handler)</code></a></td>
 <td>iOS, Android</td>
-<td><code>onScroll</code></td>
 </tr>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/hideKeyboardAccessoryView.html"><code>hideKeyboardAccessoryView()</code></a></td>
 <td>iOS</td>
-<td><code>hideKeyboardAccessoryView</code></td>
 </tr>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/nestedScrollEnabled.html"><code>nestedScrollEnabled()</code></a></td>
 <td>Android</td>
-<td><code>nestedScrollEnabled</code></td>
 </tr>
 <tr>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/androidLayerType.html"><code>androidLayerType(type)</code></a></td>
 <td>Android</td>
-<td><code>androidLayerType</code></td>
 </tr>
 </tbody>
 </table>
-<p>The folder holds the extension's Swift, Kotlin and TS. The <a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">API reference</a>
-has the rest.</p>
+<p>Each function's <a href="https://rasmuskard.github.io/react-native-minimal-webview/extensions/">API reference</a> page has its
+behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.</p>
 <h2 id="vendoring-an-extension" class="tsd-anchor-link">Vendoring an extension<a href="#vendoring-an-extension" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>To change an extension, or to take only one, copy it into a module of your own:</p>
 <ol>
-<li><code>npx create-expo-module --local &lt;name&gt;</code>.</li>
-<li>Copy the extension's folder into it: the <code>.swift</code> file into <code>ios/</code>, the <code>.kt</code> file next to your module's
-<code>&lt;Name&gt;Module.kt</code> (in <code>android/src/main/java/</code>), and <code>index.ts</code>, the function that returns its <code>HookExtension</code>, into
-<code>src/</code>, and export that function from your module's <code>index.ts</code>.</li>
+<li>Create the module, with the core as its dependency and iOS 17.0 as its platform: steps 1 and 2 of
+<a href="https://rasmuskard.github.io/react-native-minimal-webview/documents/Native_hooks.html#1-create-a-module">Native hooks</a>.</li>
+<li>Copy the extension's files into it:
+<ul>
+<li>the <code>.swift</code> file into <code>ios/</code></li>
+<li>the <code>.kt</code> file next to your module's <code>&lt;Name&gt;Module.kt</code>, in <code>android/src/main/java/</code></li>
+<li><code>index.ts</code>, the function that returns its <code>HookExtension</code>, into <code>src/</code> under the extension's name (such as
+<code>src/basicAuthCredential.ts</code>), and export it from your module's <code>index.ts</code></li>
+</ul>
+</li>
 <li>In the <code>.kt</code> file, change the <code>package</code> line to the one in your <code>&lt;Name&gt;Module.kt</code>.</li>
-<li>Register the hook: in both <code>&lt;Name&gt;Module.swift</code> and <code>&lt;Name&gt;Module.kt</code>, add
-<code>OnCreate { BasicAuthCredential.register() }</code> (the extension's own name) to the module's <code>definition()</code>. The copies
-are in your module and its package, so they need no import.</li>
-<li>Add the core as a dependency: <code>s.dependency 'MinimalWebView'</code> in the podspec, and
-<code>implementation project(':react-native-minimal-webview')</code> in <code>android/build.gradle</code>.</li>
-<li>Prefix the hook key with your own name, in the Swift, the Kotlin and the TS.</li>
+<li>Register the hook in <code>&lt;Name&gt;Module.swift</code> and <code>&lt;Name&gt;Module.kt</code>, for each platform the extension has: call
+<code>BasicAuthCredential.register()</code>, with the extension's own name, inside the module's one <code>OnCreate</code> block (add one
+to <code>definition()</code> if it has none; on Android a second <code>OnCreate</code> replaces the first). The copies are in your module and its package, so they need no import.</li>
+<li>In the hook key, replace the <code>@react-native-minimal-webview/extensions</code> prefix with your package's name, in the
+Swift, the Kotlin and the TS.</li>
 <li>Rebuild the app.</li>
 </ol>
-<p>The Swift keeps its type names: they belong to your module. A changed <code>hideKeyboardAccessoryView</code> needs a <code>suffix</code> of
-its own too, since the runtime class it makes is found by that name.</p>
-<p>While this package is installed too, a <code>package</code> line you forgot to change fails the Android build with a duplicate
-class, and a key you forgot to rename fails at launch with &quot;two hooks are registered under …: prefix yours with your
+<p>The Swift keeps its type names: they belong to your module.</p>
+<p>A changed <code>hideKeyboardAccessoryView</code> also needs a <code>suffix</code> of its own: the runtime class it makes is found by that
+name.</p>
+<p>With this package installed as well, a <code>package</code> line you forgot to change fails the Android build with a duplicate
+class. A key you forgot to rename fails at launch with &quot;two hooks are registered under …: prefix yours with your
 package's name&quot;.</p>
 </div></div>
 <div class="col-sidebar">

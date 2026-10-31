@@ -4,8 +4,9 @@ import type { HookEvent, HookExtension, WebViewProps } from './types';
 
 /**
  * The `hookOptions` and `onHookEvent` props that turn on the hooks of `extensions`, to spread onto the `WebView`.
+ *
  * Make one call per WebView, with every extension in its list: a second result spread onto the same WebView replaces
- * the first one's `onHookEvent`, and the first one's asks then answer null.
+ * the first one's props, so the first one's hooks are off.
  *
  * `hookOptions` has each extension's `options` under its `key`, on top of `props.hookOptions`: an extension wins over
  * a key of yours, and a later extension over an earlier one with the same key, which warns in development. Each event
@@ -16,7 +17,7 @@ import type { HookEvent, HookExtension, WebViewProps } from './types';
  * A false, null or undefined entry is left out, so `on && extension(…)` switches one on and off: its key leaves
  * `hookOptions`. The result is the same object while the options are the same JSON, so a render with new handlers sends
  * native nothing; the latest handlers always take the events.
- * @see [Native hooks example](../guides/examples.md#native-hooks)
+ * @see [Native hooks guide](../guides/native-hooks.md)
  * @group Native hooks
  */
 export function useExtensions(
