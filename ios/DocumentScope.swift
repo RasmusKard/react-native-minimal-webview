@@ -1,6 +1,7 @@
 /// A Document is the main-frame page on screen: from a navigation's commit, a back-forward-cache restore included, to
-/// the next commit, a web content process crash or the view closing. A hook hears each end in
-/// `WebViewContext.onDocumentEnd`.
+/// the next commit, a web content process crash or the view closing.
+///
+/// A hook hears each end in ``WebViewContext/onDocumentEnd(_:)``.
 ///
 /// The first commit after the view is made, or after a crash, opens one and ends nothing.
 ///
@@ -13,7 +14,9 @@ public final class DocumentScope {
     /// A main-frame navigation committed while a Document was open: a load, a form submit, back or forward, a reload,
     /// an html source, a `window.open` loaded in place or a back-forward-cache restore.
     case committed
-    /// The web content process died. The context stays, and the recovery's commit opens the next Document.
+    /// The web content process died.
+    ///
+    /// The context stays, and the recovery's commit opens the next Document.
     case crashed
     /// The view is unmounting; the hooks' detach closures run after it.
     case closing
