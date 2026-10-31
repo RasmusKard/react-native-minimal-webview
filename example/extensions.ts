@@ -130,6 +130,17 @@ async function auth(h: Harness, r: Reporter) {
     off === 'unauthorized',
     off
   );
+  h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
+  await sleep(300);
+  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`));
+  const wrong = await text(h, 'auth');
+  r.check(
+    'basicAuthCredential with a rejected credential stops: the 401 page shows',
+    wrong === 'unauthorized',
+    wrong
+  );
+  h.setProps({});
+  await sleep(300);
   if (!ios) return;
   // Its delegate comes first (its package registers first) and passes on the challenge after its credential fails:
   // the later hook's delegate is asked only then.

@@ -138,7 +138,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       "removeJavascriptInterface", "addWebMessageListener", "removeWebMessageListener", "addDocumentStartJavaScript",
       "destroy", "removeAllViews", "pauseTimers", "resumeTimers", "loadUrl", "loadData", "loadDataWithBaseURL",
       "postUrl", "reload", "goBack", "goForward", "goBackOrForward", "stopLoading", "evaluateJavascript",
-      "setWebContentsDebuggingEnabled"
+      "setWebContentsDebuggingEnabled", "setOnTouchListener", "setOnScrollChangeListener", "addNavigationListener"
     )
 
     /** [key]'s getter on the first of [targets] that has one, as JSON. */
@@ -275,21 +275,15 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
      * A getter's or method's result as JSON: primitives, strings, lists and maps of them; anything else is null. A
      * non-finite number throws: JSON has none.
      */
-    fun toJson(value: Any?): String = when (value) {
-      null, is Unit -> "null"
-      is Double, is Float -> if ((value as Number).toDouble().isFinite()) value.toString() else throw problem("$value is not JSON")
-      is Boolean, is Number -> value.toString()
-      is String -> JSONObject.quote(value)
-      is Map<*, *> -> JSONObject(value.mapKeys { it.key.toString() }.mapValues { jsonable(it.value) }).toString()
-      is List<*> -> JSONArray(value.map(::jsonable)).toString()
-      is Array<*> -> JSONArray(value.map(::jsonable)).toString()
-      else -> "null"
-    }
+    fun toJson(value: Any?): String = jsonable(value).let { if (it is String) JSONObject.quote(it) else it.toString() }
 
-    private fun jsonable(value: Any?): Any? = when (value) {
+    // Checked here at every depth: Android's org.json turns a nested non-finite number into a null toString().
+    private fun jsonable(value: Any?): Any = when (value) {
+      is Double, is Float -> if ((value as Number).toDouble().isFinite()) value else throw problem("$value is not JSON")
       is Boolean, is Number, is String -> value
       is Map<*, *> -> JSONObject(value.mapKeys { it.key.toString() }.mapValues { jsonable(it.value) })
       is List<*> -> JSONArray(value.map(::jsonable))
+      is Array<*> -> JSONArray(value.map(::jsonable))
       else -> JSONObject.NULL
     }
   }

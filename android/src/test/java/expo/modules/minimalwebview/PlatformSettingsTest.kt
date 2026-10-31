@@ -103,6 +103,8 @@ class PlatformSettingsTest {
     assertEquals("no public setter" to none, set("missing", 1))
     assertEquals("not a public setter" to none, set("_int", 1))
     assertEquals("owned by the core" to none, set("webViewClient", 1))
+    assertEquals("owned by the core" to none, set("onTouchListener", null))
+    assertEquals("owned by the core" to none, set("onScrollChangeListener", null))
     assertEquals(
       "owned by the core: use WebView.android.setWebContentsDebuggingEnabled" to none,
       set("webContentsDebuggingEnabled", true)
@@ -129,6 +131,7 @@ class PlatformSettingsTest {
     assertEquals("not_found", code { settings.call("nope.setInt", listOf(1)) {} })
     assertEquals("native_error", code { PlatformSettings.get(targets, "destroy") }) // owned by the core
     assertEquals("native_error", code { settings.call("settings.destroy", emptyList()) {} })
+    assertEquals("native_error", code { settings.call("settings.addNavigationListener", listOf(null)) {} })
     assertEquals("native_error", code { settings.call("settings.setFailing", listOf(1)) {} })
     assertEquals("unavailable", code { PlatformSettings.get(targets, "unsupported") })
     assertEquals("native_error", code { PlatformSettings.get(targets, "naN") })
@@ -140,6 +143,11 @@ class PlatformSettingsTest {
     assertEquals("null", PlatformSettings.toJson(Any()))
     assertEquals("native_error", code { PlatformSettings.toJson(Double.POSITIVE_INFINITY) })
     assertEquals("native_error", code { PlatformSettings.toJson(Float.NaN) })
+    assertEquals("native_error", code { PlatformSettings.toJson(listOf(1, Double.NaN)) })
+    assertEquals("native_error", code { PlatformSettings.toJson(mapOf("a" to listOf(Float.POSITIVE_INFINITY))) })
+    assertEquals("""["a",[1,"b"],null]""", PlatformSettings.toJson(listOf("a", arrayOf(1, "b"), Any())))
+    assertEquals("\"quoted\\\"\"", PlatformSettings.toJson("quoted\""))
+    assertEquals("null", PlatformSettings.toJson(null))
   }
 
   /** A root whose keys have getters (`getFlag`, `getText`), except `blind`. */
