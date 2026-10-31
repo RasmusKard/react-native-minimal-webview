@@ -40,9 +40,6 @@ object MinimalWebViewHooks {
   /**
    * Registers the hook for [key]. Call it from your module's `OnCreate`, before the first WebView.
    *
-   * Keys are global, so prefix yours with your package's name. `core` is reserved for the package's own events: a hook
-   * under it is logged and not registered.
-   *
    * The same `register` call running again replaces its hook: a JS reload creates the modules anew and runs their
    * `OnCreate` again. A helper that calls `register` for other code is one call, so a second hook through it replaces
    * the first silently.
@@ -55,13 +52,15 @@ object MinimalWebViewHooks {
    * earlier hook's clients come first. A hook whose key turns on after the WebView was created attaches after the
    * hooks attached already; after a crash it takes its place in registration order again.
    *
+   * @param key the `hookOptions` key that enables the hook. Keys are global, so prefix yours with your package's name.
+   *   `core` is reserved for the package's own events: a hook under it is logged and not registered.
    * @param webViewFactory makes each WebView that enables this hook, the first one and each after a renderer crash, as
    *   a subclass that overrides what WebView lets a subclass override. Null leaves it to the other hooks. When the
    *   enabled hooks name different factories (the same object is one), the first one's in registration order makes the
    *   WebView, and a `core.warning` names the others. Those still attach, so check the class `attach` gets.
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
-   *   ([androidx.webkit.WebViewCompat.setProfile] goes here). It gets the same context that [attach] gets next for that
-   *   WebView, so state it makes can be keyed by the context.
+   *   ([WebViewCompat.setProfile][androidx.webkit.WebViewCompat.setProfile] goes here). It gets the same context that
+   *   [attach] gets next for that WebView, so state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over those settings. It returns what to run when that WebView goes away, after the
    *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before
@@ -271,13 +270,14 @@ interface WebViewContext {
    * [DocumentScope.End.CRASHED] after a renderer crash, before the WebView that replaces it is configured. The context
    * does nothing by then.
    *
-   * Release here what must outlive the WebView, such as an [androidx.webkit.ProfileStore] profile.
+   * Release here what must outlive the WebView, such as a [ProfileStore][androidx.webkit.ProfileStore] profile.
    */
   fun onDestroyed(handler: (DocumentScope.End) -> Unit)
 
   /**
-   * Offers [handler] each download the page starts, with [android.webkit.DownloadListener]'s arguments (an unknown
-   * disposition or MIME type is empty), before the `onDownload` prop and the core's opening it externally.
+   * Offers [handler] each download the page starts, with [DownloadListener][android.webkit.DownloadListener]'s
+   * arguments (an unknown disposition or MIME type is empty), before the `onDownload` prop and the core's opening it
+   * externally.
    *
    * Return true to take it: neither of those gets it then. The hooks are offered it in registration order, and the
    * first that takes it ends the round.
