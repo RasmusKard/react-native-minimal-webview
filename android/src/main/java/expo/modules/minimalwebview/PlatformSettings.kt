@@ -96,7 +96,9 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
   fun get(path: String): String = resolve(path).let { (targets, key) -> get(targets, key) }
 
-  /** `root.method` with [args], a public method the core doesn't own ([call]). Throws a [PlatformException]. */
+  /**
+   * `root.method` with [args], a public method the core doesn't own ([Companion.call]). Throws a [PlatformException].
+   */
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")

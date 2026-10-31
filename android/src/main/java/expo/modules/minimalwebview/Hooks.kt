@@ -18,8 +18,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
- * WebViews and chains its own clients to it, with no protocol to implement. `example/modules/sample-extension` has
- * complete ones.
+ * WebViews and chains its own clients to it, with no protocol to implement. The
+ * [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
+ * walks through one.
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
  * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
@@ -39,10 +40,6 @@ object MinimalWebViewHooks {
   /**
    * Registers the hook for [key]. Call it from your module's `OnCreate`, before the first WebView.
    *
-   * Keys are global, so prefix yours with your package's name. A second hook under a key throws
-   * [IllegalStateException]; a minified build may replace the first instead. `core` is reserved for the package's own
-   * events: a hook under it is logged and not registered.
-   *
    * The same `register` call running again replaces its hook: a JS reload creates the modules anew and runs their
    * `OnCreate` again. A helper that calls `register` for other code is one call, so a second hook through it replaces
    * the first silently.
@@ -55,17 +52,21 @@ object MinimalWebViewHooks {
    * earlier hook's clients come first. A hook whose key turns on after the WebView was created attaches after the
    * hooks attached already; after a crash it takes its place in registration order again.
    *
+   * @param key the `hookOptions` key that enables the hook. Keys are global, so prefix yours with your package's name.
+   *   `core` is reserved for the package's own events: a hook under it is logged and not registered.
    * @param webViewFactory makes each WebView that enables this hook, the first one and each after a renderer crash, as
    *   a subclass that overrides what WebView lets a subclass override. Null leaves it to the other hooks. When the
    *   enabled hooks name different factories (the same object is one), the first one's in registration order makes the
    *   WebView, and a `core.warning` names the others. Those still attach, so check the class `attach` gets.
    * @param configure runs on the main thread as soon as each WebView is made, before the package sets it up
-   *   (`WebViewCompat.setProfile` goes here). It gets the same context that [attach] gets next for that WebView, so
-   *   state it makes can be keyed by the context.
+   *   ([WebViewCompat.setProfile][androidx.webkit.WebViewCompat.setProfile] goes here). It gets the same context that
+   *   [attach] gets next for that WebView, so state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over those settings. It returns what to run when that WebView goes away, after the
    *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before
    *   the package's, so `window.nativeBridge` and `injectedScripts` aren't there yet (on iOS yours run after them).
+   * @throws IllegalStateException when a different hook is registered under [key] already; a minified build may
+   *   replace the first instead.
    */
   fun register(
     key: String,
@@ -214,7 +215,7 @@ interface WebViewContext {
    * A decision more than one client overrides still goes only to the first, and a `core.warning` names it. Each warning
    * comes once per WebView, when its decision first comes.
    *
-   * Overriding a variant the base class forwards to counts as overriding the callback: `WebViewClientCompat`'s
+   * Overriding a variant the base class forwards to counts as overriding the callback: [WebViewClientCompat]'s
    * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's
    * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
    * `onReceivedError`.
@@ -265,16 +266,18 @@ interface WebViewContext {
   fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
 
   /**
-   * Runs [handler] once this attach's WebView is destroyed: with `CLOSING` at unmount, or with `CRASHED` after a
-   * renderer crash, before the WebView that replaces it is configured. The context does nothing by then.
+   * Runs [handler] once this attach's WebView is destroyed: with [DocumentScope.End.CLOSING] at unmount, or with
+   * [DocumentScope.End.CRASHED] after a renderer crash, before the WebView that replaces it is configured. The context
+   * does nothing by then.
    *
-   * Release here what must outlive the WebView, such as a `ProfileStore` profile.
+   * Release here what must outlive the WebView, such as a [ProfileStore][androidx.webkit.ProfileStore] profile.
    */
   fun onDestroyed(handler: (DocumentScope.End) -> Unit)
 
   /**
-   * Offers [handler] each download the page starts, with `DownloadListener`'s arguments (an unknown disposition or MIME
-   * type is empty), before the `onDownload` prop and the core's opening it externally.
+   * Offers [handler] each download the page starts, with [DownloadListener][android.webkit.DownloadListener]'s
+   * arguments (an unknown disposition or MIME type is empty), before the `onDownload` prop and the core's opening it
+   * externally.
    *
    * Return true to take it: neither of those gets it then. The hooks are offered it in registration order, and the
    * first that takes it ends the round.

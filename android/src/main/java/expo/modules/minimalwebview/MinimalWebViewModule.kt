@@ -30,6 +30,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Serializable
 
+/**
+ * Public only for Expo's autolinking.
+ * @suppress
+ */
 class MinimalWebViewModule : Module() {
   private var fileChooser: AppContextActivityResultLauncher<ChooserIntent, Array<Uri>?>? = null
   private var chooserOpen = false
