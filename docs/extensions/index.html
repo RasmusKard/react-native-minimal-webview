@@ -76,9 +76,9 @@ behavior and limits. Its code is in the folder named after it: the TS, and the S
 </ul>
 </li>
 <li>In the <code>.kt</code> file, change the <code>package</code> line to the one in your <code>&lt;Name&gt;Module.kt</code>.</li>
-<li>Register the hook in <code>&lt;Name&gt;Module.swift</code> and <code>&lt;Name&gt;Module.kt</code>, for each platform the extension has: add
-<code>OnCreate { BasicAuthCredential.register() }</code>, with the extension's own name, to the module's <code>definition()</code>. The
-copies are in your module and its package, so they need no import.</li>
+<li>Register the hook in <code>&lt;Name&gt;Module.swift</code> and <code>&lt;Name&gt;Module.kt</code>, for each platform the extension has: call
+<code>BasicAuthCredential.register()</code>, with the extension's own name, inside the module's one <code>OnCreate</code> block (add one
+to <code>definition()</code> if it has none; on Android a second <code>OnCreate</code> replaces the first). The copies are in your module and its package, so they need no import.</li>
 <li>In the hook key, replace the <code>@react-native-minimal-webview/extensions</code> prefix with your package's name, in the
 Swift, the Kotlin and the TS.</li>
 <li>Rebuild the app.</li>

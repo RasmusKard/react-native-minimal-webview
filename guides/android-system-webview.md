@@ -7,8 +7,7 @@ title: Android System WebView versions
 Some features need a newer Android System WebView than others. This page lists which; each feature's API reference
 says what it does without one.
 
-Android System WebView updates apart from Android, through the Play Store, so a device's API level doesn't tell you
-its WebView. Huawei and Fire OS devices ship their own builds.
+Android System WebView updates apart from Android, so a device's API level doesn't tell you its WebView.
 
 The core checks each feature at run time. On an older WebView the feature is off, and nothing crashes.
 

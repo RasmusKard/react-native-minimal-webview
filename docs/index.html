@@ -30,8 +30,9 @@ module.</li>
 </code><button type="button">Copy</button></pre>
 
 <p>A setting or method a newer SDK adds works without a release of this package, untyped: under a settings root's
-<code>other</code>, or through <code>call</code>. On iOS it has to be visible to Objective-C
-(<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html">limits</a>).</p>
+<code>other</code>, or through <code>call</code>. On iOS it has to be visible to Objective-C, and a method with a completion handler the
+package's SDK headers don't have rejects
+(<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call">limits</a>).</p>
 <h2 id="what-it-changes-from-react-native-webview" class="tsd-anchor-link">What it changes from react-native-webview<a href="#what-it-changes-from-react-native-webview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><img src="media/how-it-works.svg" alt="The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins"></p>
 <p>The core adds only what the platform APIs lack:</p>
@@ -61,7 +62,7 @@ module.</li>
 </tr>
 <tr>
 <td>Page camera and microphone</td>
-<td>Granted to any page on Android once the app has the OS permission</td>
+<td>Granted to any page on Android, after asking the OS</td>
 <td>Your app answers <code>onPermissionRequest</code></td>
 </tr>
 </tbody>
@@ -92,11 +93,11 @@ module.</li>
 <tbody>
 <tr>
 <td>iOS</td>
-<td>17.0: <code>ios.deploymentTarget '17.0'</code>, for example with <code>expo-build-properties</code></td>
+<td>17.0: <code>ios.deploymentTarget: '17.0'</code>, for example with <code>expo-build-properties</code></td>
 </tr>
 <tr>
 <td>Android</td>
-<td>API 29: <code>minSdkVersion 29</code>, for example with <code>expo-build-properties</code></td>
+<td>API 29: <code>android.minSdkVersion: 29</code>, for example with <code>expo-build-properties</code></td>
 </tr>
 <tr>
 <td>Expo SDK</td>

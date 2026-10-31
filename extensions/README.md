@@ -55,9 +55,9 @@ To change an extension, or to take only one, copy it into a module of your own:
    - `index.ts`, the function that returns its `HookExtension`, into `src/` under the extension's name (such as
      `src/basicAuthCredential.ts`), and export it from your module's `index.ts`
 3. In the `.kt` file, change the `package` line to the one in your `<Name>Module.kt`.
-4. Register the hook in `<Name>Module.swift` and `<Name>Module.kt`, for each platform the extension has: add
-   `OnCreate { BasicAuthCredential.register() }`, with the extension's own name, to the module's `definition()`. The
-   copies are in your module and its package, so they need no import.
+4. Register the hook in `<Name>Module.swift` and `<Name>Module.kt`, for each platform the extension has: call
+   `BasicAuthCredential.register()`, with the extension's own name, inside the module's one `OnCreate` block (add one
+   to `definition()` if it has none; on Android a second `OnCreate` replaces the first). The copies are in your module and its package, so they need no import.
 5. In the hook key, replace the `@react-native-minimal-webview/extensions` prefix with your package's name, in the
    Swift, the Kotlin and the TS.
 6. Rebuild the app.

@@ -18,7 +18,7 @@ unmounts. Messages have no size limit.</p>
 deferred scripts are in place, and never reaches a later page, even one on the same origin. The page's own calls
 don't wait: one made before React Native has registered its method rejects with <code>not_found</code>.</p>
 <p>A call or event made while no WebView is mounted with the bridge waits the same way. A call's timeout runs
-meanwhile, and only the latest 1000 are kept: an older call rejects at its timeout, or never settles without one.
+meanwhile, and only the latest 1000 are kept: an older call rejects at its timeout, or never settles without a timeout (<code>timeoutMs: 0</code>).
 Unmounting rejects the calls in flight with <code>navigated</code>.</p>
 <p>The page's <code>window.nativeBridge</code> has the same four methods, <code>call(method, params?, { timeoutMs? })</code>, <code>handle</code>, <code>emit</code>
 and <code>on</code>, and its calls reject with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>.</p>

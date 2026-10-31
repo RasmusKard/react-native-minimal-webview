@@ -29,13 +29,13 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 </thead>
 <tbody>
 <tr>
-<td>Android third-party cookies</td>
+<td>Android third-party cookies (<code>thirdPartyCookiesEnabled</code>)</td>
 <td>On</td>
 <td>Off</td>
 <td><code>android.webView.acceptThirdPartyCookies: true</code></td>
 </tr>
 <tr>
-<td>Android wide viewport</td>
+<td>Android wide viewport (<code>scalesPageToFit</code>)</td>
 <td>On</td>
 <td>Off</td>
 <td><code>android.settings.useWideViewPort</code> and <code>loadWithOverviewMode: true</code></td>
@@ -71,7 +71,7 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 <td><code>ios.scrollView.directionalLockEnabled: true</code></td>
 </tr>
 <tr>
-<td>iOS debugging</td>
+<td>iOS debugging (<code>webviewDebuggingEnabled</code>)</td>
 <td>Off</td>
 <td>On in <code>__DEV__</code></td>
 <td><code>ios.webView.inspectable: false</code></td>
@@ -96,7 +96,7 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 </thead>
 <tbody>
 <tr>
-<td>Android fullscreen video</td>
+<td>Android fullscreen video (<code>allowsFullscreenVideo</code>)</td>
 <td>Off</td>
 <td>On (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onfullscreenchange"><code>onFullscreenChange</code></a>)</td>
 <td>A native hook that takes <code>onShowCustomView</code></td>
@@ -117,7 +117,7 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 <td>Renderer crash</td>
 <td>Reported</td>
 <td>The core reloads (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onprocessgone"><code>onProcessGone</code></a>)</td>
-<td>Keep <code>reload()</code> only for <code>recovered: false</code></td>
+<td>Keep <code>reload()</code> only for <a href="https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered"><code>recovered: false</code></a></td>
 </tr>
 <tr>
 <td>Messaging</td>
@@ -144,15 +144,13 @@ for what has no prop. The <a href="../#requirements">requirements</a> are in the
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onfilerequest"><code>onFileRequest</code></a></td>
 </tr>
 <tr>
-<td>Android camera, microphone, location</td>
+<td>Android camera and microphone, and location with <code>geolocationEnabled</code></td>
 <td>Granted to every page, after asking the OS</td>
 <td>Denied</td>
 <td><a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onpermissionrequest"><code>onPermissionRequest</code></a></td>
 </tr>
 </tbody>
 </table>
-<p>When <code>recovered</code> is true, the core reloads the page itself, so a <code>reload()</code> of yours loads it twice
-(<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered">when it reloads</a>).</p>
 <h2 id="props-that-became-something-else" class="tsd-anchor-link">Props that became something else<a href="#props-that-became-something-else" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <table>
 <thead>
@@ -361,6 +359,11 @@ which you pass to <code>useExtensions</code>:</p>
 <td><code>settings.saveFormData: false</code>, a no-op since API 26</td>
 </tr>
 <tr>
+<td><code>webviewDebuggingEnabled</code></td>
+<td><code>webView.inspectable</code></td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/functions/WebView.android.setWebContentsDebuggingEnabled.html"><code>WebView.android.setWebContentsDebuggingEnabled()</code></a>, app-wide</td>
+</tr>
+<tr>
 <td><code>allowFileAccessFromFileURLs</code></td>
 <td><code>preferences.&lt;the same name&gt;</code></td>
 <td><code>settings.&lt;the same name&gt;</code></td>
@@ -425,7 +428,7 @@ place of <code>isTopFrame</code>, and <code>userInitiated</code> in place of <co
 window (<code>onOpenWindow</code>) is a request with <code>newWindow: true</code>.</p>
 <p>react-native-webview's iOS also asks about the <code>source</code> load, reloads, back/forward and form POSTs. The rules skip them
 (<a href="https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#navigationrules"><code>navigationRules</code></a>).</p>
-<p>After the rules block a server redirect, the state is the page before it, with <code>outcome</code> <code>cancelled</code>.
+<p>After the rules block a server redirect, the state is the page before it, with <a href="https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationState.html#outcome"><code>outcome</code></a> <code>cancelled</code>.
 react-native-webview reports the redirecting URL as still loading (iOS), or the blocked URL as loaded (Android).</p>
 <h2 id="injectjavascript" class="tsd-anchor-link">injectJavaScript<a href="#injectjavascript" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>evaluate</code> takes an expression, not statements, and resolves with its value
@@ -440,9 +443,10 @@ serves only the origins you allow.</p>
 in <code>injectedScripts</code>. Its example shows what replaces <code>onMessage</code> and <code>postMessage</code>.</p>
 <h2 id="incognito" class="tsd-anchor-link">incognito<a href="#incognito" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>On iOS, a non-persistent data store keeps the WebView's cookies, cache and storage, and they go with the WebView.</p>
-<p>Android has no incognito WebView. react-native-webview's <code>incognito</code> clears the app-wide cookies and the cache, turns
-the cache off, and turns form-data saving off, which does nothing since API 26. This recipe does the rest before the
-page loads.</p>
+<p>Android has no incognito WebView. react-native-webview's <code>incognito</code> clears the app-wide cookies, the cache, the
+history and the form data, turns the cache off, and turns password and form-data saving off. This recipe clears the
+cookies and the cache and turns the cache off before the page loads. A new WebView has no history, WebView doesn't save
+form data since API 26, and password saving is deprecated.</p>
 <p>The first <code>source</code> is blank, as for <a href="Examples.html#before-the-first-page">cookies before the first page</a>:</p>
 <pre><code class="tsx"><span class="hl-4">const</span><span class="hl-2"> [</span><span class="hl-13">source</span><span class="hl-2">, </span><span class="hl-13">setSource</span><span class="hl-2">] = </span><span class="hl-10">useState</span><span class="hl-2">&lt;</span><span class="hl-1">WebViewSource</span><span class="hl-2">&gt;({ </span><span class="hl-6">uri:</span><span class="hl-2"> </span><span class="hl-11">&#39;about:blank&#39;</span><span class="hl-2"> });</span><br/><span class="hl-10">useEffect</span><span class="hl-2">(() </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">  (</span><span class="hl-4">async</span><span class="hl-2"> () </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-9">if</span><span class="hl-2"> (</span><span class="hl-6">Platform</span><span class="hl-2">.</span><span class="hl-13">OS</span><span class="hl-2"> === </span><span class="hl-11">&#39;android&#39;</span><span class="hl-2">) {</span><br/><span class="hl-2">      </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;cookieManager.removeAllCookies&#39;</span><span class="hl-2">); </span><span class="hl-12">// app-wide, as in react-native-webview</span><br/><span class="hl-2">      </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-6">ref</span><span class="hl-2">.</span><span class="hl-6">current</span><span class="hl-2">?.</span><span class="hl-10">call</span><span class="hl-2">(</span><span class="hl-11">&#39;webView.clearCache&#39;</span><span class="hl-2">, [</span><span class="hl-4">true</span><span class="hl-2">]);</span><br/><span class="hl-2">    }</span><br/><span class="hl-2">    </span><span class="hl-10">setSource</span><span class="hl-2">({ </span><span class="hl-6">uri:</span><span class="hl-2"> </span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-2"> });</span><br/><span class="hl-2">  })();</span><br/><span class="hl-2">}, []);</span><br/><br/><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><br/><span class="hl-2">  </span><span class="hl-3">ref</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-6">ref</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">source</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-6">source</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">ios</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">configuration:</span><span class="hl-5"> { </span><span class="hl-6">websiteDataStore:</span><span class="hl-5"> </span><span class="hl-11">&#39;nonPersistent&#39;</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-3">android</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">settings:</span><span class="hl-5"> { </span><span class="hl-6">cacheMode:</span><span class="hl-5"> </span><span class="hl-6">AndroidConstants</span><span class="hl-5">.</span><span class="hl-6">WebSettings</span><span class="hl-5">.</span><span class="hl-13">LOAD_NO_CACHE</span><span class="hl-5"> } }</span><span class="hl-4">}</span><br/><span class="hl-0">/&gt;</span>
 </code><button type="button">Copy</button></pre>

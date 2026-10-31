@@ -55,7 +55,8 @@
 <pre><code class="sh"><span class="hl-10">npx</span><span class="hl-2"> </span><span class="hl-11">create-expo-module@latest</span><span class="hl-2"> </span><span class="hl-4">--local</span><span class="hl-2"> </span><span class="hl-11">page-counter</span>
 </code><button type="button">Copy</button></pre>
 
-<p>This creates <code>modules/page-counter</code> in your app. A hook in a published package works the same way.</p>
+<p>This creates <code>modules/page-counter</code> in your app. A hook in a published package works the same way, with
+<code>react-native-minimal-webview</code> as a peer dependency.</p>
 <h3 id="2-depend-on-the-core" class="tsd-anchor-link">2. Depend on the core<a href="#2-depend-on-the-core" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>In <code>ios/PageCounter.podspec</code>, replace the template's <code>s.platforms</code> with the core's iOS 17.0, or importing the core
 fails to compile, and add the core:</p>
@@ -78,8 +79,9 @@ fails to compile, and add the core:</p>
 
 <h3 id="5-describe-the-hook-to-js" class="tsd-anchor-link">5. Describe the hook to JS<a href="#5-describe-the-hook-to-js" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>Replace the generated <code>index.ts</code> with a function that returns the hook's <a href="https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html"><code>HookExtension</code></a>, and delete the
-generated <code>src/</code>: it holds the template's view and module wrappers, which nothing imports now.</p>
-<pre><code class="ts"><span class="hl-9">import</span><span class="hl-2"> </span><span class="hl-9">type</span><span class="hl-2"> { </span><span class="hl-6">HookEvent</span><span class="hl-2">, </span><span class="hl-6">HookExtension</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-11">&#39;react-native-minimal-webview&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-4">type</span><span class="hl-2"> </span><span class="hl-1">PageLoaded</span><span class="hl-2"> = </span><span class="hl-1">HookEvent</span><span class="hl-2">&lt;</span><span class="hl-11">&#39;myApp.pageCounter.pageLoaded&#39;</span><span class="hl-2">, { </span><span class="hl-6">count</span><span class="hl-2">: </span><span class="hl-1">number</span><span class="hl-2"> }&gt;;</span><br/><br/><span class="hl-9">export</span><span class="hl-2"> </span><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-10">pageCounter</span><span class="hl-2"> = (</span><span class="hl-10">onLoaded</span><span class="hl-2">: (</span><span class="hl-6">count</span><span class="hl-2">: </span><span class="hl-1">number</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-1">void</span><span class="hl-2">): </span><span class="hl-1">HookExtension</span><span class="hl-2"> </span><span class="hl-4">=&gt;</span><span class="hl-2"> ({</span><br/><span class="hl-2">  </span><span class="hl-6">key:</span><span class="hl-2"> </span><span class="hl-11">&#39;myApp.pageCounter&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">options:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2">, </span><span class="hl-12">// its hookOptions value: anything but null, undefined or false turns it on</span><br/><span class="hl-2">  </span><span class="hl-10">onEvent</span><span class="hl-6">:</span><span class="hl-2"> (</span><span class="hl-6">event</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-9">if</span><span class="hl-2"> (</span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">name</span><span class="hl-2"> !== </span><span class="hl-11">&#39;myApp.pageCounter.pageLoaded&#39;</span><span class="hl-2">) </span><span class="hl-9">return</span><span class="hl-2">;</span><br/><span class="hl-2">    </span><span class="hl-10">onLoaded</span><span class="hl-2">((</span><span class="hl-6">event</span><span class="hl-2"> </span><span class="hl-9">as</span><span class="hl-2"> </span><span class="hl-1">PageLoaded</span><span class="hl-2">).</span><span class="hl-6">payload</span><span class="hl-2">.</span><span class="hl-6">count</span><span class="hl-2">);</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">});</span>
+generated <code>src/</code>, <code>ios/PageCounterView.swift</code> and <code>android/.../PageCounterView.kt</code>: they hold the template's view and
+module wrappers, which nothing uses now.</p>
+<pre><code class="ts"><span class="hl-9">import</span><span class="hl-2"> </span><span class="hl-9">type</span><span class="hl-2"> { </span><span class="hl-6">HookEvent</span><span class="hl-2">, </span><span class="hl-6">HookExtension</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-11">&#39;react-native-minimal-webview&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-4">type</span><span class="hl-2"> </span><span class="hl-1">PageLoaded</span><span class="hl-2"> = </span><span class="hl-1">HookEvent</span><span class="hl-2">&lt;</span><span class="hl-11">&#39;myApp.pageCounter.pageLoaded&#39;</span><span class="hl-2">, { </span><span class="hl-6">count</span><span class="hl-2">: </span><span class="hl-1">number</span><span class="hl-2"> }&gt;;</span><br/><br/><span class="hl-9">export</span><span class="hl-2"> </span><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-10">pageCounter</span><span class="hl-2"> = (</span><span class="hl-10">onLoaded</span><span class="hl-2">: (</span><span class="hl-6">count</span><span class="hl-2">: </span><span class="hl-1">number</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-1">void</span><span class="hl-2">): </span><span class="hl-1">HookExtension</span><span class="hl-2"> </span><span class="hl-4">=&gt;</span><span class="hl-2"> ({</span><br/><span class="hl-2">  </span><span class="hl-6">key:</span><span class="hl-2"> </span><span class="hl-11">&#39;myApp.pageCounter&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">options:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2">, </span><span class="hl-12">// its hookOptions value, which turns it on</span><br/><span class="hl-2">  </span><span class="hl-10">onEvent</span><span class="hl-6">:</span><span class="hl-2"> (</span><span class="hl-6">event</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-9">if</span><span class="hl-2"> (</span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">name</span><span class="hl-2"> !== </span><span class="hl-11">&#39;myApp.pageCounter.pageLoaded&#39;</span><span class="hl-2">) </span><span class="hl-9">return</span><span class="hl-2">;</span><br/><span class="hl-2">    </span><span class="hl-10">onLoaded</span><span class="hl-2">((</span><span class="hl-6">event</span><span class="hl-2"> </span><span class="hl-9">as</span><span class="hl-2"> </span><span class="hl-1">PageLoaded</span><span class="hl-2">).</span><span class="hl-6">payload</span><span class="hl-2">.</span><span class="hl-6">count</span><span class="hl-2">);</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">});</span>
 </code><button type="button">Copy</button></pre>
 
 <h3 id="6-use-it" class="tsd-anchor-link">6. Use it<a href="#6-use-it" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -116,7 +118,6 @@ generated <code>src/</code>: it holds the template's view and module wrappers, w
 </tr>
 </tbody>
 </table>
-<p>An ask has no timeout. One still open when the page goes away gets null.</p>
 <h2 id="share-the-webview-with-the-core" class="tsd-anchor-link">Share the WebView with the core<a href="#share-the-webview-with-the-core" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead:</p>
 <ul>
@@ -126,8 +127,8 @@ generated <code>src/</code>: it holds the template's view and module wrappers, w
 <li>A hook that takes a decision switches off the props that make it, such as <code>navigationRules</code> or
 <code>onPermissionRequest</code>. A warning in the console names what stopped applying.</li>
 </ul>
-<p>Leave alone what the core owns: the delegate and client slots, and the bridge's scripts and message handler. The full
-routing rules are on <code>navigationDelegates</code> in <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift"><code>Hooks.swift</code></a> and <code>clients</code> in <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt"><code>Hooks.kt</code></a>.</p>
+<p>Leave alone what the core owns, listed at the top of <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift"><code>Hooks.swift</code></a> and <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt"><code>Hooks.kt</code></a>. The full routing
+rules are on <code>navigationDelegates</code> and <code>clients</code> there, and <code>ask</code>'s answers on <code>ask</code>.</p>
 <h2 id="lifecycle" class="tsd-anchor-link">Lifecycle<a href="#lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <table>
 <thead>
@@ -139,7 +140,7 @@ routing rules are on <code>navigationDelegates</code> in <a href="https://github
 <tbody>
 <tr>
 <td>A WebView with its key mounts</td>
-<td><code>configure</code>, if it has one, then <code>attach</code></td>
+<td>Android: the <code>webViewFactory</code>, if it has one. Then <code>configure</code>, if it has one, then <code>attach</code></td>
 </tr>
 <tr>
 <td>The page ends: a navigation commits, a crash, or unmount</td>
@@ -159,19 +160,19 @@ routing rules are on <code>navigationDelegates</code> in <a href="https://github
 </tr>
 <tr>
 <td>The renderer crashes</td>
-<td>iOS reloads the same <code>WKWebView</code>, and nothing attaches again. Android makes a new <code>WebView</code>, and <code>attach</code> runs again.</td>
+<td>iOS keeps the <code>WKWebView</code> and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the <code>WebView</code> (the closure <code>attach</code> returned, then <code>onDestroyed</code> with <code>CRASHED</code>), then the factory, <code>configure</code> and <code>attach</code> run again, on a new context.</td>
 </tr>
 <tr>
 <td>The WebView unmounts</td>
-<td><code>onDocumentEnd</code> with <code>closing</code>, then the closure <code>attach</code> returned</td>
+<td><code>onDocumentEnd</code> with <code>closing</code>, then the closure <code>attach</code> returned, then on Android <code>onDestroyed</code> with <code>CLOSING</code></td>
 </tr>
 </tbody>
 </table>
-<p><a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift"><code>DocumentScope</code></a> says exactly when a page ends.</p>
+<p><code>DocumentScope</code> (<a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift">Swift</a>, <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentScope.kt">Kotlin</a>) says exactly when a page ends.</p>
 <h2 id="rules" class="tsd-anchor-link">Rules<a href="#rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
-<li>Prefix your key with your package's name. A second hook under the same key fails at launch.</li>
-<li>Register in <code>OnCreate</code>, before the first WebView.</li>
+<li>Register in <code>OnCreate</code>, under a key prefixed with your package's name: <code>register</code> in <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift"><code>Hooks.swift</code></a> and
+<a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt"><code>Hooks.kt</code></a> has the rules.</li>
 <li>Use the context on the main thread. <code>emit</code> and <code>ask</code> work from any thread.</li>
 <li>On iOS, hold the context weakly from what its handlers capture, or neither is freed.</li>
 </ul>

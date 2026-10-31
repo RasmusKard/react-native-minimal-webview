@@ -333,7 +333,7 @@ export type BridgeEventMap = Record<string, unknown>;
  * don't wait: one made before React Native has registered its method rejects with `not_found`.
  *
  * A call or event made while no WebView is mounted with the bridge waits the same way. A call's timeout runs
- * meanwhile, and only the latest 1000 are kept: an older call rejects at its timeout, or never settles without one.
+ * meanwhile, and only the latest 1000 are kept: an older call rejects at its timeout, or never settles without a timeout (`timeoutMs: 0`).
  * Unmounting rejects the calls in flight with `navigated`.
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
@@ -710,7 +710,8 @@ export type CodedError = Error & { code: ErrorCode };
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop. iOS shows a `UIAlertController` titled with the
  * frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
- * auth challenge is declined, so the site's 401 page shows. `dialogs` and `basicAuthCredential` of
+ * auth challenge is cancelled on Android, and gets WebKit's default handling on iOS: without a stored credential, the
+ * site's 401 page shows. `dialogs` and `basicAuthCredential` of
  * `@react-native-minimal-webview/extensions` take them over, or a native hook does.
  * @group WebView
  */

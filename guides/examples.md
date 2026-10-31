@@ -4,7 +4,7 @@ title: Examples
 
 # Examples
 
-One example per public interface. What each prop, method and type does is in its TSDoc, generated into the
+Examples of the main interfaces. What each prop, method and type does is in its TSDoc, generated into the
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html).
 
 ## Navigation state
@@ -63,7 +63,7 @@ function onInboxNotification() {
     { host: ['example.com', '*.example.com'], action: 'allow' },
     { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
     { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
-    { mainFrame: true, userInitiated: true, action: 'external' }, // other sites and new windows, from a user gesture; anything else is blocked
+    { mainFrame: true, userInitiated: true, action: 'external' }, // other sites and new windows, from a user gesture (on iOS only a tapped link); anything else is blocked
   ]}
   onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'external')}
   onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
@@ -94,7 +94,6 @@ export function Shop() {
   useEffect(
     () =>
       bridge.handle('share', async ({ url }) => {
-        // Android shares only `message`
         const { action } = await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
         return action === Share.sharedAction;
       }),
@@ -150,8 +149,8 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
     scrollView: { bounces: false }, // its UIScrollView
   }}
   android={{
-    settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }, // WebSettings, then WebSettingsCompat
-    webView: { overScrollMode: 2, acceptThirdPartyCookies: true }, // WebView, then WebViewCompat, then CookieManager
+    settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }, // WebSettings
+    webView: { overScrollMode: 2, acceptThirdPartyCookies: true }, // WebView
   }}
 />;
 ```
@@ -165,7 +164,7 @@ const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.
 
 // Android: a public method of settings, webView, cookieManager or webStorage
 await ref.current?.call('webStorage.deleteAllData');
-await ref.current?.call('cookieManager.removeAllCookies'); // resolves once they're gone
+await ref.current?.call('cookieManager.removeAllCookies');
 
 // iOS: an Objective-C selector
 await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
@@ -256,7 +255,7 @@ import * as ImagePicker from 'expo-image-picker';
       const photo = await ImagePicker.launchCameraAsync();
       return photo.canceled ? null : photo.assets.map((asset) => asset.uri);
     }
-    const mimeTypes = accept.filter((type) => type.includes('/')); // the picker takes MIME types, not `.pdf`
+    const mimeTypes = accept.filter((type) => type.includes('/'));
     const result = await DocumentPicker.getDocumentAsync({
       type: mimeTypes.length ? mimeTypes : '*/*',
       multiple,
@@ -300,8 +299,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 
 ### Downloads
 
-`preview()` needs expo-file-system 58 or later. It opens the file in Quick Look on iOS, and in an app that takes its
-type on Android.
+`preview()` needs expo-file-system 58 or later.
 
 ```tsx
 import { File } from 'expo-file-system';

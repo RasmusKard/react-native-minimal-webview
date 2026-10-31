@@ -33,8 +33,9 @@ await ref.current?.call('webView.pageDown', [true]); // Android
 ```
 
 A setting or method a newer SDK adds works without a release of this package, untyped: under a settings root's
-`other`, or through `call`. On iOS it has to be visible to Objective-C
-([limits](https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html)).
+`other`, or through `call`. On iOS it has to be visible to Objective-C, and a method with a completion handler the
+package's SDK headers don't have rejects
+([limits](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call)).
 
 ## What it changes from react-native-webview
 
@@ -47,7 +48,7 @@ The core adds only what the platform APIs lack:
 | Navigation decisions | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively |
 | Page messaging | `postMessage` strings, any page | Typed promise bridge, `allowedOrigins` only |
 | Navigation state | `onNavigationStateChange` events you keep in state | `useWebViewState(ref)` |
-| Page camera and microphone | Granted to any page on Android once the app has the OS permission | Your app answers `onPermissionRequest` |
+| Page camera and microphone | Granted to any page on Android, after asking the OS | Your app answers `onPermissionRequest` |
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
@@ -76,8 +77,8 @@ npx pod-install
 
 | Platform | Minimum |
 |---|---|
-| iOS | 17.0: `ios.deploymentTarget '17.0'`, for example with `expo-build-properties` |
-| Android | API 29: `minSdkVersion 29`, for example with `expo-build-properties` |
+| iOS | 17.0: `ios.deploymentTarget: '17.0'`, for example with `expo-build-properties` |
+| Android | API 29: `android.minSdkVersion: 29`, for example with `expo-build-properties` |
 | Expo SDK | 53 (React Native 0.79, React 19) |
 | Architecture | New architecture only |
 

@@ -38,7 +38,8 @@ This builds a hook that counts page loads, reports each one to JS, and answers `
 npx create-expo-module@latest --local page-counter
 ```
 
-This creates `modules/page-counter` in your app. A hook in a published package works the same way.
+This creates `modules/page-counter` in your app. A hook in a published package works the same way, with
+`react-native-minimal-webview` as a peer dependency.
 
 ### 2. Depend on the core
 
@@ -138,7 +139,8 @@ private class PageCounter(private val context: WebViewContext) : WebViewClient()
 ### 5. Describe the hook to JS
 
 Replace the generated `index.ts` with a function that returns the hook's [`HookExtension`][HookExtension], and delete the
-generated `src/`: it holds the template's view and module wrappers, which nothing imports now.
+generated `src/`, `ios/PageCounterView.swift` and `android/.../PageCounterView.kt`: they hold the template's view and
+module wrappers, which nothing uses now.
 
 ```ts
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
@@ -147,7 +149,7 @@ type PageLoaded = HookEvent<'myApp.pageCounter.pageLoaded', { count: number }>;
 
 export const pageCounter = (onLoaded: (count: number) => void): HookExtension => ({
   key: 'myApp.pageCounter',
-  options: true, // its hookOptions value: anything but null, undefined or false turns it on
+  options: true, // its hookOptions value, which turns it on
   onEvent: (event) => {
     if (event.name !== 'myApp.pageCounter.pageLoaded') return;
     onLoaded((event as PageLoaded).payload.count);
@@ -200,8 +202,6 @@ Everything crosses as JSON.
 | `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with the reply |
 | `context.options`, `context.onOptionsChange` | The extension's `options`; a change arrives live |
 
-An ask has no timeout. One still open when the page goes away gets null.
-
 ## Share the WebView with the core
 
 The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead:
@@ -212,27 +212,27 @@ The core keeps the WebView's own delegate and client slots. Your hook adds to th
 - A hook that takes a decision switches off the props that make it, such as `navigationRules` or
   `onPermissionRequest`. A warning in the console names what stopped applying.
 
-Leave alone what the core owns: the delegate and client slots, and the bridge's scripts and message handler. The full
-routing rules are on `navigationDelegates` in [`Hooks.swift`][swift] and `clients` in [`Hooks.kt`][kotlin].
+Leave alone what the core owns, listed at the top of [`Hooks.swift`][swift] and [`Hooks.kt`][kotlin]. The full routing
+rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `ask`.
 
 ## Lifecycle
 
 | When | What the hook gets |
 |---|---|
-| A WebView with its key mounts | `configure`, if it has one, then `attach` |
+| A WebView with its key mounts | Android: the `webViewFactory`, if it has one. Then `configure`, if it has one, then `attach` |
 | The page ends: a navigation commits, a crash, or unmount | Its `onDocumentEnd` handlers run. Reset per-page state there. |
 | Its `hookOptions` value changes | Its `onOptionsChange` handlers run, without a reload |
 | Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
 | Its key is removed | `onOptionsChange` with null. It stays attached. |
-| The renderer crashes | iOS reloads the same `WKWebView`, and nothing attaches again. Android makes a new `WebView`, and `attach` runs again. |
-| The WebView unmounts | `onDocumentEnd` with `closing`, then the closure `attach` returned |
+| The renderer crashes | iOS keeps the `WKWebView` and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the `WebView` (the closure `attach` returned, then `onDestroyed` with `CRASHED`), then the factory, `configure` and `attach` run again, on a new context. |
+| The WebView unmounts | `onDocumentEnd` with `closing`, then the closure `attach` returned, then on Android `onDestroyed` with `CLOSING` |
 
-[`DocumentScope`][documentscope] says exactly when a page ends.
+`DocumentScope` ([Swift][documentscope], [Kotlin][documentscopekt]) says exactly when a page ends.
 
 ## Rules
 
-- Prefix your key with your package's name. A second hook under the same key fails at launch.
-- Register in `OnCreate`, before the first WebView.
+- Register in `OnCreate`, under a key prefixed with your package's name: `register` in [`Hooks.swift`][swift] and
+  [`Hooks.kt`][kotlin] has the rules.
 - Use the context on the main thread. `emit` and `ask` work from any thread.
 - On iOS, hold the context weakly from what its handlers capture, or neither is freed.
 
@@ -259,6 +259,7 @@ routing rules are on `navigationDelegates` in [`Hooks.swift`][swift] and `client
 [swift]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift
 [kotlin]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt
 [documentscope]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift
+[documentscopekt]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentScope.kt
 [HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html
 [useExtensions]: https://rasmuskard.github.io/react-native-minimal-webview/functions/useExtensions.html
 [hookOptions]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#hookoptions
