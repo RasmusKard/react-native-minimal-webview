@@ -55,19 +55,28 @@ function onInboxNotification() {
 ## Navigation rules
 
 ```tsx
-<WebView
-  source={{ uri: 'https://example.com' }}
-  navigationRules={[
-    { scheme: ['file'], action: 'block' },
-    { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
-    { host: ['example.com', '*.example.com'], action: 'allow' },
-    { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
-    { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
-    { mainFrame: true, userInitiated: true, action: 'external' }, // other sites and new windows, from a user gesture (on iOS only a tapped link); anything else is blocked
-  ]}
-  onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'external')}
-  onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
-/>
+import { WebView, defaultNavigationRules } from 'react-native-minimal-webview';
+
+export function Site() {
+  return (
+    <WebView
+      source={{ uri: 'https://example.com' }}
+      style={{ flex: 1 }}
+      navigationRules={[
+        { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
+        { host: ['example.com', '*.example.com'], action: 'allow' },
+        { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
+        { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
+        { scheme: ['http', 'https'], action: 'external' }, // other sites, and new windows
+        ...defaultNavigationRules, // file: blocked, other schemes external from a user gesture
+      ]}
+      onNavigationRequest={({ url }) =>
+        url.startsWith('https://pay.example.com/checkout') ? 'allow' : 'block'
+      }
+      onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
+    />
+  );
+}
 ```
 
 ## The bridge
@@ -112,24 +121,18 @@ export function Shop() {
 
 ### In the page
 
-The page's `window.nativeBridge` is untyped; this declaration types it.
+A page on an allowed origin has the same four methods on `window.nativeBridge`, as
+[`Bridge`](https://rasmuskard.github.io/react-native-minimal-webview/types/Bridge.html) describes.
 
-```ts
-declare global {
-  interface Window {
-    nativeBridge?: {
-      /** Rejects with an `Error` whose `code` is one of the bridge's error codes. */
-      call(method: string, params?: unknown, options?: { timeoutMs?: number }): Promise<unknown>;
-      handle(method: string, handler: (params: unknown) => unknown): () => void;
-      emit(event: string, payload?: unknown): void;
-      on(event: string, listener: (payload: unknown) => void): () => void;
-    };
-  }
-}
+```js
+// A module script
+const cart = [];
+window.nativeBridge.handle('getCartCount', () => cart.length);
+window.nativeBridge.on('themeChanged', (theme) => {
+  document.documentElement.dataset.theme = theme;
+});
 
-const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
-window.nativeBridge?.handle('getCartCount', () => cart.length);
-window.nativeBridge?.on('themeChanged', (theme) => applyTheme(theme));
+const shared = await window.nativeBridge.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
 ```
 
 ## Platform settings
@@ -141,6 +144,7 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
 
 <WebView
   source={{ uri: 'https://example.com' }}
+  style={{ flex: 1 }}
   ios={{
     configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
     preferences: { minimumFontSize: 12 }, // WKPreferences
@@ -157,9 +161,13 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
 
 ### Reading and calling
 
-`ref` is the WebView's ref, as in [Navigation state](#navigation-state).
+The ref of a mounted WebView, here from `createWebViewRef` ([Outside React](#outside-react)), has the methods.
 
 ```ts
+import { IOSConstants, createWebViewRef } from 'react-native-minimal-webview';
+
+const ref = createWebViewRef(); // pass it as the `<WebView ref={ref}>`
+
 const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
 
 // Android: a public method of settings, webView, cookieManager or webStorage
@@ -178,9 +186,14 @@ const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:compl
 
 ## Cookies
 
-Cookies go through `call`, as in [Platform settings](#platform-settings).
+Cookies go through `call`, as in [Reading and calling](#reading-and-calling).
 
 ```ts
+import { createWebViewRef } from 'react-native-minimal-webview';
+
+const ref = createWebViewRef(); // pass it as the `<WebView ref={ref}>`
+const token = 'SESSION_TOKEN'; // your session's value
+
 // iOS: the WebView's data store (`sharedCookies` syncs it with the app's)
 await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
   { cookie: { Name: 'session', Value: token, Domain: 'example.com', Path: '/', Secure: 'TRUE' } },
@@ -203,8 +216,15 @@ set.
 ## Scripts
 
 ```tsx
+import { WebView, createWebViewRef } from 'react-native-minimal-webview';
+
+const ref = createWebViewRef();
+const config = { apiUrl: 'https://api.example.com' };
+
 <WebView
+  ref={ref}
   source={{ uri: 'https://example.com' }}
+  style={{ flex: 1 }}
   injectedScripts={[
     { code: `window.config = ${JSON.stringify(config)}`, origins: ['https://example.com'] },
   ]}
@@ -228,10 +248,14 @@ export function LocalPages() {
   const [assets] = useAssets(require('./page.html'));
   return (
     <>
-      <WebView source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }} />
+      <WebView
+        source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }}
+        style={{ flex: 1 }}
+      />
       {assets?.[0]?.localUri && (
         <WebView
           source={{ uri: assets[0].localUri }}
+          style={{ flex: 1 }}
           android={{ settings: { allowFileAccess: true } }}
         />
       )}
@@ -247,9 +271,11 @@ export function LocalPages() {
 ```tsx
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { WebView } from 'react-native-minimal-webview';
 
 <WebView
   source={{ uri: 'https://example.com' }}
+  style={{ flex: 1 }}
   onFileRequest={async ({ accept, multiple, capture }) => {
     if (capture) {
       const photo = await ImagePicker.launchCameraAsync();
@@ -269,9 +295,11 @@ import * as ImagePicker from 'expo-image-picker';
 
 ```tsx
 import { Camera } from 'expo-camera';
+import { WebView } from 'react-native-minimal-webview';
 
 <WebView
   source={{ uri: 'https://meet.example.com' }}
+  style={{ flex: 1 }}
   onPermissionRequest={async ({ origin, resources }) => {
     if (origin !== 'https://meet.example.com') return false;
     if (resources.some((resource) => resource !== 'camera')) return false;
@@ -286,9 +314,11 @@ On Android, this lets a portrait-locked app rotate while a video is fullscreen.
 
 ```tsx
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { WebView } from 'react-native-minimal-webview';
 
 <WebView
   source={{ uri: 'https://example.com' }}
+  style={{ flex: 1 }}
   onFullscreenChange={({ active }) =>
     active
       ? ScreenOrientation.unlockAsync()
@@ -303,9 +333,11 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 
 ```tsx
 import { File } from 'expo-file-system';
+import { WebView } from 'react-native-minimal-webview';
 
 <WebView
   source={{ uri: 'https://example.com' }}
+  style={{ flex: 1 }}
   onDownload={(result) =>
     result.ok ? new File(result.uri).preview() : console.warn('download failed', result.kind)
   }

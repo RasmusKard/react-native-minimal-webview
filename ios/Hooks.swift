@@ -6,8 +6,9 @@ import WebKit
 /// The [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
 /// walks through one.
 ///
-/// A hook attaches to each WebView whose `extensions` prop has an extension with its key that is on (its `options` are
-/// not null or false); the prop's TSDoc has the rules.
+/// A hook attaches to each WebView whose `extensions` prop has an extension with its key that is on;
+/// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+/// says when.
 ///
 /// - Important: Leave alone what the core owns: the WKWebView's own `navigationDelegate` and `uiDelegate` (add to the
 ///   context's lists instead), and the bridge's script message handler and user scripts.
@@ -39,7 +40,7 @@ public enum MinimalWebViewHooks {
   ///
   /// - Parameters:
   ///   - key: The key of the app's extension that turns on the hook. Keys are global, so prefix yours with your
-  ///     package's name; `core` is reserved for the package's own events.
+  ///     package's name.
   ///   - webViewClass: The WKWebView subclass that each WebView enabling this hook is made from, to override what
   ///     WKWebView lets a subclass override; nil leaves the class to the other hooks. When the enabled hooks name
   ///     different classes, the first one's in registration order makes the view, and a `core.warning` names the
@@ -53,8 +54,7 @@ public enum MinimalWebViewHooks {
   ///     the WKWebView `attach` gets.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Register
   ///     what to run when the view goes away with ``WebViewContext/onDestroyed(_:)``. A web content process crash
-  ///     reloads the same WKWebView, so nothing attaches again, and the context and its handlers stay (Android attaches
-  ///     again, to a new WebView).
+  ///     reloads the same WKWebView, so nothing attaches again (see ``DocumentEnd/crashed``).
   ///   - file: With `line`, the call site that tells a reload from a second hook; leave both to their defaults.
   ///   - line: The call site's line, with `file`.
   public static func register(
@@ -83,13 +83,12 @@ public enum MinimalWebViewHooks {
 /// Call ``emit(_:_:)`` and ``ask(_:_:_:)`` from any thread, and the rest on the main thread, where `configure`,
 /// `attach`, the handlers and the answers run.
 ///
-/// A context kept after the view closed does nothing, and its ``ask(_:_:_:)`` answers nil at once.
+/// A context kept after the view closed does nothing.
 ///
-/// A hook is on while its extension's `options` enable it: set, and neither null nor false. When they go (the extension
-/// removed, or its `options` set to null or false) the hook stays attached but off: the core routes none of its
-/// delegates, drops its ``emit(_:_:)``, answers its ``ask(_:_:_:)`` with nil and `ref.hook` for its
-/// ``handle(_:_:)``ers with `not_found`. ``onOptionsChange(_:)`` still runs, with nil, so the hook can undo what it set
-/// up; the options turning on again runs it with the new ones.
+/// A hook is on while its extension's `options` are not null or false;
+/// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+/// says what off means. ``onOptionsChange(_:)`` still runs while it is off, so the hook can undo what it set up, and
+/// again when the hook turns on.
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
@@ -102,8 +101,8 @@ public protocol WebViewContext: AnyObject {
   var url: String { get }
   /// Your navigation delegates, in order. While the hook is off, none of them gets a callback.
   ///
-  /// Set them in `attach`: WebKit reads what a delegate responds to when it is assigned, and the core re-assigns itself
-  /// after each change to the list.
+  /// WebKit reads which callbacks a delegate implements when it is assigned, so a delegate must implement what it
+  /// handles by the time you add it. The core assigns itself again after each change to the list.
   ///
   /// Each callback reaches the delegates by one of these rules:
   /// - A decision, the action or the response policy, goes to the first delegate that implements it, instead of the
@@ -116,11 +115,10 @@ public protocol WebViewContext: AnyObject {
   ///   `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation`.
   /// - Any other callback goes only to the first delegate that implements it.
   ///
-  /// Taking a decision switches off what the core decides from the app's props or their defaults, and a
-  /// `core.warning` names the callback and what stops applying:
-  /// - The action policy: the navigation rules, their default security checks included, and `onNavigationRequest`
-  ///   stop deciding navigations. They still decide new windows, unless a UI delegate takes `createWebViewWith`.
-  /// - The response policy: `onError`'s `http` errors, `onDownload` and opening downloads externally stop.
+  /// Taking a decision switches off what the core decides from the app's props or their defaults, the default
+  /// navigation rules' security checks included, and a `core.warning` names the callback and what stops applying. A
+  /// delegate that takes the action policy decides navigations instead of the navigation rules, which still decide new
+  /// windows unless a UI delegate takes `createWebViewWith`.
   ///
   /// A decision more than one delegate implements still goes only to the first, and a `core.warning` names it. Each
   /// warning comes once per WebView, when the delegate is added.
@@ -131,8 +129,6 @@ public protocol WebViewContext: AnyObject {
   /// Your UI delegates, in order, by the rules of ``navigationDelegates``.
   ///
   /// Their decisions are `createWebViewWith`, the alert, confirm and prompt panels and the media capture permission.
-  /// Taking `createWebViewWith` stops the navigation rules and `onNavigationRequest` deciding new windows; taking the
-  /// media capture permission stops `onPermissionRequest` and the core's subframe deny. Both send a `core.warning`.
   /// `webViewDidClose` reaches every delegate.
   ///
   /// A callback goes only to the list of the protocol that declares it: a navigation delegate's alert panel, or a UI
@@ -145,22 +141,23 @@ public protocol WebViewContext: AnyObject {
   ///
   /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
   var refreshControl: UIRefreshControl? { get }
-  /// Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative to
-  /// the key.
+  /// Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative
+  /// to the key. It is dropped while the hook is off, and after the view closed.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the extension's `onEvent` return value, a
   /// promise awaited.
   ///
-  /// It answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout.
+  /// It answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout. It
+  /// answers nil at once while the hook is off, and after the view closed.
   /// An ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
-  /// Runs `handler` with this hook's extension's new `options` each time they change, live; nil when the hook turns off.
+  /// Runs `handler` with this hook's extension's new `options` each time they change, live; nil when the hook turns
+  /// off.
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
   /// Runs `handler` at each end of the Document (see ``DocumentEnd``), after the core's own resets: per-page
   /// state belongs here.
   func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void)
-  /// Runs `handler` once this view closes, with ``DocumentEnd/closing``: the only reason on iOS, where a web
-  /// content process crash reloads the same WKWebView (Android's `crashed` reason is for the WebView it destroys then).
+  /// Runs `handler` once this view closes, with ``DocumentEnd/closing``, the only reason it gets on iOS.
   ///
   /// It comes after the ``onDocumentEnd(_:)`` handlers that get `closing`. The WKWebView has stopped loading, paused
   /// its media and left the view by then, but is still alive, and the context does nothing.
@@ -170,7 +167,9 @@ public protocol WebViewContext: AnyObject {
   /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` exactly once, and
   /// both cross as JSON.
   ///
-  /// One handler per method: the last one wins.
+  /// One handler per method: the last one wins. A handler can't fail: a reply JSON can't encode rejects the JS call
+  /// with `native_error`. A handler that never replies leaves the call waiting until the view unmounts: a navigation or
+  /// a crash doesn't settle it.
   func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: @escaping (Any?) -> Void) -> Void)
 }
 

@@ -87,8 +87,10 @@ Swift, the Kotlin and the TS.</li>
 <p>A changed <code>hideKeyboardAccessoryView</code> also needs a <code>suffix</code> of its own: the runtime class it makes is found by that
 name.</p>
 <p>With this package installed as well, a <code>package</code> line you forgot to change fails the Android build with a duplicate
-class. A key you forgot to rename fails at launch with &quot;two hooks are registered under …: prefix yours with your
-package's name&quot;.</p>
+class. A key you forgot to rename registers two hooks under one key: <code>register</code>, in the
+<a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift">iOS</a> and
+<a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt">Android</a>
+hooks API, says what happens.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">

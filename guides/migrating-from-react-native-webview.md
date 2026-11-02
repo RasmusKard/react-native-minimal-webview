@@ -4,8 +4,8 @@ title: Migrating from react-native-webview
 
 # Migrating from react-native-webview
 
-This page lists what differs from react-native-webview: the defaults, the props that became something else, and recipes
-for what has no prop. The [requirements](../README.md#requirements) are in the README.
+This page maps each react-native-webview prop to its counterpart here, and lists the defaults and behavior that
+differ and recipes for what has no prop. The [requirements](../README.md#requirements) are in the README.
 
 Most props are platform settings by the same name: `bounces` is `ios={{ scrollView: { bounces: false } }}`, and
 `textZoom` is `android={{ settings: { textZoom: 120 } }}`. Android keys are setter names without `set`, so
@@ -32,7 +32,7 @@ With third-party cookies off, an embedded login or 3-D Secure iframe can lose it
 The same settings in one object, debugging left on:
 
 ```tsx
-import { IOSConstants, type WebViewProps } from 'react-native-minimal-webview';
+import { IOSConstants, WebView, type WebViewProps } from 'react-native-minimal-webview';
 
 export const rnwDefaults = {
   ios: {
@@ -49,7 +49,16 @@ export const rnwDefaults = {
   },
 } satisfies Pick<WebViewProps, 'ios' | 'android'>;
 
-<WebView ios={rnwDefaults.ios} android={rnwDefaults.android} … />
+export function Browser() {
+  return (
+    <WebView
+      source={{ uri: 'https://example.com' }}
+      ios={rnwDefaults.ios}
+      android={rnwDefaults.android}
+      style={{ flex: 1 }}
+    />
+  );
+}
 ```
 
 To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: { ...rnwDefaults.ios.scrollView, bounces: false } }}`.
@@ -99,8 +108,8 @@ On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` 
 WebKit's data store clears with `call` ([reading and calling](examples.md#reading-and-calling)).
 
 These props are functions of
-[@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/),
-which you pass in the `extensions` prop:
+[@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/), which
+has the setup. You pass each one in the `extensions` prop:
 
 | react-native-webview | Here |
 |---|---|
@@ -144,7 +153,9 @@ The settings with another name:
 
 ## What else changes
 
-`onNavigationStateChange` keeps its name, but fires on every state change, progress and title included.
+`onNavigationStateChange` keeps its name, but fires on every state change, progress and title included. `onLoadStart` and
+`onLoadEnd` keep theirs too, and get the [`NavigationState`](https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationState.html)
+instead of a native event. `userAgent` is the same prop.
 
 Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens
 ([`onOpenExternal`][onopenexternal]).
@@ -154,17 +165,28 @@ Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries
 Navigation rules replace the callback, and the first rule that matches decides.
 
 ```tsx
-// was: onShouldStartLoadWithRequest={({ url }) => isTrusted(url)}
-<WebView
-  source={{ uri: 'https://example.com' }}
-  navigationRules={[
-    { host: ['example.com'], action: 'allow' },
-    { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
-    { mainFrame: true, action: 'ask' }, // the rest: onNavigationRequest answers
-  ]}
-  onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'block')}
-/>
+import { WebView } from 'react-native-minimal-webview';
+
+// Stands in for what your onShouldStartLoadWithRequest callback decided
+const isTrusted = (url: string) => url.startsWith('https://example.com/');
+
+export function Browser() {
+  return (
+    <WebView
+      source={{ uri: 'https://example.com' }}
+      navigationRules={[
+        { host: ['example.com'], action: 'allow' },
+        { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
+        { mainFrame: true, action: 'ask' }, // the rest: onNavigationRequest answers
+      ]}
+      onNavigationRequest={({ url }) => (isTrusted(url) ? 'allow' : 'block')}
+      style={{ flex: 1 }}
+    />
+  );
+}
 ```
+
+Your rules replace the defaults, [`defaultNavigationRules`][defaultnavigationrules]: spread it after yours to keep them.
 
 A rule decides natively, so a busy JS thread doesn't hold a navigation up. react-native-webview's Android blocks the UI
 thread while it waits for the callback, and lets the navigation through when the callback is late. Its iOS waits
@@ -209,23 +231,39 @@ form data since API 26, and password saving is deprecated.
 The first `source` is blank, as for [cookies before the first page](examples.md#before-the-first-page):
 
 ```tsx
-const [source, setSource] = useState<WebViewSource>({ uri: 'about:blank' });
-useEffect(() => {
-  (async () => {
-    if (Platform.OS === 'android') {
-      await ref.current?.call('cookieManager.removeAllCookies'); // app-wide, as in react-native-webview
-      await ref.current?.call('webView.clearCache', [true]);
-    }
-    setSource({ uri: 'https://example.com' });
-  })();
-}, []);
+import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import {
+  AndroidConstants,
+  WebView,
+  type WebViewRef,
+  type WebViewSource,
+} from 'react-native-minimal-webview';
 
-<WebView
-  ref={ref}
-  source={source}
-  ios={{ configuration: { websiteDataStore: 'nonPersistent' } }}
-  android={{ settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE } }}
-/>
+export function PrivateBrowser() {
+  const ref = useRef<WebViewRef>(null);
+  const [source, setSource] = useState<WebViewSource>({ uri: 'about:blank' });
+
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS === 'android') {
+        await ref.current?.call('cookieManager.removeAllCookies'); // app-wide, as in react-native-webview
+        await ref.current?.call('webView.clearCache', [true]);
+      }
+      setSource({ uri: 'https://example.com' });
+    })();
+  }, []);
+
+  return (
+    <WebView
+      ref={ref}
+      source={source}
+      ios={{ configuration: { websiteDataStore: 'nonPersistent' } }}
+      android={{ settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE } }}
+      style={{ flex: 1 }}
+    />
+  );
+}
 ```
 
 ## Loading and error screens
@@ -233,23 +271,40 @@ useEffect(() => {
 Draw the loading and error views yourself, over the WebView, from the navigation state and `onError`:
 
 ```tsx
-const { loading } = useWebViewState(ref);
-const [error, setError] = useState<LoadErrorEvent | null>(null);
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import {
+  WebView,
+  useWebViewState,
+  type LoadErrorEvent,
+  type WebViewRef,
+} from 'react-native-minimal-webview';
 
-<View style={{ flex: 1 }}>
-  <WebView
-    ref={ref}
-    source={source}
-    onError={(e) => e.kind !== 'http' && setError(e)} // on 'http' the site's own error page shows
-    onLoadStart={() => setError(null)}
-    style={{ flex: 1 }}
-  />
-  {error ? (
-    <OfflineScreen style={StyleSheet.absoluteFill} error={error} onRetry={() => ref.current?.reload()} />
-  ) : loading ? (
-    <ActivityIndicator style={StyleSheet.absoluteFill} />
-  ) : null}
-</View>
+export function Browser() {
+  const ref = useRef<WebViewRef>(null);
+  const { loading } = useWebViewState(ref);
+  const [error, setError] = useState<LoadErrorEvent | null>(null);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <WebView
+        ref={ref}
+        source={{ uri: 'https://example.com' }}
+        onError={(e) => e.kind !== 'http' && setError(e)} // on 'http' the site's own error page shows
+        onLoadStart={() => setError(null)}
+        style={{ flex: 1 }}
+      />
+      {error ? (
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+          <Text>Could not load the page</Text>
+          <Button title="Retry" onPress={() => ref.current?.reload()} />
+        </View>
+      ) : loading ? (
+        <ActivityIndicator style={StyleSheet.absoluteFill} />
+      ) : null}
+    </View>
+  );
+}
 ```
 
 ## Scroll position
@@ -258,7 +313,11 @@ An injected script can report the main frame's scroll position over the bridge, 
 during a bounce or a pinch too, use the [`onScroll`][onscroll] extension.
 
 ```tsx
-const scroll: InjectedScript = {
+import { useEffect, useMemo, useState } from 'react';
+import { Text } from 'react-native';
+import { WebView, createBridge, type InjectedScript } from 'react-native-minimal-webview';
+
+const scrollScript: InjectedScript = {
   code: `{ // a block: an origins ['*'] script shares the page's global scope
   let queued = false;
   addEventListener('scroll', () => {
@@ -270,11 +329,27 @@ const scroll: InjectedScript = {
   origins: ['*'], // nativeBridge exists only on the bridge's allowedOrigins
 };
 
-useEffect(() => bridge.on('scroll', (position) => setScroll(position as { x: number; y: number })), [bridge]);
+export function Browser() {
+  const bridge = useMemo(() => createBridge({ allowedOrigins: ['https://example.com'] }), []);
+  const [scroll, setScroll] = useState({ x: 0, y: 0 });
 
-<WebView source={{ uri: 'https://example.com' }} bridge={bridge} injectedScripts={[scroll]} />
+  useEffect(() => bridge.on('scroll', (position) => setScroll(position as { x: number; y: number })), [bridge]);
+
+  return (
+    <>
+      <Text>{scroll.y}</Text>
+      <WebView
+        source={{ uri: 'https://example.com' }}
+        bridge={bridge}
+        injectedScripts={[scrollScript]}
+        style={{ flex: 1 }}
+      />
+    </>
+  );
+}
 ```
 
+[defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/variables/defaultNavigationRules.html
 [onfullscreenchange]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onfullscreenchange
 [ondownload]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#ondownload
 [recovered]: https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered

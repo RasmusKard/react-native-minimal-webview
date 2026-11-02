@@ -25,8 +25,9 @@ export type Dialog = {
  * The return value (a promise is awaited) is the answer: `true` accepts a confirm, a string is a prompt's text, and
  * anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.
  *
- * There is no timeout: `signal` aborts when the page goes away first (a navigation, a crash, an unmount), and the
- * dialog is then dismissed.
+ * `signal` aborts when native stops waiting for the answer, and the dialog is then dismissed;
+ * [`HookExtension.onEvent`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#onevent)
+ * has the rules.
  *
  * Without this extension, the default dialogs show, as `WebViewProps` describes.
  * @group Extensions

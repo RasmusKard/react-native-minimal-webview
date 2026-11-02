@@ -23,7 +23,8 @@ A hook can implement any delegate or client callback. It runs natively, with no 
 ## How a hook works
 
 1. Your module registers the hook under a key when the app starts.
-2. The app turns the hook on for a WebView by passing its extension in the `extensions` prop. The extension's `options` default to `true`; null or false switch the hook off.
+2. The app turns the hook on for a WebView by passing its extension in the `extensions` prop;
+   [`HookExtension.options`][HookExtension] says when it is on or off.
 3. The core calls the hook's `attach` with the native WebView and a context.
 4. The hook adds its delegates or clients to the context, talks to JS through it, and registers its cleanup with
    `context.onDestroyed`.
@@ -199,19 +200,19 @@ Everything crosses as JSON.
 | `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with the reply |
 | `context.options`, `context.onOptionsChange` | The extension's `options`; a change arrives live |
 
+When an `ask` goes unanswered, and how a failing or silent `handle` handler reaches JS, are on `ask` and `handle` in
+[`Hooks.swift`][swift] and [`Hooks.kt`][kotlin].
+
 ## Share the WebView with the core
 
 The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead:
 
-- A callback the core also handles reaches the core first, then each hook that implements it.
-- A decision, such as whether a navigation loads or a page gets the camera, goes to the first hook that implements it.
-- On iOS, an auth challenge goes to each hook in turn, until one answers.
-- A hook that takes a decision switches off the props that make it, such as `navigationRules` or
-  `onPermissionRequest`. A warning in the console names what stopped applying.
-- A hook that is off has none of its lists routed: until it turns on again, it hears and decides nothing.
+A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
+or a page gets the camera, goes to the first hook that implements it, and switches off the props that make it, such as
+`navigationRules`. The rules are on `navigationDelegates` and `clients` in [`Hooks.swift`][swift] and
+[`Hooks.kt`][kotlin].
 
-Leave alone what the core owns, listed at the top of [`Hooks.swift`][swift] and [`Hooks.kt`][kotlin]. The full routing
-rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `ask`.
+Leave alone what the core owns, listed at the top of those files.
 
 ## Lifecycle
 
@@ -221,17 +222,18 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 | The page ends: a navigation commits, a crash, or unmount | Its `onDocumentEnd` handlers run. Reset per-page state there. |
 | Its `options` change | Its `onOptionsChange` handlers run, without a reload |
 | Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
-| Its key is removed, or its `options` become null or false | The hook is off: `onOptionsChange` with null, and it stays attached. The core routes none of its delegates, clients or listeners, drops its `emit`s, answers its `ask`s with null, and rejects `ref.hook` calls to its handlers with `not_found`. When it turns on again, `onOptionsChange` runs with the new options. |
-| The renderer crashes | iOS keeps the `WKWebView` and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the `WebView` (`onDestroyed` with `CRASHED`, after `onDocumentEnd`), then the factory, `configure` and `attach` run again, on a new context. |
-| The WebView unmounts | `onDocumentEnd` with `closing`, then `onDestroyed` with `closing`: clean up there. Android's `WebView` is destroyed by then; iOS's `WKWebView` has stopped loading and left the view, but is still alive. |
+| Its key is removed, or its `options` become null or false | `onOptionsChange` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptionsChange` runs with the new options. |
+| The renderer crashes | iOS: `onDocumentEnd` with `crashed`; the `WKWebView` reloads and nothing attaches again. Android: `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context. |
+| The WebView unmounts | `onDocumentEnd`, then `onDestroyed`, with `closing`: clean up there. |
 
-`DocumentEnd` ([Swift][documentend], [Kotlin][documentendkt]) says exactly when a page ends and what each reason means.
+`DocumentEnd` ([Swift][documentend], [Kotlin][documentendkt]) says exactly when a page ends, and what each reason means.
+`onDestroyed` says what is still alive when it runs.
 
 ## Rules
 
 - Register in `OnCreate`, under a key prefixed with your package's name: `register` in [`Hooks.swift`][swift] and
   [`Hooks.kt`][kotlin] has the rules.
-- Use the context on the main thread. `emit` and `ask` work from any thread.
+- Use the context as `WebViewContext` there says: some members work from any thread, the rest from the main thread.
 
 ## Platform differences
 

@@ -73,5 +73,7 @@ A changed `hideKeyboardAccessoryView` also needs a `suffix` of its own: the runt
 name.
 
 With this package installed as well, a `package` line you forgot to change fails the Android build with a duplicate
-class. A key you forgot to rename fails at launch with "two hooks are registered under …: prefix yours with your
-package's name".
+class. A key you forgot to rename registers two hooks under one key: `register`, in the
+[iOS](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and
+[Android](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt)
+hooks API, says what happens.

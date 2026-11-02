@@ -21,8 +21,8 @@ enum class DocumentEnd {
   COMMITTED,
 
   /**
-   * The renderer died: this WebView goes, its hooks detach, and they attach again to the one that replaces it,
-   * whose first commit opens the next Document.
+   * The renderer died: this WebView goes, its hooks detach (their [WebViewContext.onDestroyed] handlers run), and
+   * they attach again to the one that replaces it, with a new context. Its first commit opens the next Document.
    */
   CRASHED,
 
