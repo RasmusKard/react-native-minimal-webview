@@ -22,16 +22,23 @@ jobs:
       - run: npm test -- --watchAll=false   # its pretest checks the generated files
       - run: npm run prepare   # clean build
 
-  # The Swift navigation and origin rule matchers and crash recovery against the shared cases in
-  # src/__tests__/vectors/, and the DocumentScope and ask cases. Linux, not macOS: the files need only Foundation, and
-  # macOS minutes cost 10x.
+  # The Swift tests: the navigation and origin rule matchers and crash recovery against the shared cases in
+  # src/__tests__/vectors/, the DocumentScope, ask, delegate proxy and read root cases, and the PlatformSettings tests
+  # as Mac Catalyst. macOS: DelegateProxy.swift needs WebKit.
   swift-rules:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - run: >-
-          swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift
-          ios/Recovery.swift ios/ReadAccess.swift ios/Tests/main.swift -o rules && ./rules
+          xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift
+          ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o rules && ./rules
+      - run: |
+          F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios17.0-macabi
+          xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o mrw.o
+          xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h \
+            ios/PlatformSettings.swift ios/PlatformCompletions.generated.swift ios/Tests/PlatformSettings/main.swift mrw.o \
+            -o settings
+          ./settings
 
-  # iOS native code is built only locally (macOS minutes cost 10x), along with the on-device suites
-  # (example/harness.ts), which need an emulator and a simulator: see .github/CONTRIBUTING.md.
+  # The on-device suites (example/harness.ts) need an emulator and a simulator, so they run locally: see
+  # .github/CONTRIBUTING.md.
