@@ -97,8 +97,7 @@ final class PlatformSettings {
   }
 
   /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
-  /// `completion` names the block shape of a selector that ends in a completion handler (MRWInvoke.h).
-  func call(_ path: String, args: [Any], completion: String?, webView: WKWebView, resolve: @escaping (String?, String?) -> Void) throws {
+  func call(_ path: String, args: [Any], webView: WKWebView, resolve: @escaping (String?, String?) -> Void) throws {
     guard let dot = path.lastIndex(of: ".") else { throw PlatformError("use root.selector:", code: "not_found") }
     let selector = String(path[path.index(after: dot)...])
     guard let object = root(String(path[..<dot]), webView: webView, configuration: webView.configuration) else {
@@ -110,7 +109,7 @@ final class PlatformSettings {
     guard object.responds(to: NSSelectorFromString(selector)) else {
       throw PlatformError("\(type(of: object)) has no method \(selector)", code: "not_found")
     }
-    MRWInvoke(object, NSSelectorFromString(selector), args, completion) { result, error in
+    MRWInvoke(object, NSSelectorFromString(selector), args, platformCompletions[path]) { result, error in
       guard error == nil, let result else { return resolve(nil, error ?? "the result is not JSON") }
       do {
         let json = try Self.json { result }

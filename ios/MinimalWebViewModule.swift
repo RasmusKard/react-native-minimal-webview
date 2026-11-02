@@ -30,10 +30,10 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("get") { (view: MinimalWebView, path: String, promise: Promise) in
         native(view, promise) { webView in promise.resolve(try view.platformSettings.get(path, webView: webView)) }
       }
-      AsyncFunction("call") { (view: MinimalWebView, path: String, argsJson: String, completion: String?, promise: Promise) in
+      AsyncFunction("call") { (view: MinimalWebView, path: String, argsJson: String, promise: Promise) in
         let args = (try? JSONSerialization.jsonObject(with: Data(argsJson.utf8))) as? [Any] ?? []
         native(view, promise) { webView in
-          try view.platformSettings.call(path, args: args, completion: completion, webView: webView) { json, error in
+          try view.platformSettings.call(path, args: args, webView: webView) { json, error in
             if let error { promise.reject("native_error", error) } else { promise.resolve(json) }
           }
         }

@@ -49,8 +49,7 @@ jest.mock('expo', () => {
           bridgePost: mockBridgePost,
           evaluate: mockEvaluate,
           get: async (path: string) => JSON.stringify({ get: path }),
-          call: async (path: string, args: string, completion: string | null) =>
-            JSON.stringify({ call: path, args, completion }),
+          call: async (path: string, args: string) => JSON.stringify({ call: path, args }),
           hook: mockHook,
         }));
         return createElement(name, props);
@@ -829,21 +828,8 @@ describe('navigation state across remounts', () => {
     expect(await ref.current?.call('clearCache', [true])).toEqual({
       call: 'clearCache',
       args: '[true]',
-      completion: null,
     });
     expect(await ref.current?.call('clearCache')).toMatchObject({ args: '[]' });
-    // The completion shape comes from the SDK headers' table; an unlisted selector gets none, so native rejects it.
-    expect(await ref.current?.call('httpCookieStore.getAllCookies:')).toEqual({
-      call: 'httpCookieStore.getAllCookies:',
-      args: '[]',
-      completion: 'value',
-    });
-    expect(
-      await ref.current?.call('webView.restoreData:completionHandler:', [{ data: '' }])
-    ).toMatchObject({ completion: 'error' });
-    expect(await ref.current?.call('webView.x:completionHandler:')).toMatchObject({
-      completion: null,
-    });
     const stale = ref.current;
     await act(async () => root.unmount());
     expect(ref.current).toBeNull();
