@@ -77,8 +77,11 @@ export function createBridge<
       if (post && phase === 'ready') deliver(message);
       else {
         queue.push(message);
-        // shortcut: a dropped call isn't rejected (Bridge's TSDoc says so), reject it here if apps queue that much
-        if (queue.length > MAX_QUEUE) queue.shift();
+        const dropped = queue.length > MAX_QUEUE ? queue.shift() : undefined;
+        if (dropped?.kind === 'call') {
+          const call = endpoint.pending.get(dropped.id);
+          endpoint.rejectPending('unavailable', 'the bridge queue was full', (pending) => pending === call);
+        }
       }
     },
     timeoutMs,
