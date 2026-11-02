@@ -13,7 +13,6 @@ internal object Dialogs {
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     context.chromeClients += Client(context)
-    null
   }
 
   private class Client(private val context: WebViewContext) : WebChromeClient() {

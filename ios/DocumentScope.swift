@@ -18,7 +18,7 @@ public final class DocumentScope {
     ///
     /// The context stays, and the recovery's commit opens the next Document.
     case crashed
-    /// The view is unmounting; the hooks' detach closures run after it.
+    /// The view is unmounting; the hooks' ``WebViewContext/onDestroyed(_:)`` handlers run after it.
     case closing
   }
 

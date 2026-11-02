@@ -20,7 +20,7 @@ internal object MenuItems {
 
   fun register() = MinimalWebViewHooks.register(KEY, webViewFactory = factory) { webView, context ->
     // Another hook's factory won (the core warns): no menu.
-    val view = webView as? MenuWebView ?: return@register null
+    val view = webView as? MenuWebView ?: return@register
     val apply = { view.menuItems = ((context.options as? Map<*, *>)?.get("items") as? List<*>)?.filterIsInstance<Map<*, *>>() }
     apply()
     context.onOptionsChange { apply() }
@@ -32,7 +32,6 @@ internal object MenuItems {
         done()
       }
     }
-    null
   }
 }
 

@@ -53,7 +53,7 @@ class HooksTest {
   private val url = arrayOf(WebView::class.java, WebResourceRequest::class.java)
 
   private fun hook(key: String, factory: ((Context) -> WebView)? = null) =
-    MinimalWebViewHooks.Hook(key, factory, null) { _, _ -> null }
+    MinimalWebViewHooks.Hook(key, factory, null) { _, _ -> }
 
   @Test
   fun `a plain subclass overrides only what it declares`() {
@@ -112,15 +112,15 @@ class HooksTest {
   @Test
   fun `a second hook under a key throws, naming it, and the same call again (a JS reload) replaces its hook`() {
     // A module's OnCreate, which a reload runs again.
-    fun onCreate() = MinimalWebViewHooks.register("test.taken") { _, _ -> null }
+    fun onCreate() = MinimalWebViewHooks.register("test.taken") { _, _ -> }
     try {
       onCreate()
       onCreate()
       val error = assertThrows(IllegalStateException::class.java) {
-        MinimalWebViewHooks.register("test.taken") { _, _ -> null }
+        MinimalWebViewHooks.register("test.taken") { _, _ -> }
       }
       assertTrue(error.message, error.message.orEmpty().contains("`test.taken`"))
-      MinimalWebViewHooks.register("test.free") { _, _ -> null }
+      MinimalWebViewHooks.register("test.free") { _, _ -> }
       assertEquals(listOf("test.taken", "test.free"), MinimalWebViewHooks.hooks.map { it.key }.filter { it.startsWith("test.") })
     } finally {
       MinimalWebViewHooks.hooks.removeAll { it.key.startsWith("test.") }
@@ -146,7 +146,7 @@ class HooksTest {
   @Test
   fun `a late key attaches a hook without configure or a factory, and warns for one with either or none`() {
     assertNull(lateAttachWarning("a", hook("a")))
-    val configured = MinimalWebViewHooks.Hook("b", null, { _, _ -> }) { _, _ -> null }
+    val configured = MinimalWebViewHooks.Hook("b", null, { _, _ -> }) { _, _ -> }
     assertTrue(lateAttachWarning("b", configured).orEmpty().contains("attaches only when the WebView is created"))
     val made = hook("c") { WebView(it) }
     assertTrue(lateAttachWarning("c", made).orEmpty().contains("attaches only when the WebView is created"))

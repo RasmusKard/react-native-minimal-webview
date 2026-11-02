@@ -90,8 +90,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** The hooks' contexts for the current WebView, in attach order. Chromium's IO thread reads it (shouldInterceptRequest). */
   @Volatile private var hookContexts: List<HookContext> = emptyList()
   private val attachments get() = hookContexts.map { it.attachment }
-  /** What the attach hooks returned, run before their WebView goes away. */
-  private var detachers: List<() -> Unit> = emptyList()
   private var mounted = false
 
   internal val asks = Asks { onHookEvent(it) }
@@ -281,7 +279,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
 
   private fun attachHooks() {
-    detachers = hookContexts.mapNotNull { it.hook.attach(webView, it) }
+    hookContexts.forEach { it.hook.attach(webView, it) }
     enableFavicons()
   }
 
@@ -296,8 +294,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
   private fun detachHooks(): List<HookContext> {
     val detached = hookContexts
-    detachers.forEach { it() }
-    detachers = emptyList()
     hookContexts.forEach { it.detach() }
     hookContexts = emptyList()
     return detached
@@ -326,7 +322,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (recovering || hook == null) return
     val context = HookContext(hook, this)
     hookContexts = hookContexts + context
-    hook.attach(webView, context)?.let { detachers = detachers + it }
+    hook.attach(webView, context)
     enableFavicons()
   }
 

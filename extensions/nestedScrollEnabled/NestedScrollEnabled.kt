@@ -16,6 +16,5 @@ internal object NestedScrollEnabled {
       (view as ViewGroup).requestDisallowInterceptTouchEvent(true)
       false
     }
-    null
   }
 }

@@ -18,7 +18,7 @@ public enum MinimalWebViewHooks {
     let site: String
     let webViewClass: WKWebView.Type?
     let configure: ((WKWebViewConfiguration, WebViewContext) -> Void)?
-    let attach: (WKWebView, WebViewContext) -> (() -> Void)?
+    let attach: (WKWebView, WebViewContext) -> Void
   }
 
   private(set) static var hooks: [Hook] = []
@@ -51,17 +51,17 @@ public enum MinimalWebViewHooks {
   ///     it makes can be keyed by the context. `window.open('')` opens a hidden WKWebView from this configuration: your
   ///     user scripts run in it and your script message handlers get its messages, so compare `message.webView` with
   ///     the WKWebView `attach` gets.
-  ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Returns
-  ///     a closure to run when the view goes away, after ``WebViewContext/onDocumentEnd(_:)`` with
-  ///     ``DocumentScope/End/closing``, or nil. A web content process crash reloads the same WKWebView, so nothing
-  ///     attaches again, and the context and its handlers stay (Android attaches again, to a new WebView).
+  ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Register
+  ///     what to run when the view goes away with ``WebViewContext/onDestroyed(_:)``. A web content process crash
+  ///     reloads the same WKWebView, so nothing attaches again, and the context and its handlers stay (Android attaches
+  ///     again, to a new WebView).
   ///   - file: With `line`, the call site that tells a reload from a second hook; leave both to their defaults.
   ///   - line: The call site's line, with `file`.
   public static func register(
     _ key: String,
     webViewClass: WKWebView.Type? = nil,
     configure: ((WKWebViewConfiguration, WebViewContext) -> Void)? = nil,
-    attach: @escaping (WKWebView, WebViewContext) -> (() -> Void)?,
+    attach: @escaping (WKWebView, WebViewContext) -> Void,
     file: String = #fileID,
     line: Int = #line
   ) {
@@ -93,10 +93,6 @@ public enum MinimalWebViewHooks {
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
-///
-/// - Important: The context holds the handlers you register (``onOptionsChange(_:)``, ``onDocumentEnd(_:)``,
-///   ``handle(_:_:)``). An object they capture that also holds the context strongly makes a cycle that is never freed,
-///   so hold the context weakly.
 public protocol WebViewContext: AnyObject {
   /// This hook's extension's `options`, the new ones after a change; nil while the hook is off.
   var options: Any? { get }
@@ -163,6 +159,14 @@ public protocol WebViewContext: AnyObject {
   /// Runs `handler` at each end of the Document (``DocumentScope``), after the core's own resets: per-page state
   /// belongs here.
   func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void)
+  /// Runs `handler` once this view closes, with ``DocumentScope/End/closing``: the only reason on iOS, where a web
+  /// content process crash reloads the same WKWebView (Android's `crashed` reason is for the WebView it destroys then).
+  ///
+  /// It comes after the ``onDocumentEnd(_:)`` handlers that get `closing`. The WKWebView has stopped loading, paused
+  /// its media and left the view by then, but is still alive, and the context does nothing.
+  ///
+  /// Clean up here: what `attach` set up on the WKWebView, such as an observation or a swapped class.
+  func onDestroyed(_ handler: @escaping (DocumentScope.End) -> Void)
   /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` exactly once, and
   /// both cross as JSON.
   ///
@@ -171,8 +175,8 @@ public protocol WebViewContext: AnyObject {
 }
 
 /// A hook's view of the WebView: the core's context with the hook's key on its events. The view owns it. A hook can
-/// outlive the view (an async callback, a detach closure run from its deinit): then the context is detached and does
-/// nothing. The view routes the delegates of the contexts that are on.
+/// outlive the view (an async callback): then the context is detached and does nothing.
+/// The view routes the delegates of the contexts that are on.
 final class HookContext: WebViewContext {
   let hook: MinimalWebViewHooks.Hook
   private weak var view: MinimalWebView?
@@ -180,6 +184,7 @@ final class HookContext: WebViewContext {
   private(set) var options: Any?
   private var optionsHandlers: [(Any?) -> Void] = []
   private var documentEndHandlers: [(DocumentScope.End) -> Void] = []
+  private var destroyedHandlers: [(DocumentScope.End) -> Void] = []
   private(set) var handlers: [String: ([Any], @escaping (Any?) -> Void) -> Void] = [:]
 
   init(_ hook: MinimalWebViewHooks.Hook, _ view: MinimalWebView) {
@@ -188,9 +193,14 @@ final class HookContext: WebViewContext {
     options = enabledValue(view.hookOptions[hook.key])
   }
 
-  /// The view closed: the context keeps nothing of it, and nothing routes it.
+  /// The view closed: the context keeps nothing of it and nothing the hook gave it, and nothing routes it.
   func detach() {
     view = nil
+    navigationDelegates = []
+    uiDelegates = []
+    optionsHandlers = []
+    documentEndHandlers = []
+    handlers = [:]
   }
 
   var key: String { hook.key }
@@ -228,6 +238,10 @@ final class HookContext: WebViewContext {
     documentEndHandlers.append(handler)
   }
 
+  func onDestroyed(_ handler: @escaping (DocumentScope.End) -> Void) {
+    destroyedHandlers.append(handler)
+  }
+
   func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: @escaping (Any?) -> Void) -> Void) {
     handlers[method] = handler
   }
@@ -240,6 +254,13 @@ final class HookContext: WebViewContext {
 
   func documentEnded(_ reason: DocumentScope.End) {
     documentEndHandlers.forEach { $0(reason) }
+  }
+
+  /// The view closed, and its WKWebView is torn down: the handlers run once, and the context drops them.
+  func destroyed() {
+    let handlers = destroyedHandlers
+    destroyedHandlers = []
+    handlers.forEach { $0(.closing) }
   }
 
   // A hook's own background work (a URLSession completion) may emit or ask; the view's asks are main-thread state.

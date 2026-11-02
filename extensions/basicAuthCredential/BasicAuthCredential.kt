@@ -12,7 +12,6 @@ internal object BasicAuthCredential {
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     context.clients += Client(context)
-    null
   }
 
   private class Client(private val context: WebViewContext) : WebViewClient() {

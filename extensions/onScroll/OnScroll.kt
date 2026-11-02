@@ -19,7 +19,6 @@ internal object OnScroll {
     context.scrollListeners += View.OnScrollChangeListener { view, x, y, _, _ ->
       context.emit("scroll", event(view, x, y))
     }
-    null
   }
 
   private fun event(view: View, x: Int, y: Int): Map<String, Any?> {

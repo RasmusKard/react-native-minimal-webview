@@ -24,7 +24,6 @@ internal object PerfProbe {
       webView.addJavascriptInterface(probe, "perfMark")
       context.clients += probe.client
       context.handle("drain") { _, reply -> reply(probe.drain()) }
-      null
     }
   }
 }

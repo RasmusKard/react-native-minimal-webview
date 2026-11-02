@@ -13,6 +13,5 @@ internal object AndroidLayerType {
     val apply = { webView.setLayerType(TYPES[context.options] ?: View.LAYER_TYPE_NONE, null) }
     apply()
     context.onOptionsChange { apply() }
-    null
   }
 }

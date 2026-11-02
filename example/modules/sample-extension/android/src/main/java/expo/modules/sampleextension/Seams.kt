@@ -40,6 +40,5 @@ internal object Seams {
         if (scrolled.add(name)) context.emit(name, emptyMap())
       }
     }
-    null
   }
 }

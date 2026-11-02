@@ -11,12 +11,12 @@ enum HideKeyboardAccessoryView {
 
   static func register() {
     MinimalWebViewHooks.register(key) { webView, context in
-      let apply = { [weak webView, weak context] in
-        if let content = webView.flatMap(contentView) { hide(content, context?.options as? Bool == true) }
+      let apply = { [weak webView] in
+        if let content = webView.flatMap(contentView) { hide(content, context.options as? Bool == true) }
       }
       apply()
       context.onOptionsChange { _ in apply() }
-      return { [weak webView] in
+      context.onDestroyed { [weak webView] _ in
         if let content = webView.flatMap(contentView) { hide(content, false) }
       }
     }

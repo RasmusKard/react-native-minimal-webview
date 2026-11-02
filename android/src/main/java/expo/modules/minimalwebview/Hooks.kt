@@ -33,7 +33,7 @@ object MinimalWebViewHooks {
     val key: String,
     val webViewFactory: ((Context) -> WebView)?,
     val configure: ((WebView, WebViewContext) -> Unit)?,
-    val attach: (WebView, WebViewContext) -> (() -> Unit)?
+    val attach: (WebView, WebViewContext) -> Unit
   )
 
   internal val hooks = mutableListOf<Hook>()
@@ -65,9 +65,9 @@ object MinimalWebViewHooks {
    *   before the package sets it up ([WebViewCompat.setProfile][androidx.webkit.WebViewCompat.setProfile] goes here).
    *   It gets the same context that [attach] gets next for that WebView, so state it makes can be keyed by the context.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
-   *   sets wins over those settings. It returns what to run when that WebView goes away, after the
-   *   [WebViewContext.onDocumentEnd] that gives the reason, or null. Document-start scripts you add here run before
-   *   the package's, so `window.nativeBridge` and `injectedScripts` aren't there yet (on iOS yours run after them).
+   *   sets wins over those settings. Register what to run when that WebView goes away with
+   *   [WebViewContext.onDestroyed]. Document-start scripts you add here run before the package's, so
+   *   `window.nativeBridge` and `injectedScripts` aren't there yet (on iOS yours run after them).
    * @throws IllegalStateException when a different hook is registered under [key] already; a minified build may
    *   replace the first instead.
    */
@@ -75,7 +75,7 @@ object MinimalWebViewHooks {
     key: String,
     webViewFactory: ((Context) -> WebView)? = null,
     configure: ((WebView, WebViewContext) -> Unit)? = null,
-    attach: (WebView, WebViewContext) -> (() -> Unit)?
+    attach: (WebView, WebViewContext) -> Unit
   ) {
     if (key == "core") {
       Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
@@ -277,10 +277,11 @@ interface WebViewContext {
 
   /**
    * Runs [handler] once this attach's WebView is destroyed: with [DocumentScope.End.CLOSING] at unmount, or with
-   * [DocumentScope.End.CRASHED] after a renderer crash, before the WebView that replaces it is configured. The context
-   * does nothing by then.
+   * [DocumentScope.End.CRASHED] after a renderer crash, before the WebView that replaces it is configured. It comes
+   * after the [onDocumentEnd] handlers that get the same reason, and the context does nothing by then.
    *
-   * Release here what must outlive the WebView, such as a [ProfileStore][androidx.webkit.ProfileStore] profile.
+   * Clean up here, and release what must outlive the WebView, such as a [ProfileStore][androidx.webkit.ProfileStore]
+   * profile.
    */
   fun onDestroyed(handler: (DocumentScope.End) -> Unit)
 

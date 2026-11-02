@@ -37,27 +37,22 @@ class SampleExtensionModule : Module() {
             context.emit("documentEnd", mapOf("reason" to reason.name.lowercase(), "url" to context.url))
           }
         }
-        null // or a closure, run when this WebView goes away
       }
       // A client that overrides a decision callback (HTTP auth, a JS alert) takes it from the core.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context ->
         context.clients += HookAuth()
-        null
       }
       MinimalWebViewHooks.register("sample.hookDialogs") { _, context ->
         context.chromeClients += HookDialogs(context)
-        null
       }
       // Takes the navigation decision from the app's navigationRules, which a `core.warning` says.
       MinimalWebViewHooks.register("sample.hookNavigation") { _, context ->
         context.clients += HookNavigation()
-        null
       }
       // Each WebView that enables this hook is made by its factory, a crash's replacement too; others stay plain.
       MinimalWebViewHooks.register("sample.subclass", webViewFactory = ::SampleWebView) { webView, context ->
         val name = webView.javaClass.simpleName
         context.handle("class") { _, reply -> reply(name) }
-        null
       }
       PerfProbe.register()
       Seams.register()
