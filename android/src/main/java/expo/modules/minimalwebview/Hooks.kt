@@ -101,8 +101,10 @@ internal fun enables(value: Any?) = value != null && value != false
  * Which [hooks] attach to a WebView created with the enabled `hookOptions` [keys]: the ones registered under them, in
  * registration order. Second, the keys no hook is registered under.
  */
-internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>) =
-  hooks.filter { it.key in keys }.let { attaching -> attaching to keys - attaching.map { it.key }.toSet() }
+internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>): Pair<List<MinimalWebViewHooks.Hook>, Set<String>> {
+  val attaching = hooks.filter { it.key in keys }
+  return attaching to keys - attaching.map { it.key }.toSet()
+}
 
 /** [keys] in the order of the [registered] hook keys, then the keys no hook is registered under, sorted. */
 internal fun inRegistrationOrder(keys: Set<String>, registered: List<String>) =
@@ -317,8 +319,8 @@ internal class Attachment {
  */
 internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view: MinimalWebView) : WebViewContext {
   val key get() = hook.key
-  private var current: Any? = view.hookOptions[hook.key]
-  override val options get() = current
+  override var options: Any? = view.hookOptions[hook.key]
+    private set
   override val url get() = view.url
   override val clients get() = view.clients
   override val chromeClients get() = view.chromeClients
@@ -364,7 +366,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   }
 
   fun optionsChanged(value: Any?) {
-    current = value
+    options = value
     optionsHandlers.forEach { it(value) }
   }
 
@@ -423,7 +425,7 @@ internal fun Any.overrides(callback: String, vararg types: Class<*>): Boolean = 
  * (VARIANTS) overrides the callback only through the variant the forwarder calls.
  */
 internal fun Class<*>.overrides(callback: String, vararg types: Class<*>): Boolean =
-  overrideCache.getOrPut("${this.name}#${signature(callback, *types)}") {
+  overrideCache.getOrPut("$name#${signature(callback, *types)}") {
     val declared = getMethod(callback, *types).declaringClass
     if (declared !in BASES) return@getOrPut true
     val variant = VARIANTS[declared]?.get(signature(callback, *types)) ?: return@getOrPut false

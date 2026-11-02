@@ -100,7 +100,8 @@ class MinimalWebViewModule : Module() {
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
       Prop("hookOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.hookOptions = options.orEmpty() }
-      Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { parseSettings(it) } }
+      // The JSON is always an object (JS builds it).
+      Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { JSONObject(it).toMap() } }
       Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
       Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
       Prop("requestHandlers") { view: MinimalWebView, value: List<String>? -> view.requestHandlers = value.orEmpty().toSet() }
@@ -112,6 +113,7 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
         native(view, promise) { promise.resolve(view.platformSettings.get(path)) }
       }.runOnQueue(Queues.MAIN)
+      // The third argument is iOS's completion name, which Android has no use for.
       AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
         native(view, promise) {
           view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) { json -> native(view, promise) { promise.resolve(json()) } }
@@ -198,9 +200,7 @@ private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Un
     }
   }
 
-/** The `settings` prop's JSON (always an object: JS builds it) as nested maps and lists, with JSON null as null. */
-private fun parseSettings(json: String): Map<String, Any?> = JSONObject(json).toMap()
-
+/** Nested maps and lists, with JSON null as null. */
 private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence().associateWith { fromJson(get(it)) }
 
 private fun fromJson(value: Any?): Any? = when (value) {

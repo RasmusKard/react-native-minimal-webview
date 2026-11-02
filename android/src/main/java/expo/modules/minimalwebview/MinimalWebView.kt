@@ -252,7 +252,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun reload() {
     when {
       // The renderer died and the new WebView isn't built yet: build it now, and load.
-      pendingRecovery != null -> recover(reload = true)
+      recovering -> recover(reload = true)
       // Nothing loaded: the crash-loop guard gave up (processGone), and this is the app's retry.
       webView.url == null -> loadAgain()
       // WebView's reload declines a POST's form resubmission: send the source again.
@@ -361,7 +361,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     loading = false
     pendingUrl = null
     progress = 0.0
-    refresher.pageFinished()
+    pageFinished()
     onProcessGone(mapOf("didCrash" to didCrash, "recovered" to reload))
     if (canRecover()) recover() else waiting += this
     stateChanged() // after onProcessGone: the cut-off load ends as failed

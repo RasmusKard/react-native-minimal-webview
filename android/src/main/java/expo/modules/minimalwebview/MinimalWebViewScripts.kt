@@ -42,26 +42,21 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     val origins = owner.bridgeOrigins.orEmpty().toSet()
     // A malformed origin rule makes WebView throw; createBridge validates them, so this only guards against misuse.
     // JS learns of it: calls reject with `unavailable`.
-    val installed = try {
-      addBridge(script, origins)
-      true
+    try {
+      WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, sourceOrigin, isMainFrame, proxy ->
+        // Main frame only, like iOS. The origin rules already filtered the sender; its origin goes to the handlers.
+        if (!isMainFrame) return@addWebMessageListener
+        // An ArrayBuffer has no string data (`data` throws); iOS drops a non-string message too.
+        if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
+        replyProxy = proxy
+        onBridge(mapOf("message" to message.data, "origin" to sourceOrigin.toString()))
+      }
+      // Runs before the page's own scripts, after the transport object exists.
+      WebViewCompat.addDocumentStartJavaScript(webView, script, origins)
     } catch (e: IllegalArgumentException) {
       failed("bridge not installed: invalid allowedOrigins $origins", e)
+      onBridge(mapOf("unavailable" to true))
     }
-    if (!installed) onBridge(mapOf("unavailable" to true))
-  }
-
-  private fun addBridge(script: String, origins: Set<String>) {
-    WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, sourceOrigin, isMainFrame, proxy ->
-      // Main frame only, like iOS. The origin rules already filtered the sender; its origin goes to the handlers.
-      if (!isMainFrame) return@addWebMessageListener
-      // An ArrayBuffer has no string data (`data` throws); iOS drops a non-string message too.
-      if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
-      replyProxy = proxy
-      onBridge(mapOf("message" to message.data, "origin" to sourceOrigin.toString()))
-    }
-    // Runs before the page's own scripts, after the transport object exists.
-    WebViewCompat.addDocumentStartJavaScript(webView, script, origins)
   }
 
   /** Changed scripts take effect from the next navigation. */
@@ -119,10 +114,10 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
 ), 1))($EVALUATE, (async () => (
 $script
 ))()) : 0"""
-    webView.evaluateJavascript(code) {
+    webView.evaluateJavascript(code) { value ->
+      if (value == "1") return@evaluateJavascript
       // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
-      val why = if (it == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)"
-      if (it != "1") evaluations.fail(id, why)
+      evaluations.fail(id, if (value == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)")
     }
   }
 

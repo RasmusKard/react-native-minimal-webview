@@ -16,7 +16,7 @@ import expo.modules.minimalwebview.MinimalWebView
 
 /** HTML5 fullscreen video, and the `onFullscreenChange` prop. */
 internal class FullscreenVideo(private val owner: MinimalWebView) {
-  private var shown: Pair<View, CustomViewCallback>? = null
+  private var shownCallback: CustomViewCallback? = null
   private var backdrop: FrameLayout? = null
   private var backCallback: OnBackPressedCallback? = null
   // The app's bars before fullscreen, restored on exit: an immersive app keeps its bars hidden.
@@ -25,14 +25,14 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
 
   /** Returns false when there is no window to cover; the caller then tells WebView the view is hidden. */
   fun onShowCustomView(view: View, callback: CustomViewCallback): Boolean {
-    if (shown != null) exit()
+    if (shownCallback != null) exit()
     val window = owner.webView.rootView as? ViewGroup ?: return false
     backdrop = FrameLayout(view.context).apply {
       setBackgroundColor(Color.BLACK)
       addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
       window.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
-    shown = view to callback
+    shownCallback = callback
     backCallback = (owner.activity as? ComponentActivity)?.let { component ->
       object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() = exit()
@@ -51,18 +51,17 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
     return true
   }
 
-  fun onHideCustomView() = removeView()
-
   /** Leaves fullscreen from our side: WebView then calls onHideCustomView. */
   private fun exit() {
-    val callback = shown?.second ?: return
-    removeView()
+    val callback = shownCallback ?: return
+    onHideCustomView()
     callback.onCustomViewHidden()
   }
 
-  private fun removeView() {
-    if (shown == null) return
-    shown = null
+  /** Removes the fullscreen view, which WebView hid or we are leaving. */
+  fun onHideCustomView() {
+    if (shownCallback == null) return
+    shownCallback = null
     backdrop?.let { (it.parent as? ViewGroup)?.removeView(it) }
     backdrop?.removeAllViews()
     backdrop = null
@@ -83,6 +82,6 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
 
   /** The Document ended: its fullscreen view goes. A crash leaves no renderer to tell; at unmount WebView is told. */
   fun documentEnded(reason: End) {
-    if (reason == End.CLOSING) exit() else removeView()
+    if (reason == End.CLOSING) exit() else onHideCustomView()
   }
 }
