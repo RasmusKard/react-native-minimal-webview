@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -79,8 +80,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   // The hooks' lists: each context owns its own, and the core routes those of the hooks that are on, in attach order.
   val clients: List<WebViewClient> get() = routed(attachments) { it.clients }
   val chromeClients: List<WebChromeClient> get() = routed(attachments) { it.chromeClients }
-  val touchListeners: List<View.OnTouchListener> get() = routed(attachments) { it.touchListeners }
-  val scrollListeners: List<View.OnScrollChangeListener> get() = routed(attachments) { it.scrollListeners }
   val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
@@ -158,10 +157,20 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       if (!taken && !downloads.onDownloadStart(download)) navigation.openDownload(url)
     }
     // View's slots hold one listener each: the hooks share them through their lists.
-    view.setOnTouchListener { v, event -> touchListeners.any { it.onTouch(v, event) } }
-    view.setOnScrollChangeListener { v, x, y, oldX, oldY -> scrollListeners.forEach { it.onScrollChange(v, x, y, oldX, oldY) } }
+    view.setOnTouchListener(::touched)
+    view.setOnScrollChangeListener(::scrolled)
     if (hasNavigationListener) WebViewCompat.addNavigationListener(view, context.mainExecutor, Listener(this))
     return view
+  }
+
+  // The on hooks' own lists, not copies: this runs for every touch event and scroll change.
+  private fun touched(view: View, event: MotionEvent) =
+    hookContexts.any { c -> c.attachment.routed && c.touchListeners.any { it.onTouch(view, event) } }
+
+  private fun scrolled(view: View, x: Int, y: Int, oldX: Int, oldY: Int) {
+    for (c in hookContexts) {
+      if (c.attachment.routed) c.scrollListeners.forEach { it.onScrollChange(view, x, y, oldX, oldY) }
+    }
   }
 
   @SuppressLint("SetJavaScriptEnabled") // because a browser-tab WebView needs JS; no addJavascriptInterface is used

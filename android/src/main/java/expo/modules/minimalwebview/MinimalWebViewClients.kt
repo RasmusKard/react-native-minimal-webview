@@ -99,7 +99,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   /** Every hook client that overrides an observation callback, after the core. */
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebViewClient) -> Unit) =
-    owner.clients.toList().forEach { if (it.overrides(name, *types)) block(it) }
+    owner.clients.forEach { if (it.overrides(name, *types)) block(it) }
 
   // Without NavigationListener: the last main-frame URL allowed to load (a page's navigation or a redirect), which
   // onReceivedSslError can't otherwise tell from a subresource.
@@ -234,7 +234,7 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
     owner.deciders.first(name, owner.chromeClients) { it.overrides(name, *types) }
 
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebChromeClient) -> Unit) =
-    owner.chromeClients.toList().forEach { if (it.overrides(name, *types)) block(it) }
+    owner.chromeClients.forEach { if (it.overrides(name, *types)) block(it) }
 
   override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean =
     deciding("onCreateWindow", WEB_VIEW, BOOLEAN, BOOLEAN, Message::class.java)?.onCreateWindow(view, isDialog, isUserGesture, resultMsg)
