@@ -26,17 +26,15 @@ public class MinimalWebViewModule: Module {
 
       OnViewDidUpdateProps { (view: MinimalWebView) in view.applyProps() }
 
-      AsyncFunction("navigate") { (view: MinimalWebView, action: String) in navigate(view, action) }
+      AsyncFunction("goBack") { (view: MinimalWebView) in view.webView?.goBack() }
+      AsyncFunction("goForward") { (view: MinimalWebView) in view.webView?.goForward() }
+      AsyncFunction("reload") { (view: MinimalWebView) in view.retry() }
+      AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
       AsyncFunction("get") { (view: MinimalWebView, path: String, promise: Promise) in
         native(view, promise) { webView in promise.resolve(try view.platformSettings.get(path, webView: webView)) }
       }
       AsyncFunction("call") { (view: MinimalWebView, path: String, argsJson: String, promise: Promise) in
-        let args = (try? JSONSerialization.jsonObject(with: Data(argsJson.utf8))) as? [Any] ?? []
-        native(view, promise) { webView in
-          try view.platformSettings.call(path, args: args, webView: webView) { json, error in
-            if let error { promise.reject("native_error", error) } else { promise.resolve(json) }
-          }
-        }
+        call(view, path, argsJson, promise)
       }
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, answer: [String: Any]) in
@@ -52,13 +50,12 @@ public class MinimalWebViewModule: Module {
   }
 }
 
-private func navigate(_ view: MinimalWebView, _ action: String) {
-  switch action {
-  case "back": view.webView?.goBack()
-  case "forward": view.webView?.goForward()
-  case "reload": view.retry()
-  case "stop": view.webView?.stopLoading()
-  default: break
+private func call(_ view: MinimalWebView, _ path: String, _ argsJson: String, _ promise: Promise) {
+  let args = (try? JSONSerialization.jsonObject(with: Data(argsJson.utf8))) as? [Any] ?? []
+  native(view, promise) { webView in
+    try view.platformSettings.call(path, args: args, webView: webView) { json, error in
+      if let error { promise.reject("native_error", error) } else { promise.resolve(json) }
+    }
   }
 }
 

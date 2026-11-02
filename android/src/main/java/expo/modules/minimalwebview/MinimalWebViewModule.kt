@@ -109,7 +109,10 @@ class MinimalWebViewModule : Module() {
       OnViewDidUpdateProps { view: MinimalWebView -> view.applyProps() }
       OnViewDestroys { view: MinimalWebView -> view.destroy() }
 
-      AsyncFunction("navigate") { view: MinimalWebView, action: String -> navigate(view, action) }.runOnQueue(Queues.MAIN)
+      AsyncFunction("goBack") { view: MinimalWebView -> live(view) { it.goBack() } }.runOnQueue(Queues.MAIN)
+      AsyncFunction("goForward") { view: MinimalWebView -> live(view) { it.goForward() } }.runOnQueue(Queues.MAIN)
+      AsyncFunction("reload") { view: MinimalWebView -> view.retry() }.runOnQueue(Queues.MAIN)
+      AsyncFunction("stopLoading") { view: MinimalWebView -> live(view) { it.stopLoading() } }.runOnQueue(Queues.MAIN)
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
         native(view, promise) { promise.resolve(view.platformSettings.get(path)) }
       }.runOnQueue(Queues.MAIN)
@@ -162,15 +165,9 @@ private fun warmUp(context: Context) {
   })
 }
 
-private fun navigate(view: MinimalWebView, action: String) {
-  // While recovering, `webView` is the destroyed one: only reload acts, by building the new one.
-  if (view.recovering && action != "reload") return
-  when (action) {
-    "back" -> view.webView.goBack()
-    "forward" -> view.webView.goForward()
-    "reload" -> view.retry()
-    "stop" -> view.webView.stopLoading()
-  }
+/** Runs [action] on the WebView, unless it's recovering: `webView` is then the destroyed one, and only reload acts, by building the new one. */
+private fun live(view: MinimalWebView, action: (WebView) -> Unit) {
+  if (!view.recovering) action(view.webView)
 }
 
 private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) {

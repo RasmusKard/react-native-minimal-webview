@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { AskableEvent, BridgeEvent, NativeErrorEvent, NativeMethods } from '../WebView';
+import type { AskableEvent, BridgeEvent } from '../WebView';
 import type {
   AndroidSettings,
   Download,
@@ -105,7 +105,11 @@ const request = { url: 1, mainFrame: 1, newWindow: 1, userInitiated: 1 } satisfi
 >;
 const navigation = { ...request, action: 1, rule: 1 } satisfies Record<keyof NavigationEvent, 1>;
 const error = { kind: 1, url: 1, code: 1, description: 1 } satisfies Record<
-  keyof NativeErrorEvent,
+  keyof Exclude<LoadErrorEvent, { kind: 'http' }>,
+  1
+>;
+const httpError = { kind: 1, url: 1, statusCode: 1 } satisfies Record<
+  keyof Extract<LoadErrorEvent, { kind: 'http' }>,
   1
 >;
 const processGone = { didCrash: 1, recovered: 1 } satisfies Record<keyof ProcessGoneEvent, 1>;
@@ -164,7 +168,12 @@ const PAYLOADS: Record<Platform, Row[]> = {
       emitSite: /fields\(request\) \+ mapOf/g,
       keys: decision,
     },
-    { event: 'onError', file: 'MinimalWebView.kt', emitSite: /onError\(/g, keys: error },
+    {
+      event: 'onError',
+      file: 'MinimalWebView.kt',
+      emitSite: /onError\(/g,
+      keys: [error, httpError],
+    },
     {
       event: 'onProcessGone',
       file: 'MinimalWebView.kt',
@@ -248,7 +257,12 @@ const PAYLOADS: Record<Platform, Row[]> = {
       emitSite: /request\.payload\.merging\(/g,
       keys: decision,
     },
-    { event: 'onError', file: 'MinimalWebView.swift', emitSite: /onError\(/g, keys: error },
+    {
+      event: 'onError',
+      file: 'MinimalWebView.swift',
+      emitSite: /onError\(/g,
+      keys: [error, httpError],
+    },
     {
       event: 'onProcessGone',
       file: 'MinimalWebView.swift',
@@ -370,10 +384,6 @@ const iosRoots = {
   scrollView: 1,
 } satisfies Record<keyof IOSSettings, 1>;
 const androidRoots = { settings: 1, webView: 1 } satisfies Record<keyof AndroidSettings, 1>;
-const verbs = { back: 1, forward: 1, reload: 1, stop: 1 } satisfies Record<
-  Parameters<NativeMethods['navigate']>[0],
-  1
->;
 const resources = { camera: 1, microphone: 1, geolocation: 1, protectedMedia: 1 } satisfies Record<
   PermissionResource,
   1
@@ -414,7 +424,12 @@ const VALUES: Record<Platform, ValueRow[]> = {
       files: ['MinimalWebView.kt', 'MinimalWebViewClients.kt'],
       site: /outcome = [^\n/]*|-> "\w+"/g,
     },
-    { name: 'error kind', keys: kind, site: /reportError\("\w+"/g },
+    {
+      name: 'error kind',
+      keys: kind,
+      files: ['MinimalWebView.kt', 'MinimalWebViewClients.kt'],
+      site: /reportError\("\w+"|(?<="kind" to )"http"/g,
+    },
     {
       name: 'download failure kind',
       keys: downloadKind,
@@ -440,7 +455,6 @@ const VALUES: Record<Platform, ValueRow[]> = {
       files: ['PlatformSettings.kt'],
       site: /"\w+" -> listOf/g,
     },
-    { name: 'navigate verbs', keys: verbs, site: /"\w+" -> view\./g },
     {
       name: 'permission resources',
       keys: resources,
@@ -483,7 +497,6 @@ const VALUES: Record<Platform, ValueRow[]> = {
       keys: { ...iosRoots, websiteDataStore: 1, httpCookieStore: 1 },
       site: /func root\([^]*?default:/g,
     },
-    { name: 'navigate verbs', keys: verbs, site: /case "\w+": view\./g },
     {
       name: 'permission resources',
       keys: resources,
