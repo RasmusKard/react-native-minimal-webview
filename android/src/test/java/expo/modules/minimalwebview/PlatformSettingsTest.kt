@@ -3,12 +3,11 @@ package expo.modules.minimalwebview
 import android.webkit.ValueCallback
 import expo.modules.minimalwebview.PlatformSettings.Target
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
- * `PlatformSettings.set` and `call` on a fake: a JS value coerced to each parameter type, the reason for each
+ * `PlatformSettings.apply`, `get` and `call` on a fake: a JS value coerced to each parameter type, the reason for each
  * rejection, and which overload `call` picks.
  */
 class PlatformSettingsTest {
@@ -40,7 +39,8 @@ class PlatformSettingsTest {
   private fun set(key: String, value: Any?): Pair<String?, List<Any?>> {
     val fake = Fake()
     val targets = listOf(Target(Fake::class.java, fake, null), Target(FakeCompat::class.java, null, fake))
-    return PlatformSettings.set(targets, key, value) to fake.values
+    val rejected = PlatformSettings { if (it == "settings") targets else null }.apply(mapOf("settings" to mapOf(key to value)))
+    return rejected.singleOrNull()?.get("reason") to fake.values
   }
 
   @Test
@@ -56,17 +56,21 @@ class PlatformSettingsTest {
     assertEquals(null to listOf(2), set("zoom", 2.0)) // a static compat method takes the leading object first
   }
 
-  /** What `call` replied with, and whether a method fit. */
-  private fun call(fake: Fake, name: String, vararg args: Any?): Pair<MutableList<String>, Boolean> {
+  /** A `settings` root over [fake]. */
+  private fun rootOf(fake: Fake) = PlatformSettings { if (it == "settings") listOf(Target(Fake::class.java, fake, null)) else null }
+
+  /** What `call` replied with; throws a [PlatformException] when no method fit. */
+  private fun call(fake: Fake, name: String, vararg args: Any?): MutableList<String> {
     val replies = mutableListOf<String>()
-    return replies to PlatformSettings.call(listOf(Target(Fake::class.java, fake, null)), name, args.toList()) { replies += it() }
+    rootOf(fake).call("settings.$name", args.toList()) { replies += it() }
+    return replies
   }
 
   @Test
   fun callPrefersTheOverloadThatTakesTheArgs() {
     val fake = Fake()
-    assertEquals(mutableListOf("null") to true, call(fake, "put", "a", "1"))
-    assertEquals(mutableListOf("null") to true, call(fake, "put", "b", "2", null)) // null passes no callback
+    assertEquals(listOf("null"), call(fake, "put", "a", "1"))
+    assertEquals(listOf("null"), call(fake, "put", "b", "2", null)) // null passes no callback
     assertEquals(listOf<Any?>("a=1", "b=2 later"), fake.values)
     assertEquals(null, fake.pending)
   }
@@ -74,8 +78,7 @@ class PlatformSettingsTest {
   @Test
   fun callAwaitsATrailingValueCallbackLeftOutOfTheArgs() {
     val fake = Fake()
-    val (replies, fits) = call(fake, "clear")
-    assertEquals(true, fits)
+    val replies = call(fake, "clear")
     assertEquals(emptyList<String>(), replies) // not before the callback reports
     checkNotNull(fake.pending) { "call passed clear no callback" }.onReceiveValue(true)
     assertEquals(listOf("true"), replies)
@@ -86,10 +89,8 @@ class PlatformSettingsTest {
 
   @Test
   fun callOnlyAddsACallbackForAValueCallbackParameter() {
-    val (replies, fits) = call(Fake(), "echo")
-    assertFalse(fits)
-    assertEquals(emptyList<String>(), replies)
-    assertFalse(call(Fake(), "missing").second)
+    assertEquals("not_found", code { call(Fake(), "echo") })
+    assertEquals("not_found", code { call(Fake(), "missing") })
   }
 
   @Test
@@ -119,22 +120,21 @@ class PlatformSettingsTest {
   @Test
   fun getAndCallCodes() {
     val fake = Fake()
-    val targets = listOf(Target(Fake::class.java, fake, null))
-    val settings = PlatformSettings { if (it == "settings") targets else null }
+    val settings = rootOf(fake)
     val replies = mutableListOf<String>()
     settings.call("settings.setInt", listOf(1)) { replies += it() }
     assertEquals(listOf("null"), replies)
     assertEquals(listOf<Any?>(1), fake.values)
-    assertEquals("not_found", code { PlatformSettings.get(targets, "missing") })
+    assertEquals("not_found", code { settings.get("settings.missing") })
     assertEquals("not_found", code { settings.call("settings.missing", emptyList()) {} })
     assertEquals("not_found", code { settings.call("settings.setInt", listOf("1")) {} }) // no overload takes it
     assertEquals("not_found", code { settings.call("nope.setInt", listOf(1)) {} })
-    assertEquals("native_error", code { PlatformSettings.get(targets, "destroy") }) // owned by the core
+    assertEquals("native_error", code { settings.get("settings.destroy") }) // owned by the core
     assertEquals("native_error", code { settings.call("settings.destroy", emptyList()) {} })
     assertEquals("native_error", code { settings.call("settings.addNavigationListener", listOf(null)) {} })
     assertEquals("native_error", code { settings.call("settings.setFailing", listOf(1)) {} })
-    assertEquals("unavailable", code { PlatformSettings.get(targets, "unsupported") })
-    assertEquals("native_error", code { PlatformSettings.get(targets, "naN") })
+    assertEquals("unavailable", code { settings.get("settings.unsupported") })
+    assertEquals("native_error", code { settings.get("settings.naN") })
   }
 
   @Test

@@ -37,16 +37,20 @@ internal class MinimalWebViewNavigation(
   fun decide(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requestHandlers)
-    val action = when (decision.action) {
-      "ask" -> if (request.mainFrame) {
-        return true.also { ask(request, decision.rule) }
-      } else {
-        // Android can't hold a navigation, so `ask` cancels and reissues it: a subframe's can't be reissued.
-        Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
-        "block"
-      }
-      "external" -> return true.also { openExternal(request, decision.rule) }
-      else -> decision.action
+    val action = if (decision.action == "ask" && !request.mainFrame) {
+      // Android can't hold a navigation, so `ask` cancels and reissues it: a subframe's can't be reissued.
+      Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
+      "block"
+    } else {
+      decision.action
+    }
+    if (action == "ask") {
+      ask(request, decision.rule)
+      return true
+    }
+    if (action == "external") {
+      openExternal(request, decision.rule)
+      return true
     }
     notifyNavigation(request, action, decision.rule)
     return action != "allow"
@@ -164,10 +168,17 @@ internal class MinimalWebViewNavigation(
     children += child
     // Finishes once, whichever comes first: the first URL, the timeout, a crash, the Document's end (documentEnded).
     // Destroyed later: this may run inside the child's own callback.
-    fun finish() = children.remove(child).also { if (it) owner.mainHandler.post { child.destroy() } }
+    fun finish(): Boolean {
+      val wasPending = children.remove(child)
+      if (wasPending) owner.mainHandler.post { child.destroy() }
+      return wasPending
+    }
     child.webViewClient = object : WebViewClient() {
       // A renderer crash in the throwaway window must not take the app down.
-      override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail) = true.also { finish() }
+      override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        finish()
+        return true
+      }
 
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val target = request.url.toString()

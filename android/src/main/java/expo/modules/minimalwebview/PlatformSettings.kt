@@ -94,15 +94,29 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   }
 
   /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
-  fun get(path: String): String = resolve(path).let { (targets, key) -> get(targets, key) }
+  fun get(path: String): String {
+    val (targets, key) = resolve(path)
+    if (key in OWNED) throw problem("$key is ${owned(key)}")
+    val value = read(targets, key)
+    if (value === NONE) throw notFound("no public getter for $key")
+    return toJson(value)
+  }
 
   /**
-   * `root.method` with [args], a public method the core doesn't own ([Companion.call]). Throws a [PlatformException].
+   * `root.method` with [args], a public method the core doesn't own. [reply] gets the result as JSON: the method's
+   * return value, or, when no overload takes just [args], the value that the first overload with a trailing
+   * `ValueCallback` reports later. [reply] gets the JSON as a function that throws a [PlatformException] for a value
+   * JSON can't carry. Throws a [PlatformException].
    */
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")
-    if (!call(targets, name, args, reply)) throw notFound("no public method $path takes these arguments")
+    val result = invokeFirst(targets, name, args) { true }
+    if (result !== NONE) return reply { toJson(result) }
+    // The callback runs later, outside the caller's try: the receiver converts, so it can reject instead of crashing.
+    val callback = ValueCallback<Any?> { value -> reply { toJson(value) } }
+    val awaiting = invokeFirst(targets, name, args + callback) { it.parameterTypes.lastOrNull() == ValueCallback::class.java }
+    if (awaiting === NONE) throw notFound("no public method $path takes these arguments")
   }
 
   /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
@@ -113,7 +127,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   }
 
   internal companion object {
-    val NONE = Any()
+    private val NONE = Any()
 
     /** The targets of [root] on [webView], or null for an unknown root. */
     fun targets(webView: WebView, root: String): List<Target>? = when (root) {
@@ -143,30 +157,6 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       "setWebContentsDebuggingEnabled", "setOnTouchListener", "setOnScrollChangeListener", "addNavigationListener"
     )
 
-    /** [key]'s getter on the first of [targets] that has one, as JSON. */
-    fun get(targets: List<Target>, key: String): String {
-      if (key in OWNED) throw problem("$key is ${owned(key)}")
-      val value = read(targets, key)
-      if (value === NONE) throw notFound("no public getter for $key")
-      return toJson(value)
-    }
-
-    /**
-     * Calls the first method [name] of [targets] that takes [args], and [reply] gets its result as JSON; when none does,
-     * the first that also takes a trailing `ValueCallback`, and [reply] gets the value it reports. False when no method
-     * fits. [reply] gets the JSON as a function that throws a [PlatformException] for a value JSON can't carry.
-     */
-    fun call(targets: List<Target>, name: String, args: List<Any?>, reply: (() -> String) -> Unit): Boolean {
-      val result = invokeFirst(targets, name, args) { true }
-      if (result !== NONE) {
-        reply { toJson(result) }
-        return true
-      }
-      // The callback runs later, outside the caller's try: the receiver converts, so it can reject instead of crashing.
-      val callback = ValueCallback<Any?> { value -> reply { toJson(value) } }
-      return invokeFirst(targets, name, args + callback) { it.parameterTypes.lastOrNull() == ValueCallback::class.java } !== NONE
-    }
-
     /** The result of the first method [name] of [targets] that [accepts] and takes [values], or [NONE] when none does. */
     private fun invokeFirst(targets: List<Target>, name: String, values: List<Any?>, accepts: (Method) -> Boolean): Any? {
       for (target in targets) {
@@ -179,16 +169,18 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       return NONE
     }
 
-    /** The JS function that replaces an owned method, for its rejection reason. */
-    private val REPLACED = mapOf("setWebContentsDebuggingEnabled" to "WebView.android.setWebContentsDebuggingEnabled")
-
-    fun owned(name: String) = "owned by the core" + REPLACED[name]?.let { ": use $it" }.orEmpty()
+    private fun owned(name: String) =
+      if (name == "setWebContentsDebuggingEnabled") {
+        "owned by the core: use WebView.android.setWebContentsDebuggingEnabled"
+      } else {
+        "owned by the core"
+      }
 
     /**
      * Calls [key]'s setter on the first target that takes [value], running [before] just before it; returns the
      * problem, or null when it was set.
      */
-    fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
+    private fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
       if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
       val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
       if (setter in OWNED) return owned(setter)
@@ -202,7 +194,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
             before()
             invoke(method, target, args)
             null
-          } catch (e: IllegalArgumentException) {
+          } catch (e: IllegalArgumentException) { // a PlatformException from invoke is one, so its reason is the message
             e.message
           }
         }

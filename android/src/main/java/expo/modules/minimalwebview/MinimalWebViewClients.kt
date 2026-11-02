@@ -243,9 +243,8 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   // A hook client, else the app's prop (onFileRequest), else the system chooser (its intent ignores `capture`).
   override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
     val once = owner.fileUpload.hold(callback) // before the hook branch: a hook's chooser is held too
-    deciding("onShowFileChooser", WEB_VIEW, ValueCallback::class.java, FileChooserParams::class.java)?.let {
-      return it.onShowFileChooser(view, once, params)
-    }
+    val hook = deciding("onShowFileChooser", WEB_VIEW, ValueCallback::class.java, FileChooserParams::class.java)
+    if (hook != null) return hook.onShowFileChooser(view, once, params)
     owner.fileUpload.onShowFileChooser(once, params)
     return true
   }

@@ -21,7 +21,7 @@ internal object NavigationRules {
    * The rules' decision, gated for `ask`: blocked when nothing can answer it ([canAsk] false), allowed when its URL is
    * in [asked] (URLs an `ask` already allowed). An unknown rule action blocks.
    */
-  fun decide(rules: List<Map<String, Any?>>?, request: Request, asked: Set<String> = emptySet(), canAsk: Boolean = true): Decision {
+  fun decide(rules: List<Map<String, Any?>>?, request: Request, asked: Set<String>, canAsk: Boolean): Decision {
     val decision = match(rules, request)
     return when {
       decision.action != "ask" -> decision
