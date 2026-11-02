@@ -12,7 +12,7 @@ public class SampleExtensionModule: Module {
       }) { webView, context in
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
-        // A hookOptions change arrives live, with no reload; `context.options` is already the new value.
+        // A change of the extension's `options` arrives live, with no reload; `context.options` is already the new value.
         context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }

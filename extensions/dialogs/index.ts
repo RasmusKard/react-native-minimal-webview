@@ -18,8 +18,6 @@ export type Dialog = {
   isTopFrame?: boolean;
 };
 
-const KEY = '@react-native-minimal-webview/extensions.dialogs';
-
 /**
  * Answers the page's `alert`, `confirm` and `prompt` with `onDialog` instead of the native dialogs; the page waits for
  * the answer. Not in react-native-webview, whose dialogs are native.
@@ -36,9 +34,8 @@ const KEY = '@react-native-minimal-webview/extensions.dialogs';
 export const dialogs = (
   onDialog: (dialog: Dialog, signal: AbortSignal) => unknown
 ): HookExtension => ({
-  key: KEY,
-  options: true,
-  // Each dialog is an ask, which has a signal; the event's name after the key is the dialog's type.
+  key: '@react-native-minimal-webview/extensions.dialogs',
+  // Each dialog is an ask, which has a signal; the event's name is the dialog's type.
   onEvent: ({ name, payload }, signal) =>
-    onDialog({ ...payload, type: name.slice(KEY.length + 1) } as Dialog, signal as AbortSignal),
+    onDialog({ ...payload, type: name } as Dialog, signal as AbortSignal),
 });

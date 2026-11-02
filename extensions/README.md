@@ -12,19 +12,24 @@ rebuild the app, since the package has native code:
 npx expo install react-native-minimal-webview @react-native-minimal-webview/extensions
 ```
 
-Each extension is a function whose result goes to the core's
-[`useExtensions`](https://rasmuskard.github.io/react-native-minimal-webview/functions/useExtensions.html):
+Each extension is a function whose result goes into the core's
+[`extensions`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#extensions) prop:
 
 ```tsx
 import { basicAuthCredential, onScroll } from '@react-native-minimal-webview/extensions';
-import { WebView, useExtensions } from 'react-native-minimal-webview';
+import { WebView } from 'react-native-minimal-webview';
 
 export function Browser() {
-  const hooks = useExtensions([
-    basicAuthCredential({ username: 'user', password: 'secret' }),
-    onScroll(({ nativeEvent }) => console.log(nativeEvent.contentOffset.y)),
-  ]);
-  return <WebView source={{ uri: 'https://example.com' }} style={{ flex: 1 }} {...hooks} />;
+  return (
+    <WebView
+      source={{ uri: 'https://example.com' }}
+      style={{ flex: 1 }}
+      extensions={[
+        basicAuthCredential({ username: 'user', password: 'secret' }),
+        onScroll(({ nativeEvent }) => console.log(nativeEvent.contentOffset.y)),
+      ]}
+    />
+  );
 }
 ```
 

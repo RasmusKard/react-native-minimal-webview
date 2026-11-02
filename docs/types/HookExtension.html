@@ -11,15 +11,15 @@
 <li><a href="" aria-current="page">HookExtension</a></li></ul>
 <h1>Type Alias HookExtension</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>A native hook's JS side, for <a href="../functions/useExtensions.html" class="tsd-kind-function">useExtensions</a>: its key, its <code>hookOptions</code> value, and what takes its events.</p>
-<p>A package with a native hook exports a function that returns one, so that an app turns the hook on by passing it to
-<code>useExtensions</code>.</p>
+<div class="tsd-comment tsd-typography"><p>A native hook's JS side, for <a href="../interfaces/WebViewProps.html#extensions" class="tsd-kind-property">WebViewProps.extensions</a>: its key, its options, and what takes its events.</p>
+<p>A package with a native hook exports a function that returns one, so that an app turns the hook on by putting it in
+<code>extensions</code>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
 <h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="../documents/Native_hooks.html">Native hooks guide</a></p>
 </div></div></section>
-<div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">HookExtension</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#key">key</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#onevent">onEvent</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="HookEvent.html" class="tsd-signature-type tsd-kind-type-alias">HookEvent</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">signal</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">AbortSignal</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#options">options</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">HookExtension</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#key">key</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#onevent">onEvent</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="HookEvent.html" class="tsd-signature-type tsd-kind-type-alias">HookEvent</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">signal</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">AbortSignal</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#options">options</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -29,7 +29,7 @@
 <h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-index-list"><a href="#key" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>key</span></a>
 <a href="#onevent" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>on<wbr/>Event?</span></a>
-<a href="#options" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>options</span></a>
+<a href="#options" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>options?</span></a>
 </div></section></div></details></section></section>
 <details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
 <h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
@@ -42,13 +42,17 @@
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="onevent"><span>on<wbr/>Event</span><a href="#onevent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">onEvent</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="HookEvent.html" class="tsd-signature-type tsd-kind-type-alias">HookEvent</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">signal</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">AbortSignal</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">unknown</span></div>
-<div class="tsd-comment tsd-typography"><p>Each of the hook's events (<code>'&lt;key&gt;.&lt;event name&gt;'</code>), as <code>onHookEvent</code> gets them: for an <code>ask</code>, the return value is
-the answer.</p>
+<div class="tsd-comment tsd-typography"><p>Each of the hook's events, with <code>name</code> relative to <code>key</code>: for an <code>ask</code>, the return value (a promise is awaited) is
+the answer, and <code>undefined</code> answers null. <code>signal</code> is set only for an <code>ask</code>, and aborts when native stops waiting
+for the answer: an ask has no timeout, but one still open when the page goes away is answered null.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="options"><span>options</span><a href="#options" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span></div>
-<div class="tsd-comment tsd-typography"><p>Its value in <code>hookOptions</code>.</p>
+<div class="tsd-signature"><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol"> = true</span></div>
+<div class="tsd-comment tsd-typography"><p>What the hook gets as its options. Null or false switches the hook off: it stays attached and gets null, but the
+core routes none of its delegates, clients or listeners, drops its events, answers its asks with null, and
+rejects <code>ref.hook</code> calls to its handlers with <code>not_found</code>. Undefined means <code>true</code>. Turning it on again gives it
+the new options.</p>
 </div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">

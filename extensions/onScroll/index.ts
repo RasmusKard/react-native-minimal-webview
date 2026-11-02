@@ -26,6 +26,5 @@ export type ScrollEvent = {
  */
 export const onScroll = (handler: (event: ScrollEvent) => void): HookExtension => ({
   key: '@react-native-minimal-webview/extensions.onScroll',
-  options: true,
   onEvent: ({ payload }) => handler({ nativeEvent: payload as ScrollEvent['nativeEvent'] }),
 });

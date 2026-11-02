@@ -1,6 +1,6 @@
 import ExpoModulesCore
 
-/// Registers the extensions' hooks; each attaches only to a WebView whose `hookOptions` turns its key on.
+/// Registers the extensions' hooks; each attaches only to a WebView whose `extensions` prop has its extension, with options that are on.
 public class MinimalWebViewExtensionsModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebViewExtensions")

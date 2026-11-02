@@ -12,8 +12,8 @@ export type BasicAuthCredential = { username: string; password: string };
  * iOS answers HTTP basic challenges, and Android every HTTP auth request, digest included. Neither sends the credential
  * again once the site has rejected it: the site's 401 page shows. A change applies from the next challenge.
  *
- * On iOS, a challenge it doesn't answer goes on to the native hooks' navigation delegates listed after it (a change
- * moves it to the end of the list), then to WebKit's default handling.
+ * On iOS, a challenge it doesn't answer goes on to the native hooks' navigation delegates listed after it, then to
+ * WebKit's default handling.
  *
  * A credential once accepted stays with the WebView's network session, as in a browser: after it changes or is
  * switched off, an origin that accepted it can still get it, until the app restarts.

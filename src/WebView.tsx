@@ -7,7 +7,7 @@ import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
 import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
-  HookEvent,
+  HookExtension,
   InjectedScript,
   LoadErrorEvent,
   NavigationEvent,
@@ -63,8 +63,8 @@ export type NativeErrorEvent = {
 export type BridgeEvent =
   { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
-/** `askId` is set when native waits for the answer (`WebViewContext.ask`). */
-export type AskableEvent = HookEvent & { askId?: number };
+/** A hook's event as native sends it: `name` is `'<key>.<event name>'`. `askId` is set when native waits for the answer. */
+export type AskableEvent = { name: string; payload: Record<string, unknown>; askId?: number };
 
 /**
  * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
@@ -78,7 +78,7 @@ const REQUESTS = {
   permissionRequest: 'onPermissionRequest',
   download: 'onDownload',
 } as const;
-/** The core's own events; everything else is a hook's, for `onHookEvent`. */
+/** The core's own events; everything else is a hook's, for its extension's `onEvent`. */
 const CORE = 'core.';
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
@@ -92,8 +92,7 @@ const OWN = [
   'bridge',
   'pullToRefresh',
   'sharedCookies',
-  'hookOptions',
-  'onHookEvent',
+  'extensions',
   'onNavigation',
   'onNavigationStateChange',
   'onError',
@@ -267,6 +266,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   };
 
   const requestHandlers = useRequestHandlers(props);
+  const hookOptions = useHookOptions(props.extensions);
 
   // One per ask in flight, by id: aborted when native stops waiting (`core.askCancelled`) or at unmount.
   const [asks] = useState(() => new Map<number, AbortController>());
@@ -281,7 +281,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       : undefined;
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
-      : (_: unknown, signal?: AbortSignal) => props.onHookEvent?.({ name, payload }, signal);
+      : (_: unknown, signal?: AbortSignal) => {
+          const owner = ownerOf(props.extensions, name);
+          return owner?.onEvent?.({ name: name.slice(owner.key.length + 1), payload }, signal);
+        };
     // Only an ask can be cancelled, so only an ask gets a signal.
     let controller: AbortController | undefined;
     if (askId !== undefined) {
@@ -292,7 +295,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       () => handler?.(payload, controller?.signal),
       // Native counts a missing answer as `block` too.
       request === 'onNavigationRequest' ? 'block' : null,
-      request ? `${request} failed` : `onHookEvent failed for ${name}`
+      request ? `${request} failed` : `onEvent failed for ${name}`
     );
     if (askId === undefined) return;
     asks.delete(askId);
@@ -314,7 +317,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       injectedScripts={injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
-      hookOptions={props.hookOptions && withoutNulls(props.hookOptions)}
+      hookOptions={hookOptions}
       requestHandlers={requestHandlers}
       onNavigation={({ nativeEvent }) => props.onNavigation?.(pick(nativeEvent, NAVIGATION_KEYS))}
       onNavigationState={({ nativeEvent }) =>
@@ -360,6 +363,38 @@ function useRequestHandlers(props: WebViewProps) {
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
+/**
+ * Native's `hookOptions`: each extension's `options` (`true` when unset) by its key, the later of two extensions with
+ * one key winning (a development warning). A null `options` leaves the key out. The same object while the JSON is the
+ * same, so a render with new handlers sends native nothing.
+ */
+function useHookOptions(extensions: WebViewProps['extensions']) {
+  const on = (extensions ?? []).filter((extension) => !!extension);
+  const keys = on.map(({ key }) => key);
+  const repeated = JSON.stringify([...new Set(keys.filter((key, i) => keys.indexOf(key) !== i))]);
+  useEffect(() => {
+    if (!__DEV__) return;
+    for (const key of JSON.parse(repeated) as string[])
+      console.warn(
+        `[react-native-minimal-webview] extensions: two extensions have the key ${key}; the later one wins`
+      );
+  }, [repeated]);
+  const json = JSON.stringify(
+    withoutNulls(Object.fromEntries(on.map(({ key, options = true }) => [key, options])))
+  );
+  return useMemo(() => JSON.parse(json) as Record<string, unknown>, [json]);
+}
+
+/** The extension whose key is the longest prefix of the event's `name` (`'<key>.'`); the later of equal keys. */
+function ownerOf(extensions: WebViewProps['extensions'], name: string) {
+  let owner: HookExtension | undefined;
+  for (const extension of extensions ?? []) {
+    if (!extension || !name.startsWith(`${extension.key}.`)) continue;
+    if (!owner || extension.key.length >= owner.key.length) owner = extension;
+  }
+  return owner;
+}
+
 /** Bridges by identity, for the creation key. */
 const bridgeIds = new WeakMap<object, number>();
 let lastBridgeId = 0;
@@ -378,7 +413,7 @@ function creationKey(props: WebViewProps) {
   );
 }
 
-/** A null or undefined value is no value: the hook is off, and for an attached one the key is removed. */
+/** A null value is no value: the hook is off, and for an attached one the key is removed. */
 const withoutNulls = (options: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(options).filter(([, value]) => value != null));
 

@@ -6,6 +6,7 @@
 import { requireNativeModule } from 'expo';
 import { Platform } from 'react-native';
 import type { NavigationRule } from 'react-native-minimal-webview';
+import { sampleHook } from 'sample-extension';
 
 import { type Harness, launchMarks, openPage, reporter, sleep, until } from './harness';
 
@@ -319,7 +320,8 @@ async function libraryHost(h: Harness): Promise<PerfHost> {
   h.setProps({
     sharedCookies: false,
     pullToRefresh: false,
-    hookOptions: { 'sample.perf': true },
+    extensions: [sampleHook('perf')],
+    withoutPageCounter: true,
     onLoadEnd: ({ outcome }) => {
       h.events.loads.push('end');
       h.events.outcomes.push(outcome);

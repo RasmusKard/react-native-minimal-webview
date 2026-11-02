@@ -4,7 +4,7 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
- * Registers the extensions' hooks; each attaches only to a WebView whose `hookOptions` turns its key on.
+ * Registers the extensions' hooks; each attaches only to a WebView whose `extensions` prop has its extension, with options that are on.
  * @suppress
  */
 class MinimalWebViewExtensionsModule : Module() {

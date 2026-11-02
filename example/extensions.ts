@@ -1,4 +1,4 @@
-// The extensions suite: @react-native-minimal-webview/extensions' functions, through App's useExtensions.
+// The extensions suite: @react-native-minimal-webview/extensions' functions, through the WebView's `extensions` prop.
 import {
   type CustomMenuSelectionEvent,
   type Dialog,
@@ -53,7 +53,7 @@ async function loadHtml(h: Harness, body: string) {
 const webViewClass = async (h: Harness) =>
   await h.ref.current?.call(ios ? 'webView.description' : 'webView.toString').catch(errorCode);
 
-/** Events of this package's hooks that reached App's `onHookEvent`, the ones no extension took. */
+/** Events of this package's hooks that no extension took: App logs those, and those of an extension without `onEvent`. */
 const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.startsWith(KEY));
 
 /**
@@ -240,14 +240,14 @@ async function scroll(h: Harness, r: Reporter) {
   );
   h.setProps({ ios: insets });
   await sleep(300);
-  const [count, events] = [scrolls.length, h.events.hookEvents.length];
+  const count = scrolls.length;
+  // A hook switched off earlier in the suite (a dialog's answer) may still send one: only what the scroll sends counts.
+  h.events.hookEvents.length = 0;
   await h.ref.current?.evaluate('scrollTo(0, 800)');
   await sleep(1000);
   r.check(
     'onScroll switched off: its hook sends nothing more',
-    scrolls.length === count &&
-      strayEvents(h).length === 0 &&
-      h.events.hookEvents.length === events,
+    scrolls.length === count && strayEvents(h).length === 0,
     { more: scrolls.length - count, stray: strayEvents(h) }
   );
 }

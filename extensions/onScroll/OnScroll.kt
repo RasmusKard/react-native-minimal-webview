@@ -17,7 +17,7 @@ internal object OnScroll {
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     context.scrollListeners += View.OnScrollChangeListener { view, x, y, _, _ ->
-      if (context.options != null) context.emit("scroll", event(view, x, y))
+      context.emit("scroll", event(view, x, y))
     }
     null
   }

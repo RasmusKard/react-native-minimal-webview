@@ -180,7 +180,7 @@ without <code>get</code> or <code>is</code>.</p>
 <div class="tsd-comment tsd-typography"><p>Calls the <code>method</code> handler the native hook <code>name</code> registered with <code>context.handle</code>, with <code>args</code>, and resolves with
 its reply; both cross as JSON.</p>
 <p>The reply converts as <code>call</code>'s results do: an object JSON can't carry is <code>null</code>, and <code>NaN</code> rejects with
-<code>native_error</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> when no attached hook <code>name</code> handles <code>method</code>. A
+<code>native_error</code>. Rejects with a <a href="CodedError.html" class="tsd-kind-type-alias">CodedError</a>: <code>not_found</code> when no attached hook <code>name</code> that is on handles <code>method</code>. A
 navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount does.</p>
 </div>
 <div class="tsd-parameters">

@@ -23,7 +23,7 @@ A hook can implement any delegate or client callback. It runs natively, with no 
 ## How a hook works
 
 1. Your module registers the hook under a key when the app starts.
-2. The app turns the hook on for a WebView by putting its key in `hookOptions`, usually through `useExtensions`.
+2. The app turns the hook on for a WebView by passing its extension in the `extensions` prop. The extension's `options` default to `true`; null or false switch the hook off.
 3. The core calls the hook's `attach` with the native WebView and a context.
 4. The hook adds its delegates or clients to the context, and talks to JS through it.
 
@@ -145,13 +145,12 @@ module wrappers, which nothing uses now.
 ```ts
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
-type PageLoaded = HookEvent<'myApp.pageCounter.pageLoaded', { count: number }>;
+type PageLoaded = HookEvent<'pageLoaded', { count: number }>;
 
 export const pageCounter = (onLoaded: (count: number) => void): HookExtension => ({
   key: 'myApp.pageCounter',
-  options: true, // its hookOptions value, which turns it on
   onEvent: (event) => {
-    if (event.name !== 'myApp.pageCounter.pageLoaded') return;
+    if (event.name !== 'pageLoaded') return; // relative to the key
     onLoaded((event as PageLoaded).payload.count);
   },
 });
@@ -159,19 +158,18 @@ export const pageCounter = (onLoaded: (count: number) => void): HookExtension =>
 
 ### 6. Use it
 
-Pass the extension to [`useExtensions`][useExtensions] and spread the result onto the WebView:
+Pass the extension in the WebView's [`extensions`][extensionsProp] prop:
 
 ```tsx
 import { useRef, useState } from 'react';
 import { Button } from 'react-native';
-import { WebView, useExtensions, type WebViewRef } from 'react-native-minimal-webview';
+import { WebView, type WebViewRef } from 'react-native-minimal-webview';
 
 import { pageCounter } from '../modules/page-counter';
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
   const [count, setCount] = useState(0);
-  const hooks = useExtensions([pageCounter(setCount)]);
   const logCount = async () => {
     console.log(await ref.current?.hook('myApp.pageCounter', 'count')); // the handler's reply
   };
@@ -182,7 +180,7 @@ export function Browser() {
         ref={ref}
         source={{ uri: 'https://example.com' }}
         style={{ flex: 1 }}
-        {...hooks}
+        extensions={[pageCounter(setCount)]}
       />
     </>
   );
@@ -197,7 +195,7 @@ Everything crosses as JSON.
 
 | Native | JS |
 |---|---|
-| `context.emit(name, payload)` | The extension's `onEvent` gets `<key>.<name>` |
+| `context.emit(name, payload)` | The extension's `onEvent` gets `<name>` |
 | `context.ask(name, payload, onAnswer)` | `onEvent`'s return value, a promise awaited, is the answer |
 | `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with the reply |
 | `context.options`, `context.onOptionsChange` | The extension's `options`; a change arrives live |
@@ -211,6 +209,7 @@ The core keeps the WebView's own delegate and client slots. Your hook adds to th
 - On iOS, an auth challenge goes to each hook in turn, until one answers.
 - A hook that takes a decision switches off the props that make it, such as `navigationRules` or
   `onPermissionRequest`. A warning in the console names what stopped applying.
+- A hook that is off has none of its lists routed: until it turns on again, it hears and decides nothing.
 
 Leave alone what the core owns, listed at the top of [`Hooks.swift`][swift] and [`Hooks.kt`][kotlin]. The full routing
 rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `ask`.
@@ -221,9 +220,9 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 |---|---|
 | A WebView with its key mounts | Android: the `webViewFactory`, if it has one. Then `configure`, if it has one, then `attach` |
 | The page ends: a navigation commits, a crash, or unmount | Its `onDocumentEnd` handlers run. Reset per-page state there. |
-| Its `hookOptions` value changes | Its `onOptionsChange` handlers run, without a reload |
+| Its `options` change | Its `onOptionsChange` handlers run, without a reload |
 | Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
-| Its key is removed | `onOptionsChange` with null. It stays attached. |
+| Its key is removed, or its `options` become null or false | The hook is off: `onOptionsChange` with null, and it stays attached. The core routes none of its delegates, clients or listeners, drops its `emit`s, answers its `ask`s with null, and rejects `ref.hook` calls to its handlers with `not_found`. When it turns on again, `onOptionsChange` runs with the new options. |
 | The renderer crashes | iOS keeps the `WKWebView` and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the `WebView` (the closure `attach` returned, then `onDestroyed` with `CRASHED`), then the factory, `configure` and `attach` run again, on a new context. |
 | The WebView unmounts | `onDocumentEnd` with `closing`, then the closure `attach` returned, then on Android `onDestroyed` with `CLOSING` |
 
@@ -248,8 +247,7 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 ## Reference
 
 - Native API: [`Hooks.swift`][swift] and [`Hooks.kt`][kotlin], with `MinimalWebViewHooks` and `WebViewContext`.
-- JS API: [`useExtensions`][useExtensions], [`HookExtension`][HookExtension], [`hookOptions`][hookOptions] and
-  [`ref.hook`][hook].
+- JS API: [`extensions`][extensionsProp], [`HookExtension`][HookExtension] and [`ref.hook`][hook].
 - [sample-extension][sample]: a hook for each seam the core offers, run by the example app's tests.
 - [@react-native-minimal-webview/extensions][extensions]: ready-made hooks. Its README shows how to copy one into your
   own module.
@@ -261,6 +259,5 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 [documentscope]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift
 [documentscopekt]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentScope.kt
 [HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html
-[useExtensions]: https://rasmuskard.github.io/react-native-minimal-webview/functions/useExtensions.html
-[hookOptions]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#hookoptions
+[extensionsProp]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#extensions
 [hook]: https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#hook

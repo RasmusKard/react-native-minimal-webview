@@ -11,5 +11,5 @@ import type { HookExtension } from 'react-native-minimal-webview';
  */
 export const nestedScrollEnabled = (): HookExtension | null =>
   Platform.OS === 'android'
-    ? { key: '@react-native-minimal-webview/extensions.nestedScrollEnabled', options: true }
+    ? { key: '@react-native-minimal-webview/extensions.nestedScrollEnabled' }
     : null;

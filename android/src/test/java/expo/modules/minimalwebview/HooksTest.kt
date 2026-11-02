@@ -1,6 +1,7 @@
 package expo.modules.minimalwebview
 
 import android.content.Context
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.SafeBrowsingResponse
 import android.webkit.WebChromeClient
@@ -86,7 +87,7 @@ class HooksTest {
   }
 
   @Test
-  fun `a hookOptions value enables its hook unless it is null or false`() {
+  fun `an extension's options turn its hook on unless they are null or false`() {
     for (value in listOf(null, false)) assertFalse("$value", enables(value))
     for (value in listOf(true, 0.0, "", mapOf<String, Any>(), listOf<Any>())) assertTrue("$value", enables(value))
   }
@@ -184,19 +185,112 @@ class HooksTest {
   }
 
   @Test
-  fun `a detached attachment drops emits and answers asks null at once`() {
-    val attachment = Attachment()
+  fun `an off or detached attachment drops emits and answers asks null at once`() {
+    for (off in listOf(Attachment(null), Attachment(false), Attachment("on").also { it.detach() })) {
+      var sent = 0
+      val answers = mutableListOf<Any?>()
+      off.emit { sent++ }
+      off.ask({ answers += it }) { sent++ }
+      assertEquals(0, sent)
+      assertEquals(listOf<Any?>(null), answers)
+    }
+    val on = Attachment(true)
     var sent = 0
     val answers = mutableListOf<Any?>()
-    attachment.emit { sent++ }
-    attachment.ask({ answers += it }) { sent++ }
+    on.emit { sent++ }
+    on.ask({ answers += it }) { sent++ }
     assertEquals(2, sent)
     assertTrue(answers.isEmpty())
+  }
 
+  @Test
+  fun `the core routes the lists of the hooks that are on, in attach order`() {
+    val a = Attachment(true)
+    val off = Attachment(null)
+    val b = Attachment(mapOf<String, Any>())
+    val clients = listOf(Plain(), Plain(), Plain(), Plain())
+    a.clients += clients[0]
+    off.clients += clients[1]
+    b.clients += clients[2]
+    b.clients += clients[3]
+    assertEquals(listOf(clients[0], clients[2], clients[3]), routed(listOf(a, off, b)) { it.clients })
+
+    off.optionsChanged(true)
+    assertEquals(clients, routed(listOf(a, off, b)) { it.clients })
+    a.optionsChanged(null)
+    assertEquals(listOf(clients[1], clients[2], clients[3]), routed(listOf(a, off, b)) { it.clients })
+  }
+
+  @Test
+  fun `an off hook's clients, chrome clients and listeners are not routed`() {
+    val off = Attachment(false)
+    off.clients += Plain()
+    off.chromeClients += WebChromeClient()
+    off.touchListeners += View.OnTouchListener { _, _ -> true }
+    off.scrollListeners += View.OnScrollChangeListener { _, _, _, _, _ -> }
+    assertEquals(emptyList<WebViewClient>(), routed(listOf(off)) { it.clients })
+    assertEquals(emptyList<WebChromeClient>(), routed(listOf(off)) { it.chromeClients })
+    assertEquals(emptyList<View.OnTouchListener>(), routed(listOf(off)) { it.touchListeners })
+    assertEquals(emptyList<View.OnScrollChangeListener>(), routed(listOf(off)) { it.scrollListeners })
+  }
+
+  @Test
+  fun `a false set after mount reaches the options handlers as null, and a value turns the hook on again`() {
+    val attachment = Attachment(mapOf("a" to 1.0))
+    val seen = mutableListOf<Any?>()
+    attachment.onOptionsChange { seen += it }
+    attachment.optionsChanged(false)
+    assertNull(attachment.options)
+    assertFalse(attachment.routed)
+    attachment.optionsChanged(true)
+    assertTrue(attachment.routed)
+    attachment.optionsChanged(null)
+    assertEquals(listOf(null, true, null), seen)
+    assertFalse(attachment.routed)
+  }
+
+  @Test
+  fun `a detached context's list edits reach no WebView`() {
+    val attachment = Attachment(true)
+    val attachments = listOf(attachment)
     attachment.detach()
-    attachment.emit { sent++ }
-    attachment.ask({ answers += it }) { sent++ }
-    assertEquals(2, sent)
-    assertEquals(listOf<Any?>(null), answers)
+    attachment.clients += Plain()
+    attachment.touchListeners += View.OnTouchListener { _, _ -> true }
+    assertEquals(emptyList<WebViewClient>(), routed(attachments) { it.clients })
+    assertEquals(emptyList<View.OnTouchListener>(), routed(attachments) { it.touchListeners })
+    attachment.optionsChanged(true)
+    assertFalse(attachment.routed)
+  }
+
+  @Test
+  fun `a download is offered only to a hook that is on and attached, and the first handler that takes it ends the round`() {
+    val offered = mutableListOf<String>()
+    fun Attachment.handler(name: String, takes: Boolean) = onDownloadStart { _, _, _, _, _ -> offered += name; takes }
+    val off = Attachment(null).also { it.handler("off", true) }
+    val detached = Attachment(true).also { it.handler("detached", true); it.detach() }
+    val on = Attachment(true).also { it.handler("skips", false); it.handler("takes", true); it.handler("never", true) }
+    val none = Attachment(true)
+    assertFalse(off.downloadStarted("u", "ua", "", "", -1))
+    assertFalse(detached.downloadStarted("u", "ua", "", "", -1))
+    assertFalse(none.downloadStarted("u", "ua", "", "", -1))
+    assertTrue(offered.isEmpty())
+    assertTrue(on.downloadStarted("u", "ua", "", "", -1))
+    assertEquals(listOf("skips", "takes"), offered)
+    off.optionsChanged(true)
+    assertTrue(off.downloadStarted("u", "ua", "", "", -1))
+  }
+
+  @Test
+  fun `a change between two off values doesn't reach the options handlers`() {
+    val attachment = Attachment(false)
+    val seen = mutableListOf<Any?>()
+    attachment.onOptionsChange { seen += it }
+    attachment.optionsChanged(null)
+    attachment.optionsChanged(false)
+    assertTrue(seen.isEmpty())
+    attachment.optionsChanged(true)
+    attachment.optionsChanged(false)
+    attachment.optionsChanged(null)
+    assertEquals(listOf<Any?>(true, null), seen)
   }
 }

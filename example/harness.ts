@@ -8,7 +8,6 @@ import type {
   Download,
   DownloadFailure,
   FileRequest,
-  HookExtension,
   NavigationEvent,
   NavigationRule,
   ProcessGoneEvent,
@@ -27,10 +26,11 @@ import { hostile } from './hostile';
 import { perf, perfCold } from './perf';
 import { shapes } from './shapes';
 
-/** Extra WebView props for a suite, and `extensions`, which App passes to `useExtensions` after its own. */
-export type HarnessProps = Partial<WebViewProps> & {
-  extensions?: (HookExtension | false | null | undefined)[];
-};
+/**
+ * Extra WebView props for a suite. Its `extensions` come after App's own, the page counter, which `withoutPageCounter`
+ * leaves out.
+ */
+export type HarnessProps = Partial<WebViewProps> & { withoutPageCounter?: boolean };
 
 export type Harness = {
   pages: string;
@@ -886,7 +886,7 @@ export const fresh = (h: Harness, path: string) =>
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
  * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
- * that don't recreate it (`hookOptions`, whose keys pick the hooks with configure only when it is created), it
+ * that don't recreate it (`extensions`, whose keys pick the hooks with configure only when it is created), it
  * remounts too.
  */
 export async function recreate(h: Harness, props: HarnessProps, remount = false) {
@@ -2420,7 +2420,7 @@ async function sampleExtension(h: Harness) {
   await waitFor(h, () => h.events.pageCounts.at(-1)?.url === page, 5000);
   const event = h.events.pageCounts.at(-1);
   r.check(
-    'its delegate gets a callback the core implements too, and emits through onHookEvent',
+    'its delegate gets a callback the core implements too, and emits through onEvent',
     h.events.pageCounts.length > before && event?.url === page,
     event
   );
@@ -2436,7 +2436,7 @@ async function sampleExtension(h: Harness) {
   r.check('ref.hook resolves with the reply of its handler', count === inPage, { count, inPage });
   const label = await h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
   r.check(
-    "its ask waits for the app's answer (onHookEvent's return value)",
+    "its ask waits for the app's answer (onEvent's return value)",
     label === `page ${inPage}`,
     { label, inPage }
   );
@@ -2453,14 +2453,14 @@ async function sampleExtension(h: Harness) {
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
-  h.setProps({ extensions: [pageCounter({ global: '__liveCount' })] });
+  h.setProps({ extensions: [pageCounter({ global: '__liveCount' })], withoutPageCounter: true });
   const live = await until(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
   );
   const kept = await h.ref.current?.evaluate('window.__kept');
   r.check(
-    'a hookOptions change reaches its hook live, without recreating the WebView or reloading the page',
+    'an options change reaches its hook live, without recreating the WebView or reloading the page',
     !!live && kept === true && h.state().url === url && h.events.loads.length === loads,
     { live, kept, url: h.state().url, newLoads: h.events.loads.length - loads }
   );
@@ -2485,7 +2485,10 @@ async function sampleExtension(h: Harness) {
     );
   }
   // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
-  h.setProps({ extensions: [pageCounter(true, () => new Promise<never>(() => {}))] });
+  h.setProps({
+    extensions: [pageCounter(true, () => new Promise<never>(() => {}))],
+    withoutPageCounter: true,
+  });
   await sleep(100);
   const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
   await sleep(200);
@@ -2498,8 +2501,8 @@ async function sampleExtension(h: Harness) {
   );
   // HTTP auth, which the core declines: the hook's delegate (client) answers it. Its key turns on after creation, and a
   // hook without configure attaches then.
-  await recreate(h, { hookOptions: { 'sample.pageCounter': true } }, true);
-  h.setProps({ hookOptions: { 'sample.pageCounter': true, 'sample.hookAuth': true } });
+  await recreate(h, {}, true);
+  h.setProps({ extensions: [sampleHook('hookAuth')] });
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
   r.check(
@@ -2508,10 +2511,10 @@ async function sampleExtension(h: Harness) {
     auth
   );
   // A hook with configure can't attach to a WebView that exists: its key turned on late warns and attaches nothing.
-  await recreate(h, { hookOptions: { 'sample.hookAuth': true } }, true);
+  await recreate(h, { extensions: [sampleHook('hookAuth')], withoutPageCounter: true }, true);
   const warnings = captureWarnings();
   try {
-    h.setProps({ hookOptions: { 'sample.hookAuth': true, 'sample.pageCounter': true } });
+    h.setProps({ extensions: [sampleHook('hookAuth'), pageCounter()], withoutPageCounter: true });
     await until(() => warnings.warned('hookOptions.sample.pageCounter'), 3000, 100);
   } finally {
     warnings.stop();
