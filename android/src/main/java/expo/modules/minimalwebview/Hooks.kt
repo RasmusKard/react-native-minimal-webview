@@ -132,11 +132,11 @@ internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
 
 /** Why the [hook] registered under [key] can't attach to a WebView that exists already, or null when it can. */
 internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = when {
-  hook == null -> "hookOptions.$key: no hook is registered under this key"
+  hook == null -> "extension $key: no hook is registered under this key"
   // configure runs before the package sets the WebView up, and a factory makes it: too late for one that exists.
   hook.configure != null || hook.webViewFactory != null -> {
     val why = if (hook.configure != null) "configure" else "a webViewFactory"
-    "hookOptions.$key: its hook has $why, so it attaches only when the WebView is created"
+    "extension $key: its hook has $why, so it attaches only when the WebView is created"
   }
   else -> null
 }
@@ -321,8 +321,9 @@ internal class Attachment(value: Any?) {
   // own changes write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
-  val touchListeners = mutableListOf<View.OnTouchListener>()
-  val scrollListeners = mutableListOf<View.OnScrollChangeListener>()
+  // Copy-on-write too: the core iterates them live, and a listener may remove itself while it runs.
+  val touchListeners: MutableList<View.OnTouchListener> = CopyOnWriteArrayList()
+  val scrollListeners: MutableList<View.OnScrollChangeListener> = CopyOnWriteArrayList()
 
   /** Whether the hook is on and the attach is still there: the core routes the lists and passes events and asks. */
   val routed get() = options != null && !detached
