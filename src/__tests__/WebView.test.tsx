@@ -302,12 +302,18 @@ describe('extensions', () => {
 
   it('warns in development when two extensions have one key, and the later one wins', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const { root, fire } = await mount([ext('a', 1, () => 'one'), ext('b'), ext('a', 2, () => 'two')]);
+    const { root, fire } = await mount([
+      ext('a', 1, () => 'one'),
+      ext('b'),
+      ext('a', 2, () => 'two'),
+    ]);
     expect(nativeOf(root).hookOptions).toEqual({ a: 2, b: true });
     await fire('a.x', 1);
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'two' });
     expect(warn.mock.calls).toEqual([
-      ['[react-native-minimal-webview] extensions: two extensions have the key a; the later one wins'],
+      [
+        '[react-native-minimal-webview] extensions: two extensions have the key a; the later one wins',
+      ],
     ]);
     warn.mockRestore();
   });
@@ -330,7 +336,12 @@ describe('extensions', () => {
   it('answers null for an ask with no handler, and drops an event no extension owns', async () => {
     const own = jest.fn();
     const { show, fire } = await mount([ext('a', true, own), ext('quiet'), ext('ab', true, own)]);
-    for (const [name, askId] of [['other.label', 1], ['quiet.event', 2], ['a', 3], ['ab', 4]] as const) {
+    for (const [name, askId] of [
+      ['other.label', 1],
+      ['quiet.event', 2],
+      ['a', 3],
+      ['ab', 4],
+    ] as const) {
       await fire(name, askId);
       expect(mockAnswer).toHaveBeenLastCalledWith(askId, { value: null });
     }
@@ -632,7 +643,9 @@ describe('platform settings', () => {
         },
       })
     );
-    expect(warn).toHaveBeenCalledWith('[react-native-minimal-webview] ios.scrollView.nope: no such property');
+    expect(warn).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] ios.scrollView.nope: no such property'
+    );
     expect(mockAnswer).not.toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -752,10 +765,7 @@ describe('page requests', () => {
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pick!' });
     await fire('pageCounter.note', { b: 2 });
-    expect(onEvent).toHaveBeenLastCalledWith(
-      { name: 'note', payload: { b: 2 } },
-      undefined
-    );
+    expect(onEvent).toHaveBeenLastCalledWith({ name: 'note', payload: { b: 2 } }, undefined);
     expect(mockAnswer).toHaveBeenCalledTimes(3);
     error.mockRestore();
   });
@@ -803,12 +813,13 @@ describe('page requests', () => {
     await asked;
   });
 
-  it('asks onOpenExternal with the request and answers its result; a throw answers null, which opens nothing', async () => {
+  it('asks onOpenExternal with the request and answers its result; undefined and a throw answer null, which the core counts as opened', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     const onOpenExternal = jest
-      .fn<boolean | Promise<boolean>, [NavigationRequest, AbortSignal]>()
+      .fn<boolean | void | Promise<boolean | void>, [NavigationRequest, AbortSignal]>()
       .mockReturnValueOnce(false)
       .mockResolvedValueOnce(true)
+      .mockReturnValueOnce(undefined)
       .mockImplementationOnce(() => {
         throw new Error('no');
       });
@@ -824,15 +835,17 @@ describe('page requests', () => {
     await fire('core.openExternal', request('tel:1'), 2);
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: true });
     await fire('core.openExternal', request('tel:2'), 3);
-    // Native counts anything but false as opened by the app, so null opens nothing.
+    // Native counts anything but false as opened by the app, so undefined and a throw answer null.
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
+    await fire('core.openExternal', request('tel:3'), 4);
+    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onOpenExternal failed',
       expect.any(Error)
     );
     const signal: unknown = expect.any(AbortSignal);
     expect(onOpenExternal.mock.calls).toEqual(
-      ['intent://a#Intent;end', 'tel:1', 'tel:2'].map((url) => [request(url), signal])
+      ['intent://a#Intent;end', 'tel:1', 'tel:2', 'tel:3'].map((url) => [request(url), signal])
     );
     error.mockRestore();
   });

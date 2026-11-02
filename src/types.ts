@@ -815,7 +815,10 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Without this prop, the system browser or app for the URL opens it, without asking `canOpenURL` first, so no
    * `LSApplicationQueriesSchemes` (iOS) or `<queries>` (Android) entries are needed.
    */
-  onOpenExternal?: (request: NavigationRequest, signal: AbortSignal) => boolean | Promise<boolean>;
+  onOpenExternal?: (
+    request: NavigationRequest,
+    signal: AbortSignal
+  ) => boolean | void | Promise<boolean | void>;
   /**
    * The bridge to the page, from `createBridge`.
    *
