@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-import expo.modules.minimalwebview.DocumentScope.End
 
 /**
  * Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until JS answers it through [answer]
@@ -38,8 +37,8 @@ internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   }
 
   /** Cancels every pending ask. At closing JS isn't told: it aborts its own handlers at unmount. */
-  fun documentEnded(reason: End) {
-    if (reason == End.CLOSING) closed = true
-    pending.keys.toList().forEach { cancel(it, tell = reason != End.CLOSING) }
+  fun documentEnded(reason: DocumentEnd) {
+    if (reason == DocumentEnd.CLOSING) closed = true
+    pending.keys.toList().forEach { cancel(it, tell = reason != DocumentEnd.CLOSING) }
   }
 }

@@ -38,7 +38,7 @@ final class Asks {
   }
 
   /// Cancels every pending ask. At closing JS isn't told: it aborts its own handlers at unmount.
-  func documentEnded(_ reason: DocumentScope.End) {
+  func documentEnded(_ reason: DocumentEnd) {
     if reason == .closing { closed = true }
     pending.keys.forEach { cancel($0, tell: reason != .closing) }
   }

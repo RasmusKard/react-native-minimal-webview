@@ -21,7 +21,6 @@ import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
-import expo.modules.minimalwebview.DocumentScope.End
 import expo.modules.minimalwebview.requests.DownloadInfo
 import expo.modules.minimalwebview.requests.Downloads
 import expo.modules.minimalwebview.requests.FileUpload
@@ -331,7 +330,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 
-  internal fun newDocument() = document.end(End.COMMITTED)
+  internal fun newDocument() = document.end(DocumentEnd.COMMITTED)
 
   internal fun pageFinished() = refresher.pageFinished()
 
@@ -347,7 +346,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun processGone(didCrash: Boolean, at: Long) {
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
-    document.end(End.CRASHED)
+    document.end(DocumentEnd.CRASHED)
     val detached = detachHooks()
     val dead = webView
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
@@ -355,7 +354,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
     refresher.content.removeView(dead)
     dead.destroy()
-    detached.forEach { it.destroyed(End.CRASHED) }
+    detached.forEach { it.destroyed(DocumentEnd.CRASHED) }
     pendingRecovery = Recovery(reload, history)
     // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
     if (loading) outcome = "failed"
@@ -401,14 +400,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     destroyed = true
     pendingRecovery = null
     waiting -= this
-    document.end(End.CLOSING)
+    document.end(DocumentEnd.CLOSING)
     val detached = detachHooks()
     downloads.detach()
     webView.stopLoading()
     webView.destroy()
     // shortcut: still in the layout here, unlike after a crash; if ProfileStore.deleteProfile in onDestroyed throws
     // "in use" on a device, remove the WebView from refresher.content before destroy() first.
-    detached.forEach { it.destroyed(End.CLOSING) }
+    detached.forEach { it.destroyed(DocumentEnd.CLOSING) }
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {

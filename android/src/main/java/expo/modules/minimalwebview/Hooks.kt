@@ -270,20 +270,20 @@ interface WebViewContext {
   fun onOptionsChange(handler: (Any?) -> Unit)
 
   /**
-   * Runs [handler] at each end of the Document ([DocumentScope]), after the core's own resets: per-page state belongs
-   * here.
+   * Runs [handler] at each end of the Document (see [DocumentEnd]), after the core's own resets: per-page state
+   * belongs here.
    */
-  fun onDocumentEnd(handler: (DocumentScope.End) -> Unit)
+  fun onDocumentEnd(handler: (DocumentEnd) -> Unit)
 
   /**
-   * Runs [handler] once this attach's WebView is destroyed: with [DocumentScope.End.CLOSING] at unmount, or with
-   * [DocumentScope.End.CRASHED] after a renderer crash, before the WebView that replaces it is configured. It comes
+   * Runs [handler] once this attach's WebView is destroyed: with [DocumentEnd.CLOSING] at unmount, or with
+   * [DocumentEnd.CRASHED] after a renderer crash, before the WebView that replaces it is configured. It comes
    * after the [onDocumentEnd] handlers that get the same reason, and the context does nothing by then.
    *
    * Clean up here, and release what must outlive the WebView, such as a [ProfileStore][androidx.webkit.ProfileStore]
    * profile.
    */
-  fun onDestroyed(handler: (DocumentScope.End) -> Unit)
+  fun onDestroyed(handler: (DocumentEnd) -> Unit)
 
   /**
    * Offers [handler] each download the page starts, with [DownloadListener][android.webkit.DownloadListener]'s
@@ -378,8 +378,8 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val chromeClients get() = attachment.chromeClients
   override val touchListeners get() = attachment.touchListeners
   override val scrollListeners get() = attachment.scrollListeners
-  private val documentEndHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
-  private val destroyedHandlers = mutableListOf<(DocumentScope.End) -> Unit>()
+  private val documentEndHandlers = mutableListOf<(DocumentEnd) -> Unit>()
+  private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
   /** The attach ended: the core routes nothing of it, and the emits and asks that follow reach nothing. */
@@ -393,11 +393,11 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
 
   override fun onOptionsChange(handler: (Any?) -> Unit) = attachment.onOptionsChange(handler)
 
-  override fun onDocumentEnd(handler: (DocumentScope.End) -> Unit) {
+  override fun onDocumentEnd(handler: (DocumentEnd) -> Unit) {
     documentEndHandlers += handler
   }
 
-  override fun onDestroyed(handler: (DocumentScope.End) -> Unit) {
+  override fun onDestroyed(handler: (DocumentEnd) -> Unit) {
     destroyedHandlers += handler
   }
 
@@ -411,9 +411,9 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     handlers[method] = handler
   }
 
-  fun documentEnded(reason: DocumentScope.End) = documentEndHandlers.forEach { it(reason) }
+  fun documentEnded(reason: DocumentEnd) = documentEndHandlers.forEach { it(reason) }
 
-  fun destroyed(reason: DocumentScope.End) = destroyedHandlers.forEach { it(reason) }
+  fun destroyed(reason: DocumentEnd) = destroyedHandlers.forEach { it(reason) }
 
   /** Whether one of this hook's download handlers took the download. */
   fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =

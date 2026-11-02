@@ -10,7 +10,7 @@ import android.webkit.WebViewClient
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import expo.modules.minimalwebview.DocumentScope
+import expo.modules.minimalwebview.DocumentEnd
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 import org.json.JSONObject
@@ -33,7 +33,7 @@ class SampleExtensionModule : Module() {
         // A handler can reply later, here with the app's answer to an ask.
         context.handle("label") { _, reply -> context.ask("label", mapOf("count" to counter.count), reply) }
         context.onDocumentEnd { reason ->
-          if (reason != DocumentScope.End.CLOSING) {
+          if (reason != DocumentEnd.CLOSING) {
             context.emit("documentEnd", mapOf("reason" to reason.name.lowercase(), "url" to context.url))
           }
         }
