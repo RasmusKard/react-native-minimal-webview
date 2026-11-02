@@ -14,7 +14,9 @@ enum PerfProbe {
       webView.configuration.userContentController.add(probe, name: "perfMark")
       context.navigationDelegates.append(probe)
       context.handle("drain") { _, reply in reply(probe.drain()) }
-      return { [weak webView] in webView?.configuration.userContentController.removeScriptMessageHandler(forName: "perfMark") }
+      context.onDestroyed { [weak webView] _ in
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: "perfMark")
+      }
     }
   }
 }

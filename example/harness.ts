@@ -2630,21 +2630,18 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
       !!scrolled && !!both,
       h.events.hookEvents
     );
-    const closed = await seams.closedViews();
-    await recreate(h, {}, true);
-    const now = await until(async () => {
-      const count = await seams.closedViews();
-      return count > closed && count;
-    }, 3000);
-    r.check(
-      'its onDestroyed handler runs once its WebView is destroyed at unmount',
-      now === closed + 1,
-      {
-        closed,
-        now,
-      }
-    );
   }
+  const closed = await seams.closedViews();
+  await recreate(h, {}, true);
+  const now = await until(async () => {
+    const count = await seams.closedViews();
+    return count > closed && count;
+  }, 3000);
+  r.check(
+    'its onDestroyed handler runs once its WebView is closed at unmount',
+    now === closed + 1,
+    { closed, now }
+  );
 }
 
 /** First-load headers, declined HTTP auth, shared cookies, download failures. */

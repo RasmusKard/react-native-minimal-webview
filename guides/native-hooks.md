@@ -25,7 +25,8 @@ A hook can implement any delegate or client callback. It runs natively, with no 
 1. Your module registers the hook under a key when the app starts.
 2. The app turns the hook on for a WebView by passing its extension in the `extensions` prop. The extension's `options` default to `true`; null or false switch the hook off.
 3. The core calls the hook's `attach` with the native WebView and a context.
-4. The hook adds its delegates or clients to the context, and talks to JS through it.
+4. The hook adds its delegates or clients to the context, talks to JS through it, and registers its cleanup with
+   `context.onDestroyed`.
 
 ## Write a hook
 
@@ -76,14 +77,13 @@ public class PageCounterModule: Module {
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
         context.handle("count") { _, reply in reply(counter.count) }
-        return nil // or a closure, run when the WebView goes away
       }
     }
   }
 }
 
 private final class PageCounter: NSObject, WKNavigationDelegate {
-  private weak var context: WebViewContext? // weak: the context's handlers hold this object
+  private let context: WebViewContext
   private(set) var count = 0
 
   init(context: WebViewContext) {
@@ -92,7 +92,7 @@ private final class PageCounter: NSObject, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     count += 1
-    context?.emit("pageLoaded", ["count": count])
+    context.emit("pageLoaded", ["count": count])
   }
 }
 ```
@@ -119,7 +119,6 @@ class PageCounterModule : Module() {
         val counter = PageCounter(context)
         context.clients += counter
         context.handle("count") { _, reply -> reply(counter.count) }
-        null // or a closure, run when the WebView goes away
       }
     }
   }
@@ -223,8 +222,8 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 | Its `options` change | Its `onOptionsChange` handlers run, without a reload |
 | Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
 | Its key is removed, or its `options` become null or false | The hook is off: `onOptionsChange` with null, and it stays attached. The core routes none of its delegates, clients or listeners, drops its `emit`s, answers its `ask`s with null, and rejects `ref.hook` calls to its handlers with `not_found`. When it turns on again, `onOptionsChange` runs with the new options. |
-| The renderer crashes | iOS keeps the `WKWebView` and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the `WebView` (the closure `attach` returned, then `onDestroyed` with `CRASHED`), then the factory, `configure` and `attach` run again, on a new context. |
-| The WebView unmounts | `onDocumentEnd` with `closing`, then the closure `attach` returned, then on Android `onDestroyed` with `CLOSING` |
+| The renderer crashes | iOS keeps the `WKWebView` and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the `WebView` (`onDestroyed` with `CRASHED`, after `onDocumentEnd`), then the factory, `configure` and `attach` run again, on a new context. |
+| The WebView unmounts | `onDocumentEnd` with `closing`, then `onDestroyed` with `closing`: clean up there. Android's `WebView` is destroyed by then; iOS's `WKWebView` has stopped loading and left the view, but is still alive. |
 
 `DocumentScope` ([Swift][documentscope], [Kotlin][documentscopekt]) says exactly when a page ends.
 
@@ -233,7 +232,6 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 - Register in `OnCreate`, under a key prefixed with your package's name: `register` in [`Hooks.swift`][swift] and
   [`Hooks.kt`][kotlin] has the rules.
 - Use the context on the main thread. `emit` and `ask` work from any thread.
-- On iOS, hold the context weakly from what its handlers capture, or neither is freed.
 
 ## Platform differences
 
@@ -242,7 +240,8 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 | Callbacks go in | `navigationDelegates`, `uiDelegates` | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
 | `configure` gets | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up |
 | Your own WebView class | `webViewClass:` | `webViewFactory =` |
-| Only on this platform | `refreshControl` | `onDownloadStart`, `onDestroyed` |
+| `onDestroyed` reasons | `closing` | `closing` and `crashed` |
+| Only on this platform | `refreshControl` | `onDownloadStart` |
 
 ## Reference
 

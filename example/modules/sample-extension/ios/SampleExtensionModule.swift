@@ -16,46 +16,47 @@ public class SampleExtensionModule: Module {
         context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }
-        // An ask's answer can be the reply. The context keeps its handlers, so they capture it weakly.
-        context.handle("label") { [weak context] _, reply in context?.ask("label", ["count": counter.count], reply) }
-        context.onDocumentEnd { [weak context] reason in
-          guard let context, reason != .closing else { return }
+        // An ask's answer can be the reply.
+        context.handle("label") { _, reply in context.ask("label", ["count": counter.count], reply) }
+        context.onDocumentEnd { reason in
+          guard reason != .closing else { return }
           context.emit("documentEnd", ["reason": "\(reason)", "url": context.url])
         }
-        return nil
       }
       // Page requests only a hook can take over (the harness's fixtures): HTTP auth and the alert panel.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context in
         context.navigationDelegates.append(HookAuth(context: context))
-        return nil
       }
       MinimalWebViewHooks.register("sample.hookDialogs") { _, context in
         context.uiDelegates.append(HookDialogs(context: context))
-        return nil
       }
       // Takes the navigation decision from the app's navigationRules, which a `core.warning` says.
       MinimalWebViewHooks.register("sample.hookNavigation") { _, context in
         context.navigationDelegates.append(HookNavigation())
-        return nil
       }
       // Each WebView that enables this hook is made from its subclass; others stay plain WKWebViews.
       MinimalWebViewHooks.register("sample.subclass", webViewClass: SampleWKWebView.self) { webView, context in
         let name = String(describing: type(of: webView))
         context.handle("class") { _, reply in reply(name) }
-        return nil
       }
       PerfProbe.register()
       // The refresh control exists before `pullToRefresh` shows it, so it can be styled at attach.
       MinimalWebViewHooks.register("sample.seams") { webView, context in
         context.refreshControl?.tintColor = .white
         context.handle("tint") { [weak webView] _, reply in reply(webView?.scrollView.refreshControl?.tintColor == .white) }
-        return nil
+        context.onDestroyed { reason in if reason == .closing { Seams.closed += 1 } }
       }
     }
     // The perf suite's frame-gap probe (PerfProbe.swift): module functions, so they work without a hook too.
+    AsyncFunction("closedViews") { Seams.closed }.runOnQueue(.main)
     AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
     AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
   }
+}
+
+/// `sample.seams`: how many of its views were closed at unmount.
+private enum Seams {
+  static var closed = 0
 }
 
 /// The `sample.subclass` hook's class: an override of what WKWebView lets a subclass change would go here.
@@ -67,7 +68,7 @@ private let authHosts: Set<String> = ["localhost"]
 /// Answers HTTP basic or digest challenges from authHosts itself, and cancels the rest. Sends `challenge` for each
 /// challenge it gets.
 private final class HookAuth: NSObject, WKNavigationDelegate {
-  private weak var context: WebViewContext?
+  private let context: WebViewContext
 
   init(context: WebViewContext) {
     self.context = context
@@ -80,7 +81,7 @@ private final class HookAuth: NSObject, WKNavigationDelegate {
   ) {
     let space = challenge.protectionSpace
     let method = space.authenticationMethod
-    context?.emit("challenge", ["method": method, "host": space.host])
+    context.emit("challenge", ["method": method, "host": space.host])
     guard method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest else {
       return completionHandler(.performDefaultHandling, nil)
     }
@@ -105,7 +106,7 @@ private final class HookNavigation: NSObject, WKNavigationDelegate {
 
 /// Answers every alert itself and reports it, instead of the core's dialog.
 private final class HookDialogs: NSObject, WKUIDelegate {
-  private weak var context: WebViewContext?
+  private let context: WebViewContext
 
   init(context: WebViewContext) {
     self.context = context
@@ -117,7 +118,7 @@ private final class HookDialogs: NSObject, WKUIDelegate {
     initiatedByFrame frame: WKFrameInfo,
     completionHandler: @escaping @MainActor () -> Void
   ) {
-    context?.emit("alert", ["message": message])
+    context.emit("alert", ["message": message])
     completionHandler()
   }
 }
@@ -126,7 +127,7 @@ private final class HookDialogs: NSObject, WKUIDelegate {
 /// `didReceiveServerRedirect`, which it doesn't and forwards. Its option, `true` or `{ global: name }`, names the
 /// page's global that gets the count (`__pageCount` by default).
 private final class PageCounter: NSObject, WKNavigationDelegate {
-  private weak var context: WebViewContext?
+  private let context: WebViewContext
   private(set) var count = 0
 
   init(context: WebViewContext) {
@@ -136,15 +137,15 @@ private final class PageCounter: NSObject, WKNavigationDelegate {
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     count += 1
     stamp(webView)
-    context?.emit("pageLoaded", ["url": webView.url?.absoluteString ?? "", "count": count])
+    context.emit("pageLoaded", ["url": webView.url?.absoluteString ?? "", "count": count])
   }
 
   func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
-    context?.emit("redirect", ["url": webView.url?.absoluteString ?? ""])
+    context.emit("redirect", ["url": webView.url?.absoluteString ?? ""])
   }
 
   func stamp(_ webView: WKWebView) {
-    let global = (context?.options as? [String: Any])?["global"] as? String ?? "__pageCount"
+    let global = (context.options as? [String: Any])?["global"] as? String ?? "__pageCount"
     webView.callAsyncJavaScript("window[name] = count", arguments: ["name": global, "count": count], in: nil, in: .page)
   }
 }

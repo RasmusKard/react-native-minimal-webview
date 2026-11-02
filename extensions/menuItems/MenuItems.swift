@@ -10,23 +10,22 @@ enum MenuItems {
   static func register() {
     MinimalWebViewHooks.register(key, webViewClass: MenuWKWebView.self) { webView, context in
       // Another hook's class won (the core warns): no menu.
-      guard let view = webView as? MenuWKWebView else { return nil }
-      let apply = { [weak view, weak context] in
-        let options = context?.options as? [String: Any]
+      guard let view = webView as? MenuWKWebView else { return }
+      let apply = { [weak view] in
+        let options = context.options as? [String: Any]
         view?.menuItems = options?["items"] as? [[String: Any]]
         view?.suppressMenuItems = Set(options?["suppress"] as? [String] ?? [])
       }
       apply()
       context.onOptionsChange { _ in apply() }
-      view.onMenuItem = { [weak view, weak context] key in
-        guard let view, let context else { return }
+      view.onMenuItem = { [weak view] key in
+        guard let view else { return }
         let label = view.menuItems?.first { $0["key"] as? String == key }?["label"] ?? ""
         // As react-native-webview: the main frame's selection.
-        view.evaluateJavaScript("window.getSelection().toString()") { [weak context] result, _ in
-          context?.emit("selection", ["key": key, "label": label, "selectedText": result as? String ?? ""])
+        view.evaluateJavaScript("window.getSelection().toString()") { result, _ in
+          context.emit("selection", ["key": key, "label": label, "selectedText": result as? String ?? ""])
         }
       }
-      return nil
     }
   }
 }

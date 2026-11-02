@@ -1,6 +1,6 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DelegateProxy routing, the late hooks' order and the hookOptions values that turn a hook on, the DocumentScope dispatch cases, the Asks
-// contract and ReadAccess's roots. Not part of the pod (see the podspec).
+// and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions values that turn a hook on, the
+// DocumentScope dispatch cases, the Asks contract and ReadAccess's roots. Not part of the pod (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
 //     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation

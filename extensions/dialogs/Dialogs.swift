@@ -8,13 +8,11 @@ enum Dialogs {
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in
       context.uiDelegates.append(Delegate(context))
-      return nil
     }
   }
 
   private final class Delegate: NSObject, WKUIDelegate {
-    // Weak: the context holds the handler that holds this delegate.
-    private weak var context: WebViewContext?
+    private let context: WebViewContext
 
     init(_ context: WebViewContext) {
       self.context = context
@@ -52,7 +50,6 @@ enum Dialogs {
       _ webView: WKWebView, _ type: String, _ text: (message: String, defaultValue: String?), _ frame: WKFrameInfo,
       _ onAnswer: @escaping (Any?) -> Void
     ) {
-      guard let context else { return onAnswer(nil) }
       let payload: [String: Any] = [
         "message": text.message, "defaultValue": text.defaultValue ?? NSNull(),
         "url": frame.request.url?.absoluteString ?? "", "isTopFrame": frame.isMainFrame

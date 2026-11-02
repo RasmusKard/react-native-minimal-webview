@@ -47,7 +47,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private lazy var proxy = DelegateProxy(core: self)
   /// The decision warnings sent, shared and taken (DelegateProxy): one each per view.
   private var warnedDecisions: Set<String> = []
-  private var detachers: [() -> Void] = []
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
   private(set) var url = ""
@@ -241,7 +240,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     cookies.didCreate(webView)
     // The live settings before the hooks, as on Android: what a hook sets wins over the package's defaults.
     report(platformSettings.apply(settings, webView: webView))
-    detachers = hookContexts.compactMap { $0.hook.attach(webView, $0) }
+    hookContexts.forEach { $0.hook.attach(webView, $0) }
   }
 
   /// React Native calls `invalidate` on this view (the Fabric component view; Expo's are never recycled) at every
@@ -262,9 +261,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     guard let webView else { return }
     document.end(.closing)
     cookies.detach()
-    detachers.forEach { $0() }
-    detachers = []
-    hookContexts.forEach { $0.detach() }
+    let closed = hookContexts
+    closed.forEach { $0.detach() }
     hookContexts = []
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
@@ -274,6 +272,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // Audio and video otherwise keep playing after unmount (react-native-webview #2449, PR #3234).
     webView.pauseAllMediaPlayback()
     webView.removeFromSuperview()
+    closed.forEach { $0.destroyed() }
     self.webView = nil
     htmlCommit = nil
   }
@@ -468,7 +467,7 @@ extension MinimalWebView {
     }
     let context = HookContext(hook, self)
     hookContexts.append(context)
-    if let detach = hook.attach(webView, context) { detachers.append(detach) }
+    hook.attach(webView, context)
   }
 
   func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {
