@@ -5,7 +5,7 @@ import expo.modules.minimalwebview.DocumentScope.End
 /**
  * Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until JS answers it through [answer]
  * or native gives up (null, and `core.askCancelled` to JS): a Document end, a timeout or the platform. [send] puts an
- * event on the view's `onHookEvent`. Main thread only.
+ * event on the view's `onHookEvent`, which reaches the app's extensions' `onEvent`. Main thread only.
  */
 internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   private val pending = mutableMapOf<Int, (Any?) -> Unit>()

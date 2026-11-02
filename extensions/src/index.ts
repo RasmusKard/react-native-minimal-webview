@@ -1,6 +1,6 @@
 /**
  * @groupDescription Extensions
- * One function per extension, whose result goes to the core's `useExtensions`.
+ * One function per extension, whose result goes into the core's `extensions` prop.
  * @groupDescription Values
  * What the functions take.
  * @groupDescription Events

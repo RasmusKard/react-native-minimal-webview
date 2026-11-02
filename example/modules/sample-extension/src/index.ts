@@ -3,7 +3,7 @@ import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * The events of the sample page counter hook, for {@link pageCounter}'s `onEvent`. A native
- * `context.emit('pageLoaded', …)` arrives as `sample.pageCounter.pageLoaded`:
+ * `context.emit('pageLoaded', …)` arrives as `pageLoaded`:
  * - `pageLoaded`: each page load; the hook also stamps the count into the page's `window.__pageCount`.
  * - `redirect` (iOS) and `commitVisible` (Android): delegate callbacks the core doesn't implement itself.
  * - `documentEnd`: from `context.onDocumentEnd`, with `context.url` as it was there.
@@ -11,14 +11,14 @@ import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
  *   that answer, and `ref.hook('sample.pageCounter', 'count')` with the count.
  */
 export type PageCounterEvent =
-  | HookEvent<'sample.pageCounter.pageLoaded', { url: string; count: number }>
-  | HookEvent<'sample.pageCounter.redirect', { url: string }>
-  | HookEvent<'sample.pageCounter.commitVisible', { url: string }>
-  | HookEvent<'sample.pageCounter.documentEnd', { reason: 'committed' | 'crashed'; url: string }>
-  | HookEvent<'sample.pageCounter.label', { count: number }>;
+  | HookEvent<'pageLoaded', { url: string; count: number }>
+  | HookEvent<'redirect', { url: string }>
+  | HookEvent<'commitVisible', { url: string }>
+  | HookEvent<'documentEnd', { reason: 'committed' | 'crashed'; url: string }>
+  | HookEvent<'label', { count: number }>;
 
 /**
- * The page counter hook, for `useExtensions`. `{ global: '__count' }` renames the page global it stamps.
+ * The page counter hook, for the `extensions` prop. `{ global: '__count' }` renames the page global it stamps.
  */
 export const pageCounter = (
   options: true | { global: string } = true,
@@ -31,12 +31,12 @@ export const pageCounter = (
 });
 
 /**
- * One of the sample's hooks that take no options and send their events to the app's `onHookEvent`, for
- * `useExtensions`.
+ * One of the sample's hooks that take no options, for the `extensions` prop. A caller that wants its events sets
+ * `onEvent` on the result.
  */
 export const sampleHook = (
   name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf'
-): HookExtension => ({ key: `sample.${name}`, options: true });
+): HookExtension => ({ key: `sample.${name}` });
 
 /** The `sample.seams` hook's counter (Android): how many of its WebViews were destroyed at unmount. */
 export const seams = requireNativeModule<{ closedViews(): Promise<number> }>('SampleExtension');

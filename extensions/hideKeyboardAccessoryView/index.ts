@@ -11,5 +11,5 @@ import type { HookExtension } from 'react-native-minimal-webview';
  */
 export const hideKeyboardAccessoryView = (): HookExtension | null =>
   Platform.OS === 'ios'
-    ? { key: '@react-native-minimal-webview/extensions.hideKeyboardAccessoryView', options: true }
+    ? { key: '@react-native-minimal-webview/extensions.hideKeyboardAccessoryView' }
     : null;

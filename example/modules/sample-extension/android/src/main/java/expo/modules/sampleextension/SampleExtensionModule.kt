@@ -26,7 +26,7 @@ class SampleExtensionModule : Module() {
       }) { webView, context ->
         val counter = PageCounter(context)
         context.clients += counter
-        // A `hookOptions` change arrives live; context.options is already the new value.
+        // A change of the extension's `options` arrives live; context.options is already the new value.
         context.onOptionsChange { counter.stamp(webView) }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply -> reply(counter.count) }

@@ -7,14 +7,7 @@ enum Dialogs {
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in
-      let delegate = Delegate(context)
-      // A listed delegate takes every dialog: listed only while it is on, so the core's dialogs come back.
-      let list = { [weak context] (on: Bool) in
-        context?.uiDelegates.removeAll { $0 === delegate }
-        if on { context?.uiDelegates.append(delegate) }
-      }
-      list(true)
-      context.onOptionsChange { list($0 != nil) }
+      context.uiDelegates.append(Delegate(context))
       return nil
     }
   }

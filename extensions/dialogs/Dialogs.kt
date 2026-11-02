@@ -12,14 +12,7 @@ internal object Dialogs {
   const val KEY = "@react-native-minimal-webview/extensions.dialogs"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
-    val client = Client(context)
-    // A listed chrome client takes every dialog: listed only while it is on, so WebView's dialogs come back.
-    val list = { on: Boolean ->
-      context.chromeClients.remove(client)
-      if (on) context.chromeClients.add(client)
-    }
-    list(true)
-    context.onOptionsChange { list(it != null) }
+    context.chromeClients += Client(context)
     null
   }
 

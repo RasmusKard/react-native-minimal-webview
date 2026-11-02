@@ -623,33 +623,40 @@ export type AndroidSettings = {
  * @typeParam P - Its payload.
  * @example
  * ```ts
- * type PageLoaded = HookEvent<'pageCounter.pageLoaded', { count: number }>;
+ * type PageLoaded = HookEvent<'pageLoaded', { count: number }>;
  * ```
  * @group Native hooks
  */
 export type HookEvent<N extends string = string, P = Record<string, unknown>> = {
-  /** `'<hook key>.<event name>'`. */
+  /** The event's name, relative to the extension's key: `pageLoaded` for `'pageCounter.pageLoaded'`. */
   name: N;
   /** What the hook sent with it. */
   payload: P;
 };
 
 /**
- * A native hook's JS side, for {@link useExtensions}: its key, its `hookOptions` value, and what takes its events.
+ * A native hook's JS side, for {@link WebViewProps.extensions}: its key, its options, and what takes its events.
  *
- * A package with a native hook exports a function that returns one, so that an app turns the hook on by passing it to
- * `useExtensions`.
+ * A package with a native hook exports a function that returns one, so that an app turns the hook on by putting it in
+ * `extensions`.
  * @see [Native hooks guide](../guides/native-hooks.md)
  * @group Native hooks
  */
 export type HookExtension = {
   /** The key the hook is registered under. */
   key: string;
-  /** Its value in `hookOptions`. */
-  options: unknown;
   /**
-   * Each of the hook's events (`'<key>.<event name>'`), as `onHookEvent` gets them: for an `ask`, the return value is
-   * the answer.
+   * What the hook gets as its options. Null or false switches the hook off: it stays attached and gets null, but the
+   * core routes none of its delegates, clients or listeners, drops its events, answers its asks with null, and
+   * rejects `ref.hook` calls to its handlers with `not_found`. Undefined means `true`. Turning it on again gives it
+   * the new options.
+   * @default `true`
+   */
+  options?: unknown;
+  /**
+   * Each of the hook's events, with `name` relative to `key`: for an `ask`, the return value (a promise is awaited) is
+   * the answer, and `undefined` answers null. `signal` is set only for an `ask`, and aborts when native stops waiting
+   * for the answer: an ask has no timeout, but one still open when the page goes away is answered null.
    */
   onEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
 };
@@ -665,8 +672,8 @@ export type FullscreenChangeEvent = { active: boolean };
  * Why a ref method or a bridge call rejected. Each code means the same on every method that rejects with it.
  *
  * - `timeout`: a bridge call got no answer in time.
- * - `not_found`: nothing by that name answers: no bridge handler for the method, no attached hook `name` handling
- *   `method`, or no such root, key, method or selector (on this OS or WebView version too), or a malformed path.
+ * - `not_found`: nothing by that name answers: no bridge handler for the method, no attached hook `name` that is on
+ *   and handles `method`, or no such root, key, method or selector (on this OS or WebView version too), or a malformed path.
  * - `handler_error`: a bridge handler threw or rejected (the `message` is its error's), or the page answered with
  *   `script_error`, `native_error` or a code not listed here.
  * - `script_error`: `evaluate`'s script threw, rejected or didn't parse.
@@ -676,7 +683,7 @@ export type FullscreenChangeEvent = { active: boolean };
  * - `navigated`: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
  *   it may have run: retry only what is safe to repeat.
  * - `unavailable`: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
- *   died (Android), or lacks the feature (the method's TSDoc names the Android System WebView it needs, or a compat
+ *   died (Android), the bridge's queue was full and dropped it, or lacks the feature (the method's TSDoc names the Android System WebView it needs, or a compat
  *   method this WebView doesn't support).
  *
  * A programming error, such as an argument of the wrong type, can reject with a plain `TypeError` instead.
@@ -706,7 +713,7 @@ export type CodedError = Error & { code: ErrorCode };
  * Every `on…` callback is read when its event or request comes, so adding, changing or removing one applies to the
  * next, and a request without one gets the default described on its prop. One that answers a request and throws (or
  * rejects) is logged with `console.error` and gives the refusing answer: `onNavigationRequest` `block`,
- * `onOpenExternal` nothing opened, `onFileRequest` cancel, `onPermissionRequest` deny, `onHookEvent` null.
+ * `onOpenExternal` nothing opened, `onFileRequest` cancel, `onPermissionRequest` deny, an extension's `onEvent` null.
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop. iOS shows a `UIAlertController` titled with the
  * frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
@@ -821,24 +828,25 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    */
   bridge?: Bridge;
   /**
-   * Each native hook's value by its key; {@link useExtensions} makes it, and `onHookEvent`, from extensions.
+   * The native hooks to turn on, as {@link HookExtension}s: a package with a native hook exports a function that
+   * returns one.
    *
-   * A key whose value is not null, undefined or false attaches its hook, and a later change reaches that hook live,
-   * without recreating the WebView; removing the key passes the hook null, and it stays attached. A key turned on
-   * after the WebView was created attaches its hook then, unless the hook has a `configure` step or its own WebView
-   * class (`webViewClass`, `webViewFactory`): that one attaches only when the WebView is created, and a warning says
-   * so. A key no hook is registered under warns: pass a one-platform hook's key on that platform only.
+   * A false, null or undefined entry is left out, so `on && extension(…)` switches one on and off. An extension's
+   * `options` default to `true`; null or false options switch its hook off too. A hook attaches when its key first
+   * appears, and a later change of its `options` reaches it live, without recreating the WebView. A hook that is off,
+   * because its key is gone or its `options` are null or false, stays attached and gets null, but the core routes none
+   * of its delegates, clients or listeners, drops its events, answers its asks with null, and rejects `ref.hook` calls
+   * to its handlers with `not_found`; turning it on again gives it the new options. A key turned on after the
+   * WebView was created attaches its hook then, unless the hook has a `configure` step or its own WebView class
+   * (`webViewClass`, `webViewFactory`): that one attaches only when the WebView is created, and a warning says so. A
+   * key no hook is registered under warns: pass a one-platform hook's extension on that platform only.
+   *
+   * Each hook event goes to the `onEvent` of the extension whose key its name starts with (`'<key>.'`; the longest
+   * key, when several do), and one no extension owns is dropped. Two extensions with one key warn in development, and
+   * the later one wins. The latest `onEvent` always takes the events: a render with new handlers sends native nothing.
    * @see [Native hooks guide](../guides/native-hooks.md)
    */
-  hookOptions?: Record<string, unknown>;
-  /**
-   * An event from a native hook.
-   *
-   * For an `ask`, the return value (a promise is awaited) is the answer; `undefined` answers null. `signal` is set only
-   * for an `ask`, and aborts when native stops waiting for the answer: an ask has no timeout, but one still open when
-   * the page goes away is answered null.
-   */
-  onHookEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
+  extensions?: readonly (HookExtension | false | null | undefined)[];
   /**
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
    * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
@@ -1085,7 +1093,7 @@ export type WebViewRef = {
    * its reply; both cross as JSON.
    *
    * The reply converts as `call`'s results do: an object JSON can't carry is `null`, and `NaN` rejects with
-   * `native_error`. Rejects with a {@link CodedError}: `not_found` when no attached hook `name` handles `method`. A
+   * `native_error`. Rejects with a {@link CodedError}: `not_found` when no attached hook `name` that is on handles `method`. A
    * navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount does.
    */
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;

@@ -314,4 +314,4 @@ import { File } from 'expo-file-system';
 
 ## Native hooks
 
-The [native hooks guide](native-hooks.md) builds one, from module to `useExtensions`.
+The [native hooks guide](native-hooks.md) builds one, from module to the `extensions` prop.

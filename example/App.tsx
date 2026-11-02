@@ -14,10 +14,11 @@ import {
   type LoadErrorEvent,
   type WebViewSource,
   WebView,
-  useExtensions,
   createBridge,
   type PermissionRequest,
   type FileRequest,
+  type HookEvent,
+  type HookExtension,
   useWebViewState,
   createWebViewRef,
 } from 'react-native-minimal-webview';
@@ -62,13 +63,25 @@ const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
 
 /** The page counter's events, into the logs. */
 function onPageCounterEvent(event: PageCounterEvent) {
-  if (event.name === 'sample.pageCounter.pageLoaded') events.pageCounts.push(event.payload);
-  else if (event.name === 'sample.pageCounter.documentEnd') events.documentEnds.push(event.payload);
+  if (event.name === 'pageLoaded') events.pageCounts.push(event.payload);
+  else if (event.name === 'documentEnd') events.documentEnds.push(event.payload);
   // The hook's ask: the return value is its answer.
-  else if (event.name === 'sample.pageCounter.label') return `page ${event.payload.count}`;
-  else events.hookEvents.push(event.name);
+  else if (event.name === 'label') return `page ${event.payload.count}`;
+  else events.hookEvents.push(`sample.pageCounter.${event.name}`);
   return undefined;
 }
+
+const EXTENSIONS_KEY = '@react-native-minimal-webview/extensions';
+/**
+ * Owns the extensions package's key prefix, with no hook (`options: null`): an event of one of its hooks that no
+ * extension of the WebView owns, a hook that stayed on after its extension left, comes here. The longest key wins, so the
+ * extensions in use never reach it.
+ */
+const strayEvents: HookExtension = {
+  key: EXTENSIONS_KEY,
+  options: null,
+  onEvent: ({ name }) => void events.hookEvents.push(`${EXTENSIONS_KEY}.${name}`),
+};
 
 /** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
@@ -109,10 +122,21 @@ export default function App() {
   const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
     undefined
   );
-  const { extensions = [], ...props } = extraProps;
-  const hooks = useExtensions([pageCounter(true, onPageCounterEvent), ...extensions], {
-    onHookEvent: (event) => void events.hookEvents.push(event.name),
-  });
+  // The page counter, then a suite's `extensions`, unless it asks `withoutPageCounter`. An extension without `onEvent`
+  // logs its events.
+  const { extensions = [], withoutPageCounter, ...props } = extraProps;
+  const logged = [
+    ...(withoutPageCounter ? [] : [pageCounter(true, onPageCounterEvent)]),
+    ...extensions,
+  ].map(
+    (extension) =>
+      extension && {
+        ...extension,
+        onEvent:
+          extension.onEvent ??
+          (({ name }: HookEvent) => void events.hookEvents.push(`${extension.key}.${name}`)),
+      }
+  );
   const harness: Harness = {
     pages: PAGES,
     platform: `${Platform.OS} ${Platform.Version}`,
@@ -163,7 +187,7 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            {...hooks}
+            extensions={[...logged, strayEvents]}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
             onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}

@@ -13,7 +13,7 @@ internal object NestedScrollEnabled {
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
     context.touchListeners += View.OnTouchListener { view, _ ->
-      if (context.options == true) (view as ViewGroup).requestDisallowInterceptTouchEvent(true)
+      (view as ViewGroup).requestDisallowInterceptTouchEvent(true)
       false
     }
     null

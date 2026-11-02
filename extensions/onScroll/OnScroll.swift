@@ -9,8 +9,7 @@ enum OnScroll {
     MinimalWebViewHooks.register(key) { webView, context in
       // KVO: the scroll view's delegate is WebKit's.
       let observation = webView.scrollView.observe(\.contentOffset) { [weak context] scrollView, _ in
-        guard let context, context.options != nil else { return }
-        context.emit("scroll", event(scrollView))
+        context?.emit("scroll", event(scrollView))
       }
       return { observation.invalidate() }
     }

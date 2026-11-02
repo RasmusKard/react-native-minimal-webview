@@ -16,7 +16,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
-  /// The `hookOptions` prop: each hook's value by key. A change reaches the attached hooks (onOptionsChange).
+  /// The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptionsChange).
   var hookOptions: [String: Any] = [:] {
     didSet { if webView != nil { optionsChanged(from: oldValue) } }
   }
@@ -214,7 +214,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     for context in hookContexts { context.hook.configure?(configuration, context) }
     // A typo, or a hook's module not linked or not rebuilt.
     for key in hookOptions.keys where enables(hookOptions[key]) && !hookContexts.contains(where: { $0.key == key }) {
-      warn("hookOptions.\(key): no hook is registered under this key")
+      warn("extension \(key): no hook is registered under this key")
     }
     if bridgeScript != nil {
       configuration.userContentController.add(WeakBridgeHandler(self), contentWorld: .page, name: "nativeBridge")
@@ -223,7 +223,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let classes = hookContexts.compactMap { context in context.hook.webViewClass.map { (context.key, $0) } }
     let webViewClass = classes.first?.1 ?? WKWebView.self
     for (key, other) in classes where other != webViewClass {
-      warn("hookOptions.\(key): its webViewClass is not used, \(classes[0].0)'s is")
+      warn("extension \(key): its webViewClass is not used, \(classes[0].0)'s is")
     }
     let webView = webViewClass.init(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -264,6 +264,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     cookies.detach()
     detachers.forEach { $0() }
     detachers = []
+    hookContexts.forEach { $0.detach() }
     hookContexts = []
     proxy.navigationDelegates = []
     proxy.uiDelegates = []
@@ -440,17 +441,18 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 }
 
-/// What the hooks see of this view, through a HookContext per enabled hook. The delegate lists live on the proxy;
-/// WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
+/// What the hooks see of this view, through a HookContext per attached hook. The proxy gets the delegates of the
+/// contexts that are on; WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
 extension MinimalWebView {
   /// Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewClass` whose key turns on.
   private func optionsChanged(from old: [String: Any]) {
     for key in inRegistrationOrder(Set(old.keys).union(hookOptions.keys), MinimalWebViewHooks.hooks.map(\.key)) {
-      let value = hookOptions[key]
-      if let was = old[key], let value, (was as AnyObject as? NSObject)?.isEqual(value) == true { continue }
+      let (was, value) = (old[key], hookOptions[key])
+      guard enables(was) || enables(value) else { continue }
+      if staysOn(was, value) { continue }
       if let context = hookContexts.first(where: { $0.key == key }) {
         context.optionsChanged(value)
-      } else if !enables(old[key]), enables(value) {
+      } else if !enables(was) {
         attachLate(key)
       }
     }
@@ -458,12 +460,12 @@ extension MinimalWebView {
 
   private func attachLate(_ key: String) {
     guard let webView, let hook = MinimalWebViewHooks.hooks.first(where: { $0.key == key }) else {
-      return warn("hookOptions.\(key): no hook is registered under this key")
+      return warn("extension \(key): no hook is registered under this key")
     }
     // configure edits the configuration the WKWebView was created from, and webViewClass makes it: too late for this one.
     guard hook.configure == nil, hook.webViewClass == nil else {
       let why = hook.configure != nil ? "configure" : "a webViewClass"
-      return warn("hookOptions.\(key): its hook has \(why), so it attaches only when the WebView is created")
+      return warn("extension \(key): its hook has \(why), so it attaches only when the WebView is created")
     }
     let context = HookContext(hook, self)
     hookContexts.append(context)
@@ -471,27 +473,19 @@ extension MinimalWebView {
   }
 
   func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {
-    hookContexts.first { $0.key == key }?.handlers[method]
+    hookContexts.first { $0.key == key && $0.isOn }?.handlers[method]
   }
 
-  var navigationDelegates: [WKNavigationDelegate] {
-    get { proxy.navigationDelegates }
-    set {
-      proxy.navigationDelegates = newValue
-      webView?.navigationDelegate = nil
-      webView?.navigationDelegate = proxy
-      warnDecisions()
-    }
-  }
-
-  var uiDelegates: [WKUIDelegate] {
-    get { proxy.uiDelegates }
-    set {
-      proxy.uiDelegates = newValue
-      webView?.uiDelegate = nil
-      webView?.uiDelegate = proxy
-      warnDecisions()
-    }
+  /// Gives the proxy the delegates of the hooks that are on, in attach order, then each hook's own order.
+  func routeDelegates() {
+    let on = hookContexts.filter(\.isOn)
+    proxy.navigationDelegates = on.flatMap(\.navigationDelegates)
+    proxy.uiDelegates = on.flatMap(\.uiDelegates)
+    webView?.navigationDelegate = nil
+    webView?.navigationDelegate = proxy
+    webView?.uiDelegate = nil
+    webView?.uiDelegate = proxy
+    warnDecisions()
   }
 
   private func warnDecisions() {

@@ -6,7 +6,8 @@ import WebKit
 /// The [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
 /// walks through one.
 ///
-/// A hook attaches to each WebView whose `hookOptions` enables its key; the prop's TSDoc has the rules.
+/// A hook attaches to each WebView whose `extensions` prop has an extension with its key that is on (its `options` are
+/// not null or false); the prop's TSDoc has the rules.
 ///
 /// - Important: Leave alone what the core owns: the WKWebView's own `navigationDelegate` and `uiDelegate` (add to the
 ///   context's lists instead), and the bridge's script message handler and user scripts.
@@ -37,8 +38,8 @@ public enum MinimalWebViewHooks {
   /// by name. A hook whose key turns on after the WebView was created attaches after the hooks attached already.
   ///
   /// - Parameters:
-  ///   - key: The `hookOptions` key that enables the hook. Keys are global, so prefix yours with your package's name;
-  ///     `core` is reserved for the package's own events.
+  ///   - key: The key of the app's extension that turns on the hook. Keys are global, so prefix yours with your
+  ///     package's name; `core` is reserved for the package's own events.
   ///   - webViewClass: The WKWebView subclass that each WebView enabling this hook is made from, to override what
   ///     WKWebView lets a subclass override; nil leaves the class to the other hooks. When the enabled hooks name
   ///     different classes, the first one's in registration order makes the view, and a `core.warning` names the
@@ -77,19 +78,18 @@ public enum MinimalWebViewHooks {
   }
 }
 
-/// Whether a `hookOptions` value enables its hook.
-func enables(_ value: Any?) -> Bool {
-  guard let value, !(value is NSNull) else { return false }
-  // An identity check: `as? Bool` would take an NSNumber 0 for false too.
-  return (value as AnyObject) !== kCFBooleanFalse
-}
-
 /// One WebView as one hook sees it, for the life of the WKWebView.
 ///
 /// Call ``emit(_:_:)`` and ``ask(_:_:_:)`` from any thread, and the rest on the main thread, where `configure`,
 /// `attach`, the handlers and the answers run.
 ///
 /// A context kept after the view closed does nothing, and its ``ask(_:_:_:)`` answers nil at once.
+///
+/// A hook is on while its extension's `options` enable it: set, and neither null nor false. When they go (the extension
+/// removed, or its `options` set to null or false) the hook stays attached but off: the core routes none of its
+/// delegates, drops its ``emit(_:_:)``, answers its ``ask(_:_:_:)`` with nil and `ref.hook` for its
+/// ``handle(_:_:)``ers with `not_found`. ``onOptionsChange(_:)`` still runs, with nil, so the hook can undo what it set
+/// up; the options turning on again runs it with the new ones.
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
@@ -98,13 +98,13 @@ func enables(_ value: Any?) -> Bool {
 ///   ``handle(_:_:)``). An object they capture that also holds the context strongly makes a cycle that is never freed,
 ///   so hold the context weakly.
 public protocol WebViewContext: AnyObject {
-  /// This hook's `hookOptions` value, the one that enabled it; after a change, the new one.
+  /// This hook's extension's `options`, the new ones after a change; nil while the hook is off.
   var options: Any? { get }
   /// The committed URL, the one `useWebViewState` reports; empty before the first commit.
   ///
   /// Inside ``onDocumentEnd(_:)`` it is still the page that ended.
   var url: String { get }
-  /// Your navigation delegates, in order.
+  /// Your navigation delegates, in order. While the hook is off, none of them gets a callback.
   ///
   /// Set them in `attach`: WebKit reads what a delegate responds to when it is assigned, and the core re-assigns itself
   /// after each change to the list.
@@ -149,15 +149,16 @@ public protocol WebViewContext: AnyObject {
   ///
   /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
   var refreshControl: UIRefreshControl? { get }
-  /// Sends `onHookEvent({ name: "<key>.<name>", payload })` to JS.
+  /// Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative to
+  /// the key.
   func emit(_ name: String, _ payload: [String: Any])
-  /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the JS handler's return value, a promise
-  /// awaited.
+  /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the extension's `onEvent` return value, a
+  /// promise awaited.
   ///
   /// It answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout.
   /// An ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
-  /// Runs `handler` with this hook's new `hookOptions` value each time it changes, live; nil when the key is removed.
+  /// Runs `handler` with this hook's extension's new `options` each time they change, live; nil when the hook turns off.
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
   /// Runs `handler` at each end of the Document (``DocumentScope``), after the core's own resets: per-page state
   /// belongs here.
@@ -170,10 +171,12 @@ public protocol WebViewContext: AnyObject {
 }
 
 /// A hook's view of the WebView: the core's context with the hook's key on its events. The view owns it. A hook can
-/// outlive the view (an async callback, a detach closure run from its deinit): then the context does nothing.
+/// outlive the view (an async callback, a detach closure run from its deinit): then the context is detached and does
+/// nothing. The view routes the delegates of the contexts that are on.
 final class HookContext: WebViewContext {
   let hook: MinimalWebViewHooks.Hook
   private weak var view: MinimalWebView?
+  /// The `hookOptions` value while the hook is on, nil while it is off.
   private(set) var options: Any?
   private var optionsHandlers: [(Any?) -> Void] = []
   private var documentEndHandlers: [(DocumentScope.End) -> Void] = []
@@ -182,32 +185,37 @@ final class HookContext: WebViewContext {
   init(_ hook: MinimalWebViewHooks.Hook, _ view: MinimalWebView) {
     self.hook = hook
     self.view = view
-    options = view.hookOptions[hook.key]
+    options = enabledValue(view.hookOptions[hook.key])
+  }
+
+  /// The view closed: the context keeps nothing of it, and nothing routes it.
+  func detach() {
+    view = nil
   }
 
   var key: String { hook.key }
 
   var url: String { view?.hookUrl ?? "" }
 
-  var navigationDelegates: [WKNavigationDelegate] {
-    get { view?.navigationDelegates ?? [] }
-    set { view?.navigationDelegates = newValue }
+  var isOn: Bool { options != nil }
+
+  var navigationDelegates: [WKNavigationDelegate] = [] {
+    didSet { view?.routeDelegates() }
   }
 
-  var uiDelegates: [WKUIDelegate] {
-    get { view?.uiDelegates ?? [] }
-    set { view?.uiDelegates = newValue }
+  var uiDelegates: [WKUIDelegate] = [] {
+    didSet { view?.routeDelegates() }
   }
 
   var refreshControl: UIRefreshControl? { view?.refreshControl }
 
   func emit(_ event: String, _ payload: [String: Any]) {
-    onMain { [self] in view?.emit("\(key).\(event)", payload) }
+    onMain { [self] in if isOn { view?.emit("\(key).\(event)", payload) } }
   }
 
   func ask(_ event: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
     onMain { [self] in
-      guard let view else { return onAnswer(nil) }
+      guard let view, isOn else { return onAnswer(nil) }
       view.asks.ask("\(key).\(event)", payload, onAnswer)
     }
   }
@@ -225,8 +233,9 @@ final class HookContext: WebViewContext {
   }
 
   func optionsChanged(_ value: Any?) {
-    options = value
-    optionsHandlers.forEach { $0(value) }
+    options = enabledValue(value)
+    view?.routeDelegates()
+    optionsHandlers.forEach { $0(options) }
   }
 
   func documentEnded(_ reason: DocumentScope.End) {

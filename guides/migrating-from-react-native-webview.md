@@ -100,7 +100,7 @@ WebKit's data store clears with `call` ([reading and calling](examples.md#readin
 
 These props are functions of
 [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/),
-which you pass to `useExtensions`:
+which you pass in the `extensions` prop:
 
 | react-native-webview | Here |
 |---|---|

@@ -7,14 +7,7 @@ enum BasicAuthCredential {
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in
-      let delegate = Delegate(context)
-      // Listed only while on: each challenge goes to every listed delegate in turn, then WebKit's default handling.
-      let list = { [weak context] (on: Bool) in
-        context?.navigationDelegates.removeAll { $0 === delegate }
-        if on { context?.navigationDelegates.append(delegate) }
-      }
-      list(true)
-      context.onOptionsChange { list($0 != nil) }
+      context.navigationDelegates.append(Delegate(context))
       return nil
     }
   }

@@ -8,6 +8,7 @@ import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { createWebViewRef, useWebViewState } from '../refStore';
 import type {
   Bridge,
+  HookExtension,
   NavigationRequest,
   NavigationState,
   SettingValue,
@@ -241,35 +242,124 @@ describe('load events and errors', () => {
   });
 });
 
-describe('hookOptions', () => {
+describe('extensions', () => {
   const nativeOf = (root: ReturnType<typeof createRoot>) =>
-    root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props;
-
-  it('a change reaches the same native view: native passes it to the hooks live', async () => {
-    const root = createRoot();
-    const show = (hookOptions: Record<string, unknown>) =>
-      act(async () =>
-        root.render(<WebView source={{ uri: 'https://example.com' }} hookOptions={hookOptions} />)
-      );
-    mockMount.mockClear();
-    await show({ sample: { mode: 'a' }, other: 1 });
-    await show({ sample: { mode: 'b' }, other: 1 });
-    expect(mockMount).toHaveBeenCalledTimes(1);
-    expect(nativeOf(root)?.hookOptions).toEqual({ sample: { mode: 'b' }, other: 1 });
+    root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
+      hookOptions: Record<string, unknown>;
+      onHookEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
+    };
+  const ext = (key: string, options?: unknown, onEvent?: HookExtension['onEvent']) => ({
+    key,
+    options,
+    onEvent,
   });
 
-  it('null and undefined values are not sent: the key is off, or removed', async () => {
+  async function mount(extensions: WebViewProps['extensions']) {
     const root = createRoot();
-    await act(async () =>
-      root.render(
-        <WebView
-          source={{ uri: 'https://example.com' }}
-          hookOptions={{ on: true, off: false, gone: null, unset: undefined }}
-        />
-      )
+    const show = (next: WebViewProps['extensions']) =>
+      act(async () =>
+        root.render(<WebView source={{ uri: 'https://example.com' }} extensions={next} />)
+      );
+    await show(extensions);
+    const fire = (name: string, askId?: number) =>
+      act(() => nativeOf(root).onHookEvent({ nativeEvent: { name, payload: { n: 1 }, askId } }));
+    return { root, show, fire };
+  }
+
+  afterEach(() => mockAnswer.mockClear());
+
+  it("sends each extension's options by key, true when unset, and a change reaches the same native view", async () => {
+    mockMount.mockClear();
+    const { root, show } = await mount([ext('sample', { mode: 'a' }), ext('other')]);
+    expect(nativeOf(root).hookOptions).toEqual({ sample: { mode: 'a' }, other: true });
+    await show([ext('sample', { mode: 'b' }), ext('other')]);
+    expect(mockMount).toHaveBeenCalledTimes(1);
+    expect(nativeOf(root).hookOptions).toEqual({ sample: { mode: 'b' }, other: true });
+  });
+
+  it('leaves out falsy entries and null options, and keeps false options', async () => {
+    const { root, show } = await mount([
+      ext('on'),
+      false,
+      null,
+      undefined,
+      ext('off', false),
+      ext('gone', null),
+    ]);
+    expect(nativeOf(root).hookOptions).toEqual({ on: true, off: false });
+    expect(Object.keys(nativeOf(root).hookOptions)).toEqual(['on', 'off']);
+    await show([]);
+    expect(nativeOf(root).hookOptions).toEqual({});
+  });
+
+  it('sends the same object while the options are the same JSON, with the latest handlers taking the events', async () => {
+    const { root, show, fire } = await mount([ext('a', { items: [1] }, () => 'first')]);
+    const first = nativeOf(root).hookOptions;
+    await show([ext('a', { items: [1] }, () => 'second')]);
+    expect(nativeOf(root).hookOptions).toBe(first);
+    await fire('a.x', 1);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'second' });
+    await show([ext('a', { items: [2] })]);
+    expect(nativeOf(root).hookOptions).not.toBe(first);
+    expect(nativeOf(root).hookOptions).toEqual({ a: { items: [2] } });
+  });
+
+  it('warns in development when two extensions have one key, and the later one wins', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { root, fire } = await mount([ext('a', 1, () => 'one'), ext('b'), ext('a', 2, () => 'two')]);
+    expect(nativeOf(root).hookOptions).toEqual({ a: 2, b: true });
+    await fire('a.x', 1);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'two' });
+    expect(warn.mock.calls).toEqual([
+      ['[react-native-minimal-webview] extensions: two extensions have the key a; the later one wins'],
+    ]);
+    warn.mockRestore();
+  });
+
+  it('sends each event to the extension whose key is the longest prefix, with the name relative to it', async () => {
+    const short = jest.fn(() => 'short');
+    const long = jest.fn(async () => 'long');
+    const { fire } = await mount([ext('pkg', true, short), ext('pkg.dialogs', true, long)]);
+    await fire('pkg.dialogs.prompt', 1);
+    expect(long).toHaveBeenCalledWith(
+      { name: 'prompt', payload: { n: 1 } },
+      expect.any(AbortSignal)
     );
-    expect(nativeOf(root)?.hookOptions).toEqual({ on: true, off: false });
-    expect(Object.keys(nativeOf(root)?.hookOptions as object)).toEqual(['on', 'off']);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'long' });
+    await fire('pkg.scroll');
+    expect(short).toHaveBeenCalledWith({ name: 'scroll', payload: { n: 1 } }, undefined);
+    expect(mockAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers null for an ask with no handler, and drops an event no extension owns', async () => {
+    const own = jest.fn();
+    const { show, fire } = await mount([ext('a', true, own), ext('quiet'), ext('ab', true, own)]);
+    for (const [name, askId] of [['other.label', 1], ['quiet.event', 2], ['a', 3], ['ab', 4]] as const) {
+      await fire(name, askId);
+      expect(mockAnswer).toHaveBeenLastCalledWith(askId, { value: null });
+    }
+    await fire('other.label');
+    expect(own).not.toHaveBeenCalled();
+    await show([false, ext('quiet')]);
+    await fire('a.ask', 5);
+    expect(own).not.toHaveBeenCalled();
+    expect(mockAnswer).toHaveBeenLastCalledWith(5, { value: null });
+  });
+
+  it('answers null and logs when an onEvent throws', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { fire } = await mount([
+      ext('a', true, () => {
+        throw new Error('no');
+      }),
+    ]);
+    await fire('a.x', 1);
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: null });
+    expect(error).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] onEvent failed for a.x',
+      expect.any(Error)
+    );
+    error.mockRestore();
   });
 });
 
@@ -637,14 +727,14 @@ describe('page requests', () => {
     error.mockRestore();
   });
 
-  it('answers null when the prop is gone or throws, and routes other names to onHookEvent', async () => {
+  it("answers null when the prop is gone or throws, and routes other names to an extension's onEvent", async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const onHookEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
+    const onEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
     const { fire } = await renderRequests({
       onPermissionRequest: () => {
         throw new Error('no');
       },
-      onHookEvent,
+      extensions: [{ key: 'pageCounter', onEvent }],
     });
     await fire(
       'core.permissionRequest',
@@ -658,16 +748,16 @@ describe('page requests', () => {
     );
     await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 3);
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    expect(onHookEvent).not.toHaveBeenCalled();
+    expect(onEvent).not.toHaveBeenCalled();
     await fire('pageCounter.pick', { a: 1 }, 4);
-    expect(onHookEvent).toHaveBeenCalledWith(
-      { name: 'pageCounter.pick', payload: { a: 1 } },
+    expect(onEvent).toHaveBeenCalledWith(
+      { name: 'pick', payload: { a: 1 } },
       expect.any(AbortSignal)
     );
-    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pageCounter.pick!' });
+    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pick!' });
     await fire('pageCounter.note', { b: 2 });
-    expect(onHookEvent).toHaveBeenLastCalledWith(
-      { name: 'pageCounter.note', payload: { b: 2 } },
+    expect(onEvent).toHaveBeenLastCalledWith(
+      { name: 'note', payload: { b: 2 } },
       undefined
     );
     expect(mockAnswer).toHaveBeenCalledTimes(3);

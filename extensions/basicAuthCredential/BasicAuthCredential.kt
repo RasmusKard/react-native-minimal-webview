@@ -11,14 +11,7 @@ internal object BasicAuthCredential {
   const val KEY = "@react-native-minimal-webview/extensions.basicAuthCredential"
 
   fun register() = MinimalWebViewHooks.register(KEY) { _, context ->
-    val client = Client(context)
-    // A listed client answers every request: listed only while it is on, so the core declines them again.
-    val list = { on: Boolean ->
-      context.clients.remove(client)
-      if (on) context.clients.add(client)
-    }
-    list(true)
-    context.onOptionsChange { list(it != null) }
+    context.clients += Client(context)
     null
   }
 

@@ -1,6 +1,6 @@
 /// Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until JS answers it through
 /// `answer` or native gives up (nil, and `core.askCancelled` to JS): a Document end or a timeout. `send` puts an event
-/// on the view's `onHookEvent`. Main thread only.
+/// on the view's `onHookEvent`, which reaches the app's extensions' `onEvent`. Main thread only.
 final class Asks {
   private let send: ([String: Any]) -> Void
   private var pending: [Int: (Any?) -> Void] = [:]
