@@ -11,7 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import expo.modules.minimalwebview.DocumentScope.End
+import expo.modules.minimalwebview.DocumentEnd
 import expo.modules.minimalwebview.MinimalWebView
 
 /** HTML5 fullscreen video, and the `onFullscreenChange` prop. */
@@ -81,7 +81,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
   private fun controller() = owner.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
   /** The Document ended: its fullscreen view goes. A crash leaves no renderer to tell; at unmount WebView is told. */
-  fun documentEnded(reason: End) {
-    if (reason == End.CLOSING) exit() else onHideCustomView()
+  fun documentEnded(reason: DocumentEnd) {
+    if (reason == DocumentEnd.CLOSING) exit() else onHideCustomView()
   }
 }

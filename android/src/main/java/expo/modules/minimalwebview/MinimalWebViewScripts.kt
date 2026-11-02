@@ -6,7 +6,6 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.exception.CodedException
-import expo.modules.minimalwebview.DocumentScope.End
 import org.json.JSONArray
 
 /** Scripts in the page: the bridge transport, `injectedScripts` and `evaluate`. */
@@ -82,12 +81,12 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
 
   /** The Document ended: its evaluations fail and its reply proxy is gone. JS queues bridge messages until the next
    * page is ready; at unmount it rejects what is in flight itself. */
-  fun documentEnded(reason: End) {
+  fun documentEnded(reason: DocumentEnd) {
     evaluations.failAll()
     // At a commit this runs one main-thread hop after Chromium's (the NavigationListener's executor posts it), and
     // relies on landing before the new page's first message sets replyProxy (the bridge suite's head-script call).
     replyProxy = null
-    if (reason != End.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
+    if (reason != DocumentEnd.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
   }
 
   /** `evaluate` results come back through one global in every frame (`*`, before the first document); only the main

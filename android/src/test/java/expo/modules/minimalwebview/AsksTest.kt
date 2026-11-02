@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-import expo.modules.minimalwebview.DocumentScope.End
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -36,9 +35,9 @@ class AsksTest {
   @Test
   fun `a Document end answers every ask null, telling JS except at closing`() {
     val first = ask()
-    asks.documentEnded(End.COMMITTED)
+    asks.documentEnded(DocumentEnd.COMMITTED)
     val second = ask()
-    asks.documentEnded(End.CLOSING)
+    asks.documentEnded(DocumentEnd.CLOSING)
     assertEquals(listOf(cancelled(first)), sent.filter { it["name"] == "core.askCancelled" })
     assertEquals(listOf<Any?>(null, null), answers)
     asks.answer(second, "late")
@@ -47,7 +46,7 @@ class AsksTest {
 
   @Test
   fun `an ask after closing answers null at once and sends nothing`() {
-    asks.documentEnded(End.CLOSING)
+    asks.documentEnded(DocumentEnd.CLOSING)
     ask()
     assertEquals(listOf<Any?>(null), answers)
     assertEquals(emptyList<Map<String, Any?>>(), sent)

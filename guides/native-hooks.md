@@ -225,7 +225,7 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 | The renderer crashes | iOS keeps the `WKWebView` and reloads it, unless the crash guard holds it back; nothing attaches again. Android destroys the `WebView` (`onDestroyed` with `CRASHED`, after `onDocumentEnd`), then the factory, `configure` and `attach` run again, on a new context. |
 | The WebView unmounts | `onDocumentEnd` with `closing`, then `onDestroyed` with `closing`: clean up there. Android's `WebView` is destroyed by then; iOS's `WKWebView` has stopped loading and left the view, but is still alive. |
 
-`DocumentScope` ([Swift][documentscope], [Kotlin][documentscopekt]) says exactly when a page ends.
+`DocumentEnd` ([Swift][documentend], [Kotlin][documentendkt]) says exactly when a page ends and what each reason means.
 
 ## Rules
 
@@ -255,8 +255,8 @@ rules are on `navigationDelegates` and `clients` there, and `ask`'s answers on `
 [sample]: https://github.com/RasmusKard/react-native-minimal-webview/tree/main/example/modules/sample-extension
 [swift]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift
 [kotlin]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt
-[documentscope]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift
-[documentscopekt]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentScope.kt
+[documentend]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift
+[documentendkt]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentEnd.kt
 [HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html
 [extensionsProp]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#extensions
 [hook]: https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#hook

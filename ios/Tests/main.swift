@@ -91,7 +91,7 @@ if heard != ["a:committed", "b:committed", "a:crashed", "b:crashed"] {
   scopeFailures += 1
   print("FAIL document scope order: \(heard)")
 }
-var late: [DocumentScope.End] = []
+var late: [DocumentEnd] = []
 scope.register { late.append($0) }
 scope.end(.closing)
 if late != [.closing] {
@@ -101,11 +101,11 @@ if late != [.closing] {
 // A skipsOpening registrant doesn't hear the commit that opens a Document with none open: the first, or the one after
 // a crash. Every other end, a crash or close with none open included, reaches it.
 let opening = DocumentScope()
-var skipped: [DocumentScope.End] = []
-var unskipped: [DocumentScope.End] = []
+var skipped: [DocumentEnd] = []
+var unskipped: [DocumentEnd] = []
 opening.register(skipsOpening: true) { skipped.append($0) }
 opening.register { unskipped.append($0) }
-let openingEnds: [DocumentScope.End] = [.committed, .committed, .crashed, .crashed, .committed, .committed, .closing]
+let openingEnds: [DocumentEnd] = [.committed, .committed, .crashed, .crashed, .committed, .committed, .closing]
 openingEnds.forEach(opening.end)
 if skipped != [.committed, .crashed, .crashed, .committed, .closing] || unskipped != openingEnds {
   scopeFailures += 1

@@ -156,17 +156,17 @@ public protocol WebViewContext: AnyObject {
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
   /// Runs `handler` with this hook's extension's new `options` each time they change, live; nil when the hook turns off.
   func onOptionsChange(_ handler: @escaping (Any?) -> Void)
-  /// Runs `handler` at each end of the Document (``DocumentScope``), after the core's own resets: per-page state
-  /// belongs here.
-  func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void)
-  /// Runs `handler` once this view closes, with ``DocumentScope/End/closing``: the only reason on iOS, where a web
+  /// Runs `handler` at each end of the Document (see ``DocumentEnd``), after the core's own resets: per-page
+  /// state belongs here.
+  func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void)
+  /// Runs `handler` once this view closes, with ``DocumentEnd/closing``: the only reason on iOS, where a web
   /// content process crash reloads the same WKWebView (Android's `crashed` reason is for the WebView it destroys then).
   ///
   /// It comes after the ``onDocumentEnd(_:)`` handlers that get `closing`. The WKWebView has stopped loading, paused
   /// its media and left the view by then, but is still alive, and the context does nothing.
   ///
   /// Clean up here: what `attach` set up on the WKWebView, such as an observation or a swapped class.
-  func onDestroyed(_ handler: @escaping (DocumentScope.End) -> Void)
+  func onDestroyed(_ handler: @escaping (DocumentEnd) -> Void)
   /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` exactly once, and
   /// both cross as JSON.
   ///
@@ -183,8 +183,8 @@ final class HookContext: WebViewContext {
   /// The `hookOptions` value while the hook is on, nil while it is off.
   private(set) var options: Any?
   private var optionsHandlers: [(Any?) -> Void] = []
-  private var documentEndHandlers: [(DocumentScope.End) -> Void] = []
-  private var destroyedHandlers: [(DocumentScope.End) -> Void] = []
+  private var documentEndHandlers: [(DocumentEnd) -> Void] = []
+  private var destroyedHandlers: [(DocumentEnd) -> Void] = []
   private(set) var handlers: [String: ([Any], @escaping (Any?) -> Void) -> Void] = [:]
 
   init(_ hook: MinimalWebViewHooks.Hook, _ view: MinimalWebView) {
@@ -234,11 +234,11 @@ final class HookContext: WebViewContext {
     optionsHandlers.append(handler)
   }
 
-  func onDocumentEnd(_ handler: @escaping (DocumentScope.End) -> Void) {
+  func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void) {
     documentEndHandlers.append(handler)
   }
 
-  func onDestroyed(_ handler: @escaping (DocumentScope.End) -> Void) {
+  func onDestroyed(_ handler: @escaping (DocumentEnd) -> Void) {
     destroyedHandlers.append(handler)
   }
 
@@ -252,7 +252,7 @@ final class HookContext: WebViewContext {
     optionsHandlers.forEach { $0(options) }
   }
 
-  func documentEnded(_ reason: DocumentScope.End) {
+  func documentEnded(_ reason: DocumentEnd) {
     documentEndHandlers.forEach { $0(reason) }
   }
 

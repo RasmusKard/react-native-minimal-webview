@@ -3,7 +3,7 @@ package expo.modules.sampleextension
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
-import expo.modules.minimalwebview.DocumentScope
+import expo.modules.minimalwebview.DocumentEnd
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /** `sample.seams`: the context's seams other than clients, one small use of each. */
@@ -13,7 +13,7 @@ internal object Seams {
     private set
 
   fun register() = MinimalWebViewHooks.register("sample.seams") { webView, context ->
-    context.onDestroyed { reason -> if (reason == DocumentScope.End.CLOSING) closed++ }
+    context.onDestroyed { reason -> if (reason == DocumentEnd.CLOSING) closed++ }
     // Takes http(s) downloads and passes the rest (blob:, data:) on to the core.
     context.onDownloadStart { url, _, _, _, _ ->
       url.startsWith("http").also { taken -> if (taken) context.emit("download", emptyMap()) }
