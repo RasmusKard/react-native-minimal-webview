@@ -62,19 +62,24 @@ final class PlatformSettings {
 
   /// Forgets each applied key `settings` no longer has and sets its original value back; returns those that failed.
   private func restore(removedFrom settings: [String: Any], webView: WKWebView?) -> [[String: String]] {
-    let present = Set(settings.flatMap { rootName, entries in
-      ((entries as? [String: Any])?.keys).map { $0.map { "\(rootName).\($0)" } } ?? []
-    })
-    return applied.keys.filter { !present.contains($0) }.compactMap { id in
+    var present = Set<String>()
+    for (rootName, entries) in settings {
+      guard let entries = entries as? [String: Any] else { continue }
+      present.formUnion(entries.keys.map { "\(rootName).\($0)" })
+    }
+    var failed: [[String: String]] = []
+    for id in applied.keys where !present.contains(id) {
       applied[id] = nil
       guard let original = originals.removeValue(forKey: id), let dot = id.firstIndex(of: "."),
-        let object = root(String(id[..<dot]), webView: webView, configuration: nil) else { return nil }
+        let object = root(String(id[..<dot]), webView: webView, configuration: nil) else { continue }
       let key = String(id[id.index(after: dot)...])
       // shortcut: a null_resettable property (underPageBackgroundColor) comes back as the value read, not as "follow the
       // default"; set nil for those if one matters.
-      let reason = MRWCatchException { object.setValue(original is NSNull ? nil : original, forKey: key) }
-      return reason.map { ["key": id, "reason": "removed, but restoring it failed: \($0)"] }
+      if let reason = MRWCatchException({ object.setValue(original is NSNull ? nil : original, forKey: key) }) {
+        failed.append(["key": id, "reason": "removed, but restoring it failed: \(reason)"])
+      }
     }
+    return failed
   }
 
   /// `root.key` through KVC, as JSON. Throws a `PlatformError` with the reason when it can't.
@@ -230,11 +235,10 @@ final class PlatformSettings {
   private static func color(_ text: String) -> UIColor? {
     let hex = text.hasPrefix("#") ? String(text.dropFirst()) : text
     guard hex.count == 6 || hex.count == 8, let bits = UInt32(hex, radix: 16) else { return nil }
-    let shift = hex.count == 8 ? bits : bits << 8 | 0xFF
-    let part = { (offset: UInt32) in CGFloat((shift >> offset) & 0xFF) / 255 }
+    let rgba = hex.count == 8 ? bits : bits << 8 | 0xFF
+    let part = { (offset: UInt32) in CGFloat((rgba >> offset) & 0xFF) / 255 }
     return UIColor(red: part(24), green: part(16), blue: part(8), alpha: part(0))
   }
-
 }
 
 /// Why `get` or `call` failed; `code` is the JS error code (`not_found` or `native_error`).

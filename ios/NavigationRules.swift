@@ -34,7 +34,7 @@ enum NavigationRules {
 
   /// The rules' decision, gated for `ask`: blocked when nothing can answer it (`canAsk` false), allowed when its URL is
   /// in `asked` (URLs an `ask` already allowed). An unknown rule action blocks.
-  static func decide(_ rules: [[String: Any]]?, _ request: Request, asked: Set<String> = [], canAsk: Bool = true) -> Decision {
+  static func decide(_ rules: [[String: Any]]?, _ request: Request, asked: Set<String>, canAsk: Bool) -> Decision {
     let decision = match(rules, request)
     guard decision.action == "ask" else { return decision }
     if !canAsk { return Decision(action: "block", rule: decision.rule) }
