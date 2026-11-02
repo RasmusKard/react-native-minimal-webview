@@ -159,8 +159,7 @@ export type NavigationEvent = NavigationRequest & {
   /** Without `onOpenExternal`, or when it returns false, an `external` URL that no app opens is reported as `block`. */
   action: NavigationAction;
   /**
-   * Index of the matching rule in `navigationRules`, or in {@link WebView.defaultNavigationRules} when that is unset or
-   * `[]`; null when no rule decided (none matched, a scheme that always loads in place or is always blocked, or a
+   * Index of the matching rule in `navigationRules`, or in {@link defaultNavigationRules} when that is unset; null when no rule decided (none matched, a scheme that always loads in place or is always blocked, or a
    * download opened externally).
    */
   rule: number | null;
@@ -768,7 +767,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
    * and with no match the navigation is blocked.
    *
-   * Unset or `[]`, the rules are {@link WebView.defaultNavigationRules}.
+   * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation is blocked.
    *
    * `about:`, `blob:`, `data:` and `javascript:` always load in place.
    *
@@ -789,7 +788,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * <WebView
    *   source={{ uri: 'https://example.com' }}
    *   // myapp: opens externally even without a user gesture; everything else as by default
-   *   navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...WebView.defaultNavigationRules]}
+   *   navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...defaultNavigationRules]}
    * />
    * ```
    * @see [Navigation rules example](../guides/examples.md#navigation-rules)

@@ -8,11 +8,10 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
-<li><a href="../modules/WebView.html">WebView</a></li>
 <li><a href="" aria-current="page">defaultNavigationRules</a></li></ul>
 <h1>Variable defaultNavigationRules</h1></div>
-<div class="tsd-signature"><span class="tsd-kind-variable">defaultNavigationRules</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/NavigationRule.html" class="tsd-signature-type tsd-kind-type-alias">NavigationRule</a><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>The rules for an unset or empty <code>navigationRules</code>: <code>file:</code> is blocked, http(s) loads in place, and any other scheme
+<div class="tsd-signature"><span class="tsd-kind-variable">defaultNavigationRules</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/NavigationRule.html" class="tsd-signature-type tsd-kind-type-alias">NavigationRule</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
+<div class="tsd-comment tsd-typography"><p>The rules <code>navigationRules</code> has when it is unset: <code>file:</code> is blocked, http(s) loads in place, and any other scheme
 opens externally from the main frame when a user gesture started it (<a href="../types/NavigationRule.html#userinitiated" class="tsd-kind-property">NavigationRule.userInitiated</a>).</p>
 <p>Anything else, a subframe's or one without a gesture, is blocked: a page that launches an app from a script or
 timer, and on iOS also from a click handler or from a redirect after a form POST (an OAuth <code>myapp://callback</code>).</p>
