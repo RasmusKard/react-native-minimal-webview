@@ -92,16 +92,16 @@ check("get an unknown key", thrown { try settings.get("webView.nope", webView: v
 check("get without a key is not_found", code { try settings.get("minimumFontSize", webView: view) }, "not_found")
 check("get on an unknown root is not_found", code { try settings.get("nope.key", webView: view) }, "not_found")
 check("get an unknown key is not_found", code { try settings.get("webView.nope", webView: view) }, "not_found")
-check("call an unknown root is not_found", code { try settings.call("nope.reload", args: [], completion: nil, webView: view) { _, _ in } }, "not_found")
-check("call an unknown selector", thrown { try settings.call("webView.nope:", args: [1.0], completion: nil, webView: view) { _, _ in } }, "WKWebView has no method nope:")
-check("call an unknown selector is not_found", code { try settings.call("webView.nope:", args: [1.0], completion: nil, webView: view) { _, _ in } }, "not_found")
+check("call an unknown root is not_found", code { try settings.call("nope.reload", args: [], webView: view) { _, _ in } }, "not_found")
+check("call an unknown selector", thrown { try settings.call("webView.nope:", args: [1.0], webView: view) { _, _ in } }, "WKWebView has no method nope:")
+check("call an unknown selector is not_found", code { try settings.call("webView.nope:", args: [1.0], webView: view) { _, _ in } }, "not_found")
 var result: String?
-check("call", thrown { try settings.call("preferences.setMinimumFontSize:", args: [14.0], completion: nil, webView: view) { result = $0 ?? $1 } }, ())
+check("call", thrown { try settings.call("preferences.setMinimumFontSize:", args: [14.0], webView: view) { result = $0 ?? $1 } }, ())
 check("call resolved", result, "null")
 check("call set", view.configuration.preferences.minimumFontSize, 14.0)
-check("call refused", thrown { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "reload is owned by the core, or private")
-check("a refused selector is native_error", code { try settings.call("webView.reload", args: [], completion: nil, webView: view) { _, _ in } }, "native_error")
-check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], completion: nil, webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
+check("call refused", thrown { try settings.call("webView.reload", args: [], webView: view) { _, _ in } }, "reload is owned by the core, or private")
+check("a refused selector is native_error", code { try settings.call("webView.reload", args: [], webView: view) { _, _ in } }, "native_error")
+check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
 /// A method per completion-handler shape the Swift tests can't get from WebKit without a page load.
 final class Completions: NSObject {
   @objc func reportCount(_ handler: @escaping (Int) -> Void) { handler(3) }
@@ -116,6 +116,7 @@ func invoke(_ selector: Selector, _ completion: String?) -> String? {
 check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")
 check("an error completion rejects with its description", invoke(#selector(Completions.fail(_:)), "error"), "nope")
 check("a block selector without a shape rejects", invoke(#selector(Completions.reportCount(_:)), nil), "the method takes a completion handler this package's SDK headers don't list: write a native hook")
+check("the completion table has the shape of a WebKit selector", platformCompletions["webView.evaluateJavaScript:completionHandler:"], "valueError")
 check("NaN as JSON throws", (thrown { try PlatformSettings.json { Double.nan } } as? String)?.hasPrefix("NSInvalidArgumentException:"), true)
 print("\(cases - failures)/\(cases) platform settings cases pass")
 exit(failures == 0 ? 0 : 1)

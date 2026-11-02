@@ -5,7 +5,6 @@ import { AppState, Platform, type ViewProps } from 'react-native';
 import { CONNECTION } from './bridge/createBridge';
 import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
 import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
-import { iosCompletions } from './platform.generated';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookEvent,
@@ -149,9 +148,9 @@ export type NativeMethods = {
   get(path: string): Promise<string>;
   /**
    * Calls a platform method: the JSON of its result. `argsJson` is JSON, so that a `null` argument survives the native
-   * conversion. `completion` is the iOS selector's handler shape, from the SDK headers; Android ignores it.
+   * conversion.
    */
-  call(path: string, argsJson: string, completion: string | null): Promise<string>;
+  call(path: string, argsJson: string): Promise<string>;
   /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `call`. */
   hook(name: string, method: string, args: string): Promise<string>;
 };
@@ -241,9 +240,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       evaluate: (script) => mounted(() => native.current?.evaluate(script)),
       get: (key) => mounted(() => native.current?.get(key)),
       call: (method, args = []) =>
-        mounted(() =>
-          native.current?.call(method, JSON.stringify(args), iosCompletions[method] ?? null)
-        ),
+        mounted(() => native.current?.call(method, JSON.stringify(args))),
       hook: (name, method, args = []) =>
         mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
     };

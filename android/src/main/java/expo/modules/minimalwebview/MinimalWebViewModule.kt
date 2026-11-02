@@ -113,8 +113,7 @@ class MinimalWebViewModule : Module() {
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->
         native(view, promise) { promise.resolve(view.platformSettings.get(path)) }
       }.runOnQueue(Queues.MAIN)
-      // The third argument is iOS's completion name, which Android has no use for.
-      AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, _: String?, promise: Promise ->
+      AsyncFunction("call") { view: MinimalWebView, path: String, argsJson: String, promise: Promise ->
         native(view, promise) {
           view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) { json -> native(view, promise) { promise.resolve(json()) } }
         }
