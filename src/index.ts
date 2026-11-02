@@ -24,6 +24,7 @@
 export { WebView } from './WebView';
 export { createWebViewRef, useWebViewState } from './refStore';
 export { createBridge } from './bridge/createBridge';
+export { defaultNavigationRules } from './defaultNavigationRules';
 export { reactNativeWebViewMessages } from './reactNativeWebViewMessages';
 export { AndroidConstants, IOSConstants } from './platform.generated';
 export type {

@@ -5,13 +5,13 @@ import { AppState, Platform, type ViewProps } from 'react-native';
 import { CONNECTION } from './bridge/createBridge';
 import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
 import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
+import { defaultNavigationRules } from './defaultNavigationRules';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookExtension,
   InjectedScript,
   LoadErrorEvent,
   NavigationEvent,
-  NavigationRule,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
@@ -315,9 +315,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       settings={settings}
       pullToRefresh={props.pullToRefresh}
       sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
-      navigationRules={
-        props.navigationRules?.length ? props.navigationRules : WebView.defaultNavigationRules
-      }
+      navigationRules={props.navigationRules ?? defaultNavigationRules}
       injectedScripts={injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
@@ -494,7 +492,7 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
 }
 
 /**
- * What `WebView` carries besides the component: {@link WebView.android} and `defaultNavigationRules`.
+ * What `WebView` carries besides the component: {@link WebView.android}.
  * @group WebView
  * @hideGroups
  */
@@ -547,21 +545,7 @@ export declare namespace WebView {
      */
     function setWebContentsDebuggingEnabled(enabled: boolean): void;
   }
-  /**
-   * The rules for an unset or empty `navigationRules`: `file:` is blocked, http(s) loads in place, and any other scheme
-   * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
-   *
-   * Anything else, a subframe's or one without a gesture, is blocked: a page that launches an app from a script or
-   * timer, and on iOS also from a click handler or from a redirect after a form POST (an OAuth `myapp://callback`).
-   *
-   * Frozen; spread it after your own rules to keep it.
-   */
-  const defaultNavigationRules: readonly NavigationRule[];
 }
-const freeze = <T extends object>(value: T): T => {
-  Object.values(value).forEach((field) => typeof field === 'object' && freeze(field as object));
-  return Object.freeze(value);
-};
 const android = {
   warmUp: (): void => {
     if (Platform.OS === 'android') nativeModule().warmUp();
@@ -576,11 +560,4 @@ const android = {
 Object.defineProperty(android, 'defaultUserAgent', {
   get: (): string | null => (Platform.OS === 'android' ? nativeModule().defaultUserAgent : null),
 });
-Object.assign(WebView, {
-  android,
-  defaultNavigationRules: freeze<NavigationRule[]>([
-    { scheme: ['file'], action: 'block' },
-    { scheme: ['http', 'https'], action: 'allow' },
-    { mainFrame: true, userInitiated: true, action: 'external' },
-  ]),
-});
+Object.assign(WebView, { android });

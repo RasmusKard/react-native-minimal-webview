@@ -5,11 +5,13 @@ import { createRoot } from 'test-renderer';
 
 import { WebView } from '../WebView';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
+import { defaultNavigationRules } from '../defaultNavigationRules';
 import { createWebViewRef, useWebViewState } from '../refStore';
 import type {
   Bridge,
   HookExtension,
   NavigationRequest,
+  NavigationRule,
   NavigationState,
   SettingValue,
   WebViewProps,
@@ -114,16 +116,15 @@ describe('WebView', () => {
     expect((await render({ sharedCookies: true })).native?.sharedCookies).toBeUndefined();
   });
 
-  it('sends defaultNavigationRules, the native vectors’ defaults, for unset or empty rules', async () => {
+  it('sends defaultNavigationRules, the native vectors’ defaults, for unset rules', async () => {
     const vectors = jest.requireActual<{ rulesets: Record<string, unknown> }>(
       './vectors/navigation-rules.json'
     );
-    expect(WebView.defaultNavigationRules).toEqual(vectors.rulesets.defaults);
-    expect(Object.isFrozen(WebView.defaultNavigationRules[0]?.scheme)).toBe(true);
-    for (const navigationRules of [undefined, []])
-      expect((await render({ navigationRules })).native?.navigationRules).toBe(
-        WebView.defaultNavigationRules
-      );
+    expect(defaultNavigationRules).toEqual(vectors.rulesets.defaults);
+    expect(Object.isFrozen(defaultNavigationRules[0]?.scheme)).toBe(true);
+    expect((await render({})).native?.navigationRules).toBe(defaultNavigationRules);
+    const none: NavigationRule[] = [];
+    expect((await render({ navigationRules: none })).native?.navigationRules).toBe(none);
     const rules = [{ scheme: ['myapp'], action: 'external' as const }];
     expect((await render({ navigationRules: rules })).native?.navigationRules).toBe(rules);
   });

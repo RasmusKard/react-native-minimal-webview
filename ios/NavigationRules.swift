@@ -52,7 +52,7 @@ enum NavigationRules {
     // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
     if request.newWindow, internalSchemes.contains(scheme) || scheme == "file" { return Decision(action: "block", rule: nil) }
     if internalSchemes.contains(scheme) { return Decision(action: "allow", rule: nil) }
-    // JS sends WebView.defaultNavigationRules when the prop has none, so none here matches nothing.
+    // JS sends defaultNavigationRules when the prop is unset; no rules, nil or empty, match nothing.
     guard let rules, !rules.isEmpty else { return Decision(action: "block", rule: nil) }
     // shortcut: an unparseable URL has no host and path "/", so only host-less rules match, parse it if one must
     let components = URLComponents(string: request.url)
