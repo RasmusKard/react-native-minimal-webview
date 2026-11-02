@@ -333,7 +333,7 @@ export type BridgeEventMap = Record<string, unknown>;
  * don't wait: one made before React Native has registered its method rejects with `not_found`.
  *
  * A call or event made while no WebView is mounted with the bridge waits the same way. A call's timeout runs
- * meanwhile, and only the latest 1000 are kept: an older call rejects at its timeout, or never settles without a timeout (`timeoutMs: 0`).
+ * meanwhile, and only the latest 1000 are kept: an older call rejects with `unavailable`.
  * Unmounting rejects the calls in flight with `navigated`.
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`

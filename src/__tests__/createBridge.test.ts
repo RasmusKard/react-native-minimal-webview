@@ -273,6 +273,16 @@ describe('createBridge', () => {
     expect(sent).toEqual([]);
   });
 
+  it('rejects the oldest queued call with unavailable when the queue is full', async () => {
+    const { bridge, sent, fromPage } = setup(0);
+    const first = bridge.call('first');
+    for (let i = 0; i < 1000; i++) bridge.emit('event', i);
+    await expect(first).rejects.toMatchObject({ code: 'unavailable' });
+    fromPage({ kind: 'ready' });
+    expect(sent).toHaveLength(1000);
+    expect(sent.some((m) => m.kind === 'call')).toBe(false);
+  });
+
   it('drops malformed messages', () => {
     const { bridge, connection } = setup();
     const seen: unknown[] = [];
