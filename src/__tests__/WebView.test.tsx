@@ -32,8 +32,8 @@ const mockNativeModule = {
   setWebContentsDebuggingEnabled: jest.fn(),
 };
 // The view is a host element of the name WebView.tsx asks for (MinimalWebView), whose ref has the native `answer`,
-// `navigate`, `bridgePost`, `evaluate`, `get`, `call` and `hook` methods; `get`, `call` and `hook` echo their request as
-// JSON. The module is found by that name only.
+// `goBack`, `goForward`, `reload`, `stopLoading`, `bridgePost`, `evaluate`, `get`, `call` and `hook` methods; `get`,
+// `call` and `hook` echo their request as JSON. The module is found by that name only.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
@@ -46,7 +46,10 @@ jest.mock('expo', () => {
         }, []);
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
-          navigate: mockNavigate,
+          goBack: () => void mockNavigate('back'),
+          goForward: () => void mockNavigate('forward'),
+          reload: () => void mockNavigate('reload'),
+          stopLoading: () => void mockNavigate('stop'),
           bridgePost: mockBridgePost,
           evaluate: mockEvaluate,
           get: async (path: string) => JSON.stringify({ get: path }),
@@ -89,7 +92,7 @@ describe('WebView', () => {
     await fire('onNavigationState', state(false));
     await fire('onNavigation', { url: 'https://example.com/', action: 'external' });
     await fire('onProcessGone', { didCrash: true, recovered: true });
-    await fire('onError', { kind: 'http', url: 'https://example.com/', code: 500 });
+    await fire('onError', { kind: 'http', url: 'https://example.com/', statusCode: 500 });
     await fire('onBridge', { message: '{}', origin: 'https://example.com' });
     await fire('onBridge', { navigated: true });
     await fire('onBridge', { unavailable: true });
@@ -206,24 +209,16 @@ describe('load events and errors', () => {
     expect(seen).toEqual(['start', 'error:network', 'end:failed']);
   });
 
-  it('reports an HTTP status as an http error with its status code, without a description', async () => {
+  it('reports an HTTP error as it came, without the view tag', async () => {
     const onError = jest.fn();
     const { native } = await render({ onError });
+    const failure = { kind: 'http', url: 'https://example.com/x', statusCode: 404 };
     await act(async () =>
       (native as { onError: (event: unknown) => void }).onError({
-        nativeEvent: {
-          kind: 'http',
-          url: 'https://example.com/x',
-          code: 404,
-          description: 'Not Found',
-        },
+        nativeEvent: { ...failure, target: 42 },
       })
     );
-    expect(onError).toHaveBeenCalledWith({
-      kind: 'http',
-      url: 'https://example.com/x',
-      statusCode: 404,
-    });
+    expect(onError).toHaveBeenCalledWith(failure);
   });
 
   it('reports a failed load as it came', async () => {
@@ -699,7 +694,7 @@ describe('page requests', () => {
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
 
-  it('answers block to a navigation request when the prop throws or returns nothing', async () => {
+  it('answers null to a navigation request when the prop throws or returns nothing', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     const onNavigationRequest = jest
       .fn()
@@ -723,7 +718,7 @@ describe('page requests', () => {
     await fire('core.navigationRequest', request, 2);
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
     await fire('core.navigationRequest', request, 3);
-    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: 'block' });
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     error.mockRestore();
   });
 

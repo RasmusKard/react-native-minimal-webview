@@ -157,7 +157,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   }
 
   override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
-    if (request.isForMainFrame) owner.reportError("http", request.url.toString(), response.statusCode, response.reasonPhrase.orEmpty())
+    if (request.isForMainFrame) owner.reportHttpError(request.url.toString(), response.statusCode)
     observing("onReceivedHttpError", WEB_VIEW, WebResourceRequest::class.java, WebResourceResponse::class.java) { it.onReceivedHttpError(view, request, response) }
   }
 

@@ -417,9 +417,12 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {
     // A network or SSL error fails the load in progress; one with no load JS saw start (an SSL error before 146) doesn't.
-    if (kind != "http" && loading) outcome = "failed"
+    if (loading) outcome = "failed"
     onError(mapOf("kind" to kind, "url" to url, "code" to code, "description" to description))
   }
+
+  internal fun reportHttpError(url: String, statusCode: Int) =
+    onError(mapOf("kind" to "http", "url" to url, "statusCode" to statusCode))
 
   // Changes within one frame are combined into one event, except `loading` flips: a load that starts and fails
   // within one frame must still reach JS as loading true -> false (onLoadStart / onLoadEnd).

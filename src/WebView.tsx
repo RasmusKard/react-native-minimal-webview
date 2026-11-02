@@ -49,15 +49,18 @@ const NAVIGATION_KEYS = keysOf<NavigationEvent>({
   action: true,
   rule: true,
 });
+const ERROR_KEYS = keysOf<Exclude<LoadErrorEvent, { kind: 'http' }>>({
+  kind: true,
+  url: true,
+  code: true,
+  description: true,
+});
+const HTTP_ERROR_KEYS = keysOf<Extract<LoadErrorEvent, { kind: 'http' }>>({
+  kind: true,
+  url: true,
+  statusCode: true,
+});
 const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: true });
-
-/** Native reports every main-frame error as one event; `code` is the HTTP status for `http`. */
-export type NativeErrorEvent = {
-  kind: LoadErrorEvent['kind'];
-  url: string;
-  code: number;
-  description: string;
-};
 
 /** A page's message comes with its origin, as native verified it (`location.origin` form). */
 export type BridgeEvent =
@@ -131,13 +134,16 @@ type NativeProps = ViewProps &
     onNavigationState: NavigationState;
     onBridge: BridgeEvent;
     onHookEvent: AskableEvent;
-    onError: NativeErrorEvent;
+    onError: LoadErrorEvent;
     onProcessGone: ProcessGoneEvent;
   }>;
 
 /** The native view's methods, on its ref. */
 export type NativeMethods = {
-  navigate(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>;
+  goBack(): Promise<void>;
+  goForward(): Promise<void>;
+  reload(): Promise<void>;
+  stopLoading(): Promise<void>;
   bridgePost(message: string): Promise<void>;
   /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
   answer(askId: number, answer: { value: unknown }): Promise<void>;
@@ -163,13 +169,13 @@ const nativeModule = () =>
     setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
 
-/** Runs a JS handler that native waits on: one that throws still answers, with the safe default. */
-const settle = <T,>(handler: () => T | Promise<T>, fallback: T, failure: string) =>
+/** Runs a JS handler that native waits on: one that throws still answers, with null (native's safe default). */
+const settle = <T,>(handler: () => T | Promise<T>, failure: string) =>
   Promise.resolve()
     .then(handler)
     .catch((error: unknown) => {
       console.error(`[react-native-minimal-webview] ${failure}`, error);
-      return fallback;
+      return null;
     });
 
 /**
@@ -232,10 +238,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       }
     };
     return {
-      goBack: () => void native.current?.navigate('back'),
-      goForward: () => void native.current?.navigate('forward'),
-      reload: () => void native.current?.navigate('reload'),
-      stopLoading: () => void native.current?.navigate('stop'),
+      goBack: () => void native.current?.goBack(),
+      goForward: () => void native.current?.goForward(),
+      reload: () => void native.current?.reload(),
+      stopLoading: () => void native.current?.stopLoading(),
       evaluate: (script) => mounted(() => native.current?.evaluate(script)),
       get: (key) => mounted(() => native.current?.get(key)),
       call: (method, args = []) =>
@@ -293,8 +299,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     }
     const value = await settle(
       () => handler?.(payload, controller?.signal),
-      // Native counts a missing answer as `block` too.
-      request === 'onNavigationRequest' ? 'block' : null,
       request ? `${request} failed` : `onEvent failed for ${name}`
     );
     if (askId === undefined) return;
@@ -479,10 +483,11 @@ function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment 
     if (was && !state.loading) props.onLoadEnd?.(state);
   };
 
-  // An HTTP error's description is the platform's own text (an empty HTTP/2 reason phrase on Android): not passed on.
-  const onError = ({ nativeEvent: { kind, url, code, description } }: Native<NativeErrorEvent>) =>
+  const onError = ({ nativeEvent }: Native<LoadErrorEvent>) =>
     props.onError?.(
-      kind === 'http' ? { kind, url, statusCode: code } : { kind, url, code, description }
+      nativeEvent.kind === 'http'
+        ? pick(nativeEvent, HTTP_ERROR_KEYS)
+        : pick(nativeEvent, ERROR_KEYS)
     );
 
   return { onNavigationState, onError, lastRef };

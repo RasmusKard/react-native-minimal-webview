@@ -374,8 +374,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       return decisionHandler(.cancel)
     }
     if navigationResponse.isForMainFrame, let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400 {
-      let description = HTTPURLResponse.localizedString(forStatusCode: response.statusCode)
-      onError(["kind": "http", "url": response.url?.absoluteString ?? "", "code": response.statusCode, "description": description])
+      onError(["kind": "http", "url": response.url?.absoluteString ?? "", "statusCode": response.statusCode])
     }
     decisionHandler(.allow)
   }
