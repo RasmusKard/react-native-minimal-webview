@@ -25,7 +25,7 @@ const compile = (file: string) => {
 const endpoint = compile('endpoint.ts');
 const body = [endpoint, compile('pageClient.ts')].join('\n');
 if (/^\s*(import|export)\b/m.test(body))
-  throw new Error('the page client may only import createEndpoint and types');
+  throw new Error('the page client may only import from endpoint.ts, and types');
 const fn = `function (w, timeoutMs, allowedOrigins) {\n${body}\nreturn installPageClient(w, timeoutMs, allowedOrigins);\n}`;
 const target = new URL('../../src/bridge/pageClient.generated.ts', import.meta.url);
 // endpoint.ts's matchesOrigin and the helper it calls, for the injected scripts' origin guard (WebView.tsx).

@@ -271,7 +271,6 @@ describe('createBridge', () => {
     await expect(result).rejects.toMatchObject({ code: 'timeout' });
     fromPage({ kind: 'ready' });
     expect(sent).toEqual([]);
-    jest.useRealTimers();
   });
 
   it('drops malformed messages', () => {

@@ -204,7 +204,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   // A handle can outlive its native view (one captured before an unmount): navigation is then a no-op, and what
   // answers rejects with `unavailable`.
   const [handle] = useState((): WebViewRef => {
-    const parsed = (json: string) => JSON.parse(json) as unknown;
     const gone = (): never => {
       throw codedError({ code: 'unavailable', message: 'the WebView is gone' });
     };
@@ -226,7 +225,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const mounted = async (call: () => Promise<string> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
-          return parsed(await settled(call() ?? gone()));
+          return JSON.parse(await settled(call() ?? gone())) as unknown;
         } catch (error) {
           if ((error as { code?: string }).code !== 'ERR_VIEW_NOT_FOUND') throw error;
           if (frame === 60 || AppState.currentState === 'background') gone();
@@ -270,9 +269,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     else connection?.markUnavailable();
   };
 
-  const answer = (askId: number, value: unknown) =>
-    native.current?.answer(askId, { value: value ?? null });
-
   const requestHandlers = useRequestHandlers(props);
 
   // One per ask in flight, by id: aborted when native stops waiting (`core.askCancelled`) or at unmount.
@@ -304,7 +300,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     if (askId === undefined) return;
     asks.delete(askId);
     // Native already answered a cancelled ask with null; a late answer would find nothing.
-    if (!controller?.signal.aborted) await answer(askId, value);
+    if (!controller?.signal.aborted) await native.current?.answer(askId, { value: value ?? null });
   };
 
   return (
