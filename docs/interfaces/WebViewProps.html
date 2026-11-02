@@ -17,7 +17,10 @@ events) go to the native view.</p>
 <p>Every <code>on…</code> callback is read when its event or request comes, so adding, changing or removing one applies to the
 next, and a request without one gets the default described on its prop. One that answers a request and throws (or
 rejects) is logged with <code>console.error</code> and gives the refusing answer: <code>onNavigationRequest</code> <code>block</code>,
-<code>onOpenExternal</code> nothing opened, <code>onFileRequest</code> cancel, <code>onPermissionRequest</code> deny, an extension's <code>onEvent</code> null.</p>
+<code>onOpenExternal</code> null (the core opens nothing), <code>onFileRequest</code> cancel, <code>onPermissionRequest</code> deny, an extension's
+<code>onEvent</code> null.</p>
+<p>The <code>signal</code> such a callback gets aborts when native stops waiting for its answer (the page moved on, crashed or
+unmounted), and a late answer is dropped.</p>
 <p>JS dialogs (<code>alert</code>, <code>confirm</code>, <code>prompt</code>) and HTTP auth have no prop. iOS shows a <code>UIAlertController</code> titled with the
 frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
 auth challenge is cancelled on Android, and gets WebKit's default handling on iOS: without a stored credential, the
@@ -69,9 +72,6 @@ site's 401 page shows. <code>dialogs</code> and <code>basicAuthCredential</code>
 <h3 class="tsd-anchor-link" id="android"><span>android</span><code class="tsd-tag" title="Android"><svg role="img" aria-label="Android" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg></code><a href="#android" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">android</span><span class="tsd-signature-symbol">?:</span> <a href="../types/AndroidSettings.html" class="tsd-signature-type tsd-kind-type-alias">AndroidSettings</a></div>
 <div class="tsd-comment tsd-typography"><p>Android settings by setter name; see <a href="../types/AndroidSettings.html" class="tsd-kind-type-alias">AndroidSettings</a>.</p>
-<p>A key you remove goes back to the value it had before you first set it: the package's (see
-<a href="../types/AndroidSettings.html#settings" class="tsd-kind-property">AndroidSettings.settings</a>) or the platform's. A key with no getter, such as <code>geolocationEnabled</code>, keeps its
-value until the WebView is recreated, with a warning.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="bridge"><span>bridge</span><a href="#bridge" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -87,18 +87,11 @@ so, once per process.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">extensions</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> (<span class="tsd-signature-type">false</span> <span class="tsd-signature-symbol">|</span> <a href="../types/HookExtension.html" class="tsd-signature-type tsd-kind-type-alias">HookExtension</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>The native hooks to turn on, as <a href="../types/HookExtension.html" class="tsd-kind-type-alias">HookExtension</a>s: a package with a native hook exports a function that
 returns one.</p>
-<p>A false, null or undefined entry is left out, so <code>on &amp;&amp; extension(…)</code> switches one on and off. An extension's
-<code>options</code> default to <code>true</code>; null or false options switch its hook off too. A hook attaches when its key first
-appears, and a later change of its <code>options</code> reaches it live, without recreating the WebView. A hook that is off,
-because its key is gone or its <code>options</code> are null or false, stays attached and gets null, but the core routes none
-of its delegates, clients or listeners, drops its events, answers its asks with null, and rejects <code>ref.hook</code> calls
-to its handlers with <code>not_found</code>; turning it on again gives it the new options. A key turned on after the
-WebView was created attaches its hook then, unless the hook has a <code>configure</code> step or its own WebView class
-(<code>webViewClass</code>, <code>webViewFactory</code>): that one attaches only when the WebView is created, and a warning says so. A
-key no hook is registered under warns: pass a one-platform hook's extension on that platform only.</p>
-<p>Each hook event goes to the <code>onEvent</code> of the extension whose key its name starts with (<code>'&lt;key&gt;.'</code>; the longest
-key, when several do), and one no extension owns is dropped. Two extensions with one key warn in development, and
-the later one wins. The latest <code>onEvent</code> always takes the events: a render with new handlers sends native nothing.</p>
+<p>A false, null or undefined entry is left out, so <code>on &amp;&amp; extension(…)</code> switches one on and off; see
+<a href="../types/HookExtension.html#options" class="tsd-kind-property">HookExtension.options</a> for what off means. A hook attaches when its key first appears, and a later change of
+its <code>options</code> reaches it live, without recreating the WebView. A key turned on after the WebView was created
+attaches its hook then, unless the hook has a <code>configure</code> step or its own WebView class (<code>webViewClass</code>,
+<code>webViewFactory</code>): that one attaches only when the WebView is created, and a warning says so.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-see">
@@ -116,14 +109,13 @@ so, once per process).</p>
 <h3 class="tsd-anchor-link" id="ios"><span>ios</span><code class="tsd-tag" title="iOS"><svg role="img" aria-label="iOS" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></code><a href="#ios" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">ios</span><span class="tsd-signature-symbol">?:</span> <a href="../types/IOSSettings.html" class="tsd-signature-type tsd-kind-type-alias">IOSSettings</a></div>
 <div class="tsd-comment tsd-typography"><p>WebKit settings by property name; see <a href="../types/IOSSettings.html" class="tsd-kind-type-alias">IOSSettings</a>.</p>
-<p>A key you remove goes back to the value it had before you first set it: the package's default or WebKit's.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="navigationrules"><span>navigation<wbr/>Rules</span><a href="#navigationrules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">navigationRules</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/NavigationRule.html" class="tsd-signature-type tsd-kind-type-alias">NavigationRule</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
 and with no match the navigation is blocked.</p>
-<p>Unset, the rules are <a href="../variables/defaultNavigationRules.html" class="tsd-kind-variable">defaultNavigationRules</a>; <code>[]</code> is no rules, so every navigation is blocked.</p>
+<p>Unset, the rules are <a href="../variables/defaultNavigationRules.html" class="tsd-kind-variable">defaultNavigationRules</a>; <code>[]</code> is no rules, so every navigation they decide is blocked.</p>
 <p><code>about:</code>, <code>blob:</code>, <code>data:</code> and <code>javascript:</code> always load in place.</p>
 <p>The <code>source</code> load, reloads and back/forward skip the rules; a redirect of the <code>source</code> load doesn't, nor on Android
 a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
@@ -137,7 +129,7 @@ and the <code>intent:</code> itself is reported as <code>block</code>.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="tsx"><span class="hl-0">&lt;</span><span class="hl-1">WebView</span><br/><span class="hl-2">  </span><span class="hl-3">source</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">{ </span><span class="hl-6">uri:</span><span class="hl-5"> </span><span class="hl-11">&#39;https://example.com&#39;</span><span class="hl-5"> }</span><span class="hl-4">}</span><br/><span class="hl-2">  </span><span class="hl-12">// myapp: opens externally even without a user gesture; everything else as by default</span><br/><span class="hl-2">  </span><span class="hl-3">navigationRules</span><span class="hl-2">=</span><span class="hl-4">{</span><span class="hl-5">[{ </span><span class="hl-6">scheme:</span><span class="hl-5"> [</span><span class="hl-11">&#39;myapp&#39;</span><span class="hl-5">], </span><span class="hl-6">action:</span><span class="hl-5"> </span><span class="hl-11">&#39;external&#39;</span><span class="hl-5"> }, </span><span class="hl-2">...</span><span class="hl-6">defaultNavigationRules</span><span class="hl-5">]</span><span class="hl-4">}</span><br/><span class="hl-0">/&gt;</span>
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="tsx"><span class="hl-8">&lt;</span><span class="hl-7">WebView</span><br/><span class="hl-1">  </span><span class="hl-9">source</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-10">{ </span><span class="hl-2">uri:</span><span class="hl-10"> </span><span class="hl-3">&#39;https://example.com&#39;</span><span class="hl-10"> }</span><span class="hl-4">}</span><br/><span class="hl-1">  </span><span class="hl-12">// myapp: opens externally even without a user gesture; everything else as by default</span><br/><span class="hl-1">  </span><span class="hl-9">navigationRules</span><span class="hl-1">=</span><span class="hl-4">{</span><span class="hl-10">[{ </span><span class="hl-2">scheme:</span><span class="hl-10"> [</span><span class="hl-3">&#39;myapp&#39;</span><span class="hl-10">], </span><span class="hl-2">action:</span><span class="hl-10"> </span><span class="hl-3">&#39;external&#39;</span><span class="hl-10"> }, </span><span class="hl-1">...</span><span class="hl-2">defaultNavigationRules</span><span class="hl-10">]</span><span class="hl-4">}</span><br/><span class="hl-8">/&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 </div>
@@ -174,8 +166,7 @@ with a WebView older than 146, an SSL error on a back/forward load isn't reporte
 one is open is cancelled, and if the chooser's activity died without returning a result, so is every request until
 the app restarts.</p>
 <p>iOS always shows WebKit's picker, which needs <code>NSCameraUsageDescription</code> and <code>NSPhotoLibraryUsageDescription</code>.</p>
-<p><code>signal</code> aborts when native stops waiting (the page moved on, crashed or unmounted), and a late answer is dropped;
-until it settles, the page's next file request waits.</p>
+<p>Until the answer settles, the page's next file request waits.</p>
 </div></section>
 <section class="tsd-panel tsd-member tsd-is-android">
 <h3 class="tsd-anchor-link" id="onfullscreenchange"><span>on<wbr/>Fullscreen<wbr/>Change</span><code class="tsd-tag" title="Android"><svg role="img" aria-label="Android" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg></code><a href="#onfullscreenchange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -221,8 +212,8 @@ that starts and fails at once still reports both.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">onOpenExternal</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">request</span><span class="tsd-signature-symbol">:</span> <a href="../types/NavigationRequest.html" class="tsd-signature-type tsd-kind-type-alias">NavigationRequest</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">signal</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">AbortSignal</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">boolean</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">void</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>Opens <code>external</code> navigations, every one, an Android <code>intent:</code> URL included, before <code>onNavigation</code> reports them.</p>
 <p>Return false (a promise is awaited) to hand it back: the core then opens it as it does without this prop, an
-<code>intent:</code>'s fallback URL included. Any other answer, <code>undefined</code> too, means you opened it. <code>signal</code> aborts when
-native stops waiting (the page moved on, crashed or unmounted), and then nothing opens it.</p>
+<code>intent:</code>'s fallback URL included. Any other answer, <code>undefined</code> too, means you opened it. When <code>signal</code> aborts,
+nothing opens it.</p>
 <p>Without this prop, the system browser or app for the URL opens it, without asking <code>canOpenURL</code> first, so no
 <code>LSApplicationQueriesSchemes</code> (iOS) or <code>&lt;queries&gt;</code> (Android) entries are needed.</p>
 </div></section>
@@ -235,9 +226,8 @@ request fails anyway. On iOS, true also skips WebKit's own prompt.</p>
 <p>Without this prop, Android denies and iOS shows WebKit's prompt (location always does). iOS needs
 <code>NSCameraUsageDescription</code> and <code>NSMicrophoneUsageDescription</code>, Android the <code>CAMERA</code> and <code>RECORD_AUDIO</code> manifest
 permissions. Android keeps a location answer until the page changes.</p>
-<p>Anything but true denies. <code>signal</code> aborts when native stops waiting (the page moved on, crashed or unmounted, or
-Android withdrew the request), and a late answer is dropped; until it settles, the page's next request of the same
-kind waits.</p>
+<p>Anything but true denies. <code>signal</code> also aborts when Android withdraws the request. Until the answer settles, the
+page's next request of the same kind waits.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="onprocessgone"><span>on<wbr/>Process<wbr/>Gone</span><a href="#onprocessgone" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
@@ -250,8 +240,7 @@ kind waits.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">pullToRefresh</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></div>
 <div class="tsd-comment tsd-typography"><p>Pull down at the top of the page to reload: <code>UIRefreshControl</code> on iOS, <code>SwipeRefreshLayout</code> on Android, where a
 pull inside a scrolled inner scroller (<code>overflow: auto</code>) scrolls it instead.</p>
-<p>It reloads as <a href="../types/WebViewRef.html#reload" class="tsd-kind-method">reload()</a> does, a POST <code>source</code> included, but doesn't reset the crash
-guard. A change applies at once.</p>
+<p>It reloads as <a href="../types/WebViewRef.html#reload" class="tsd-kind-method">reload()</a> does, a POST <code>source</code> included. A change applies at once.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ref"><span>ref</span><a href="#ref" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>

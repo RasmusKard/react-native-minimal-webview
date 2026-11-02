@@ -24,18 +24,34 @@ This package passes the platform APIs through instead:
   module.
 
 ```tsx
-<WebView
-  ios={{ scrollView: { bounces: false } }}
-  android={{ settings: { textZoom: 120 } }}
-  …
-/>;
-await ref.current?.call('webView.pageDown', [true]); // Android
+import { useRef } from 'react';
+import { Button, Platform } from 'react-native';
+import { WebView, type WebViewRef } from 'react-native-minimal-webview';
+
+export function Browser() {
+  const ref = useRef<WebViewRef>(null);
+  const pageDown = () => {
+    if (Platform.OS === 'android') ref.current?.call('webView.pageDown', [true]);
+  };
+  return (
+    <>
+      <Button title="Page down" onPress={pageDown} />
+      <WebView
+        ref={ref}
+        source={{ uri: 'https://example.com' }}
+        style={{ flex: 1 }}
+        ios={{ scrollView: { bounces: false } }}
+        android={{ settings: { textZoom: 120 } }}
+      />
+    </>
+  );
+}
 ```
 
-A setting or method a newer SDK adds works without a release of this package, untyped: under a settings root's
-`other`, or through `call`. On iOS it has to be visible to Objective-C, and a method with a completion handler the
-package's SDK headers don't have rejects
-([limits](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call)).
+A setting or method a newer SDK adds works without a release of this package: see
+[`ios`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#ios),
+[`android`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#android) and
+[`call`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call).
 
 ## What it changes from react-native-webview
 

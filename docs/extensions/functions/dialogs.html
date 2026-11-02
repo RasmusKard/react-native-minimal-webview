@@ -19,8 +19,9 @@
 the answer. Not in react-native-webview, whose dialogs are native.</p>
 <p>The return value (a promise is awaited) is the answer: <code>true</code> accepts a confirm, a string is a prompt's text, and
 anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.</p>
-<p>There is no timeout: <code>signal</code> aborts when the page goes away first (a navigation, a crash, an unmount), and the
-dialog is then dismissed.</p>
+<p><code>signal</code> aborts when native stops waiting for the answer, and the dialog is then dismissed;
+<a href="https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#onevent"><code>HookExtension.onEvent</code></a>
+has the rules.</p>
 <p>Without this extension, the default dialogs show, as <code>WebViewProps</code> describes.</p>
 </div>
 <div class="tsd-parameters">

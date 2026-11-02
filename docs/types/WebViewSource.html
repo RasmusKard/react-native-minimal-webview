@@ -23,11 +23,11 @@
 <div class="tsd-comment tsd-typography"><p>Makes the request a POST with this form-urlencoded body.</p>
 <p>Its <code>Content-Type</code> is <code>application/x-www-form-urlencoded</code> unless iOS <code>headers</code> set one; Android sends no
 <code>headers</code>.
-<code>reload()</code> sends the POST again; crash recovery doesn't (<code>onProcessGone</code> reports <code>recovered: false</code>).</p>
+<code>reload()</code> sends the POST again; <a href="ProcessGoneEvent.html#recovered" class="tsd-kind-property">crash recovery</a> doesn't.</p>
 </div>
 <div class="tsd-comment tsd-typography">
 <div class="tsd-tag-example">
-<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-13">source</span><span class="hl-2">: </span><span class="hl-1">WebViewSource</span><span class="hl-2"> = { </span><span class="hl-6">uri:</span><span class="hl-2"> </span><span class="hl-11">&#39;https://example.com/form&#39;</span><span class="hl-2">, </span><span class="hl-6">body:</span><span class="hl-2"> </span><span class="hl-11">&#39;a=1&amp;b=2&#39;</span><span class="hl-2"> };</span>
+<h4 class="tsd-anchor-link" id="example">Example<a href="#example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="ts"><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-6">source</span><span class="hl-1">: </span><span class="hl-7">WebViewSource</span><span class="hl-1"> = { </span><span class="hl-2">uri:</span><span class="hl-1"> </span><span class="hl-3">&#39;https://example.com/form&#39;</span><span class="hl-1">, </span><span class="hl-2">body:</span><span class="hl-1"> </span><span class="hl-3">&#39;a=1&amp;b=2&#39;</span><span class="hl-1"> };</span>
 </code><button type="button">Copy</button></pre>
 
 </div></div></li>

@@ -45,17 +45,16 @@ object MinimalWebViewHooks {
    * `OnCreate` again. A helper that calls `register` for other code is one call, so a second hook through it replaces
    * the first silently.
    *
-   * The hook attaches to each WebView whose `extensions` prop has an extension with [key] that is on (its `options`
-   * are not null or false); the prop's TSDoc has the rules. After a
-   * renderer crash it attaches again, with the current value (null when the hook is off by then), to the WebView that
-   * replaces the dead one.
+   * The hook attaches to each WebView whose `extensions` prop has an extension with [key] that is on;
+   * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+   * says when. After a renderer crash it attaches again, to the WebView that replaces the dead one.
    *
    * Hooks attach in registration order, which across packages is autolinking's (packages sorted by name), so an
    * earlier hook's clients come first. A hook whose key turns on after the WebView was created attaches after the
    * hooks attached already; after a crash it takes its place in registration order again.
    *
-   * @param key the key of the app's extension that turns on the hook. Keys are global, so prefix yours with your package's name.
-   *   `core` is reserved for the package's own events: a hook under it is logged and not registered.
+   * @param key the key of the app's extension that turns on the hook. Keys are global, so prefix yours with your
+   *   package's name. `core` is reserved for the package's own events: a hook under it is logged and not registered.
    * @param webViewFactory makes each WebView this hook is attached to, on or off: the first one and each after a
    *   renderer crash, as a subclass that overrides what WebView lets a subclass override. Null leaves it to the other
    *   hooks. When the attached hooks name different factories (the same object is one), the first one's in
@@ -68,8 +67,8 @@ object MinimalWebViewHooks {
    *   sets wins over those settings. Register what to run when that WebView goes away with
    *   [WebViewContext.onDestroyed]. Document-start scripts you add here run before the package's, so
    *   `window.nativeBridge` and `injectedScripts` aren't there yet (on iOS yours run after them).
-   * @throws IllegalStateException when a different hook is registered under [key] already; a minified build may
-   *   replace the first instead.
+   * @throws IllegalStateException when a different hook is registered under [key] already. Don't rely on it: a minified
+   *   build can't tell the two apart and may replace the first hook instead, so give each hook its own key.
    */
   fun register(
     key: String,
@@ -104,7 +103,10 @@ internal fun enables(value: Any?) = value != null && value != false
  * Which [hooks] attach to a WebView created with the enabled `hookOptions` [keys]: the ones registered under them, in
  * registration order. Second, the keys no hook is registered under.
  */
-internal fun selectHooks(hooks: List<MinimalWebViewHooks.Hook>, keys: Set<String>): Pair<List<MinimalWebViewHooks.Hook>, Set<String>> {
+internal fun selectHooks(
+  hooks: List<MinimalWebViewHooks.Hook>,
+  keys: Set<String>
+): Pair<List<MinimalWebViewHooks.Hook>, Set<String>> {
   val attaching = hooks.filter { it.key in keys }
   return attaching to keys - attaching.map { it.key }.toSet()
 }
@@ -184,29 +186,30 @@ internal class Deciders(private val warn: (String) -> Unit) {
  *
  * Call [emit] and [ask] from any thread, and the rest on the main thread, where the handlers and the answers run.
  *
- * The core decides whether the hook is on: it is while its extension's `options` are not null or false. While it is off,
- * the core routes none of the context's lists ([clients], [chromeClients], [touchListeners], [scrollListeners]),
- * [emit] is dropped, [ask] answers null at once, and JS's `ref.hook` calls to its [handle]d methods get `not_found`.
- * [onOptionsChange] still runs, so the hook can release what it holds, and again when the hook turns on.
+ * The hook is on while its extension's `options` are not null or false;
+ * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+ * says what off means. [onOptionsChange] still runs while it is off, so the hook can release what it holds, and again
+ * when the hook turns on.
  *
  * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing: its
- * lists reach no WebView, its [emit] reaches nothing and its [ask] answers null at once.
+ * lists reach no WebView and its [emit] reaches nothing.
  */
 interface WebViewContext {
   /**
-   * This hook's extension's `options`, in JSON types: a number is a `Double`, an object a `Map`, an array a `List`. Null
-   * while the hook is off. After a change it is the new value, already when the [onOptionsChange] handlers run.
+   * This hook's extension's `options`, in JSON types: a number is a `Double`, an object a `Map`, an array a `List`.
+   * Null while the hook is off. After a change it is the new value, already when the [onOptionsChange] handlers run.
    */
   val options: Any?
 
   /**
    * The committed URL, the one the navigation state reports; empty before the first commit. Inside [onDocumentEnd] it
-   * is still the page that ended.
+   * is still the page that ended. With WebView 146 and later, `onPageStarted` comes after the commit that ends the
+   * Document, so `url` is already the new page there.
    */
   val url: String
 
   /**
-   * The hook clients, in order; add yours in `attach`.
+   * The hook clients, in order; add yours in `attach`. While the hook is off, none of them gets a callback.
    *
    * Each callback reaches the clients by one of these rules:
    * - A callback that returns a decision goes to the first client that overrides it, instead of the core and the
@@ -214,9 +217,7 @@ interface WebViewContext {
    * - Every other callback reaches the core first, then each client that overrides it.
    *
    * Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation
-   * rules' security checks included, and a `core.warning` names the callback and what stops applying. Those decisions
-   * are `shouldOverrideUrlLoading`, `onCreateWindow` and `onReceivedSslError`, and on a chrome client
-   * `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser` and `onShowCustomView`.
+   * rules' security checks included, and a `core.warning` names the callback and what stops applying.
    *
    * A client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
    * decide new windows unless a chrome client overrides `onCreateWindow`. A new window the rules allow loads in place
@@ -230,8 +231,7 @@ interface WebViewContext {
    * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
    * `onReceivedError`.
    *
-   * `shouldInterceptRequest` runs on a background thread. With WebView 146 and later, `onPageStarted` comes after the
-   * commit that ends the Document, so `url` is already the new page.
+   * `shouldInterceptRequest` runs on a background thread.
    */
   val clients: MutableList<WebViewClient>
 
@@ -250,22 +250,26 @@ interface WebViewContext {
   /** The hooks' scroll listeners: each one gets every scroll change, in order. */
   val scrollListeners: MutableList<View.OnScrollChangeListener>
 
-  /** Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative to the key. */
+  /**
+   * Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative to
+   * the key. It is dropped while the hook is off, and after the context's attach ended.
+   */
   fun emit(name: String, payload: Map<String, Any?>)
 
   /**
    * Sends the event as [emit] does, and calls [onAnswer] with JS's answer: the extension's `onEvent` return value, a
    * promise awaited. A number answers as a `Double`.
    *
-   * It answers null when the handler throws or there is none, or when the Document ends first; there is no timeout.
-   * One made after the context's attach ended answers null at once. An ask made before the WebView's first commit (in
-   * `attach`) belongs to the Document that commit opens.
+   * It answers null when the handler throws or there is none, or when the Document ends first; there is no timeout. It
+   * answers null at once while the hook is off, and after the context's attach ended. An ask made before the WebView's
+   * first commit (in `attach`) belongs to the Document that commit opens.
    */
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
   /**
    * Runs [handler] with this hook's extension's new `options` each time they change, live on the same WebView; null
-   * when the hook is off (the extension is removed, or its `options` are null or false). A change from one off value to another doesn't run it.
+   * when the hook is off (the extension is removed, or its `options` are null or false). A change from one off value to
+   * another doesn't run it.
    */
   fun onOptionsChange(handler: (Any?) -> Unit)
 
@@ -277,8 +281,8 @@ interface WebViewContext {
 
   /**
    * Runs [handler] once this attach's WebView is destroyed: with [DocumentEnd.CLOSING] at unmount, or with
-   * [DocumentEnd.CRASHED] after a renderer crash, before the WebView that replaces it is configured. It comes
-   * after the [onDocumentEnd] handlers that get the same reason, and the context does nothing by then.
+   * [DocumentEnd.CRASHED] after a renderer crash. It comes after the [onDocumentEnd] handlers that get the same
+   * reason, and the context does nothing by then.
    *
    * Clean up here, and release what must outlive the WebView, such as a [ProfileStore][androidx.webkit.ProfileStore]
    * profile.
@@ -301,6 +305,9 @@ interface WebViewContext {
    * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
    * `Long` or `Double`) and calls `reply` exactly once, with a value JSON can encode. One handler per method: the last
    * one wins.
+   *
+   * A handler that throws, or a reply JSON can't encode, rejects the JS call with `native_error`. A handler that never
+   * replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't settle it.
    */
   fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
 }
@@ -333,7 +340,10 @@ internal class Attachment(value: Any?) {
     optionsHandlers += handler
   }
 
-  /** The hook's new `hookOptions` [value]: an off one (null or false) reaches the handlers as null, unless it was off already. */
+  /**
+   * The hook's new `hookOptions` [value]: an off one (null or false) reaches the handlers as null, unless it was off
+   * already.
+   */
   fun optionsChanged(value: Any?) {
     if (options == null && !enables(value)) return
     options = value.takeIf { enables(it) }

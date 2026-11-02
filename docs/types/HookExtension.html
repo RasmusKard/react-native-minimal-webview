@@ -38,21 +38,26 @@
 <h3 class="tsd-anchor-link" id="key"><span>key</span><a href="#key" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>The key the hook is registered under.</p>
+<p>A key no hook is registered under warns: pass a one-platform hook's extension on that platform only. Two extensions
+with one key warn in development, and the later one wins.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="onevent"><span>on<wbr/>Event</span><a href="#onevent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">onEvent</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="HookEvent.html" class="tsd-signature-type tsd-kind-type-alias">HookEvent</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">signal</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">AbortSignal</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">unknown</span></div>
-<div class="tsd-comment tsd-typography"><p>Each of the hook's events, with <code>name</code> relative to <code>key</code>: for an <code>ask</code>, the return value (a promise is awaited) is
-the answer, and <code>undefined</code> answers null. <code>signal</code> is set only for an <code>ask</code>, and aborts when native stops waiting
-for the answer: an ask has no timeout, but one still open when the page goes away is answered null.</p>
+<div class="tsd-comment tsd-typography"><p>Each of the hook's events, with <code>name</code> relative to <code>key</code>: it goes to the extension whose key its name starts with
+(<code>'&lt;key&gt;.'</code>; the longest key, when several do), and one no extension owns is dropped. For an <code>ask</code>, the return
+value (a promise is awaited) is the answer, and <code>undefined</code> answers null. <code>signal</code> is set only for an <code>ask</code>, and
+aborts when native stops waiting for the answer: an ask has no timeout, but one still open when the page goes away
+is answered null.</p>
+<p>The latest <code>onEvent</code> always takes the events: a render with new handlers sends native nothing.</p>
 </div></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="options"><span>options</span><a href="#options" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol"> = true</span></div>
-<div class="tsd-comment tsd-typography"><p>What the hook gets as its options. Null or false switches the hook off: it stays attached and gets null, but the
-core routes none of its delegates, clients or listeners, drops its events, answers its asks with null, and
-rejects <code>ref.hook</code> calls to its handlers with <code>not_found</code>. Undefined means <code>true</code>. Turning it on again gives it
-the new options.</p>
+<div class="tsd-comment tsd-typography"><p>What the hook gets as its options. Null or false switches the hook off, as does leaving its extension out of
+<code>extensions</code>: it stays attached and gets null, but the core routes none of its delegates, clients or listeners,
+drops its events, answers its asks with null, and rejects <code>ref.hook</code> calls to its handlers with <code>not_found</code>.
+Undefined means <code>true</code>. Turning it on again gives it the new options.</p>
 </div></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">

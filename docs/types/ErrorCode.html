@@ -15,18 +15,18 @@
 <ul>
 <li><code>timeout</code>: a bridge call got no answer in time.</li>
 <li><code>not_found</code>: nothing by that name answers: no bridge handler for the method, no attached hook <code>name</code> that is on
-and handles <code>method</code>, or no such root, key, method or selector (on this OS or WebView version too), or a malformed path.</li>
-<li><code>handler_error</code>: a bridge handler threw or rejected (the <code>message</code> is its error's), or the page answered with
-<code>script_error</code>, <code>native_error</code> or a code not listed here.</li>
+and handles <code>method</code>, or no such root, key, method (on Android, one that takes these arguments) or selector (on
+this OS or WebView version too; a private <code>_</code> key of an iOS <code>get</code> too), or a malformed path.</li>
+<li><code>handler_error</code>: the handler of a bridge call, on either side, failed; the <code>message</code> is its error's.</li>
 <li><code>script_error</code>: <code>evaluate</code>'s script threw, rejected or didn't parse.</li>
 <li><code>native_error</code>: the platform refused or failed the call: a member the core owns (or a private selector for an iOS
-<code>call</code>), wrong arguments (iOS), a completion handler <code>call</code> can't await, a native exception or <code>NSError</code>, or a
-result JSON can't carry (<code>NaN</code>).</li>
+<code>call</code>), a key <code>get</code> can't read, wrong arguments (iOS), a completion handler <code>call</code> can't await, a native
+exception or <code>NSError</code>, or a result JSON can't carry (<code>NaN</code>).</li>
 <li><code>navigated</code>: the page or the WebView went away while the call was pending (a navigation, a crash, an unmount), so
 it may have run: retry only what is safe to repeat.</li>
 <li><code>unavailable</code>: the call didn't run: the WebView is gone or not mounted yet, is being rebuilt after its renderer
-died (Android), the bridge's queue was full and dropped it, or lacks the feature (the method's TSDoc names the Android System WebView it needs, or a compat
-method this WebView doesn't support).</li>
+died (Android), the bridge's queue was full and dropped it, or lacks the feature (the method's TSDoc names the
+Android System WebView it needs, or a compat method this WebView doesn't support).</li>
 </ul>
 <p>A programming error, such as an argument of the wrong type, can reject with a plain <code>TypeError</code> instead.</p>
 </div></div>
