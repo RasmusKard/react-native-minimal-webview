@@ -66,8 +66,10 @@ export function createBridge<
 
   const deliver = (message: BridgeMessage) => {
     post?.(JSON.stringify({ ...message, doc }));
-    const call = message.kind === 'call' && endpoint.pending.get(message.id);
-    if (call) call.sent = true;
+    if (message.kind === 'call') {
+      const call = endpoint.pending.get(message.id);
+      if (call) call.sent = true;
+    }
   };
 
   const endpoint = createEndpoint<BridgeSender>(

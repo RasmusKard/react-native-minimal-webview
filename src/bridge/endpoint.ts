@@ -14,14 +14,12 @@ export const parseOrigin = (text: string) => {
     /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(
       text.toLowerCase()
     );
-  return (
-    m && {
-      scheme: m[1],
-      wildcard: !!m[2],
-      host: m[3]!,
-      port: +(m[4] ?? (m[1] === 'https' ? 443 : 80)),
-    }
-  );
+  if (!m) return null;
+  const [, scheme, wildcard, host, port] = m;
+  // `location.origin` leaves out the scheme's default port.
+  const isDefaultPort = port === undefined || +port === (scheme === 'https' ? 443 : 80);
+  const portSuffix = isDefaultPort ? '' : `:${+port!}`;
+  return { scheme, wildcard: !!wildcard, hostPort: `${host}${portSuffix}` };
 };
 
 /** The rules that are neither `*` nor what `parseOrigin` takes. */
@@ -37,9 +35,8 @@ export const originForms = (rules: string[]): OriginForms => {
   for (const rule of rules) {
     const r = parseOrigin(rule);
     if (!r) continue;
-    const rest = r.host + (r.port === (r.scheme === 'https' ? 443 : 80) ? '' : `:${r.port}`);
-    if (r.wildcard) forms.wild.push([`${r.scheme}://`, `.${rest}`]);
-    else forms.exact.push(`${r.scheme}://${rest}`);
+    if (r.wildcard) forms.wild.push([`${r.scheme}://`, `.${r.hostPort}`]);
+    else forms.exact.push(`${r.scheme}://${r.hostPort}`);
   }
   return forms;
 };

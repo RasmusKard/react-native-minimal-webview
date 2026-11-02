@@ -210,6 +210,18 @@
       "allowed": true
     },
     {
+      "name": "a default port with leading zeros is still the default",
+      "rules": ["https://example.com:0443", "http://example.org:080"],
+      "origin": "https://example.com",
+      "allowed": true
+    },
+    {
+      "name": "a port with leading zeros is its number",
+      "rules": ["https://example.com:00080"],
+      "origin": "https://example.com:80",
+      "allowed": true
+    },
+    {
       "name": "origin with explicit default port",
       "rules": ["https://example.com"],
       "origin": "https://example.com:443",

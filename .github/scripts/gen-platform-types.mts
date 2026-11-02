@@ -1,5 +1,5 @@
 // Generates src/platform.generated.ts: the iOS and Android settings keys as TypeScript types, and the platforms'
-// constants, from the vendored SDK extracts in platform-headers/. Run after editing it:
+// constants, from the vendored SDK extracts in platform-headers/. Run after editing this script or those extracts:
 // node .github/scripts/gen-platform-types.mts (`--check` fails if the output is stale).
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and the API file of the
 // androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade. It
@@ -148,6 +148,8 @@ const object = (entries: Record<string, string | number>) =>
     .map(([key, value]) => `${key}: ${value},`)
     .join('\n')}\n}`;
 
+const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase());
+
 /** A C expression over integers, as JavaScript. The inputs are the vendored SDK extracts, not user data. */
 const evaluate = (expression: string) => runInNewContext(`(${expression})`) as number;
 
@@ -209,14 +211,9 @@ function iosAvailability(macros: string): Availability | null {
   if (!available) return {};
   const ios = available[2].match(/\bios\((\d+(?:\.\d+)?)/);
   if (!ios) return null;
+  if (available[1] === 'AVAILABLE') return { since: ios[1] };
   const message = available[2].match(/"([^"]*)"/)?.[1];
-  const deprecated =
-    available[1] === 'DEPRECATED'
-      ? message
-      : available[1] === 'DEPRECATED_WITH_REPLACEMENT'
-        ? `use ${message}`
-        : undefined;
-  return { since: ios[1], deprecated };
+  return { since: ios[1], deprecated: available[1] === 'DEPRECATED' ? message : `use ${message}` };
 }
 
 const STRUCTS: Record<string, string> = {
@@ -236,8 +233,8 @@ const OBJECTS: Record<string, string> = {
 
 /** An Objective-C property type as TypeScript, or null for one the settings channel can't carry (an object). */
 function tsType(type: string) {
-  const object = type.match(/^(\w+)\s*\*$/);
-  if (object) return OBJECTS[object[1]] ?? null;
+  const pointer = type.match(/^(\w+)\s*\*$/);
+  if (pointer) return OBJECTS[pointer[1]] ?? null;
   if (/[*<]|^id\b/.test(type)) return null;
   if (type === 'BOOL') return 'boolean';
   return type in STRUCTS ? type : 'number'; // integers, floats, enums and option sets
@@ -261,8 +258,8 @@ function iosKeys(text: string, cls: string, enums: Set<string>) {
       if (!ts || !availability) continue;
       const nullable = list.includes('nullable') || list.includes('null_resettable');
       const constants = constantsName(type.trim());
-      const text = enums.has(constants) ? `A {@link IOSConstants.${constants}}.` : '';
-      keys[name] = `${doc(availability, text)}${name}?: ${ts}${nullable ? ' | null' : ''};`;
+      const note = enums.has(constants) ? `A {@link IOSConstants.${constants}}.` : '';
+      keys[name] = `${doc(availability, note)}${name}?: ${ts}${nullable ? ' | null' : ''};`;
     }
   }
   return keys;
@@ -343,15 +340,19 @@ type Completion = 'void' | 'value' | 'valueError' | 'error' | 'number';
 function completionShape(params: string, integerEnums: Set<string>): Completion | null {
   const list = params
     .split(',')
-    .map((p) => p.replace(/\b(_Nullable|_Nonnull|nullable|nonnull|WK_NULLABLE_RESULT)\b/g, '').trim())
+    .map((p) =>
+      p.replace(/\b(_Nullable|_Nonnull|nullable|nonnull|WK_NULLABLE_RESULT)\b/g, '').trim()
+    )
     .filter((p) => p && p !== 'void');
-  const object = (p: string) => p.includes('*') || /^id\b/.test(p);
+  const isObject = (p: string) => p.includes('*') || /^id\b/.test(p);
   const error = (p: string) => /^NSError\s*\*/.test(p);
-  const integer = (p: string) => /^(NSInteger|NSUInteger)\b/.test(p) || integerEnums.has(p.split(/\s/)[0]);
+  const integer = (p: string) =>
+    /^(NSInteger|NSUInteger)\b/.test(p) || integerEnums.has(p.split(/\s/)[0]);
   const [first, second] = list;
   if (!first) return 'void';
-  if (list.length === 1) return error(first) ? 'error' : object(first) ? 'value' : integer(first) ? 'number' : null;
-  return list.length === 2 && object(first) && error(second) ? 'valueError' : null;
+  if (list.length === 1)
+    return error(first) ? 'error' : isObject(first) ? 'value' : integer(first) ? 'number' : null;
+  return list.length === 2 && isObject(first) && error(second) ? 'valueError' : null;
 }
 
 /** An Objective-C method declaration after `- (void)` as its selector and its parameters' types. */
@@ -384,7 +385,9 @@ function interfaceCompletions(block: string, integerEnums: Set<string>) {
 /** `root.selector` -> the completion shape of each iOS instance method whose last parameter is a block. */
 function iosCompletions(text: string) {
   const integerEnums = new Set(
-    [...text.matchAll(/typedef NS_ENUM\s*\(\s*NSU?Integer\s*,\s*(\w+)\s*\)/g)].map(([, name]) => name)
+    [...text.matchAll(/typedef NS_ENUM\s*\(\s*NSU?Integer\s*,\s*(\w+)\s*\)/g)].map(
+      ([, name]) => name
+    )
   );
   const shapes: Record<string, string> = {};
   for (const [root, cls] of Object.entries(COMPLETION_ROOTS)) {
@@ -415,7 +418,6 @@ const JAVA_TYPES: Record<string, string> = {
   double: 'number',
   String: 'string | null',
 };
-const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase());
 /** Primitive setters the core owns (`OWNED` in PlatformSettings.kt), which settings refuse. */
 const OWNED_KEYS = new Set(['webContentsDebuggingEnabled']);
 
@@ -554,8 +556,7 @@ export type AndroidSettingKeys = ${object({
  */
 export const IOSConstants = ${object({
     ...enums,
-    '/** @enum */\nWebsiteDataType':
-      object(websiteDataTypes(ios)),
+    '/** @enum */\nWebsiteDataType': object(websiteDataTypes(ios)),
   })} as const;
 
 /** The completion-handler shape of each WebKit method \`call\` reaches, by \`root.selector\`, for MRWInvoke. */
