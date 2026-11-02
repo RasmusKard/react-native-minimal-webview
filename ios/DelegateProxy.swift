@@ -18,9 +18,11 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private func delegates(for selector: Selector) -> [NSObject] {
     let navigation = Self.declares(WKNavigationDelegate.self, selector)
     let ui = Self.declares(WKUIDelegate.self, selector)
-    let lists: [[AnyObject]] =
-      navigation == ui ? [navigationDelegates, uiDelegates] : navigation ? [navigationDelegates] : [uiDelegates]
-    return lists.joined().compactMap { $0 as? NSObject }
+    let neither = !navigation && !ui
+    var delegates: [AnyObject] = []
+    if navigation || neither { delegates += navigationDelegates as [AnyObject] }
+    if ui || neither { delegates += uiDelegates as [AnyObject] }
+    return delegates.compactMap { $0 as? NSObject }
   }
 
   private static func declares(_ proto: Protocol, _ selector: Selector) -> Bool {
@@ -120,32 +122,29 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     Self.fromProps.filter { !takers(of: $0.0).isEmpty }.map { (NSStringFromSelector($0.0), $0.1) }
   }
 
+  private static let navigationResponse = NSSelectorFromString("webView:decidePolicyForNavigationResponse:decisionHandler:")
+  private static let newWindow =
+    NSSelectorFromString("webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:")
+  private static let mediaCapture =
+    NSSelectorFromString("webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:")
+
   private static let fromProps: [(Selector, String)] = [
     (actionPolicy, "navigationRules, their defaults and onNavigationRequest don't apply to navigations"),
-    (
-      NSSelectorFromString("webView:decidePolicyForNavigationResponse:decisionHandler:"),
-      "onDownload, opening downloads externally and onError's http errors don't apply"
-    ),
-    (
-      NSSelectorFromString("webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:"),
-      "navigationRules, their defaults and onNavigationRequest don't apply to new windows"
-    ),
-    (
-      NSSelectorFromString("webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:"),
-      "onPermissionRequest and the core's subframe deny don't apply"
-    )
+    (navigationResponse, "onDownload, opening downloads externally and onError's http errors don't apply"),
+    (newWindow, "navigationRules, their defaults and onNavigationRequest don't apply to new windows"),
+    (mediaCapture, "onPermissionRequest and the core's subframe deny don't apply")
   ]
 
   /// The decision callbacks the core implements: a hook delegate that implements one owns it. The action policy is
   /// not here: the proxy decides it above.
   private static let decisions = [
-    "webView:decidePolicyForNavigationResponse:decisionHandler:",
-    "webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:",
-    "webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:",
-    "webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:",
-    "webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:",
-    "webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:"
-  ].map(NSSelectorFromString)
+    navigationResponse,
+    newWindow,
+    NSSelectorFromString("webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:"),
+    NSSelectorFromString("webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:"),
+    NSSelectorFromString("webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:"),
+    mediaCapture
+  ]
 }
 
 /// `keys` in the order of the `registered` hook keys, then the keys no hook is registered under, sorted: hooks whose keys

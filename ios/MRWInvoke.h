@@ -10,7 +10,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// `(NSError *)` or `number` `(NSInteger)`; the block resolves, with the error's description as the error. Rejects,
 /// never raises, for an unknown selector, a block selector without a `completion`, a wrong argument count, an argument
 /// that doesn't fit (a tagged object that can't be made, such as invalid base64 or a cookie without a name, value,
-/// domain and path) or an exception the method, or making its result JSON, raises. A wrong block shape or an object argument of the wrong class is undefined behaviour.
+/// domain and path) or an exception the method, or making its result JSON, raises. A wrong block shape or an object
+/// argument of the wrong class is undefined behaviour.
 FOUNDATION_EXPORT void MRWInvoke(id target, SEL selector, NSArray *args, NSString *_Nullable completion,
                                  void (^resolve)(id _Nullable result, NSString *_Nullable error));
 

@@ -130,17 +130,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     loadedSource = next.toDictionary() as NSDictionary
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes = []
-    prepareLoad(webView) { [weak self] in self?.load(next) }
-  }
-
-  private func prepareLoad(_ webView: WKWebView, then load: @escaping () -> Void) {
     preparing = true
     cookies.prepare(webView) { [weak self, weak webView] in
       guard let self, let webView, webView === self.webView else { return }
-      self.preparing = false
-      load()
+      preparing = false
+      load(next)
       // Props that changed while preparing (a newer source) apply now.
-      self.applyProps()
+      applyProps()
     }
   }
 

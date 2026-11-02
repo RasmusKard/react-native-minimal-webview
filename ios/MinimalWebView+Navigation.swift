@@ -8,8 +8,8 @@ extension MinimalWebView {
     guard let target = action.request.url else { return decide(allowInPlace) }
     // New windows are decided in createWebViewWith; history steps, reloads, form POSTs and our own loads skip the
     // rules, as on Android (shouldOverrideUrlLoading is not called for them).
-    if action.targetFrame == nil { return decide(allowInPlace) }
-    let mainFrame = action.targetFrame?.isMainFrame ?? true
+    guard let targetFrame = action.targetFrame else { return decide(allowInPlace) }
+    let mainFrame = targetFrame.isMainFrame
     let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
     if own || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
@@ -23,8 +23,12 @@ extension MinimalWebView {
     // `<a download>` or blob: that no hook takes (no onDownload): .allow would show it as a page.
     let dropped = action.shouldPerformDownload && !download
     run(request) { [weak self] allowed in
-      if allowed, dropped { self?.openDownload(target) }
-      decide(allowed && !dropped ? (download ? .download : allowInPlace) : .cancel)
+      guard allowed else { return decide(.cancel) }
+      if dropped {
+        self?.openDownload(target)
+        return decide(.cancel)
+      }
+      decide(download ? .download : allowInPlace)
     }
   }
 
