@@ -23,6 +23,8 @@ Pod::Spec.new do |s|
     'DEFINES_MODULE' => 'YES',
   }
 
+  # Every header here is public, so the Objective-C helpers are NS_REFINED_FOR_SWIFT: Swift sees them as __MRW…,
+  # which keeps them out of the Swift API reference.
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
   s.exclude_files = "Tests/**/*"
 end

@@ -110,7 +110,7 @@ final class Completions: NSObject {
 /// What MRWInvoke settled with: the error, else the result.
 func invoke(_ selector: Selector, _ completion: String?) -> String? {
   var settled: String?
-  MRWInvoke(Completions(), selector, [], completion) { value, error in settled = error ?? value.map { "\($0)" } }
+  __MRWInvoke(Completions(), selector, [], completion) { value, error in settled = error ?? value.map { "\($0)" } }
   return settled
 }
 check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")

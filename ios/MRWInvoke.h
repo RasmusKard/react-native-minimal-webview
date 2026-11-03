@@ -13,11 +13,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// domain and path) or an exception the method, or making its result JSON, raises. A wrong block shape or an object
 /// argument of the wrong class is undefined behaviour.
 FOUNDATION_EXPORT void MRWInvoke(id target, SEL selector, NSArray *args, NSString *_Nullable completion,
-                                 void (^resolve)(id _Nullable result, NSString *_Nullable error));
+                                 void (^resolve)(id _Nullable result, NSString *_Nullable error)) NS_REFINED_FOR_SWIFT;
 
 /// `value` as JSON: numbers, strings, URLs as strings, dates as seconds since 1970, NSData and UIImage (PNG) as
 /// base64, the four struct NSValues (UIEdgeInsets, CGPoint, CGSize, CGRect) as objects, an NSHTTPCookie as its
 /// `properties`, lists, sets and dictionaries of them; anything else, and nil, is null.
-FOUNDATION_EXPORT id MRWJsonable(id _Nullable value);
+FOUNDATION_EXPORT id MRWJsonable(id _Nullable value) NS_REFINED_FOR_SWIFT;
 
 NS_ASSUME_NONNULL_END

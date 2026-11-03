@@ -75,7 +75,7 @@ private func hook(_ view: MinimalWebView, _ name: String, _ method: String, _ ar
   }
   handler((try? JSONSerialization.jsonObject(with: Data(args.utf8))) as? [Any] ?? []) { value in
     do {
-      promise.resolve(try PlatformSettings.json { MRWJsonable(value) })
+      promise.resolve(try PlatformSettings.json { __MRWJsonable(value) })
     } catch {
       reject(promise, error)
     }
