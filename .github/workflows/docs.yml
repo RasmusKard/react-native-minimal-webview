@@ -1,0 +1,18 @@
+name: docs
+on:
+  # gets a push trigger once the repo is public and the Pages source is switched to GitHub Actions
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  docs:
+    uses: RasmusKard/rn-cross-platform-docs/.github/workflows/deploy-zensical.yml@v1
+    with:
+      prepare: cd example && npx expo prebuild
