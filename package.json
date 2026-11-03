@@ -53,8 +53,8 @@
   "homepage": "https://github.com/RasmusKard/react-native-minimal-webview#readme",
   "devDependencies": {
     "@babel/core": "^7.26.0",
-    "@rn-cross-platform-docs/cli": "1.0.0",
-    "@rn-cross-platform-docs/zensical": "1.0.0",
+    "@rn-cross-platform-docs/cli": "1.1.0",
+    "@rn-cross-platform-docs/zensical": "1.1.0",
     "@stryker-mutator/core": "10.1.1",
     "@stryker-mutator/jest-runner": "10.1.1",
     "@types/jest": "^30.0.0",
