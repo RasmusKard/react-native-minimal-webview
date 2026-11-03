@@ -3490,7 +3490,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3544,7 +3544,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3922,7 +3922,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4327,7 +4327,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6805,16 +6805,14 @@ site's 401 page shows. <code>dialogs</code> and <code>basicAuthCredential</code>
 </ul>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="android">android?<a class="headerlink" href="#android" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>android?</strong>: <a href="../../type-aliases/AndroidSettings/"><code>AndroidSettings</code></a></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nx">android?</span><span class="o">:</span><span class="w"> </span><span class="kt">AndroidSettings</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>Android</code></strong></p>
 <p>Android settings by setter name; see <a href="../../type-aliases/AndroidSettings/">AndroidSettings</a>.</p>
 <hr />
 <h3 id="bridge">bridge?<a class="headerlink" href="#bridge" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>bridge?</strong>: <a href="../../type-aliases/Bridge/"><code>Bridge</code></a>&lt;<a href="../../type-aliases/BridgeMethodMap/"><code>BridgeMethodMap</code></a>, <a href="../../type-aliases/BridgeEventMap/"><code>BridgeEventMap</code></a>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">bridge?</span><span class="o">:</span><span class="w"> </span><span class="kt">Bridge</span><span class="o">&lt;</span><span class="nx">BridgeMethodMap</span><span class="p">,</span><span class="w"> </span><span class="nx">BridgeEventMap</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The bridge to the page, from <code>createBridge</code>.</p>
 <p>Read when the WebView is created: another bridge recreates it (the page reloads and the navigation state starts
 over), so make it once (<code>useMemo</code>). A bridge serves one mounted WebView at a time: attaching it to a second throws.</p>
@@ -6822,9 +6820,12 @@ over), so make it once (<code>useMemo</code>). A bridge serves one mounted WebVi
 so, once per process.</p>
 <hr />
 <h3 id="extensions">extensions?<a class="headerlink" href="#extensions" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>extensions?</strong>: readonly (<code>false</code> | <a href="../../type-aliases/HookExtension/"><code>HookExtension</code></a> | <code>null</code> | <code>undefined</code>)[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">extensions?</span><span class="o">:</span><span class="w"> </span><span class="kt">readonly</span><span class="w"> </span><span class="p">(</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="kc">false</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">HookExtension</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="kc">undefined</span><span class="p">)[];</span>
+</span></code></pre></div>
 <p>The native hooks to turn on, as <a href="../../type-aliases/HookExtension/">HookExtension</a>s: a package with a native hook exports a function that
 returns one.</p>
 <p>A false, null or undefined entry is left out, so <code>on &amp;&amp; extension(…)</code> switches one on and off; see
@@ -6836,25 +6837,22 @@ attaches its hook then, unless the hook has a <code>configure</code> step or its
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/">Native hooks guide</a></p>
 <hr />
 <h3 id="injectedscripts">injectedScripts?<a class="headerlink" href="#injectedscripts" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>injectedScripts?</strong>: <a href="../../type-aliases/InjectedScript/"><code>InjectedScript</code></a>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">injectedScripts?</span><span class="o">:</span><span class="w"> </span><span class="kt">InjectedScript</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>Scripts to run at document start, before the page's own, in the frames picked by each script's <code>allFrames</code> and
 <code>origins</code>.</p>
 <p>A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
 so, once per process).</p>
 <hr />
 <h3 id="ios">ios?<a class="headerlink" href="#ios" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>ios?</strong>: <a href="../../type-aliases/IOSSettings/"><code>IOSSettings</code></a></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">ios?</span><span class="o">:</span><span class="w"> </span><span class="kt">IOSSettings</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>iOS</code></strong></p>
 <p>WebKit settings by property name; see <a href="../../type-aliases/IOSSettings/">IOSSettings</a>.</p>
 <hr />
 <h3 id="navigationrules">navigationRules?<a class="headerlink" href="#navigationrules" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>navigationRules?</strong>: readonly <a href="../../type-aliases/NavigationRule/"><code>NavigationRule</code></a>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">navigationRules?</span><span class="o">:</span><span class="w"> </span><span class="kt">readonly</span><span class="w"> </span><span class="nx">NavigationRule</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>Which navigations load in place, open externally or are blocked, decided natively; the first matching rule wins,
 and with no match the navigation is blocked.</p>
 <p>Unset, the rules are <a href="../../variables/defaultNavigationRules/">defaultNavigationRules</a>; <code>[]</code> is no rules, so every navigation they decide is blocked.</p>
@@ -6869,19 +6867,18 @@ and the <code>intent:</code> itself is reported as <code>block</code>.</p>
 <p>A native hook can take these decisions, defaults included: see <code>WebViewContext.clients</code> (Android) and
 <code>navigationDelegates</code> (iOS).</p>
 <h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">&lt;</span><span class="nt">WebView</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="na">source</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="p">}}</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="na">myapp</span><span class="err">:</span><span class="w"> </span><span class="na">opens</span><span class="w"> </span><span class="na">externally</span><span class="w"> </span><span class="na">even</span><span class="w"> </span><span class="na">without</span><span class="w"> </span><span class="na">a</span><span class="w"> </span><span class="na">user</span><span class="w"> </span><span class="na">gesture</span><span class="err">;</span><span class="w"> </span><span class="na">everything</span><span class="w"> </span><span class="na">else</span><span class="w"> </span><span class="na">as</span><span class="w"> </span><span class="na">by</span><span class="w"> </span><span class="na">default</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="na">navigationRules</span><span class="o">=</span><span class="p">{[{</span><span class="w"> </span><span class="nx">scheme</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'myapp'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'external'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">...</span><span class="nx">defaultNavigationRules</span><span class="p">]}</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">/&gt;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">&lt;</span><span class="nt">WebView</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="na">source</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="p">}}</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="na">myapp</span><span class="err">:</span><span class="w"> </span><span class="na">opens</span><span class="w"> </span><span class="na">externally</span><span class="w"> </span><span class="na">even</span><span class="w"> </span><span class="na">without</span><span class="w"> </span><span class="na">a</span><span class="w"> </span><span class="na">user</span><span class="w"> </span><span class="na">gesture</span><span class="err">;</span><span class="w"> </span><span class="na">everything</span><span class="w"> </span><span class="na">else</span><span class="w"> </span><span class="na">as</span><span class="w"> </span><span class="na">by</span><span class="w"> </span><span class="na">default</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="na">navigationRules</span><span class="o">=</span><span class="p">{[{</span><span class="w"> </span><span class="nx">scheme</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'myapp'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'external'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">...</span><span class="nx">defaultNavigationRules</span><span class="p">]}</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">/&gt;</span>
 </span></code></pre></div>
 <h4 id="see_1">See<a class="headerlink" href="#see_1" title="Permanent link">&para;</a></h4>
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules">Navigation rules example</a></p>
 <hr />
 <h3 id="ondownload">onDownload?<a class="headerlink" href="#ondownload" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onDownload?</strong>: (<code>result</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">onDownload</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">result</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A download finished (<a href="../../type-aliases/Download/">Download</a>) or failed (<a href="../../type-aliases/DownloadFailure/">DownloadFailure</a>).</p>
 <p>With this prop the core saves the file: iOS downloads it in the page's session; Android fetches it again with the
 host's cookies (whatever their SameSite) and the page's user agent. That fetch sends no POST body, <code>source</code> headers
@@ -6893,29 +6890,51 @@ session), and a <code>data:</code> or <code>blob:</code> one is dropped. A PDF i
 <p>On Android a native hook's <code>WebViewContext.onDownloadStart</code> is offered each download first, and one it takes
 reaches neither this prop nor the external fallback.</p>
 <h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
-<h5 id="result">result<a class="headerlink" href="#result" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/DownloadResult/"><code>DownloadResult</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>result</code></td>
+<td><a href="../../type-aliases/DownloadResult/"><code>DownloadResult</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onerror">onError?<a class="headerlink" href="#onerror" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onError?</strong>: (<code>event</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nx">onError</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A main-frame load failed, or got an HTTP error status.</p>
 <p>After a failed load iOS keeps the page before it on screen, and Android shows WebView's own error page. On Android
 with a WebView older than 146, an SSL error on a back/forward load isn't reported.</p>
 <p>A renderer crash isn't reported here: it makes the cut-off load's <code>outcome</code> <code>failed</code> and calls <code>onProcessGone</code>.</p>
 <h4 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">&para;</a></h4>
-<h5 id="event">event<a class="headerlink" href="#event" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/LoadErrorEvent/"><code>LoadErrorEvent</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><a href="../../type-aliases/LoadErrorEvent/"><code>LoadErrorEvent</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_1">Returns<a class="headerlink" href="#returns_1" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onfilerequest">onFileRequest?<a class="headerlink" href="#onfilerequest" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onFileRequest?</strong>: (<code>request</code>, <code>signal</code>) =&gt; <code>string</code>[] | <code>Promise</code>&lt;<code>string</code>[] | <code>null</code>&gt; | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nx">onFileRequest</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">request</span><span class="p">,</span><span class="w"> </span><span class="nx">signal</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="kt">string</span><span class="p">[]</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">[]</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="o">&gt;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>Android</code></strong></p>
 <p>Answers <code>&lt;input type="file"&gt;</code> with <code>file://</code> or <code>content://</code> URIs, or null to cancel.</p>
 <p>Without it, the system file chooser opens, one at a time for the whole app, and ignores <code>capture</code>: a request while
@@ -6924,95 +6943,179 @@ the app restarts.</p>
 <p>iOS always shows WebKit's picker, which needs <code>NSCameraUsageDescription</code> and <code>NSPhotoLibraryUsageDescription</code>.</p>
 <p>Until the answer settles, the page's next file request waits.</p>
 <h4 id="parameters_2">Parameters<a class="headerlink" href="#parameters_2" title="Permanent link">&para;</a></h4>
-<h5 id="request">request<a class="headerlink" href="#request" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/FileRequest/"><code>FileRequest</code></a></p>
-<h5 id="signal">signal<a class="headerlink" href="#signal" title="Permanent link">&para;</a></h5>
-<p><code>AbortSignal</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request</code></td>
+<td><a href="../../type-aliases/FileRequest/"><code>FileRequest</code></a></td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>AbortSignal</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_2">Returns<a class="headerlink" href="#returns_2" title="Permanent link">&para;</a></h4>
 <p><code>string</code>[] | <code>Promise</code>&lt;<code>string</code>[] | <code>null</code>&gt; | <code>null</code></p>
 <hr />
 <h3 id="onfullscreenchange">onFullscreenChange?<a class="headerlink" href="#onfullscreenchange" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onFullscreenChange?</strong>: (<code>event</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nx">onFullscreenChange</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>Android</code></strong></p>
 <p>The page entered or left fullscreen (<code>active</code>).</p>
 <p>Fullscreen works without it: the page's view covers the window, the system bars hide and back exits. iOS shows
 WebKit's own fullscreen, not reported.</p>
 <h4 id="parameters_3">Parameters<a class="headerlink" href="#parameters_3" title="Permanent link">&para;</a></h4>
-<h5 id="event_1">event<a class="headerlink" href="#event_1" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/FullscreenChangeEvent/"><code>FullscreenChangeEvent</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><a href="../../type-aliases/FullscreenChangeEvent/"><code>FullscreenChangeEvent</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_3">Returns<a class="headerlink" href="#returns_3" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onloadend">onLoadEnd?<a class="headerlink" href="#onloadend" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onLoadEnd?</strong>: (<code>state</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nx">onLoadEnd</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">state</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>loading</code> went false: <code>state.outcome</code> says how the load ended.</p>
 <h4 id="parameters_4">Parameters<a class="headerlink" href="#parameters_4" title="Permanent link">&para;</a></h4>
-<h5 id="state">state<a class="headerlink" href="#state" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/NavigationState/"><code>NavigationState</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>state</code></td>
+<td><a href="../../type-aliases/NavigationState/"><code>NavigationState</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_4">Returns<a class="headerlink" href="#returns_4" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onloadstart">onLoadStart?<a class="headerlink" href="#onloadstart" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onLoadStart?</strong>: (<code>state</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nx">onLoadStart</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">state</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>loading</code> went true.</p>
 <p>On Android with a WebView older than 146, a load that never commits fires neither this nor <code>onLoadEnd</code>.</p>
 <h4 id="parameters_5">Parameters<a class="headerlink" href="#parameters_5" title="Permanent link">&para;</a></h4>
-<h5 id="state_1">state<a class="headerlink" href="#state_1" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/NavigationState/"><code>NavigationState</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>state</code></td>
+<td><a href="../../type-aliases/NavigationState/"><code>NavigationState</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_5">Returns<a class="headerlink" href="#returns_5" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onnavigation">onNavigation?<a class="headerlink" href="#onnavigation" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onNavigation?</strong>: (<code>event</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nx">onNavigation</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Every navigation the rules, or their defaults, decided.</p>
 <p>Not reported: the <code>source</code> load, reloads, back/forward, and a navigation a native hook decides.</p>
 <h4 id="parameters_6">Parameters<a class="headerlink" href="#parameters_6" title="Permanent link">&para;</a></h4>
-<h5 id="event_2">event<a class="headerlink" href="#event_2" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/NavigationEvent/"><code>NavigationEvent</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><a href="../../type-aliases/NavigationEvent/"><code>NavigationEvent</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_6">Returns<a class="headerlink" href="#returns_6" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onnavigationrequest">onNavigationRequest?<a class="headerlink" href="#onnavigationrequest" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onNavigationRequest?</strong>: (<code>request</code>, <code>signal</code>) =&gt; <a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a> | <code>Promise</code>&lt;<a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nx">onNavigationRequest</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">request</span><span class="p">,</span><span class="w"> </span><span class="nx">signal</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">NavigationAction</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="o">|</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">NavigationAction</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Decides each navigation an <code>ask</code> rule matches, within 1 s.</p>
 <p>A late, missing or other answer is <code>block</code>, as is one still pending when another page commits; <code>signal</code> aborts at
 the timeout and at that commit. Without this prop, <code>ask</code> is <code>block</code>. Until the next commit, a URL it allowed isn't
 asked again on a redirect back to it (Android), or when the same kind of frame loads it again (iOS).</p>
 <h4 id="parameters_7">Parameters<a class="headerlink" href="#parameters_7" title="Permanent link">&para;</a></h4>
-<h5 id="request_1">request<a class="headerlink" href="#request_1" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/NavigationRequest/"><code>NavigationRequest</code></a></p>
-<h5 id="signal_1">signal<a class="headerlink" href="#signal_1" title="Permanent link">&para;</a></h5>
-<p><code>AbortSignal</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request</code></td>
+<td><a href="../../type-aliases/NavigationRequest/"><code>NavigationRequest</code></a></td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>AbortSignal</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_7">Returns<a class="headerlink" href="#returns_7" title="Permanent link">&para;</a></h4>
-<p><a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a> | <code>Promise</code>&lt;<a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a>&gt;</p>
+<p>| <a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a>
+  | <code>Promise</code>&lt;<a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a>&gt;</p>
 <hr />
 <h3 id="onnavigationstatechange">onNavigationStateChange?<a class="headerlink" href="#onnavigationstatechange" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onNavigationStateChange?</strong>: (<code>state</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nx">onNavigationStateChange</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">state</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Every change to the navigation state.</p>
 <p>Changes that arrive together may be combined into one call; <code>loading</code> going true is never combined away, so a load
 that starts and fails at once still reports both.</p>
 <h4 id="parameters_8">Parameters<a class="headerlink" href="#parameters_8" title="Permanent link">&para;</a></h4>
-<h5 id="state_2">state<a class="headerlink" href="#state_2" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/NavigationState/"><code>NavigationState</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>state</code></td>
+<td><a href="../../type-aliases/NavigationState/"><code>NavigationState</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_8">Returns<a class="headerlink" href="#returns_8" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="onopenexternal">onOpenExternal?<a class="headerlink" href="#onopenexternal" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onOpenExternal?</strong>: (<code>request</code>, <code>signal</code>) =&gt; <code>boolean</code> | <code>void</code> | <code>Promise</code>&lt;<code>boolean</code> | <code>void</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nx">onOpenExternal</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">request</span><span class="p">,</span><span class="w"> </span><span class="nx">signal</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="ow">void</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="kt">boolean</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="ow">void</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Opens <code>external</code> navigations, every one, an Android <code>intent:</code> URL included, before <code>onNavigation</code> reports them.</p>
 <p>Return false (a promise is awaited) to hand it back: the core then opens it as it does without this prop, an
 <code>intent:</code>'s fallback URL included. Any other answer, <code>undefined</code> too, means you opened it. When <code>signal</code> aborts,
@@ -7020,17 +7123,30 @@ nothing opens it.</p>
 <p>Without this prop, the system browser or app for the URL opens it, without asking <code>canOpenURL</code> first, so no
 <code>LSApplicationQueriesSchemes</code> (iOS) or <code>&lt;queries&gt;</code> (Android) entries are needed.</p>
 <h4 id="parameters_9">Parameters<a class="headerlink" href="#parameters_9" title="Permanent link">&para;</a></h4>
-<h5 id="request_2">request<a class="headerlink" href="#request_2" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/NavigationRequest/"><code>NavigationRequest</code></a></p>
-<h5 id="signal_2">signal<a class="headerlink" href="#signal_2" title="Permanent link">&para;</a></h5>
-<p><code>AbortSignal</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request</code></td>
+<td><a href="../../type-aliases/NavigationRequest/"><code>NavigationRequest</code></a></td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>AbortSignal</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_9">Returns<a class="headerlink" href="#returns_9" title="Permanent link">&para;</a></h4>
 <p><code>boolean</code> | <code>void</code> | <code>Promise</code>&lt;<code>boolean</code> | <code>void</code>&gt;</p>
 <hr />
 <h3 id="onpermissionrequest">onPermissionRequest?<a class="headerlink" href="#onpermissionrequest" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onPermissionRequest?</strong>: (<code>request</code>, <code>signal</code>) =&gt; <code>boolean</code> | <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nx">onPermissionRequest</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">request</span><span class="p">,</span><span class="w"> </span><span class="nx">signal</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="kt">boolean</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Camera, microphone and, on Android, location and protected media (DRM) for the main frame.</p>
 <p>Answer true to grant, having asked the OS first (expo-camera, expo-location): without OS permission the page's
 request fails anyway. On iOS, true also skips WebKit's own prompt.</p>
@@ -7040,62 +7156,82 @@ permissions. Android keeps a location answer until the page changes.</p>
 <p>Anything but true denies. <code>signal</code> also aborts when Android withdraws the request. Until the answer settles, the
 page's next request of the same kind waits.</p>
 <h4 id="parameters_10">Parameters<a class="headerlink" href="#parameters_10" title="Permanent link">&para;</a></h4>
-<h5 id="request_3">request<a class="headerlink" href="#request_3" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/PermissionRequest/"><code>PermissionRequest</code></a></p>
-<h5 id="signal_3">signal<a class="headerlink" href="#signal_3" title="Permanent link">&para;</a></h5>
-<p><code>AbortSignal</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request</code></td>
+<td><a href="../../type-aliases/PermissionRequest/"><code>PermissionRequest</code></a></td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>AbortSignal</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_10">Returns<a class="headerlink" href="#returns_10" title="Permanent link">&para;</a></h4>
 <p><code>boolean</code> | <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
 <hr />
 <h3 id="onprocessgone">onProcessGone?<a class="headerlink" href="#onprocessgone" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onProcessGone?</strong>: (<code>event</code>) =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nx">onProcessGone</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The renderer died; see <a href="../../type-aliases/ProcessGoneEvent/">ProcessGoneEvent</a> for the recovery.</p>
 <p>Android's WebViews share one renderer, so each of them reports its death.</p>
 <h4 id="parameters_11">Parameters<a class="headerlink" href="#parameters_11" title="Permanent link">&para;</a></h4>
-<h5 id="event_3">event<a class="headerlink" href="#event_3" title="Permanent link">&para;</a></h5>
-<p><a href="../../type-aliases/ProcessGoneEvent/"><code>ProcessGoneEvent</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><a href="../../type-aliases/ProcessGoneEvent/"><code>ProcessGoneEvent</code></a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_11">Returns<a class="headerlink" href="#returns_11" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="pulltorefresh">pullToRefresh?<a class="headerlink" href="#pulltorefresh" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>pullToRefresh?</strong>: <code>boolean</code> = <code>false</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nx">pullToRefresh?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Pull down at the top of the page to reload: <code>UIRefreshControl</code> on iOS, <code>SwipeRefreshLayout</code> on Android, where a
 pull inside a scrolled inner scroller (<code>overflow: auto</code>) scrolls it instead.</p>
 <p>It reloads as <a href="../../type-aliases/WebViewRef/#reload">reload()</a> does, a POST <code>source</code> included. A change applies at once.</p>
 <hr />
 <h3 id="ref">ref?<a class="headerlink" href="#ref" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>ref?</strong>: <code>Ref</code>&lt;<a href="../../type-aliases/WebViewRef/"><code>WebViewRef</code></a>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nx">ref?</span><span class="o">:</span><span class="w"> </span><span class="kt">Ref</span><span class="o">&lt;</span><span class="nx">WebViewRef</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Gets the <a href="../../type-aliases/WebViewRef/">WebViewRef</a>.</p>
 <p>Give each mounted WebView its own ref: one shared by two points at the last mounted (with a warning in
 development), and can turn null when either unmounts.</p>
 <hr />
 <h3 id="sharedcookies">sharedCookies?<a class="headerlink" href="#sharedcookies" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>sharedCookies?</strong>: <code>boolean</code> = <code>false</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nx">sharedCookies?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>iOS</code></strong></p>
 <p>Copies <code>HTTPCookieStorage</code> (native requests) into the WebView before each <code>source</code> load, which waits for it, and
 the WebView's cookie changes, deletions included, back as they happen.</p>
 <p>Android needs nothing: <code>CookieManager</code> is shared app-wide, and flushed when the app goes to the background.</p>
 <hr />
 <h3 id="source">source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>source</strong>: <a href="../../type-aliases/WebViewSource/"><code>WebViewSource</code></a></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nx">source</span><span class="o">:</span><span class="w"> </span><span class="kt">WebViewSource</span><span class="p">;</span>
+</span></code></pre></div>
 <p>What to load.</p>
 <p>A new <code>source</code> loads at once, unless it equals the loaded one field by field: that loads nothing, even after the
 page navigated away.</p>
 <hr />
 <h3 id="useragent">userAgent?<a class="headerlink" href="#useragent" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>userAgent?</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nx">userAgent?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Replaces the whole user agent, over <code>ios.webView.customUserAgent</code> and <code>android.settings.userAgentString</code>. Without
 it, those keys apply; unset, they are the platform's own user agent.</p>
 <p>To append to the default one instead, set <code>ios.configuration.applicationNameForUserAgent</code> and, on Android,

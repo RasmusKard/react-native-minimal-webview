@@ -3237,7 +3237,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3291,7 +3291,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3669,7 +3669,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4074,7 +4074,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6284,78 +6284,99 @@
 
 
 <h1 id="scrollevent">ScrollEvent<a class="headerlink" href="#scrollevent" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>ScrollEvent</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">ScrollEvent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A scroll, for <a href="../../functions/onScroll/">onScroll</a>: react-native-webview's event, in points (iOS) or dp (Android).</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="nativeevent">nativeEvent<a class="headerlink" href="#nativeevent" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>nativeEvent</strong>: <code>object</code></p>
-</blockquote>
-<h4 id="contentinset">contentInset<a class="headerlink" href="#contentinset" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>contentInset</strong>: <code>object</code></p>
-</blockquote>
-<p>All 0 on Android.</p>
-<h5 id="contentinsetbottom">contentInset.bottom<a class="headerlink" href="#contentinsetbottom" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>bottom</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="contentinsetleft">contentInset.left<a class="headerlink" href="#contentinsetleft" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>left</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="contentinsetright">contentInset.right<a class="headerlink" href="#contentinsetright" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>right</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="contentinsettop">contentInset.top<a class="headerlink" href="#contentinsettop" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>top</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="contentoffset">contentOffset<a class="headerlink" href="#contentoffset" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>contentOffset</strong>: <code>object</code></p>
-</blockquote>
-<h5 id="contentoffsetx">contentOffset.x<a class="headerlink" href="#contentoffsetx" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>x</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="contentoffsety">contentOffset.y<a class="headerlink" href="#contentoffsety" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>y</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="contentsize">contentSize<a class="headerlink" href="#contentsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>contentSize</strong>: <code>object</code></p>
-</blockquote>
-<h5 id="contentsizeheight">contentSize.height<a class="headerlink" href="#contentsizeheight" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>height</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="contentsizewidth">contentSize.width<a class="headerlink" href="#contentsizewidth" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>width</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="layoutmeasurement">layoutMeasurement<a class="headerlink" href="#layoutmeasurement" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>layoutMeasurement</strong>: <code>object</code></p>
-</blockquote>
-<p>The WebView's own size.</p>
-<h5 id="layoutmeasurementheight">layoutMeasurement.height<a class="headerlink" href="#layoutmeasurementheight" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>height</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="layoutmeasurementwidth">layoutMeasurement.width<a class="headerlink" href="#layoutmeasurementwidth" title="Permanent link">&para;</a></h5>
-<blockquote>
-<p><strong>width</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="zoomscale">zoomScale?<a class="headerlink" href="#zoomscale" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>zoomScale?</strong>: <code>number</code></p>
-</blockquote>
-<p><strong><code>iOS</code></strong></p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">nativeEvent</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>contentInset</code></td>
+<td><code>object</code></td>
+<td>All 0 on Android.</td>
+</tr>
+<tr>
+<td><code>contentInset.bottom</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentInset.left</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentInset.right</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentInset.top</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentOffset</code></td>
+<td><code>object</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentOffset.x</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentOffset.y</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentSize</code></td>
+<td><code>object</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentSize.height</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentSize.width</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>layoutMeasurement</code></td>
+<td><code>object</code></td>
+<td>The WebView's own size.</td>
+</tr>
+<tr>
+<td><code>layoutMeasurement.height</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>layoutMeasurement.width</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>zoomScale?</code></td>
+<td><code>number</code></td>
+<td><strong><code>iOS</code></strong></td>
+</tr>
+</tbody>
+</table>
 
 
 

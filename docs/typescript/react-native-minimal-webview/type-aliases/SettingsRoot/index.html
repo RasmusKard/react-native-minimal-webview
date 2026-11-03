@@ -28,7 +28,7 @@
     
     
       
-        <title>SettingsRoot<Keys> - react-native-minimal-webview</title>
+        <title>SettingsRoot - react-native-minimal-webview</title>
       
     
     
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SettingsRoot&lt;Keys&gt;
+              SettingsRoot
             
           </span>
         </div>
@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4008,7 +4008,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -4025,7 +4025,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -4058,23 +4058,6 @@
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Type Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Keys
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -6139,23 +6122,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Type Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Keys
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -6409,20 +6375,28 @@
   
 
 
-<h1 id="settingsrootkeys">SettingsRoot&lt;Keys&gt;<a class="headerlink" href="#settingsrootkeys" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>SettingsRoot</strong>&lt;<code>Keys</code>&gt; = <code>Keys</code> &amp; <code>object</code></p>
-</blockquote>
+<h1 id="settingsroot">SettingsRoot<a class="headerlink" href="#settingsroot" title="Permanent link">&para;</a></h1>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">SettingsRoot</span><span class="o">&lt;</span><span class="nx">Keys</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Keys</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A settings root: its generated keys (<a href="../IOSSettingKeys/">IOSSettingKeys</a>, <a href="../AndroidSettingKeys/">AndroidSettingKeys</a>, from the SDK headers), so a
 misspelled key fails to compile, and <code>other</code> for the keys they lack.</p>
 <h2 id="type-parameters">Type Parameters<a class="headerlink" href="#type-parameters" title="Permanent link">&para;</a></h2>
-<h3 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h3>
-<p><code>Keys</code></p>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-keys"></a> <code>Keys</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="type-declaration">Type Declaration<a class="headerlink" href="#type-declaration" title="Permanent link">&para;</a></h2>
 <h3 id="other">other?<a class="headerlink" href="#other" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>other?</strong>: <code>Record</code>&lt;<code>string</code>, <a href="../SettingValue/"><code>SettingValue</code></a> | <code>undefined</code>&gt; &amp; <code>{ [K in keyof Keys]?: never }</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">other?</span><span class="o">:</span><span class="w"> </span><span class="kt">Record</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">SettingValue</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">undefined</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="nx">K</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nx">keyof</span><span class="w"> </span><span class="nx">Keys</span><span class="p">]</span><span class="nx">?</span><span class="o">:</span><span class="w"> </span><span class="kt">never</span><span class="w"> </span><span class="p">};</span>
+</span></code></pre></div>
 <p>Any other key the platform has (a newer SDK's, one the headers don't list), untyped. It is set as if it were at
 the root; a generated key can't go here.</p>
 

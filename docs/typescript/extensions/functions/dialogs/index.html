@@ -947,23 +947,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ondialog" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        onDialog
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -3248,7 +3231,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3302,7 +3285,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3680,7 +3663,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4068,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6122,23 +6105,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ondialog" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        onDialog
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -6306,9 +6272,8 @@
 
 
 <h1 id="dialogs">dialogs()<a class="headerlink" href="#dialogs" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>dialogs</strong>(<code>onDialog</code>): <a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">dialogs</span><span class="p">(</span><span class="nx">onDialog</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">HookExtension</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Answers the page's <code>alert</code>, <code>confirm</code> and <code>prompt</code> with <code>onDialog</code> instead of the native dialogs; the page waits for
 the answer. Not in react-native-webview, whose dialogs are native.</p>
 <p>The return value (a promise is awaited) is the answer: <code>true</code> accepts a confirm, a string is a prompt's text, and
@@ -6317,8 +6282,20 @@ anything else, a throw too, dismisses the dialog (confirm false, prompt null). A
 <a href="../../../react-native-minimal-webview/type-aliases/HookExtension/#onevent">HookExtension.onEvent</a> has the rules.</p>
 <p>Without this extension, the default dialogs show, as <code>WebViewProps</code> describes.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
-<h3 id="ondialog">onDialog<a class="headerlink" href="#ondialog" title="Permanent link">&para;</a></h3>
-<p>(<code>dialog</code>, <code>signal</code>) =&gt; <code>unknown</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onDialog</code></td>
+<td>(<code>dialog</code>, <code>signal</code>) =&gt; <code>unknown</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h2>
 <p><a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a></p>
 

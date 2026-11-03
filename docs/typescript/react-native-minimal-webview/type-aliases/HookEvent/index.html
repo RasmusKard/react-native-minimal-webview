@@ -28,7 +28,7 @@
     
     
       
-        <title>HookEvent<N, P> - react-native-minimal-webview</title>
+        <title>HookEvent - react-native-minimal-webview</title>
       
     
     
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              HookEvent&lt;N, P&gt;
+              HookEvent
             
           </span>
         </div>
@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3603,7 +3603,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -3620,7 +3620,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -3664,34 +3664,6 @@
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Type Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#n" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        N
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        P
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4135,7 +4107,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6183,34 +6155,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Type Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#n" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        N
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        P
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -6475,32 +6419,44 @@
   
 
 
-<h1 id="hookeventn-p">HookEvent&lt;N, P&gt;<a class="headerlink" href="#hookeventn-p" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>HookEvent</strong>&lt;<code>N</code>, <code>P</code>&gt; = <code>object</code></p>
-</blockquote>
+<h1 id="hookevent">HookEvent<a class="headerlink" href="#hookevent" title="Permanent link">&para;</a></h1>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">HookEvent</span><span class="o">&lt;</span><span class="nx">N</span><span class="p">,</span><span class="w"> </span><span class="nx">P</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>An event a native hook sent with <code>emit</code> or <code>ask</code>.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">PageLoaded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">HookEvent</span><span class="o">&lt;</span><span class="s1">'pageLoaded'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">count</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">}</span><span class="o">&gt;</span><span class="p">;</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">PageLoaded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">HookEvent</span><span class="o">&lt;</span><span class="s1">'pageLoaded'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">count</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">}</span><span class="o">&gt;</span><span class="p">;</span>
 </span></code></pre></div>
 <h2 id="type-parameters">Type Parameters<a class="headerlink" href="#type-parameters" title="Permanent link">&para;</a></h2>
-<h3 id="n">N<a class="headerlink" href="#n" title="Permanent link">&para;</a></h3>
-<p><code>N</code> <em>extends</em> <code>string</code> = <code>string</code></p>
-<p>The event's name, to type one hook's events.</p>
-<h3 id="p">P<a class="headerlink" href="#p" title="Permanent link">&para;</a></h3>
-<p><code>P</code> = <code>Record</code>&lt;<code>string</code>, <code>unknown</code>&gt;</p>
-<p>Its payload.</p>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+<th>Default type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-n"></a> <code>N</code> <em>extends</em> <code>string</code></td>
+<td><code>string</code></td>
+<td>The event's name, to type one hook's events.</td>
+</tr>
+<tr>
+<td><a id="type-parameter-p"></a> <code>P</code></td>
+<td><code>Record</code>&lt;<code>string</code>, <code>unknown</code>&gt;</td>
+<td>Its payload.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="name">name<a class="headerlink" href="#name" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>name</strong>: <code>N</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="kt">N</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The event's name, relative to the extension's key: <code>pageLoaded</code> for <code>'pageCounter.pageLoaded'</code>.</p>
 <hr />
 <h3 id="payload">payload<a class="headerlink" href="#payload" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>payload</strong>: <code>P</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="kt">P</span><span class="p">;</span>
+</span></code></pre></div>
 <p>What the hook sent with it.</p>
 
 

@@ -2832,23 +2832,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        url
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -3256,7 +3239,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3310,7 +3293,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3688,7 +3671,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4093,7 +4076,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6130,23 +6113,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        url
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -6470,9 +6436,8 @@
 
 
 <h1 id="preconnect">preconnect()<a class="headerlink" href="#preconnect" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>preconnect</strong>(<code>url</code>): <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">preconnect</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>Android</code></strong></p>
 <p>Opens a connection to <code>url</code>'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes
 later.</p>
@@ -6484,8 +6449,20 @@ mounted.</p>
 <p>Needs the androidx.webkit features <code>MULTI_PROFILE</code> and <code>ENQUEUE_PRECONNECT</code> or <code>PRECONNECT</code>; without them it does
 nothing. For prefetch and prerender, a native hook uses <code>ProfileStore</code>.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
-<h3 id="url">url<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
-<p><code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>url</code></td>
+<td><code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h2>
 <p><code>void</code></p>
 

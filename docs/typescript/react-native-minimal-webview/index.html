@@ -3160,7 +3160,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3214,7 +3214,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3592,7 +3592,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -3997,7 +3997,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6237,85 +6237,296 @@
 <h1 id="react-native-minimal-webview">react-native-minimal-webview<a class="headerlink" href="#react-native-minimal-webview" title="Permanent link">&para;</a></h1>
 <h2 id="webview">WebView<a class="headerlink" href="#webview" title="Permanent link">&para;</a></h2>
 <p>The component, its props and its ref.</p>
-<ul>
-<li><a href="namespaces/WebView/">WebView</a></li>
-<li><a href="interfaces/WebViewProps/">WebViewProps</a></li>
-<li><a href="type-aliases/CodedError/">CodedError</a></li>
-<li><a href="type-aliases/ErrorCode/">ErrorCode</a></li>
-<li><a href="type-aliases/WebViewRef/">WebViewRef</a></li>
-<li><a href="type-aliases/WebViewRefObject/">WebViewRefObject</a></li>
-<li><a href="type-aliases/WebViewSource/">WebViewSource</a></li>
-<li><a href="functions/createWebViewRef/">createWebViewRef</a></li>
-<li><a href="functions/WebView/">WebView</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="namespaces/WebView/">WebView</a></td>
+<td>What <code>WebView</code> carries besides the component: <a href="namespaces/WebView/namespaces/android/">WebView.android</a>.</td>
+</tr>
+<tr>
+<td><a href="interfaces/WebViewProps/">WebViewProps</a></td>
+<td>What the WebView loads, its settings, and the callbacks for its events and the page's requests.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/CodedError/">CodedError</a></td>
+<td>What a ref method or a bridge call rejects with: an <code>Error</code> whose <code>code</code> says why.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/ErrorCode/">ErrorCode</a></td>
+<td>Why a ref method or a bridge call rejected. Each code means the same on every method that rejects with it.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/WebViewRef/">WebViewRef</a></td>
+<td>The methods a WebView's <code>ref</code> gets: navigation, scripts, and platform and hook calls.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/WebViewRefObject/">WebViewRefObject</a></td>
+<td>What <code>createWebViewRef()</code> returns: a ref that outlives the WebViews mounted with it.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/WebViewSource/">WebViewSource</a></td>
+<td>What the WebView loads: a URL, or an HTML string.</td>
+</tr>
+<tr>
+<td><a href="functions/createWebViewRef/">createWebViewRef</a></td>
+<td>A ref to pass as a WebView's <code>ref</code>, made outside React (a module, a store) so code outside React can use it.</td>
+</tr>
+<tr>
+<td><a href="functions/WebView/">WebView</a></td>
+<td>A WebView whose native side decides navigations and owns the navigation state: see <a href="interfaces/WebViewProps/">WebViewProps</a> and <a href="type-aliases/WebViewRef/">WebViewRef</a>.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="navigation">Navigation<a class="headerlink" href="#navigation" title="Permanent link">&para;</a></h2>
 <p>The navigation state, and the rules that decide what each navigation does.</p>
-<ul>
-<li><a href="type-aliases/NavigationAction/">NavigationAction</a></li>
-<li><a href="type-aliases/NavigationEvent/">NavigationEvent</a></li>
-<li><a href="type-aliases/NavigationRequest/">NavigationRequest</a></li>
-<li><a href="type-aliases/NavigationRule/">NavigationRule</a></li>
-<li><a href="type-aliases/NavigationState/">NavigationState</a></li>
-<li><a href="variables/defaultNavigationRules/">defaultNavigationRules</a></li>
-<li><a href="functions/useWebViewState/">useWebViewState</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/NavigationAction/">NavigationAction</a></td>
+<td>What happens to a navigation.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/NavigationEvent/">NavigationEvent</a></td>
+<td>A navigation decision, for <code>onNavigation</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/NavigationRequest/">NavigationRequest</a></td>
+<td>A navigation an <code>ask</code> rule puts to <code>onNavigationRequest</code>, or an <code>external</code> one to <code>onOpenExternal</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/NavigationRule/">NavigationRule</a></td>
+<td>A pattern over a navigation's URL and kind, and what the navigations it matches do.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/NavigationState/">NavigationState</a></td>
+<td>A WebView's navigation state, as native reports it: from <code>useWebViewState</code> and <code>onNavigationStateChange</code>.</td>
+</tr>
+<tr>
+<td><a href="variables/defaultNavigationRules/">defaultNavigationRules</a></td>
+<td>The rules <code>navigationRules</code> has when it is unset: <code>file:</code> is blocked, http(s) loads in place, and any other scheme opens externally from the main frame when a user gesture started it (<a href="type-aliases/NavigationRule/#userinitiated">NavigationRule.userInitiated</a>).</td>
+</tr>
+<tr>
+<td><a href="functions/useWebViewState/">useWebViewState</a></td>
+<td>The navigation state of the WebView mounted with <code>ref</code> (a <code>useRef</code>, <code>createRef</code> or <code>createWebViewRef</code> one); re-renders on every change, and follows a remount.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="events">Events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h2>
 <p>What <code>onError</code>, <code>onProcessGone</code> and <code>onFullscreenChange</code> receive.</p>
-<ul>
-<li><a href="type-aliases/FullscreenChangeEvent/">FullscreenChangeEvent</a></li>
-<li><a href="type-aliases/LoadErrorEvent/">LoadErrorEvent</a></li>
-<li><a href="type-aliases/ProcessGoneEvent/">ProcessGoneEvent</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Type Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/FullscreenChangeEvent/">FullscreenChangeEvent</a></td>
+<td>A fullscreen change, for <code>onFullscreenChange</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/LoadErrorEvent/">LoadErrorEvent</a></td>
+<td>A main-frame error, for <code>onError</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/ProcessGoneEvent/">ProcessGoneEvent</a></td>
+<td>The renderer process died, for <code>onProcessGone</code>.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="bridge">Bridge<a class="headerlink" href="#bridge" title="Permanent link">&para;</a></h2>
 <p>Calls and events between React Native and the page's <code>window.nativeBridge</code>.</p>
-<ul>
-<li><a href="type-aliases/Bridge/">Bridge</a></li>
-<li><a href="type-aliases/BridgeEventMap/">BridgeEventMap</a></li>
-<li><a href="type-aliases/BridgeHandler/">BridgeHandler</a></li>
-<li><a href="type-aliases/BridgeMethodMap/">BridgeMethodMap</a></li>
-<li><a href="type-aliases/BridgeOptions/">BridgeOptions</a></li>
-<li><a href="type-aliases/BridgeSender/">BridgeSender</a></li>
-<li><a href="functions/createBridge/">createBridge</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/Bridge/">Bridge</a></td>
+<td>A promise-based RPC channel to <code>window.nativeBridge</code> in the page.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/BridgeEventMap/">BridgeEventMap</a></td>
+<td>The events either side may emit, for <code>createBridge&lt;Methods, Events&gt;</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/BridgeHandler/">BridgeHandler</a></td>
+<td>Answers a bridge call: the return value (a promise is awaited) is the result.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/BridgeMethodMap/">BridgeMethodMap</a></td>
+<td>The methods either side may call, for <code>createBridge&lt;Methods&gt;</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/BridgeOptions/">BridgeOptions</a></td>
+<td>The options of <code>createBridge</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/BridgeSender/">BridgeSender</a></td>
+<td>Who sent a call or event: the page's origin as <code>location.origin</code> writes it (<code>https://example.com:8443</code>), checked by native code, not taken from the page.</td>
+</tr>
+<tr>
+<td><a href="functions/createBridge/">createBridge</a></td>
+<td>Creates a <a href="type-aliases/Bridge/">Bridge</a> to the pages of <code>allowedOrigins</code>, for one WebView's <code>bridge</code> prop.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="scripts">Scripts<a class="headerlink" href="#scripts" title="Permanent link">&para;</a></h2>
 <p>Scripts for <code>injectedScripts</code>, which run at document start.</p>
-<ul>
-<li><a href="type-aliases/InjectedScript/">InjectedScript</a></li>
-<li><a href="variables/reactNativeWebViewMessages/">reactNativeWebViewMessages</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/InjectedScript/">InjectedScript</a></td>
+<td>Runs at document start, before any page script and before the DOM is parsed.</td>
+</tr>
+<tr>
+<td><a href="variables/reactNativeWebViewMessages/">reactNativeWebViewMessages</a></td>
+<td>react-native-webview's messaging, for <code>injectedScripts</code>, carried by the bridge event <code>rnw</code>.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="page-requests">Page requests<a class="headerlink" href="#page-requests" title="Permanent link">&para;</a></h2>
 <p>File pickers, permission prompts and downloads the page starts.</p>
-<ul>
-<li><a href="type-aliases/Download/">Download</a></li>
-<li><a href="type-aliases/DownloadFailure/">DownloadFailure</a></li>
-<li><a href="type-aliases/DownloadResult/">DownloadResult</a></li>
-<li><a href="type-aliases/FileRequest/">FileRequest</a></li>
-<li><a href="type-aliases/PermissionRequest/">PermissionRequest</a></li>
-<li><a href="type-aliases/PermissionResource/">PermissionResource</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Type Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/Download/">Download</a></td>
+<td>A finished download.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/DownloadFailure/">DownloadFailure</a></td>
+<td>A download that could not be saved; <code>kind</code> says why.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/DownloadResult/">DownloadResult</a></td>
+<td>What <code>onDownload</code> gets.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/FileRequest/">FileRequest</a></td>
+<td>An <code>&lt;input type="file"&gt;</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/PermissionRequest/">PermissionRequest</a></td>
+<td>A page's permission request, for <code>onPermissionRequest</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/PermissionResource/">PermissionResource</a></td>
+<td>A device resource a page can ask for.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="native-hooks">Native hooks<a class="headerlink" href="#native-hooks" title="Permanent link">&para;</a></h2>
 <p>Turning native hooks on with the <code>extensions</code> prop, and what they send to each extension's <code>onEvent</code>.</p>
-<ul>
-<li><a href="type-aliases/HookEvent/">HookEvent</a></li>
-<li><a href="type-aliases/HookExtension/">HookExtension</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Type Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/HookEvent/">HookEvent</a></td>
+<td>An event a native hook sent with <code>emit</code> or <code>ask</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/HookExtension/">HookExtension</a></td>
+<td>A native hook's JS side, for <a href="interfaces/WebViewProps/#extensions">WebViewProps.extensions</a>: its key, its options, and what takes its events.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="platform-settings">Platform settings<a class="headerlink" href="#platform-settings" title="Permanent link">&para;</a></h2>
 <p>WebKit and Android WebView properties, set by name through the <code>ios</code> and <code>android</code> props.</p>
-<ul>
-<li><a href="namespaces/AndroidConstants/">AndroidConstants</a></li>
-<li><a href="namespaces/IOSConstants/">IOSConstants</a></li>
-<li><a href="type-aliases/AndroidSettingKeys/">AndroidSettingKeys</a></li>
-<li><a href="type-aliases/AndroidSettings/">AndroidSettings</a></li>
-<li><a href="type-aliases/CGPoint/">CGPoint</a></li>
-<li><a href="type-aliases/CGRect/">CGRect</a></li>
-<li><a href="type-aliases/CGSize/">CGSize</a></li>
-<li><a href="type-aliases/IOSPrivateSettingKeys/">IOSPrivateSettingKeys</a></li>
-<li><a href="type-aliases/IOSSettingKeys/">IOSSettingKeys</a></li>
-<li><a href="type-aliases/IOSSettings/">IOSSettings</a></li>
-<li><a href="type-aliases/SettingsRoot/">SettingsRoot</a></li>
-<li><a href="type-aliases/SettingValue/">SettingValue</a></li>
-<li><a href="type-aliases/UIEdgeInsets/">UIEdgeInsets</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="namespaces/AndroidConstants/">AndroidConstants</a></td>
+<td>The <code>WebSettings</code>, <code>WebView</code>, <code>WebSettingsCompat</code> and <code>WebViewCompat</code> constants: <code>settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }</code>.</td>
+</tr>
+<tr>
+<td><a href="namespaces/IOSConstants/">IOSConstants</a></td>
+<td>WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one: <code>configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/AndroidSettingKeys/">AndroidSettingKeys</a></td>
+<td>The Android settings keys by root: the one-argument <code>WebSettings</code>, <code>WebView</code> and <code>CookieManager</code> setters, then <code>WebSettingsCompat</code>'s and <code>WebViewCompat</code>'s statics, then the scroll setters <code>WebView</code> inherits from <code>View</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/AndroidSettings/">AndroidSettings</a></td>
+<td>Android settings by setter name without <code>set</code>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/CGPoint/">CGPoint</a></td>
+<td>An iOS struct the settings channel carries as an object.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/CGRect/">CGRect</a></td>
+<td>An iOS struct the settings channel carries as an object.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/CGSize/">CGSize</a></td>
+<td>An iOS struct the settings channel carries as an object.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/IOSPrivateSettingKeys/">IOSPrivateSettingKeys</a></td>
+<td>The private WebKit settings <a href="type-aliases/IOSSettings/">IOSSettings</a> takes besides <a href="type-aliases/IOSSettingKeys/">IOSSettingKeys</a>, both off by default.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/IOSSettingKeys/">IOSSettingKeys</a></td>
+<td>The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from the SDK headers.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/IOSSettings/">IOSSettings</a></td>
+<td>WebKit settings by Objective-C property name.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/SettingsRoot/">SettingsRoot</a></td>
+<td>A settings root: its generated keys (<a href="type-aliases/IOSSettingKeys/">IOSSettingKeys</a>, <a href="type-aliases/AndroidSettingKeys/">AndroidSettingKeys</a>, from the SDK headers), so a misspelled key fails to compile, and <code>other</code> for the keys they lack.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/SettingValue/">SettingValue</a></td>
+<td>What a platform setting can take: what its property or setter accepts. An object is one of the iOS structs.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/UIEdgeInsets/">UIEdgeInsets</a></td>
+<td>An iOS struct the settings channel carries as an object.</td>
+</tr>
+</tbody>
+</table>
 
 
 

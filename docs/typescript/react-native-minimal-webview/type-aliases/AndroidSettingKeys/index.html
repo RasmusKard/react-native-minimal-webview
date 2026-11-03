@@ -3248,7 +3248,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3302,7 +3302,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3680,7 +3680,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4085,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6376,542 +6376,449 @@
 
 
 <h1 id="androidsettingkeys">AndroidSettingKeys<a class="headerlink" href="#androidsettingkeys" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>AndroidSettingKeys</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">AndroidSettingKeys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>Android</code></strong></p>
 <p>The Android settings keys by root: the one-argument <code>WebSettings</code>, <code>WebView</code> and <code>CookieManager</code> setters, then
 <code>WebSettingsCompat</code>'s and <code>WebViewCompat</code>'s statics, then the scroll setters <code>WebView</code> inherits from <code>View</code>.</p>
 <p><code>@since</code> is the API level. A key a newer SDK or androidx.webkit adds goes under the root's <code>other</code>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="settings">settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>settings</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">settings</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WebSettings</code>, then <code>WebSettingsCompat</code></p>
-<h4 id="algorithmicdarkeningallowed">algorithmicDarkeningAllowed?<a class="headerlink" href="#algorithmicdarkeningallowed" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>algorithmicDarkeningAllowed?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since">Since<a class="headerlink" href="#since" title="Permanent link">&para;</a></h5>
-<p>33</p>
-<h4 id="allowcontentaccess">allowContentAccess?<a class="headerlink" href="#allowcontentaccess" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowContentAccess?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_1">Since<a class="headerlink" href="#since_1" title="Permanent link">&para;</a></h5>
-<p>11</p>
-<h4 id="allowfileaccess">allowFileAccess?<a class="headerlink" href="#allowfileaccess" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowFileAccess?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_2">Since<a class="headerlink" href="#since_2" title="Permanent link">&para;</a></h5>
-<p>3</p>
-<h4 id="allowfileaccessfromfileurls"><del>allowFileAccessFromFileURLs?</del><a class="headerlink" href="#allowfileaccessfromfileurls" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowFileAccessFromFileURLs?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_3">Since<a class="headerlink" href="#since_3" title="Permanent link">&para;</a></h5>
-<p>16</p>
-<h5 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h5>
-<p>since API 30</p>
-<h4 id="allowuniversalaccessfromfileurls"><del>allowUniversalAccessFromFileURLs?</del><a class="headerlink" href="#allowuniversalaccessfromfileurls" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowUniversalAccessFromFileURLs?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_4">Since<a class="headerlink" href="#since_4" title="Permanent link">&para;</a></h5>
-<p>16</p>
-<h5 id="deprecated_1">Deprecated<a class="headerlink" href="#deprecated_1" title="Permanent link">&para;</a></h5>
-<p>since API 30</p>
-<h4 id="attributionregistrationbehavior">attributionRegistrationBehavior?<a class="headerlink" href="#attributionregistrationbehavior" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>attributionRegistrationBehavior?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>ATTRIBUTION_REGISTRATION_BEHAVIOR</code></p>
-<h4 id="backforwardcacheenabled">backForwardCacheEnabled?<a class="headerlink" href="#backforwardcacheenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>backForwardCacheEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>BACK_FORWARD_CACHE</code></p>
-<h4 id="blocknetworkimage">blockNetworkImage?<a class="headerlink" href="#blocknetworkimage" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>blockNetworkImage?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_5">Since<a class="headerlink" href="#since_5" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="blocknetworkloads">blockNetworkLoads?<a class="headerlink" href="#blocknetworkloads" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>blockNetworkLoads?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_6">Since<a class="headerlink" href="#since_6" title="Permanent link">&para;</a></h5>
-<p>8</p>
-<h4 id="builtinzoomcontrols">builtInZoomControls?<a class="headerlink" href="#builtinzoomcontrols" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>builtInZoomControls?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_7">Since<a class="headerlink" href="#since_7" title="Permanent link">&para;</a></h5>
-<p>3</p>
-<h4 id="cachemode">cacheMode?<a class="headerlink" href="#cachemode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>cacheMode?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_8">Since<a class="headerlink" href="#since_8" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="cookiesincludedinshouldinterceptrequest">cookiesIncludedInShouldInterceptRequest?<a class="headerlink" href="#cookiesincludedinshouldinterceptrequest" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>cookiesIncludedInShouldInterceptRequest?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>COOKIE_INTERCEPT</code></p>
-<h4 id="cursivefontfamily">cursiveFontFamily?<a class="headerlink" href="#cursivefontfamily" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>cursiveFontFamily?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_9">Since<a class="headerlink" href="#since_9" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="databaseenabled"><del>databaseEnabled?</del><a class="headerlink" href="#databaseenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>databaseEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_10">Since<a class="headerlink" href="#since_10" title="Permanent link">&para;</a></h5>
-<p>5</p>
-<h5 id="deprecated_2">Deprecated<a class="headerlink" href="#deprecated_2" title="Permanent link">&para;</a></h5>
-<p>since API 35</p>
-<h4 id="databasepath"><del>databasePath?</del><a class="headerlink" href="#databasepath" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>databasePath?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_11">Since<a class="headerlink" href="#since_11" title="Permanent link">&para;</a></h5>
-<p>5</p>
-<h5 id="deprecated_3">Deprecated<a class="headerlink" href="#deprecated_3" title="Permanent link">&para;</a></h5>
-<p>since API 19</p>
-<h4 id="defaultfixedfontsize">defaultFixedFontSize?<a class="headerlink" href="#defaultfixedfontsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>defaultFixedFontSize?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_12">Since<a class="headerlink" href="#since_12" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="defaultfontsize">defaultFontSize?<a class="headerlink" href="#defaultfontsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>defaultFontSize?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_13">Since<a class="headerlink" href="#since_13" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="defaulttextencodingname">defaultTextEncodingName?<a class="headerlink" href="#defaulttextencodingname" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>defaultTextEncodingName?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_14">Since<a class="headerlink" href="#since_14" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="disabledactionmodemenuitems">disabledActionModeMenuItems?<a class="headerlink" href="#disabledactionmodemenuitems" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>disabledActionModeMenuItems?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_15">Since<a class="headerlink" href="#since_15" title="Permanent link">&para;</a></h5>
-<p>24</p>
-<h4 id="displayzoomcontrols">displayZoomControls?<a class="headerlink" href="#displayzoomcontrols" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>displayZoomControls?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_16">Since<a class="headerlink" href="#since_16" title="Permanent link">&para;</a></h5>
-<p>11</p>
-<h4 id="domstorageenabled">domStorageEnabled?<a class="headerlink" href="#domstorageenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>domStorageEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_17">Since<a class="headerlink" href="#since_17" title="Permanent link">&para;</a></h5>
-<p>7</p>
-<h4 id="downloadfaviconsenabled">downloadFaviconsEnabled?<a class="headerlink" href="#downloadfaviconsenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>downloadFaviconsEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>DOWNLOAD_FAVICONS_ENABLED</code></p>
-<h4 id="enablesmoothtransition"><del>enableSmoothTransition?</del><a class="headerlink" href="#enablesmoothtransition" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>enableSmoothTransition?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_18">Since<a class="headerlink" href="#since_18" title="Permanent link">&para;</a></h5>
-<p>11</p>
-<h5 id="deprecated_4">Deprecated<a class="headerlink" href="#deprecated_4" title="Permanent link">&para;</a></h5>
-<p>since API 17</p>
-<h4 id="enterpriseauthenticationapplinkpolicyenabled">enterpriseAuthenticationAppLinkPolicyEnabled?<a class="headerlink" href="#enterpriseauthenticationapplinkpolicyenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>enterpriseAuthenticationAppLinkPolicyEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>ENTERPRISE_AUTHENTICATION_APP_LINK_POLICY</code></p>
-<h4 id="fantasyfontfamily">fantasyFontFamily?<a class="headerlink" href="#fantasyfontfamily" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>fantasyFontFamily?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_19">Since<a class="headerlink" href="#since_19" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="fixedfontfamily">fixedFontFamily?<a class="headerlink" href="#fixedfontfamily" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>fixedFontFamily?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_20">Since<a class="headerlink" href="#since_20" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="forcedark"><del>forceDark?</del><a class="headerlink" href="#forcedark" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>forceDark?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_21">Since<a class="headerlink" href="#since_21" title="Permanent link">&para;</a></h5>
-<p>29</p>
-<h5 id="deprecated_5">Deprecated<a class="headerlink" href="#deprecated_5" title="Permanent link">&para;</a></h5>
-<p>since API 33</p>
-<h4 id="forcedarkstrategy"><del>forceDarkStrategy?</del><a class="headerlink" href="#forcedarkstrategy" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>forceDarkStrategy?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>FORCE_DARK_STRATEGY</code></p>
-<h5 id="deprecated_6">Deprecated<a class="headerlink" href="#deprecated_6" title="Permanent link">&para;</a></h5>
-<p>in androidx.webkit</p>
-<h4 id="geolocationdatabasepath"><del>geolocationDatabasePath?</del><a class="headerlink" href="#geolocationdatabasepath" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>geolocationDatabasePath?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_22">Since<a class="headerlink" href="#since_22" title="Permanent link">&para;</a></h5>
-<p>5</p>
-<h5 id="deprecated_7">Deprecated<a class="headerlink" href="#deprecated_7" title="Permanent link">&para;</a></h5>
-<p>since API 24</p>
-<h4 id="geolocationenabled">geolocationEnabled?<a class="headerlink" href="#geolocationenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>geolocationEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_23">Since<a class="headerlink" href="#since_23" title="Permanent link">&para;</a></h5>
-<p>5</p>
-<h4 id="hasenrolledinstrumentenabled">hasEnrolledInstrumentEnabled?<a class="headerlink" href="#hasenrolledinstrumentenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>hasEnrolledInstrumentEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>PAYMENT_REQUEST</code></p>
-<h4 id="hyperlinkcontextmenuitems">hyperlinkContextMenuItems?<a class="headerlink" href="#hyperlinkcontextmenuitems" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>hyperlinkContextMenuItems?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>HYPERLINK_CONTEXT_MENU_ITEMS</code></p>
-<h4 id="javascriptcanopenwindowsautomatically">javaScriptCanOpenWindowsAutomatically?<a class="headerlink" href="#javascriptcanopenwindowsautomatically" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>javaScriptCanOpenWindowsAutomatically?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_24">Since<a class="headerlink" href="#since_24" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="javascriptenabled">javaScriptEnabled?<a class="headerlink" href="#javascriptenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>javaScriptEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_25">Since<a class="headerlink" href="#since_25" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="lighttouchenabled"><del>lightTouchEnabled?</del><a class="headerlink" href="#lighttouchenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>lightTouchEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_26">Since<a class="headerlink" href="#since_26" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h5 id="deprecated_8">Deprecated<a class="headerlink" href="#deprecated_8" title="Permanent link">&para;</a></h5>
-<p>since API 18</p>
-<h4 id="loadsimagesautomatically">loadsImagesAutomatically?<a class="headerlink" href="#loadsimagesautomatically" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>loadsImagesAutomatically?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_27">Since<a class="headerlink" href="#since_27" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="loadwithoverviewmode">loadWithOverviewMode?<a class="headerlink" href="#loadwithoverviewmode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>loadWithOverviewMode?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_28">Since<a class="headerlink" href="#since_28" title="Permanent link">&para;</a></h5>
-<p>7</p>
-<h4 id="mediaplaybackrequiresusergesture">mediaPlaybackRequiresUserGesture?<a class="headerlink" href="#mediaplaybackrequiresusergesture" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mediaPlaybackRequiresUserGesture?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_29">Since<a class="headerlink" href="#since_29" title="Permanent link">&para;</a></h5>
-<p>17</p>
-<h4 id="minimumfontsize">minimumFontSize?<a class="headerlink" href="#minimumfontsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>minimumFontSize?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_30">Since<a class="headerlink" href="#since_30" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="minimumlogicalfontsize">minimumLogicalFontSize?<a class="headerlink" href="#minimumlogicalfontsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>minimumLogicalFontSize?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_31">Since<a class="headerlink" href="#since_31" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="mixedcontentmode">mixedContentMode?<a class="headerlink" href="#mixedcontentmode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mixedContentMode?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_32">Since<a class="headerlink" href="#since_32" title="Permanent link">&para;</a></h5>
-<p>21</p>
-<h4 id="needinitialfocus">needInitialFocus?<a class="headerlink" href="#needinitialfocus" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>needInitialFocus?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_33">Since<a class="headerlink" href="#since_33" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="offscreenpreraster">offscreenPreRaster?<a class="headerlink" href="#offscreenpreraster" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>offscreenPreRaster?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_34">Since<a class="headerlink" href="#since_34" title="Permanent link">&para;</a></h5>
-<p>23</p>
-<h4 id="paymentrequestenabled">paymentRequestEnabled?<a class="headerlink" href="#paymentrequestenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>paymentRequestEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>PAYMENT_REQUEST</code></p>
-<h4 id="safebrowsingenabled">safeBrowsingEnabled?<a class="headerlink" href="#safebrowsingenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>safeBrowsingEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_35">Since<a class="headerlink" href="#since_35" title="Permanent link">&para;</a></h5>
-<p>26</p>
-<h4 id="sansseriffontfamily">sansSerifFontFamily?<a class="headerlink" href="#sansseriffontfamily" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>sansSerifFontFamily?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_36">Since<a class="headerlink" href="#since_36" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="saveformdata"><del>saveFormData?</del><a class="headerlink" href="#saveformdata" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>saveFormData?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_37">Since<a class="headerlink" href="#since_37" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h5 id="deprecated_9">Deprecated<a class="headerlink" href="#deprecated_9" title="Permanent link">&para;</a></h5>
-<p>since API 26</p>
-<h4 id="savepassword"><del>savePassword?</del><a class="headerlink" href="#savepassword" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>savePassword?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_38">Since<a class="headerlink" href="#since_38" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h5 id="deprecated_10">Deprecated<a class="headerlink" href="#deprecated_10" title="Permanent link">&para;</a></h5>
-<p>since API 18</p>
-<h4 id="seriffontfamily">serifFontFamily?<a class="headerlink" href="#seriffontfamily" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>serifFontFamily?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_39">Since<a class="headerlink" href="#since_39" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="speculativeloadingstatus">speculativeLoadingStatus?<a class="headerlink" href="#speculativeloadingstatus" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>speculativeLoadingStatus?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>SPECULATIVE_LOADING</code></p>
-<h4 id="standardfontfamily">standardFontFamily?<a class="headerlink" href="#standardfontfamily" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>standardFontFamily?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_40">Since<a class="headerlink" href="#since_40" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="supportmultiplewindows">supportMultipleWindows?<a class="headerlink" href="#supportmultiplewindows" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>supportMultipleWindows?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_41">Since<a class="headerlink" href="#since_41" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="supportzoom">supportZoom?<a class="headerlink" href="#supportzoom" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>supportZoom?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_42">Since<a class="headerlink" href="#since_42" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="textzoom">textZoom?<a class="headerlink" href="#textzoom" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>textZoom?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_43">Since<a class="headerlink" href="#since_43" title="Permanent link">&para;</a></h5>
-<p>14</p>
-<h4 id="useragentstring">userAgentString?<a class="headerlink" href="#useragentstring" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>userAgentString?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_44">Since<a class="headerlink" href="#since_44" title="Permanent link">&para;</a></h5>
-<p>3</p>
-<h4 id="usewideviewport">useWideViewPort?<a class="headerlink" href="#usewideviewport" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>useWideViewPort?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_45">Since<a class="headerlink" href="#since_45" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="webauthenticationsupport">webAuthenticationSupport?<a class="headerlink" href="#webauthenticationsupport" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>webAuthenticationSupport?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>WebSettingsCompat</code>, WebView feature <code>WEB_AUTHENTICATION</code></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>algorithmicDarkeningAllowed?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 33</td>
+</tr>
+<tr>
+<td><code>allowContentAccess?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 11</td>
+</tr>
+<tr>
+<td><code>allowFileAccess?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 3</td>
+</tr>
+<tr>
+<td><code>allowFileAccessFromFileURLs?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 16 <strong>Deprecated</strong> since API 30</td>
+</tr>
+<tr>
+<td><code>allowUniversalAccessFromFileURLs?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 16 <strong>Deprecated</strong> since API 30</td>
+</tr>
+<tr>
+<td><code>attributionRegistrationBehavior?</code></td>
+<td><code>number</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>ATTRIBUTION_REGISTRATION_BEHAVIOR</code></td>
+</tr>
+<tr>
+<td><code>backForwardCacheEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>BACK_FORWARD_CACHE</code></td>
+</tr>
+<tr>
+<td><code>blockNetworkImage?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>blockNetworkLoads?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 8</td>
+</tr>
+<tr>
+<td><code>builtInZoomControls?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 3</td>
+</tr>
+<tr>
+<td><code>cacheMode?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>cookiesIncludedInShouldInterceptRequest?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>COOKIE_INTERCEPT</code></td>
+</tr>
+<tr>
+<td><code>cursiveFontFamily?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>databaseEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 5 <strong>Deprecated</strong> since API 35</td>
+</tr>
+<tr>
+<td><code>databasePath?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 5 <strong>Deprecated</strong> since API 19</td>
+</tr>
+<tr>
+<td><code>defaultFixedFontSize?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>defaultFontSize?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>defaultTextEncodingName?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>disabledActionModeMenuItems?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 24</td>
+</tr>
+<tr>
+<td><code>displayZoomControls?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 11</td>
+</tr>
+<tr>
+<td><code>domStorageEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 7</td>
+</tr>
+<tr>
+<td><code>downloadFaviconsEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>DOWNLOAD_FAVICONS_ENABLED</code></td>
+</tr>
+<tr>
+<td><code>enableSmoothTransition?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 11 <strong>Deprecated</strong> since API 17</td>
+</tr>
+<tr>
+<td><code>enterpriseAuthenticationAppLinkPolicyEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>ENTERPRISE_AUTHENTICATION_APP_LINK_POLICY</code></td>
+</tr>
+<tr>
+<td><code>fantasyFontFamily?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>fixedFontFamily?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>forceDark?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 29 <strong>Deprecated</strong> since API 33</td>
+</tr>
+<tr>
+<td><code>forceDarkStrategy?</code></td>
+<td><code>number</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>FORCE_DARK_STRATEGY</code> <strong>Deprecated</strong> in androidx.webkit</td>
+</tr>
+<tr>
+<td><code>geolocationDatabasePath?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 5 <strong>Deprecated</strong> since API 24</td>
+</tr>
+<tr>
+<td><code>geolocationEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 5</td>
+</tr>
+<tr>
+<td><code>hasEnrolledInstrumentEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>PAYMENT_REQUEST</code></td>
+</tr>
+<tr>
+<td><code>hyperlinkContextMenuItems?</code></td>
+<td><code>number</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>HYPERLINK_CONTEXT_MENU_ITEMS</code></td>
+</tr>
+<tr>
+<td><code>javaScriptCanOpenWindowsAutomatically?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>javaScriptEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>lightTouchEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1 <strong>Deprecated</strong> since API 18</td>
+</tr>
+<tr>
+<td><code>loadsImagesAutomatically?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>loadWithOverviewMode?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 7</td>
+</tr>
+<tr>
+<td><code>mediaPlaybackRequiresUserGesture?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17</td>
+</tr>
+<tr>
+<td><code>minimumFontSize?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>minimumLogicalFontSize?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>mixedContentMode?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 21</td>
+</tr>
+<tr>
+<td><code>needInitialFocus?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>offscreenPreRaster?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 23</td>
+</tr>
+<tr>
+<td><code>paymentRequestEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>PAYMENT_REQUEST</code></td>
+</tr>
+<tr>
+<td><code>safeBrowsingEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 26</td>
+</tr>
+<tr>
+<td><code>sansSerifFontFamily?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>saveFormData?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1 <strong>Deprecated</strong> since API 26</td>
+</tr>
+<tr>
+<td><code>savePassword?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1 <strong>Deprecated</strong> since API 18</td>
+</tr>
+<tr>
+<td><code>serifFontFamily?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>speculativeLoadingStatus?</code></td>
+<td><code>number</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>SPECULATIVE_LOADING</code></td>
+</tr>
+<tr>
+<td><code>standardFontFamily?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>supportMultipleWindows?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>supportZoom?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>textZoom?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 14</td>
+</tr>
+<tr>
+<td><code>userAgentString?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 3</td>
+</tr>
+<tr>
+<td><code>useWideViewPort?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>webAuthenticationSupport?</code></td>
+<td><code>number</code></td>
+<td><code>WebSettingsCompat</code>, WebView feature <code>WEB_AUTHENTICATION</code></td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="webview">webView<a class="headerlink" href="#webview" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>webView</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">webView</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WebView</code>, then <code>WebViewCompat</code>, then <code>CookieManager</code>, then <code>View</code>'s scroll setters</p>
-<h4 id="acceptthirdpartycookies">acceptThirdPartyCookies?<a class="headerlink" href="#acceptthirdpartycookies" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>acceptThirdPartyCookies?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>CookieManager</code></p>
-<h5 id="since_46">Since<a class="headerlink" href="#since_46" title="Permanent link">&para;</a></h5>
-<p>21</p>
-<h4 id="audiomuted">audioMuted?<a class="headerlink" href="#audiomuted" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>audioMuted?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>WebViewCompat</code>, WebView feature <code>MUTE_AUDIO</code></p>
-<h4 id="datadirectorysuffix">dataDirectorySuffix?<a class="headerlink" href="#datadirectorysuffix" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>dataDirectorySuffix?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_47">Since<a class="headerlink" href="#since_47" title="Permanent link">&para;</a></h5>
-<p>28</p>
-<h4 id="horizontalscrollbarenabled">horizontalScrollBarEnabled?<a class="headerlink" href="#horizontalscrollbarenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>horizontalScrollBarEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_48">Since<a class="headerlink" href="#since_48" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="horizontalscrollbaroverlay"><del>horizontalScrollbarOverlay?</del><a class="headerlink" href="#horizontalscrollbaroverlay" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>horizontalScrollbarOverlay?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_49">Since<a class="headerlink" href="#since_49" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h5 id="deprecated_11">Deprecated<a class="headerlink" href="#deprecated_11" title="Permanent link">&para;</a></h5>
-<p>since API 23</p>
-<h4 id="initialscale">initialScale?<a class="headerlink" href="#initialscale" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>initialScale?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_50">Since<a class="headerlink" href="#since_50" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="maptrackballtoarrowkeys"><del>mapTrackballToArrowKeys?</del><a class="headerlink" href="#maptrackballtoarrowkeys" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mapTrackballToArrowKeys?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_51">Since<a class="headerlink" href="#since_51" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h5 id="deprecated_12">Deprecated<a class="headerlink" href="#deprecated_12" title="Permanent link">&para;</a></h5>
-<p>since API 17</p>
-<h4 id="nestedscrollingenabled">nestedScrollingEnabled?<a class="headerlink" href="#nestedscrollingenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>nestedScrollingEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_52">Since<a class="headerlink" href="#since_52" title="Permanent link">&para;</a></h5>
-<p>21</p>
-<h4 id="networkavailable">networkAvailable?<a class="headerlink" href="#networkavailable" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>networkAvailable?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_53">Since<a class="headerlink" href="#since_53" title="Permanent link">&para;</a></h5>
-<p>3</p>
-<h4 id="overscrollmode">overScrollMode?<a class="headerlink" href="#overscrollmode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>overScrollMode?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_54">Since<a class="headerlink" href="#since_54" title="Permanent link">&para;</a></h5>
-<p>9</p>
-<h4 id="profile">profile?<a class="headerlink" href="#profile" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>profile?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<p><code>WebViewCompat</code>, WebView feature <code>MULTI_PROFILE</code></p>
-<h4 id="scrollbardefaultdelaybeforefade">scrollBarDefaultDelayBeforeFade?<a class="headerlink" href="#scrollbardefaultdelaybeforefade" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollBarDefaultDelayBeforeFade?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_55">Since<a class="headerlink" href="#since_55" title="Permanent link">&para;</a></h5>
-<p>16</p>
-<h4 id="scrollbarfadeduration">scrollBarFadeDuration?<a class="headerlink" href="#scrollbarfadeduration" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollBarFadeDuration?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_56">Since<a class="headerlink" href="#since_56" title="Permanent link">&para;</a></h5>
-<p>16</p>
-<h4 id="scrollbarfadingenabled">scrollbarFadingEnabled?<a class="headerlink" href="#scrollbarfadingenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollbarFadingEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_57">Since<a class="headerlink" href="#since_57" title="Permanent link">&para;</a></h5>
-<p>5</p>
-<h4 id="scrollbarsize">scrollBarSize?<a class="headerlink" href="#scrollbarsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollBarSize?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_58">Since<a class="headerlink" href="#since_58" title="Permanent link">&para;</a></h5>
-<p>16</p>
-<h4 id="scrollbarstyle">scrollBarStyle?<a class="headerlink" href="#scrollbarstyle" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollBarStyle?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_59">Since<a class="headerlink" href="#since_59" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="scrollcapturehint">scrollCaptureHint?<a class="headerlink" href="#scrollcapturehint" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollCaptureHint?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_60">Since<a class="headerlink" href="#since_60" title="Permanent link">&para;</a></h5>
-<p>31</p>
-<h4 id="scrollcontainer">scrollContainer?<a class="headerlink" href="#scrollcontainer" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollContainer?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_61">Since<a class="headerlink" href="#since_61" title="Permanent link">&para;</a></h5>
-<p>3</p>
-<h4 id="scrollindicators">scrollIndicators?<a class="headerlink" href="#scrollindicators" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollIndicators?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_62">Since<a class="headerlink" href="#since_62" title="Permanent link">&para;</a></h5>
-<p>23</p>
-<h4 id="scrollx">scrollX?<a class="headerlink" href="#scrollx" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollX?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_63">Since<a class="headerlink" href="#since_63" title="Permanent link">&para;</a></h5>
-<p>14</p>
-<h4 id="scrolly">scrollY?<a class="headerlink" href="#scrolly" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollY?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_64">Since<a class="headerlink" href="#since_64" title="Permanent link">&para;</a></h5>
-<p>14</p>
-<h4 id="verticalscrollbarenabled">verticalScrollBarEnabled?<a class="headerlink" href="#verticalscrollbarenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>verticalScrollBarEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_65">Since<a class="headerlink" href="#since_65" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h4 id="verticalscrollbaroverlay"><del>verticalScrollbarOverlay?</del><a class="headerlink" href="#verticalscrollbaroverlay" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>verticalScrollbarOverlay?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_66">Since<a class="headerlink" href="#since_66" title="Permanent link">&para;</a></h5>
-<p>1</p>
-<h5 id="deprecated_13">Deprecated<a class="headerlink" href="#deprecated_13" title="Permanent link">&para;</a></h5>
-<p>since API 23</p>
-<h4 id="verticalscrollbarposition">verticalScrollbarPosition?<a class="headerlink" href="#verticalscrollbarposition" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>verticalScrollbarPosition?</strong>: <code>number</code></p>
-</blockquote>
-<p><code>View</code></p>
-<h5 id="since_67">Since<a class="headerlink" href="#since_67" title="Permanent link">&para;</a></h5>
-<p>11</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>acceptThirdPartyCookies?</code></td>
+<td><code>boolean</code></td>
+<td><code>CookieManager</code> <strong>Since</strong> 21</td>
+</tr>
+<tr>
+<td><code>audioMuted?</code></td>
+<td><code>boolean</code></td>
+<td><code>WebViewCompat</code>, WebView feature <code>MUTE_AUDIO</code></td>
+</tr>
+<tr>
+<td><code>dataDirectorySuffix?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 28</td>
+</tr>
+<tr>
+<td><code>horizontalScrollBarEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>View</code> <strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>horizontalScrollbarOverlay?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1 <strong>Deprecated</strong> since API 23</td>
+</tr>
+<tr>
+<td><code>initialScale?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>mapTrackballToArrowKeys?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1 <strong>Deprecated</strong> since API 17</td>
+</tr>
+<tr>
+<td><code>nestedScrollingEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>View</code> <strong>Since</strong> 21</td>
+</tr>
+<tr>
+<td><code>networkAvailable?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 3</td>
+</tr>
+<tr>
+<td><code>overScrollMode?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 9</td>
+</tr>
+<tr>
+<td><code>profile?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><code>WebViewCompat</code>, WebView feature <code>MULTI_PROFILE</code></td>
+</tr>
+<tr>
+<td><code>scrollBarDefaultDelayBeforeFade?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 16</td>
+</tr>
+<tr>
+<td><code>scrollBarFadeDuration?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 16</td>
+</tr>
+<tr>
+<td><code>scrollbarFadingEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>View</code> <strong>Since</strong> 5</td>
+</tr>
+<tr>
+<td><code>scrollBarSize?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 16</td>
+</tr>
+<tr>
+<td><code>scrollBarStyle?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>scrollCaptureHint?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 31</td>
+</tr>
+<tr>
+<td><code>scrollContainer?</code></td>
+<td><code>boolean</code></td>
+<td><code>View</code> <strong>Since</strong> 3</td>
+</tr>
+<tr>
+<td><code>scrollIndicators?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 23</td>
+</tr>
+<tr>
+<td><code>scrollX?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 14</td>
+</tr>
+<tr>
+<td><code>scrollY?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 14</td>
+</tr>
+<tr>
+<td><code>verticalScrollBarEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><code>View</code> <strong>Since</strong> 1</td>
+</tr>
+<tr>
+<td><code>verticalScrollbarOverlay?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 1 <strong>Deprecated</strong> since API 23</td>
+</tr>
+<tr>
+<td><code>verticalScrollbarPosition?</code></td>
+<td><code>number</code></td>
+<td><code>View</code> <strong>Since</strong> 11</td>
+</tr>
+</tbody>
+</table>
 
 
 

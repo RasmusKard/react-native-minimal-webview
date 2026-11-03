@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4107,7 +4107,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6420,9 +6420,8 @@
 
 
 <h1 id="hookextension">HookExtension<a class="headerlink" href="#hookextension" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>HookExtension</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">HookExtension</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A native hook's JS side, for <a href="../../interfaces/WebViewProps/#extensions">WebViewProps.extensions</a>: its key, its options, and what takes its events.</p>
 <p>A package with a native hook exports a function that returns one, so that an app turns the hook on by putting it in
 <code>extensions</code>.</p>
@@ -6430,17 +6429,15 @@
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/">Native hooks guide</a></p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="key">key<a class="headerlink" href="#key" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>key</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The key the hook is registered under.</p>
 <p>A key no hook is registered under warns: pass a one-platform hook's extension on that platform only. Two extensions
 with one key warn in development, and the later one wins.</p>
 <hr />
 <h3 id="onevent">onEvent?<a class="headerlink" href="#onevent" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>onEvent?</strong>: (<code>event</code>, <code>signal?</code>) =&gt; <code>unknown</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">onEvent</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="w"> </span><span class="nx">signal</span><span class="o">?</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">unknown</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Each of the hook's events, with <code>name</code> relative to <code>key</code>: it goes to the extension whose key its name starts with
 (<code>'&lt;key&gt;.'</code>; the longest key, when several do), and one no extension owns is dropped. For an <code>ask</code>, the return
 value (a promise is awaited) is the answer, and <code>undefined</code> answers null. <code>signal</code> is set only for an <code>ask</code>, and
@@ -6448,17 +6445,30 @@ aborts when native stops waiting for the answer: an ask has no timeout, but one 
 is answered null.</p>
 <p>The latest <code>onEvent</code> always takes the events: a render with new handlers sends native nothing.</p>
 <h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
-<h5 id="event">event<a class="headerlink" href="#event" title="Permanent link">&para;</a></h5>
-<p><a href="../HookEvent/"><code>HookEvent</code></a></p>
-<h5 id="signal">signal?<a class="headerlink" href="#signal" title="Permanent link">&para;</a></h5>
-<p><code>AbortSignal</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><a href="../HookEvent/"><code>HookEvent</code></a></td>
+</tr>
+<tr>
+<td><code>signal?</code></td>
+<td><code>AbortSignal</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
 <p><code>unknown</code></p>
 <hr />
 <h3 id="options">options?<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>options?</strong>: <code>unknown</code> = <code>true</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">options?</span><span class="o">:</span><span class="w"> </span><span class="kt">unknown</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span>
+</span></code></pre></div>
 <p>What the hook gets as its options. Null or false switches the hook off, as does leaving its extension out of
 <code>extensions</code>: it stays attached and gets null, but the core routes none of its delegates, clients or listeners,
 drops its events, answers its asks with null, and rejects <code>ref.hook</code> calls to its handlers with <code>not_found</code>.

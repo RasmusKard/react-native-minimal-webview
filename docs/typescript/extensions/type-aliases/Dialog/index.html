@@ -3281,7 +3281,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3335,7 +3335,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3713,7 +3713,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4118,7 +4118,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6372,38 +6372,32 @@
 
 
 <h1 id="dialog">Dialog<a class="headerlink" href="#dialog" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Dialog</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Dialog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A page's <code>alert</code>, <code>confirm</code> or <code>prompt</code>, for <a href="../../functions/dialogs/">dialogs</a>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="defaultvalue">defaultValue<a class="headerlink" href="#defaultvalue" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>defaultValue</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">defaultValue</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A prompt's default text; null for an alert or a confirm.</p>
 <hr />
 <h3 id="istopframe">isTopFrame?<a class="headerlink" href="#istopframe" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>isTopFrame?</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">isTopFrame?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>iOS</code></strong></p>
 <p>Whether the main frame opened it.</p>
 <hr />
 <h3 id="message">message<a class="headerlink" href="#message" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>message</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">message</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="type">type<a class="headerlink" href="#type" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>type</strong>: <code>"alert"</code> | <code>"confirm"</code> | <code>"prompt"</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kr">type</span><span class="o">:</span><span class="w"> </span><span class="s2">"alert"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"confirm"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"prompt"</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="url">url<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>url</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The URL of the page (iOS: of the frame) that opened it.</p>
 
 

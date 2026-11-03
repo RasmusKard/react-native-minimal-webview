@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3274,7 +3274,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3652,7 +3652,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4057,7 +4057,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6320,14 +6320,13 @@
 
 
 <h1 id="bridgeeventmap">BridgeEventMap<a class="headerlink" href="#bridgeeventmap" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>BridgeEventMap</strong> = <code>Record</code>&lt;<code>string</code>, <code>unknown</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">BridgeEventMap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Record</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">unknown</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The events either side may emit, for <code>createBridge&lt;Methods, Events&gt;</code>.</p>
 <p>With a map, <code>emit</code> and <code>on</code> take only its events: another name doesn't compile.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Events</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">themeChanged</span><span class="o">:</span><span class="w"> </span><span class="s1">'light'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'dark'</span><span class="w"> </span><span class="p">};</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">bridge</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createBridge</span><span class="o">&lt;</span><span class="nx">Methods</span><span class="p">,</span><span class="w"> </span><span class="nx">Events</span><span class="o">&gt;</span><span class="p">({</span><span class="w"> </span><span class="nx">allowedOrigins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Events</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">themeChanged</span><span class="o">:</span><span class="w"> </span><span class="s1">'light'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'dark'</span><span class="w"> </span><span class="p">};</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">bridge</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createBridge</span><span class="o">&lt;</span><span class="nx">Methods</span><span class="p">,</span><span class="w"> </span><span class="nx">Events</span><span class="o">&gt;</span><span class="p">({</span><span class="w"> </span><span class="nx">allowedOrigins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
 </span></code></pre></div>
 
 

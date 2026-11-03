@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3680,7 +3680,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4085,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6376,27 +6376,24 @@
 
 
 <h1 id="bridgeoptions">BridgeOptions<a class="headerlink" href="#bridgeoptions" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>BridgeOptions</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">BridgeOptions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The options of <code>createBridge</code>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="allowedorigins">allowedOrigins<a class="headerlink" href="#allowedorigins" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>allowedOrigins</strong>: <code>string</code>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">allowedOrigins</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>The origins whose pages get <code>window.nativeBridge</code>, main frame only: an origin, a <code>*.</code> wildcard that matches
 subdomains only (not the domain itself), an IP literal, or <code>'*'</code> for any origin, opaque ones too.</p>
 <p>Each takes an optional port. http or https, no path, ASCII (punycode) hosts; case is ignored, and a missing port
 means 80 or 443.</p>
 <h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nx">createBridge</span><span class="p">({</span><span class="w"> </span><span class="nx">allowedOrigins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'https://*.example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'http://[::1]:8080'</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">createBridge</span><span class="p">({</span><span class="w"> </span><span class="nx">allowedOrigins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'https://*.example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'http://[::1]:8080'</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
 </span></code></pre></div>
 <hr />
 <h3 id="timeoutms">timeoutMs?<a class="headerlink" href="#timeoutms" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>timeoutMs?</strong>: <code>number</code> = <code>10000</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">timeoutMs?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">10000</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Per-call timeout in milliseconds, also the default for the page's <code>nativeBridge.call</code>; <code>0</code> or <code>Infinity</code> means
 none.</p>
 

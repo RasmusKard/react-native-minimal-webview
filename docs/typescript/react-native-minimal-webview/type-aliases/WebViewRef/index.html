@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -3999,7 +3999,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6508,9 +6508,8 @@
 
 
 <h1 id="webviewref">WebViewRef<a class="headerlink" href="#webviewref" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>WebViewRef</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">WebViewRef</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The methods a WebView's <code>ref</code> gets: navigation, scripts, and platform and hook calls.</p>
 <p>A handle kept after its WebView unmounted is safe to call: the navigation methods do nothing, and <code>evaluate</code>, <code>get</code>,
 <code>call</code> and <code>hook</code> reject with <code>unavailable</code>. One still pending when the WebView unmounts rejects with <code>navigated</code>.</p>
@@ -6518,9 +6517,8 @@
 effect can come before the view exists), then reject with <code>unavailable</code>; in the background they don't wait.</p>
 <h2 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h2>
 <h3 id="call">call()<a class="headerlink" href="#call" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>call</strong>(<code>method</code>, <code>args?</code>): <code>Promise</code>&lt;<code>unknown</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">call</span><span class="p">(</span><span class="nx">method</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="o">?</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">unknown</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Calls a platform method, <code>root.method</code>, and resolves with its result through JSON. It acts on the WebView as it is
 when the call arrives: a navigation doesn't reject it.</p>
 <p>The roots are those of <a href="../IOSSettings/">IOSSettings</a> and <a href="../AndroidSettings/">AndroidSettings</a>. On Android <code>method</code> is a public method of
@@ -6545,64 +6543,96 @@ callback's place passes none.</p>
 a <code>null</code> listener or callback other than the trailing <code>ValueCallback</code>, once WebView calls it. For a method that
 takes another object, write a native hook.</p>
 <h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
-<h5 id="method">method<a class="headerlink" href="#method" title="Permanent link">&para;</a></h5>
-<p><code>string</code></p>
-<h5 id="args">args?<a class="headerlink" href="#args" title="Permanent link">&para;</a></h5>
-<p><code>unknown</code>[]</p>
-<p>The method's arguments: booleans, numbers, strings and <code>null</code>. On iOS also the structs as objects, and
-<code>{ set: [...] }</code>, <code>{ date: seconds }</code>, <code>{ data: base64 }</code> or <code>{ cookie: properties }</code> for an <code>NSSet</code>, <code>NSDate</code>,
-<code>NSData</code> or <code>NSHTTPCookie</code>; any other string stays an <code>NSString</code>. A cookie's properties are <code>NSHTTPCookie</code>'s keys:
-<code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code> (seconds, as a string), <code>Secure</code>, <code>HttpOnly</code> and
-<code>SameSite</code> are some of the optional ones. A tag that can't make its object (<code>{ data }</code> that isn't base64, a
-<code>{ cookie }</code> without a required key) rejects with <code>native_error</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method</code></td>
+<td><code>string</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>args?</code></td>
+<td><code>unknown</code>[]</td>
+<td>The method's arguments: booleans, numbers, strings and <code>null</code>. On iOS also the structs as objects, and <code>{ set: [...] }</code>, <code>{ date: seconds }</code>, <code>{ data: base64 }</code> or <code>{ cookie: properties }</code> for an <code>NSSet</code>, <code>NSDate</code>, <code>NSData</code> or <code>NSHTTPCookie</code>; any other string stays an <code>NSString</code>. A cookie's properties are <code>NSHTTPCookie</code>'s keys: <code>Name</code>, <code>Value</code>, <code>Domain</code> and <code>Path</code> are required; <code>Max-Age</code> (seconds, as a string), <code>Secure</code>, <code>HttpOnly</code> and <code>SameSite</code> are some of the optional ones. A tag that can't make its object (<code>{ data }</code> that isn't base64, a <code>{ cookie }</code> without a required key) rejects with <code>native_error</code>.</td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <p>The result: primitives, strings, and collections of them; on iOS also the structs as objects, an <code>NSURL</code>
 as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code> as a base64 PNG and an <code>NSHTTPCookie</code> as its
 properties (<code>Expires</code> in seconds). Any other object is <code>null</code>.</p>
 <h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s1">'webView.clearCache'</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="kc">true</span><span class="p">]);</span><span class="w"> </span><span class="c1">// Android</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s1">'scrollView.setContentOffset:animated:'</span><span class="p">,</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="kt">100</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="kc">true</span><span class="p">]);</span><span class="w"> </span><span class="c1">// iOS</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s1">'webView.clearCache'</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="kc">true</span><span class="p">]);</span><span class="w"> </span><span class="c1">// Android</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s1">'scrollView.setContentOffset:animated:'</span><span class="p">,</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="kt">100</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="kc">true</span><span class="p">]);</span><span class="w"> </span><span class="c1">// iOS</span>
 </span></code></pre></div>
 <hr />
 <h3 id="evaluate">evaluate()<a class="headerlink" href="#evaluate" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>evaluate</strong>(<code>script</code>): <code>Promise</code>&lt;<code>unknown</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">evaluate</span><span class="p">(</span><span class="nx">script</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">unknown</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Runs an expression (not statements) in the page's main frame and awaits it.</p>
 <p>Resolves with its value through JSON: <code>null</code> for what JSON can't encode (a function, <code>NaN</code>, a cycle), a <code>Date</code> as
 its ISO string. The value is the page's, so treat it as page data. Rejects with a <a href="../CodedError/">CodedError</a>:
 <code>script_error</code>, <code>navigated</code> or <code>unavailable</code>. There is no timeout: a page can hold a call until it navigates. On
 Android with a WebView older than 83 it rejects with <code>unavailable</code>.</p>
 <h4 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">&para;</a></h4>
-<h5 id="script">script<a class="headerlink" href="#script" title="Permanent link">&para;</a></h5>
-<p><code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>script</code></td>
+<td><code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_1">Returns<a class="headerlink" href="#returns_1" title="Permanent link">&para;</a></h4>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <hr />
 <h3 id="get">get()<a class="headerlink" href="#get" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>get</strong>(<code>key</code>): <code>Promise</code>&lt;<code>unknown</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">get</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">unknown</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Reads a platform setting, <code>root.key</code>, and resolves with its value through JSON, as <a href="#call">call</a>
 converts results.</p>
 <p>The roots and keys are those of <a href="../IOSSettings/">IOSSettings</a> and <a href="../AndroidSettings/">AndroidSettings</a>.</p>
 <p>It reads the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
 <a href="../CodedError/">CodedError</a>: <code>not_found</code>, <code>unavailable</code> (Android) or <code>native_error</code>.</p>
 <h4 id="parameters_2">Parameters<a class="headerlink" href="#parameters_2" title="Permanent link">&para;</a></h4>
-<h5 id="key">key<a class="headerlink" href="#key" title="Permanent link">&para;</a></h5>
-<p><code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td><code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_2">Returns<a class="headerlink" href="#returns_2" title="Permanent link">&para;</a></h4>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <h4 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h4>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">bounces</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'scrollView.bounces'</span><span class="p">);</span><span class="w"> </span><span class="c1">// iOS</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">textZoom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'settings.textZoom'</span><span class="p">);</span><span class="w"> </span><span class="c1">// Android</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">bounces</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'scrollView.bounces'</span><span class="p">);</span><span class="w"> </span><span class="c1">// iOS</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">textZoom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'settings.textZoom'</span><span class="p">);</span><span class="w"> </span><span class="c1">// Android</span>
 </span></code></pre></div>
 <hr />
 <h3 id="goback">goBack()<a class="headerlink" href="#goback" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>goBack</strong>(): <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nx">goBack</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Goes back one page; does nothing unless <code>canGoBack</code>.</p>
 <p>On Android, as Chrome's back button, it also skips the history entries a page added without a user gesture
 (<code>pushState</code>, a hash change) and the page that added them.</p>
@@ -6610,45 +6640,61 @@ converts results.</p>
 <p><code>void</code></p>
 <hr />
 <h3 id="goforward">goForward()<a class="headerlink" href="#goforward" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>goForward</strong>(): <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">goForward</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Goes forward one page; does nothing unless <code>canGoForward</code>.</p>
 <h4 id="returns_4">Returns<a class="headerlink" href="#returns_4" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="hook">hook()<a class="headerlink" href="#hook" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>hook</strong>(<code>name</code>, <code>method</code>, <code>args?</code>): <code>Promise</code>&lt;<code>unknown</code>&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nx">hook</span><span class="p">(</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">   </span><span class="nx">name</span><span class="p">,</span><span class="w"> </span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">   </span><span class="nx">method</span><span class="p">,</span><span class="w"> </span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">   </span><span class="nx">args</span><span class="o">?</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">unknown</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Calls the <code>method</code> handler the native hook <code>name</code> registered with <code>context.handle</code>, with <code>args</code>, and resolves with
 its reply; both cross as JSON.</p>
 <p>The reply converts as <a href="#call">call</a>'s results do. Rejects with a <a href="../CodedError/">CodedError</a>: <code>not_found</code>
 or <code>native_error</code>. A navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount
 does.</p>
 <h4 id="parameters_3">Parameters<a class="headerlink" href="#parameters_3" title="Permanent link">&para;</a></h4>
-<h5 id="name">name<a class="headerlink" href="#name" title="Permanent link">&para;</a></h5>
-<p><code>string</code></p>
-<h5 id="method_1">method<a class="headerlink" href="#method_1" title="Permanent link">&para;</a></h5>
-<p><code>string</code></p>
-<h5 id="args_1">args?<a class="headerlink" href="#args_1" title="Permanent link">&para;</a></h5>
-<p><code>unknown</code>[]</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>string</code></td>
+</tr>
+<tr>
+<td><code>method</code></td>
+<td><code>string</code></td>
+</tr>
+<tr>
+<td><code>args?</code></td>
+<td><code>unknown</code>[]</td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_5">Returns<a class="headerlink" href="#returns_5" title="Permanent link">&para;</a></h4>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <hr />
 <h3 id="reload">reload()<a class="headerlink" href="#reload" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>reload</strong>(): <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nx">reload</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Reloads the page; after a failed load, retries the failed URL.</p>
 <p>Sends a POST <code>source</code> again, and lifts the limit on <a href="../ProcessGoneEvent/#recovered">crash recovery</a>.</p>
 <h4 id="returns_6">Returns<a class="headerlink" href="#returns_6" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="stoploading">stopLoading()<a class="headerlink" href="#stoploading" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>stopLoading</strong>(): <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nx">stopLoading</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Stops the load: its <code>outcome</code> is <code>cancelled</code>, or on Android <code>finished</code> once the page has arrived.</p>
 <h4 id="returns_7">Returns<a class="headerlink" href="#returns_7" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
