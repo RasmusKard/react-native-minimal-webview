@@ -6480,7 +6480,7 @@
 <p><strong>BridgeHandler</strong>&lt;<code>Params</code>, <code>Result</code>&gt; = (<code>params</code>, <code>sender</code>) =&gt; <code>Result</code> | <code>Promise</code>&lt;<code>Result</code>&gt;</p>
 </blockquote>
 <p>Answers a bridge call: the return value (a promise is awaited) is the result.</p>
-<p>A throw or rejection rejects the call with <a href="../ErrorCode/">`handler_error`</a> and the error's message.</p>
+<p>A throw or rejection rejects the call with the <a href="../ErrorCode/">ErrorCode</a> <code>handler_error</code> and the error's message.</p>
 <h2 id="type-parameters">Type Parameters<a class="headerlink" href="#type-parameters" title="Permanent link">&para;</a></h2>
 <h3 id="params">Params<a class="headerlink" href="#params" title="Permanent link">&para;</a></h3>
 <p><code>Params</code> = <code>unknown</code></p>

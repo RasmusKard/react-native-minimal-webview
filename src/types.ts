@@ -287,7 +287,7 @@ export type BridgeSender = { origin: string };
 /**
  * Answers a bridge call: the return value (a promise is awaited) is the result.
  *
- * A throw or rejection rejects the call with {@link ErrorCode | `handler_error`} and the error's message.
+ * A throw or rejection rejects the call with the {@link ErrorCode} `handler_error` and the error's message.
  * @group Bridge
  */
 export type BridgeHandler<Params = unknown, Result = unknown> = (
