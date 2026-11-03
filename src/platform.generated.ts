@@ -32,65 +32,65 @@ export type CGRect = { x: number; y: number; width: number; height: number };
  * The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from
  * the SDK headers.
  *
- * `@since` is the iOS version. A key a newer SDK adds goes under the root's `other`.
+ * A key a newer SDK adds goes under the root's `other`.
  * @group Platform settings
  * @ios
  */
 export type IOSSettingKeys = {
   /** `WKWebViewConfiguration` */
   configuration: {
-    /** @since 9.0 */
+    /** @since iOS 9.0 */
     websiteDataStore?: 'default' | 'nonPersistent';
     suppressesIncrementalRendering?: boolean;
-    /** @since 9.0 */
+    /** @since iOS 9.0 */
     applicationNameForUserAgent?: string | null;
-    /** @since 9.0 */
+    /** @since iOS 9.0 */
     allowsAirPlayForMediaPlayback?: boolean;
-    /** @since 26.0 */
+    /** @since iOS 26.0 */
     showsSystemScreenTimeBlockingView?: boolean;
-    /** @since 14.5 */
+    /** @since iOS 14.5 */
     upgradeKnownHostsToHTTPS?: boolean;
     /**
      * A {@link IOSConstants.AudiovisualMediaTypes}.
-     * @since 10.0
+     * @since iOS 10.0
      */
     mediaTypesRequiringUserActionForPlayback?: number;
-    /** @since 14.0 */
+    /** @since iOS 14.0 */
     limitsNavigationsToAppBoundDomains?: boolean;
-    /** @since 17.0 */
+    /** @since iOS 17.0 */
     allowsInlinePredictions?: boolean;
     allowsInlineMediaPlayback?: boolean;
     /**
      * A {@link IOSConstants.SelectionGranularity}.
-     * @since 8.0
+     * @since iOS 8.0
      * @deprecated This property is ignored; selection granularity is always `character`.
      */
     selectionGranularity?: number;
-    /** @since 9.0 */
+    /** @since iOS 9.0 */
     allowsPictureInPictureMediaPlayback?: boolean;
     /**
      * A {@link IOSConstants.DataDetectorTypes}.
-     * @since 10.0
+     * @since iOS 10.0
      */
     dataDetectorTypes?: number;
-    /** @since 10.0 */
+    /** @since iOS 10.0 */
     ignoresViewportScaleLimits?: boolean;
-    /** @since 18.0 */
+    /** @since iOS 18.0 */
     supportsAdaptiveImageGlyph?: boolean;
-    /** @since 18.0 */
+    /** @since iOS 18.0 */
     writingToolsBehavior?: number;
     /**
-     * @since 8.0
+     * @since iOS 8.0
      * @deprecated use mediaTypesRequiringUserActionForPlayback
      */
     mediaPlaybackRequiresUserAction?: boolean;
     /**
-     * @since 8.0
+     * @since iOS 8.0
      * @deprecated use allowsAirPlayForMediaPlayback
      */
     mediaPlaybackAllowsAirPlay?: boolean;
     /**
-     * @since 9.0
+     * @since iOS 9.0
      * @deprecated use mediaTypesRequiringUserActionForPlayback
      */
     requiresUserActionForMediaPlayback?: boolean;
@@ -99,23 +99,23 @@ export type IOSSettingKeys = {
   preferences: {
     minimumFontSize?: number;
     javaScriptCanOpenWindowsAutomatically?: boolean;
-    /** @since 13.0 */
+    /** @since iOS 13.0 */
     fraudulentWebsiteWarningEnabled?: boolean;
-    /** @since 16.4 */
+    /** @since iOS 16.4 */
     shouldPrintBackgrounds?: boolean;
-    /** @since 14.5 */
+    /** @since iOS 14.5 */
     textInteractionEnabled?: boolean;
-    /** @since 15.4 */
+    /** @since iOS 15.4 */
     siteSpecificQuirksModeEnabled?: boolean;
-    /** @since 15.4 */
+    /** @since iOS 15.4 */
     elementFullscreenEnabled?: boolean;
     /**
      * A {@link IOSConstants.InactiveSchedulingPolicy}.
-     * @since 17.0
+     * @since iOS 17.0
      */
     inactiveSchedulingPolicy?: number;
     /**
-     * @since 8.0
+     * @since iOS 8.0
      * @deprecated Use WKWebpagePreferences.allowsContentJavaScript to disable content JavaScript on a per-navigation basis
      */
     javaScriptEnabled?: boolean;
@@ -124,48 +124,48 @@ export type IOSSettingKeys = {
   webpagePreferences: {
     /**
      * A {@link IOSConstants.ContentMode}.
-     * @since 13.0
+     * @since iOS 13.0
      */
     preferredContentMode?: number;
-    /** @since 14.0 */
+    /** @since iOS 14.0 */
     allowsContentJavaScript?: boolean;
-    /** @since 16.0 */
+    /** @since iOS 16.0 */
     lockdownModeEnabled?: boolean;
     /**
      * A {@link IOSConstants.WebpagePreferencesUpgradeToHTTPSPolicy}.
-     * @since 18.2
+     * @since iOS 18.2
      */
     preferredHTTPSNavigationPolicy?: number;
     /**
      * A {@link IOSConstants.SecurityRestrictionMode}.
-     * @since 26.4
+     * @since iOS 26.4
      */
     securityRestrictionMode?: number;
-    /** @since 27.0 */
+    /** @since iOS 27.0 */
     overrideReferrer?: string | null;
-    /** @since 27.0 */
+    /** @since iOS 27.0 */
     allowsJSHandleCreationInPageWorld?: boolean;
-    /** @since 27.0 */
+    /** @since iOS 27.0 */
     globalPrivacyControlEnabled?: boolean;
   };
   /** `WKWebView` */
   webView: {
     allowsBackForwardNavigationGestures?: boolean;
-    /** @since 9.0 */
+    /** @since iOS 9.0 */
     customUserAgent?: string | null;
-    /** @since 9.0 */
+    /** @since iOS 9.0 */
     allowsLinkPreview?: boolean;
-    /** @since 14.0 */
+    /** @since iOS 14.0 */
     pageZoom?: number;
-    /** @since 14.0 */
+    /** @since iOS 14.0 */
     mediaType?: string | null;
-    /** @since 15.0 */
+    /** @since iOS 15.0 */
     underPageBackgroundColor?: string | null;
-    /** @since 16.0 */
+    /** @since iOS 16.0 */
     findInteractionEnabled?: boolean;
-    /** @since 16.4 */
+    /** @since iOS 16.4 */
     inspectable?: boolean;
-    /** @since 26.0 */
+    /** @since iOS 26.0 */
     obscuredContentInsets?: UIEdgeInsets;
   };
   /** `UIScrollView` */
@@ -173,54 +173,54 @@ export type IOSSettingKeys = {
     contentOffset?: CGPoint;
     contentSize?: CGSize;
     contentInset?: UIEdgeInsets;
-    /** @since 17.4 */
+    /** @since iOS 17.4 */
     contentAlignmentPoint?: CGPoint;
     /**
      * A {@link IOSConstants.ContentInsetAdjustmentBehavior}.
-     * @since 11.0
+     * @since iOS 11.0
      */
     contentInsetAdjustmentBehavior?: number;
-    /** @since 13.0 */
+    /** @since iOS 13.0 */
     automaticallyAdjustsScrollIndicatorInsets?: boolean;
     directionalLockEnabled?: boolean;
     bounces?: boolean;
-    /** @since 17.4 */
+    /** @since iOS 17.4 */
     bouncesHorizontally?: boolean;
-    /** @since 17.4 */
+    /** @since iOS 17.4 */
     bouncesVertically?: boolean;
     alwaysBounceVertical?: boolean;
     alwaysBounceHorizontal?: boolean;
     pagingEnabled?: boolean;
     scrollEnabled?: boolean;
-    /** @since 17.4 */
+    /** @since iOS 17.4 */
     transfersHorizontalScrollingToParent?: boolean;
-    /** @since 17.4 */
+    /** @since iOS 17.4 */
     transfersVerticalScrollingToParent?: boolean;
     showsVerticalScrollIndicator?: boolean;
     showsHorizontalScrollIndicator?: boolean;
     /** A {@link IOSConstants.IndicatorStyle}. */
     indicatorStyle?: number;
-    /** @since 11.1 */
+    /** @since iOS 11.1 */
     verticalScrollIndicatorInsets?: UIEdgeInsets;
-    /** @since 11.1 */
+    /** @since iOS 11.1 */
     horizontalScrollIndicatorInsets?: UIEdgeInsets;
     scrollIndicatorInsets?: UIEdgeInsets;
-    /** @since 3.0 */
+    /** @since iOS 3.0 */
     decelerationRate?: number;
     delaysContentTouches?: boolean;
     canCancelContentTouches?: boolean;
     minimumZoomScale?: number;
     maximumZoomScale?: number;
-    /** @since 3.0 */
+    /** @since iOS 3.0 */
     zoomScale?: number;
     bouncesZoom?: boolean;
     scrollsToTop?: boolean;
     /**
      * A {@link IOSConstants.KeyboardDismissMode}.
-     * @since 7.0
+     * @since iOS 7.0
      */
     keyboardDismissMode?: number;
-    /** @since 17.0 */
+    /** @since iOS 17.0 */
     allowsKeyboardScrolling?: boolean;
   };
 };
@@ -229,134 +229,134 @@ export type IOSSettingKeys = {
  * The Android settings keys by root: the one-argument `WebSettings`, `WebView` and `CookieManager` setters, then
  * `WebSettingsCompat`'s and `WebViewCompat`'s statics, then the scroll setters `WebView` inherits from `View`.
  *
- * `@since` is the API level. A key a newer SDK or androidx.webkit adds goes under the root's `other`.
+ * A key a newer SDK or androidx.webkit adds goes under the root's `other`.
  * @group Platform settings
  * @android
  */
 export type AndroidSettingKeys = {
   /** `WebSettings`, then `WebSettingsCompat` */
   settings: {
-    /** @since 33 */
+    /** @since Android API 33 */
     algorithmicDarkeningAllowed?: boolean;
-    /** @since 11 */
+    /** @since Android API 11 */
     allowContentAccess?: boolean;
-    /** @since 3 */
+    /** @since Android API 3 */
     allowFileAccess?: boolean;
     /**
-     * @since 16
+     * @since Android API 16
      * @deprecated since API 30
      */
     allowFileAccessFromFileURLs?: boolean;
     /**
-     * @since 16
+     * @since Android API 16
      * @deprecated since API 30
      */
     allowUniversalAccessFromFileURLs?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     blockNetworkImage?: boolean;
-    /** @since 8 */
+    /** @since Android API 8 */
     blockNetworkLoads?: boolean;
-    /** @since 3 */
+    /** @since Android API 3 */
     builtInZoomControls?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     cacheMode?: number;
-    /** @since 1 */
+    /** @since Android API 1 */
     cursiveFontFamily?: string | null;
     /**
-     * @since 5
+     * @since Android API 5
      * @deprecated since API 35
      */
     databaseEnabled?: boolean;
     /**
-     * @since 5
+     * @since Android API 5
      * @deprecated since API 19
      */
     databasePath?: string | null;
-    /** @since 1 */
+    /** @since Android API 1 */
     defaultFixedFontSize?: number;
-    /** @since 1 */
+    /** @since Android API 1 */
     defaultFontSize?: number;
-    /** @since 1 */
+    /** @since Android API 1 */
     defaultTextEncodingName?: string | null;
-    /** @since 24 */
+    /** @since Android API 24 */
     disabledActionModeMenuItems?: number;
-    /** @since 11 */
+    /** @since Android API 11 */
     displayZoomControls?: boolean;
-    /** @since 7 */
+    /** @since Android API 7 */
     domStorageEnabled?: boolean;
     /**
-     * @since 11
+     * @since Android API 11
      * @deprecated since API 17
      */
     enableSmoothTransition?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     fantasyFontFamily?: string | null;
-    /** @since 1 */
+    /** @since Android API 1 */
     fixedFontFamily?: string | null;
     /**
-     * @since 29
+     * @since Android API 29
      * @deprecated since API 33
      */
     forceDark?: number;
     /**
-     * @since 5
+     * @since Android API 5
      * @deprecated since API 24
      */
     geolocationDatabasePath?: string | null;
-    /** @since 5 */
+    /** @since Android API 5 */
     geolocationEnabled?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     javaScriptCanOpenWindowsAutomatically?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     javaScriptEnabled?: boolean;
     /**
-     * @since 1
+     * @since Android API 1
      * @deprecated since API 18
      */
     lightTouchEnabled?: boolean;
-    /** @since 7 */
+    /** @since Android API 7 */
     loadWithOverviewMode?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     loadsImagesAutomatically?: boolean;
-    /** @since 17 */
+    /** @since Android API 17 */
     mediaPlaybackRequiresUserGesture?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     minimumFontSize?: number;
-    /** @since 1 */
+    /** @since Android API 1 */
     minimumLogicalFontSize?: number;
-    /** @since 21 */
+    /** @since Android API 21 */
     mixedContentMode?: number;
-    /** @since 1 */
+    /** @since Android API 1 */
     needInitialFocus?: boolean;
-    /** @since 23 */
+    /** @since Android API 23 */
     offscreenPreRaster?: boolean;
-    /** @since 26 */
+    /** @since Android API 26 */
     safeBrowsingEnabled?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     sansSerifFontFamily?: string | null;
     /**
-     * @since 1
+     * @since Android API 1
      * @deprecated since API 26
      */
     saveFormData?: boolean;
     /**
-     * @since 1
+     * @since Android API 1
      * @deprecated since API 18
      */
     savePassword?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     serifFontFamily?: string | null;
-    /** @since 1 */
+    /** @since Android API 1 */
     standardFontFamily?: string | null;
-    /** @since 1 */
+    /** @since Android API 1 */
     supportMultipleWindows?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     supportZoom?: boolean;
-    /** @since 14 */
+    /** @since Android API 14 */
     textZoom?: number;
-    /** @since 1 */
+    /** @since Android API 1 */
     useWideViewPort?: boolean;
-    /** @since 3 */
+    /** @since Android API 3 */
     userAgentString?: string | null;
     /** `WebSettingsCompat`, WebView feature `ATTRIBUTION_REGISTRATION_BEHAVIOR` */
     attributionRegistrationBehavior?: number;
@@ -386,24 +386,24 @@ export type AndroidSettingKeys = {
   };
   /** `WebView`, then `WebViewCompat`, then `CookieManager`, then `View`'s scroll setters */
   webView: {
-    /** @since 28 */
+    /** @since Android API 28 */
     dataDirectorySuffix?: string | null;
     /**
-     * @since 1
+     * @since Android API 1
      * @deprecated since API 23
      */
     horizontalScrollbarOverlay?: boolean;
-    /** @since 1 */
+    /** @since Android API 1 */
     initialScale?: number;
     /**
-     * @since 1
+     * @since Android API 1
      * @deprecated since API 17
      */
     mapTrackballToArrowKeys?: boolean;
-    /** @since 3 */
+    /** @since Android API 3 */
     networkAvailable?: boolean;
     /**
-     * @since 1
+     * @since Android API 1
      * @deprecated since API 23
      */
     verticalScrollbarOverlay?: boolean;
@@ -413,82 +413,82 @@ export type AndroidSettingKeys = {
     profile?: string | null;
     /**
      * `CookieManager`
-     * @since 21
+     * @since Android API 21
      */
     acceptThirdPartyCookies?: boolean;
     /**
      * `View`
-     * @since 1
+     * @since Android API 1
      */
     horizontalScrollBarEnabled?: boolean;
     /**
      * `View`
-     * @since 21
+     * @since Android API 21
      */
     nestedScrollingEnabled?: boolean;
     /**
      * `View`
-     * @since 9
+     * @since Android API 9
      */
     overScrollMode?: number;
     /**
      * `View`
-     * @since 16
+     * @since Android API 16
      */
     scrollBarDefaultDelayBeforeFade?: number;
     /**
      * `View`
-     * @since 16
+     * @since Android API 16
      */
     scrollBarFadeDuration?: number;
     /**
      * `View`
-     * @since 16
+     * @since Android API 16
      */
     scrollBarSize?: number;
     /**
      * `View`
-     * @since 1
+     * @since Android API 1
      */
     scrollBarStyle?: number;
     /**
      * `View`
-     * @since 31
+     * @since Android API 31
      */
     scrollCaptureHint?: number;
     /**
      * `View`
-     * @since 3
+     * @since Android API 3
      */
     scrollContainer?: boolean;
     /**
      * `View`
-     * @since 23
+     * @since Android API 23
      */
     scrollIndicators?: number;
     /**
      * `View`
-     * @since 14
+     * @since Android API 14
      */
     scrollX?: number;
     /**
      * `View`
-     * @since 14
+     * @since Android API 14
      */
     scrollY?: number;
     /**
      * `View`
-     * @since 5
+     * @since Android API 5
      */
     scrollbarFadingEnabled?: boolean;
     /**
      * `View`
-     * @since 1
+     * @since Android API 1
      */
     verticalScrollBarEnabled?: boolean;
     /**
      * `View`
-     * @since 11
+     * @since Android API 11
      */
     verticalScrollbarPosition?: number;
   };
