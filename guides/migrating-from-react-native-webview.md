@@ -108,7 +108,7 @@ On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` 
 WebKit's data store clears with `call` ([reading and calling](examples.md#reading-and-calling)).
 
 These props are functions of
-[@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/), which
+[@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/), which
 has the setup. You pass each one in the `extensions` prop:
 
 | react-native-webview | Here |
@@ -154,7 +154,7 @@ The settings with another name:
 ## What else changes
 
 `onNavigationStateChange` keeps its name, but fires on every state change, progress and title included. `onLoadStart` and
-`onLoadEnd` keep theirs too, and get the [`NavigationState`](https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationState.html)
+`onLoadEnd` keep theirs too, and get the [`NavigationState`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/)
 instead of a native event. `userAgent` is the same prop.
 
 Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens
@@ -192,7 +192,7 @@ A rule decides natively, so a busy JS thread doesn't hold a navigation up. react
 thread while it waits for the callback, and lets the navigation through when the callback is late. Its iOS waits
 for the answer.
 
-The [request](https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationRequest.html) has `mainFrame` in
+The [request](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRequest/) has `mainFrame` in
 place of `isTopFrame`, and `userInitiated` in place of `navigationType: 'click'`. It has no `mainDocumentURL`. A new
 window (`onOpenWindow`) is a request with `newWindow: true`.
 
@@ -205,7 +205,7 @@ react-native-webview reports the redirecting URL as still loading (iOS), or the 
 ## injectJavaScript
 
 `evaluate` takes an expression, not statements, and resolves with its value
-([`evaluate`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#evaluate)).
+([`evaluate`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate)).
 
 Wrap the statements you passed `injectJavaScript` in a function you call, without the trailing `true;`, as in the
 [scripts example](examples.md#scripts).
@@ -216,7 +216,7 @@ The [bridge](examples.md#the-bridge) replaces both, with calls that return promi
 serves only the origins you allow.
 
 Pages that use `window.ReactNativeWebView.postMessage` and `message` events keep working with
-[`reactNativeWebViewMessages`](https://rasmuskard.github.io/react-native-minimal-webview/variables/reactNativeWebViewMessages.html)
+[`reactNativeWebViewMessages`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/)
 in `injectedScripts`. Its example shows what replaces `onMessage` and `postMessage`.
 
 ## incognito
@@ -349,23 +349,23 @@ export function Browser() {
 }
 ```
 
-[defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/variables/defaultNavigationRules.html
-[onfullscreenchange]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onfullscreenchange
-[ondownload]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#ondownload
-[recovered]: https://rasmuskard.github.io/react-native-minimal-webview/types/ProcessGoneEvent.html#recovered
-[outcome]: https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationState.html#outcome
-[debugging]: https://rasmuskard.github.io/react-native-minimal-webview/functions/WebView.android.setWebContentsDebuggingEnabled.html
-[onprocessgone]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onprocessgone
-[onfilerequest]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onfilerequest
-[onpermissionrequest]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onpermissionrequest
-[onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onopenexternal
-[navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#navigationrules
-[useragent]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#useragent
-[iossettings]: https://rasmuskard.github.io/react-native-minimal-webview/types/IOSSettings.html
-[basicauthcredential]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/basicAuthCredential.html
-[menuitems]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/menuItems.html
-[onscroll]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/onScroll.html
-[hidekeyboardaccessoryview]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/hideKeyboardAccessoryView.html
-[nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/nestedScrollEnabled.html
-[androidlayertype]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/androidLayerType.html
-[dialogs]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/dialogs.html
+[defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/defaultNavigationRules/
+[onfullscreenchange]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onfullscreenchange
+[ondownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
+[recovered]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/ProcessGoneEvent/#recovered
+[outcome]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#outcome
+[debugging]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/functions/setWebContentsDebuggingEnabled/
+[onprocessgone]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onprocessgone
+[onfilerequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onfilerequest
+[onpermissionrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest
+[onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onopenexternal
+[navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules
+[useragent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#useragent
+[iossettings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/
+[basicauthcredential]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/
+[menuitems]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/
+[onscroll]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/
+[hidekeyboardaccessoryview]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/
+[nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/
+[androidlayertype]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/
+[dialogs]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/

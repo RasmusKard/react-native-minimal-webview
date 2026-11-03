@@ -26,8 +26,7 @@ export type Dialog = {
  * anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.
  *
  * `signal` aborts when native stops waiting for the answer, and the dialog is then dismissed;
- * [`HookExtension.onEvent`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#onevent)
- * has the rules.
+ * {@link HookExtension.onEvent} has the rules.
  *
  * Without this extension, the default dialogs show, as `WebViewProps` describes.
  * @group Extensions

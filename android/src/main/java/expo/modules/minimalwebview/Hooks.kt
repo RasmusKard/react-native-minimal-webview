@@ -19,8 +19,9 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
- * WebViews and chains its own clients to it, with no protocol to implement. The
- * [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
+ * WebViews and chains its own clients to it, with no protocol to implement.
+ *
+ * The [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
  * walks through one.
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
@@ -46,7 +47,7 @@ object MinimalWebViewHooks {
    * the first silently.
    *
    * The hook attaches to each WebView whose `extensions` prop has an extension with [key] that is on;
-   * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+   * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
    * says when. After a renderer crash it attaches again, to the WebView that replaces the dead one.
    *
    * Hooks attach in registration order, which across packages is autolinking's (packages sorted by name), so an
@@ -187,7 +188,7 @@ internal class Deciders(private val warn: (String) -> Unit) {
  * Call [emit] and [ask] from any thread, and the rest on the main thread, where the handlers and the answers run.
  *
  * The hook is on while its extension's `options` are not null or false;
- * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+ * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
  * says what off means. [onOptionsChange] still runs while it is off, so the hook can release what it holds, and again
  * when the hook turns on.
  *
@@ -196,15 +197,18 @@ internal class Deciders(private val warn: (String) -> Unit) {
  */
 interface WebViewContext {
   /**
-   * This hook's extension's `options`, in JSON types: a number is a `Double`, an object a `Map`, an array a `List`.
-   * Null while the hook is off. After a change it is the new value, already when the [onOptionsChange] handlers run.
+   * This hook's extension's `options`, the new ones after a change; null while the hook is off.
+   *
+   * They come in JSON types: a number as a `Double`, an object as a `Map`, an array as a `List`. After a change they
+   * are the new value already when the [onOptionsChange] handlers run.
    */
   val options: Any?
 
   /**
-   * The committed URL, the one the navigation state reports; empty before the first commit. Inside [onDocumentEnd] it
-   * is still the page that ended. With WebView 146 and later, `onPageStarted` comes after the commit that ends the
-   * Document, so `url` is already the new page there.
+   * The committed URL, the one `useWebViewState` reports; empty before the first commit.
+   *
+   * Inside [onDocumentEnd] it is still the page that ended. With WebView 146 and later, `onPageStarted` comes after the
+   * commit that ends the Document, so `url` is already the new page there.
    */
   val url: String
 
@@ -236,8 +240,10 @@ interface WebViewContext {
   val clients: MutableList<WebViewClient>
 
   /**
-   * The hook chrome clients, routed as [clients] are. Overriding the deprecated `onConsoleMessage(String, Int, String)`
-   * counts as overriding `onConsoleMessage`, and overriding `onReceivedIcon` turns favicon downloads back on.
+   * The hook chrome clients, routed as [clients] are.
+   *
+   * Overriding the deprecated `onConsoleMessage(String, Int, String)` counts as overriding `onConsoleMessage`, and
+   * overriding `onReceivedIcon` turns favicon downloads back on.
    */
   val chromeClients: MutableList<WebChromeClient>
 
@@ -268,8 +274,10 @@ interface WebViewContext {
 
   /**
    * Runs [handler] with this hook's extension's new `options` each time they change, live on the same WebView; null
-   * when the hook is off (the extension is removed, or its `options` are null or false). A change from one off value to
-   * another doesn't run it.
+   * when the hook turns off.
+   *
+   * The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
+   * value to another doesn't run it.
    */
   fun onOptionsChange(handler: (Any?) -> Unit)
 
@@ -302,9 +310,10 @@ interface WebViewContext {
   )
 
   /**
-   * Answers JS's `ref.hook("<key>", method, args)`. [handler] gets the arguments in JSON types (a number as an `Int`,
-   * `Long` or `Double`) and calls `reply` exactly once, with a value JSON can encode. One handler per method: the last
-   * one wins.
+   * Answers JS's `ref.hook("<key>", method, args)`: [handler] gets the arguments and calls `reply` exactly once.
+   *
+   * The arguments come in JSON types (a number as an `Int`, `Long` or `Double`), and the reply must be a value JSON can
+   * encode. One handler per method: the last one wins.
    *
    * A handler that throws, or a reply JSON can't encode, rejects the JS call with `native_error`. A handler that never
    * replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't settle it.

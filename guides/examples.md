@@ -5,7 +5,7 @@ title: Examples
 # Examples
 
 Examples of the main interfaces. What each prop, method and type does is in its TSDoc, generated into the
-[API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html).
+[API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/).
 
 ## Navigation state
 
@@ -122,7 +122,7 @@ export function Shop() {
 ### In the page
 
 A page on an allowed origin has the same four methods on `window.nativeBridge`, as
-[`Bridge`](https://rasmuskard.github.io/react-native-minimal-webview/types/Bridge.html) describes.
+[`Bridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/Bridge/) describes.
 
 ```js
 // A module script
@@ -237,7 +237,7 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 ## Local files
 
 A bundled file loads from its `file://` URI, such as expo-asset's `localUri`.
-[`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewSource.html) has each
+[`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) has each
 platform's file access.
 
 ```tsx

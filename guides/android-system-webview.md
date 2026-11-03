@@ -44,13 +44,13 @@ An emulator with a Google APIs image keeps the WebView its image shipped with, a
 older WebViews. Run the app there to see the features above off. [CONTRIBUTING][contributing] lists the images for the
 oldest supported versions and how to create the emulators.
 
-[evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#evaluate
-[onDownload]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#ondownload
-[bridge]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#bridge
-[injectedScripts]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#injectedscripts
-[pendingUrl]: https://rasmuskard.github.io/react-native-minimal-webview/types/NavigationState.html#pendingurl
-[onLoadStart]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onloadstart
-[onError]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#onerror
-[settings]: https://rasmuskard.github.io/react-native-minimal-webview/types/AndroidSettings.html#settings
-[defaultUserAgent]: https://rasmuskard.github.io/react-native-minimal-webview/variables/WebView.android.defaultUserAgent.html
+[evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
+[onDownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
+[bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
+[injectedScripts]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#injectedscripts
+[pendingUrl]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#pendingurl
+[onLoadStart]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onloadstart
+[onError]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onerror
+[settings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/AndroidSettings/#settings
+[defaultUserAgent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/variables/defaultUserAgent/
 [contributing]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/.github/CONTRIBUTING.md#on-device-suites
