@@ -213,9 +213,10 @@ function iosAvailability(macros: string): Availability | null {
   if (!available) return {};
   const ios = available[2].match(/\bios\((\d+(?:\.\d+)?)/);
   if (!ios) return null;
-  if (available[1] === 'AVAILABLE') return { since: ios[1] };
+  const since = `iOS ${ios[1]}`;
+  if (available[1] === 'AVAILABLE') return { since };
   const message = available[2].match(/"([^"]*)"/)?.[1];
-  return { since: ios[1], deprecated: available[1] === 'DEPRECATED' ? message : `use ${message}` };
+  return { since, deprecated: available[1] === 'DEPRECATED' ? message : `use ${message}` };
 }
 
 const STRUCTS: Record<string, string> = {
@@ -436,7 +437,7 @@ function androidKeys(xml: string, cls: string, leading = '', text = '') {
     const since = attributes.match(/since="(\d+)"/)?.[1] ?? '1';
     const deprecated = attributes.match(/deprecated="(\d+)"/)?.[1];
     keys[lowerFirst(name)] =
-      `${doc({ since, deprecated: deprecated && `since API ${deprecated}` }, text)}${lowerFirst(name)}?: ${DESCRIPTORS[descriptor]};`;
+      `${doc({ since: `Android API ${since}`, deprecated: deprecated && `since API ${deprecated}` }, text)}${lowerFirst(name)}?: ${DESCRIPTORS[descriptor]};`;
   }
   return keys;
 }
@@ -519,7 +520,7 @@ ${Object.entries(STRUCTS)
  * The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from
  * the SDK headers.
  *
- * \`@since\` is the iOS version. A key a newer SDK adds goes under the root's \`other\`.
+ * A key a newer SDK adds goes under the root's \`other\`.
  * @group Platform settings
  * @ios
  */
@@ -536,7 +537,7 @@ export type IOSSettingKeys = ${object(
  * The Android settings keys by root: the one-argument \`WebSettings\`, \`WebView\` and \`CookieManager\` setters, then
  * \`WebSettingsCompat\`'s and \`WebViewCompat\`'s statics, then the scroll setters \`WebView\` inherits from \`View\`.
  *
- * \`@since\` is the API level. A key a newer SDK or androidx.webkit adds goes under the root's \`other\`.
+ * A key a newer SDK or androidx.webkit adds goes under the root's \`other\`.
  * @group Platform settings
  * @android
  */
