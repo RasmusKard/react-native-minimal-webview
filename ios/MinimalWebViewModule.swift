@@ -2,6 +2,7 @@ import ExpoModulesCore
 import WebKit
 
 /// The Expo module behind the `MinimalWebView` view; autolinking loads it, and apps don't call it.
+@_documentation(visibility: internal)
 public class MinimalWebViewModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebView")

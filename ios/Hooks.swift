@@ -7,7 +7,7 @@ import WebKit
 /// walks through one.
 ///
 /// A hook attaches to each WebView whose `extensions` prop has an extension with its key that is on;
-/// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+/// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
 /// says when.
 ///
 /// - Important: Leave alone what the core owns: the WKWebView's own `navigationDelegate` and `uiDelegate` (add to the
@@ -86,7 +86,7 @@ public enum MinimalWebViewHooks {
 /// A context kept after the view closed does nothing.
 ///
 /// A hook is on while its extension's `options` are not null or false;
-/// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html#options)
+/// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
 /// says what off means. ``onOptionsChange(_:)`` still runs while it is off, so the hook can undo what it set up, and
 /// again when the hook turns on.
 ///

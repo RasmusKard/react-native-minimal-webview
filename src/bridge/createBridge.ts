@@ -35,7 +35,7 @@ const MAX_QUEUE = 1000;
  * The type arguments type the method names, params, results and event payloads of `call`, `handle`, `emit` and `on`;
  * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an `Error` for an
  * invalid origin rule or timeout.
- * @see [Bridge example](../../guides/examples.md#the-bridge)
+ * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
 export function createBridge<

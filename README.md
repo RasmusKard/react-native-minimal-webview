@@ -4,11 +4,11 @@ A React Native WebView that hands you the iOS and Android WebView APIs, instead 
 
 It runs on iOS and Android as an Expo module.
 
-[API reference](https://rasmuskard.github.io/react-native-minimal-webview/modules.html) ·
+[API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) ·
 [Examples](guides/examples.md) ·
 [Native hooks](guides/native-hooks.md) ·
 [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md) ·
-[Extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) ·
+[Extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) ·
 [MIT license](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE)
 
 ## Why it exists
@@ -49,9 +49,9 @@ export function Browser() {
 ```
 
 A setting or method a newer SDK adds works without a release of this package: see
-[`ios`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#ios),
-[`android`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#android) and
-[`call`](https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#call).
+[`ios`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ios),
+[`android`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#android) and
+[`call`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call).
 
 ## What it changes from react-native-webview
 
@@ -123,7 +123,7 @@ Then pick what you need:
 | Load bundled HTML | [Local files](guides/examples.md#local-files) |
 | Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
 | Use the native `WKWebView` or `WebView` | [Native hooks](guides/native-hooks.md) |
-| Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) |
+| Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) |
 
 ## Contributing
 

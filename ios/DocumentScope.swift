@@ -14,8 +14,9 @@ public enum DocumentEnd {
   case committed
   /// The web content process died.
   ///
-  /// The WKWebView stays and reloads, unless the crash guard holds it back: nothing attaches again, the hooks'
-  /// contexts, handlers and delegates stay, and the recovery's commit opens the next Document.
+  /// The WKWebView stays and reloads, unless crash recovery's limit (`ProcessGoneEvent.recovered` in JS) stops it:
+  /// nothing attaches again, the hooks' contexts, handlers and delegates stay, and the recovery's commit opens the next
+  /// Document.
   case crashed
   /// The view is unmounting; the hooks' ``WebViewContext/onDestroyed(_:)`` handlers run after it.
   case closing
