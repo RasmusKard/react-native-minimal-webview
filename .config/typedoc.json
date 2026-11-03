@@ -13,6 +13,8 @@
   "disableSources": true,
   "excludeExternals": true,
   "treatWarningsAsErrors": true,
+  "sortEntryPoints": false,
+  "pageTitleTemplates": { "index": "TypeScript API" },
   "validation": { "notExported": false },
   "groupOrder": ["Extensions", "Values", "WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
 }
