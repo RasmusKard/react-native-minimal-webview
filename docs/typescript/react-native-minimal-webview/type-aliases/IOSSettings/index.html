@@ -3050,6 +3050,8 @@
       
         
       
+        
+      
     
     
     
@@ -3647,6 +3649,33 @@
     
   
   InjectedScript
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IOSPrivateSettingKeys/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  IOSPrivateSettingKeys
 
     
   </span>
@@ -6423,6 +6452,8 @@
       
         
       
+        
+      
     
     
     
@@ -6461,9 +6492,9 @@
 <p><strong><code>iOS</code></strong></p>
 <p>WebKit settings by Objective-C property name.</p>
 <p>Any public property works, including ones this package has never heard of (under a root's <code>other</code>). The keys the SDK
-headers list autocomplete, with their <code>@since</code>. A value must fit the property's type: enums and
-option sets by raw value (from <a href="../../namespaces/IOSConstants/">IOSConstants</a>), structs as objects, a <code>UIColor</code> as <code>#rrggbb</code> or <code>#rrggbbaa</code>,
-an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'default'</code> or <code>'nonPersistent'</code>.</p>
+headers list autocomplete, with their <code>@since</code>, as do the <a href="../IOSPrivateSettingKeys/">IOSPrivateSettingKeys</a>. A value must fit the
+property's type: enums and option sets by raw value (from <a href="../../namespaces/IOSConstants/">IOSConstants</a>), structs as objects, a <code>UIColor</code> as
+<code>#rrggbb</code> or <code>#rrggbbaa</code>, an <code>NSURL</code> as a string, <code>websiteDataStore</code> as <code>'default'</code> or <code>'nonPersistent'</code>.</p>
 <p>A key that doesn't fit, a private (<code>_</code>) one, or one the device's iOS lacks (its <code>@since</code> is newer) is skipped with a
 warning; nothing here can crash the app. So is a property UIKit declares without runtime metadata, such as
 <code>webView.opaque</code>: set it with <code>call('webView.setOpaque:', [false])</code>.</p>
@@ -6486,14 +6517,14 @@ default, and a key you remove goes back to the value it had before you first set
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="configuration">configuration?<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><code>optional</code> <strong>configuration?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"configuration"</code>] &amp; <code>object</code>&gt; = <code>{ allowsInlineMediaPlayback: true }</code></p>
+<p><code>optional</code> <strong>configuration?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"configuration"</code>] &amp; <a href="../IOSPrivateSettingKeys/"><code>IOSPrivateSettingKeys</code></a>[<code>"configuration"</code>]&gt; = <code>{ allowsInlineMediaPlayback: true }</code></p>
 </blockquote>
 <p><code>WKWebViewConfiguration</code>: read once, when the WKWebView is created; a change recreates the WebView (the page
 reloads and the navigation state starts over). It is a copy, so <code>call</code> on it changes nothing.</p>
 <hr />
 <h3 id="preferences">preferences?<a class="headerlink" href="#preferences" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><code>optional</code> <strong>preferences?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"preferences"</code>] &amp; <code>object</code>&gt;</p>
+<p><code>optional</code> <strong>preferences?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"preferences"</code>] &amp; <a href="../IOSPrivateSettingKeys/"><code>IOSPrivateSettingKeys</code></a>[<code>"preferences"</code>]&gt;</p>
 </blockquote>
 <p><code>WKPreferences</code> (<code>configuration.preferences</code>), live.</p>
 <hr />
