@@ -511,12 +511,30 @@ export type SettingsRoot<Keys> = Keys & {
 };
 
 /**
+ * The private WebKit settings {@link IOSSettings} takes besides {@link IOSSettingKeys}, both off by default.
+ * @ios
+ * @group Platform settings
+ */
+export type IOSPrivateSettingKeys = {
+  /** `WKWebViewConfiguration` */
+  configuration: {
+    /** Lets a `file:` page read any URL. */
+    allowUniversalAccessFromFileURLs?: boolean;
+  };
+  /** `WKPreferences` */
+  preferences: {
+    /** Lets a `file:` page read other `file:` URLs. */
+    allowFileAccessFromFileURLs?: boolean;
+  };
+};
+
+/**
  * WebKit settings by Objective-C property name.
  *
  * Any public property works, including ones this package has never heard of (under a root's `other`). The keys the SDK
- * headers list autocomplete, with their `@since`. A value must fit the property's type: enums and
- * option sets by raw value (from {@link IOSConstants}), structs as objects, a `UIColor` as `#rrggbb` or `#rrggbbaa`,
- * an `NSURL` as a string, `websiteDataStore` as `'default'` or `'nonPersistent'`.
+ * headers list autocomplete, with their `@since`, as do the {@link IOSPrivateSettingKeys}. A value must fit the
+ * property's type: enums and option sets by raw value (from {@link IOSConstants}), structs as objects, a `UIColor` as
+ * `#rrggbb` or `#rrggbbaa`, an `NSURL` as a string, `websiteDataStore` as `'default'` or `'nonPersistent'`.
  *
  * A key that doesn't fit, a private (`_`) one, or one the device's iOS lacks (its `@since` is newer) is skipped with a
  * warning; nothing here can crash the app. So is a property UIKit declares without runtime metadata, such as
@@ -549,18 +567,10 @@ export type IOSSettings = {
    * @default `{ allowsInlineMediaPlayback: true }`
    */
   configuration?: SettingsRoot<
-    IOSSettingKeys['configuration'] & {
-      /** A private WebKit setting, off by default: it lets a `file:` page read any URL. */
-      allowUniversalAccessFromFileURLs?: boolean;
-    }
+    IOSSettingKeys['configuration'] & IOSPrivateSettingKeys['configuration']
   >;
   /** `WKPreferences` (`configuration.preferences`), live. */
-  preferences?: SettingsRoot<
-    IOSSettingKeys['preferences'] & {
-      /** A private WebKit setting, off by default: it lets a `file:` page read other `file:` URLs. */
-      allowFileAccessFromFileURLs?: boolean;
-    }
-  >;
+  preferences?: SettingsRoot<IOSSettingKeys['preferences'] & IOSPrivateSettingKeys['preferences']>;
   /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
