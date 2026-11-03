@@ -1,1 +1,2 @@
 .md-typeset h5 { text-transform: none; }
+.md-typeset thead:not(:has(th:not(:empty))) { display: none; }
