@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4162,7 +4162,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6530,48 +6530,43 @@
 
 
 <h1 id="navigationrule">NavigationRule<a class="headerlink" href="#navigationrule" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>NavigationRule</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">NavigationRule</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A pattern over a navigation's URL and kind, and what the navigations it matches do.</p>
 <p>Every field it sets must match; for a list, one matching entry is enough. A field left out matches anything; a flag
 set to <code>false</code> matches only the requests without it.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">navigationRules</span><span class="o">:</span><span class="w"> </span><span class="kt">NavigationRule</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">query</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'gad_source'</span><span class="p">,</span><span class="w"> </span><span class="s1">'utm_term=google'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'block'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// gad_source with any value, utm_term only =google</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">scheme</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'tel'</span><span class="p">,</span><span class="w"> </span><span class="s1">'mailto'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'external'</span><span class="w"> </span><span class="p">},</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">host</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'*.example.com'</span><span class="p">],</span><span class="w"> </span><span class="nx">path</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'/checkout'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'external'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// shop.example.com/checkouts too</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">host</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'*.example.com'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'allow'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// *.example.com alone skips example.com</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">];</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">navigationRules</span><span class="o">:</span><span class="w"> </span><span class="kt">NavigationRule</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">query</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'gad_source'</span><span class="p">,</span><span class="w"> </span><span class="s1">'utm_term=google'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'block'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// gad_source with any value, utm_term only =google</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">scheme</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'tel'</span><span class="p">,</span><span class="w"> </span><span class="s1">'mailto'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'external'</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">host</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'*.example.com'</span><span class="p">],</span><span class="w"> </span><span class="nx">path</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'/checkout'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'external'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// shop.example.com/checkouts too</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">host</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'*.example.com'</span><span class="p">],</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">'allow'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// *.example.com alone skips example.com</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">];</span>
 </span></code></pre></div>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="action">action<a class="headerlink" href="#action" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>action</strong>: <a href="../NavigationAction/"><code>NavigationAction</code></a> | <code>"ask"</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="kt">NavigationAction</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"ask"</span><span class="p">;</span>
+</span></code></pre></div>
 <p>What the navigations it matches do; <code>ask</code> puts each to <code>onNavigationRequest</code>.</p>
 <p>On Android, which can't hold a navigation until JS answers, it works only for the main frame (elsewhere it is
 <code>block</code>): the navigation is cancelled, and an allowed one loads again after the answer, without the page's referrer
 policy or the gesture flag.</p>
 <hr />
 <h3 id="host">host?<a class="headerlink" href="#host" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>host?</strong>: <code>string</code>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">host?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>Hosts: exact, or a <code>*.</code> suffix wildcard that matches subdomains only, not the domain itself.</p>
 <p>Case, port, userinfo and a trailing dot are ignored.</p>
 <hr />
 <h3 id="mainframe">mainFrame?<a class="headerlink" href="#mainframe" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>mainFrame?</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">mainFrame?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The main frame's navigation (true) or an iframe's (false).</p>
 <p>Android decides only an iframe's non-http(s) navigations, so a <code>mainFrame: false</code> rule for http(s) is iOS only.</p>
 <hr />
 <h3 id="newwindow">newWindow?<a class="headerlink" href="#newwindow" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>newWindow?</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">newWindow?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A <code>target=_blank</code> or <code>window.open</code> navigation, always a main-frame one.</p>
 <p>An allowed one loads in place: there is never a second WebView, so no <code>window.opener</code> (a native hook that takes
 <code>createWebViewWith</code> on iOS or <code>onCreateWindow</code> on Android owns real popups).</p>
@@ -6582,29 +6577,25 @@ the URL the page sends it to within 5 s, and dropped otherwise.</p>
 (<code>ios.preferences</code>, <code>android.settings</code>; off by default); otherwise WebKit or WebView drops it unreported.</p>
 <hr />
 <h3 id="path">path?<a class="headerlink" href="#path" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>path?</strong>: <code>string</code>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nx">path?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>Path prefixes: plain prefixes of the percent-encoded URL path, not whole segments.</p>
 <p>A URL without an authority (<code>myapp:/open</code>) has the path <code>/</code>.</p>
 <hr />
 <h3 id="query">query?<a class="headerlink" href="#query" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>query?</strong>: <code>string</code>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">query?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>Query parameters, percent-encoded as in the URL and case-sensitive: a name matches that parameter whatever its
 value, and <code>name=value</code> only that exact value.</p>
 <hr />
 <h3 id="scheme">scheme?<a class="headerlink" href="#scheme" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>scheme?</strong>: <code>string</code>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nx">scheme?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>URL schemes without the <code>:</code> (<code>tel</code>), exact and case-insensitive.</p>
 <hr />
 <h3 id="userinitiated">userInitiated?<a class="headerlink" href="#userinitiated" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>userInitiated?</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nx">userInitiated?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A user gesture started it.</p>
 <p>A <code>location.href</code> change or <code>window.open</code> from a click handler is true on Android, but false on iOS, where only a
 tapped link is. A redirect of a load the core starts itself (an allowed new window, and on Android an allowed

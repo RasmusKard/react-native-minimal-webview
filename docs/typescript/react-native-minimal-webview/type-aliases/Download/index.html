@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3713,7 +3713,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4118,7 +4118,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6442,38 +6442,32 @@
 
 
 <h1 id="download">Download<a class="headerlink" href="#download" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Download</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Download</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A finished download.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="filename">filename<a class="headerlink" href="#filename" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>filename</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">filename</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A plain file name, no path, but the page chose it, like the content and <code>mimeType</code>: don't open the file as
 trusted.</p>
 <hr />
 <h3 id="mimetype">mimeType<a class="headerlink" href="#mimetype" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>mimeType</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">mimeType</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="ok">ok<a class="headerlink" href="#ok" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>ok</strong>: <code>true</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">ok</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="uri">uri<a class="headerlink" href="#uri" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>uri</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A <code>file://</code> in the app's cache (iOS: the temporary directory), which the core never deletes.</p>
 <hr />
 <h3 id="url">url<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>url</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The server URL the file came from; <code>null</code> when the page generated it (<code>data:</code> or <code>blob:</code> URL).</p>
 
 

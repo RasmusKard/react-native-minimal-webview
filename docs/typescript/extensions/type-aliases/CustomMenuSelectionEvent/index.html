@@ -3237,7 +3237,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3291,7 +3291,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3669,7 +3669,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4074,7 +4074,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6284,28 +6284,39 @@
 
 
 <h1 id="custommenuselectionevent">CustomMenuSelectionEvent<a class="headerlink" href="#custommenuselectionevent" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>CustomMenuSelectionEvent</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">CustomMenuSelectionEvent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>An item chosen from the text selection menu, for <a href="../../functions/menuItems/">menuItems</a>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="nativeevent">nativeEvent<a class="headerlink" href="#nativeevent" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>nativeEvent</strong>: <code>object</code></p>
-</blockquote>
-<h4 id="key">key<a class="headerlink" href="#key" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>key</strong>: <code>string</code></p>
-</blockquote>
-<h4 id="label">label<a class="headerlink" href="#label" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>label</strong>: <code>string</code></p>
-</blockquote>
-<h4 id="selectedtext">selectedText<a class="headerlink" href="#selectedtext" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>selectedText</strong>: <code>string</code></p>
-</blockquote>
-<p>The main frame's selected text (<code>window.getSelection()</code>).</p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">nativeEvent</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td><code>string</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td><code>string</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>selectedText</code></td>
+<td><code>string</code></td>
+<td>The main frame's selected text (<code>window.getSelection()</code>).</td>
+</tr>
+</tbody>
+</table>
 
 
 

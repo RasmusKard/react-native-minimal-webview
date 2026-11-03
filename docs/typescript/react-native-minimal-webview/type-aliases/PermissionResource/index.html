@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4009,7 +4009,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6248,9 +6248,8 @@
 
 
 <h1 id="permissionresource">PermissionResource<a class="headerlink" href="#permissionresource" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>PermissionResource</strong> = <code>"camera"</code> | <code>"microphone"</code> | <code>"geolocation"</code> | <code>"protectedMedia"</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">PermissionResource</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"camera"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"microphone"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"geolocation"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"protectedMedia"</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A device resource a page can ask for.</p>
 <p><code>geolocation</code> and <code>protectedMedia</code> (the device id DRM playback needs, Widevine) are Android only: on iOS, location
 always shows WebKit's own prompt, and FairPlay asks nothing.</p>

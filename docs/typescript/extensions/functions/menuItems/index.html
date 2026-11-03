@@ -1001,23 +1001,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#menu" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        menu
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -3248,7 +3231,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3302,7 +3285,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3680,7 +3663,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4068,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6122,23 +6105,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#menu" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        menu
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -6306,9 +6272,10 @@
 
 
 <h1 id="menuitems">menuItems()<a class="headerlink" href="#menuitems" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>menuItems</strong>(<code>menu</code>): <a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">menuItems</span><span class="p">(</span><span class="nx">menu</span><span class="p">)</span><span class="o">:</span><span class="w"> </span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="nx">HookExtension</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The text selection menu: react-native-webview's <code>menuItems</code>, <code>suppressMenuItems</code> and <code>onCustomMenuSelection</code>.
 <code>items</code> replace the system's items, <code>onSelect</code> gets the one chosen, and on iOS <code>suppress</code> hides system items. Null
 when neither is set on this platform (<code>suppress</code> alone on Android).</p>
@@ -6316,16 +6283,40 @@ when neither is set on this platform (<code>suppress</code> alone on Android).</
 <p>Its hook makes the WebView from a class of its own. When another hook's <code>webViewClass</code> or <code>webViewFactory</code>,
 registered earlier, makes it instead, there is no menu and the core warns.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
-<h3 id="menu">menu<a class="headerlink" href="#menu" title="Permanent link">&para;</a></h3>
-<h4 id="items">items?<a class="headerlink" href="#items" title="Permanent link">&para;</a></h4>
-<p>readonly <a href="../../type-aliases/MenuItem/"><code>MenuItem</code></a>[]</p>
-<h4 id="onselect">onSelect?<a class="headerlink" href="#onselect" title="Permanent link">&para;</a></h4>
-<p>(<code>event</code>) =&gt; <code>void</code></p>
-<h4 id="suppress">suppress?<a class="headerlink" href="#suppress" title="Permanent link">&para;</a></h4>
-<p>readonly <a href="../../type-aliases/SuppressMenuItem/"><code>SuppressMenuItem</code></a>[]</p>
-<p><strong><code>iOS</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>menu</code></td>
+<td>{ <code>items?</code>: readonly <a href="../../type-aliases/MenuItem/"><code>MenuItem</code></a>[]; <code>onSelect?</code>: (<code>event</code>) =&gt; <code>void</code>; <code>suppress?</code>: readonly <a href="../../type-aliases/SuppressMenuItem/"><code>SuppressMenuItem</code></a>[]; }</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>menu.items?</code></td>
+<td>readonly <a href="../../type-aliases/MenuItem/"><code>MenuItem</code></a>[]</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>menu.onSelect?</code></td>
+<td>(<code>event</code>) =&gt; <code>void</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>menu.suppress?</code></td>
+<td>readonly <a href="../../type-aliases/SuppressMenuItem/"><code>SuppressMenuItem</code></a>[]</td>
+<td><strong><code>iOS</code></strong></td>
+</tr>
+</tbody>
+</table>
 <h2 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h2>
-<p><a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a> | <code>null</code></p>
+<p>| <a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a>
+  | <code>null</code></p>
 
 
 

@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4140,7 +4140,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6486,9 +6486,8 @@
 
 
 <h1 id="iossettings">IOSSettings<a class="headerlink" href="#iossettings" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>IOSSettings</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">IOSSettings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>iOS</code></strong></p>
 <p>WebKit settings by Objective-C property name.</p>
 <p>Any public property works, including ones this package has never heard of (under a root's <code>other</code>). The keys the SDK
@@ -6504,46 +6503,41 @@ default, and a key you remove goes back to the value it had before you first set
 <code>httpCookieStore</code>.</p>
 <p>WebKit has no mixed-content setting: it applies its own policy.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<div class="language-tsx highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">&lt;</span><span class="nt">WebView</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="na">source</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="p">}}</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="na">ios</span><span class="o">=</span><span class="p">{{</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nx">configuration</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">dataDetectorTypes</span><span class="o">:</span><span class="w"> </span><span class="kt">IOSConstants.DataDetectorTypes.link</span><span class="w"> </span><span class="p">},</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nx">scrollView</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">bounces</span><span class="o">:</span><span class="w"> </span><span class="kt">false</span><span class="p">,</span><span class="w"> </span><span class="nx">contentInset</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">top</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="p">,</span><span class="w"> </span><span class="nx">left</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="p">,</span><span class="w"> </span><span class="nx">bottom</span><span class="o">:</span><span class="w"> </span><span class="kt">80</span><span class="p">,</span><span class="w"> </span><span class="nx">right</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="p">}}</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">/&gt;</span>
+<div class="language-tsx highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">&lt;</span><span class="nt">WebView</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="na">source</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="p">}}</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="na">ios</span><span class="o">=</span><span class="p">{{</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nx">configuration</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">dataDetectorTypes</span><span class="o">:</span><span class="w"> </span><span class="kt">IOSConstants.DataDetectorTypes.link</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nx">scrollView</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">bounces</span><span class="o">:</span><span class="w"> </span><span class="kt">false</span><span class="p">,</span><span class="w"> </span><span class="nx">contentInset</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">top</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="p">,</span><span class="w"> </span><span class="nx">left</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="p">,</span><span class="w"> </span><span class="nx">bottom</span><span class="o">:</span><span class="w"> </span><span class="kt">80</span><span class="p">,</span><span class="w"> </span><span class="nx">right</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="p">}}</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">/&gt;</span>
 </span></code></pre></div>
 <h2 id="see">See<a class="headerlink" href="#see" title="Permanent link">&para;</a></h2>
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings">Platform settings example</a></p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="configuration">configuration?<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>configuration?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"configuration"</code>] &amp; <a href="../IOSPrivateSettingKeys/"><code>IOSPrivateSettingKeys</code></a>[<code>"configuration"</code>]&gt; = <code>{ allowsInlineMediaPlayback: true }</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">configuration?</span><span class="o">:</span><span class="w"> </span><span class="kt">SettingsRoot</span><span class="o">&lt;</span><span class="nx">IOSSettingKeys</span><span class="p">[</span><span class="s2">"configuration"</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="nx">IOSPrivateSettingKeys</span><span class="p">[</span><span class="s2">"configuration"</span><span class="p">]</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">allowsInlineMediaPlayback</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">};</span>
+</span></code></pre></div>
 <p><code>WKWebViewConfiguration</code>: read once, when the WKWebView is created; a change recreates the WebView (the page
 reloads and the navigation state starts over). It is a copy, so <code>call</code> on it changes nothing.</p>
 <hr />
 <h3 id="preferences">preferences?<a class="headerlink" href="#preferences" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>preferences?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"preferences"</code>] &amp; <a href="../IOSPrivateSettingKeys/"><code>IOSPrivateSettingKeys</code></a>[<code>"preferences"</code>]&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">preferences?</span><span class="o">:</span><span class="w"> </span><span class="kt">SettingsRoot</span><span class="o">&lt;</span><span class="nx">IOSSettingKeys</span><span class="p">[</span><span class="s2">"preferences"</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="nx">IOSPrivateSettingKeys</span><span class="p">[</span><span class="s2">"preferences"</span><span class="p">]</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKPreferences</code> (<code>configuration.preferences</code>), live.</p>
 <hr />
 <h3 id="scrollview">scrollView?<a class="headerlink" href="#scrollview" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>scrollView?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"scrollView"</code>]&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">scrollView?</span><span class="o">:</span><span class="w"> </span><span class="kt">SettingsRoot</span><span class="o">&lt;</span><span class="nx">IOSSettingKeys</span><span class="p">[</span><span class="s2">"scrollView"</span><span class="p">]</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Its <code>UIScrollView</code>, live.</p>
 <hr />
 <h3 id="webpagepreferences">webpagePreferences?<a class="headerlink" href="#webpagepreferences" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>webpagePreferences?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"webpagePreferences"</code>]&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">webpagePreferences?</span><span class="o">:</span><span class="w"> </span><span class="kt">SettingsRoot</span><span class="o">&lt;</span><span class="nx">IOSSettingKeys</span><span class="p">[</span><span class="s2">"webpagePreferences"</span><span class="p">]</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKWebpagePreferences</code> (<code>configuration.defaultWebpagePreferences</code>), live from the next navigation.</p>
 <hr />
 <h3 id="webview">webView?<a class="headerlink" href="#webview" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>webView?</strong>: <a href="../SettingsRoot/"><code>SettingsRoot</code></a>&lt;<a href="../IOSSettingKeys/"><code>IOSSettingKeys</code></a>[<code>"webView"</code>]&gt; = <code>{ customUserAgent: null, inspectable: __DEV__ }</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nx">webView?</span><span class="o">:</span><span class="w"> </span><span class="kt">SettingsRoot</span><span class="o">&lt;</span><span class="nx">IOSSettingKeys</span><span class="p">[</span><span class="s2">"webView"</span><span class="p">]</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">customUserAgent</span><span class="o">:</span><span class="w"> </span><span class="kt">null</span><span class="p">,</span><span class="w"> </span><span class="nx">inspectable</span><span class="o">:</span><span class="w"> </span><span class="kt">__DEV__</span><span class="w"> </span><span class="p">};</span>
+</span></code></pre></div>
 <p>The <code>WKWebView</code>, live.</p>
 <p><code>customUserAgent: null</code> is WebKit's default user agent, with <code>applicationNameForUserAgent</code> appended.</p>
 

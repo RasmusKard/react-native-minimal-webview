@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4151,7 +4151,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6508,32 +6508,27 @@
 
 
 <h1 id="navigationstate">NavigationState<a class="headerlink" href="#navigationstate" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>NavigationState</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">NavigationState</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A WebView's navigation state, as native reports it: from <code>useWebViewState</code> and <code>onNavigationStateChange</code>.</p>
 <p>While no WebView is mounted it is the initial state: <code>url</code> and <code>title</code> empty, <code>pendingUrl</code> and <code>outcome</code> null,
 <code>loading</code>, <code>canGoBack</code> and <code>canGoForward</code> false, <code>progress</code> 0.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="cangoback">canGoBack<a class="headerlink" href="#cangoback" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>canGoBack</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">canGoBack</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="cangoforward">canGoForward<a class="headerlink" href="#cangoforward" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>canGoForward</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">canGoForward</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="loading">loading<a class="headerlink" href="#loading" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>loading</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">loading</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="outcome">outcome<a class="headerlink" href="#outcome" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>outcome</strong>: <code>"finished"</code> | <code>"failed"</code> | <code>"cancelled"</code> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">outcome</span><span class="o">:</span><span class="w"> </span><span class="s2">"finished"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"failed"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">"cancelled"</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>How the last main-frame load ended; null while one is loading, and before the first.</p>
 <ul>
 <li><code>failed</code>: a network or SSL error, or a renderer crash, cut it off.</li>
@@ -6545,27 +6540,23 @@
 with a WebView older than 146, a load that never commits changes nothing here.</p>
 <hr />
 <h3 id="pendingurl">pendingUrl<a class="headerlink" href="#pendingurl" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>pendingUrl</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">pendingUrl</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A main-frame load in progress, which may still fail or be blocked.</p>
 <p>Iframes never change it. Always null on Android with a WebView older than 146.</p>
 <hr />
 <h3 id="progress">progress<a class="headerlink" href="#progress" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>progress</strong>: <code>number</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nx">progress</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+</span></code></pre></div>
 <p>From 0 to 1.</p>
 <hr />
 <h3 id="title">title<a class="headerlink" href="#title" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>title</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="url">url<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>url</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The page on screen: changes on commit and same-document navigation (pushState, replaceState, hash), and stays the
 old page while a load is in progress.</p>
 <p>After a failed load, the failed URL. Iframes never change it.</p>
