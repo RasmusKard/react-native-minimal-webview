@@ -200,8 +200,8 @@ Everything crosses as JSON.
 | `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with the reply |
 | `context.options`, `context.onOptionsChange` | The extension's `options`; a change arrives live |
 
-When an `ask` goes unanswered, and how a failing or silent `handle` handler reaches JS, are on `ask` and `handle` in
-[`Hooks.swift`][swift] and [`Hooks.kt`][kotlin].
+When an `ask` goes unanswered, and how a failing or silent `handle` handler reaches JS, are on `ask` and `handle` of
+`WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]).
 
 ## Share the WebView with the core
 
@@ -209,10 +209,10 @@ The core keeps the WebView's own delegate and client slots. Your hook adds to th
 
 A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
 or a page gets the camera, goes to the first hook that implements it, and switches off the props that make it, such as
-`navigationRules`. The rules are on `navigationDelegates` and `clients` in [`Hooks.swift`][swift] and
-[`Hooks.kt`][kotlin].
+`navigationRules`. The rules are on `WebViewContext`'s `navigationDelegates` ([Swift][swiftContext]) and `clients`
+([Kotlin][kotlinContext]).
 
-Leave alone what the core owns, listed at the top of those files.
+Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift], [Kotlin][kotlin]).
 
 ## Lifecycle
 
@@ -231,9 +231,10 @@ Leave alone what the core owns, listed at the top of those files.
 
 ## Rules
 
-- Register in `OnCreate`, under a key prefixed with your package's name: `register` in [`Hooks.swift`][swift] and
-  [`Hooks.kt`][kotlin] has the rules.
-- Use the context as `WebViewContext` there says: some members work from any thread, the rest from the main thread.
+- Register in `OnCreate`, under a key prefixed with your package's name: `register` on `MinimalWebViewHooks`
+  ([Swift][swift], [Kotlin][kotlin]) has the rules.
+- Use the context as `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]) says: some members work from any
+  thread, the rest from the main thread.
 
 ## Platform differences
 
@@ -247,7 +248,8 @@ Leave alone what the core owns, listed at the top of those files.
 
 ## Reference
 
-- Native API: [`Hooks.swift`][swift] and [`Hooks.kt`][kotlin], with `MinimalWebViewHooks` and `WebViewContext`.
+- Native API: the [Swift][swiftModule] and [Kotlin][kotlinPackage] reference, with `MinimalWebViewHooks` and
+  `WebViewContext`.
 - JS API: [`extensions`][extensionsProp], [`HookExtension`][HookExtension] and [`ref.hook`][hook].
 - [sample-extension][sample]: a hook for each seam the core offers, run by the example app's tests.
 - [@react-native-minimal-webview/extensions][extensions]: ready-made hooks. Its README shows how to copy one into your
@@ -255,10 +257,14 @@ Leave alone what the core owns, listed at the top of those files.
 
 [extensions]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/
 [sample]: https://github.com/RasmusKard/react-native-minimal-webview/tree/main/example/modules/sample-extension
-[swift]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift
-[kotlin]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt
-[documentend]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift
-[documentendkt]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentEnd.kt
+[swiftModule]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/
+[kotlinPackage]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/
+[swift]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/minimalwebviewhooks/
+[kotlin]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-minimal-web-view-hooks/
+[swiftContext]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/
+[kotlinContext]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/
+[documentend]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/documentend/
+[documentendkt]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-document-end/
 [HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/
 [extensionsProp]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#extensions
 [hook]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#hook

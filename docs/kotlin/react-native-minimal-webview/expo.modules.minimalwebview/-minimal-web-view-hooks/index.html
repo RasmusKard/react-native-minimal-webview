@@ -6062,7 +6062,7 @@
 <p>[androidJvm]<br />
 object <a href="">MinimalWebViewHooks</a></p>
 <p>Native hooks: Kotlin in an app's or a package's own Expo module that gets the real <a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a> behind this package's WebViews and chains its own clients to it, with no protocol to implement.</p>
-<p>The <a href="https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md">native hooks guide</a> walks through one.</p>
+<p>The <a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/">native hooks guide</a> walks through one.</p>
 <p>Leave alone what the core owns: the WebView's own client slots (add to <a href="../-web-view-context/clients/">WebViewContext.clients</a> and <a href="../-web-view-context/chrome-clients/">WebViewContext.chromeClients</a> instead), its touch and scroll-change listeners (<a href="../-web-view-context/touch-listeners/">WebViewContext.touchListeners</a> and <a href="../-web-view-context/scroll-listeners/">WebViewContext.scrollListeners</a>), the bridge's web message listener and document-start scripts, and the download listener (<a href="../-web-view-context/on-download-start/">WebViewContext.onDownloadStart</a>).</p>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <table>
