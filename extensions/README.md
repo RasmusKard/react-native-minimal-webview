@@ -74,6 +74,6 @@ name.
 
 With this package installed as well, a `package` line you forgot to change fails the Android build with a duplicate
 class. A key you forgot to rename registers two hooks under one key: `register`, in the
-[iOS](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift) and
-[Android](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt)
+[iOS](https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/minimalwebviewhooks/) and
+[Android](https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-minimal-web-view-hooks/)
 hooks API, says what happens.

@@ -21,7 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
  * WebViews and chains its own clients to it, with no protocol to implement.
  *
- * The [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
+ * The [native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  * walks through one.
  *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
