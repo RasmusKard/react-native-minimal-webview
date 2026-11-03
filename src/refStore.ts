@@ -115,7 +115,7 @@ export function useAttach(
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
  * re-renders on every change, and follows a remount.
- * @see [Navigation state example](../guides/examples.md#navigation-state)
+ * @see [Navigation state example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-state)
  * @group Navigation
  */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {

@@ -1,10 +1,14 @@
 /**
+ * Setup, each extension's platforms and how to vendor one are in the package's
+ * [README](https://github.com/RasmusKard/react-native-minimal-webview/tree/main/extensions#readme).
+ *
  * @groupDescription Extensions
  * One function per extension, whose result goes into the core's `extensions` prop.
  * @groupDescription Values
  * What the functions take.
  * @groupDescription Events
  * What the handlers receive.
+ * @module @react-native-minimal-webview/extensions
  * @packageDocumentation
  */
 export * from '../androidLayerType';

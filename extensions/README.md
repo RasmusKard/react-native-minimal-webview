@@ -13,7 +13,7 @@ npx expo install react-native-minimal-webview @react-native-minimal-webview/exte
 ```
 
 Each extension is a function whose result goes into the core's
-[`extensions`](https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#extensions) prop:
+[`extensions`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#extensions) prop:
 
 ```tsx
 import { basicAuthCredential, onScroll } from '@react-native-minimal-webview/extensions';
@@ -37,15 +37,15 @@ export function Browser() {
 
 | Function | Platforms |
 |---|---|
-| [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/basicAuthCredential.html) | iOS, Android |
-| [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/dialogs.html) | iOS, Android |
-| [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/menuItems.html) | iOS, Android (`suppress`: iOS) |
-| [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/onScroll.html) | iOS, Android |
-| [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/hideKeyboardAccessoryView.html) | iOS |
-| [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/nestedScrollEnabled.html) | Android |
-| [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/extensions/functions/androidLayerType.html) | Android |
+| [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/) | iOS, Android |
+| [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/) | iOS, Android |
+| [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/) | iOS, Android (`suppress`: iOS) |
+| [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/) | iOS, Android |
+| [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/) | iOS |
+| [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/) | Android |
+| [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/) | Android |
 
-Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/extensions/) page has its
+Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) page has its
 behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.
 
 ## Vendoring an extension
@@ -53,7 +53,7 @@ behavior and limits. Its code is in the folder named after it: the TS, and the S
 To change an extension, or to take only one, copy it into a module of your own:
 
 1. Create the module, with the core as its dependency and iOS 17.0 as its platform: steps 1 and 2 of
-   [Native hooks](https://rasmuskard.github.io/react-native-minimal-webview/documents/Native_hooks.html#1-create-a-module).
+   [Native hooks](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/#1-create-a-module).
 2. Copy the extension's files into it:
    - the `.swift` file into `ios/`
    - the `.kt` file next to your module's `<Name>Module.kt`, in `android/src/main/java/`

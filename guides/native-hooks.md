@@ -253,12 +253,12 @@ Leave alone what the core owns, listed at the top of those files.
 - [@react-native-minimal-webview/extensions][extensions]: ready-made hooks. Its README shows how to copy one into your
   own module.
 
-[extensions]: https://rasmuskard.github.io/react-native-minimal-webview/extensions/
+[extensions]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/
 [sample]: https://github.com/RasmusKard/react-native-minimal-webview/tree/main/example/modules/sample-extension
 [swift]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/Hooks.swift
 [kotlin]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/Hooks.kt
 [documentend]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/ios/DocumentScope.swift
 [documentendkt]: https://github.com/RasmusKard/react-native-minimal-webview/blob/main/android/src/main/java/expo/modules/minimalwebview/DocumentEnd.kt
-[HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/types/HookExtension.html
-[extensionsProp]: https://rasmuskard.github.io/react-native-minimal-webview/interfaces/WebViewProps.html#extensions
-[hook]: https://rasmuskard.github.io/react-native-minimal-webview/types/WebViewRef.html#hook
+[HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/
+[extensionsProp]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#extensions
+[hook]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#hook

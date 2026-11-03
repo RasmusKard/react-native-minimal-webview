@@ -338,7 +338,7 @@ export type BridgeEventMap = Record<string, unknown>;
  *
  * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
  * and `on`, and its calls reject with a {@link CodedError}.
- * @see [Bridge example](../guides/examples.md#the-bridge)
+ * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
 export type Bridge<
@@ -539,7 +539,7 @@ export type SettingsRoot<Keys> = Keys & {
  * />
  * ```
  * @ios
- * @see [Platform settings example](../guides/examples.md#platform-settings)
+ * @see [Platform settings example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings)
  * @group Platform settings
  */
 export type IOSSettings = {
@@ -599,7 +599,7 @@ export type IOSSettings = {
  * />
  * ```
  * @android
- * @see [Platform settings example](../guides/examples.md#platform-settings)
+ * @see [Platform settings example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings)
  * @group Platform settings
  */
 export type AndroidSettings = {
@@ -645,7 +645,7 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
  *
  * A package with a native hook exports a function that returns one, so that an app turns the hook on by putting it in
  * `extensions`.
- * @see [Native hooks guide](../guides/native-hooks.md)
+ * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  * @group Native hooks
  */
 export type HookExtension = {
@@ -805,7 +805,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *   navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...defaultNavigationRules]}
    * />
    * ```
-   * @see [Navigation rules example](../guides/examples.md#navigation-rules)
+   * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
    */
   navigationRules?: readonly NavigationRule[];
   /**
@@ -852,7 +852,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * its `options` reaches it live, without recreating the WebView. A key turned on after the WebView was created
    * attaches its hook then, unless the hook has a `configure` step or its own WebView class (`webViewClass`,
    * `webViewFactory`): that one attaches only when the WebView is created, and a warning says so.
-   * @see [Native hooks guide](../guides/native-hooks.md)
+   * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
    */
   extensions?: readonly (HookExtension | false | null | undefined)[];
   /**

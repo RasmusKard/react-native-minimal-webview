@@ -15,10 +15,7 @@
  * Turning native hooks on with the `extensions` prop, and what they send to each extension's `onEvent`.
  * @groupDescription Platform settings
  * WebKit and Android WebView properties, set by name through the `ios` and `android` props.
- * @document ../guides/examples.md
- * @document ../guides/native-hooks.md
- * @document ../guides/migrating-from-react-native-webview.md
- * @document ../guides/android-system-webview.md
+ * @module react-native-minimal-webview
  * @packageDocumentation
  */
 export { WebView } from './WebView';
