@@ -3,7 +3,7 @@ import WebKit
 /// Native hooks: Swift in your own Expo module that gets the real WKWebView behind each WebView, its creation-time
 /// configuration and a ``WebViewContext``, with no protocol to implement.
 ///
-/// The [native hooks guide](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/guides/native-hooks.md)
+/// The [native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
 /// walks through one.
 ///
 /// A hook attaches to each WebView whose `extensions` prop has an extension with its key that is on;
