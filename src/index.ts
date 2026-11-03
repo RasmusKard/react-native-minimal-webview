@@ -1,4 +1,6 @@
 /**
+ * The WebView component, with navigation rules, a bridge to the page and native hooks.
+ *
  * @groupDescription WebView
  * The component, its props and its ref.
  * @groupDescription Navigation
