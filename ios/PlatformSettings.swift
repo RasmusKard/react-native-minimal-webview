@@ -75,7 +75,7 @@ final class PlatformSettings {
       let key = String(id[id.index(after: dot)...])
       // shortcut: a null_resettable property (underPageBackgroundColor) comes back as the value read, not as "follow the
       // default"; set nil for those if one matters.
-      if let reason = MRWCatchException({ object.setValue(original is NSNull ? nil : original, forKey: key) }) {
+      if let reason = __MRWCatchException({ object.setValue(original is NSNull ? nil : original, forKey: key) }) {
         failed.append(["key": id, "reason": "removed, but restoring it failed: \(reason)"])
       }
     }
@@ -93,7 +93,7 @@ final class PlatformSettings {
     guard !key.hasPrefix("_"), !key.contains("."), Self.attributes(object, key) != nil else {
       throw PlatformError("no such property \(path)", code: "not_found")
     }
-    return try Self.json { MRWJsonable(object.value(forKey: key)) }
+    return try Self.json { __MRWJsonable(object.value(forKey: key)) }
   }
 
   /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
@@ -109,7 +109,7 @@ final class PlatformSettings {
     guard object.responds(to: NSSelectorFromString(selector)) else {
       throw PlatformError("\(type(of: object)) has no method \(selector)", code: "not_found")
     }
-    MRWInvoke(object, NSSelectorFromString(selector), args, platformCompletions[path]) { result, error in
+    __MRWInvoke(object, NSSelectorFromString(selector), args, platformCompletions[path]) { result, error in
       guard error == nil, let result else { return resolve(nil, error ?? "the result is not JSON") }
       do {
         let json = try Self.json { result }
@@ -124,7 +124,7 @@ final class PlatformSettings {
   /// raises for, throws here instead of crashing the app.
   static func json(_ value: () -> Any) throws -> String {
     var data: Data?
-    let raised = MRWCatchException {
+    let raised = __MRWCatchException {
       data = try? JSONSerialization.data(withJSONObject: value(), options: .fragmentsAllowed)
     }
     if let raised { throw PlatformError(raised) }
@@ -167,7 +167,7 @@ final class PlatformSettings {
     if attributes.contains("R") { return "read-only" }
     let type = String(first.dropFirst())
     guard let coerced = Self.coerce(value, type) else { return "a \(type) property can't take \(value)" }
-    return MRWCatchException {
+    return __MRWCatchException {
       if let id, originals[id] == nil { originals[id] = object.value(forKey: key) ?? NSNull() }
       object.setValue(coerced is NSNull ? nil : coerced, forKey: key)
     }
