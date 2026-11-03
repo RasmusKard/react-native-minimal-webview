@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -3999,7 +3999,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6432,35 +6432,43 @@
 
 
 <h1 id="webviewrefobject">WebViewRefObject<a class="headerlink" href="#webviewrefobject" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>WebViewRefObject</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">WebViewRefObject</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>What <code>createWebViewRef()</code> returns: a ref that outlives the WebViews mounted with it.</p>
 <h2 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h2>
 <h3 id="getstate">getState()<a class="headerlink" href="#getstate" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>getState</strong>(): <a href="../NavigationState/"><code>NavigationState</code></a></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">getState</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="nx">NavigationState</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The mounted WebView's navigation state, read synchronously.</p>
 <h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
 <p><a href="../NavigationState/"><code>NavigationState</code></a></p>
 <hr />
 <h3 id="subscribe">subscribe()<a class="headerlink" href="#subscribe" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>subscribe</strong>(<code>listener</code>): () =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">subscribe</span><span class="p">(</span><span class="nx">listener</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Calls <code>listener</code> on every state change, including a WebView mounting or unmounting, and returns the unsubscribe.</p>
 <p>A subscriber stays across remounts.</p>
 <h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
-<h5 id="listener">listener<a class="headerlink" href="#listener" title="Permanent link">&para;</a></h5>
-<p>() =&gt; <code>void</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listener</code></td>
+<td>() =&gt; <code>void</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_1">Returns<a class="headerlink" href="#returns_1" title="Permanent link">&para;</a></h4>
 <p>() =&gt; <code>void</code></p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="current">current<a class="headerlink" href="#current" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>readonly</code> <strong>current</strong>: <a href="../WebViewRef/"><code>WebViewRef</code></a> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">readonly</span><span class="w"> </span><span class="nx">current</span><span class="o">:</span><span class="w"> </span><span class="kt">WebViewRef</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The mounted WebView's ref, or null while none is mounted.</p>
 
 

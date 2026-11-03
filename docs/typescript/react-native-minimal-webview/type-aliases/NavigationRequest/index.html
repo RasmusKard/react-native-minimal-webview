@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4107,7 +4107,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6420,33 +6420,28 @@
 
 
 <h1 id="navigationrequest">NavigationRequest<a class="headerlink" href="#navigationrequest" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>NavigationRequest</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">NavigationRequest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A navigation an <code>ask</code> rule puts to <code>onNavigationRequest</code>, or an <code>external</code> one to <code>onOpenExternal</code>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="mainframe">mainFrame<a class="headerlink" href="#mainframe" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>mainFrame</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">mainFrame</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Whether it's the main frame's, not an iframe's.</p>
 <hr />
 <h3 id="newwindow">newWindow<a class="headerlink" href="#newwindow" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>newWindow</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">newWindow</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Whether it's a new-window navigation (<a href="../NavigationRule/#newwindow">NavigationRule.newWindow</a>).</p>
 <hr />
 <h3 id="url">url<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>url</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The URL it goes to.</p>
 <hr />
 <h3 id="userinitiated">userInitiated<a class="headerlink" href="#userinitiated" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>userInitiated</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">userInitiated</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Whether a user gesture started it (<a href="../NavigationRule/#userinitiated">NavigationRule.userInitiated</a>).</p>
 
 

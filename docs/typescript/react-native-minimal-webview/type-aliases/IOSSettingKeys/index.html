@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4118,7 +4118,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6442,477 +6442,477 @@
 
 
 <h1 id="iossettingkeys">IOSSettingKeys<a class="headerlink" href="#iossettingkeys" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>IOSSettingKeys</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">IOSSettingKeys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>iOS</code></strong></p>
 <p>The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from
 the SDK headers.</p>
 <p><code>@since</code> is the iOS version. A key a newer SDK adds goes under the root's <code>other</code>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="configuration">configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>configuration</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">configuration</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKWebViewConfiguration</code></p>
-<h4 id="allowsairplayformediaplayback">allowsAirPlayForMediaPlayback?<a class="headerlink" href="#allowsairplayformediaplayback" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsAirPlayForMediaPlayback?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since">Since<a class="headerlink" href="#since" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h4 id="allowsinlinemediaplayback">allowsInlineMediaPlayback?<a class="headerlink" href="#allowsinlinemediaplayback" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsInlineMediaPlayback?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="allowsinlinepredictions">allowsInlinePredictions?<a class="headerlink" href="#allowsinlinepredictions" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsInlinePredictions?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_1">Since<a class="headerlink" href="#since_1" title="Permanent link">&para;</a></h5>
-<p>17.0</p>
-<h4 id="allowspictureinpicturemediaplayback">allowsPictureInPictureMediaPlayback?<a class="headerlink" href="#allowspictureinpicturemediaplayback" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsPictureInPictureMediaPlayback?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_2">Since<a class="headerlink" href="#since_2" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h4 id="applicationnameforuseragent">applicationNameForUserAgent?<a class="headerlink" href="#applicationnameforuseragent" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>applicationNameForUserAgent?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_3">Since<a class="headerlink" href="#since_3" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h4 id="datadetectortypes">dataDetectorTypes?<a class="headerlink" href="#datadetectortypes" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>dataDetectorTypes?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/DataDetectorTypes/">IOSConstants.DataDetectorTypes</a>.</p>
-<h5 id="since_4">Since<a class="headerlink" href="#since_4" title="Permanent link">&para;</a></h5>
-<p>10.0</p>
-<h4 id="ignoresviewportscalelimits">ignoresViewportScaleLimits?<a class="headerlink" href="#ignoresviewportscalelimits" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>ignoresViewportScaleLimits?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_5">Since<a class="headerlink" href="#since_5" title="Permanent link">&para;</a></h5>
-<p>10.0</p>
-<h4 id="limitsnavigationstoappbounddomains">limitsNavigationsToAppBoundDomains?<a class="headerlink" href="#limitsnavigationstoappbounddomains" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>limitsNavigationsToAppBoundDomains?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_6">Since<a class="headerlink" href="#since_6" title="Permanent link">&para;</a></h5>
-<p>14.0</p>
-<h4 id="mediaplaybackallowsairplay"><del>mediaPlaybackAllowsAirPlay?</del><a class="headerlink" href="#mediaplaybackallowsairplay" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mediaPlaybackAllowsAirPlay?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_7">Since<a class="headerlink" href="#since_7" title="Permanent link">&para;</a></h5>
-<p>8.0</p>
-<h5 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h5>
-<p>use allowsAirPlayForMediaPlayback</p>
-<h4 id="mediaplaybackrequiresuseraction"><del>mediaPlaybackRequiresUserAction?</del><a class="headerlink" href="#mediaplaybackrequiresuseraction" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mediaPlaybackRequiresUserAction?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_8">Since<a class="headerlink" href="#since_8" title="Permanent link">&para;</a></h5>
-<p>8.0</p>
-<h5 id="deprecated_1">Deprecated<a class="headerlink" href="#deprecated_1" title="Permanent link">&para;</a></h5>
-<p>use mediaTypesRequiringUserActionForPlayback</p>
-<h4 id="mediatypesrequiringuseractionforplayback">mediaTypesRequiringUserActionForPlayback?<a class="headerlink" href="#mediatypesrequiringuseractionforplayback" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mediaTypesRequiringUserActionForPlayback?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/AudiovisualMediaTypes/">IOSConstants.AudiovisualMediaTypes</a>.</p>
-<h5 id="since_9">Since<a class="headerlink" href="#since_9" title="Permanent link">&para;</a></h5>
-<p>10.0</p>
-<h4 id="requiresuseractionformediaplayback"><del>requiresUserActionForMediaPlayback?</del><a class="headerlink" href="#requiresuseractionformediaplayback" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>requiresUserActionForMediaPlayback?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_10">Since<a class="headerlink" href="#since_10" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h5 id="deprecated_2">Deprecated<a class="headerlink" href="#deprecated_2" title="Permanent link">&para;</a></h5>
-<p>use mediaTypesRequiringUserActionForPlayback</p>
-<h4 id="selectiongranularity"><del>selectionGranularity?</del><a class="headerlink" href="#selectiongranularity" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>selectionGranularity?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/SelectionGranularity/">IOSConstants.SelectionGranularity</a>.</p>
-<h5 id="since_11">Since<a class="headerlink" href="#since_11" title="Permanent link">&para;</a></h5>
-<p>8.0</p>
-<h5 id="deprecated_3">Deprecated<a class="headerlink" href="#deprecated_3" title="Permanent link">&para;</a></h5>
-<p>This property is ignored; selection granularity is always <code>character</code>.</p>
-<h4 id="showssystemscreentimeblockingview">showsSystemScreenTimeBlockingView?<a class="headerlink" href="#showssystemscreentimeblockingview" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>showsSystemScreenTimeBlockingView?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_12">Since<a class="headerlink" href="#since_12" title="Permanent link">&para;</a></h5>
-<p>26.0</p>
-<h4 id="supportsadaptiveimageglyph">supportsAdaptiveImageGlyph?<a class="headerlink" href="#supportsadaptiveimageglyph" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>supportsAdaptiveImageGlyph?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_13">Since<a class="headerlink" href="#since_13" title="Permanent link">&para;</a></h5>
-<p>18.0</p>
-<h4 id="suppressesincrementalrendering">suppressesIncrementalRendering?<a class="headerlink" href="#suppressesincrementalrendering" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>suppressesIncrementalRendering?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="upgradeknownhoststohttps">upgradeKnownHostsToHTTPS?<a class="headerlink" href="#upgradeknownhoststohttps" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>upgradeKnownHostsToHTTPS?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_14">Since<a class="headerlink" href="#since_14" title="Permanent link">&para;</a></h5>
-<p>14.5</p>
-<h4 id="websitedatastore">websiteDataStore?<a class="headerlink" href="#websitedatastore" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>websiteDataStore?</strong>: <code>"default"</code> | <code>"nonPersistent"</code></p>
-</blockquote>
-<h5 id="since_15">Since<a class="headerlink" href="#since_15" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h4 id="writingtoolsbehavior">writingToolsBehavior?<a class="headerlink" href="#writingtoolsbehavior" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>writingToolsBehavior?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_16">Since<a class="headerlink" href="#since_16" title="Permanent link">&para;</a></h5>
-<p>18.0</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowsAirPlayForMediaPlayback?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 9.0</td>
+</tr>
+<tr>
+<td><code>allowsInlineMediaPlayback?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>allowsInlinePredictions?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17.0</td>
+</tr>
+<tr>
+<td><code>allowsPictureInPictureMediaPlayback?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 9.0</td>
+</tr>
+<tr>
+<td><code>applicationNameForUserAgent?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 9.0</td>
+</tr>
+<tr>
+<td><code>dataDetectorTypes?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/DataDetectorTypes/">IOSConstants.DataDetectorTypes</a>. <strong>Since</strong> 10.0</td>
+</tr>
+<tr>
+<td><code>ignoresViewportScaleLimits?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 10.0</td>
+</tr>
+<tr>
+<td><code>limitsNavigationsToAppBoundDomains?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 14.0</td>
+</tr>
+<tr>
+<td><code>mediaPlaybackAllowsAirPlay?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 8.0 <strong>Deprecated</strong> use allowsAirPlayForMediaPlayback</td>
+</tr>
+<tr>
+<td><code>mediaPlaybackRequiresUserAction?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 8.0 <strong>Deprecated</strong> use mediaTypesRequiringUserActionForPlayback</td>
+</tr>
+<tr>
+<td><code>mediaTypesRequiringUserActionForPlayback?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/AudiovisualMediaTypes/">IOSConstants.AudiovisualMediaTypes</a>. <strong>Since</strong> 10.0</td>
+</tr>
+<tr>
+<td><code>requiresUserActionForMediaPlayback?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 9.0 <strong>Deprecated</strong> use mediaTypesRequiringUserActionForPlayback</td>
+</tr>
+<tr>
+<td><code>selectionGranularity?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/SelectionGranularity/">IOSConstants.SelectionGranularity</a>. <strong>Since</strong> 8.0 <strong>Deprecated</strong> This property is ignored; selection granularity is always <code>character</code>.</td>
+</tr>
+<tr>
+<td><code>showsSystemScreenTimeBlockingView?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 26.0</td>
+</tr>
+<tr>
+<td><code>supportsAdaptiveImageGlyph?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 18.0</td>
+</tr>
+<tr>
+<td><code>suppressesIncrementalRendering?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>upgradeKnownHostsToHTTPS?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 14.5</td>
+</tr>
+<tr>
+<td><code>websiteDataStore?</code></td>
+<td><code>"default"</code> | <code>"nonPersistent"</code></td>
+<td><strong>Since</strong> 9.0</td>
+</tr>
+<tr>
+<td><code>writingToolsBehavior?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 18.0</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="preferences">preferences<a class="headerlink" href="#preferences" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>preferences</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">preferences</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKPreferences</code></p>
-<h4 id="elementfullscreenenabled">elementFullscreenEnabled?<a class="headerlink" href="#elementfullscreenenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>elementFullscreenEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_17">Since<a class="headerlink" href="#since_17" title="Permanent link">&para;</a></h5>
-<p>15.4</p>
-<h4 id="fraudulentwebsitewarningenabled">fraudulentWebsiteWarningEnabled?<a class="headerlink" href="#fraudulentwebsitewarningenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>fraudulentWebsiteWarningEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_18">Since<a class="headerlink" href="#since_18" title="Permanent link">&para;</a></h5>
-<p>13.0</p>
-<h4 id="inactiveschedulingpolicy">inactiveSchedulingPolicy?<a class="headerlink" href="#inactiveschedulingpolicy" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>inactiveSchedulingPolicy?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/InactiveSchedulingPolicy/">IOSConstants.InactiveSchedulingPolicy</a>.</p>
-<h5 id="since_19">Since<a class="headerlink" href="#since_19" title="Permanent link">&para;</a></h5>
-<p>17.0</p>
-<h4 id="javascriptcanopenwindowsautomatically">javaScriptCanOpenWindowsAutomatically?<a class="headerlink" href="#javascriptcanopenwindowsautomatically" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>javaScriptCanOpenWindowsAutomatically?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="javascriptenabled"><del>javaScriptEnabled?</del><a class="headerlink" href="#javascriptenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>javaScriptEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_20">Since<a class="headerlink" href="#since_20" title="Permanent link">&para;</a></h5>
-<p>8.0</p>
-<h5 id="deprecated_4">Deprecated<a class="headerlink" href="#deprecated_4" title="Permanent link">&para;</a></h5>
-<p>Use WKWebpagePreferences.allowsContentJavaScript to disable content JavaScript on a per-navigation basis</p>
-<h4 id="minimumfontsize">minimumFontSize?<a class="headerlink" href="#minimumfontsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>minimumFontSize?</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="shouldprintbackgrounds">shouldPrintBackgrounds?<a class="headerlink" href="#shouldprintbackgrounds" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>shouldPrintBackgrounds?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_21">Since<a class="headerlink" href="#since_21" title="Permanent link">&para;</a></h5>
-<p>16.4</p>
-<h4 id="sitespecificquirksmodeenabled">siteSpecificQuirksModeEnabled?<a class="headerlink" href="#sitespecificquirksmodeenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>siteSpecificQuirksModeEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_22">Since<a class="headerlink" href="#since_22" title="Permanent link">&para;</a></h5>
-<p>15.4</p>
-<h4 id="textinteractionenabled">textInteractionEnabled?<a class="headerlink" href="#textinteractionenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>textInteractionEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_23">Since<a class="headerlink" href="#since_23" title="Permanent link">&para;</a></h5>
-<p>14.5</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>elementFullscreenEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 15.4</td>
+</tr>
+<tr>
+<td><code>fraudulentWebsiteWarningEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 13.0</td>
+</tr>
+<tr>
+<td><code>inactiveSchedulingPolicy?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/InactiveSchedulingPolicy/">IOSConstants.InactiveSchedulingPolicy</a>. <strong>Since</strong> 17.0</td>
+</tr>
+<tr>
+<td><code>javaScriptCanOpenWindowsAutomatically?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>javaScriptEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 8.0 <strong>Deprecated</strong> Use WKWebpagePreferences.allowsContentJavaScript to disable content JavaScript on a per-navigation basis</td>
+</tr>
+<tr>
+<td><code>minimumFontSize?</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>shouldPrintBackgrounds?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 16.4</td>
+</tr>
+<tr>
+<td><code>siteSpecificQuirksModeEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 15.4</td>
+</tr>
+<tr>
+<td><code>textInteractionEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 14.5</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="scrollview">scrollView<a class="headerlink" href="#scrollview" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>scrollView</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">scrollView</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>UIScrollView</code></p>
-<h4 id="allowskeyboardscrolling">allowsKeyboardScrolling?<a class="headerlink" href="#allowskeyboardscrolling" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsKeyboardScrolling?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_24">Since<a class="headerlink" href="#since_24" title="Permanent link">&para;</a></h5>
-<p>17.0</p>
-<h4 id="alwaysbouncehorizontal">alwaysBounceHorizontal?<a class="headerlink" href="#alwaysbouncehorizontal" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>alwaysBounceHorizontal?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="alwaysbouncevertical">alwaysBounceVertical?<a class="headerlink" href="#alwaysbouncevertical" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>alwaysBounceVertical?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="automaticallyadjustsscrollindicatorinsets">automaticallyAdjustsScrollIndicatorInsets?<a class="headerlink" href="#automaticallyadjustsscrollindicatorinsets" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>automaticallyAdjustsScrollIndicatorInsets?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_25">Since<a class="headerlink" href="#since_25" title="Permanent link">&para;</a></h5>
-<p>13.0</p>
-<h4 id="bounces">bounces?<a class="headerlink" href="#bounces" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>bounces?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="bounceshorizontally">bouncesHorizontally?<a class="headerlink" href="#bounceshorizontally" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>bouncesHorizontally?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_26">Since<a class="headerlink" href="#since_26" title="Permanent link">&para;</a></h5>
-<p>17.4</p>
-<h4 id="bouncesvertically">bouncesVertically?<a class="headerlink" href="#bouncesvertically" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>bouncesVertically?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_27">Since<a class="headerlink" href="#since_27" title="Permanent link">&para;</a></h5>
-<p>17.4</p>
-<h4 id="bounceszoom">bouncesZoom?<a class="headerlink" href="#bounceszoom" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>bouncesZoom?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="cancancelcontenttouches">canCancelContentTouches?<a class="headerlink" href="#cancancelcontenttouches" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>canCancelContentTouches?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="contentalignmentpoint">contentAlignmentPoint?<a class="headerlink" href="#contentalignmentpoint" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>contentAlignmentPoint?</strong>: <a href="../CGPoint/"><code>CGPoint</code></a></p>
-</blockquote>
-<h5 id="since_28">Since<a class="headerlink" href="#since_28" title="Permanent link">&para;</a></h5>
-<p>17.4</p>
-<h4 id="contentinset">contentInset?<a class="headerlink" href="#contentinset" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>contentInset?</strong>: <a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></p>
-</blockquote>
-<h4 id="contentinsetadjustmentbehavior">contentInsetAdjustmentBehavior?<a class="headerlink" href="#contentinsetadjustmentbehavior" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>contentInsetAdjustmentBehavior?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/ContentInsetAdjustmentBehavior/">IOSConstants.ContentInsetAdjustmentBehavior</a>.</p>
-<h5 id="since_29">Since<a class="headerlink" href="#since_29" title="Permanent link">&para;</a></h5>
-<p>11.0</p>
-<h4 id="contentoffset">contentOffset?<a class="headerlink" href="#contentoffset" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>contentOffset?</strong>: <a href="../CGPoint/"><code>CGPoint</code></a></p>
-</blockquote>
-<h4 id="contentsize">contentSize?<a class="headerlink" href="#contentsize" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>contentSize?</strong>: <a href="../CGSize/"><code>CGSize</code></a></p>
-</blockquote>
-<h4 id="decelerationrate">decelerationRate?<a class="headerlink" href="#decelerationrate" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>decelerationRate?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_30">Since<a class="headerlink" href="#since_30" title="Permanent link">&para;</a></h5>
-<p>3.0</p>
-<h4 id="delayscontenttouches">delaysContentTouches?<a class="headerlink" href="#delayscontenttouches" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>delaysContentTouches?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="directionallockenabled">directionalLockEnabled?<a class="headerlink" href="#directionallockenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>directionalLockEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="horizontalscrollindicatorinsets">horizontalScrollIndicatorInsets?<a class="headerlink" href="#horizontalscrollindicatorinsets" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>horizontalScrollIndicatorInsets?</strong>: <a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></p>
-</blockquote>
-<h5 id="since_31">Since<a class="headerlink" href="#since_31" title="Permanent link">&para;</a></h5>
-<p>11.1</p>
-<h4 id="indicatorstyle">indicatorStyle?<a class="headerlink" href="#indicatorstyle" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>indicatorStyle?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/IndicatorStyle/">IOSConstants.IndicatorStyle</a>.</p>
-<h4 id="keyboarddismissmode">keyboardDismissMode?<a class="headerlink" href="#keyboarddismissmode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>keyboardDismissMode?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/KeyboardDismissMode/">IOSConstants.KeyboardDismissMode</a>.</p>
-<h5 id="since_32">Since<a class="headerlink" href="#since_32" title="Permanent link">&para;</a></h5>
-<p>7.0</p>
-<h4 id="maximumzoomscale">maximumZoomScale?<a class="headerlink" href="#maximumzoomscale" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>maximumZoomScale?</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="minimumzoomscale">minimumZoomScale?<a class="headerlink" href="#minimumzoomscale" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>minimumZoomScale?</strong>: <code>number</code></p>
-</blockquote>
-<h4 id="pagingenabled">pagingEnabled?<a class="headerlink" href="#pagingenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>pagingEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="scrollenabled">scrollEnabled?<a class="headerlink" href="#scrollenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="scrollindicatorinsets">scrollIndicatorInsets?<a class="headerlink" href="#scrollindicatorinsets" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollIndicatorInsets?</strong>: <a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></p>
-</blockquote>
-<h4 id="scrollstotop">scrollsToTop?<a class="headerlink" href="#scrollstotop" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>scrollsToTop?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="showshorizontalscrollindicator">showsHorizontalScrollIndicator?<a class="headerlink" href="#showshorizontalscrollindicator" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>showsHorizontalScrollIndicator?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="showsverticalscrollindicator">showsVerticalScrollIndicator?<a class="headerlink" href="#showsverticalscrollindicator" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>showsVerticalScrollIndicator?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="transfershorizontalscrollingtoparent">transfersHorizontalScrollingToParent?<a class="headerlink" href="#transfershorizontalscrollingtoparent" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>transfersHorizontalScrollingToParent?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_33">Since<a class="headerlink" href="#since_33" title="Permanent link">&para;</a></h5>
-<p>17.4</p>
-<h4 id="transfersverticalscrollingtoparent">transfersVerticalScrollingToParent?<a class="headerlink" href="#transfersverticalscrollingtoparent" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>transfersVerticalScrollingToParent?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_34">Since<a class="headerlink" href="#since_34" title="Permanent link">&para;</a></h5>
-<p>17.4</p>
-<h4 id="verticalscrollindicatorinsets">verticalScrollIndicatorInsets?<a class="headerlink" href="#verticalscrollindicatorinsets" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>verticalScrollIndicatorInsets?</strong>: <a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></p>
-</blockquote>
-<h5 id="since_35">Since<a class="headerlink" href="#since_35" title="Permanent link">&para;</a></h5>
-<p>11.1</p>
-<h4 id="zoomscale">zoomScale?<a class="headerlink" href="#zoomscale" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>zoomScale?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_36">Since<a class="headerlink" href="#since_36" title="Permanent link">&para;</a></h5>
-<p>3.0</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowsKeyboardScrolling?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17.0</td>
+</tr>
+<tr>
+<td><code>alwaysBounceHorizontal?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>alwaysBounceVertical?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>automaticallyAdjustsScrollIndicatorInsets?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 13.0</td>
+</tr>
+<tr>
+<td><code>bounces?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>bouncesHorizontally?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17.4</td>
+</tr>
+<tr>
+<td><code>bouncesVertically?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17.4</td>
+</tr>
+<tr>
+<td><code>bouncesZoom?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>canCancelContentTouches?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentAlignmentPoint?</code></td>
+<td><a href="../CGPoint/"><code>CGPoint</code></a></td>
+<td><strong>Since</strong> 17.4</td>
+</tr>
+<tr>
+<td><code>contentInset?</code></td>
+<td><a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentInsetAdjustmentBehavior?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/ContentInsetAdjustmentBehavior/">IOSConstants.ContentInsetAdjustmentBehavior</a>. <strong>Since</strong> 11.0</td>
+</tr>
+<tr>
+<td><code>contentOffset?</code></td>
+<td><a href="../CGPoint/"><code>CGPoint</code></a></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>contentSize?</code></td>
+<td><a href="../CGSize/"><code>CGSize</code></a></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>decelerationRate?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 3.0</td>
+</tr>
+<tr>
+<td><code>delaysContentTouches?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>directionalLockEnabled?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>horizontalScrollIndicatorInsets?</code></td>
+<td><a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></td>
+<td><strong>Since</strong> 11.1</td>
+</tr>
+<tr>
+<td><code>indicatorStyle?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/IndicatorStyle/">IOSConstants.IndicatorStyle</a>.</td>
+</tr>
+<tr>
+<td><code>keyboardDismissMode?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/KeyboardDismissMode/">IOSConstants.KeyboardDismissMode</a>. <strong>Since</strong> 7.0</td>
+</tr>
+<tr>
+<td><code>maximumZoomScale?</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>minimumZoomScale?</code></td>
+<td><code>number</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>pagingEnabled?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>scrollEnabled?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>scrollIndicatorInsets?</code></td>
+<td><a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>scrollsToTop?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>showsHorizontalScrollIndicator?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>showsVerticalScrollIndicator?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>transfersHorizontalScrollingToParent?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17.4</td>
+</tr>
+<tr>
+<td><code>transfersVerticalScrollingToParent?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 17.4</td>
+</tr>
+<tr>
+<td><code>verticalScrollIndicatorInsets?</code></td>
+<td><a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></td>
+<td><strong>Since</strong> 11.1</td>
+</tr>
+<tr>
+<td><code>zoomScale?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 3.0</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="webpagepreferences">webpagePreferences<a class="headerlink" href="#webpagepreferences" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>webpagePreferences</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">webpagePreferences</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKWebpagePreferences</code></p>
-<h4 id="allowscontentjavascript">allowsContentJavaScript?<a class="headerlink" href="#allowscontentjavascript" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsContentJavaScript?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_37">Since<a class="headerlink" href="#since_37" title="Permanent link">&para;</a></h5>
-<p>14.0</p>
-<h4 id="allowsjshandlecreationinpageworld">allowsJSHandleCreationInPageWorld?<a class="headerlink" href="#allowsjshandlecreationinpageworld" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsJSHandleCreationInPageWorld?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_38">Since<a class="headerlink" href="#since_38" title="Permanent link">&para;</a></h5>
-<p>27.0</p>
-<h4 id="globalprivacycontrolenabled">globalPrivacyControlEnabled?<a class="headerlink" href="#globalprivacycontrolenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>globalPrivacyControlEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_39">Since<a class="headerlink" href="#since_39" title="Permanent link">&para;</a></h5>
-<p>27.0</p>
-<h4 id="lockdownmodeenabled">lockdownModeEnabled?<a class="headerlink" href="#lockdownmodeenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>lockdownModeEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_40">Since<a class="headerlink" href="#since_40" title="Permanent link">&para;</a></h5>
-<p>16.0</p>
-<h4 id="overridereferrer">overrideReferrer?<a class="headerlink" href="#overridereferrer" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>overrideReferrer?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_41">Since<a class="headerlink" href="#since_41" title="Permanent link">&para;</a></h5>
-<p>27.0</p>
-<h4 id="preferredcontentmode">preferredContentMode?<a class="headerlink" href="#preferredcontentmode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>preferredContentMode?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/ContentMode/">IOSConstants.ContentMode</a>.</p>
-<h5 id="since_42">Since<a class="headerlink" href="#since_42" title="Permanent link">&para;</a></h5>
-<p>13.0</p>
-<h4 id="preferredhttpsnavigationpolicy">preferredHTTPSNavigationPolicy?<a class="headerlink" href="#preferredhttpsnavigationpolicy" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>preferredHTTPSNavigationPolicy?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/WebpagePreferencesUpgradeToHTTPSPolicy/">IOSConstants.WebpagePreferencesUpgradeToHTTPSPolicy</a>.</p>
-<h5 id="since_43">Since<a class="headerlink" href="#since_43" title="Permanent link">&para;</a></h5>
-<p>18.2</p>
-<h4 id="securityrestrictionmode">securityRestrictionMode?<a class="headerlink" href="#securityrestrictionmode" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>securityRestrictionMode?</strong>: <code>number</code></p>
-</blockquote>
-<p>A <a href="../../namespaces/IOSConstants/enumerations/SecurityRestrictionMode/">IOSConstants.SecurityRestrictionMode</a>.</p>
-<h5 id="since_44">Since<a class="headerlink" href="#since_44" title="Permanent link">&para;</a></h5>
-<p>26.4</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowsContentJavaScript?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 14.0</td>
+</tr>
+<tr>
+<td><code>allowsJSHandleCreationInPageWorld?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 27.0</td>
+</tr>
+<tr>
+<td><code>globalPrivacyControlEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 27.0</td>
+</tr>
+<tr>
+<td><code>lockdownModeEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 16.0</td>
+</tr>
+<tr>
+<td><code>overrideReferrer?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 27.0</td>
+</tr>
+<tr>
+<td><code>preferredContentMode?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/ContentMode/">IOSConstants.ContentMode</a>. <strong>Since</strong> 13.0</td>
+</tr>
+<tr>
+<td><code>preferredHTTPSNavigationPolicy?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/WebpagePreferencesUpgradeToHTTPSPolicy/">IOSConstants.WebpagePreferencesUpgradeToHTTPSPolicy</a>. <strong>Since</strong> 18.2</td>
+</tr>
+<tr>
+<td><code>securityRestrictionMode?</code></td>
+<td><code>number</code></td>
+<td>A <a href="../../namespaces/IOSConstants/enumerations/SecurityRestrictionMode/">IOSConstants.SecurityRestrictionMode</a>. <strong>Since</strong> 26.4</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="webview">webView<a class="headerlink" href="#webview" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>webView</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nx">webView</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKWebView</code></p>
-<h4 id="allowsbackforwardnavigationgestures">allowsBackForwardNavigationGestures?<a class="headerlink" href="#allowsbackforwardnavigationgestures" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsBackForwardNavigationGestures?</strong>: <code>boolean</code></p>
-</blockquote>
-<h4 id="allowslinkpreview">allowsLinkPreview?<a class="headerlink" href="#allowslinkpreview" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowsLinkPreview?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_45">Since<a class="headerlink" href="#since_45" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h4 id="customuseragent">customUserAgent?<a class="headerlink" href="#customuseragent" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>customUserAgent?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_46">Since<a class="headerlink" href="#since_46" title="Permanent link">&para;</a></h5>
-<p>9.0</p>
-<h4 id="findinteractionenabled">findInteractionEnabled?<a class="headerlink" href="#findinteractionenabled" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>findInteractionEnabled?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_47">Since<a class="headerlink" href="#since_47" title="Permanent link">&para;</a></h5>
-<p>16.0</p>
-<h4 id="inspectable">inspectable?<a class="headerlink" href="#inspectable" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>inspectable?</strong>: <code>boolean</code></p>
-</blockquote>
-<h5 id="since_48">Since<a class="headerlink" href="#since_48" title="Permanent link">&para;</a></h5>
-<p>16.4</p>
-<h4 id="mediatype">mediaType?<a class="headerlink" href="#mediatype" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>mediaType?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_49">Since<a class="headerlink" href="#since_49" title="Permanent link">&para;</a></h5>
-<p>14.0</p>
-<h4 id="obscuredcontentinsets">obscuredContentInsets?<a class="headerlink" href="#obscuredcontentinsets" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>obscuredContentInsets?</strong>: <a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></p>
-</blockquote>
-<h5 id="since_50">Since<a class="headerlink" href="#since_50" title="Permanent link">&para;</a></h5>
-<p>26.0</p>
-<h4 id="pagezoom">pageZoom?<a class="headerlink" href="#pagezoom" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>pageZoom?</strong>: <code>number</code></p>
-</blockquote>
-<h5 id="since_51">Since<a class="headerlink" href="#since_51" title="Permanent link">&para;</a></h5>
-<p>14.0</p>
-<h4 id="underpagebackgroundcolor">underPageBackgroundColor?<a class="headerlink" href="#underpagebackgroundcolor" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>underPageBackgroundColor?</strong>: <code>string</code> | <code>null</code></p>
-</blockquote>
-<h5 id="since_52">Since<a class="headerlink" href="#since_52" title="Permanent link">&para;</a></h5>
-<p>15.0</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowsBackForwardNavigationGestures?</code></td>
+<td><code>boolean</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>allowsLinkPreview?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 9.0</td>
+</tr>
+<tr>
+<td><code>customUserAgent?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 9.0</td>
+</tr>
+<tr>
+<td><code>findInteractionEnabled?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 16.0</td>
+</tr>
+<tr>
+<td><code>inspectable?</code></td>
+<td><code>boolean</code></td>
+<td><strong>Since</strong> 16.4</td>
+</tr>
+<tr>
+<td><code>mediaType?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 14.0</td>
+</tr>
+<tr>
+<td><code>obscuredContentInsets?</code></td>
+<td><a href="../UIEdgeInsets/"><code>UIEdgeInsets</code></a></td>
+<td><strong>Since</strong> 26.0</td>
+</tr>
+<tr>
+<td><code>pageZoom?</code></td>
+<td><code>number</code></td>
+<td><strong>Since</strong> 14.0</td>
+</tr>
+<tr>
+<td><code>underPageBackgroundColor?</code></td>
+<td><code>string</code> | <code>null</code></td>
+<td><strong>Since</strong> 15.0</td>
+</tr>
+</tbody>
+</table>
 
 
 

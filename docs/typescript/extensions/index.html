@@ -3160,7 +3160,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3214,7 +3214,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3592,7 +3592,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -3997,7 +3997,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6178,30 +6178,96 @@
 <a href="https://github.com/RasmusKard/react-native-minimal-webview/tree/main/extensions#readme">README</a>.</p>
 <h2 id="extensions">Extensions<a class="headerlink" href="#extensions" title="Permanent link">&para;</a></h2>
 <p>One function per extension, whose result goes into the core's <code>extensions</code> prop.</p>
-<ul>
-<li><a href="functions/androidLayerType/">androidLayerType</a></li>
-<li><a href="functions/basicAuthCredential/">basicAuthCredential</a></li>
-<li><a href="functions/dialogs/">dialogs</a></li>
-<li><a href="functions/hideKeyboardAccessoryView/">hideKeyboardAccessoryView</a></li>
-<li><a href="functions/menuItems/">menuItems</a></li>
-<li><a href="functions/nestedScrollEnabled/">nestedScrollEnabled</a></li>
-<li><a href="functions/onScroll/">onScroll</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="functions/androidLayerType/">androidLayerType</a></td>
+<td>Sets the WebView's layer type, and keeps it on the WebView that replaces one whose renderer crashed: react-native-webview's <code>androidLayerType</code>. Switched off, the layer type is <code>'none'</code> again. Null on iOS.</td>
+</tr>
+<tr>
+<td><a href="functions/basicAuthCredential/">basicAuthCredential</a></td>
+<td>Answers HTTP auth challenges with <code>credential</code>, on every host: react-native-webview's <code>basicAuthCredential</code>.</td>
+</tr>
+<tr>
+<td><a href="functions/dialogs/">dialogs</a></td>
+<td>Answers the page's <code>alert</code>, <code>confirm</code> and <code>prompt</code> with <code>onDialog</code> instead of the native dialogs; the page waits for the answer. Not in react-native-webview, whose dialogs are native.</td>
+</tr>
+<tr>
+<td><a href="functions/hideKeyboardAccessoryView/">hideKeyboardAccessoryView</a></td>
+<td>Hides the bar above the keyboard (previous, next, done) for the page's inputs: react-native-webview's <code>hideKeyboardAccessoryView</code>. Null on Android.</td>
+</tr>
+<tr>
+<td><a href="functions/menuItems/">menuItems</a></td>
+<td>The text selection menu: react-native-webview's <code>menuItems</code>, <code>suppressMenuItems</code> and <code>onCustomMenuSelection</code>. <code>items</code> replace the system's items, <code>onSelect</code> gets the one chosen, and on iOS <code>suppress</code> hides system items. Null when neither is set on this platform (<code>suppress</code> alone on Android).</td>
+</tr>
+<tr>
+<td><a href="functions/nestedScrollEnabled/">nestedScrollEnabled</a></td>
+<td>Keeps a swipe that starts on the page for the page, inside a scrolling parent such as a <code>ScrollView</code>: react-native-webview's <code>nestedScrollEnabled</code>. Null on iOS.</td>
+</tr>
+<tr>
+<td><a href="functions/onScroll/">onScroll</a></td>
+<td>Calls <code>handler</code> on each change of the scroll offset, with no throttling: react-native-webview's <code>onScroll</code>.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="values">Values<a class="headerlink" href="#values" title="Permanent link">&para;</a></h2>
 <p>What the functions take.</p>
-<ul>
-<li><a href="type-aliases/AndroidLayerType/">AndroidLayerType</a></li>
-<li><a href="type-aliases/BasicAuthCredential/">BasicAuthCredential</a></li>
-<li><a href="type-aliases/MenuItem/">MenuItem</a></li>
-<li><a href="type-aliases/SuppressMenuItem/">SuppressMenuItem</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Type Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/AndroidLayerType/">AndroidLayerType</a></td>
+<td>A layer type of Android's <code>View.setLayerType</code>, for <a href="functions/androidLayerType/">androidLayerType</a>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/BasicAuthCredential/">BasicAuthCredential</a></td>
+<td>A user name and password, for <a href="functions/basicAuthCredential/">basicAuthCredential</a>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/MenuItem/">MenuItem</a></td>
+<td>An item of the text selection menu, for <a href="functions/menuItems/">menuItems</a>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/SuppressMenuItem/">SuppressMenuItem</a></td>
+<td>A system item of the text selection menu, by react-native-webview's name, for <a href="functions/menuItems/">menuItems</a>.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="events">Events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h2>
 <p>What the handlers receive.</p>
-<ul>
-<li><a href="type-aliases/CustomMenuSelectionEvent/">CustomMenuSelectionEvent</a></li>
-<li><a href="type-aliases/Dialog/">Dialog</a></li>
-<li><a href="type-aliases/ScrollEvent/">ScrollEvent</a></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Type Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="type-aliases/CustomMenuSelectionEvent/">CustomMenuSelectionEvent</a></td>
+<td>An item chosen from the text selection menu, for <a href="functions/menuItems/">menuItems</a>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/Dialog/">Dialog</a></td>
+<td>A page's <code>alert</code>, <code>confirm</code> or <code>prompt</code>, for <a href="functions/dialogs/">dialogs</a>.</td>
+</tr>
+<tr>
+<td><a href="type-aliases/ScrollEvent/">ScrollEvent</a></td>
+<td>A scroll, for <a href="functions/onScroll/">onScroll</a>: react-native-webview's event, in points (iOS) or dp (Android).</td>
+</tr>
+</tbody>
+</table>
 
 
 

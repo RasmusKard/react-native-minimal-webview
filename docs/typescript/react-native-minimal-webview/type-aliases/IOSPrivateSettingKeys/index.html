@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4085,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6376,33 +6376,52 @@
 
 
 <h1 id="iosprivatesettingkeys">IOSPrivateSettingKeys<a class="headerlink" href="#iosprivatesettingkeys" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>IOSPrivateSettingKeys</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">IOSPrivateSettingKeys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><strong><code>iOS</code></strong></p>
 <p>The private WebKit settings <a href="../IOSSettings/">IOSSettings</a> takes besides <a href="../IOSSettingKeys/">IOSSettingKeys</a>, both off by default.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="configuration">configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>configuration</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">configuration</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKWebViewConfiguration</code></p>
-<h4 id="allowuniversalaccessfromfileurls">allowUniversalAccessFromFileURLs?<a class="headerlink" href="#allowuniversalaccessfromfileurls" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowUniversalAccessFromFileURLs?</strong>: <code>boolean</code></p>
-</blockquote>
-<p>Lets a <code>file:</code> page read any URL.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowUniversalAccessFromFileURLs?</code></td>
+<td><code>boolean</code></td>
+<td>Lets a <code>file:</code> page read any URL.</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="preferences">preferences<a class="headerlink" href="#preferences" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>preferences</strong>: <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">preferences</span><span class="o">:</span><span class="w"> </span><span class="kt">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p><code>WKPreferences</code></p>
-<h4 id="allowfileaccessfromfileurls">allowFileAccessFromFileURLs?<a class="headerlink" href="#allowfileaccessfromfileurls" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><code>optional</code> <strong>allowFileAccessFromFileURLs?</strong>: <code>boolean</code></p>
-</blockquote>
-<p>Lets a <code>file:</code> page read other <code>file:</code> URLs.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowFileAccessFromFileURLs?</code></td>
+<td><code>boolean</code></td>
+<td>Lets a <code>file:</code> page read other <code>file:</code> URLs.</td>
+</tr>
+</tbody>
+</table>
 
 
 

@@ -920,23 +920,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#credential" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        credential
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -3248,7 +3231,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3302,7 +3285,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3680,7 +3663,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4068,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6122,23 +6105,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#credential" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        credential
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -6306,9 +6272,8 @@
 
 
 <h1 id="basicauthcredential">basicAuthCredential()<a class="headerlink" href="#basicauthcredential" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>basicAuthCredential</strong>(<code>credential</code>): <a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">function</span><span class="w"> </span><span class="nx">basicAuthCredential</span><span class="p">(</span><span class="nx">credential</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">HookExtension</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Answers HTTP auth challenges with <code>credential</code>, on every host: react-native-webview's <code>basicAuthCredential</code>.</p>
 <p>iOS answers HTTP basic challenges, and Android every HTTP auth request, digest included. Neither sends the credential
 again once the site has rejected it: the site's 401 page shows. A change applies from the next challenge.</p>
@@ -6317,8 +6282,20 @@ WebKit's default handling.</p>
 <p>A credential once accepted stays with the WebView's network session, as in a browser: after it changes or is
 switched off, an origin that accepted it can still get it, until the app restarts.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
-<h3 id="credential">credential<a class="headerlink" href="#credential" title="Permanent link">&para;</a></h3>
-<p><a href="../../type-aliases/BasicAuthCredential/"><code>BasicAuthCredential</code></a></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>credential</code></td>
+<td><a href="../../type-aliases/BasicAuthCredential/"><code>BasicAuthCredential</code></a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h2>
 <p><a href="../../../react-native-minimal-webview/type-aliases/HookExtension/"><code>HookExtension</code></a></p>
 

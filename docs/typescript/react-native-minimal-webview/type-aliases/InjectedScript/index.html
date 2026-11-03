@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4107,7 +4107,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6420,32 +6420,28 @@
 
 
 <h1 id="injectedscript">InjectedScript<a class="headerlink" href="#injectedscript" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>InjectedScript</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">InjectedScript</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Runs at document start, before any page script and before the DOM is parsed.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">script</span><span class="o">:</span><span class="w"> </span><span class="kt">InjectedScript</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nx">code</span><span class="o">:</span><span class="w"> </span><span class="s2">"addEventListener('DOMContentLoaded', () =&gt; document.body.classList.add('in-app'));"</span><span class="p">,</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nx">origins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">],</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">};</span>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">script</span><span class="o">:</span><span class="w"> </span><span class="kt">InjectedScript</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nx">code</span><span class="o">:</span><span class="w"> </span><span class="s2">"addEventListener('DOMContentLoaded', () =&gt; document.body.classList.add('in-app'));"</span><span class="p">,</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">origins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">],</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">};</span>
 </span></code></pre></div>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="allframes">allFrames?<a class="headerlink" href="#allframes" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>optional</code> <strong>allFrames?</strong>: <code>boolean</code> = <code>false</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">allFrames?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Runs it in every frame, iframes included.</p>
 <hr />
 <h3 id="code">code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>code</strong>: <code>string</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">code</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+</span></code></pre></div>
 <hr />
 <h3 id="origins">origins<a class="headerlink" href="#origins" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>origins</strong>: <code>string</code>[]</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">origins</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+</span></code></pre></div>
 <p>The origins whose frames run it, in the syntax of <a href="../BridgeOptions/#allowedorigins">BridgeOptions.allowedOrigins</a>. Each frame is matched by
 its own <code>location.origin</code>, so a listed page's iframes from other origins don't run it; about:blank and srcdoc
 frames have their parent's origin. <code>'*'</code> matches every origin, opaque ones (<code>data:</code>, sandboxed frames) and

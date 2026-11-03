@@ -28,7 +28,7 @@
     
     
       
-        <title>Bridge<Methods, Events> - react-native-minimal-webview</title>
+        <title>Bridge - react-native-minimal-webview</title>
       
     
     
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Bridge&lt;Methods, Events&gt;
+              Bridge
             
           </span>
         </div>
@@ -3171,7 +3171,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3188,7 +3188,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3233,38 +3233,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Type Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#methods" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Methods
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#events" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Events
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#methods_1" class="md-nav__link">
+  <a href="#methods" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Methods
@@ -3402,7 +3374,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3780,7 +3752,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4185,7 +4157,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6233,38 +6205,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Type Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#methods" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Methods
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#events" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Events
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#methods_1" class="md-nav__link">
+  <a href="#methods" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Methods
@@ -6575,10 +6519,9 @@
   
 
 
-<h1 id="bridgemethods-events">Bridge&lt;Methods, Events&gt;<a class="headerlink" href="#bridgemethods-events" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Bridge</strong>&lt;<code>Methods</code>, <code>Events</code>&gt; = <code>object</code></p>
-</blockquote>
+<h1 id="bridge">Bridge<a class="headerlink" href="#bridge" title="Permanent link">&para;</a></h1>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Bridge</span><span class="o">&lt;</span><span class="nx">Methods</span><span class="p">,</span><span class="w"> </span><span class="nx">Events</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>A promise-based RPC channel to <code>window.nativeBridge</code> in the page.</p>
 <p>Attach it with the <code>bridge</code> prop. Handlers and listeners belong to the bridge, not to a WebView: they stay across
 unmounts. Messages have no size limit.</p>
@@ -6593,87 +6536,201 @@ and <code>on</code>, and its calls reject with a <a href="../CodedError/">CodedE
 <h2 id="see">See<a class="headerlink" href="#see" title="Permanent link">&para;</a></h2>
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge">Bridge example</a></p>
 <h2 id="type-parameters">Type Parameters<a class="headerlink" href="#type-parameters" title="Permanent link">&para;</a></h2>
-<h3 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h3>
-<p><code>Methods</code> <em>extends</em> <a href="../BridgeMethodMap/"><code>BridgeMethodMap</code></a> = <a href="../BridgeMethodMap/"><code>BridgeMethodMap</code></a></p>
-<h3 id="events">Events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h3>
-<p><code>Events</code> <em>extends</em> <a href="../BridgeEventMap/"><code>BridgeEventMap</code></a> = <a href="../BridgeEventMap/"><code>BridgeEventMap</code></a></p>
-<h2 id="methods_1">Methods<a class="headerlink" href="#methods_1" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+<th>Default type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-methods"></a> <code>Methods</code> <em>extends</em> <a href="../BridgeMethodMap/"><code>BridgeMethodMap</code></a></td>
+<td><a href="../BridgeMethodMap/"><code>BridgeMethodMap</code></a></td>
+</tr>
+<tr>
+<td><a id="type-parameter-events"></a> <code>Events</code> <em>extends</em> <a href="../BridgeEventMap/"><code>BridgeEventMap</code></a></td>
+<td><a href="../BridgeEventMap/"><code>BridgeEventMap</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h2>
 <h3 id="call">call()<a class="headerlink" href="#call" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>call</strong>&lt;<code>M</code>&gt;(<code>method</code>, <code>params?</code>, <code>options?</code>): <code>Promise</code>&lt;<code>Methods</code>[<code>M</code>][<code>"result"</code>]&gt;</p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">call</span><span class="o">&lt;</span><span class="nx">M</span><span class="o">&gt;</span><span class="p">(</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">   </span><span class="nx">method</span><span class="p">,</span><span class="w"> </span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">   </span><span class="nx">params</span><span class="o">?</span><span class="p">,</span><span class="w"> </span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">   </span><span class="nx">options</span><span class="o">?</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">Methods</span><span class="p">[</span><span class="nx">M</span><span class="p">][</span><span class="s2">"result"</span><span class="p">]</span><span class="o">&gt;</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Calls a method the page registered with <code>nativeBridge.handle</code>.</p>
 <p>Rejects with a <a href="../CodedError/">CodedError</a>: <code>timeout</code>, <code>not_found</code>, <code>handler_error</code>, <code>navigated</code> or <code>unavailable</code>.
 <code>timeoutMs</code> overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain <code>RangeError</code>.</p>
 <h4 id="type-parameters_1">Type Parameters<a class="headerlink" href="#type-parameters_1" title="Permanent link">&para;</a></h4>
-<h5 id="m">M<a class="headerlink" href="#m" title="Permanent link">&para;</a></h5>
-<p><code>M</code> <em>extends</em> <code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-m"></a> <code>M</code> <em>extends</em> <code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
-<h5 id="method">method<a class="headerlink" href="#method" title="Permanent link">&para;</a></h5>
-<p><code>M</code></p>
-<h5 id="params">params?<a class="headerlink" href="#params" title="Permanent link">&para;</a></h5>
-<p><code>Methods</code>[<code>M</code>][<code>"params"</code>]</p>
-<h5 id="options">options?<a class="headerlink" href="#options" title="Permanent link">&para;</a></h5>
-<h6 id="timeoutms">timeoutMs?<a class="headerlink" href="#timeoutms" title="Permanent link">&para;</a></h6>
-<p><code>number</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method</code></td>
+<td><code>M</code></td>
+</tr>
+<tr>
+<td><code>params?</code></td>
+<td><code>Methods</code>[<code>M</code>][<code>"params"</code>]</td>
+</tr>
+<tr>
+<td><code>options?</code></td>
+<td>{ <code>timeoutMs?</code>: <code>number</code>; }</td>
+</tr>
+<tr>
+<td><code>options.timeoutMs?</code></td>
+<td><code>number</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
 <p><code>Promise</code>&lt;<code>Methods</code>[<code>M</code>][<code>"result"</code>]&gt;</p>
 <hr />
 <h3 id="emit">emit()<a class="headerlink" href="#emit" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>emit</strong>&lt;<code>E</code>&gt;(<code>event</code>, <code>payload?</code>): <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">emit</span><span class="o">&lt;</span><span class="nx">E</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">?</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Fires an event the page listens to with <code>nativeBridge.on</code>.</p>
 <p>Dropped if the page goes away before it arrives, or if the page has no listener for it.</p>
 <h4 id="type-parameters_2">Type Parameters<a class="headerlink" href="#type-parameters_2" title="Permanent link">&para;</a></h4>
-<h5 id="e">E<a class="headerlink" href="#e" title="Permanent link">&para;</a></h5>
-<p><code>E</code> <em>extends</em> <code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-e"></a> <code>E</code> <em>extends</em> <code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">&para;</a></h4>
-<h5 id="event">event<a class="headerlink" href="#event" title="Permanent link">&para;</a></h5>
-<p><code>E</code></p>
-<h5 id="payload">payload?<a class="headerlink" href="#payload" title="Permanent link">&para;</a></h5>
-<p><code>Events</code>[<code>E</code>]</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><code>E</code></td>
+</tr>
+<tr>
+<td><code>payload?</code></td>
+<td><code>Events</code>[<code>E</code>]</td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_1">Returns<a class="headerlink" href="#returns_1" title="Permanent link">&para;</a></h4>
 <p><code>void</code></p>
 <hr />
 <h3 id="handle">handle()<a class="headerlink" href="#handle" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>handle</strong>&lt;<code>M</code>&gt;(<code>method</code>, <code>handler</code>): () =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">handle</span><span class="o">&lt;</span><span class="nx">M</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">method</span><span class="p">,</span><span class="w"> </span><span class="nx">handler</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Answers <code>nativeBridge.call(method, params)</code> from the page.</p>
 <p>One handler per method: a later one replaces it. Returns an unsubscribe function, which removes only this handler.</p>
 <h4 id="type-parameters_3">Type Parameters<a class="headerlink" href="#type-parameters_3" title="Permanent link">&para;</a></h4>
-<h5 id="m_1">M<a class="headerlink" href="#m_1" title="Permanent link">&para;</a></h5>
-<p><code>M</code> <em>extends</em> <code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-m-1"></a> <code>M</code> <em>extends</em> <code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="parameters_2">Parameters<a class="headerlink" href="#parameters_2" title="Permanent link">&para;</a></h4>
-<h5 id="method_1">method<a class="headerlink" href="#method_1" title="Permanent link">&para;</a></h5>
-<p><code>M</code></p>
-<h5 id="handler">handler<a class="headerlink" href="#handler" title="Permanent link">&para;</a></h5>
-<p><a href="../BridgeHandler/"><code>BridgeHandler</code></a>&lt;<code>Methods</code>[<code>M</code>][<code>"params"</code>], <code>Methods</code>[<code>M</code>][<code>"result"</code>]&gt;</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method</code></td>
+<td><code>M</code></td>
+</tr>
+<tr>
+<td><code>handler</code></td>
+<td><a href="../BridgeHandler/"><code>BridgeHandler</code></a>&lt;<code>Methods</code>[<code>M</code>][<code>"params"</code>], <code>Methods</code>[<code>M</code>][<code>"result"</code>]&gt;</td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_2">Returns<a class="headerlink" href="#returns_2" title="Permanent link">&para;</a></h4>
 <p>() =&gt; <code>void</code></p>
 <hr />
 <h3 id="on">on()<a class="headerlink" href="#on" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>on</strong>&lt;<code>E</code>&gt;(<code>event</code>, <code>listener</code>): () =&gt; <code>void</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">on</span><span class="o">&lt;</span><span class="nx">E</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="w"> </span><span class="nx">listener</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Listens to <code>nativeBridge.emit(event, payload)</code> from the page. Returns an unsubscribe function.</p>
 <p>A listener that throws is reported as an unhandled promise rejection, and the event's later listeners don't run.</p>
 <h4 id="type-parameters_4">Type Parameters<a class="headerlink" href="#type-parameters_4" title="Permanent link">&para;</a></h4>
-<h5 id="e_1">E<a class="headerlink" href="#e_1" title="Permanent link">&para;</a></h5>
-<p><code>E</code> <em>extends</em> <code>string</code></p>
+<table>
+<thead>
+<tr>
+<th>Type Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a id="type-parameter-e-1"></a> <code>E</code> <em>extends</em> <code>string</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="parameters_3">Parameters<a class="headerlink" href="#parameters_3" title="Permanent link">&para;</a></h4>
-<h5 id="event_1">event<a class="headerlink" href="#event_1" title="Permanent link">&para;</a></h5>
-<p><code>E</code></p>
-<h5 id="listener">listener<a class="headerlink" href="#listener" title="Permanent link">&para;</a></h5>
-<p>(<code>payload</code>, <code>sender</code>) =&gt; <code>void</code></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td><code>E</code></td>
+</tr>
+<tr>
+<td><code>listener</code></td>
+<td>(<code>payload</code>, <code>sender</code>) =&gt; <code>void</code></td>
+</tr>
+</tbody>
+</table>
 <h4 id="returns_3">Returns<a class="headerlink" href="#returns_3" title="Permanent link">&para;</a></h4>
 <p>() =&gt; <code>void</code></p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="connection">[CONNECTION]<a class="headerlink" href="#connection" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><code>readonly</code> <strong>[CONNECTION]</strong>: <code>BridgeConnection</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">readonly</span><span class="w"> </span><span class="p">[</span><span class="nx">CONNECTION</span><span class="p">]</span><span class="o">:</span><span class="w"> </span><span class="nx">BridgeConnection</span><span class="p">;</span>
+</span></code></pre></div>
 <p>What <code>&lt;WebView&gt;</code> attaches to. Only <code>createBridge</code> sets it, so a hand-made or mock <code>Bridge</code> doesn't type-check.</p>
 
 

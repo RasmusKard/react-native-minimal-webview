@@ -3162,7 +3162,7 @@
   <span class="md-ellipsis">
     
   
-  Bridge&lt;Methods, Events&gt;
+  Bridge
 
     
   </span>
@@ -3216,7 +3216,7 @@
   <span class="md-ellipsis">
     
   
-  BridgeHandler&lt;Params, Result&gt;
+  BridgeHandler
 
     
   </span>
@@ -3594,7 +3594,7 @@
   <span class="md-ellipsis">
     
   
-  HookEvent&lt;N, P&gt;
+  HookEvent
 
     
   </span>
@@ -4085,7 +4085,7 @@
   <span class="md-ellipsis">
     
   
-  SettingsRoot&lt;Keys&gt;
+  SettingsRoot
 
     
   </span>
@@ -6376,23 +6376,20 @@
 
 
 <h1 id="processgoneevent">ProcessGoneEvent<a class="headerlink" href="#processgoneevent" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>ProcessGoneEvent</strong> = <code>object</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">ProcessGoneEvent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
+</span></code></pre></div>
 <p>The renderer process died, for <code>onProcessGone</code>.</p>
 <h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
 <h3 id="didcrash">didCrash<a class="headerlink" href="#didcrash" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>didCrash</strong>: <code>boolean</code> | <code>null</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">didCrash</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Whether the renderer crashed (true) or the system killed it for memory (false); null on iOS, where WebKit doesn't
 say.</p>
 <p>Test it with <code>=== true</code> or <code>=== false</code>, not as a condition.</p>
 <hr />
 <h3 id="recovered">recovered<a class="headerlink" href="#recovered" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>recovered</strong>: <code>boolean</code></p>
-</blockquote>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">recovered</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span></code></pre></div>
 <p>Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground
 and the view on screen, with the history restored unless the <code>source</code> page was on screen, and with the props
 applied but not what <code>call</code> set.</p>
