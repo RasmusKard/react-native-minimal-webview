@@ -62,7 +62,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 |---|---|---|---|
 | Android fullscreen video (`allowsFullscreenVideo`) | Off | On ([`onFullscreenChange`][onfullscreenchange]) | A native hook that takes `onShowCustomView` |
 | iOS universal links | Open the app that claims them | Load in place | An `external` rule for the host |
-| Downloads | Android: saved to Downloads | Open externally, or [`onDownload`][ondownload] saves them | A native hook's `onDownloadStart` (Android) |
+| Downloads | Android: saved to Downloads | Open externally, or [`onDownload`][ondownload] saves them | [`downloadManager`][downloadmanager] (Android) |
 | Renderer crash | Reported | The core reloads ([`onProcessGone`][onprocessgone]) | Keep `reload()` only for [`recovered: false`][recovered] |
 | Messaging | Every page; on Android every frame | `allowedOrigins`, main frame | An iframe's: a native hook |
 | Injected script | Document end, every origin | Document start, its `origins` | `addEventListener('DOMContentLoaded', …)`; `origins: ['*']` |
@@ -92,9 +92,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onPermissionRequest` |
 | `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus` | `call('webView.clearCache', [true])` and so on, on Android |
-| `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; Android [below](#incognito) |
-| `keyboardDisplayRequiresUserAction`, `removeIosKeyboardObserver` | A [native hook](native-hooks.md) |
-| `refreshControlLightMode`, `downloadingMessage`, `onLoadSubResourceError`, `nativeConfig` | A native hook |
+| `nativeConfig` | A [native hook](native-hooks.md) |
 | `containerStyle` | A `View` around the WebView |
 
 On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` do nothing under the new architecture.
@@ -107,11 +105,18 @@ has the setup. You pass each one in the `extensions` prop:
 | react-native-webview | Here |
 |---|---|
 | `basicAuthCredential` | [`basicAuthCredential`][basicauthcredential] |
+| `incognito` | [`incognito`][incognito] |
 | `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems] |
 | `onScroll` | [`onScroll`][onscroll] |
+| `style={{ backgroundColor: 'transparent' }}` | [`transparentBackground`][transparentbackground] |
 | `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview] |
+| `keyboardDisplayRequiresUserAction` | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction] |
+| `refreshControlLightMode` | [`refreshControlLightMode`][refreshcontrollightmode] |
+| `removeIosKeyboardObserver` | [`removeIosKeyboardObserver`][removeioskeyboardobserver] |
 | `nestedScrollEnabled` | [`nestedScrollEnabled`][nestedscrollenabled] |
 | `androidLayerType` | [`androidLayerType`][androidlayertype] |
+| Android downloads, `downloadingMessage` | [`downloadManager`][downloadmanager] |
+| `onLoadSubResourceError` | [`onLoadSubResourceError`][onloadsubresourceerror] |
 | JS dialogs (no prop) | [`dialogs`][dialogs] |
 
 The settings with another name:
@@ -134,7 +139,6 @@ The settings with another name:
 | `webviewDebuggingEnabled` | `webView.inspectable` | [`AndroidWebView.setWebContentsDebuggingEnabled()`][debugging], app-wide |
 | `allowFileAccessFromFileURLs` | `preferences.<the same name>` | `settings.<the same name>` |
 | `allowUniversalAccessFromFileURLs` | `configuration.<the same name>` | `settings.<the same name>` |
-| `style={{ backgroundColor: 'transparent' }}` | `call('webView.setOpaque:', [false])` after each mount and `configuration` or `bridge` change ([why][iossettings]) | `webView.other.backgroundColor: 0` |
 
 ## Props with no counterpart
 
@@ -144,7 +148,7 @@ The settings with another name:
 | `useSharedProcessPool` | `WKProcessPool` has had no effect since iOS 15 |
 | `ignoreSilentHardwareSwitch` | react-native-webview keeps a silent `<audio>` playing in the page for it |
 | `enableApplePay` | Apple Pay works with injected scripts since iOS 16 |
-| `lackPermissionToDownloadMessage` | A download lands in the app's cache, which needs no permission |
+| `lackPermissionToDownloadMessage` | `onDownload` saves into the app's cache, and [`downloadManager`][downloadmanager] into Downloads: neither needs a permission |
 
 ## What else changes
 
@@ -213,53 +217,6 @@ serves only the origins you allow.
 Pages that use `window.ReactNativeWebView.postMessage` and `message` events keep working with
 [`reactNativeWebViewMessages`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/)
 in `injectedScripts`. Its example shows what replaces `onMessage` and `postMessage`.
-
-## incognito
-
-On iOS, a non-persistent data store keeps the WebView's cookies, cache and storage, and they go with the WebView.
-
-Android has no incognito WebView. react-native-webview's `incognito` clears the app-wide cookies, the cache, the
-history and the form data, turns the cache off, and turns password and form-data saving off. This recipe clears the
-cookies and the cache and turns the cache off before the page loads. A new WebView has no history, WebView doesn't save
-form data since API 26, and password saving is deprecated.
-
-The first `source` is blank, as for [cookies before the first page](examples.md#before-the-first-page):
-
-```tsx
-import { useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
-import {
-  AndroidConstants,
-  WebView,
-  type WebViewRef,
-  type WebViewSource,
-} from 'react-native-minimal-webview';
-
-export function PrivateBrowser() {
-  const ref = useRef<WebViewRef>(null);
-  const [source, setSource] = useState<WebViewSource>({ uri: 'about:blank' });
-
-  useEffect(() => {
-    (async () => {
-      if (Platform.OS === 'android') {
-        await ref.current?.call('cookieManager.removeAllCookies'); // app-wide, as in react-native-webview
-        await ref.current?.call('webView.clearCache', [true]);
-      }
-      setSource({ uri: 'https://example.com' });
-    })();
-  }, []);
-
-  return (
-    <WebView
-      ref={ref}
-      source={source}
-      ios={{ configuration: { websiteDataStore: 'nonPersistent' } }}
-      android={{ settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE } }}
-      style={{ flex: 1 }}
-    />
-  );
-}
-```
 
 ## Loading and error screens
 
@@ -356,11 +313,17 @@ export function Browser() {
 [onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onopenexternal
 [navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules
 [useragent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#useragent
-[iossettings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/
 [basicauthcredential]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/
+[incognito]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/
 [menuitems]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/
 [onscroll]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/
+[transparentbackground]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/
 [hidekeyboardaccessoryview]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/
+[keyboarddisplayrequiresuseraction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/
+[refreshcontrollightmode]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/
+[removeioskeyboardobserver]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/
 [nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/
 [androidlayertype]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/
+[downloadmanager]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/
+[onloadsubresourceerror]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/
 [dialogs]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/

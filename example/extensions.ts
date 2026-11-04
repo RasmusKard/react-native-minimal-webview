@@ -3,16 +3,24 @@ import {
   type CustomMenuSelectionEvent,
   type Dialog,
   type ScrollEvent,
+  type SubResourceErrorEvent,
   androidLayerType,
   basicAuthCredential,
   dialogs as dialogsExtension,
+  downloadManager,
   hideKeyboardAccessoryView,
+  incognito,
+  keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
+  onLoadSubResourceError,
   onScroll,
+  refreshControlLightMode,
+  removeIosKeyboardObserver,
+  transparentBackground,
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
-import { IOSConstants } from 'react-native-minimal-webview';
+import { AndroidConstants, IOSConstants } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
 import {
@@ -58,7 +66,9 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 
 /**
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press (maestro/extensions.yaml); the keyboard accessory bar and nested scrolling are left to a person.
+ * driver's long press (maestro/extensions.yaml). Left to a person: what shows only on screen (the keyboard accessory
+ * bar, the refresh spinner's color, Android's transparent background, the Download Manager's file and toast) and
+ * nested scrolling.
  */
 export async function extensions(h: Harness) {
   const r = reporter('extensions');
@@ -69,6 +79,8 @@ export async function extensions(h: Harness) {
     await dialogs(h, r, warnings);
     await scroll(h, r);
     await menu(h, r, warnings);
+    await background(h, r);
+    await privacy(h, r);
     await (ios ? keyboard(h, r) : android(h, r));
     const stray = warnings.lines.filter(
       (line) => line.includes(`hookOptions.${KEY}.`) && !line.includes(`${KEY}.menuItems`)
@@ -292,6 +304,63 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   h.setProps({});
 }
 
+async function background(h: Harness, r: Reporter) {
+  if (!ios) {
+    h.setProps({ extensions: [transparentBackground()] });
+    await sleep(300);
+    r.info(
+      'transparentBackground',
+      'WebView has no getter for its background color: check it by hand'
+    );
+    h.setProps({});
+    return;
+  }
+  const opaque = async () => await h.ref.current?.call('webView.isOpaque').catch(errorCode);
+  const states: unknown[] = [];
+  for (const on of [true, false]) {
+    h.setProps({ extensions: [on && transparentBackground()] });
+    states.push((await until(async () => (await opaque()) === !on, 3000)) ? !on : await opaque());
+  }
+  r.check(
+    'transparentBackground, set after mount, makes the WebView not opaque; off, opaque again',
+    JSON.stringify(states) === '[false,true]',
+    states
+  );
+}
+
+async function privacy(h: Harness, r: Reporter) {
+  if (ios) {
+    const persistent = async () =>
+      await h.ref.current?.get('websiteDataStore.persistent').catch(errorCode);
+    const before = await persistent();
+    await recreate(h, { extensions: [incognito()] }, true);
+    const after = await persistent();
+    r.check(
+      "incognito set at creation gives the WebView a data store that isn't saved",
+      before === true && after === false,
+      { before, after }
+    );
+    await recreate(h, {}, true);
+    return;
+  }
+  const cookie = async () =>
+    await h.ref.current?.call('cookieManager.getCookie', [h.pages]).catch(errorCode);
+  await openPage(h, fresh(h, '/setcookie?name=incognito&value=1'));
+  const set = await cookie();
+  await openPage(h, fresh(h, '/')); // the source the new WebView loads
+  await recreate(h, { extensions: [incognito()] }, true);
+  const cleared = await cookie();
+  const cacheMode = await h.ref.current?.get('settings.cacheMode').catch(errorCode);
+  r.check(
+    'incognito set at creation clears the cookies set before, and turns the cache off',
+    String(set).includes('incognito=1') &&
+      cleared === null &&
+      cacheMode === AndroidConstants.WebSettings.LOAD_NO_CACHE,
+    { set, cleared, cacheMode }
+  );
+  await recreate(h, {}, true);
+}
+
 async function keyboard(h: Harness, r: Reporter) {
   const focus = async () =>
     await h.ref.current
@@ -313,6 +382,57 @@ async function keyboard(h: Harness, r: Reporter) {
     'hideKeyboardAccessoryView',
     'the bar shows only with the software keyboard: check it by hand'
   );
+  // The keyboard shrinks the visual viewport. evaluate's script has a user gesture, which WebKit forwards to a timer but
+  // not to a nested one: this focus is the page's own.
+  const viewport = async () => (await h.ref.current?.evaluate('visualViewport.height')) as number;
+  const keyboardShows = async () => {
+    await loadHtml(h, '<input id="i">');
+    const height = await viewport();
+    await h.ref.current?.evaluate(
+      "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
+    );
+    return !!(await until(async () => (await viewport()) < height, 2000));
+  };
+  // Each WebView is one the keyboard hasn't shown for: WebKit's own rules show it for a later focus in that one.
+  await recreate(h, {}, true);
+  const before = await keyboardShows();
+  h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
+  await sleep(300);
+  const on = await keyboardShows();
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, true);
+  h.setProps({});
+  await sleep(300);
+  const off = await keyboardShows();
+  r.check(
+    "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not",
+    !before && on && !off,
+    { before, on, off }
+  );
+  // evaluate's user gesture shows the keyboard; its bottom inset comes from the observers the extension removes.
+  const keyboardInset = async () => {
+    await loadHtml(h, '<input id="i">');
+    const height = await viewport();
+    await h.ref.current?.evaluate("document.getElementById('i').focus()");
+    await until(async () => (await viewport()) < height, 2000);
+    await sleep(300);
+    const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
+    return (inset as { bottom?: number } | undefined)?.bottom;
+  };
+  await recreate(h, {}, true);
+  const observed = await keyboardInset();
+  await recreate(h, {}, true);
+  h.setProps({ extensions: [removeIosKeyboardObserver()] });
+  await sleep(300);
+  const removed = await keyboardInset();
+  r.check(
+    "removeIosKeyboardObserver, set after mount, keeps the keyboard out of the scroll view's inset",
+    (observed ?? 0) > 0 && removed === 0,
+    { observed, removed }
+  );
+  h.setProps({ extensions: [refreshControlLightMode()] });
+  await sleep(300);
+  r.info('refreshControlLightMode', 'the spinner shows only on a pull: check it by hand');
+  h.setProps({});
 }
 
 async function android(h: Harness, r: Reporter) {
@@ -335,6 +455,48 @@ async function android(h: Harness, r: Reporter) {
   r.info(
     'nestedScrollEnabled',
     'needs a scrolling parent, which the example has none of: check it by hand'
+  );
+  // The Download Manager can't fetch a data: URL: onDownload still gets that one.
+  const handed = () => h.events.downloads.length + h.events.downloadFailures.length;
+  h.setProps({ extensions: [downloadManager({ downloadingMessage: 'Saving' })] });
+  await openPage(h, fresh(h, '/media.html'));
+  const before = handed();
+  await h.ref.current?.evaluate(
+    "(() => { const a = document.getElementById('attachment'); a.href = '/download?name=downloadManager.txt'; a.click(); })()"
+  );
+  await sleep(3000);
+  const taken = handed() === before;
+  await h.ref.current?.evaluate("document.getElementById('data').click()");
+  const left = !!(await until(() => handed() > before, 10000));
+  r.check(
+    'downloadManager takes an attachment from onDownload, and leaves it a data: download',
+    taken && left,
+    { taken, left, downloads: h.events.downloads.slice(-1), failures: h.events.downloadFailures }
+  );
+  r.info(
+    'downloadManager',
+    'the file in the Downloads folder, its notification and the toast: check them by hand'
+  );
+  // Nothing listens on port 1; the test server's https has a self-signed certificate.
+  const failed: SubResourceErrorEvent[] = [];
+  h.setProps({ extensions: [onLoadSubResourceError((event) => failed.push(event))] });
+  await sleep(300);
+  const image = 'http://127.0.0.1:1/x.png';
+  await loadHtml(
+    h,
+    `<img src="${image}"><img src="https://localhost:8443/x.png" onerror="window.sslFailed = true">`
+  );
+  const reported = await until(() => failed.find(({ url }) => url === image), 5000);
+  const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
+  await openPage(h, 'http://127.0.0.1:1/main');
+  await sleep(1000);
+  r.check(
+    "onLoadSubResourceError, set after mount, gets an image's failure with its code; not an SSL one or the main frame's",
+    !!reported &&
+      reported.code < 0 &&
+      sslFailed === true &&
+      !failed.some(({ url }) => url.startsWith('https:') || url.endsWith('/main')),
+    { failed, sslFailed }
   );
   h.setProps({});
 }

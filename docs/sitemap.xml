@@ -160,7 +160,16 @@
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/</loc>
       </url>
       <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/</loc>
+      </url>
+      <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/</loc>
       </url>
       <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/</loc>
@@ -169,7 +178,19 @@
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/</loc>
       </url>
       <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/</loc>
+      </url>
+      <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/</loc>
       </url>
       <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/type-aliases/AndroidLayerType/</loc>
@@ -188,6 +209,9 @@
       </url>
       <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/type-aliases/ScrollEvent/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/type-aliases/SubResourceErrorEvent/</loc>
       </url>
       <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/type-aliases/SuppressMenuItem/</loc>

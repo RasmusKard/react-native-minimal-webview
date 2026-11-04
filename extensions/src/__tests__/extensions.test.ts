@@ -5,10 +5,17 @@ import {
   androidLayerType,
   basicAuthCredential,
   dialogs,
+  downloadManager,
   hideKeyboardAccessoryView,
+  incognito,
+  keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
+  onLoadSubResourceError,
   onScroll,
+  refreshControlLightMode,
+  removeIosKeyboardObserver,
+  transparentBackground,
 } from '..';
 
 const K = '@react-native-minimal-webview/extensions';
@@ -24,10 +31,15 @@ describe('the extensions', () => {
   it.each<[string, HookExtension | null, string, unknown]>([
     ['basicAuthCredential', basicAuthCredential({ username: 'u', password: 'p' }), 'basicAuthCredential', { username: 'u', password: 'p' }],
     ['dialogs', dialogs(() => true), 'dialogs', undefined],
+    ['incognito', incognito(), 'incognito', undefined],
     ['menuItems', menuItems({ items: MENU, onSelect: () => {} }), 'menuItems', { items: MENU }],
     ['menuItems with suppress only', menuItems({ suppress: ['copy'] }), 'menuItems', { suppress: ['copy'] }],
     ['onScroll', onScroll(() => {}), 'onScroll', undefined],
+    ['transparentBackground', transparentBackground(), 'transparentBackground', undefined],
     ['hideKeyboardAccessoryView', hideKeyboardAccessoryView(), 'hideKeyboardAccessoryView', undefined],
+    ['keyboardDisplayRequiresUserAction', keyboardDisplayRequiresUserAction(false), 'keyboardDisplayRequiresUserAction', undefined],
+    ['refreshControlLightMode', refreshControlLightMode(), 'refreshControlLightMode', undefined],
+    ['removeIosKeyboardObserver', removeIosKeyboardObserver(), 'removeIosKeyboardObserver', undefined],
   ])('%s has its key and options on iOS (none: the default, true)', (_, extension, name, options) => {
     expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
   });
@@ -40,14 +52,28 @@ describe('the extensions', () => {
       options: 'software',
     });
     expect(plain(menuItems({ items: MENU }))).toEqual({ key: `${K}.menuItems`, options: { items: MENU } });
+    expect(plain(transparentBackground())).toEqual({ key: `${K}.transparentBackground` });
+    expect(plain(incognito())).toEqual({ key: `${K}.incognito` });
+    expect(plain(downloadManager())).toEqual({ key: `${K}.downloadManager` });
+    expect(plain(downloadManager({ downloadingMessage: 'Saving' }))).toEqual({
+      key: `${K}.downloadManager`,
+      options: { downloadingMessage: 'Saving' },
+    });
+    expect(plain(onLoadSubResourceError(() => {}))).toEqual({ key: `${K}.onLoadSubResourceError` });
     expect(hideKeyboardAccessoryView()).toBeNull();
+    expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
+    expect(refreshControlLightMode()).toBeNull();
+    expect(removeIosKeyboardObserver()).toBeNull();
     expect(menuItems({ suppress: ['copy'] })).toBeNull();
   });
 
-  it('gives null for the Android ones on iOS, and for a menu with nothing in it', () => {
+  it("gives null for the Android ones on iOS, for a menu with nothing in it, and for WebKit's keyboard default", () => {
     expect(nestedScrollEnabled()).toBeNull();
     expect(androidLayerType('hardware')).toBeNull();
+    expect(downloadManager()).toBeNull();
+    expect(onLoadSubResourceError(() => {})).toBeNull();
     expect(menuItems({ onSelect: () => {} })).toBeNull();
+    expect(keyboardDisplayRequiresUserAction(true)).toBeNull();
   });
 
   it("calls react-native-webview's callbacks with { nativeEvent }", () => {
@@ -62,6 +88,14 @@ describe('the extensions', () => {
       payload: selection,
     });
     expect(selected).toHaveBeenCalledWith({ nativeEvent: selection });
+  });
+
+  it('calls onLoadSubResourceError with the event as it came', () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const failed = jest.fn();
+    const error = { url: 'http://127.0.0.1:1/x.png', code: -6, description: 'net::ERR_CONNECTION_REFUSED' };
+    onLoadSubResourceError(failed)!.onEvent!({ name: 'error', payload: error });
+    expect(failed).toHaveBeenCalledWith(error);
   });
 
   it('calls onDialog with the dialog and its type, and returns its answer', async () => {
