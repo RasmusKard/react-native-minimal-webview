@@ -43,6 +43,7 @@ export function Browser() {
 |---|---|
 | [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/) | iOS, Android |
 | [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/) | iOS, Android |
+| [`incognito()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/) | iOS, Android |
 | [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/) | iOS, Android (`suppress`: iOS) |
 | [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/) | iOS, Android |
 | [`transparentBackground()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/) | iOS, Android |

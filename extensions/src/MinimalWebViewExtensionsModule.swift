@@ -9,6 +9,7 @@ public class MinimalWebViewExtensionsModule: Module {
       // or a setting, and none of these do: this is the README's order.
       BasicAuthCredential.register()
       Dialogs.register()
+      Incognito.register()
       MenuItems.register()
       OnScroll.register()
       TransparentBackground.register()

@@ -6,6 +6,7 @@ import {
   basicAuthCredential,
   dialogs,
   hideKeyboardAccessoryView,
+  incognito,
   keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
@@ -26,6 +27,7 @@ describe('the extensions', () => {
   it.each<[string, HookExtension | null, string, unknown]>([
     ['basicAuthCredential', basicAuthCredential({ username: 'u', password: 'p' }), 'basicAuthCredential', { username: 'u', password: 'p' }],
     ['dialogs', dialogs(() => true), 'dialogs', undefined],
+    ['incognito', incognito(), 'incognito', undefined],
     ['menuItems', menuItems({ items: MENU, onSelect: () => {} }), 'menuItems', { items: MENU }],
     ['menuItems with suppress only', menuItems({ suppress: ['copy'] }), 'menuItems', { suppress: ['copy'] }],
     ['onScroll', onScroll(() => {}), 'onScroll', undefined],
@@ -45,6 +47,7 @@ describe('the extensions', () => {
     });
     expect(plain(menuItems({ items: MENU }))).toEqual({ key: `${K}.menuItems`, options: { items: MENU } });
     expect(plain(transparentBackground())).toEqual({ key: `${K}.transparentBackground` });
+    expect(plain(incognito())).toEqual({ key: `${K}.incognito` });
     expect(hideKeyboardAccessoryView()).toBeNull();
     expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(menuItems({ suppress: ['copy'] })).toBeNull();

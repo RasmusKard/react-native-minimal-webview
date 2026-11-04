@@ -7,6 +7,7 @@ import {
   basicAuthCredential,
   dialogs as dialogsExtension,
   hideKeyboardAccessoryView,
+  incognito,
   keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
@@ -14,7 +15,7 @@ import {
   transparentBackground,
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
-import { IOSConstants } from 'react-native-minimal-webview';
+import { AndroidConstants, IOSConstants } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
 import {
@@ -73,6 +74,7 @@ export async function extensions(h: Harness) {
     await scroll(h, r);
     await menu(h, r, warnings);
     await background(h, r);
+    await privacy(h, r);
     await (ios ? keyboard(h, r) : android(h, r));
     const stray = warnings.lines.filter(
       (line) => line.includes(`hookOptions.${KEY}.`) && !line.includes(`${KEY}.menuItems`)
@@ -318,6 +320,39 @@ async function background(h: Harness, r: Reporter) {
     JSON.stringify(states) === '[false,true]',
     states
   );
+}
+
+async function privacy(h: Harness, r: Reporter) {
+  if (ios) {
+    const persistent = async () =>
+      await h.ref.current?.get('websiteDataStore.persistent').catch(errorCode);
+    const before = await persistent();
+    await recreate(h, { extensions: [incognito()] }, true);
+    const after = await persistent();
+    r.check(
+      "incognito set at creation gives the WebView a data store that isn't saved",
+      before === true && after === false,
+      { before, after }
+    );
+    await recreate(h, {}, true);
+    return;
+  }
+  const cookie = async () =>
+    await h.ref.current?.call('cookieManager.getCookie', [h.pages]).catch(errorCode);
+  await openPage(h, fresh(h, '/setcookie?name=incognito&value=1'));
+  const set = await cookie();
+  await openPage(h, fresh(h, '/')); // the source the new WebView loads
+  await recreate(h, { extensions: [incognito()] }, true);
+  const cleared = await cookie();
+  const cacheMode = await h.ref.current?.get('settings.cacheMode').catch(errorCode);
+  r.check(
+    'incognito set at creation clears the cookies set before, and turns the cache off',
+    String(set).includes('incognito=1') &&
+      cleared === null &&
+      cacheMode === AndroidConstants.WebSettings.LOAD_NO_CACHE,
+    { set, cleared, cacheMode }
+  );
+  await recreate(h, {}, true);
 }
 
 async function keyboard(h: Harness, r: Reporter) {
