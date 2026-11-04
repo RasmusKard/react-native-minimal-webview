@@ -92,8 +92,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `sharedCookiesEnabled`, `pullToRefreshEnabled` | `sharedCookies`, `pullToRefresh` |
 | `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onPermissionRequest` |
 | `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus` | `call('webView.clearCache', [true])` and so on, on Android |
-| `removeIosKeyboardObserver` | A [native hook](native-hooks.md) |
-| `nativeConfig` | A native hook |
+| `nativeConfig` | A [native hook](native-hooks.md) |
 | `containerStyle` | A `View` around the WebView |
 
 On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` do nothing under the new architecture.
@@ -113,6 +112,7 @@ has the setup. You pass each one in the `extensions` prop:
 | `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview] |
 | `keyboardDisplayRequiresUserAction` | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction] |
 | `refreshControlLightMode` | [`refreshControlLightMode`][refreshcontrollightmode] |
+| `removeIosKeyboardObserver` | [`removeIosKeyboardObserver`][removeioskeyboardobserver] |
 | `nestedScrollEnabled` | [`nestedScrollEnabled`][nestedscrollenabled] |
 | `androidLayerType` | [`androidLayerType`][androidlayertype] |
 | Android downloads, `downloadingMessage` | [`downloadManager`][downloadmanager] |
@@ -321,6 +321,7 @@ export function Browser() {
 [hidekeyboardaccessoryview]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/
 [keyboarddisplayrequiresuseraction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/
 [refreshcontrollightmode]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/
+[removeioskeyboardobserver]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/
 [nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/
 [androidlayertype]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/
 [downloadmanager]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/

@@ -14,6 +14,7 @@ import {
   onLoadSubResourceError,
   onScroll,
   refreshControlLightMode,
+  removeIosKeyboardObserver,
   transparentBackground,
 } from '..';
 
@@ -38,6 +39,7 @@ describe('the extensions', () => {
     ['hideKeyboardAccessoryView', hideKeyboardAccessoryView(), 'hideKeyboardAccessoryView', undefined],
     ['keyboardDisplayRequiresUserAction', keyboardDisplayRequiresUserAction(false), 'keyboardDisplayRequiresUserAction', undefined],
     ['refreshControlLightMode', refreshControlLightMode(), 'refreshControlLightMode', undefined],
+    ['removeIosKeyboardObserver', removeIosKeyboardObserver(), 'removeIosKeyboardObserver', undefined],
   ])('%s has its key and options on iOS (none: the default, true)', (_, extension, name, options) => {
     expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
   });
@@ -61,6 +63,7 @@ describe('the extensions', () => {
     expect(hideKeyboardAccessoryView()).toBeNull();
     expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(refreshControlLightMode()).toBeNull();
+    expect(removeIosKeyboardObserver()).toBeNull();
     expect(menuItems({ suppress: ['copy'] })).toBeNull();
   });
 

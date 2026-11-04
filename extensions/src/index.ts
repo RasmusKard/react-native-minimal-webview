@@ -29,4 +29,5 @@ export * from '../nestedScrollEnabled';
 export * from '../onLoadSubResourceError';
 export * from '../onScroll';
 export * from '../refreshControlLightMode';
+export * from '../removeIosKeyboardObserver';
 export * from '../transparentBackground';

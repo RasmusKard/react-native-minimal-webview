@@ -16,6 +16,7 @@ import {
   onLoadSubResourceError,
   onScroll,
   refreshControlLightMode,
+  removeIosKeyboardObserver,
   transparentBackground,
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
@@ -406,6 +407,27 @@ async function keyboard(h: Harness, r: Reporter) {
     "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not",
     !before && on && !off,
     { before, on, off }
+  );
+  // evaluate's user gesture shows the keyboard; its bottom inset comes from the observers the extension removes.
+  const keyboardInset = async () => {
+    await loadHtml(h, '<input id="i">');
+    const height = await viewport();
+    await h.ref.current?.evaluate("document.getElementById('i').focus()");
+    await until(async () => (await viewport()) < height, 2000);
+    await sleep(300);
+    const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
+    return (inset as { bottom?: number } | undefined)?.bottom;
+  };
+  await recreate(h, {}, true);
+  const observed = await keyboardInset();
+  await recreate(h, {}, true);
+  h.setProps({ extensions: [removeIosKeyboardObserver()] });
+  await sleep(300);
+  const removed = await keyboardInset();
+  r.check(
+    "removeIosKeyboardObserver, set after mount, keeps the keyboard out of the scroll view's inset",
+    (observed ?? 0) > 0 && removed === 0,
+    { observed, removed }
   );
   h.setProps({ extensions: [refreshControlLightMode()] });
   await sleep(300);

@@ -16,6 +16,7 @@ public class MinimalWebViewExtensionsModule: Module {
       HideKeyboardAccessoryView.register()
       KeyboardDisplayRequiresUserAction.register()
       RefreshControlLightMode.register()
+      RemoveIosKeyboardObserver.register()
     }
   }
 }

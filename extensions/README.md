@@ -50,6 +50,7 @@ export function Browser() {
 | [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/) | iOS |
 | [`keyboardDisplayRequiresUserAction(required)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/) | iOS |
 | [`refreshControlLightMode()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/) | iOS |
+| [`removeIosKeyboardObserver()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/) | iOS |
 | [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/) | Android |
 | [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/) | Android |
 | [`downloadManager({ downloadingMessage })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/) | Android |
