@@ -10,6 +10,7 @@ import {
   menuItems,
   nestedScrollEnabled,
   onScroll,
+  transparentBackground,
 } from '..';
 
 const K = '@react-native-minimal-webview/extensions';
@@ -28,6 +29,7 @@ describe('the extensions', () => {
     ['menuItems', menuItems({ items: MENU, onSelect: () => {} }), 'menuItems', { items: MENU }],
     ['menuItems with suppress only', menuItems({ suppress: ['copy'] }), 'menuItems', { suppress: ['copy'] }],
     ['onScroll', onScroll(() => {}), 'onScroll', undefined],
+    ['transparentBackground', transparentBackground(), 'transparentBackground', undefined],
     ['hideKeyboardAccessoryView', hideKeyboardAccessoryView(), 'hideKeyboardAccessoryView', undefined],
     ['keyboardDisplayRequiresUserAction', keyboardDisplayRequiresUserAction(false), 'keyboardDisplayRequiresUserAction', undefined],
   ])('%s has its key and options on iOS (none: the default, true)', (_, extension, name, options) => {
@@ -42,6 +44,7 @@ describe('the extensions', () => {
       options: 'software',
     });
     expect(plain(menuItems({ items: MENU }))).toEqual({ key: `${K}.menuItems`, options: { items: MENU } });
+    expect(plain(transparentBackground())).toEqual({ key: `${K}.transparentBackground` });
     expect(hideKeyboardAccessoryView()).toBeNull();
     expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(menuItems({ suppress: ['copy'] })).toBeNull();

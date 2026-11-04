@@ -109,6 +109,7 @@ has the setup. You pass each one in the `extensions` prop:
 | `basicAuthCredential` | [`basicAuthCredential`][basicauthcredential] |
 | `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems] |
 | `onScroll` | [`onScroll`][onscroll] |
+| `style={{ backgroundColor: 'transparent' }}` | [`transparentBackground`][transparentbackground] |
 | `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview] |
 | `keyboardDisplayRequiresUserAction` | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction] |
 | `nestedScrollEnabled` | [`nestedScrollEnabled`][nestedscrollenabled] |
@@ -135,7 +136,6 @@ The settings with another name:
 | `webviewDebuggingEnabled` | `webView.inspectable` | [`AndroidWebView.setWebContentsDebuggingEnabled()`][debugging], app-wide |
 | `allowFileAccessFromFileURLs` | `preferences.<the same name>` | `settings.<the same name>` |
 | `allowUniversalAccessFromFileURLs` | `configuration.<the same name>` | `settings.<the same name>` |
-| `style={{ backgroundColor: 'transparent' }}` | `call('webView.setOpaque:', [false])` after each mount and `configuration` or `bridge` change ([why][iossettings]) | `webView.other.backgroundColor: 0` |
 
 ## Props with no counterpart
 
@@ -357,10 +357,10 @@ export function Browser() {
 [onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onopenexternal
 [navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules
 [useragent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#useragent
-[iossettings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/
 [basicauthcredential]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/
 [menuitems]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/
 [onscroll]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/
+[transparentbackground]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/
 [hidekeyboardaccessoryview]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/
 [keyboarddisplayrequiresuseraction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/
 [nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/

@@ -11,6 +11,7 @@ import {
   menuItems,
   nestedScrollEnabled,
   onScroll,
+  transparentBackground,
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
 import { IOSConstants } from 'react-native-minimal-webview';
@@ -59,7 +60,8 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 
 /**
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press (maestro/extensions.yaml); the keyboard accessory bar and nested scrolling are left to a person.
+ * driver's long press (maestro/extensions.yaml); the keyboard accessory bar, nested scrolling and Android's transparent
+ * background are left to a person.
  */
 export async function extensions(h: Harness) {
   const r = reporter('extensions');
@@ -70,6 +72,7 @@ export async function extensions(h: Harness) {
     await dialogs(h, r, warnings);
     await scroll(h, r);
     await menu(h, r, warnings);
+    await background(h, r);
     await (ios ? keyboard(h, r) : android(h, r));
     const stray = warnings.lines.filter(
       (line) => line.includes(`hookOptions.${KEY}.`) && !line.includes(`${KEY}.menuItems`)
@@ -291,6 +294,30 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     warnings.lines
   );
   h.setProps({});
+}
+
+async function background(h: Harness, r: Reporter) {
+  if (!ios) {
+    h.setProps({ extensions: [transparentBackground()] });
+    await sleep(300);
+    r.info(
+      'transparentBackground',
+      'WebView has no getter for its background color: check it by hand'
+    );
+    h.setProps({});
+    return;
+  }
+  const opaque = async () => await h.ref.current?.call('webView.isOpaque').catch(errorCode);
+  const states: unknown[] = [];
+  for (const on of [true, false]) {
+    h.setProps({ extensions: [on && transparentBackground()] });
+    states.push((await until(async () => (await opaque()) === !on, 3000)) ? !on : await opaque());
+  }
+  r.check(
+    'transparentBackground, set after mount, makes the WebView not opaque; off, opaque again',
+    JSON.stringify(states) === '[false,true]',
+    states
+  );
 }
 
 async function keyboard(h: Harness, r: Reporter) {

@@ -19,7 +19,7 @@ android {
   sourceSets {
     main {
       // The module, then one folder per extension, each with its Kotlin beside its Swift and TS.
-      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'menuItems', 'onScroll', 'nestedScrollEnabled', 'androidLayerType']
+      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'menuItems', 'onScroll', 'transparentBackground', 'nestedScrollEnabled', 'androidLayerType']
     }
   }
 }
