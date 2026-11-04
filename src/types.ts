@@ -628,7 +628,7 @@ export type AndroidSettings = {
    * `acceptThirdPartyCookies`.
    *
    * `webContentsDebuggingEnabled` is refused: it is process-wide, set with
-   * {@link WebView.android.setWebContentsDebuggingEnabled}.
+   * {@link AndroidWebView.setWebContentsDebuggingEnabled}.
    */
   webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
@@ -774,7 +774,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * it, those keys apply; unset, they are the platform's own user agent.
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
-   * `android.settings.userAgentString` to `WebView.android.defaultUserAgent` plus your suffix.
+   * `android.settings.userAgentString` to `AndroidWebView.defaultUserAgent` plus your suffix.
    *
    * A change applies from the next navigation.
    */
@@ -1054,7 +1054,7 @@ export type WebViewRef = {
    * - Android (in `get` too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
    *   document-start scripts, the touch, scroll-change and navigation listeners, `destroy`, `removeAllViews`,
    *   `pauseTimers`, `resumeTimers`, `evaluateJavascript` and remote debugging
-   *   ({@link WebView.android.setWebContentsDebuggingEnabled}).
+   *   ({@link AndroidWebView.setWebContentsDebuggingEnabled}).
    *
    * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
    * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's

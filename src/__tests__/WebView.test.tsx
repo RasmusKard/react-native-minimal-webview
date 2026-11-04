@@ -3,7 +3,7 @@ import { type RefObject, act, createRef, useState } from 'react';
 import { AppState, Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
-import { WebView } from '../WebView';
+import { AndroidWebView, WebView } from '../WebView';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { defaultNavigationRules } from '../defaultNavigationRules';
 import { createWebViewRef, useWebViewState } from '../refStore';
@@ -129,22 +129,22 @@ describe('WebView', () => {
     expect((await render({ navigationRules: rules })).native?.navigationRules).toBe(rules);
   });
 
-  it('WebView.android: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
-    WebView.android.warmUp();
-    WebView.android.preconnect('https://example.com');
-    WebView.android.setWebContentsDebuggingEnabled(true);
-    expect(WebView.android.defaultUserAgent).toBeNull();
+  it('AndroidWebView: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
+    AndroidWebView.warmUp();
+    AndroidWebView.preconnect('https://example.com');
+    AndroidWebView.setWebContentsDebuggingEnabled(true);
+    expect(AndroidWebView.defaultUserAgent).toBeNull();
     expect(mockNativeModule.warmUp).not.toHaveBeenCalled();
     expect(mockNativeModule.preconnect).not.toHaveBeenCalled();
     expect(mockNativeModule.setWebContentsDebuggingEnabled).not.toHaveBeenCalled();
   });
 
-  it("WebView.android is the native module's on Android", () => {
+  it("AndroidWebView is the native module's on Android", () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    WebView.android.warmUp();
-    WebView.android.preconnect('https://example.com');
-    WebView.android.setWebContentsDebuggingEnabled(false);
-    expect(WebView.android.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
+    AndroidWebView.warmUp();
+    AndroidWebView.preconnect('https://example.com');
+    AndroidWebView.setWebContentsDebuggingEnabled(false);
+    expect(AndroidWebView.defaultUserAgent).toBe('Mozilla/5.0 (Android)');
     expect(mockNativeModule.warmUp).toHaveBeenCalledTimes(1);
     expect(mockNativeModule.preconnect).toHaveBeenCalledWith('https://example.com');
     expect(mockNativeModule.setWebContentsDebuggingEnabled).toHaveBeenCalledWith(false);

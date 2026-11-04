@@ -20,7 +20,7 @@
  * @module react-native-minimal-webview
  * @packageDocumentation
  */
-export { WebView } from './WebView';
+export { AndroidWebView, WebView } from './WebView';
 export { createWebViewRef, useWebViewState } from './refStore';
 export { createBridge } from './bridge/createBridge';
 export { defaultNavigationRules } from './defaultNavigationRules';
