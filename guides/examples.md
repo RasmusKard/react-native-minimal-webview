@@ -162,7 +162,7 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
   }}
   android={{
     settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }, // WebSettings
-    webView: { overScrollMode: 2, acceptThirdPartyCookies: true }, // WebView
+    webView: { overScrollMode: 2, verticalScrollBarEnabled: false }, // WebView
   }}
 />;
 ```

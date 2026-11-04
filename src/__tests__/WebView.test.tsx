@@ -519,6 +519,7 @@ describe('platform settings', () => {
     expect(await settingsOf({})).toEqual({
       configuration: { allowsInlineMediaPlayback: true },
       webView: { customUserAgent: null, inspectable: true },
+      scrollView: { directionalLockEnabled: true },
     });
   });
 
@@ -550,15 +551,38 @@ describe('platform settings', () => {
         inspectable: false,
         allowsBackForwardNavigationGestures: true,
       },
-      scrollView: { bounces: false },
+      scrollView: { directionalLockEnabled: true, bounces: false },
     });
+  });
+
+  /** The native settings for `first`, then for `second`, on the same WebView. */
+  const settingsAcross = async (first: Partial<WebViewProps>, second: Partial<WebViewProps>) => {
+    const root = createRoot();
+    const settingsFor = async (props: Partial<WebViewProps>) => {
+      await act(async () =>
+        root.render(<WebView source={{ uri: 'https://example.com' }} {...props} />)
+      );
+      const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]
+        ?.props as { settings: string };
+      return JSON.parse(native.settings) as Record<string, Record<string, unknown>>;
+    };
+    return [await settingsFor(first), await settingsFor(second)];
+  };
+
+  it('let an app key win over a react-native-webview default, which a removed key goes back to', async () => {
+    const [set, removed] = await settingsAcross(
+      { ios: { scrollView: { directionalLockEnabled: false } } },
+      {}
+    );
+    expect(set?.scrollView).toEqual({ directionalLockEnabled: false });
+    expect(removed?.scrollView).toEqual({ directionalLockEnabled: true });
   });
 
   it('send a root’s other keys among its own, a generated key winning', async () => {
     // The types refuse a generated key under other; JavaScript can still send one.
     const other: Record<string, SettingValue> = { nope: 1, bounces: true };
     const settings = await settingsOf({ ios: { scrollView: { bounces: false, other } } });
-    expect(settings.scrollView).toEqual({ nope: 1, bounces: false });
+    expect(settings.scrollView).toEqual({ directionalLockEnabled: true, nope: 1, bounces: false });
   });
 
   type Configuration = NonNullable<WebViewProps['ios']>['configuration'];
@@ -602,8 +626,8 @@ describe('platform settings', () => {
 
     it('are the defaults alone without props', async () => {
       expect(await settingsOf({})).toEqual({
-        settings: { userAgentString: null },
-        webView: {},
+        settings: { userAgentString: null, useWideViewPort: true, loadWithOverviewMode: true },
+        webView: { acceptThirdPartyCookies: true },
       });
     });
 
@@ -611,15 +635,29 @@ describe('platform settings', () => {
       const settings = await settingsOf({
         userAgent: 'Agent/1',
         android: {
-          settings: { userAgentString: 'Overridden/0', textZoom: 120 },
+          settings: { userAgentString: 'Overridden/0', textZoom: 120, useWideViewPort: false },
           webView: { overScrollMode: 2 },
         },
         ios: { webView: { inspectable: false } },
       });
       expect(settings).toEqual({
-        settings: { userAgentString: 'Agent/1', textZoom: 120 },
-        webView: { overScrollMode: 2 },
+        settings: {
+          userAgentString: 'Agent/1',
+          useWideViewPort: false,
+          loadWithOverviewMode: true,
+          textZoom: 120,
+        },
+        webView: { acceptThirdPartyCookies: true, overScrollMode: 2 },
       });
+    });
+
+    it('let an app key win over a react-native-webview default, which a removed key goes back to', async () => {
+      const [set, removed] = await settingsAcross(
+        { android: { webView: { acceptThirdPartyCookies: false } } },
+        {}
+      );
+      expect(set?.webView).toEqual({ acceptThirdPartyCookies: false });
+      expect(removed?.webView).toEqual({ acceptThirdPartyCookies: true });
     });
 
     it('keep the native view when an ios.configuration key changes', async () => {

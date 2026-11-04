@@ -580,7 +580,11 @@ export type IOSSettings = {
    * @default `{ customUserAgent: null, inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
-  /** Its `UIScrollView`, live. */
+  /**
+   * Its `UIScrollView`, live.
+   *
+   * `directionalLockEnabled` is on by default, as react-native-webview has it.
+   */
   scrollView?: SettingsRoot<IOSSettingKeys['scrollView']>;
 };
 
@@ -592,9 +596,9 @@ export type IOSSettings = {
  *
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
  * nothing here can crash the app. A root's default keys are the package's, and yours go over them; a key the package
- * doesn't set keeps the platform's default (`acceptThirdPartyCookies` is off, for one). A key you remove goes back to
- * the value it had before you first set it; one with no getter, such as `geolocationEnabled`, keeps its value until the
- * WebView is recreated, with a warning.
+ * doesn't set, such as `overScrollMode`, keeps the platform's default. A key you remove goes back to the value it had
+ * before you first set it; one with no getter, such as `geolocationEnabled`, keeps its value until the WebView is
+ * recreated, with a warning.
  *
  * The ref's {@link WebViewRef.get | get} and {@link WebViewRef.call | call} take these roots, plus `cookieManager` and
  * `webStorage`; a key is the getter's name without `get` or `is`.
@@ -619,7 +623,8 @@ export type AndroidSettings = {
    * Each new WebView starts with `javaScriptEnabled`, `domStorageEnabled`, `supportMultipleWindows` and
    * `builtInZoomControls` on; `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and
    * `downloadFaviconsEnabled` off; `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`; and, with WebView 146 and newer,
-   * `backForwardCacheEnabled` on. `userAgentString: null` is WebView's default user agent.
+   * `backForwardCacheEnabled` on. `useWideViewPort` and `loadWithOverviewMode` are on by default, as
+   * react-native-webview has them. `userAgentString: null` is WebView's default user agent.
    * @default `{ userAgentString: null }`
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
@@ -627,8 +632,8 @@ export type AndroidSettings = {
    * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
    * `acceptThirdPartyCookies`.
    *
-   * `webContentsDebuggingEnabled` is refused: it is process-wide, set with
-   * {@link AndroidWebView.setWebContentsDebuggingEnabled}.
+   * `acceptThirdPartyCookies` is on by default, as react-native-webview has it. `webContentsDebuggingEnabled` is
+   * refused: it is process-wide, set with {@link AndroidWebView.setWebContentsDebuggingEnabled}.
    */
   webView?: SettingsRoot<AndroidSettingKeys['webView']>;
 };
