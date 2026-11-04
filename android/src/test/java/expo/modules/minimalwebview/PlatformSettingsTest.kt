@@ -107,7 +107,7 @@ class PlatformSettingsTest {
     assertEquals("owned by the core" to none, set("onTouchListener", null))
     assertEquals("owned by the core" to none, set("onScrollChangeListener", null))
     assertEquals(
-      "owned by the core: use WebView.android.setWebContentsDebuggingEnabled" to none,
+      "owned by the core: use AndroidWebView.setWebContentsDebuggingEnabled" to none,
       set("webContentsDebuggingEnabled", true)
     )
     assertEquals("not supported by this WebView" to none, set("unsupported", 1))

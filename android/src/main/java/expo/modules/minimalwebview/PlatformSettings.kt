@@ -171,7 +171,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
 
     private fun owned(name: String) =
       if (name == "setWebContentsDebuggingEnabled") {
-        "owned by the core: use WebView.android.setWebContentsDebuggingEnabled"
+        "owned by the core: use AndroidWebView.setWebContentsDebuggingEnabled"
       } else {
         "owned by the core"
       }

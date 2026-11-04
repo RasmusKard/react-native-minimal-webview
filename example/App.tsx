@@ -13,6 +13,7 @@ import {
   type WebViewProps,
   type LoadErrorEvent,
   type WebViewSource,
+  AndroidWebView,
   WebView,
   createBridge,
   type PermissionRequest,
@@ -198,7 +199,7 @@ export default function App() {
             android={{
               webView: { acceptThirdPartyCookies: true },
               settings: {
-                userAgentString: `${WebView.android.defaultUserAgent} MinimalWebViewExample/1.0`,
+                userAgentString: `${AndroidWebView.defaultUserAgent} MinimalWebViewExample/1.0`,
               },
             }}
             onError={(event) => {

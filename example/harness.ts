@@ -18,7 +18,7 @@ import type {
   WebViewRefObject,
   WebViewSource,
 } from 'react-native-minimal-webview';
-import { WebView, IOSConstants } from 'react-native-minimal-webview';
+import { AndroidWebView, IOSConstants } from 'react-native-minimal-webview';
 import { pageCounter, sampleHook, seams } from 'sample-extension';
 
 import { extensions } from './extensions';
@@ -131,7 +131,7 @@ export const WEBVIEW = {
 let webViewMajor: number | undefined;
 /** The Android System WebView's major version, from its default user agent (no page needed); 0 on iOS. */
 const androidWebView = () =>
-  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(WebView.android.defaultUserAgent ?? '')?.[1] ?? 0));
+  (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(AndroidWebView.defaultUserAgent ?? '')?.[1] ?? 0));
 
 /** A suite's checks and INFO lines. With a `floor` (a `WEBVIEW` value) each `check` is a `since(floor, …)`. */
 export function reporter(suite: string, floor = 0) {
@@ -1358,7 +1358,7 @@ async function mountSettings(h: Harness) {
       ? { ios: { configuration: { applicationNameForUserAgent: 'Remounted/9' } } }
       : {
           android: {
-            settings: { userAgentString: `${WebView.android.defaultUserAgent} Remounted/9` },
+            settings: { userAgentString: `${AndroidWebView.defaultUserAgent} Remounted/9` },
           },
         },
     Platform.OS === 'android'

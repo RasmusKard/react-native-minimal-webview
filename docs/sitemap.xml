@@ -226,6 +226,18 @@
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidConstants/enumerations/WebViewCompat/</loc>
       </url>
       <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/preconnect/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/</loc>
+      </url>
+      <url>
+        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/warmUp/</loc>
+      </url>
+      <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/IOSConstants/</loc>
       </url>
       <url>
@@ -272,24 +284,6 @@
       </url>
       <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/IOSConstants/enumerations/WebsiteDataType/</loc>
-      </url>
-      <url>
-        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/</loc>
-      </url>
-      <url>
-        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/</loc>
-      </url>
-      <url>
-        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/functions/preconnect/</loc>
-      </url>
-      <url>
-        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/functions/setWebContentsDebuggingEnabled/</loc>
-      </url>
-      <url>
-        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/functions/warmUp/</loc>
-      </url>
-      <url>
-        <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/variables/defaultUserAgent/</loc>
       </url>
       <url>
         <loc>https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/AndroidSettingKeys/</loc>
