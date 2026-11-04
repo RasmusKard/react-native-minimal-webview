@@ -93,7 +93,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onPermissionRequest` |
 | `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus` | `call('webView.clearCache', [true])` and so on, on Android |
 | `incognito` | `ios.configuration.websiteDataStore: 'nonPersistent'`; Android [below](#incognito) |
-| `keyboardDisplayRequiresUserAction`, `removeIosKeyboardObserver` | A [native hook](native-hooks.md) |
+| `removeIosKeyboardObserver` | A [native hook](native-hooks.md) |
 | `refreshControlLightMode`, `downloadingMessage`, `onLoadSubResourceError`, `nativeConfig` | A native hook |
 | `containerStyle` | A `View` around the WebView |
 
@@ -110,6 +110,7 @@ has the setup. You pass each one in the `extensions` prop:
 | `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems] |
 | `onScroll` | [`onScroll`][onscroll] |
 | `hideKeyboardAccessoryView` | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview] |
+| `keyboardDisplayRequiresUserAction` | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction] |
 | `nestedScrollEnabled` | [`nestedScrollEnabled`][nestedscrollenabled] |
 | `androidLayerType` | [`androidLayerType`][androidlayertype] |
 | JS dialogs (no prop) | [`dialogs`][dialogs] |
@@ -361,6 +362,7 @@ export function Browser() {
 [menuitems]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/
 [onscroll]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/
 [hidekeyboardaccessoryview]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/
+[keyboarddisplayrequiresuseraction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/
 [nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/
 [androidlayertype]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/
 [dialogs]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/

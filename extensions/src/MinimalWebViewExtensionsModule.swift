@@ -12,6 +12,7 @@ public class MinimalWebViewExtensionsModule: Module {
       MenuItems.register()
       OnScroll.register()
       HideKeyboardAccessoryView.register()
+      KeyboardDisplayRequiresUserAction.register()
     }
   }
 }

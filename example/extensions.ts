@@ -7,6 +7,7 @@ import {
   basicAuthCredential,
   dialogs as dialogsExtension,
   hideKeyboardAccessoryView,
+  keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
   onScroll,
@@ -312,6 +313,32 @@ async function keyboard(h: Harness, r: Reporter) {
   r.info(
     'hideKeyboardAccessoryView',
     'the bar shows only with the software keyboard: check it by hand'
+  );
+  // The keyboard shrinks the visual viewport. evaluate's script has a user gesture, which WebKit forwards to a timer but
+  // not to a nested one: this focus is the page's own.
+  const viewport = async () => (await h.ref.current?.evaluate('visualViewport.height')) as number;
+  const keyboardShows = async () => {
+    await loadHtml(h, '<input id="i">');
+    const height = await viewport();
+    await h.ref.current?.evaluate(
+      "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
+    );
+    return !!(await until(async () => (await viewport()) < height, 2000));
+  };
+  // Each WebView is one the keyboard hasn't shown for: WebKit's own rules show it for a later focus in that one.
+  await recreate(h, {}, true);
+  const before = await keyboardShows();
+  h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
+  await sleep(300);
+  const on = await keyboardShows();
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, true);
+  h.setProps({});
+  await sleep(300);
+  const off = await keyboardShows();
+  r.check(
+    "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not",
+    !before && on && !off,
+    { before, on, off }
   );
 }
 

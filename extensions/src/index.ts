@@ -21,6 +21,7 @@ export * from '../androidLayerType';
 export * from '../basicAuthCredential';
 export * from '../dialogs';
 export * from '../hideKeyboardAccessoryView';
+export * from '../keyboardDisplayRequiresUserAction';
 export * from '../menuItems';
 export * from '../nestedScrollEnabled';
 export * from '../onScroll';

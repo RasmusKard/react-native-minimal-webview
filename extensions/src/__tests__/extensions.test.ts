@@ -6,6 +6,7 @@ import {
   basicAuthCredential,
   dialogs,
   hideKeyboardAccessoryView,
+  keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
   onScroll,
@@ -28,6 +29,7 @@ describe('the extensions', () => {
     ['menuItems with suppress only', menuItems({ suppress: ['copy'] }), 'menuItems', { suppress: ['copy'] }],
     ['onScroll', onScroll(() => {}), 'onScroll', undefined],
     ['hideKeyboardAccessoryView', hideKeyboardAccessoryView(), 'hideKeyboardAccessoryView', undefined],
+    ['keyboardDisplayRequiresUserAction', keyboardDisplayRequiresUserAction(false), 'keyboardDisplayRequiresUserAction', undefined],
   ])('%s has its key and options on iOS (none: the default, true)', (_, extension, name, options) => {
     expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
   });
@@ -41,13 +43,15 @@ describe('the extensions', () => {
     });
     expect(plain(menuItems({ items: MENU }))).toEqual({ key: `${K}.menuItems`, options: { items: MENU } });
     expect(hideKeyboardAccessoryView()).toBeNull();
+    expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(menuItems({ suppress: ['copy'] })).toBeNull();
   });
 
-  it('gives null for the Android ones on iOS, and for a menu with nothing in it', () => {
+  it("gives null for the Android ones on iOS, for a menu with nothing in it, and for WebKit's keyboard default", () => {
     expect(nestedScrollEnabled()).toBeNull();
     expect(androidLayerType('hardware')).toBeNull();
     expect(menuItems({ onSelect: () => {} })).toBeNull();
+    expect(keyboardDisplayRequiresUserAction(true)).toBeNull();
   });
 
   it("calls react-native-webview's callbacks with { nativeEvent }", () => {
