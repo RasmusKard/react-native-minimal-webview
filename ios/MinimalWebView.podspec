@@ -21,6 +21,8 @@ Pod::Spec.new do |s|
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
+    # the documentation catalog, which CocoaPods can't add as a source
+    'OTHER_DOCC_FLAGS' => '$(inherited) "$(PODS_TARGET_SRCROOT)/MinimalWebView.docc"',
   }
 
   # Every header here is public, so the Objective-C helpers are NS_REFINED_FOR_SWIFT: Swift sees them as __MRW…,

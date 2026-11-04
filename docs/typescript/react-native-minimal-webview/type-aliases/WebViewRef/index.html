@@ -6347,7 +6347,7 @@ callback's place passes none.</p>
 <p>One mistake the signature can't catch crashes the app: on iOS an object argument of the wrong class, and on Android
 a <code>null</code> listener or callback other than the trailing <code>ValueCallback</code>, once WebView calls it. For a method that
 takes another object, write a native hook.</p>
-<h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6369,7 +6369,7 @@ takes another object, write a native hook.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <p>The result: primitives, strings, and collections of them; on iOS also the structs as objects, an <code>NSURL</code>
 as a string, an <code>NSDate</code> as seconds, <code>NSData</code> as base64, a <code>UIImage</code> as a base64 PNG and an <code>NSHTTPCookie</code> as its
@@ -6387,7 +6387,7 @@ properties (<code>Expires</code> in seconds). Any other object is <code>null</co
 its ISO string. The value is the page's, so treat it as page data. Rejects with a <a href="../CodedError/">CodedError</a>:
 <code>script_error</code>, <code>navigated</code> or <code>unavailable</code>. There is no timeout: a page can hold a call until it navigates. On
 Android with a WebView older than 83 it rejects with <code>unavailable</code>.</p>
-<h4 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6402,7 +6402,7 @@ Android with a WebView older than 83 it rejects with <code>unavailable</code>.</
 </tr>
 </tbody>
 </table>
-<h4 id="returns_1">Returns<a class="headerlink" href="#returns_1" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <hr />
 <h3 id="get">get()<a class="headerlink" href="#get" title="Permanent link">&para;</a></h3>
@@ -6413,7 +6413,7 @@ converts results.</p>
 <p>The roots and keys are those of <a href="../IOSSettings/">IOSSettings</a> and <a href="../AndroidSettings/">AndroidSettings</a>.</p>
 <p>It reads the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
 <a href="../CodedError/">CodedError</a>: <code>not_found</code>, <code>unavailable</code> (Android) or <code>native_error</code>.</p>
-<h4 id="parameters_2">Parameters<a class="headerlink" href="#parameters_2" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6428,7 +6428,7 @@ converts results.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_2">Returns<a class="headerlink" href="#returns_2" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <h4 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h4>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">bounces</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">current</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'scrollView.bounces'</span><span class="p">);</span><span class="w"> </span><span class="c1">// iOS</span>
@@ -6441,14 +6441,14 @@ converts results.</p>
 <p>Goes back one page; does nothing unless <code>canGoBack</code>.</p>
 <p>On Android, as Chrome's back button, it also skips the history entries a page added without a user gesture
 (<code>pushState</code>, a hash change) and the page that added them.</p>
-<h4 id="returns_3">Returns<a class="headerlink" href="#returns_3" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="goforward">goForward()<a class="headerlink" href="#goforward" title="Permanent link">&para;</a></h3>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">goForward</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
 </span></code></pre></div>
 <p>Goes forward one page; does nothing unless <code>canGoForward</code>.</p>
-<h4 id="returns_4">Returns<a class="headerlink" href="#returns_4" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="hook">hook()<a class="headerlink" href="#hook" title="Permanent link">&para;</a></h3>
@@ -6463,7 +6463,7 @@ its reply; both cross as JSON.</p>
 <p>The reply converts as <a href="#call">call</a>'s results do. Rejects with a <a href="../CodedError/">CodedError</a>: <code>not_found</code>
 or <code>native_error</code>. A navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount
 does.</p>
-<h4 id="parameters_3">Parameters<a class="headerlink" href="#parameters_3" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6486,7 +6486,7 @@ does.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_5">Returns<a class="headerlink" href="#returns_5" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>Promise</code>&lt;<code>unknown</code>&gt;</p>
 <hr />
 <h3 id="reload">reload()<a class="headerlink" href="#reload" title="Permanent link">&para;</a></h3>
@@ -6494,14 +6494,14 @@ does.</p>
 </span></code></pre></div>
 <p>Reloads the page; after a failed load, retries the failed URL.</p>
 <p>Sends a POST <code>source</code> again, and lifts the limit on <a href="../ProcessGoneEvent/#recovered">crash recovery</a>.</p>
-<h4 id="returns_6">Returns<a class="headerlink" href="#returns_6" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="stoploading">stopLoading()<a class="headerlink" href="#stoploading" title="Permanent link">&para;</a></h3>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nx">stopLoading</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
 </span></code></pre></div>
 <p>Stops the load: its <code>outcome</code> is <code>cancelled</code>, or on Android <code>finished</code> once the page has arrived.</p>
-<h4 id="returns_7">Returns<a class="headerlink" href="#returns_7" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 
 
