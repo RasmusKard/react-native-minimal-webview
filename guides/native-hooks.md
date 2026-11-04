@@ -205,7 +205,7 @@ When an `ask` goes unanswered, and how a failing or silent `handle` handler reac
 
 ## Share the WebView with the core
 
-The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead:
+The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead.
 
 A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
 or a page gets the camera, goes to the first hook that implements it, and switches off the props that make it, such as

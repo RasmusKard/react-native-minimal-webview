@@ -9,6 +9,8 @@ Examples of the main interfaces. What each prop, method and type does is in its 
 
 ## Navigation state
 
+Show the URL, progress or a back button, and go back on Android's back button.
+
 ```tsx
 import { useEffect, useRef } from 'react';
 import { BackHandler, Button } from 'react-native';
@@ -39,6 +41,8 @@ export function Browser() {
 
 ### Outside React
 
+Read the state and call the WebView from code outside a component.
+
 ```tsx
 import { WebView, createWebViewRef } from 'react-native-minimal-webview';
 
@@ -53,6 +57,8 @@ function onInboxNotification() {
 ```
 
 ## Navigation rules
+
+Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it.
 
 ```tsx
 import { WebView, defaultNavigationRules } from 'react-native-minimal-webview';
@@ -80,6 +86,8 @@ export function Site() {
 ```
 
 ## The bridge
+
+Call the page from the app, and the app from the page, with typed methods and events.
 
 ```tsx
 import { useEffect, useMemo } from 'react';
@@ -186,7 +194,7 @@ const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:compl
 
 ## Cookies
 
-Cookies go through `call`, as in [Reading and calling](#reading-and-calling).
+Set the session cookie, or read the WebView's cookies. Cookies go through `call`, as in [Reading and calling](#reading-and-calling).
 
 ```ts
 import { createWebViewRef } from 'react-native-minimal-webview';
@@ -214,6 +222,8 @@ The calls need a mounted WebView. Mount it with `{ uri: 'about:blank' }`, and se
 set.
 
 ## Scripts
+
+Run a script in every page before the page's own, or evaluate one in the page that is open.
 
 ```tsx
 import { WebView, createWebViewRef } from 'react-native-minimal-webview';
@@ -266,7 +276,11 @@ export function LocalPages() {
 
 ## Page requests
 
+Answer what the page asks the app for: files, the camera or microphone, fullscreen and downloads.
+
 ### File inputs
+
+Answer an `<input type="file">` with a document picker or the camera.
 
 ```tsx
 import * as DocumentPicker from 'expo-document-picker';
@@ -292,6 +306,8 @@ import { WebView } from 'react-native-minimal-webview';
 ```
 
 ### Permissions
+
+Give the camera to your own site only, once the OS has granted it.
 
 ```tsx
 import { Camera } from 'expo-camera';
@@ -328,6 +344,8 @@ import { WebView } from 'react-native-minimal-webview';
 ```
 
 ### Downloads
+
+Open a file the page downloads.
 
 `preview()` needs expo-file-system 58 or later.
 

@@ -4,6 +4,7 @@ A React Native WebView that hands you the iOS and Android WebView APIs, instead 
 
 It runs on iOS and Android as an Expo module.
 
+[Install](#install) ·
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) ·
 [Examples](guides/examples.md) ·
 [Native hooks](guides/native-hooks.md) ·

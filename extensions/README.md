@@ -1,10 +1,13 @@
 # @react-native-minimal-webview/extensions
 
+<!-- #region intro -->
 Native hooks for [react-native-minimal-webview](https://github.com/RasmusKard/react-native-minimal-webview) that bring
 back react-native-webview props, such as `onScroll` and `basicAuthCredential`, and add JS-answered dialogs.
+<!-- #endregion intro -->
 
 ## Setup
 
+<!-- #region setup -->
 It has the core's [requirements](https://github.com/RasmusKard/react-native-minimal-webview#requirements). Install both, then
 rebuild the app, since the package has native code:
 
@@ -32,6 +35,7 @@ export function Browser() {
   );
 }
 ```
+<!-- #endregion setup -->
 
 ## Extensions
 
