@@ -26,6 +26,7 @@ export * from '../incognito';
 export * from '../keyboardDisplayRequiresUserAction';
 export * from '../menuItems';
 export * from '../nestedScrollEnabled';
+export * from '../onLoadSubResourceError';
 export * from '../onScroll';
 export * from '../refreshControlLightMode';
 export * from '../transparentBackground';

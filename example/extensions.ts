@@ -3,6 +3,7 @@ import {
   type CustomMenuSelectionEvent,
   type Dialog,
   type ScrollEvent,
+  type SubResourceErrorEvent,
   androidLayerType,
   basicAuthCredential,
   dialogs as dialogsExtension,
@@ -12,6 +13,7 @@ import {
   keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
+  onLoadSubResourceError,
   onScroll,
   refreshControlLightMode,
   transparentBackground,
@@ -452,6 +454,27 @@ async function android(h: Harness, r: Reporter) {
   r.info(
     'downloadManager',
     'the file in the Downloads folder, its notification and the toast: check them by hand'
+  );
+  // Nothing listens on port 1; the test server's https has a self-signed certificate.
+  const failed: SubResourceErrorEvent[] = [];
+  h.setProps({ extensions: [onLoadSubResourceError((event) => failed.push(event))] });
+  await sleep(300);
+  const image = 'http://127.0.0.1:1/x.png';
+  await loadHtml(
+    h,
+    `<img src="${image}"><img src="https://localhost:8443/x.png" onerror="window.sslFailed = true">`
+  );
+  const reported = await until(() => failed.find(({ url }) => url === image), 5000);
+  const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
+  await openPage(h, 'http://127.0.0.1:1/main');
+  await sleep(1000);
+  r.check(
+    "onLoadSubResourceError, set after mount, gets an image's failure with its code; not an SSL one or the main frame's",
+    !!reported &&
+      reported.code < 0 &&
+      sslFailed === true &&
+      !failed.some(({ url }) => url.startsWith('https:') || url.endsWith('/main')),
+    { failed, sslFailed }
   );
   h.setProps({});
 }

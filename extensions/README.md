@@ -53,6 +53,7 @@ export function Browser() {
 | [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/) | Android |
 | [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/) | Android |
 | [`downloadManager({ downloadingMessage })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/) | Android |
+| [`onLoadSubResourceError(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/) | Android |
 
 Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) page has its
 behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.

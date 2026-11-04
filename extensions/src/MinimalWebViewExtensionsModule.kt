@@ -22,6 +22,7 @@ class MinimalWebViewExtensionsModule : Module() {
       NestedScrollEnabled.register()
       AndroidLayerType.register()
       DownloadManager.register()
+      OnLoadSubResourceError.register()
     }
   }
 }

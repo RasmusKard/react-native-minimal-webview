@@ -11,6 +11,7 @@ import {
   keyboardDisplayRequiresUserAction,
   menuItems,
   nestedScrollEnabled,
+  onLoadSubResourceError,
   onScroll,
   refreshControlLightMode,
   transparentBackground,
@@ -56,6 +57,7 @@ describe('the extensions', () => {
       key: `${K}.downloadManager`,
       options: { downloadingMessage: 'Saving' },
     });
+    expect(plain(onLoadSubResourceError(() => {}))).toEqual({ key: `${K}.onLoadSubResourceError` });
     expect(hideKeyboardAccessoryView()).toBeNull();
     expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(refreshControlLightMode()).toBeNull();
@@ -66,6 +68,7 @@ describe('the extensions', () => {
     expect(nestedScrollEnabled()).toBeNull();
     expect(androidLayerType('hardware')).toBeNull();
     expect(downloadManager()).toBeNull();
+    expect(onLoadSubResourceError(() => {})).toBeNull();
     expect(menuItems({ onSelect: () => {} })).toBeNull();
     expect(keyboardDisplayRequiresUserAction(true)).toBeNull();
   });
@@ -82,6 +85,14 @@ describe('the extensions', () => {
       payload: selection,
     });
     expect(selected).toHaveBeenCalledWith({ nativeEvent: selection });
+  });
+
+  it('calls onLoadSubResourceError with the event as it came', () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const failed = jest.fn();
+    const error = { url: 'http://127.0.0.1:1/x.png', code: -6, description: 'net::ERR_CONNECTION_REFUSED' };
+    onLoadSubResourceError(failed)!.onEvent!({ name: 'error', payload: error });
+    expect(failed).toHaveBeenCalledWith(error);
   });
 
   it('calls onDialog with the dialog and its type, and returns its answer', async () => {
