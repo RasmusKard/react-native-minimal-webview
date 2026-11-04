@@ -12,13 +12,17 @@ class MinimalWebViewExtensionsModule : Module() {
     Name("MinimalWebViewExtensions")
     OnCreate {
       // Hooks run in registration order. It matters only between hooks that share a deciding callback, a listener
-      // list or a webViewFactory, and none of these do: this is the README's order.
+      // list, a webViewFactory or a setting, and none of these do: this is the README's order.
       BasicAuthCredential.register()
       Dialogs.register()
+      Incognito.register()
       MenuItems.register()
       OnScroll.register()
+      TransparentBackground.register()
       NestedScrollEnabled.register()
       AndroidLayerType.register()
+      DownloadManager.register()
+      OnLoadSubResourceError.register()
     }
   }
 }

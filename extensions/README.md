@@ -43,11 +43,18 @@ export function Browser() {
 |---|---|
 | [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/) | iOS, Android |
 | [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/) | iOS, Android |
+| [`incognito()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/) | iOS, Android |
 | [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/) | iOS, Android (`suppress`: iOS) |
 | [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/) | iOS, Android |
+| [`transparentBackground()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/) | iOS, Android |
 | [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/) | iOS |
+| [`keyboardDisplayRequiresUserAction(required)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/) | iOS |
+| [`refreshControlLightMode()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/) | iOS |
+| [`removeIosKeyboardObserver()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/) | iOS |
 | [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/) | Android |
 | [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/) | Android |
+| [`downloadManager({ downloadingMessage })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/) | Android |
+| [`onLoadSubResourceError(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/) | Android |
 
 Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) page has its
 behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.
@@ -75,6 +82,9 @@ The Swift keeps its type names: they belong to your module.
 
 A changed `hideKeyboardAccessoryView` also needs a `suffix` of its own: the runtime class it makes is found by that
 name.
+
+A copied `downloadManager` also needs `implementation 'androidx.webkit:webkit:<version>'`, with the version in the
+core's `android/build.gradle`, in your module's `android/build.gradle`.
 
 With this package installed as well, a `package` line you forgot to change fails the Android build with a duplicate
 class. A key you forgot to rename registers two hooks under one key: `register`, in the
