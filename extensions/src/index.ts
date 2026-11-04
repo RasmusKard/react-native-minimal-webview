@@ -1,5 +1,11 @@
 /**
- * Setup, each extension's platforms and how to vendor one are in the package's
+ * {@include ../README.md#intro}
+ *
+ * ## Setup
+ *
+ * {@include ../README.md#setup}
+ *
+ * Each extension's platforms, and how to vendor one to change it, are in the package's
  * [README](https://github.com/RasmusKard/react-native-minimal-webview/tree/main/extensions#readme).
  *
  * @groupDescription Extensions

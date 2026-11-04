@@ -6765,7 +6765,7 @@ module wrappers, which nothing uses now.</p>
 <p>When an <code>ask</code> goes unanswered, and how a failing or silent <code>handle</code> handler reaches JS, are on <code>ask</code> and <code>handle</code> of
 <code>WebViewContext</code> (<a href="https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/">Swift</a>, <a href="https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/">Kotlin</a>).</p>
 <h2 id="share-the-webview-with-the-core">Share the WebView with the core<a class="headerlink" href="#share-the-webview-with-the-core" title="Permanent link">&para;</a></h2>
-<p>The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead:</p>
+<p>The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead.</p>
 <p>A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
 or a page gets the camera, goes to the first hook that implements it, and switches off the props that make it, such as
 <code>navigationRules</code>. The rules are on <code>WebViewContext</code>'s <code>navigationDelegates</code> (<a href="https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/">Swift</a>) and <code>clients</code>
