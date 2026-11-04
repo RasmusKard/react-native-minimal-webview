@@ -136,7 +136,7 @@ The settings with another name:
 | `automaticallyAdjustContentInsets` | `scrollView.contentInsetAdjustmentBehavior` | |
 | `forceDarkOn` | | `settings.algorithmicDarkeningAllowed`; below `targetSdk` 33 `forceDark` |
 | `saveFormDataDisabled` | | `settings.saveFormData: false`, a no-op since API 26 |
-| `webviewDebuggingEnabled` | `webView.inspectable` | [`WebView.android.setWebContentsDebuggingEnabled()`][debugging], app-wide |
+| `webviewDebuggingEnabled` | `webView.inspectable` | [`AndroidWebView.setWebContentsDebuggingEnabled()`][debugging], app-wide |
 | `allowFileAccessFromFileURLs` | `preferences.<the same name>` | `settings.<the same name>` |
 | `allowUniversalAccessFromFileURLs` | `configuration.<the same name>` | `settings.<the same name>` |
 | `style={{ backgroundColor: 'transparent' }}` | `call('webView.setOpaque:', [false])` after each mount and `configuration` or `bridge` change ([why][iossettings]) | `webView.other.backgroundColor: 0` |
@@ -354,7 +354,7 @@ export function Browser() {
 [ondownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
 [recovered]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/ProcessGoneEvent/#recovered
 [outcome]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#outcome
-[debugging]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/WebView/namespaces/android/functions/setWebContentsDebuggingEnabled/
+[debugging]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/
 [onprocessgone]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onprocessgone
 [onfilerequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onfilerequest
 [onpermissionrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest
