@@ -18,16 +18,11 @@ The keys autocomplete, and an enum string becomes a constant: `cacheMode: 'LOAD_
 
 | | react-native-webview | Here | For react-native-webview's |
 |---|---|---|---|
-| Android third-party cookies (`thirdPartyCookiesEnabled`) | On | Off | `android.webView.acceptThirdPartyCookies: true` |
-| Android wide viewport (`scalesPageToFit`) | On | Off | `android.settings.useWideViewPort` and `loadWithOverviewMode: true` |
 | Android overscroll | Always | The platform's | `android.webView.overScrollMode: 0` |
 | iOS inline video | Off | On | `ios.configuration.allowsInlineMediaPlayback: false` |
 | iOS AirPlay | Off | On | `ios.configuration.allowsAirPlayForMediaPlayback: false` |
 | iOS content insets | `never`, indicators not adjusted | `automatic`, indicators adjusted | Two `ios.scrollView` keys, below |
-| iOS directional lock | On | Off | `ios.scrollView.directionalLockEnabled: true` |
 | iOS debugging (`webviewDebuggingEnabled`) | Off | On in `__DEV__` | `ios.webView.inspectable: false` |
-
-With third-party cookies off, an embedded login or 3-D Secure iframe can lose its session.
 
 The same settings in one object, debugging left on:
 
@@ -40,12 +35,10 @@ export const rnwDefaults = {
     scrollView: {
       contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
       automaticallyAdjustsScrollIndicatorInsets: false,
-      directionalLockEnabled: true,
     },
   },
   android: {
-    settings: { useWideViewPort: true, loadWithOverviewMode: true },
-    webView: { acceptThirdPartyCookies: true, overScrollMode: 0 }, // 0: View.OVER_SCROLL_ALWAYS
+    webView: { overScrollMode: 0 }, // 0: View.OVER_SCROLL_ALWAYS
   },
 } satisfies Pick<WebViewProps, 'ios' | 'android'>;
 
@@ -134,6 +127,8 @@ The settings with another name:
 | `contentMode` | `webpagePreferences.preferredContentMode` | |
 | `cacheEnabled: false` | `configuration.websiteDataStore: 'nonPersistent'` | `settings.cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE` |
 | `automaticallyAdjustContentInsets` | `scrollView.contentInsetAdjustmentBehavior` | |
+| `thirdPartyCookiesEnabled` | | `webView.acceptThirdPartyCookies` |
+| `scalesPageToFit` | | `settings.useWideViewPort` and `settings.loadWithOverviewMode` |
 | `forceDarkOn` | | `settings.algorithmicDarkeningAllowed`; below `targetSdk` 33 `forceDark` |
 | `saveFormDataDisabled` | | `settings.saveFormData: false`, a no-op since API 26 |
 | `webviewDebuggingEnabled` | `webView.inspectable` | [`AndroidWebView.setWebContentsDebuggingEnabled()`][debugging], app-wide |

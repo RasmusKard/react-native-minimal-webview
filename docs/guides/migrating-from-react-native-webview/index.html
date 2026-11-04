@@ -6255,18 +6255,6 @@ differ and recipes for what has no prop. The <a href="../../#requirements">requi
 </thead>
 <tbody>
 <tr>
-<td>Android third-party cookies (<code>thirdPartyCookiesEnabled</code>)</td>
-<td>On</td>
-<td>Off</td>
-<td><code>android.webView.acceptThirdPartyCookies: true</code></td>
-</tr>
-<tr>
-<td>Android wide viewport (<code>scalesPageToFit</code>)</td>
-<td>On</td>
-<td>Off</td>
-<td><code>android.settings.useWideViewPort</code> and <code>loadWithOverviewMode: true</code></td>
-</tr>
-<tr>
 <td>Android overscroll</td>
 <td>Always</td>
 <td>The platform's</td>
@@ -6291,12 +6279,6 @@ differ and recipes for what has no prop. The <a href="../../#requirements">requi
 <td>Two <code>ios.scrollView</code> keys, below</td>
 </tr>
 <tr>
-<td>iOS directional lock</td>
-<td>On</td>
-<td>Off</td>
-<td><code>ios.scrollView.directionalLockEnabled: true</code></td>
-</tr>
-<tr>
 <td>iOS debugging (<code>webviewDebuggingEnabled</code>)</td>
 <td>Off</td>
 <td>On in <code>__DEV__</code></td>
@@ -6304,7 +6286,6 @@ differ and recipes for what has no prop. The <a href="../../#requirements">requi
 </tr>
 </tbody>
 </table>
-<p>With third-party cookies off, an embedded login or 3-D Secure iframe can lose its session.</p>
 <p>The same settings in one object, debugging left on:</p>
 <div class="language-tsx highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">IOSConstants</span><span class="p">,</span><span class="w"> </span><span class="nx">WebView</span><span class="p">,</span><span class="w"> </span><span class="kr">type</span><span class="w"> </span><span class="nx">WebViewProps</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'react-native-minimal-webview'</span><span class="p">;</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
@@ -6314,25 +6295,23 @@ differ and recipes for what has no prop. The <a href="../../#requirements">requi
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nx">scrollView</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nx">contentInsetAdjustmentBehavior</span><span class="o">:</span><span class="w"> </span><span class="kt">IOSConstants.ContentInsetAdjustmentBehavior.never</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="nx">automaticallyAdjustsScrollIndicatorInsets</span><span class="o">:</span><span class="w"> </span><span class="kt">false</span><span class="p">,</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="nx">directionalLockEnabled</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nx">android</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="nx">settings</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useWideViewPort</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">loadWithOverviewMode</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="w"> </span><span class="p">},</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nx">webView</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">acceptThirdPartyCookies</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">overScrollMode</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// 0: View.OVER_SCROLL_ALWAYS</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="p">}</span><span class="w"> </span><span class="nx">satisfies</span><span class="w"> </span><span class="nx">Pick</span><span class="p">&lt;</span><span class="nt">WebViewProps</span><span class="err">,</span><span class="w"> </span><span class="err">'</span><span class="na">ios</span><span class="err">'</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="err">'</span><span class="na">android</span><span class="err">'</span><span class="p">&gt;;</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">Browser</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="p">&lt;</span><span class="nt">WebView</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">      </span><span class="na">source</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="p">}}</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">      </span><span class="na">ios</span><span class="o">=</span><span class="p">{</span><span class="nx">rnwDefaults</span><span class="p">.</span><span class="nx">ios</span><span class="p">}</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">      </span><span class="na">android</span><span class="o">=</span><span class="p">{</span><span class="nx">rnwDefaults</span><span class="p">.</span><span class="nx">android</span><span class="p">}</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">      </span><span class="na">style</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">flex</span><span class="o">:</span><span class="w"> </span><span class="kt">1</span><span class="w"> </span><span class="p">}}</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="p">/&gt;</span>
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span><span class="p">);</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="p">}</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nx">android</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="nx">webView</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">overScrollMode</span><span class="o">:</span><span class="w"> </span><span class="kt">0</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// 0: View.OVER_SCROLL_ALWAYS</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span><span class="w"> </span><span class="nx">satisfies</span><span class="w"> </span><span class="nx">Pick</span><span class="p">&lt;</span><span class="nt">WebViewProps</span><span class="err">,</span><span class="w"> </span><span class="err">'</span><span class="na">ios</span><span class="err">'</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="err">'</span><span class="na">android</span><span class="err">'</span><span class="p">&gt;;</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">Browser</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="p">&lt;</span><span class="nt">WebView</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">      </span><span class="na">source</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="p">}}</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">      </span><span class="na">ios</span><span class="o">=</span><span class="p">{</span><span class="nx">rnwDefaults</span><span class="p">.</span><span class="nx">ios</span><span class="p">}</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">      </span><span class="na">android</span><span class="o">=</span><span class="p">{</span><span class="nx">rnwDefaults</span><span class="p">.</span><span class="nx">android</span><span class="p">}</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">      </span><span class="na">style</span><span class="o">=</span><span class="p">{{</span><span class="w"> </span><span class="nx">flex</span><span class="o">:</span><span class="w"> </span><span class="kt">1</span><span class="w"> </span><span class="p">}}</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="p">/&gt;</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="p">);</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="p">}</span>
 </span></code></pre></div>
 <p>To add your own keys, merge each root: <code>ios={{ ...rnwDefaults.ios, scrollView: { ...rnwDefaults.ios.scrollView, bounces: false } }}</code>.</p>
 <h2 id="behavior-that-differs">Behavior that differs<a class="headerlink" href="#behavior-that-differs" title="Permanent link">&para;</a></h2>
@@ -6598,6 +6577,16 @@ has the setup. You pass each one in the <code>extensions</code> prop:</p>
 <td><code>automaticallyAdjustContentInsets</code></td>
 <td><code>scrollView.contentInsetAdjustmentBehavior</code></td>
 <td></td>
+</tr>
+<tr>
+<td><code>thirdPartyCookiesEnabled</code></td>
+<td></td>
+<td><code>webView.acceptThirdPartyCookies</code></td>
+</tr>
+<tr>
+<td><code>scalesPageToFit</code></td>
+<td></td>
+<td><code>settings.useWideViewPort</code> and <code>settings.loadWithOverviewMode</code></td>
 </tr>
 <tr>
 <td><code>forceDarkOn</code></td>

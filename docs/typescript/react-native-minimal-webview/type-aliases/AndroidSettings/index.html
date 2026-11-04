@@ -6241,9 +6241,9 @@
 SDK lists autocomplete, with their <code>@since</code>; the constants are in <a href="../../namespaces/AndroidConstants/">AndroidConstants</a>.</p>
 <p>A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
 nothing here can crash the app. A root's default keys are the package's, and yours go over them; a key the package
-doesn't set keeps the platform's default (<code>acceptThirdPartyCookies</code> is off, for one). A key you remove goes back to
-the value it had before you first set it; one with no getter, such as <code>geolocationEnabled</code>, keeps its value until the
-WebView is recreated, with a warning.</p>
+doesn't set, such as <code>overScrollMode</code>, keeps the platform's default. A key you remove goes back to the value it had
+before you first set it; one with no getter, such as <code>geolocationEnabled</code>, keeps its value until the WebView is
+recreated, with a warning.</p>
 <p>The ref's <a href="../WebViewRef/#get">get</a> and <a href="../WebViewRef/#call">call</a> take these roots, plus <code>cookieManager</code> and
 <code>webStorage</code>; a key is the getter's name without <code>get</code> or <code>is</code>.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -6265,15 +6265,16 @@ WebView is recreated, with a warning.</p>
 <p>Each new WebView starts with <code>javaScriptEnabled</code>, <code>domStorageEnabled</code>, <code>supportMultipleWindows</code> and
 <code>builtInZoomControls</code> on; <code>allowFileAccess</code>, <code>allowContentAccess</code>, <code>displayZoomControls</code> and
 <code>downloadFaviconsEnabled</code> off; <code>mixedContentMode</code> <code>MIXED_CONTENT_NEVER_ALLOW</code>; and, with WebView 146 and newer,
-<code>backForwardCacheEnabled</code> on. <code>userAgentString: null</code> is WebView's default user agent.</p>
+<code>backForwardCacheEnabled</code> on. <code>useWideViewPort</code> and <code>loadWithOverviewMode</code> are on by default, as
+react-native-webview has them. <code>userAgentString: null</code> is WebView's default user agent.</p>
 <hr />
 <h3 id="webview">webView?<a class="headerlink" href="#webview" title="Permanent link">&para;</a></h3>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">webView?</span><span class="o">:</span><span class="w"> </span><span class="kt">SettingsRoot</span><span class="o">&lt;</span><span class="nx">AndroidSettingKeys</span><span class="p">[</span><span class="s2">"webView"</span><span class="p">]</span><span class="o">&gt;</span><span class="p">;</span>
 </span></code></pre></div>
 <p><code>WebView</code> setters (static and inherited <code>View</code> ones too), then <code>WebViewCompat</code> ones, then <code>CookieManager</code>'s
 <code>acceptThirdPartyCookies</code>.</p>
-<p><code>webContentsDebuggingEnabled</code> is refused: it is process-wide, set with
-<a href="../../namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/">AndroidWebView.setWebContentsDebuggingEnabled</a>.</p>
+<p><code>acceptThirdPartyCookies</code> is on by default, as react-native-webview has it. <code>webContentsDebuggingEnabled</code> is
+refused: it is process-wide, set with <a href="../../namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/">AndroidWebView.setWebContentsDebuggingEnabled</a>.</p>
 
 
 

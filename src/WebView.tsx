@@ -6,6 +6,7 @@ import { CONNECTION } from './bridge/createBridge';
 import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
 import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
 import { defaultNavigationRules } from './defaultNavigationRules';
+import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
 import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
 import type {
   HookExtension,
@@ -438,14 +439,15 @@ const flattened = (
   );
 
 /**
- * The platform's settings for native: the package's defaults, the app's `ios` or `android` roots over them, and
- * `userAgent` on top. An unset `userAgent` resets its key to the default, so removing the prop undoes it.
+ * The platform's settings for native: the package's defaults, react-native-webview's over them, the app's `ios` or
+ * `android` roots over those, and `userAgent` on top. An unset `userAgent` resets its key to the default, so removing
+ * the prop undoes it.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
   const set = (value: string | undefined, key: string) =>
     value === undefined ? {} : { [key]: value };
   if (Platform.OS === 'ios') {
-    const { configuration, webView, ...rest } = flattened(props.ios);
+    const { configuration, webView, scrollView, ...rest } = flattened(props.ios);
     const defaults = flattened(DEFAULTS.IOSSettings);
     return {
       ...rest,
@@ -455,16 +457,19 @@ function platformSettings(props: WebViewProps): NativeSettings {
         ...webView,
         ...set(props.userAgent, 'customUserAgent'),
       },
+      scrollView: { ...REACT_NATIVE_WEBVIEW_DEFAULTS.ios.scrollView, ...scrollView },
     };
   }
   const { settings, webView } = flattened(props.android);
+  const rnw = REACT_NATIVE_WEBVIEW_DEFAULTS.android;
   return {
     settings: {
       ...flattened(DEFAULTS.AndroidSettings).settings,
+      ...rnw.settings,
       ...settings,
       ...set(props.userAgent, 'userAgentString'),
     },
-    webView: { ...webView },
+    webView: { ...rnw.webView, ...webView },
   };
 }
 
