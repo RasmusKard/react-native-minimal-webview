@@ -6770,7 +6770,7 @@ session), and a <code>data:</code> or <code>blob:</code> one is dropped. A PDF i
 <p>On iOS a file response is a download only in the main frame; an <code>&lt;a download&gt;</code> link is one from any frame.</p>
 <p>On Android a native hook's <code>WebViewContext.onDownloadStart</code> is offered each download first, and one it takes
 reaches neither this prop nor the external fallback.</p>
-<h4 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6785,7 +6785,7 @@ reaches neither this prop nor the external fallback.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns">Returns<a class="headerlink" href="#returns" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onerror">onError?<a class="headerlink" href="#onerror" title="Permanent link">&para;</a></h3>
@@ -6795,7 +6795,7 @@ reaches neither this prop nor the external fallback.</p>
 <p>After a failed load iOS keeps the page before it on screen, and Android shows WebView's own error page. On Android
 with a WebView older than 146, an SSL error on a back/forward load isn't reported.</p>
 <p>A renderer crash isn't reported here: it makes the cut-off load's <code>outcome</code> <code>failed</code> and calls <code>onProcessGone</code>.</p>
-<h4 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6810,7 +6810,7 @@ with a WebView older than 146, an SSL error on a back/forward load isn't reporte
 </tr>
 </tbody>
 </table>
-<h4 id="returns_1">Returns<a class="headerlink" href="#returns_1" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onfilerequest">onFileRequest?<a class="headerlink" href="#onfilerequest" title="Permanent link">&para;</a></h3>
@@ -6823,7 +6823,7 @@ one is open is cancelled, and if the chooser's activity died without returning a
 the app restarts.</p>
 <p>iOS always shows WebKit's picker, which needs <code>NSCameraUsageDescription</code> and <code>NSPhotoLibraryUsageDescription</code>.</p>
 <p>Until the answer settles, the page's next file request waits.</p>
-<h4 id="parameters_2">Parameters<a class="headerlink" href="#parameters_2" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6842,7 +6842,7 @@ the app restarts.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_2">Returns<a class="headerlink" href="#returns_2" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>string</code>[] | <code>Promise</code>&lt;<code>string</code>[] | <code>null</code>&gt; | <code>null</code></p>
 <hr />
 <h3 id="onfullscreenchange">onFullscreenChange?<a class="headerlink" href="#onfullscreenchange" title="Permanent link">&para;</a></h3>
@@ -6852,7 +6852,7 @@ the app restarts.</p>
 <p>The page entered or left fullscreen (<code>active</code>).</p>
 <p>Fullscreen works without it: the page's view covers the window, the system bars hide and back exits. iOS shows
 WebKit's own fullscreen, not reported.</p>
-<h4 id="parameters_3">Parameters<a class="headerlink" href="#parameters_3" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6867,14 +6867,14 @@ WebKit's own fullscreen, not reported.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_3">Returns<a class="headerlink" href="#returns_3" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onloadend">onLoadEnd?<a class="headerlink" href="#onloadend" title="Permanent link">&para;</a></h3>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nx">onLoadEnd</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">state</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
 </span></code></pre></div>
 <p><code>loading</code> went false: <code>state.outcome</code> says how the load ended.</p>
-<h4 id="parameters_4">Parameters<a class="headerlink" href="#parameters_4" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6889,7 +6889,7 @@ WebKit's own fullscreen, not reported.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_4">Returns<a class="headerlink" href="#returns_4" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onloadstart">onLoadStart?<a class="headerlink" href="#onloadstart" title="Permanent link">&para;</a></h3>
@@ -6897,7 +6897,7 @@ WebKit's own fullscreen, not reported.</p>
 </span></code></pre></div>
 <p><code>loading</code> went true.</p>
 <p>On Android with a WebView older than 146, a load that never commits fires neither this nor <code>onLoadEnd</code>.</p>
-<h4 id="parameters_5">Parameters<a class="headerlink" href="#parameters_5" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6912,7 +6912,7 @@ WebKit's own fullscreen, not reported.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_5">Returns<a class="headerlink" href="#returns_5" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onnavigation">onNavigation?<a class="headerlink" href="#onnavigation" title="Permanent link">&para;</a></h3>
@@ -6920,7 +6920,7 @@ WebKit's own fullscreen, not reported.</p>
 </span></code></pre></div>
 <p>Every navigation the rules, or their defaults, decided.</p>
 <p>Not reported: the <code>source</code> load, reloads, back/forward, and a navigation a native hook decides.</p>
-<h4 id="parameters_6">Parameters<a class="headerlink" href="#parameters_6" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6935,7 +6935,7 @@ WebKit's own fullscreen, not reported.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_6">Returns<a class="headerlink" href="#returns_6" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onnavigationrequest">onNavigationRequest?<a class="headerlink" href="#onnavigationrequest" title="Permanent link">&para;</a></h3>
@@ -6947,7 +6947,7 @@ WebKit's own fullscreen, not reported.</p>
 <p>A late, missing or other answer is <code>block</code>, as is one still pending when another page commits; <code>signal</code> aborts at
 the timeout and at that commit. Without this prop, <code>ask</code> is <code>block</code>. Until the next commit, a URL it allowed isn't
 asked again on a redirect back to it (Android), or when the same kind of frame loads it again (iOS).</p>
-<h4 id="parameters_7">Parameters<a class="headerlink" href="#parameters_7" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6966,7 +6966,7 @@ asked again on a redirect back to it (Android), or when the same kind of frame l
 </tr>
 </tbody>
 </table>
-<h4 id="returns_7">Returns<a class="headerlink" href="#returns_7" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p>| <a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a>
   | <code>Promise</code>&lt;<a href="../../type-aliases/NavigationAction/"><code>NavigationAction</code></a>&gt;</p>
 <hr />
@@ -6976,7 +6976,7 @@ asked again on a redirect back to it (Android), or when the same kind of frame l
 <p>Every change to the navigation state.</p>
 <p>Changes that arrive together may be combined into one call; <code>loading</code> going true is never combined away, so a load
 that starts and fails at once still reports both.</p>
-<h4 id="parameters_8">Parameters<a class="headerlink" href="#parameters_8" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6991,7 +6991,7 @@ that starts and fails at once still reports both.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_8">Returns<a class="headerlink" href="#returns_8" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="onopenexternal">onOpenExternal?<a class="headerlink" href="#onopenexternal" title="Permanent link">&para;</a></h3>
@@ -7003,7 +7003,7 @@ that starts and fails at once still reports both.</p>
 nothing opens it.</p>
 <p>Without this prop, the system browser or app for the URL opens it, without asking <code>canOpenURL</code> first, so no
 <code>LSApplicationQueriesSchemes</code> (iOS) or <code>&lt;queries&gt;</code> (Android) entries are needed.</p>
-<h4 id="parameters_9">Parameters<a class="headerlink" href="#parameters_9" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -7022,7 +7022,7 @@ nothing opens it.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_9">Returns<a class="headerlink" href="#returns_9" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>boolean</code> | <code>void</code> | <code>Promise</code>&lt;<code>boolean</code> | <code>void</code>&gt;</p>
 <hr />
 <h3 id="onpermissionrequest">onPermissionRequest?<a class="headerlink" href="#onpermissionrequest" title="Permanent link">&para;</a></h3>
@@ -7036,7 +7036,7 @@ request fails anyway. On iOS, true also skips WebKit's own prompt.</p>
 permissions. Android keeps a location answer until the page changes.</p>
 <p>Anything but true denies. <code>signal</code> also aborts when Android withdraws the request. Until the answer settles, the
 page's next request of the same kind waits.</p>
-<h4 id="parameters_10">Parameters<a class="headerlink" href="#parameters_10" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -7055,7 +7055,7 @@ page's next request of the same kind waits.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_10">Returns<a class="headerlink" href="#returns_10" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>boolean</code> | <code>Promise</code>&lt;<code>boolean</code>&gt;</p>
 <hr />
 <h3 id="onprocessgone">onProcessGone?<a class="headerlink" href="#onprocessgone" title="Permanent link">&para;</a></h3>
@@ -7063,7 +7063,7 @@ page's next request of the same kind waits.</p>
 </span></code></pre></div>
 <p>The renderer died; see <a href="../../type-aliases/ProcessGoneEvent/">ProcessGoneEvent</a> for the recovery.</p>
 <p>Android's WebViews share one renderer, so each of them reports its death.</p>
-<h4 id="parameters_11">Parameters<a class="headerlink" href="#parameters_11" title="Permanent link">&para;</a></h4>
+<p><strong>Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -7078,7 +7078,7 @@ page's next request of the same kind waits.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="returns_11">Returns<a class="headerlink" href="#returns_11" title="Permanent link">&para;</a></h4>
+<p><strong>Returns</strong></p>
 <p><code>void</code></p>
 <hr />
 <h3 id="pulltorefresh">pullToRefresh?<a class="headerlink" href="#pulltorefresh" title="Permanent link">&para;</a></h3>
