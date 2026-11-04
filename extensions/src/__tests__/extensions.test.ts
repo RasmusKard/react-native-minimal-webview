@@ -5,6 +5,7 @@ import {
   androidLayerType,
   basicAuthCredential,
   dialogs,
+  downloadManager,
   hideKeyboardAccessoryView,
   incognito,
   keyboardDisplayRequiresUserAction,
@@ -48,6 +49,11 @@ describe('the extensions', () => {
     expect(plain(menuItems({ items: MENU }))).toEqual({ key: `${K}.menuItems`, options: { items: MENU } });
     expect(plain(transparentBackground())).toEqual({ key: `${K}.transparentBackground` });
     expect(plain(incognito())).toEqual({ key: `${K}.incognito` });
+    expect(plain(downloadManager())).toEqual({ key: `${K}.downloadManager` });
+    expect(plain(downloadManager({ downloadingMessage: 'Saving' }))).toEqual({
+      key: `${K}.downloadManager`,
+      options: { downloadingMessage: 'Saving' },
+    });
     expect(hideKeyboardAccessoryView()).toBeNull();
     expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(menuItems({ suppress: ['copy'] })).toBeNull();
@@ -56,6 +62,7 @@ describe('the extensions', () => {
   it("gives null for the Android ones on iOS, for a menu with nothing in it, and for WebKit's keyboard default", () => {
     expect(nestedScrollEnabled()).toBeNull();
     expect(androidLayerType('hardware')).toBeNull();
+    expect(downloadManager()).toBeNull();
     expect(menuItems({ onSelect: () => {} })).toBeNull();
     expect(keyboardDisplayRequiresUserAction(true)).toBeNull();
   });

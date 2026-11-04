@@ -51,6 +51,7 @@ export function Browser() {
 | [`keyboardDisplayRequiresUserAction(required)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/) | iOS |
 | [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/) | Android |
 | [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/) | Android |
+| [`downloadManager({ downloadingMessage })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/) | Android |
 
 Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) page has its
 behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.
@@ -78,6 +79,9 @@ The Swift keeps its type names: they belong to your module.
 
 A changed `hideKeyboardAccessoryView` also needs a `suffix` of its own: the runtime class it makes is found by that
 name.
+
+A copied `downloadManager` also needs `implementation 'androidx.webkit:webkit:<version>'`, with the version in the
+core's `android/build.gradle`, in your module's `android/build.gradle`.
 
 With this package installed as well, a `package` line you forgot to change fails the Android build with a duplicate
 class. A key you forgot to rename registers two hooks under one key: `register`, in the

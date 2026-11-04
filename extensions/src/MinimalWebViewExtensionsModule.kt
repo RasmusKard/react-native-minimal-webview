@@ -21,6 +21,7 @@ class MinimalWebViewExtensionsModule : Module() {
       TransparentBackground.register()
       NestedScrollEnabled.register()
       AndroidLayerType.register()
+      DownloadManager.register()
     }
   }
 }

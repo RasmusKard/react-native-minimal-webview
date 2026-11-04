@@ -62,7 +62,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 |---|---|---|---|
 | Android fullscreen video (`allowsFullscreenVideo`) | Off | On ([`onFullscreenChange`][onfullscreenchange]) | A native hook that takes `onShowCustomView` |
 | iOS universal links | Open the app that claims them | Load in place | An `external` rule for the host |
-| Downloads | Android: saved to Downloads | Open externally, or [`onDownload`][ondownload] saves them | A native hook's `onDownloadStart` (Android) |
+| Downloads | Android: saved to Downloads | Open externally, or [`onDownload`][ondownload] saves them | [`downloadManager`][downloadmanager] (Android) |
 | Renderer crash | Reported | The core reloads ([`onProcessGone`][onprocessgone]) | Keep `reload()` only for [`recovered: false`][recovered] |
 | Messaging | Every page; on Android every frame | `allowedOrigins`, main frame | An iframe's: a native hook |
 | Injected script | Document end, every origin | Document start, its `origins` | `addEventListener('DOMContentLoaded', …)`; `origins: ['*']` |
@@ -93,7 +93,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia` | `onPermissionRequest` |
 | `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus` | `call('webView.clearCache', [true])` and so on, on Android |
 | `removeIosKeyboardObserver` | A [native hook](native-hooks.md) |
-| `refreshControlLightMode`, `downloadingMessage`, `onLoadSubResourceError`, `nativeConfig` | A native hook |
+| `refreshControlLightMode`, `onLoadSubResourceError`, `nativeConfig` | A native hook |
 | `containerStyle` | A `View` around the WebView |
 
 On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` do nothing under the new architecture.
@@ -114,6 +114,7 @@ has the setup. You pass each one in the `extensions` prop:
 | `keyboardDisplayRequiresUserAction` | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction] |
 | `nestedScrollEnabled` | [`nestedScrollEnabled`][nestedscrollenabled] |
 | `androidLayerType` | [`androidLayerType`][androidlayertype] |
+| Android downloads, `downloadingMessage` | [`downloadManager`][downloadmanager] |
 | JS dialogs (no prop) | [`dialogs`][dialogs] |
 
 The settings with another name:
@@ -145,7 +146,7 @@ The settings with another name:
 | `useSharedProcessPool` | `WKProcessPool` has had no effect since iOS 15 |
 | `ignoreSilentHardwareSwitch` | react-native-webview keeps a silent `<audio>` playing in the page for it |
 | `enableApplePay` | Apple Pay works with injected scripts since iOS 16 |
-| `lackPermissionToDownloadMessage` | A download lands in the app's cache, which needs no permission |
+| `lackPermissionToDownloadMessage` | `onDownload` saves into the app's cache, and [`downloadManager`][downloadmanager] into Downloads: neither needs a permission |
 
 ## What else changes
 
@@ -319,4 +320,5 @@ export function Browser() {
 [keyboarddisplayrequiresuseraction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/
 [nestedscrollenabled]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/
 [androidlayertype]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/
+[downloadmanager]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/
 [dialogs]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/

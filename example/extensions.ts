@@ -6,6 +6,7 @@ import {
   androidLayerType,
   basicAuthCredential,
   dialogs as dialogsExtension,
+  downloadManager,
   hideKeyboardAccessoryView,
   incognito,
   keyboardDisplayRequiresUserAction,
@@ -424,6 +425,27 @@ async function android(h: Harness, r: Reporter) {
   r.info(
     'nestedScrollEnabled',
     'needs a scrolling parent, which the example has none of: check it by hand'
+  );
+  // The Download Manager can't fetch a data: URL: onDownload still gets that one.
+  const handed = () => h.events.downloads.length + h.events.downloadFailures.length;
+  h.setProps({ extensions: [downloadManager({ downloadingMessage: 'Saving' })] });
+  await openPage(h, fresh(h, '/media.html'));
+  const before = handed();
+  await h.ref.current?.evaluate(
+    "(() => { const a = document.getElementById('attachment'); a.href = '/download?name=downloadManager.txt'; a.click(); })()"
+  );
+  await sleep(3000);
+  const taken = handed() === before;
+  await h.ref.current?.evaluate("document.getElementById('data').click()");
+  const left = !!(await until(() => handed() > before, 10000));
+  r.check(
+    'downloadManager takes an attachment from onDownload, and leaves it a data: download',
+    taken && left,
+    { taken, left, downloads: h.events.downloads.slice(-1), failures: h.events.downloadFailures }
+  );
+  r.info(
+    'downloadManager',
+    'the file in the Downloads folder, its notification and the toast: check them by hand'
   );
   h.setProps({});
 }

@@ -19,11 +19,12 @@ android {
   sourceSets {
     main {
       // The module, then one folder per extension, each with its Kotlin beside its Swift and TS.
-      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'incognito', 'menuItems', 'onScroll', 'transparentBackground', 'nestedScrollEnabled', 'androidLayerType']
+      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'incognito', 'menuItems', 'onScroll', 'transparentBackground', 'nestedScrollEnabled', 'androidLayerType', 'downloadManager']
     }
   }
 }
 
 dependencies {
   implementation project(':react-native-minimal-webview')
+  implementation 'androidx.webkit:webkit:1.17.1' // downloadManager's URLUtilCompat, the core's version
 }
