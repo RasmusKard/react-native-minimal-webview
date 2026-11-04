@@ -15,6 +15,7 @@ public class MinimalWebViewExtensionsModule: Module {
       TransparentBackground.register()
       HideKeyboardAccessoryView.register()
       KeyboardDisplayRequiresUserAction.register()
+      RefreshControlLightMode.register()
     }
   }
 }

@@ -13,6 +13,7 @@ import {
   menuItems,
   nestedScrollEnabled,
   onScroll,
+  refreshControlLightMode,
   transparentBackground,
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
@@ -62,8 +63,9 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 
 /**
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press (maestro/extensions.yaml); the keyboard accessory bar, nested scrolling and Android's transparent
- * background are left to a person.
+ * driver's long press (maestro/extensions.yaml). Left to a person: what shows only on screen (the keyboard accessory
+ * bar, the refresh spinner's color, Android's transparent background, the Download Manager's file and toast) and
+ * nested scrolling.
  */
 export async function extensions(h: Harness) {
   const r = reporter('extensions');
@@ -403,6 +405,10 @@ async function keyboard(h: Harness, r: Reporter) {
     !before && on && !off,
     { before, on, off }
   );
+  h.setProps({ extensions: [refreshControlLightMode()] });
+  await sleep(300);
+  r.info('refreshControlLightMode', 'the spinner shows only on a pull: check it by hand');
+  h.setProps({});
 }
 
 async function android(h: Harness, r: Reporter) {

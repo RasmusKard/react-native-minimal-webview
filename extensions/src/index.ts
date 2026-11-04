@@ -27,4 +27,5 @@ export * from '../keyboardDisplayRequiresUserAction';
 export * from '../menuItems';
 export * from '../nestedScrollEnabled';
 export * from '../onScroll';
+export * from '../refreshControlLightMode';
 export * from '../transparentBackground';
