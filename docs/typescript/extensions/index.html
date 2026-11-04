@@ -3723,6 +3723,20 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -3853,6 +3867,33 @@
   
   
     <li class="md-nav__item">
+      <a href="./functions/downloadManager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  downloadManager
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="./functions/hideKeyboardAccessoryView/" class="md-nav__link">
         
   
@@ -3861,6 +3902,60 @@
     
   
   hideKeyboardAccessoryView
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./functions/incognito/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  incognito
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./functions/keyboardDisplayRequiresUserAction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  keyboardDisplayRequiresUserAction
 
     
   </span>
@@ -3934,6 +4029,33 @@
   
   
     <li class="md-nav__item">
+      <a href="./functions/onLoadSubResourceError/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  onLoadSubResourceError
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="./functions/onScroll/" class="md-nav__link">
         
   
@@ -3942,6 +4064,87 @@
     
   
   onScroll
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./functions/refreshControlLightMode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  refreshControlLightMode
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./functions/removeIosKeyboardObserver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  removeIosKeyboardObserver
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./functions/transparentBackground/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  transparentBackground
 
     
   </span>
@@ -4154,6 +4357,8 @@
       
         
       
+        
+      
     
     
     
@@ -4265,6 +4470,33 @@
     
   
   ScrollEvent
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./type-aliases/SubResourceErrorEvent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SubResourceErrorEvent
 
     
   </span>
@@ -6077,8 +6309,20 @@ rebuild the app, since the package has native code:</p>
 <td>Answers the page's <code>alert</code>, <code>confirm</code> and <code>prompt</code> with <code>onDialog</code> instead of the native dialogs; the page waits for the answer. Not in react-native-webview, whose dialogs are native.</td>
 </tr>
 <tr>
+<td><a href="functions/downloadManager/">downloadManager</a></td>
+<td>Saves the page's http and https downloads into the device's Downloads folder with Android's Download Manager, whose notification shows the progress, and shows a toast: react-native-webview's Android downloads, with its <code>downloadingMessage</code>. Null on iOS.</td>
+</tr>
+<tr>
 <td><a href="functions/hideKeyboardAccessoryView/">hideKeyboardAccessoryView</a></td>
 <td>Hides the bar above the keyboard (previous, next, done) for the page's inputs: react-native-webview's <code>hideKeyboardAccessoryView</code>. Null on Android.</td>
+</tr>
+<tr>
+<td><a href="functions/incognito/">incognito</a></td>
+<td>Starts the WebView without the cookies and cache stored before: react-native-webview's <code>incognito</code>. Turn it on when the WebView is created: it applies to that WebView, and a later change, switching it off included, doesn't.</td>
+</tr>
+<tr>
+<td><a href="functions/keyboardDisplayRequiresUserAction/">keyboardDisplayRequiresUserAction</a></td>
+<td>With <code>required</code> false, a page script's <code>focus()</code> on an input shows the keyboard, as a tap does: react-native-webview's <code>keyboardDisplayRequiresUserAction</code>. Null when <code>required</code> is true, WebKit's default, and on Android. A change applies from the next focus.</td>
 </tr>
 <tr>
 <td><a href="functions/menuItems/">menuItems</a></td>
@@ -6089,8 +6333,24 @@ rebuild the app, since the package has native code:</p>
 <td>Keeps a swipe that starts on the page for the page, inside a scrolling parent such as a <code>ScrollView</code>: react-native-webview's <code>nestedScrollEnabled</code>. Null on iOS.</td>
 </tr>
 <tr>
+<td><a href="functions/onLoadSubResourceError/">onLoadSubResourceError</a></td>
+<td>Calls <code>handler</code> for each of the page's requests that fails, such as an image, a script or an iframe, but not the main frame's, which goes to <code>onError</code>: react-native-webview's <code>onLoadSubResourceError</code>. Null on iOS.</td>
+</tr>
+<tr>
 <td><a href="functions/onScroll/">onScroll</a></td>
 <td>Calls <code>handler</code> on each change of the scroll offset, with no throttling: react-native-webview's <code>onScroll</code>.</td>
+</tr>
+<tr>
+<td><a href="functions/refreshControlLightMode/">refreshControlLightMode</a></td>
+<td>Makes the pull-to-refresh spinner white, for dark pages: react-native-webview's <code>refreshControlLightMode</code>. Switched off, it has its default color again. Null on Android.</td>
+</tr>
+<tr>
+<td><a href="functions/removeIosKeyboardObserver/">removeIosKeyboardObserver</a></td>
+<td>Stops the WebView from insetting its scroll view for the keyboard, for an app whose own native code handles the keyboard: react-native-webview's <code>removeIosKeyboardObserver</code>. The page's <code>visualViewport</code> still shrinks for it. Null on Android.</td>
+</tr>
+<tr>
+<td><a href="functions/transparentBackground/">transparentBackground</a></td>
+<td>Makes the WebView itself transparent, so that the views behind it show where the page paints no background: react-native-webview's <code>style={{ backgroundColor: 'transparent' }}</code>. Switched off, it is opaque again; on Android, white.</td>
 </tr>
 </tbody>
 </table>
@@ -6143,6 +6403,10 @@ rebuild the app, since the package has native code:</p>
 <tr>
 <td><a href="type-aliases/ScrollEvent/">ScrollEvent</a></td>
 <td>A scroll, for <a href="functions/onScroll/">onScroll</a>: react-native-webview's event, in points (iOS) or dp (Android).</td>
+</tr>
+<tr>
+<td><a href="type-aliases/SubResourceErrorEvent/">SubResourceErrorEvent</a></td>
+<td>A failed request that isn't the main frame's, for <a href="functions/onLoadSubResourceError/">onLoadSubResourceError</a>: shaped as the core's <code>LoadErrorEvent</code> for a network error.</td>
 </tr>
 </tbody>
 </table>
