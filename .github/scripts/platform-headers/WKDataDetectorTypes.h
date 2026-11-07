@@ -1,5 +1,4 @@
 // Extract of /System/Library/Frameworks/WebKit.framework/Headers/WKDataDetectorTypes.h, iphonesimulator SDK 27.1
-#if TARGET_OS_IPHONE
 typedef NS_OPTIONS(NSUInteger, WKDataDetectorTypes) {
     WKDataDetectorTypeNone = 0,
     WKDataDetectorTypePhoneNumber = 1 << 0,
@@ -13,4 +12,3 @@ typedef NS_OPTIONS(NSUInteger, WKDataDetectorTypes) {
 
     WKDataDetectorTypeSpotlightSuggestion API_DEPRECATED_WITH_REPLACEMENT("WKDataDetectorTypeLookupSuggestion", ios(10.0, 10.0)) = WKDataDetectorTypeLookupSuggestion,
 } API_AVAILABLE(ios(10.0));
-#endif
