@@ -96,7 +96,6 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
   fun get(path: String): String {
     val (targets, key) = resolve(path)
-    if (key in OWNED) throw problem("$key is ${owned(key)}")
     val value = read(targets, key)
     if (value === NONE) throw notFound("no public getter for $key")
     return toJson(value)

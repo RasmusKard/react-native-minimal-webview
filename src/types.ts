@@ -1056,7 +1056,7 @@ export type WebViewRef = {
    * - iOS: every selector that loads, navigates (`setInteractionState:` too), runs a script, starts a download or sets
    *   a delegate, and private (`_`), KVC, `willChange…`, `didChange…`, `performSelector`, `init…`, `copy…`,
    *   `mutable…`, `new…` and reference-counting selectors.
-   * - Android (in `get` too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
+   * - Android: the loads, navigations, clients, JavaScript interfaces, web message listeners,
    *   document-start scripts, the touch, scroll-change and navigation listeners, `destroy`, `removeAllViews`,
    *   `pauseTimers`, `resumeTimers`, `evaluateJavascript` and remote debugging
    *   ({@link AndroidWebView.setWebContentsDebuggingEnabled}).
