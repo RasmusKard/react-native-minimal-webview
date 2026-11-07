@@ -403,39 +403,34 @@ const flattened = (
     Object.entries(roots).map(([name, { other, ...keys } = {}]) => [name, { ...other, ...keys }])
   );
 
+/** Each layer's roots over the earlier layers', key by key. */
+const layered = (...layers: NativeSettings[]) =>
+  layers.reduce<NativeSettings>((out, layer) => {
+    for (const [root, keys] of Object.entries(layer)) out[root] = { ...out[root], ...keys };
+    return out;
+  }, {});
+
 /**
  * The platform's settings for native: the package's defaults, react-native-webview's over them, the app's `ios` or
- * `android` roots over those, and `userAgent` on top. An unset `userAgent` resets its key to the default, so removing
- * the prop undoes it.
+ * `android` roots over those, and `userAgent` on top. A removed `userAgent` falls back to Android's
+ * `userAgentString: null` default; on iOS, native restores the removed key.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
-  const set = (value: string | undefined, key: string) =>
-    value === undefined ? {} : { [key]: value };
-  if (Platform.OS === 'ios') {
-    const { configuration, webView, scrollView, ...rest } = flattened(props.ios);
-    const defaults = flattened(DEFAULTS.IOSSettings);
-    return {
-      ...rest,
-      configuration: { ...defaults.configuration, ...configuration },
-      webView: {
-        ...defaults.webView,
-        ...webView,
-        ...set(props.userAgent, 'customUserAgent'),
-      },
-      scrollView: { ...REACT_NATIVE_WEBVIEW_DEFAULTS.ios.scrollView, ...scrollView },
-    };
-  }
-  const { settings, webView } = flattened(props.android);
-  const rnw = REACT_NATIVE_WEBVIEW_DEFAULTS.android;
-  return {
-    settings: {
-      ...flattened(DEFAULTS.AndroidSettings).settings,
-      ...rnw.settings,
-      ...settings,
-      ...set(props.userAgent, 'userAgentString'),
-    },
-    webView: { ...rnw.webView, ...webView },
-  };
+  const [defaults, rnw, app, userAgent] =
+    Platform.OS === 'ios'
+      ? [
+          flattened(DEFAULTS.IOSSettings),
+          REACT_NATIVE_WEBVIEW_DEFAULTS.ios,
+          flattened(props.ios),
+          { webView: { customUserAgent: props.userAgent } },
+        ]
+      : [
+          flattened(DEFAULTS.AndroidSettings),
+          REACT_NATIVE_WEBVIEW_DEFAULTS.android,
+          flattened(props.android),
+          { settings: { userAgentString: props.userAgent } },
+        ];
+  return layered(defaults, rnw, app, props.userAgent === undefined ? {} : userAgent);
 }
 
 /**

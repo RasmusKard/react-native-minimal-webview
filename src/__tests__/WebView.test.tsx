@@ -8,6 +8,7 @@ import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { defaultNavigationRules } from '../defaultNavigationRules';
 import { createWebViewRef, useWebViewState } from '../refStore';
 import type {
+  AndroidSettings,
   HookExtension,
   NavigationRequest,
   NavigationRule,
@@ -489,7 +490,7 @@ describe('platform settings', () => {
   it('are the defaults alone without props (jest runs as iOS)', async () => {
     expect(await settingsOf({})).toEqual({
       configuration: { allowsInlineMediaPlayback: true },
-      webView: { customUserAgent: null, inspectable: true },
+      webView: { inspectable: true },
       scrollView: { directionalLockEnabled: true },
     });
   });
@@ -604,6 +605,12 @@ describe('platform settings', () => {
         },
         webView: { acceptThirdPartyCookies: true, overScrollMode: 2 },
       });
+    });
+
+    it('send a root the types lack, for native to report', async () => {
+      // Only untyped JavaScript can name one.
+      const android = { nope: { a: 1 } } as AndroidSettings;
+      expect((await settingsOf({ android })).nope).toEqual({ a: 1 });
     });
 
     it('let an app key win over a react-native-webview default, which a removed key goes back to', async () => {

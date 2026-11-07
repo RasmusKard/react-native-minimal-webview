@@ -575,9 +575,7 @@ export type IOSSettings = {
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
    * The `WKWebView`, live.
-   *
-   * `customUserAgent: null` is WebKit's default user agent, with `applicationNameForUserAgent` appended.
-   * @default `{ customUserAgent: null, inspectable: __DEV__ }`
+   * @default `{ inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /**
