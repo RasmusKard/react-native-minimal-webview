@@ -6344,21 +6344,34 @@
 
 <h1 id="android-system-webview-versions">Android System WebView versions<a class="headerlink" href="#android-system-webview-versions" title="Permanent link">&para;</a></h1>
 <p>Some features need a newer Android System WebView than the <a href="../../#requirements">minimum Android version</a>
-brings. This page says why the version matters, how to check and update a device's, and how to test the old ones.
-Each item's API reference gives the version it needs.</p>
+brings. This page says which features need which version, how to check and update a device's, and how to test the
+old ones.</p>
 <p>Android System WebView updates apart from Android, so a device's API level doesn't tell you its WebView.</p>
 <p>The core checks each feature at run time. On an older WebView the feature is off, and nothing crashes.</p>
 <h2 id="what-needs-a-newer-webview">What needs a newer WebView<a class="headerlink" href="#what-needs-a-newer-webview" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate"><code>evaluate</code></a></li>
-<li><code>blob:</code> downloads with <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload"><code>onDownload</code></a></li>
-<li>The <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge">bridge</a></li>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#injectedscripts"><code>injectedScripts</code></a></li>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#pendingurl"><code>pendingUrl</code></a></li>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onloadstart"><code>onLoadStart</code></a> and <code>onLoadEnd</code> for a load that never commits</li>
-<li>SSL errors on back and forward loads in <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onerror"><code>onError</code></a></li>
-<li><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/AndroidSettings/#settings"><code>backForwardCacheEnabled</code></a> on by default</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>WebView</th>
+<th>Features</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>83</td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate"><code>evaluate</code></a>; <code>blob:</code> downloads with <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload"><code>onDownload</code></a></td>
+</tr>
+<tr>
+<td>101</td>
+<td>the <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge">bridge</a>; <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#injectedscripts"><code>injectedScripts</code></a></td>
+</tr>
+<tr>
+<td>146</td>
+<td><a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#pendingurl"><code>pendingUrl</code></a>; <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onloadstart"><code>onLoadStart</code></a> and <code>onLoadEnd</code> for a load that never commits; SSL errors on back and forward loads in <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onerror"><code>onError</code></a>; <a href="https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/AndroidSettings/#settings"><code>backForwardCacheEnabled</code></a> on by default</td>
+</tr>
+</tbody>
+</table>
+<p>Each feature's API reference says what it does on an older WebView.</p>
 <p>A <code>WebSettingsCompat</code> or <code>WebViewCompat</code> key, a compat method through <code>get</code> or <code>call</code>, and <code>AndroidWebView.preconnect</code>
 depend on an androidx.webkit feature instead of a WebView version. The keys' and <code>preconnect</code>'s TSDoc name it.</p>
 <h2 id="check-a-devices-webview">Check a device's WebView<a class="headerlink" href="#check-a-devices-webview" title="Permanent link">&para;</a></h2>
