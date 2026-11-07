@@ -60,4 +60,3 @@ export function matchesOrigin(forms: OriginForms, origin: string) {
   }
   return false;
 }
-// Stryker restore all
