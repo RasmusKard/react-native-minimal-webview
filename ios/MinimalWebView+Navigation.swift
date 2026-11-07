@@ -19,8 +19,9 @@ extension MinimalWebView {
     let request = NavigationRules.Request(
       url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: action.navigationType == .linkActivated
     )
-    let download = downloads.wantsDownload(action)
-    // `<a download>` or blob: that no hook takes (no onDownload): .allow would show it as a page.
+    // A navigation WebKit marks as a download (`<a download>`, blob:). One no hook takes (no onDownload) is dropped:
+    // .allow would show it as a page.
+    let download = action.shouldPerformDownload && requestHandlers.contains("download")
     let dropped = action.shouldPerformDownload && !download
     run(request) { [weak self] allowed in
       guard allowed else { return decide(.cancel) }

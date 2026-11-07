@@ -15,21 +15,6 @@ final class Downloads: NSObject, WKDownloadDelegate {
     return response.isForMainFrame && (disposition.lowercased().hasPrefix("attachment") || !response.canShowMIMEType)
   }
 
-  func decidePolicy(for response: WKNavigationResponse) -> WKNavigationResponsePolicy? {
-    handled && Self.isDownload(response) ? .download : nil
-  }
-
-  /// Whether a navigation WebKit marks as a download (`<a download>`, blob:) becomes one.
-  func wantsDownload(_ action: WKNavigationAction) -> Bool {
-    handled && action.shouldPerformDownload
-  }
-
-  func didBecome(_ download: WKDownload) {
-    if handled { download.delegate = self }
-  }
-
-  private var handled: Bool { view?.requestHandlers.contains("download") == true }
-
   func download(
     _ download: WKDownload,
     decideDestinationUsing response: URLResponse,
