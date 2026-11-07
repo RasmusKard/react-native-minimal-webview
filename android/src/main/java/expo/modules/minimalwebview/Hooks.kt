@@ -127,35 +127,22 @@ internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<Minima
 /**
  * Picks the hook client that gets a decision callback: the first of the clients that override it. It calls [warn] with
  * a `core.warning` message naming the callback, once per callback and reason: when more than one client overrides it,
- * and when one takes a decision the core makes from the app's props or their defaults ([TAKEN]).
+ * and, when the caller passes `lost` (what stops applying once a client takes the decision: the app's props or their
+ * defaults that would decide it otherwise), when one client takes it.
  */
 internal class Deciders(private val warn: (String) -> Unit) {
   // Concurrent: shouldInterceptRequest decides on Chromium's IO thread.
   private val warned = ConcurrentHashMap.newKeySet<String>()
 
-  fun <T> first(callback: String, clients: List<T>, overrides: (T) -> Boolean): T? {
+  fun <T> first(callback: String, clients: List<T>, lost: String? = null, overrides: (T) -> Boolean): T? {
     val overriding = clients.filter(overrides)
     if (overriding.size > 1 && warned.add(callback)) {
       warn("$callback: more than one hook client overrides it; only the first one gets it")
     }
-    val lost = TAKEN[callback]
     if (lost != null && overriding.isNotEmpty() && warned.add("$callback taken")) {
       warn("$callback: a hook client takes it, so $lost")
     }
     return overriding.firstOrNull()
-  }
-
-  private companion object {
-    /** The decisions the core makes from the app's props or their defaults, by callback: what stops applying. */
-    val TAKEN = mapOf(
-      "shouldOverrideUrlLoading" to "navigationRules, their defaults and onNavigationRequest don't apply to navigations",
-      "onCreateWindow" to "navigationRules, their defaults and onNavigationRequest don't apply to new windows",
-      "onReceivedSslError" to "the core doesn't cancel SSL errors or report them to onError",
-      "onPermissionRequest" to "onPermissionRequest and the default deny don't apply",
-      "onGeolocationPermissionsShowPrompt" to "onPermissionRequest and the default deny don't apply to location",
-      "onShowFileChooser" to "onFileRequest doesn't apply",
-      "onShowCustomView" to "the core's fullscreen and onFullscreenChange don't apply"
-    )
   }
 }
 
