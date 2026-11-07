@@ -2843,6 +2843,8 @@
       
         
       
+        
+      
     
     
     
@@ -2954,6 +2956,33 @@
     
   
   ContentMode
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../typescript/react-native-minimal-webview/namespaces/IOSConstants/enumerations/CookiePolicy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CookiePolicy
 
     
   </span>
@@ -6311,11 +6340,11 @@
 <tbody>
 <tr>
 <td><a href="ask/">ask</a></td>
-<td>abstract fun <a href="ask/">ask</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, onAnswer: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Sends the event as <a href="emit/">emit</a> does, and calls <a href="ask/">onAnswer</a> with JS's answer: the extension's <code>onEvent</code> return value, a promise awaited. A number answers as a <code>Double</code>.</td>
+<td>abstract fun <a href="ask/">ask</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, onAnswer: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Sends the event as <a href="emit/">emit</a> does, and calls <a href="ask/">onAnswer</a> with JS's answer: the extension's <code>onEvent</code> return value, a promise awaited, in JSON types as <a href="handle/">handle</a>'s arguments are.</td>
 </tr>
 <tr>
 <td><a href="emit/">emit</a></td>
-<td>abstract fun <a href="emit/">emit</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;)<br>Sends an event to JS as <code>&lt;key&gt;.&lt;name&gt;</code>: the extension's <code>onEvent</code> gets <code>{ name, payload }</code>, with <code>name</code> relative to the key. It is dropped while the hook is off, and after the context's attach ended.</td>
+<td>abstract fun <a href="emit/">emit</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;)<br>Sends an event to JS: the extension with the hook's key gets <code>{ name, payload }</code> in its <code>onEvent</code>. It is dropped while the hook is off, and after the context's attach ended.</td>
 </tr>
 <tr>
 <td><a href="handle/">handle</a></td>

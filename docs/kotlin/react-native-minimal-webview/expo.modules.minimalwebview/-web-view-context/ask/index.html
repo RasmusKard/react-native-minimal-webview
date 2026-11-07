@@ -2843,6 +2843,8 @@
       
         
       
+        
+      
     
     
     
@@ -2954,6 +2956,33 @@
     
   
   ContentMode
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../typescript/react-native-minimal-webview/namespaces/IOSConstants/enumerations/CookiePolicy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CookiePolicy
 
     
   </span>
@@ -6235,7 +6264,7 @@
 
 <h1 id="ask">ask<a class="headerlink" href="#ask" title="Permanent link">&para;</a></h1>
 <p>abstract fun <a href="../ask/">ask</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, onAnswer: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)</p>
-<p>Sends the event as <a href="../emit/">emit</a> does, and calls <a href="../ask/">onAnswer</a> with JS's answer: the extension's <code>onEvent</code> return value, a promise awaited. A number answers as a <code>Double</code>.</p>
+<p>Sends the event as <a href="../emit/">emit</a> does, and calls <a href="../ask/">onAnswer</a> with JS's answer: the extension's <code>onEvent</code> return value, a promise awaited, in JSON types as <a href="../handle/">handle</a>'s arguments are.</p>
 <p>It answers null when the handler throws or there is none, or when the Document ends first; there is no timeout. It answers null at once while the hook is off, and after the context's attach ended. An ask made before the WebView's first commit (in <code>attach</code>) belongs to the Document that commit opens.</p>
 
 

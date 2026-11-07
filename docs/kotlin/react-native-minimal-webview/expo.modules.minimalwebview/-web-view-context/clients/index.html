@@ -2843,6 +2843,8 @@
       
         
       
+        
+      
     
     
     
@@ -2954,6 +2956,33 @@
     
   
   ContentMode
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../typescript/react-native-minimal-webview/namespaces/IOSConstants/enumerations/CookiePolicy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CookiePolicy
 
     
   </span>
@@ -6241,9 +6270,9 @@
 <li>A callback that returns a decision goes to the first client that overrides it, instead of the core and the app's props.</li>
 <li>Every other callback reaches the core first, then each client that overrides it.</li>
 </ul>
-<p>Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation rules' security checks included, and a <code>core.warning</code> names the callback and what stops applying.</p>
+<p>Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation rules' security checks included, and a warning names the callback and what stops applying.</p>
 <p>A client that overrides <code>shouldOverrideUrlLoading</code> decides navigations instead of the navigation rules, which still decide new windows unless a chrome client overrides <code>onCreateWindow</code>. A new window the rules allow loads in place with <code>loadUrl</code>, which doesn't reach <code>shouldOverrideUrlLoading</code> (on iOS that load reaches the deciding delegate).</p>
-<p>A decision more than one client overrides still goes only to the first, and a <code>core.warning</code> names it. Each warning comes once per WebView, when its decision first comes.</p>
+<p>A decision more than one client overrides still goes only to the first, and a warning names it. Each warning comes once per WebView, when its decision first comes.</p>
 <p>Overriding a variant the base class forwards to counts as overriding the callback: <a href="https://developer.android.com/reference/kotlin/androidx/webkit/WebViewClientCompat.html">WebViewClientCompat</a>'s <code>onReceivedError</code>, <code>onSafeBrowsingHit</code> and <code>shouldOverrideUrlLoading(WebView, String)</code>, and the platform's deprecated <code>shouldOverrideUrlLoading(WebView, String)</code>, <code>shouldInterceptRequest(WebView, String)</code> and 4-argument <code>onReceivedError</code>.</p>
 <p><code>shouldInterceptRequest</code> runs on a background thread.</p>
 
