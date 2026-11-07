@@ -460,9 +460,11 @@ ${Object.entries(shapes)
 }
 
 async function generate() {
-  const ios = [...WEBKIT_HEADERS, 'UIScrollView'].map((name) => read(`${name}.h`)).join('\n');
-  const completionHeaders = Object.values(COMPLETION_ROOTS)
-    .map((name) => read(`${name}.h`))
+  // Sorted, so IOSConstants' member order is the same on every filesystem.
+  const ios = readdirSync(inputs)
+    .filter((f) => f.endsWith('.h'))
+    .sort()
+    .map(read)
     .join('\n');
   const xml = read('android-webkit-api.xml');
   const androidx = read('androidx-webkit-api.txt');
@@ -527,7 +529,8 @@ export type AndroidSettingKeys = ${object({
  *
  * An option set's \`all\` is the OR of its listed bits, not \`NSUIntegerMax\`, which JSON can't carry.
  * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
- * the option set \`webView.fetchDataOfTypes:\` takes.
+ * the option set \`webView.fetchDataOfTypes:\` takes, and \`CookiePolicy\` the value
+ * \`httpCookieStore.setCookiePolicy:completionHandler:\` takes.
  * @group Platform settings
  * @ios
  * @namespace
@@ -556,7 +559,7 @@ export const AndroidConstants = ${object({
   const config = await prettier.resolveConfig(fileURLToPath(target));
   return {
     ts: await prettier.format(output, { ...config, parser: 'typescript' }),
-    swift: swiftCompletions(iosCompletions(completionHeaders)),
+    swift: swiftCompletions(iosCompletions(ios)),
   };
 }
 
