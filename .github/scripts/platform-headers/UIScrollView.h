@@ -1,5 +1,4 @@
 // Extract of /System/Library/Frameworks/UIKit.framework/Headers/UIScrollView.h, iphonesimulator SDK 27.1
-#if (defined(USE_UIKIT_PUBLIC_HEADERS) && USE_UIKIT_PUBLIC_HEADERS) || !__has_include(<UIKitCore/UIScrollView.h>)
 typedef NS_ENUM(NSInteger, UIScrollViewIndicatorStyle) {
     UIScrollViewIndicatorStyleDefault,     // Automatically switches appearance based on the user interface style
     UIScrollViewIndicatorStyleBlack,       // Dark indicator, for use on light backgrounds
@@ -88,5 +87,3 @@ typedef NS_ENUM(NSInteger, UIScrollViewContentInsetAdjustmentBehavior) {
 @property (nonatomic) UIAxis lookToScrollAxes API_AVAILABLE(visionos(26.0)) API_UNAVAILABLE(ios, watchos, tvos);
 @end
 @end
-#else
-#endif

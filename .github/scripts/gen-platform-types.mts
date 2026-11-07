@@ -4,7 +4,8 @@
 // extracts: node .github/scripts/gen-platform-types.mts (`--check` fails if either output is stale).
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and the API file of the
 // androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade. It
-// keeps only the declarations this script reads (the iOS doc comments are Apple's).
+// resolves the iOS headers' #if blocks for an iOS build with unifdef and keeps only the declarations this script reads
+// (the iOS doc comments are Apple's).
 // IOSConstants' names are the header names with their common prefix stripped: an SDK rename renames a constant.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -42,6 +43,20 @@ const ANDROID_CLASSES = ['WebSettings', 'WebView', 'CookieManager'];
 /** One `<class>` block of api-versions.xml. */
 const classBlock = (api: string, name: string) =>
   api.match(new RegExp(`\t<class name="${name}" [^]*?</class>\n`))?.[0] ?? '';
+/** The macros an iOS build defines, for unifdef; a header conditional on another macro fails --import. */
+const IOS_DEFINES = [
+  '-DTARGET_OS_IPHONE=1',
+  '-DTARGET_OS_IOS=1',
+  '-DTARGET_OS_OSX=0',
+  '-DTARGET_OS_MACCATALYST=0',
+  '-DTARGET_OS_VISION=0',
+  '-D__IPHONE_OS_VERSION_MIN_REQUIRED=999999',
+  '-D__MAC_OS_X_VERSION_MIN_REQUIRED=0',
+  '-D__VISION_OS_VERSION_MIN_REQUIRED=0',
+  '-U__swift__',
+  '-DOS_OBJECT_USE_OBJC=1',
+  '-DUSE_UIKIT_PUBLIC_HEADERS=1',
+];
 const ANDROIDX_API_DIR =
   'https://api.github.com/repos/androidx/androidx/contents/webkit/webkit/api?ref=androidx-main';
 
@@ -60,23 +75,28 @@ async function importInputs() {
     `${frameworks}/UIKit.framework/Headers/UIScrollView.h`,
   ];
   for (const path of headers) {
-    // The preprocessor lines, the interfaces, their properties, the instance methods that take a block, the enum
-    // blocks and the string constants.
+    // The interfaces, their properties, the instance methods that take a block, the enum blocks and the string
+    // constants.
     let inEnum = false;
-    const lines = readFileSync(path, 'utf8')
+    let open = 0; // the #if blocks unifdef left unresolved around this line
+    const lines = execFileSync('xcrun', ['unifdef', '-x', '2', ...IOS_DEFINES, path])
+      .toString()
       .split('\n')
       .filter((line) => {
-        if (inEnum) {
-          inEnum = !line.startsWith('}');
-          return true;
+        open += /^\s*#\s*if/.test(line) ? 1 : /^\s*#\s*endif\b/.test(line) ? -1 : 0;
+        let keep = inEnum;
+        if (inEnum) inEnum = !line.startsWith('}');
+        else {
+          inEnum = /^typedef NS_(ENUM|OPTIONS)\b/.test(line);
+          keep =
+            inEnum ||
+            /^@(interface|end)\b|^@property\b|^- \(.*\^|^WK_EXTERN NSString \* const /.test(line);
         }
-        inEnum = /^typedef NS_(ENUM|OPTIONS)\b/.test(line);
-        return (
-          inEnum ||
-          /^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b|^@(interface|end)\b|^@property\b|^- \(.*\^|^WK_EXTERN NSString \* const /.test(
-            line
-          )
-        );
+        if (keep && open)
+          throw new Error(
+            `${path}: an #if unifdef can't resolve holds \`${line}\`; add its macro to IOS_DEFINES`
+          );
+        return keep;
       });
     const name = path.slice(path.lastIndexOf('/') + 1);
     writeFileSync(
@@ -156,54 +176,6 @@ const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase
 const evaluate = (expression: string) => runInNewContext(`(${expression})`) as number;
 
 // iOS
-
-const MACROS: Record<string, number> = {
-  TARGET_OS_IPHONE: 1,
-  TARGET_OS_IOS: 1,
-  __IPHONE_OS_VERSION_MIN_REQUIRED: 999999,
-};
-
-/** A preprocessor condition for an iOS build; an unknown macro is 0. */
-const condition = (expression: string) =>
-  evaluate(
-    expression
-      .replace(/\/\/.*|\/\*.*?\*\//g, '')
-      .replace(/__has_include\s*\([^)]*\)/g, '0')
-      .replace(/defined\s*\(?\s*(\w+)\s*\)?/g, (_, macro: string) => (macro in MACROS ? '1' : '0'))
-      .replace(/\b[A-Za-z_]\w*\b/g, (macro) => String(MACROS[macro] ?? 0))
-  );
-
-type Block = { parent: boolean; taken: boolean; active: boolean };
-
-/** Applies one #if-family directive to the open blocks: each knows whether its parent and its current branch compile. */
-function preprocess(blocks: Block[], kind: string, rest: string) {
-  if (kind === 'endif') return void blocks.pop();
-  const expression =
-    ({ ifdef: `defined(${rest})`, ifndef: `!defined(${rest})` } as Record<string, string>)[kind] ??
-    rest;
-  const block = blocks.at(-1);
-  if (block && (kind === 'else' || kind === 'elif')) {
-    const taken = kind === 'else' || !!condition(expression);
-    block.active = block.parent && !block.taken && taken;
-    block.taken ||= taken;
-  } else {
-    const parent = block?.active ?? true;
-    const taken = !!condition(expression);
-    blocks.push({ parent, taken, active: parent && taken });
-  }
-}
-
-/** The lines an iOS build compiles. */
-function iosLines(header: string) {
-  const blocks: Block[] = [];
-  const lines: string[] = [];
-  for (const line of header.split('\n')) {
-    const directive = line.match(/^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)/);
-    if (directive) preprocess(blocks, directive[1], directive[2]);
-    else if (blocks.at(-1)?.active ?? true) lines.push(line);
-  }
-  return lines.join('\n');
-}
 
 /** A declaration's availability from its API_AVAILABLE / API_DEPRECATED / API_UNAVAILABLE macros, or null when it's not on iOS. */
 function iosAvailability(macros: string): Availability | null {
@@ -358,29 +330,21 @@ function completionShape(params: string, integerEnums: Set<string>): Completion 
   return list.length === 2 && isObject(first) && error(second) ? 'valueError' : null;
 }
 
-/** An Objective-C method declaration after `- (void)` as its selector and its parameters' types. */
-function selectorParts(declaration: string) {
-  const labels: string[] = [];
-  const types: string[] = [];
-  let rest = declaration;
-  for (let label = rest.match(/^\s*(\w+):\(/); label; label = rest.match(/^\s*(\w+):\(/)) {
-    let i = label[0].length;
-    for (let depth = 1; depth; i++) depth += rest[i] === '(' ? 1 : rest[i] === ')' ? -1 : 0;
-    labels.push(label[1]);
-    types.push(rest.slice(label[0].length, i - 1));
-    rest = rest.slice(i).replace(/^\s*\w+/, '');
-  }
-  return { selector: labels.map((l) => `${l}:`).join(''), types, macros: rest };
-}
-
-/** The selector and completion shape of each method in one `@interface` block whose last parameter is a block. */
+/**
+ * The selector and completion shape of each method in one `@interface` block whose last parameter is a block. A block
+ * whose parameter list nests parentheses is left out, and MRWInvoke then refuses the call.
+ */
 function interfaceCompletions(block: string, integerEnums: Set<string>) {
   const shapes: [string, Completion][] = [];
   for (const [, declaration] of block.matchAll(/^- \(void\)(.*);/gm)) {
-    const { selector, types, macros } = selectorParts(declaration);
-    const params = types.at(-1)?.match(/\(\^[^)]*\)\s*\((.*)\)$/)?.[1];
+    const selector = [...declaration.matchAll(/(\w+):\(/g)]
+      .map(([, label]) => `${label}:`)
+      .join('');
+    const last = [...declaration.matchAll(/\(\^[^)]*\)\s*\(([^)]*)\)\)\s*\w+/g)].at(-1);
+    const params =
+      last && !/\w+:\(/.test(declaration.slice(last.index + last[0].length)) ? last[1] : undefined;
     const shape = params === undefined ? null : completionShape(params, integerEnums);
-    if (shape && iosAvailability(macros)) shapes.push([selector, shape]);
+    if (shape && iosAvailability(declaration)) shapes.push([selector, shape]);
   }
   return shapes;
 }
@@ -496,11 +460,9 @@ ${Object.entries(shapes)
 }
 
 async function generate() {
-  const ios = [...WEBKIT_HEADERS, 'UIScrollView']
-    .map((name) => iosLines(read(`${name}.h`)))
-    .join('\n');
+  const ios = [...WEBKIT_HEADERS, 'UIScrollView'].map((name) => read(`${name}.h`)).join('\n');
   const completionHeaders = Object.values(COMPLETION_ROOTS)
-    .map((name) => iosLines(read(`${name}.h`)))
+    .map((name) => read(`${name}.h`))
     .join('\n');
   const xml = read('android-webkit-api.xml');
   const androidx = read('androidx-webkit-api.txt');
