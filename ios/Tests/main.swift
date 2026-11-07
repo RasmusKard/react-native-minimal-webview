@@ -1,5 +1,5 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions values that turn a hook on, the
+// and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions changes a hook hears, the
 // DocumentScope dispatch cases, the Asks contract and ReadAccess's roots. Not part of the pod (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
 //     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
@@ -227,24 +227,11 @@ check("proxy a decision no prop makes, or a UI delegate's action policy: none ta
 let ordered = inRegistrationOrder(["typo", "c", "a", "b", "other"], ["b", "x", "a", "c"])
 check("hook order: got \(ordered)", ordered == ["b", "a", "c", "other", "typo"])
 
-// A hookOptions value reaches its hook as it is, or as nil while the hook is off: nil, null and false (an NSNumber 0 is a value).
+// Only a change between two on values that are equal as JSON leaves the hook alone: false and 0 are equal to NSNumber.
 let falsy = NSNumber(value: false)
 let zero = NSNumber(value: 0)
-let optionValues: [(String, Any?, Bool)] = [
-  ("nil", nil, false), ("null", NSNull(), false), ("false", false, false), ("an NSNumber false", falsy, false),
-  ("true", true, true), ("an NSNumber 0", zero, true), ("an empty string", NSString(string: ""), true), ("an object", NSDictionary(dictionary: ["a": 1]), true),
-  ("an object with false", NSDictionary(dictionary: ["a": false]), true), ("an array with false", NSArray(array: [false]), true),
-  ("an object with 0", NSDictionary(dictionary: ["k": zero]), true)
-]
-for (name, value, on) in optionValues {
-  let seen = enabledValue(value)
-  check("hookOptions value \(name)", on ? seen.map { ($0 as AnyObject) === (value as AnyObject) } ?? false : seen == nil)
-}
-
-// Only a change between two on values that are equal as JSON leaves the hook alone: false and 0 are equal to NSNumber.
 let changeCases: [(String, Any?, Any?, Bool)] = [
-  ("false to 0", falsy, zero, false), ("0 to false", zero, falsy, false), ("1 to 1", 1, 1, true),
-  ("false to absent", falsy, nil, false), ("0 to 0", zero, zero, true), ("1 to 2", 1, 2, false),
+  ("1 to 1", 1, 1, true), ("0 to 0", zero, zero, true), ("1 to 2", 1, 2, false),
   ("true to 1", true, NSNumber(value: 1), false), ("{a: false} to {a: 0}", ["a": falsy], ["a": zero], false),
   ("[true] to [1]", [true], [NSNumber(value: 1)], false), ("{a: 1, b: [true]} to itself", ["a": 1, "b": [true]], ["b": [true], "a": 1], true)
 ]

@@ -675,7 +675,7 @@ export type HookExtension = {
    * What the hook gets as its options. Null or false switches the hook off, as does leaving its extension out of
    * `extensions`: it stays attached and gets null, but the core routes none of its delegates, clients or listeners,
    * drops its events, answers its asks with null, and rejects `ref.hook` calls to its handlers with `not_found`.
-   * Undefined means `true`. Turning it on again gives it the new options.
+   * Turning it on again gives it the new options.
    * @default `true`
    */
   options?: unknown;

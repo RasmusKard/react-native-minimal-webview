@@ -207,10 +207,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The creation-time settings (`ios.configuration`) and the configure hooks go first and the bridge after them,
     // so nothing they set displaces the content controller the bridge is installed in.
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
-    hookContexts = MinimalWebViewHooks.hooks.filter { enables(hookOptions[$0.key]) }.map { HookContext($0, self) }
+    hookContexts = MinimalWebViewHooks.hooks.filter { hookOptions[$0.key] != nil }.map { HookContext($0, self) }
     for context in hookContexts { context.hook.configure?(configuration, context) }
     // A typo, or a hook's module not linked or not rebuilt.
-    for key in hookOptions.keys where enables(hookOptions[key]) && !hookContexts.contains(where: { $0.key == key }) {
+    for key in hookOptions.keys where !hookContexts.contains(where: { $0.key == key }) {
       warn("extension \(key): no hook is registered under this key")
     }
     if bridgeScript != nil {
@@ -444,11 +444,10 @@ extension MinimalWebView {
   private func optionsChanged(from old: [String: Any]) {
     for key in inRegistrationOrder(Set(old.keys).union(hookOptions.keys), MinimalWebViewHooks.hooks.map(\.key)) {
       let (was, value) = (old[key], hookOptions[key])
-      guard enables(was) || enables(value) else { continue }
       if staysOn(was, value) { continue }
       if let context = hookContexts.first(where: { $0.key == key }) {
         context.optionsChanged(value)
-      } else if !enables(was) {
+      } else if was == nil {
         attachLate(key)
       }
     }

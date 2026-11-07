@@ -255,12 +255,11 @@ describe('extensions', () => {
     expect(native().hookOptions).toEqual({ sample: { mode: 'b' }, other: true });
   });
 
-  it('leaves out falsy entries and null options, and keeps false options', async () => {
+  it('leaves out falsy entries, and null and false options', async () => {
     const { native, show } = await mount({
       extensions: [ext('on'), false, null, undefined, ext('off', false), ext('gone', null)],
     });
-    expect(native().hookOptions).toEqual({ on: true, off: false });
-    expect(Object.keys(native().hookOptions)).toEqual(['on', 'off']);
+    expect(native().hookOptions).toEqual({ on: true });
     await show({ extensions: [] });
     expect(native().hookOptions).toEqual({});
   });

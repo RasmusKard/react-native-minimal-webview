@@ -335,9 +335,9 @@ function useRequestHandlers(props: WebViewProps) {
 }
 
 /**
- * Native's `hookOptions`: each extension's `options` (`true` when unset) by its key, the later of two extensions with
- * one key winning (a development warning). A null `options` leaves the key out. The same object while the JSON is the
- * same, so a render with new handlers sends native nothing.
+ * Native's `hookOptions`: each extension's `options` by its key, the later of two extensions with one key winning (a
+ * development warning). An off `options` leaves the key out. The same object while the JSON is the same, so a render
+ * with new handlers sends native nothing.
  */
 function useHookOptions(extensions: WebViewProps['extensions']) {
   const on = (extensions ?? []).filter((extension) => !!extension);
@@ -351,7 +351,11 @@ function useHookOptions(extensions: WebViewProps['extensions']) {
       );
   }, [repeated]);
   const json = JSON.stringify(
-    withoutNulls(Object.fromEntries(on.map(({ key, options = true }) => [key, options])))
+    withoutOff(
+      Object.fromEntries(
+        on.map(({ key, options = DEFAULTS.HookExtension.options }) => [key, options])
+      )
+    )
   );
   return useMemo(() => JSON.parse(json) as Record<string, unknown>, [json]);
 }
@@ -384,9 +388,11 @@ function creationKey(props: WebViewProps) {
   );
 }
 
-/** A null value is no value: the hook is off, and for an attached one the key is removed. */
-const withoutNulls = (options: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(options).filter(([, value]) => value != null));
+/** A null or false value is off, and its key is left out: native treats a present key as on. */
+const withoutOff = (options: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(options).filter(([, value]) => value != null && value !== false)
+  );
 
 /** A JSON.stringify replacer: the same options in another key order are the same key. */
 const sortedKeys = (_: string, value: unknown) =>
