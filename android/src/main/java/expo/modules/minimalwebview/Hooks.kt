@@ -222,8 +222,9 @@ interface WebViewContext {
   /**
    * The hook chrome clients, routed as [clients] are.
    *
-   * Overriding the deprecated `onConsoleMessage(String, Int, String)` counts as overriding `onConsoleMessage`, and
-   * overriding `onReceivedIcon` turns favicon downloads back on.
+   * Overriding the deprecated `onConsoleMessage(String, Int, String)` counts as overriding `onConsoleMessage`.
+   * Favicon downloads are off, so `onReceivedIcon` gets no icon until the hook's `attach` turns `downloadFaviconsEnabled`
+   * on.
    */
   val chromeClients: MutableList<WebChromeClient>
 

@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -187,7 +186,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (hasNavigationListener && WebViewFeature.isFeatureSupported(WebViewFeature.BACK_FORWARD_CACHE)) {
       WebSettingsCompat.setBackForwardCacheEnabled(settings, true)
     }
-    // No favicon requests: nothing shows them. attachHooks turns them back on for a hook that takes onReceivedIcon.
+    // No favicon requests: nothing shows them.
     if (WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)) {
       WebSettingsCompat.setDownloadFaviconsEnabled(settings, false)
     }
@@ -276,18 +275,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** A warning for the app's developer, which JS logs with console.warn. */
   internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
 
-  private fun attachHooks() {
-    hookContexts.forEach { it.hook.attach(webView, it) }
-    enableFavicons()
-  }
-
-  private fun enableFavicons() {
-    if (chromeClients.any { it.overrides("onReceivedIcon", WebView::class.java, Bitmap::class.java) } &&
-      WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)
-    ) {
-      WebSettingsCompat.setDownloadFaviconsEnabled(webView.settings, true)
-    }
-  }
+  private fun attachHooks() = hookContexts.forEach { it.hook.attach(webView, it) }
 
   /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
   private fun detachHooks(): List<HookContext> {
@@ -305,7 +293,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
-        enableFavicons() // a hook that attached off, after a crash, and turns on
       } else if (key !in hookKeys.orEmpty() && old[key] == null) {
         attachLate(key)
       }
@@ -326,7 +313,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     val context = HookContext(hook, this)
     hookContexts = hookContexts + context
     hook.attach(webView, context)
-    enableFavicons()
   }
 
   /** The handler a hook registered with `context.handle` for [method], if it is attached and on. */
