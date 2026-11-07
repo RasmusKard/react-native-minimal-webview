@@ -2938,6 +2938,8 @@
       
         
       
+        
+      
     
     
     
@@ -3049,6 +3051,33 @@
     
   
   ContentMode
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../namespaces/IOSConstants/enumerations/CookiePolicy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CookiePolicy
 
     
   </span>
@@ -6396,9 +6425,9 @@ say.</p>
 <h3 id="recovered">recovered<a class="headerlink" href="#recovered" title="Permanent link">&para;</a></h3>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">recovered</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
 </span></code></pre></div>
-<p>Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the app is in the foreground
-and the view on screen, with the history restored unless the <code>source</code> page was on screen, and with the props
-applied but not what <code>call</code> set.</p>
+<p>Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the view's window is visible,
+with the history restored unless the <code>source</code> page was on screen, and with the props applied but not what <code>call</code>
+set.</p>
 <p>False while a POST <code>source</code> is on screen, which, as in a browser, isn't sent again unasked (<code>reload()</code> sends it),
 and after more than 3 crashes in 60 s, counted for the whole app on Android, until the next
 <a href="../WebViewRef/#reload">reload()</a> (on iOS also a <code>source</code> change); pull-to-refresh doesn't lift it.</p>

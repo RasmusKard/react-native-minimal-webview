@@ -2960,6 +2960,8 @@
       
         
       
+        
+      
     
     
     
@@ -3071,6 +3073,33 @@
     
   
   ContentMode
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../namespaces/IOSConstants/enumerations/CookiePolicy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CookiePolicy
 
     
   </span>
@@ -6442,11 +6471,10 @@ with one key warn in development, and the later one wins.</p>
 <h3 id="onevent">onEvent?<a class="headerlink" href="#onevent" title="Permanent link">&para;</a></h3>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">onEvent</span><span class="o">?:</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="w"> </span><span class="nx">signal</span><span class="o">?</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">unknown</span><span class="p">;</span>
 </span></code></pre></div>
-<p>Each of the hook's events, with <code>name</code> relative to <code>key</code>: it goes to the extension whose key its name starts with
-(<code>'&lt;key&gt;.'</code>; the longest key, when several do), and one no extension owns is dropped. For an <code>ask</code>, the return
-value (a promise is awaited) is the answer, and <code>undefined</code> answers null. <code>signal</code> is set only for an <code>ask</code>, and
-aborts when native stops waiting for the answer: an ask has no timeout, but one still open when the page goes away
-is answered null.</p>
+<p>Each of the hook's events: it goes to the extension with the hook's key (the later of two with one key), and one no
+extension owns is dropped. For an <code>ask</code>, the return value (a promise is awaited) is the answer, and <code>undefined</code>, or
+a value JSON can't encode, answers null. <code>signal</code> is set only for an <code>ask</code>, and aborts when native stops waiting for
+the answer: an ask has no timeout, but one still open when the page goes away is answered null.</p>
 <p>The latest <code>onEvent</code> always takes the events: a render with new handlers sends native nothing.</p>
 <p><strong>Parameters</strong></p>
 <table>
@@ -6476,7 +6504,7 @@ is answered null.</p>
 <p>What the hook gets as its options. Null or false switches the hook off, as does leaving its extension out of
 <code>extensions</code>: it stays attached and gets null, but the core routes none of its delegates, clients or listeners,
 drops its events, answers its asks with null, and rejects <code>ref.hook</code> calls to its handlers with <code>not_found</code>.
-Undefined means <code>true</code>. Turning it on again gives it the new options.</p>
+Turning it on again gives it the new options.</p>
 
 
 
