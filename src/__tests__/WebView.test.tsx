@@ -8,7 +8,7 @@ import { CONNECTION, createBridge } from '../bridge/createBridge';
 import { defaultNavigationRules } from '../defaultNavigationRules';
 import { createWebViewRef, useWebViewState } from '../refStore';
 import type {
-  Bridge,
+  AndroidSettings,
   HookExtension,
   NavigationRequest,
   NavigationRule,
@@ -65,14 +65,43 @@ jest.mock('expo', () => {
   };
 });
 
-async function render(props: Partial<WebViewProps>) {
-  const root = createRoot();
-  await act(async () =>
-    root.render(<WebView source={{ uri: 'https://example.com' }} onLoadEnd={() => {}} {...props} />)
-  );
-  const native = root.container.queryAll((node) => node.type === 'MinimalWebView');
-  return { native: native[0]?.props };
+interface NativeTestProps {
+  [prop: string]: unknown;
+  [handler: `on${string}`]: (event: { nativeEvent: object }) => Promise<void>;
+  settings: string;
+  hookOptions: Record<string, unknown>;
+  requestHandlers: string[];
 }
+
+/** The props of the `i`th native view under `root`. */
+const nativeAt = (root: ReturnType<typeof createRoot>, i = 0) =>
+  root.container.queryAll((node) => node.type === 'MinimalWebView')[i]!.props as NativeTestProps;
+
+/** Renders a WebView of example.com with `props`; `show` renders it again with other props. */
+async function mount(props: Partial<WebViewProps> = {}) {
+  const root = createRoot();
+  const show = (next: Partial<WebViewProps>) =>
+    act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} {...next} />));
+  await show(props);
+  const native = (i = 0) => nativeAt(root, i);
+  const fire = (event: `on${string}`, nativeEvent: object, i = 0) =>
+    act(async () => {
+      await native(i)[event]({ nativeEvent });
+    });
+  return { root, show, native, fire };
+}
+
+const navState = (patch: Partial<NavigationState> = {}): NavigationState => ({
+  url: '',
+  pendingUrl: null,
+  title: '',
+  loading: false,
+  progress: 0,
+  canGoBack: false,
+  canGoForward: false,
+  outcome: null,
+  ...patch,
+});
 
 const viewProps = { testID: 'web', accessibilityLabel: 'Checkout' };
 
@@ -80,18 +109,16 @@ describe('WebView', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('forwards ViewProps to the native view, but not its own props', async () => {
-    const { native } = await render(viewProps);
+    const native = (await mount({ ...viewProps, onLoadEnd: () => {} })).native();
     expect(native).toMatchObject(viewProps);
     expect(native).not.toHaveProperty('onLoadEnd');
   });
 
   it('takes every native event without the callback props', async () => {
     const error = jest.spyOn(console, 'error');
-    const { native } = await render({ onLoadEnd: undefined });
-    const fire = (name: string, nativeEvent: object) =>
-      act(async () => (native?.[name] as (event: object) => void)({ nativeEvent }));
-    await fire('onNavigationState', state(true));
-    await fire('onNavigationState', state(false));
+    const { fire } = await mount();
+    await fire('onNavigationState', navState({ url: 'https://example.com/', loading: true }));
+    await fire('onNavigationState', navState({ url: 'https://example.com/' }));
     await fire('onNavigation', { url: 'https://example.com/', action: 'external' });
     await fire('onProcessGone', { didCrash: true, recovered: true });
     await fire('onError', { kind: 'http', url: 'https://example.com/', statusCode: 500 });
@@ -104,16 +131,16 @@ describe('WebView', () => {
   });
 
   it('sends pullToRefresh, and on iOS sharedCookies, as undefined unless set', async () => {
-    expect((await render({})).native).toMatchObject({
+    expect((await mount()).native()).toMatchObject({
       pullToRefresh: undefined,
       sharedCookies: undefined,
     });
-    expect((await render({ pullToRefresh: true, sharedCookies: true })).native).toMatchObject({
+    expect((await mount({ pullToRefresh: true, sharedCookies: true })).native()).toMatchObject({
       pullToRefresh: true,
       sharedCookies: true,
     });
     jest.replaceProperty(Platform, 'OS', 'android');
-    expect((await render({ sharedCookies: true })).native?.sharedCookies).toBeUndefined();
+    expect((await mount({ sharedCookies: true })).native().sharedCookies).toBeUndefined();
   });
 
   it('sends defaultNavigationRules, the native vectors’ defaults, for unset rules', async () => {
@@ -122,11 +149,11 @@ describe('WebView', () => {
     );
     expect(defaultNavigationRules).toEqual(vectors.rulesets.defaults);
     expect(Object.isFrozen(defaultNavigationRules[0]?.scheme)).toBe(true);
-    expect((await render({})).native?.navigationRules).toBe(defaultNavigationRules);
+    expect((await mount()).native().navigationRules).toBe(defaultNavigationRules);
     const none: NavigationRule[] = [];
-    expect((await render({ navigationRules: none })).native?.navigationRules).toBe(none);
+    expect((await mount({ navigationRules: none })).native().navigationRules).toBe(none);
     const rules = [{ scheme: ['myapp'], action: 'external' as const }];
-    expect((await render({ navigationRules: rules })).native?.navigationRules).toBe(rules);
+    expect((await mount({ navigationRules: rules })).native().navigationRules).toBe(rules);
   });
 
   it('AndroidWebView: defaultUserAgent is null, and the functions do nothing, on iOS', () => {
@@ -151,164 +178,114 @@ describe('WebView', () => {
   });
 });
 
-const state = (loading: boolean, outcome: NavigationState['outcome'] = null): NavigationState => ({
-  url: 'https://example.com/',
-  pendingUrl: null,
-  title: '',
-  loading,
-  progress: 0,
-  canGoBack: false,
-  canGoForward: false,
-  outcome,
-});
-
 describe('load events and errors', () => {
   async function renderLoads() {
     const seen: string[] = [];
-    const root = createRoot();
-    await act(async () =>
-      root.render(
-        <WebView
-          source={{ uri: 'https://example.com' }}
-          onError={(event) => seen.push(`error:${event.kind}`)}
-          onLoadStart={() => seen.push('start')}
-          onLoadEnd={({ outcome }) => seen.push(`end:${String(outcome)}`)}
-        />
-      )
-    );
-    const props = () =>
-      root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-        onError: (event: { nativeEvent: Record<string, unknown> }) => void;
-        onNavigationState: (event: { nativeEvent: NavigationState }) => void;
-      };
-    const fireState = (nativeEvent: NavigationState) =>
-      act(async () => props().onNavigationState({ nativeEvent }));
-    const fireError = (nativeEvent: Record<string, unknown>) =>
-      act(async () => props().onError({ nativeEvent }));
-    return { seen, fireState, fireError };
+    const { fire } = await mount({
+      onError: (event) => seen.push(`error:${event.kind}`),
+      onLoadStart: () => seen.push('start'),
+      onLoadEnd: ({ outcome }) => seen.push(`end:${String(outcome)}`),
+    });
+    return { seen, fire };
   }
+  const url = 'https://example.com/';
 
   it('fires start and end on the edges of loading, with the outcome native set', async () => {
-    const { seen, fireState } = await renderLoads();
-    await fireState(state(true));
-    await fireState({ ...state(true), progress: 0.5 });
-    await fireState(state(false, 'finished'));
-    await fireState({ ...state(false, 'finished'), title: 'Title' });
+    const { seen, fire } = await renderLoads();
+    await fire('onNavigationState', navState({ url, loading: true }));
+    await fire('onNavigationState', navState({ url, loading: true, progress: 0.5 }));
+    await fire('onNavigationState', navState({ url, outcome: 'finished' }));
+    await fire('onNavigationState', navState({ url, outcome: 'finished', title: 'Title' }));
     expect(seen).toEqual(['start', 'end:finished']);
   });
 
   it('an error before the end still gives one end', async () => {
-    const { seen, fireState, fireError } = await renderLoads();
-    await fireState(state(true));
-    await fireError({
+    const { seen, fire } = await renderLoads();
+    await fire('onNavigationState', navState({ url, loading: true }));
+    await fire('onError', {
       kind: 'network',
       url: 'https://x.invalid/',
       code: -1003,
       description: 'dns',
     });
-    await fireState(state(false, 'failed'));
+    await fire('onNavigationState', navState({ url, outcome: 'failed' }));
     expect(seen).toEqual(['start', 'error:network', 'end:failed']);
   });
 
   it('reports an HTTP error as it came, without the view tag', async () => {
     const onError = jest.fn();
-    const { native } = await render({ onError });
+    const { fire } = await mount({ onError });
     const failure = { kind: 'http', url: 'https://example.com/x', statusCode: 404 };
-    await act(async () =>
-      (native as { onError: (event: unknown) => void }).onError({
-        nativeEvent: { ...failure, target: 42 },
-      })
-    );
+    await fire('onError', { ...failure, target: 42 });
     expect(onError).toHaveBeenCalledWith(failure);
   });
 
   it('reports a failed load as it came', async () => {
     const onError = jest.fn();
-    const { native } = await render({ onError });
+    const { fire } = await mount({ onError });
     const failure = {
       kind: 'network',
       url: 'https://example.com/',
       code: -1009,
       description: 'offline',
     };
-    await act(async () =>
-      (native as { onError: (event: unknown) => void }).onError({ nativeEvent: failure })
-    );
+    await fire('onError', failure);
     expect(onError).toHaveBeenCalledWith(failure);
   });
 });
 
 describe('extensions', () => {
-  const nativeOf = (root: ReturnType<typeof createRoot>) =>
-    root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-      hookOptions: Record<string, unknown>;
-      onHookEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
-    };
   const ext = (key: string, options?: unknown, onEvent?: HookExtension['onEvent']) => ({
     key,
     options,
     onEvent,
   });
 
-  async function mount(extensions: WebViewProps['extensions']) {
-    const root = createRoot();
-    const show = (next: WebViewProps['extensions']) =>
-      act(async () =>
-        root.render(<WebView source={{ uri: 'https://example.com' }} extensions={next} />)
-      );
-    await show(extensions);
-    const fire = (name: string, askId?: number) =>
-      act(() => nativeOf(root).onHookEvent({ nativeEvent: { name, payload: { n: 1 }, askId } }));
-    return { root, show, fire };
-  }
+  const event = (name: string, askId?: number) => ({ name, payload: { n: 1 }, askId });
 
   afterEach(() => mockAnswer.mockClear());
 
   it("sends each extension's options by key, true when unset, and a change reaches the same native view", async () => {
     mockMount.mockClear();
-    const { root, show } = await mount([ext('sample', { mode: 'a' }), ext('other')]);
-    expect(nativeOf(root).hookOptions).toEqual({ sample: { mode: 'a' }, other: true });
-    await show([ext('sample', { mode: 'b' }), ext('other')]);
+    const { native, show } = await mount({
+      extensions: [ext('sample', { mode: 'a' }), ext('other')],
+    });
+    expect(native().hookOptions).toEqual({ sample: { mode: 'a' }, other: true });
+    await show({ extensions: [ext('sample', { mode: 'b' }), ext('other')] });
     expect(mockMount).toHaveBeenCalledTimes(1);
-    expect(nativeOf(root).hookOptions).toEqual({ sample: { mode: 'b' }, other: true });
+    expect(native().hookOptions).toEqual({ sample: { mode: 'b' }, other: true });
   });
 
-  it('leaves out falsy entries and null options, and keeps false options', async () => {
-    const { root, show } = await mount([
-      ext('on'),
-      false,
-      null,
-      undefined,
-      ext('off', false),
-      ext('gone', null),
-    ]);
-    expect(nativeOf(root).hookOptions).toEqual({ on: true, off: false });
-    expect(Object.keys(nativeOf(root).hookOptions)).toEqual(['on', 'off']);
-    await show([]);
-    expect(nativeOf(root).hookOptions).toEqual({});
+  it('leaves out falsy entries, and null and false options', async () => {
+    const { native, show } = await mount({
+      extensions: [ext('on'), false, null, undefined, ext('off', false), ext('gone', null)],
+    });
+    expect(native().hookOptions).toEqual({ on: true });
+    await show({ extensions: [] });
+    expect(native().hookOptions).toEqual({});
   });
 
   it('sends the same object while the options are the same JSON, with the latest handlers taking the events', async () => {
-    const { root, show, fire } = await mount([ext('a', { items: [1] }, () => 'first')]);
-    const first = nativeOf(root).hookOptions;
-    await show([ext('a', { items: [1] }, () => 'second')]);
-    expect(nativeOf(root).hookOptions).toBe(first);
-    await fire('a.x', 1);
+    const { native, show, fire } = await mount({
+      extensions: [ext('a', { items: [1] }, () => 'first')],
+    });
+    const first = native().hookOptions;
+    await show({ extensions: [ext('a', { items: [1] }, () => 'second')] });
+    expect(native().hookOptions).toBe(first);
+    await fire('onHookEvent', event('a.x', 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'second' });
-    await show([ext('a', { items: [2] })]);
-    expect(nativeOf(root).hookOptions).not.toBe(first);
-    expect(nativeOf(root).hookOptions).toEqual({ a: { items: [2] } });
+    await show({ extensions: [ext('a', { items: [2] })] });
+    expect(native().hookOptions).not.toBe(first);
+    expect(native().hookOptions).toEqual({ a: { items: [2] } });
   });
 
   it('warns in development when two extensions have one key, and the later one wins', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const { root, fire } = await mount([
-      ext('a', 1, () => 'one'),
-      ext('b'),
-      ext('a', 2, () => 'two'),
-    ]);
-    expect(nativeOf(root).hookOptions).toEqual({ a: 2, b: true });
-    await fire('a.x', 1);
+    const { native, fire } = await mount({
+      extensions: [ext('a', 1, () => 'one'), ext('b'), ext('a', 2, () => 'two')],
+    });
+    expect(native().hookOptions).toEqual({ a: 2, b: true });
+    await fire('onHookEvent', event('a.x', 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'two' });
     expect(warn.mock.calls).toEqual([
       [
@@ -321,46 +298,52 @@ describe('extensions', () => {
   it('sends each event to the extension whose key is the longest prefix, with the name relative to it', async () => {
     const short = jest.fn(() => 'short');
     const long = jest.fn(async () => 'long');
-    const { fire } = await mount([ext('pkg', true, short), ext('pkg.dialogs', true, long)]);
-    await fire('pkg.dialogs.prompt', 1);
+    const { fire } = await mount({
+      extensions: [ext('pkg', true, short), ext('pkg.dialogs', true, long)],
+    });
+    await fire('onHookEvent', event('pkg.dialogs.prompt', 1));
     expect(long).toHaveBeenCalledWith(
       { name: 'prompt', payload: { n: 1 } },
       expect.any(AbortSignal)
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'long' });
-    await fire('pkg.scroll');
+    await fire('onHookEvent', event('pkg.scroll'));
     expect(short).toHaveBeenCalledWith({ name: 'scroll', payload: { n: 1 } }, undefined);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
 
   it('answers null for an ask with no handler, and drops an event no extension owns', async () => {
     const own = jest.fn();
-    const { show, fire } = await mount([ext('a', true, own), ext('quiet'), ext('ab', true, own)]);
+    const { show, fire } = await mount({
+      extensions: [ext('a', true, own), ext('quiet'), ext('ab', true, own)],
+    });
     for (const [name, askId] of [
       ['other.label', 1],
       ['quiet.event', 2],
       ['a', 3],
       ['ab', 4],
     ] as const) {
-      await fire(name, askId);
+      await fire('onHookEvent', event(name, askId));
       expect(mockAnswer).toHaveBeenLastCalledWith(askId, { value: null });
     }
-    await fire('other.label');
+    await fire('onHookEvent', event('other.label'));
     expect(own).not.toHaveBeenCalled();
-    await show([false, ext('quiet')]);
-    await fire('a.ask', 5);
+    await show({ extensions: [false, ext('quiet')] });
+    await fire('onHookEvent', event('a.ask', 5));
     expect(own).not.toHaveBeenCalled();
     expect(mockAnswer).toHaveBeenLastCalledWith(5, { value: null });
   });
 
   it('answers null and logs when an onEvent throws', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const { fire } = await mount([
-      ext('a', true, () => {
-        throw new Error('no');
-      }),
-    ]);
-    await fire('a.x', 1);
+    const { fire } = await mount({
+      extensions: [
+        ext('a', true, () => {
+          throw new Error('no');
+        }),
+      ],
+    });
+    await fire('onHookEvent', event('a.x', 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onEvent failed for a.x',
@@ -379,62 +362,54 @@ it('takes a ref to a WebViewRef, and no other ref', () => {
 });
 
 it('takes ref={null}', async () => {
-  expect((await render({ ref: null })).native).toBeDefined();
+  expect((await mount({ ref: null })).native()).toBeDefined();
 });
 
 describe('bridge', () => {
   const page = 'https://example.com';
   const newBridge = () => createBridge({ allowedOrigins: [page] });
-  const onBridge = (native: object | undefined, nativeEvent: object) =>
-    act(async () =>
-      (native as { onBridge: (event: { nativeEvent: object }) => void }).onBridge({ nativeEvent })
-    );
   const posted = () => JSON.parse(mockBridgePost.mock.lastCall?.[0] ?? '') as unknown;
 
   it("gives native the page client and origins, and answers a page's call with its origin", async () => {
     const bridge = newBridge();
     bridge.handle('who', (_, sender) => sender.origin);
-    const { native } = await render({ bridge });
-    expect(native).toMatchObject({
+    const { native, fire } = await mount({ bridge });
+    expect(native()).toMatchObject({
       bridgeScript: bridge[CONNECTION].script,
       bridgeOrigins: [page],
     });
     const call = { doc: 'd1', kind: 'call', id: 'p1', method: 'who' };
-    await onBridge(native, { message: JSON.stringify(call), origin: `${page}:8443` });
+    await fire('onBridge', { message: JSON.stringify(call), origin: `${page}:8443` });
     expect(posted()).toEqual({ doc: 'd1', kind: 'result', id: 'p1', value: `${page}:8443` });
   });
 
   it('passes navigated and unavailable on to the bridge', async () => {
     const bridge = newBridge();
-    const { native } = await render({ bridge });
-    await onBridge(native, { message: JSON.stringify({ doc: 'd1', kind: 'ready' }), origin: page });
+    const { fire } = await mount({ bridge });
+    await fire('onBridge', { message: JSON.stringify({ doc: 'd1', kind: 'ready' }), origin: page });
     const sent = bridge.call('x');
-    await onBridge(native, { navigated: true });
+    await fire('onBridge', { navigated: true });
     await expect(sent).rejects.toMatchObject({ code: 'navigated' });
-    await onBridge(native, { unavailable: true });
+    await fire('onBridge', { unavailable: true });
     await expect(bridge.call('x')).rejects.toMatchObject({ code: 'unavailable' });
   });
 
   it('detaches at unmount, so the bridge can go in the next WebView', async () => {
     const bridge = newBridge();
-    const root = createRoot();
-    await act(async () => root.render(<WebView source={{ uri: page }} bridge={bridge} />));
+    const { root } = await mount({ bridge });
     const pending = bridge.call('x');
     await act(async () => root.unmount());
     await expect(pending).rejects.toMatchObject({ code: 'navigated' });
-    await render({ bridge });
+    await mount({ bridge });
   });
 
   it('recreates the native view for another bridge, not for the same one', async () => {
-    const root = createRoot();
-    const show = (bridge: Bridge) =>
-      act(async () => root.render(<WebView source={{ uri: page }} bridge={bridge} />));
     const bridge = newBridge();
     mockMount.mockClear();
-    await show(bridge);
-    await show(bridge);
+    const { show } = await mount({ bridge });
+    await show({ bridge });
     expect(mockMount).toHaveBeenCalledTimes(1);
-    await show(newBridge());
+    await show({ bridge: newBridge() });
     expect(mockMount).toHaveBeenCalledTimes(2);
   });
 });
@@ -442,8 +417,8 @@ describe('bridge', () => {
 describe('injectedScripts', () => {
   const code = 'function secret() {}\nconst local = 1;\nwindow.ran = true;';
   const nativeCode = async (origins: string[]) => {
-    const { native } = await render({ injectedScripts: [{ code, allFrames: true, origins }] });
-    const scripts = native?.['injectedScripts'] as { code: string }[];
+    const { native } = await mount({ injectedScripts: [{ code, allFrames: true, origins }] });
+    const scripts = native().injectedScripts as { code: string }[];
     expect(scripts).toEqual([{ code: expect.any(String) as string, allFrames: true }]);
     return scripts[0]!.code;
   };
@@ -486,8 +461,8 @@ describe('injectedScripts', () => {
   it('throws at render for a script without origins or with an invalid rule', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     const scripts = (origins: unknown) => [{ code, origins }] as WebViewProps['injectedScripts'];
-    await expect(render({ injectedScripts: scripts(undefined) })).rejects.toThrow('needs origins');
-    await expect(render({ injectedScripts: scripts(['example.com']) })).rejects.toThrow(
+    await expect(mount({ injectedScripts: scripts(undefined) })).rejects.toThrow('needs origins');
+    await expect(mount({ injectedScripts: scripts(['example.com']) })).rejects.toThrow(
       'invalid origins ["example.com"]'
     );
   });
@@ -496,9 +471,7 @@ describe('injectedScripts', () => {
 describe('ref.hook', () => {
   it('sends the arguments as JSON and parses the reply', async () => {
     const ref = createRef<WebViewRef>();
-    await act(async () =>
-      createRoot().render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
-    );
+    await mount({ ref });
     expect(await ref.current?.hook('sample', 'count', [1, null])).toEqual({
       name: 'sample',
       method: 'count',
@@ -509,16 +482,15 @@ describe('ref.hook', () => {
 });
 
 describe('platform settings', () => {
+  const settingsIn = (native: NativeTestProps) =>
+    JSON.parse(native.settings) as Record<string, Record<string, unknown>>;
   const settingsOf = async (props: Partial<WebViewProps>) =>
-    JSON.parse((await render(props)).native?.settings as string) as Record<
-      string,
-      Record<string, unknown>
-    >;
+    settingsIn((await mount(props)).native());
 
   it('are the defaults alone without props (jest runs as iOS)', async () => {
     expect(await settingsOf({})).toEqual({
       configuration: { allowsInlineMediaPlayback: true },
-      webView: { customUserAgent: null, inspectable: true },
+      webView: { inspectable: true },
       scrollView: { directionalLockEnabled: true },
     });
   });
@@ -555,27 +527,13 @@ describe('platform settings', () => {
     });
   });
 
-  /** The native settings for `first`, then for `second`, on the same WebView. */
-  const settingsAcross = async (first: Partial<WebViewProps>, second: Partial<WebViewProps>) => {
-    const root = createRoot();
-    const settingsFor = async (props: Partial<WebViewProps>) => {
-      await act(async () =>
-        root.render(<WebView source={{ uri: 'https://example.com' }} {...props} />)
-      );
-      const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]
-        ?.props as { settings: string };
-      return JSON.parse(native.settings) as Record<string, Record<string, unknown>>;
-    };
-    return [await settingsFor(first), await settingsFor(second)];
-  };
-
   it('let an app key win over a react-native-webview default, which a removed key goes back to', async () => {
-    const [set, removed] = await settingsAcross(
-      { ios: { scrollView: { directionalLockEnabled: false } } },
-      {}
-    );
-    expect(set?.scrollView).toEqual({ directionalLockEnabled: false });
-    expect(removed?.scrollView).toEqual({ directionalLockEnabled: true });
+    const { show, native } = await mount({
+      ios: { scrollView: { directionalLockEnabled: false } },
+    });
+    expect(settingsIn(native()).scrollView).toEqual({ directionalLockEnabled: false });
+    await show({});
+    expect(settingsIn(native()).scrollView).toEqual({ directionalLockEnabled: true });
   });
 
   it('send a root’s other keys among its own, a generated key winning', async () => {
@@ -585,38 +543,36 @@ describe('platform settings', () => {
     expect(settings.scrollView).toEqual({ directionalLockEnabled: true, nope: 1, bounces: false });
   });
 
-  type Configuration = NonNullable<WebViewProps['ios']>['configuration'];
-  /** Renders one ios.configuration, then another, counting the native mounts. */
-  const changeConfiguration = async (
-    first: Configuration = { applicationNameForUserAgent: 'App/1' },
-    second: Configuration = { applicationNameForUserAgent: 'App/2' }
-  ) => {
-    const root = createRoot();
-    const show = (configuration: Configuration) =>
-      act(async () =>
-        root.render(<WebView source={{ uri: 'https://example.com' }} ios={{ configuration }} />)
-      );
-    mockMount.mockClear();
-    await show(first);
-    await show(second);
-    return root;
-  };
+  const userAgentApp = (applicationNameForUserAgent: string) => ({
+    ios: { configuration: { applicationNameForUserAgent } },
+  });
 
   it('recreate the native view for a changed configuration key, with the new settings', async () => {
-    const root = await changeConfiguration();
+    mockMount.mockClear();
+    const { show, native } = await mount(userAgentApp('App/1'));
+    await show(userAgentApp('App/2'));
     expect(mockMount).toHaveBeenCalledTimes(2);
-    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-      settings: string;
-    };
-    const settings = JSON.parse(native.settings) as { configuration: Record<string, unknown> };
-    expect(settings.configuration.applicationNameForUserAgent).toBe('App/2');
+    expect(settingsIn(native()).configuration?.applicationNameForUserAgent).toBe('App/2');
   });
 
   it('keep the native view when only the key order of the configuration changes', async () => {
-    await changeConfiguration(
-      { applicationNameForUserAgent: 'App/1', limitsNavigationsToAppBoundDomains: true },
-      { limitsNavigationsToAppBoundDomains: true, applicationNameForUserAgent: 'App/1' }
-    );
+    mockMount.mockClear();
+    const { show } = await mount({
+      ios: {
+        configuration: {
+          applicationNameForUserAgent: 'App/1',
+          limitsNavigationsToAppBoundDomains: true,
+        },
+      },
+    });
+    await show({
+      ios: {
+        configuration: {
+          limitsNavigationsToAppBoundDomains: true,
+          applicationNameForUserAgent: 'App/1',
+        },
+      },
+    });
     expect(mockMount).toHaveBeenCalledTimes(1);
   });
 
@@ -651,36 +607,36 @@ describe('platform settings', () => {
       });
     });
 
+    it('send a root the types lack, for native to report', async () => {
+      // Only untyped JavaScript can name one.
+      const android = { nope: { a: 1 } } as AndroidSettings;
+      expect((await settingsOf({ android })).nope).toEqual({ a: 1 });
+    });
+
     it('let an app key win over a react-native-webview default, which a removed key goes back to', async () => {
-      const [set, removed] = await settingsAcross(
-        { android: { webView: { acceptThirdPartyCookies: false } } },
-        {}
-      );
-      expect(set?.webView).toEqual({ acceptThirdPartyCookies: false });
-      expect(removed?.webView).toEqual({ acceptThirdPartyCookies: true });
+      const { show, native } = await mount({
+        android: { webView: { acceptThirdPartyCookies: false } },
+      });
+      expect(settingsIn(native()).webView).toEqual({ acceptThirdPartyCookies: false });
+      await show({});
+      expect(settingsIn(native()).webView).toEqual({ acceptThirdPartyCookies: true });
     });
 
     it('keep the native view when an ios.configuration key changes', async () => {
-      await changeConfiguration();
+      mockMount.mockClear();
+      const { show } = await mount(userAgentApp('App/1'));
+      await show(userAgentApp('App/2'));
       expect(mockMount).toHaveBeenCalledTimes(1);
     });
   });
 
   it('logs native warnings', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const root = createRoot();
-    await act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} />));
-    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-      onHookEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
-    };
-    await act(() =>
-      native.onHookEvent({
-        nativeEvent: {
-          name: 'core.warning',
-          payload: { message: 'ios.scrollView.nope: no such property' },
-        },
-      })
-    );
+    const { fire } = await mount();
+    await fire('onHookEvent', {
+      name: 'core.warning',
+      payload: { message: 'ios.scrollView.nope: no such property' },
+    });
     expect(warn).toHaveBeenCalledWith(
       '[react-native-minimal-webview] ios.scrollView.nope: no such property'
     );
@@ -690,27 +646,12 @@ describe('platform settings', () => {
 });
 
 describe('page requests', () => {
-  type Fire = (event: string, payload: Record<string, unknown>, askId?: number) => Promise<void>;
-
-  async function renderRequests(props: Partial<WebViewProps>) {
-    const root = createRoot();
-    const show = (next: Partial<WebViewProps>) =>
-      act(async () => root.render(<WebView source={{ uri: 'https://example.com' }} {...next} />));
-    await show(props);
-    const native = () =>
-      root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-        requestHandlers: string[];
-        onHookEvent: (event: { nativeEvent: Record<string, unknown> }) => Promise<void>;
-      };
-    const fire: Fire = (name, payload, askId) =>
-      act(() => native().onHookEvent({ nativeEvent: { name, payload, askId } }));
-    return { root, show, native, fire };
-  }
+  const ask = (name: string, payload: object, askId?: number) => ({ name, payload, askId });
 
   beforeEach(() => mockAnswer.mockClear());
 
   it('tells native which requests have a prop, as the same array until that set changes', async () => {
-    const { show, native } = await renderRequests({ onDownload: () => {} });
+    const { show, native } = await mount({ onDownload: () => {} });
     const first = native().requestHandlers;
     expect(first).toEqual(['download']);
     await show({ onDownload: () => {} });
@@ -725,14 +666,23 @@ describe('page requests', () => {
     const onFileRequest = jest.fn(async () => ['file:///a.txt']);
     const onFullscreenChange = jest.fn();
     const onDownload = jest.fn();
-    const { fire } = await renderRequests({ onFileRequest, onFullscreenChange, onDownload });
-    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 1);
+    const onNavigationRequest = jest.fn(async () => 'allow' as const);
+    const { fire } = await mount({
+      onFileRequest,
+      onFullscreenChange,
+      onDownload,
+      onNavigationRequest,
+    });
+    await fire(
+      'onHookEvent',
+      ask('core.fileRequest', { accept: [], multiple: false, capture: false }, 1)
+    );
     expect(onFileRequest).toHaveBeenCalledWith(
       { accept: [], multiple: false, capture: false },
       expect.any(AbortSignal)
     );
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
-    await fire('core.fullscreenChange', { active: true });
+    await fire('onHookEvent', ask('core.fullscreenChange', { active: true }));
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true }, undefined);
     const failure = {
       ok: false,
@@ -741,86 +691,60 @@ describe('page requests', () => {
       url: 'https://a.test/a',
       statusCode: 404,
     };
-    await fire('core.download', failure);
+    await fire('onHookEvent', ask('core.download', failure));
     expect(onDownload).toHaveBeenCalledWith(failure, undefined);
-    expect(mockAnswer).toHaveBeenCalledTimes(1);
-  });
-
-  it('answers null to a navigation request when the prop throws or returns nothing', async () => {
-    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const onNavigationRequest = jest
-      .fn()
-      .mockResolvedValueOnce('allow')
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('no'));
-    const { fire, native } = await renderRequests({
-      onNavigationRequest,
-      onOpenExternal: () => true,
-    });
-    expect(native().requestHandlers).toEqual(['navigationRequest', 'openExternal']);
     const request = {
       url: 'https://a.example',
       mainFrame: true,
       newWindow: false,
       userInitiated: true,
     };
-    await fire('core.navigationRequest', request, 1);
+    await fire('onHookEvent', ask('core.navigationRequest', request, 2));
     expect(onNavigationRequest).toHaveBeenCalledWith(request, expect.any(AbortSignal));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'allow' });
-    await fire('core.navigationRequest', request, 2);
-    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
-    await fire('core.navigationRequest', request, 3);
-    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    error.mockRestore();
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: 'allow' });
+    expect(mockAnswer).toHaveBeenCalledTimes(2);
   });
 
-  it("answers null when the prop is gone or throws, and routes other names to an extension's onEvent", async () => {
+  it('answers null when the prop is gone or rejects', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const onEvent = jest.fn(({ name }: { name: string }) => `${name}!`);
-    const { fire } = await renderRequests({
-      onPermissionRequest: () => {
+    const { fire } = await mount({
+      onPermissionRequest: async () => {
         throw new Error('no');
       },
-      extensions: [{ key: 'pageCounter', onEvent }],
     });
     await fire(
-      'core.permissionRequest',
-      { origin: 'https://example.com', resources: ['camera'] },
-      2
+      'onHookEvent',
+      ask('core.permissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2)
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onPermissionRequest failed',
       expect.any(Error)
     );
-    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 3);
-    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    expect(onEvent).not.toHaveBeenCalled();
-    await fire('pageCounter.pick', { a: 1 }, 4);
-    expect(onEvent).toHaveBeenCalledWith(
-      { name: 'pick', payload: { a: 1 } },
-      expect.any(AbortSignal)
+    await fire(
+      'onHookEvent',
+      ask('core.fileRequest', { accept: [], multiple: false, capture: false }, 3)
     );
-    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: 'pick!' });
-    await fire('pageCounter.note', { b: 2 });
-    expect(onEvent).toHaveBeenLastCalledWith({ name: 'note', payload: { b: 2 } }, undefined);
-    expect(mockAnswer).toHaveBeenCalledTimes(3);
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     error.mockRestore();
   });
 
   it('aborts the signal of an ask native cancels, and drops its late answer', async () => {
     let release = (_: boolean) => {};
     let signal: AbortSignal | undefined;
-    const { fire } = await renderRequests({
+    const { fire } = await mount({
       onPermissionRequest: (_, s) => {
         signal = s;
         return new Promise<boolean>((resolve) => (release = resolve));
       },
     });
-    const asked = fire('core.permissionRequest', { origin: 'https://a.example', resources: [] }, 5);
-    await fire('core.askCancelled', { askId: 6 });
+    const asked = fire(
+      'onHookEvent',
+      ask('core.permissionRequest', { origin: 'https://a.example', resources: [] }, 5)
+    );
+    await fire('onHookEvent', ask('core.askCancelled', { askId: 6 }));
     expect(signal?.aborted).toBe(false);
-    await fire('core.askCancelled', { askId: 5 });
+    await fire('onHookEvent', ask('core.askCancelled', { askId: 5 }));
     expect(signal?.aborted).toBe(true);
     release(true);
     await asked;
@@ -829,7 +753,7 @@ describe('page requests', () => {
 
   it('aborts the asks in flight at unmount, not the answered ones', async () => {
     const signals: AbortSignal[] = [];
-    const { root, native, fire } = await renderRequests({
+    const { root, native, fire } = await mount({
       onPermissionRequest: (_, signal) => {
         signals.push(signal);
         return new Promise<boolean>((resolve) =>
@@ -845,7 +769,10 @@ describe('page requests', () => {
     const asked = native().onHookEvent({
       nativeEvent: { name: 'core.permissionRequest', payload: {}, askId: 1 },
     });
-    await fire('core.fileRequest', { accept: [], multiple: false, capture: false }, 2);
+    await fire(
+      'onHookEvent',
+      ask('core.fileRequest', { accept: [], multiple: false, capture: false }, 2)
+    );
     await act(async () => root.unmount());
     expect(signals.map((signal) => signal.aborted)).toEqual([true, false]);
     await asked;
@@ -861,21 +788,21 @@ describe('page requests', () => {
       .mockImplementationOnce(() => {
         throw new Error('no');
       });
-    const { fire } = await renderRequests({ onOpenExternal });
+    const { fire } = await mount({ onOpenExternal });
     const request = (url: string) => ({
       url,
       mainFrame: true,
       newWindow: false,
       userInitiated: true,
     });
-    await fire('core.openExternal', request('intent://a#Intent;end'), 1);
+    await fire('onHookEvent', ask('core.openExternal', request('intent://a#Intent;end'), 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: false });
-    await fire('core.openExternal', request('tel:1'), 2);
+    await fire('onHookEvent', ask('core.openExternal', request('tel:1'), 2));
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: true });
-    await fire('core.openExternal', request('tel:2'), 3);
+    await fire('onHookEvent', ask('core.openExternal', request('tel:2'), 3));
     // Native counts anything but false as opened by the app, so undefined and a throw answer null.
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    await fire('core.openExternal', request('tel:3'), 4);
+    await fire('onHookEvent', ask('core.openExternal', request('tel:3'), 4));
     expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onOpenExternal failed',
@@ -890,46 +817,19 @@ describe('page requests', () => {
 });
 
 describe('navigation state across remounts', () => {
-  const at = (url: string): NavigationState => ({
-    url,
-    pendingUrl: null,
-    title: '',
-    loading: false,
-    progress: 0,
-    canGoBack: false,
-    canGoForward: false,
-    outcome: null,
-  });
-  const fireState = (root: ReturnType<typeof createRoot>, state: NavigationState, index = 0) =>
+  const fireState = (root: ReturnType<typeof createRoot>, state: NavigationState, i = 0) =>
     act(async () => {
-      const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[index];
-      (
-        native?.props as { onNavigationState: (event: { nativeEvent: NavigationState }) => void }
-      ).onNavigationState({ nativeEvent: state });
+      await nativeAt(root, i).onNavigationState({ nativeEvent: state });
     });
 
-  it("passes on the documented keys only, not React Native's own", async () => {
+  it("strips React Native's target", async () => {
     const ref = createWebViewRef();
     const onNavigation = jest.fn();
     const onProcessGone = jest.fn();
-    const root = createRoot();
-    await act(async () =>
-      root.render(
-        <WebView
-          ref={ref}
-          source={{ uri: 'https://example.com' }}
-          onNavigation={onNavigation}
-          onProcessGone={onProcessGone}
-        />
-      )
-    );
+    const { fire } = await mount({ ref, onNavigation, onProcessGone });
     const target = { target: 42 };
-    await fireState(root, { ...at('https://example.com/a'), ...target } as NavigationState);
-    expect(ref.getState()).toStrictEqual(at('https://example.com/a'));
-    const native = root.container.queryAll((node) => node.type === 'MinimalWebView')[0]?.props as {
-      onNavigation: (event: { nativeEvent: object }) => void;
-      onProcessGone: (event: { nativeEvent: object }) => void;
-    };
+    await fire('onNavigationState', { ...navState({ url: 'https://example.com/a' }), ...target });
+    expect(ref.getState()).toStrictEqual(navState({ url: 'https://example.com/a' }));
     const navigation = {
       url: 'https://example.com/b',
       mainFrame: true,
@@ -938,10 +838,8 @@ describe('navigation state across remounts', () => {
       action: 'allow',
       rule: null,
     };
-    await act(async () => {
-      native.onNavigation({ nativeEvent: { ...navigation, ...target } });
-      native.onProcessGone({ nativeEvent: { didCrash: true, recovered: true, ...target } });
-    });
+    await fire('onNavigation', { ...navigation, ...target });
+    await fire('onProcessGone', { didCrash: true, recovered: true, ...target });
     expect(onNavigation).toHaveBeenCalledWith(navigation);
     expect(onProcessGone).toHaveBeenCalledWith({ didCrash: true, recovered: true });
   });
@@ -951,10 +849,7 @@ describe('navigation state across remounts', () => {
     expect(ref.current).toBeNull();
     expect(await ref.current?.get('scrollView.bounces')).toBeUndefined();
 
-    const root = createRoot();
-    await act(async () =>
-      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
-    );
+    const { root } = await mount({ ref });
     ref.current?.goBack();
     ref.current?.goForward();
     ref.current?.reload();
@@ -988,10 +883,7 @@ describe('navigation state across remounts', () => {
     });
     const fail = (code: string) => () => Promise.reject(Object.assign(new Error(code), { code }));
     const ref = createWebViewRef();
-    const root = createRoot();
-    await act(async () =>
-      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
-    );
+    const { root } = await mount({ ref });
 
     mockEvaluate.mockClear();
     mockEvaluate
@@ -1048,10 +940,7 @@ describe('navigation state across remounts', () => {
         })
     );
     const ref = createWebViewRef();
-    const root = createRoot();
-    await act(async () =>
-      root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
-    );
+    const { root } = await mount({ ref });
     const stale = ref.current;
     const pending = stale?.hook('probe', 'never').catch((error: unknown) => error);
     const answered = await stale?.hook('probe', 'now');
@@ -1079,20 +968,20 @@ describe('navigation state across remounts', () => {
         )
       );
     await show(1);
-    await fireState(root, at('https://example.com/a'));
+    await fireState(root, navState({ url: 'https://example.com/a' }));
     expect(ref.getState().url).toBe('https://example.com/a');
     listener.mockClear();
 
     await show(2); // remount
     expect(listener).toHaveBeenCalled();
     expect(ref.getState().url).toBe('');
-    await fireState(root, at('https://example.com/b'));
+    await fireState(root, navState({ url: 'https://example.com/b' }));
     expect(ref.getState().url).toBe('https://example.com/b');
 
     listener.mockClear();
     await show(null);
     expect(listener).toHaveBeenCalled();
-    expect(ref.getState()).toEqual(at(''));
+    expect(ref.getState()).toEqual(navState());
 
     listener.mockClear();
     unsubscribe();
@@ -1106,12 +995,12 @@ describe('navigation state across remounts', () => {
     const show = (ref: WebViewRefObject) =>
       act(async () => root.render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />));
     await show(one);
-    await fireState(root, at('https://example.com/a'));
+    await fireState(root, navState({ url: 'https://example.com/a' }));
     await show(two);
     expect(two.current).not.toBeNull();
     expect(two.getState().url).toBe('https://example.com/a');
     expect(one.current).toBeNull();
-    expect(one.getState()).toEqual(at(''));
+    expect(one.getState()).toEqual(navState());
   });
 
   it('a creation-time setting change starts the state over, until the new view emits', async () => {
@@ -1128,12 +1017,12 @@ describe('navigation state across remounts', () => {
         )
       );
     await show('a');
-    await fireState(root, at('https://example.com/a'));
+    await fireState(root, navState({ url: 'https://example.com/a' }));
     expect(ref.getState().url).toBe('https://example.com/a');
     await show('b');
     expect(ref.current).not.toBeNull();
-    expect(ref.getState()).toEqual(at(''));
-    await fireState(root, at('https://example.com/b'));
+    expect(ref.getState()).toEqual(navState());
+    await fireState(root, navState({ url: 'https://example.com/b' }));
     expect(ref.getState().url).toBe('https://example.com/b');
   });
 
@@ -1152,8 +1041,8 @@ describe('navigation state across remounts', () => {
       );
     await show(true);
     expect(warn).toHaveBeenCalledTimes(1);
-    await fireState(root, at('https://example.com/second'), 1);
-    await fireState(root, at('https://example.com/first'), 0);
+    await fireState(root, navState({ url: 'https://example.com/second' }), 1);
+    await fireState(root, navState({ url: 'https://example.com/first' }), 0);
     expect(ref.getState().url).toBe('https://example.com/second');
     await show(false);
     expect(ref.current).not.toBeNull();
@@ -1190,12 +1079,12 @@ describe('navigation state across remounts', () => {
       );
       const shown = () =>
         root.container.queryAll((node) => node.type === 'Text')[0]?.props.children as string;
-      await fireState(root, at('https://example.com/a'));
+      await fireState(root, navState({ url: 'https://example.com/a' }));
       expect(shown()).toBe('https://example.com/a');
       await act(async () => remount());
       expect(shown()).toBe('');
       const before = renders;
-      await fireState(root, at('https://example.com/b'));
+      await fireState(root, navState({ url: 'https://example.com/b' }));
       expect(shown()).toBe('https://example.com/b');
       expect(renders).toBeGreaterThan(before);
     }

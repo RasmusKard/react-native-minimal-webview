@@ -1666,8 +1666,8 @@ async function settings(h: Harness) {
         (await call('webView.destroy')) === 'native_error'
       );
       r.check(
-        'get refuses a core-owned method, and the WebView still works',
-        (await get('webView.destroy')) === 'native_error' && (await page('1+1')) === 2
+        'get never reaches a core-owned method, and the WebView still works',
+        (await get('webView.destroy')) === 'not_found' && (await page('1+1')) === 2
       );
       const origin = String(await page('location.origin'));
       const set = await call('cookieManager.setCookie', [origin, 'mrwSet=2']);

@@ -1,13 +1,12 @@
 import { requireNativeModule, requireNativeView } from 'expo';
-import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, type ViewProps } from 'react-native';
 
-import { CONNECTION } from './bridge/createBridge';
-import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
-import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
+import { CONNECTION, originGuard } from './bridge/createBridge';
+import { codedError } from './bridge/endpoint';
 import { defaultNavigationRules } from './defaultNavigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
-import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
+import { useAttach } from './refStore';
 import type {
   HookExtension,
   InjectedScript,
@@ -25,43 +24,8 @@ type Native<T> = { nativeEvent: T };
 /** The native view's event props, by name and payload. */
 type NativeHandlers<E> = { [K in keyof E]: (event: Native<E[K]>) => void };
 
-/**
- * A type's documented keys, to pick from its native event: React Native adds its own (`target`, the view's tag). A
- * `Record`, so that a key missing here, or not in the type, fails to compile.
- */
-const keysOf = <T,>(keys: Record<keyof T, true>) => Object.keys(keys) as (keyof T)[];
-const pick = <T,>(event: T, keys: (keyof T)[]) =>
-  Object.fromEntries(keys.map((key) => [key, event[key]])) as T;
-const STATE_KEYS = keysOf<NavigationState>({
-  url: true,
-  pendingUrl: true,
-  title: true,
-  loading: true,
-  progress: true,
-  canGoBack: true,
-  canGoForward: true,
-  outcome: true,
-});
-const NAVIGATION_KEYS = keysOf<NavigationEvent>({
-  url: true,
-  mainFrame: true,
-  newWindow: true,
-  userInitiated: true,
-  action: true,
-  rule: true,
-});
-const ERROR_KEYS = keysOf<Exclude<LoadErrorEvent, { kind: 'http' }>>({
-  kind: true,
-  url: true,
-  code: true,
-  description: true,
-});
-const HTTP_ERROR_KEYS = keysOf<Extract<LoadErrorEvent, { kind: 'http' }>>({
-  kind: true,
-  url: true,
-  statusCode: true,
-});
-const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: true });
+/** The event without the `target` (the view's tag) React Native adds to every native event. */
+const own = <T,>({ target: _, ...event }: T & { target?: unknown }) => event as T;
 
 /** A page's message comes with its origin, as native verified it (`location.origin` form). */
 export type BridgeEvent =
@@ -191,8 +155,6 @@ export function WebView(props: WebViewProps) {
 /** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
 function WebViewInstance({ ref, ...props }: WebViewProps) {
   const native = useRef<NativeMethods>(null);
-  const attachmentRef = useRef<Attachment>(undefined);
-  const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
 
   // The rejecters of native calls not settled yet. An unmount rejects them: native may never answer (a hook handler
   // that never replies), and a late answer then settles nothing.
@@ -251,7 +213,16 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
         mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
-  useAttach(ref, handle, lastRef, attachmentRef);
+  const publish = useAttach(ref, handle);
+
+  // onLoadStart and onLoadEnd are the edges of `loading`; native sets the ended load's `outcome`.
+  const onNavigationState = ({ nativeEvent }: Native<NavigationState>) => {
+    const state = own(nativeEvent);
+    const was = publish(state);
+    props.onNavigationStateChange?.(state);
+    if (!was.loading && state.loading) props.onLoadStart?.(state);
+    if (was.loading && !state.loading) props.onLoadEnd?.(state);
+  };
 
   // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
@@ -322,16 +293,12 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={hookOptions}
       requestHandlers={requestHandlers}
-      onNavigation={({ nativeEvent }) => props.onNavigation?.(pick(nativeEvent, NAVIGATION_KEYS))}
-      onNavigationState={({ nativeEvent }) =>
-        onNavigationState({ nativeEvent: pick(nativeEvent, STATE_KEYS) })
-      }
+      onNavigation={({ nativeEvent }) => props.onNavigation?.(own(nativeEvent))}
+      onNavigationState={onNavigationState}
       onBridge={onBridge}
       onHookEvent={onHookEvent}
-      onError={onError}
-      onProcessGone={({ nativeEvent }) =>
-        props.onProcessGone?.(pick(nativeEvent, PROCESS_GONE_KEYS))
-      }
+      onError={({ nativeEvent }) => props.onError?.(own(nativeEvent))}
+      onProcessGone={({ nativeEvent }) => props.onProcessGone?.(own(nativeEvent))}
     />
   );
 }
@@ -344,16 +311,8 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
   return scripts?.map(({ code, allFrames, origins }) => {
     if (!Array.isArray(origins))
       throw new Error("injectedScripts: every script needs origins (['*'] for every origin)");
-    const invalid = invalidOrigins(origins);
-    if (invalid.length) {
-      throw new Error(
-        `injectedScripts: invalid origins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
-      );
-    }
-    const forms = originForms(origins);
-    if (forms.any) return { code, allFrames };
-    const guard = `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
-    return { code: `if (${guard}) (() => {\n${code}\n})();`, allFrames };
+    const guard = originGuard('injectedScripts: invalid origins', origins);
+    return { code: guard ? `if (${guard}) (() => {\n${code}\n})();` : code, allFrames };
   });
 }
 
@@ -367,9 +326,9 @@ function useRequestHandlers(props: WebViewProps) {
 }
 
 /**
- * Native's `hookOptions`: each extension's `options` (`true` when unset) by its key, the later of two extensions with
- * one key winning (a development warning). A null `options` leaves the key out. The same object while the JSON is the
- * same, so a render with new handlers sends native nothing.
+ * Native's `hookOptions`: each extension's `options` by its key, the later of two extensions with one key winning (a
+ * development warning). An off `options` leaves the key out. The same object while the JSON is the same, so a render
+ * with new handlers sends native nothing.
  */
 function useHookOptions(extensions: WebViewProps['extensions']) {
   const on = (extensions ?? []).filter((extension) => !!extension);
@@ -383,7 +342,11 @@ function useHookOptions(extensions: WebViewProps['extensions']) {
       );
   }, [repeated]);
   const json = JSON.stringify(
-    withoutNulls(Object.fromEntries(on.map(({ key, options = true }) => [key, options])))
+    withoutOff(
+      Object.fromEntries(
+        on.map(({ key, options = DEFAULTS.HookExtension.options }) => [key, options])
+      )
+    )
   );
   return useMemo(() => JSON.parse(json) as Record<string, unknown>, [json]);
 }
@@ -416,9 +379,11 @@ function creationKey(props: WebViewProps) {
   );
 }
 
-/** A null value is no value: the hook is off, and for an attached one the key is removed. */
-const withoutNulls = (options: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(options).filter(([, value]) => value != null));
+/** A null or false value is off, and its key is left out: native treats a present key as on. */
+const withoutOff = (options: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(options).filter(([, value]) => value != null && value !== false)
+  );
 
 /** A JSON.stringify replacer: the same options in another key order are the same key. */
 const sortedKeys = (_: string, value: unknown) =>
@@ -438,62 +403,34 @@ const flattened = (
     Object.entries(roots).map(([name, { other, ...keys } = {}]) => [name, { ...other, ...keys }])
   );
 
+/** Each layer's roots over the earlier layers', key by key. */
+const layered = (...layers: NativeSettings[]) =>
+  layers.reduce<NativeSettings>((out, layer) => {
+    for (const [root, keys] of Object.entries(layer)) out[root] = { ...out[root], ...keys };
+    return out;
+  }, {});
+
 /**
  * The platform's settings for native: the package's defaults, react-native-webview's over them, the app's `ios` or
- * `android` roots over those, and `userAgent` on top. An unset `userAgent` resets its key to the default, so removing
- * the prop undoes it.
+ * `android` roots over those, and `userAgent` on top. A removed `userAgent` falls back to Android's
+ * `userAgentString: null` default; on iOS, native restores the removed key.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
-  const set = (value: string | undefined, key: string) =>
-    value === undefined ? {} : { [key]: value };
-  if (Platform.OS === 'ios') {
-    const { configuration, webView, scrollView, ...rest } = flattened(props.ios);
-    const defaults = flattened(DEFAULTS.IOSSettings);
-    return {
-      ...rest,
-      configuration: { ...defaults.configuration, ...configuration },
-      webView: {
-        ...defaults.webView,
-        ...webView,
-        ...set(props.userAgent, 'customUserAgent'),
-      },
-      scrollView: { ...REACT_NATIVE_WEBVIEW_DEFAULTS.ios.scrollView, ...scrollView },
-    };
-  }
-  const { settings, webView } = flattened(props.android);
-  const rnw = REACT_NATIVE_WEBVIEW_DEFAULTS.android;
-  return {
-    settings: {
-      ...flattened(DEFAULTS.AndroidSettings).settings,
-      ...rnw.settings,
-      ...settings,
-      ...set(props.userAgent, 'userAgentString'),
-    },
-    webView: { ...rnw.webView, ...webView },
-  };
-}
-
-/** Load events: onLoadStart and onLoadEnd are the edges of `loading`; native sets the ended load's `outcome`. */
-function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment | undefined>) {
-  const lastRef = useRef(INITIAL_STATE);
-
-  const onNavigationState = ({ nativeEvent: state }: Native<NavigationState>) => {
-    const was = lastRef.current.loading;
-    lastRef.current = state;
-    attachmentRef.current?.update(state);
-    props.onNavigationStateChange?.(state);
-    if (!was && state.loading) props.onLoadStart?.(state);
-    if (was && !state.loading) props.onLoadEnd?.(state);
-  };
-
-  const onError = ({ nativeEvent }: Native<LoadErrorEvent>) =>
-    props.onError?.(
-      nativeEvent.kind === 'http'
-        ? pick(nativeEvent, HTTP_ERROR_KEYS)
-        : pick(nativeEvent, ERROR_KEYS)
-    );
-
-  return { onNavigationState, onError, lastRef };
+  const [defaults, rnw, app, userAgent] =
+    Platform.OS === 'ios'
+      ? [
+          flattened(DEFAULTS.IOSSettings),
+          REACT_NATIVE_WEBVIEW_DEFAULTS.ios,
+          flattened(props.ios),
+          { webView: { customUserAgent: props.userAgent } },
+        ]
+      : [
+          flattened(DEFAULTS.AndroidSettings),
+          REACT_NATIVE_WEBVIEW_DEFAULTS.android,
+          flattened(props.android),
+          { settings: { userAgentString: props.userAgent } },
+        ];
+  return layered(defaults, rnw, app, props.userAgent === undefined ? {} : userAgent);
 }
 
 /**

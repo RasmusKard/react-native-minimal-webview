@@ -129,7 +129,7 @@ class PlatformSettingsTest {
     assertEquals("not_found", code { settings.call("settings.missing", emptyList()) {} })
     assertEquals("not_found", code { settings.call("settings.setInt", listOf("1")) {} }) // no overload takes it
     assertEquals("not_found", code { settings.call("nope.setInt", listOf(1)) {} })
-    assertEquals("native_error", code { settings.get("settings.destroy") }) // owned by the core
+    assertEquals("not_found", code { settings.get("settings.destroy") }) // owned by the core, so never a getter
     assertEquals("native_error", code { settings.call("settings.destroy", emptyList()) {} })
     assertEquals("native_error", code { settings.call("settings.addNavigationListener", listOf(null)) {} })
     assertEquals("native_error", code { settings.call("settings.setFailing", listOf(1)) {} })

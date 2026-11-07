@@ -575,9 +575,7 @@ export type IOSSettings = {
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
    * The `WKWebView`, live.
-   *
-   * `customUserAgent: null` is WebKit's default user agent, with `applicationNameForUserAgent` appended.
-   * @default `{ customUserAgent: null, inspectable: __DEV__ }`
+   * @default `{ inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /**
@@ -675,7 +673,7 @@ export type HookExtension = {
    * What the hook gets as its options. Null or false switches the hook off, as does leaving its extension out of
    * `extensions`: it stays attached and gets null, but the core routes none of its delegates, clients or listeners,
    * drops its events, answers its asks with null, and rejects `ref.hook` calls to its handlers with `not_found`.
-   * Undefined means `true`. Turning it on again gives it the new options.
+   * Turning it on again gives it the new options.
    * @default `true`
    */
   options?: unknown;
@@ -1056,7 +1054,7 @@ export type WebViewRef = {
    * - iOS: every selector that loads, navigates (`setInteractionState:` too), runs a script, starts a download or sets
    *   a delegate, and private (`_`), KVC, `willChange…`, `didChange…`, `performSelector`, `init…`, `copy…`,
    *   `mutable…`, `new…` and reference-counting selectors.
-   * - Android (in `get` too): the loads, navigations, clients, JavaScript interfaces, web message listeners,
+   * - Android: the loads, navigations, clients, JavaScript interfaces, web message listeners,
    *   document-start scripts, the touch, scroll-change and navigation listeners, `destroy`, `removeAllViews`,
    *   `pauseTimers`, `resumeTimers`, `evaluateJavascript` and remote debugging
    *   ({@link AndroidWebView.setWebContentsDebuggingEnabled}).

@@ -77,8 +77,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private var loadedSource: WebViewSource? = null
 
   // The hooks' lists: each context owns its own, and the core routes those of the hooks that are on, in attach order.
-  val clients: List<WebViewClient> get() = routed(attachments) { it.clients }
-  val chromeClients: List<WebChromeClient> get() = routed(attachments) { it.chromeClients }
+  val clients: List<WebViewClient> get() = routed(hookContexts) { it.clients }
+  val chromeClients: List<WebChromeClient> get() = routed(hookContexts) { it.chromeClients }
   val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
@@ -88,7 +88,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private var hookKeys: Set<String>? = null
   /** The hooks' contexts for the current WebView, in attach order. Chromium's IO thread reads it (shouldInterceptRequest). */
   @Volatile private var hookContexts: List<HookContext> = emptyList()
-  private val attachments get() = hookContexts.map { it.attachment }
   private var mounted = false
 
   internal val asks = Asks { onHookEvent(it) }
@@ -130,7 +129,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun createWebView(): WebView {
     val first = hookKeys == null
-    val keys = hookKeys ?: hookOptions.filterValues(::enables).keys.also { hookKeys = it }
+    val keys = hookKeys ?: hookOptions.keys.also { hookKeys = it }
     val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keys)
     val (maker, unused) = pickFactory(attaching)
     val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
@@ -162,11 +161,11 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   // The on hooks' own lists, not copies: this runs for every touch event and scroll change.
   private fun touched(view: View, event: MotionEvent) =
-    hookContexts.any { c -> c.attachment.routed && c.touchListeners.any { it.onTouch(view, event) } }
+    hookContexts.any { c -> c.routed && c.touchListeners.any { it.onTouch(view, event) } }
 
   private fun scrolled(view: View, x: Int, y: Int, oldX: Int, oldY: Int) {
     for (c in hookContexts) {
-      if (c.attachment.routed) c.scrollListeners.forEach { it.onScrollChange(view, x, y, oldX, oldY) }
+      if (c.routed) c.scrollListeners.forEach { it.onScrollChange(view, x, y, oldX, oldY) }
     }
   }
 
@@ -305,9 +304,9 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       if (old[key] == value) continue
       val context = hookContexts.find { it.key == key }
       if (context != null) {
-        context.attachment.optionsChanged(value)
+        context.optionsChanged(value)
         enableFavicons() // a hook that attached off, after a crash, and turns on
-      } else if (addedLate(key, old[key], value, hookKeys.orEmpty())) {
+      } else if (key !in hookKeys.orEmpty() && old[key] == null) {
         attachLate(key)
       }
     }
@@ -315,10 +314,15 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun attachLate(key: String) {
     val hook = MinimalWebViewHooks.hooks.find { it.key == key }
-    lateAttachWarning(key, hook)?.let { return warn(it) }
+      ?: return warn("extension $key: no hook is registered under this key")
+    // configure runs before the package sets the WebView up, and a factory makes it: too late for one that exists.
+    if (hook.configure != null || hook.webViewFactory != null) {
+      val why = if (hook.configure != null) "configure" else "a webViewFactory"
+      return warn("extension $key: its hook has $why, so it attaches only when the WebView is created")
+    }
     hookKeys = hookKeys.orEmpty() + key
     // The WebView the recovery builds attaches it with the others.
-    if (recovering || hook == null) return
+    if (recovering) return
     val context = HookContext(hook, this)
     hookContexts = hookContexts + context
     hook.attach(webView, context)
@@ -326,7 +330,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   }
 
   /** The handler a hook registered with `context.handle` for [method], if it is attached and on. */
-  internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key && it.attachment.routed }?.handlers?.get(method)
+  internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key && it.routed }?.handlers?.get(method)
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 

@@ -17,7 +17,7 @@ export const DEFAULTS: {
   },
   IOSSettings: {
     configuration: { allowsInlineMediaPlayback: true },
-    webView: { customUserAgent: null, inspectable: __DEV__ },
+    webView: { inspectable: __DEV__ },
   },
   AndroidSettings: {
     settings: { userAgentString: null },
