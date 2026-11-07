@@ -11,7 +11,6 @@ import type {
   DownloadFailure,
   FileRequest,
   FullscreenChangeEvent,
-  HookEvent,
   InjectedScript,
   IOSSettings,
   LoadErrorEvent,
@@ -46,6 +45,8 @@ const sources = (platform: Platform) =>
 
 const PROP = /\bProp\("(\w+)"\)/g;
 const FUNCTION = /\b(?:AsyncFunction|Function|Constant)\("(\w+)"\)/g;
+// A core event's name: `"core", "<name>"` at an emit or ask, `"key" to "core", "name" to "<name>"` in a literal.
+const CORE_EVENT = /"core",\s*(?:"name"(?: to|:)\s*)?"(\w+)"/g;
 const events = (text: string) => names(text.match(/\bEvents\(([^)]*)\)/)?.[1] ?? '', /"(\w+)"/g);
 
 const IOS_ONLY_PROPS = ['sharedCookies'];
@@ -55,7 +56,7 @@ const ANDROID_ONLY_FUNCTIONS = [
   'setWebContentsDebuggingEnabled',
   'warmUp',
 ];
-const ANDROID_ONLY_REQUESTS = ['fileRequest', 'fullscreenChange'];
+const ANDROID_ONLY_REQUESTS = ['onFileRequest', 'onFullscreenChange'];
 
 test('both platforms define the same props, events and functions, except the documented platform-only ones', () => {
   expect(names(swift, PROP)).toEqual([...names(kotlin, PROP), ...IOS_ONLY_PROPS].sort());
@@ -74,9 +75,9 @@ test('the native view gets exactly the native props and events, and JS calls exa
 });
 
 test('the page requests JS routes are the ones native asks for, and each platform gates the ones it has', () => {
-  const requests = names(ts.match(/const REQUESTS = \{([^}]*)\}/)?.[1] ?? '', /^\s*(\w+):/gm);
+  const requests = names(ts.match(/const REQUESTS = \[([^\]]*)\]/)?.[1] ?? '', /'(\w+)'/g);
   const told = ['warning', 'askCancelled'];
-  const asked = names(natives, /"core\.(\w+)"/g).filter((name) => !told.includes(name));
+  const asked = names(natives, CORE_EVENT).filter((name) => !told.includes(name));
   const gated = (platform: Platform, gate: RegExp) =>
     names(sources(platform).map(read).join('\n'), gate);
   expect(asked.filter((name) => !requests.includes(name))).toEqual([]);
@@ -87,7 +88,7 @@ test('the page requests JS routes are the ones native asks for, and each platfor
       ...ANDROID_ONLY_REQUESTS,
     ].sort()
   ).toEqual(requests);
-  told.forEach((name) => expect(ts).toContain(`\`\${CORE}${name}\``));
+  told.forEach((name) => expect(ts).toContain(`'${name}'`));
 });
 
 // Payload keys: each type's keys as a `Record`, so a key added to the type and not here fails to compile.
@@ -128,7 +129,10 @@ const unavailable = { unavailable: 1 } satisfies Record<
   keyof Extract<BridgeEvent, { unavailable: true }>,
   1
 >;
-const hookEvent = { name: 1, payload: 1 } satisfies Record<keyof HookEvent, 1>;
+const hookEvent = { key: 1, name: 1, payload: 1 } satisfies Record<
+  keyof Omit<AskableEvent, 'askId'>,
+  1
+>;
 const askable = { ...hookEvent, askId: 1 } satisfies Record<keyof AskableEvent, 1>;
 const download = { ok: 1, uri: 1, filename: 1, mimeType: 1, url: 1 } satisfies Record<
   keyof Download,
@@ -198,52 +202,52 @@ const PAYLOADS: Record<Platform, Row[]> = {
     },
     { event: 'onHookEvent', file: 'Asks.kt', emitSite: /send\(/g, keys: [hookEvent, askable] },
     {
-      event: 'core.navigationRequest',
+      event: 'onNavigationRequest',
       file: 'MinimalWebViewNavigation.kt',
       emitSite: /fun fields\(/g,
       keys: request,
     },
     {
-      // Sent as `fields(request)`, like `core.navigationRequest`.
-      event: 'core.openExternal',
+      // Sent as `fields(request)`, like `onNavigationRequest`.
+      event: 'onOpenExternal',
       file: 'MinimalWebViewNavigation.kt',
       emitSite: /fun fields\(/g,
       keys: request,
     },
     {
-      event: 'core.download',
+      event: 'onDownload',
       file: 'requests/Downloads.kt',
-      emitSite: /"core\.download",/g,
+      emitSite: /"core", "onDownload",/g,
       keys: [download, failure, httpFailure],
     },
     {
-      event: 'core.permissionRequest',
+      event: 'onPermissionRequest',
       file: 'requests/Permissions.kt',
-      emitSite: /"core\.permissionRequest",/g,
+      emitSite: /"core", "onPermissionRequest",/g,
       keys: permission,
     },
     {
-      event: 'core.fileRequest',
+      event: 'onFileRequest',
       file: 'requests/FileUpload.kt',
       emitSite: /val request = mapOf/g,
       keys: file,
     },
     {
-      event: 'core.fullscreenChange',
+      event: 'onFullscreenChange',
       file: 'requests/FullscreenVideo.kt',
-      emitSite: /"core\.fullscreenChange",/g,
+      emitSite: /"core", "onFullscreenChange",/g,
       keys: fullscreen,
     },
     {
-      event: 'core.warning',
+      event: 'warning',
       file: 'MinimalWebView.kt',
-      emitSite: /"core\.warning",/g,
+      emitSite: /"core", "warning",/g,
       keys: warning,
     },
     {
-      event: 'core.askCancelled',
+      event: 'askCancelled',
       file: 'Asks.kt',
-      emitSite: /"core\.askCancelled",/g,
+      emitSite: /"askCancelled",/g,
       keys: askCancelled,
     },
   ],
@@ -289,40 +293,40 @@ const PAYLOADS: Record<Platform, Row[]> = {
     },
     { event: 'onHookEvent', file: 'Asks.swift', emitSite: /send\(/g, keys: [hookEvent, askable] },
     {
-      event: 'core.navigationRequest',
+      event: 'onNavigationRequest',
       file: 'NavigationRules.swift',
       emitSite: /var payload: \[String: Any\] \{/g,
       keys: request,
     },
     {
-      // Sent as `request.payload`, like `core.navigationRequest`.
-      event: 'core.openExternal',
+      // Sent as `request.payload`, like `onNavigationRequest`.
+      event: 'onOpenExternal',
       file: 'NavigationRules.swift',
       emitSite: /var payload: \[String: Any\] \{/g,
       keys: request,
     },
     {
-      event: 'core.download',
+      event: 'onDownload',
       file: 'Downloads.swift',
-      emitSite: /"core\.download",/g,
+      emitSite: /"core", "onDownload",/g,
       keys: [download, failure],
     },
     {
-      event: 'core.permissionRequest',
+      event: 'onPermissionRequest',
       file: 'MinimalWebView+Dialogs.swift',
-      emitSite: /"core\.permissionRequest",/g,
+      emitSite: /"core", "onPermissionRequest",/g,
       keys: permission,
     },
     {
-      event: 'core.warning',
+      event: 'warning',
       file: 'MinimalWebView.swift',
-      emitSite: /"core\.warning",/g,
+      emitSite: /"core", "warning",/g,
       keys: warning,
     },
     {
-      event: 'core.askCancelled',
+      event: 'askCancelled',
       file: 'Asks.swift',
-      emitSite: /"core\.askCancelled", "payload":/g,
+      emitSite: /"askCancelled", "payload":/g,
       keys: askCancelled,
     },
   ],
@@ -353,14 +357,13 @@ describe.each(['android', 'ios'] as const)('%s payloads', (platform) => {
   });
 
   test('the table covers every native event and every core event the platform emits', () => {
-    const emitted = names(sources(platform).map(read).join('\n'), /"(core\.\w+)"/g);
+    const emitted = names(sources(platform).map(read).join('\n'), CORE_EVENT);
     const listed = new Set(rows.map((row) => row.event));
-    expect([...listed].filter((event) => event.startsWith('core.')).sort()).toEqual([
+    const native = events(platform === 'ios' ? swift : kotlin);
+    expect([...listed].filter((event) => !native.includes(event)).sort()).toEqual([
       ...new Set(emitted),
     ]);
-    expect(
-      events(platform === 'ios' ? swift : kotlin).filter((event) => !listed.has(event))
-    ).toEqual([]);
+    expect(native.filter((event) => !listed.has(event))).toEqual([]);
   });
 });
 

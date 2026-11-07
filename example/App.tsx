@@ -74,14 +74,13 @@ function onPageCounterEvent(event: PageCounterEvent) {
 
 const EXTENSIONS_KEY = '@react-native-minimal-webview/extensions';
 /**
- * Owns the extensions package's key prefix, with no hook (`options: null`): an event of one of its hooks that no
- * extension of the WebView owns, a hook that stayed on after its extension left, comes here. The longest key wins, so the
- * extensions in use never reach it.
+ * Takes the onScroll hook's events while no extension of the WebView does, with the hook off (`options: null`): one it
+ * sends after its extension left comes here.
  */
 const strayEvents: HookExtension = {
-  key: EXTENSIONS_KEY,
+  key: `${EXTENSIONS_KEY}.onScroll`,
   options: null,
-  onEvent: ({ name }) => void events.hookEvents.push(`${EXTENSIONS_KEY}.${name}`),
+  onEvent: ({ name }) => void events.hookEvents.push(`${EXTENSIONS_KEY}.onScroll.${name}`),
 };
 
 /** Remounts its children on `remount()`, without re-rendering App. */
@@ -188,7 +187,10 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            extensions={[...logged, strayEvents]}
+            extensions={[
+              ...logged,
+              ...(logged.some((e) => e && e.key === strayEvents.key) ? [] : [strayEvents]),
+            ]}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
             onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}

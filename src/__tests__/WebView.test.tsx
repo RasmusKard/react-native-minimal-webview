@@ -125,8 +125,8 @@ describe('WebView', () => {
     await fire('onBridge', { message: '{}', origin: 'https://example.com' });
     await fire('onBridge', { navigated: true });
     await fire('onBridge', { unavailable: true });
-    await fire('onHookEvent', { name: 'sample.note', payload: {} });
-    await fire('onHookEvent', { name: 'core.fileRequest', payload: {} });
+    await fire('onHookEvent', { key: 'sample', name: 'note', payload: {} });
+    await fire('onHookEvent', { key: 'core', name: 'onFileRequest', payload: {} });
     expect(error).not.toHaveBeenCalled();
   });
 
@@ -241,7 +241,12 @@ describe('extensions', () => {
     onEvent,
   });
 
-  const event = (name: string, askId?: number) => ({ name, payload: { n: 1 }, askId });
+  const event = (key: string, name: string, askId?: number) => ({
+    key,
+    name,
+    payload: { n: 1 },
+    askId,
+  });
 
   afterEach(() => mockAnswer.mockClear());
 
@@ -272,7 +277,7 @@ describe('extensions', () => {
     const first = native().hookOptions;
     await show({ extensions: [ext('a', { items: [1] }, () => 'second')] });
     expect(native().hookOptions).toBe(first);
-    await fire('onHookEvent', event('a.x', 1));
+    await fire('onHookEvent', event('a', 'x', 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'second' });
     await show({ extensions: [ext('a', { items: [2] })] });
     expect(native().hookOptions).not.toBe(first);
@@ -285,7 +290,7 @@ describe('extensions', () => {
       extensions: [ext('a', 1, () => 'one'), ext('b'), ext('a', 2, () => 'two')],
     });
     expect(native().hookOptions).toEqual({ a: 2, b: true });
-    await fire('onHookEvent', event('a.x', 1));
+    await fire('onHookEvent', event('a', 'x', 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'two' });
     expect(warn.mock.calls).toEqual([
       [
@@ -295,41 +300,40 @@ describe('extensions', () => {
     warn.mockRestore();
   });
 
-  it('sends each event to the extension whose key is the longest prefix, with the name relative to it', async () => {
+  it('sends each event to the extension with its key, with the name the hook sent', async () => {
     const short = jest.fn(() => 'short');
     const long = jest.fn(async () => 'long');
     const { fire } = await mount({
       extensions: [ext('pkg', true, short), ext('pkg.dialogs', true, long)],
     });
-    await fire('onHookEvent', event('pkg.dialogs.prompt', 1));
+    await fire('onHookEvent', event('pkg.dialogs', 'prompt', 1));
     expect(long).toHaveBeenCalledWith(
       { name: 'prompt', payload: { n: 1 } },
       expect.any(AbortSignal)
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'long' });
-    await fire('onHookEvent', event('pkg.scroll'));
-    expect(short).toHaveBeenCalledWith({ name: 'scroll', payload: { n: 1 } }, undefined);
+    await fire('onHookEvent', event('pkg', 'dialogs.prompt'));
+    expect(short).toHaveBeenCalledWith({ name: 'dialogs.prompt', payload: { n: 1 } }, undefined);
+    expect(long).toHaveBeenCalledTimes(1);
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
 
   it('answers null for an ask with no handler, and drops an event no extension owns', async () => {
     const own = jest.fn();
     const { show, fire } = await mount({
-      extensions: [ext('a', true, own), ext('quiet'), ext('ab', true, own)],
+      extensions: [ext('a', true, own), ext('quiet')],
     });
-    for (const [name, askId] of [
-      ['other.label', 1],
-      ['quiet.event', 2],
-      ['a', 3],
-      ['ab', 4],
+    for (const [key, askId] of [
+      ['other', 1],
+      ['quiet', 2],
     ] as const) {
-      await fire('onHookEvent', event(name, askId));
+      await fire('onHookEvent', event(key, 'label', askId));
       expect(mockAnswer).toHaveBeenLastCalledWith(askId, { value: null });
     }
-    await fire('onHookEvent', event('other.label'));
+    await fire('onHookEvent', event('other', 'label'));
     expect(own).not.toHaveBeenCalled();
     await show({ extensions: [false, ext('quiet')] });
-    await fire('onHookEvent', event('a.ask', 5));
+    await fire('onHookEvent', event('a', 'ask', 5));
     expect(own).not.toHaveBeenCalled();
     expect(mockAnswer).toHaveBeenLastCalledWith(5, { value: null });
   });
@@ -343,7 +347,7 @@ describe('extensions', () => {
         }),
       ],
     });
-    await fire('onHookEvent', event('a.x', 1));
+    await fire('onHookEvent', event('a', 'x', 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onEvent failed for a.x',
@@ -634,7 +638,8 @@ describe('platform settings', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { fire } = await mount();
     await fire('onHookEvent', {
-      name: 'core.warning',
+      key: 'core',
+      name: 'warning',
       payload: { message: 'ios.scrollView.nope: no such property' },
     });
     expect(warn).toHaveBeenCalledWith(
@@ -646,18 +651,23 @@ describe('platform settings', () => {
 });
 
 describe('page requests', () => {
-  const ask = (name: string, payload: object, askId?: number) => ({ name, payload, askId });
+  const ask = (name: string, payload: object, askId?: number) => ({
+    key: 'core',
+    name,
+    payload,
+    askId,
+  });
 
   beforeEach(() => mockAnswer.mockClear());
 
   it('tells native which requests have a prop, as the same array until that set changes', async () => {
     const { show, native } = await mount({ onDownload: () => {} });
     const first = native().requestHandlers;
-    expect(first).toEqual(['download']);
+    expect(first).toEqual(['onDownload']);
     await show({ onDownload: () => {} });
     expect(native().requestHandlers).toBe(first);
     await show({ onDownload: () => {}, onPermissionRequest: () => true });
-    expect(native().requestHandlers).toEqual(['permissionRequest', 'download']);
+    expect(native().requestHandlers).toEqual(['onPermissionRequest', 'onDownload']);
     await show({});
     expect(native().requestHandlers).toEqual([]);
   });
@@ -675,14 +685,14 @@ describe('page requests', () => {
     });
     await fire(
       'onHookEvent',
-      ask('core.fileRequest', { accept: [], multiple: false, capture: false }, 1)
+      ask('onFileRequest', { accept: [], multiple: false, capture: false }, 1)
     );
     expect(onFileRequest).toHaveBeenCalledWith(
       { accept: [], multiple: false, capture: false },
       expect.any(AbortSignal)
     );
     expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
-    await fire('onHookEvent', ask('core.fullscreenChange', { active: true }));
+    await fire('onHookEvent', ask('onFullscreenChange', { active: true }));
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true }, undefined);
     const failure = {
       ok: false,
@@ -691,7 +701,7 @@ describe('page requests', () => {
       url: 'https://a.test/a',
       statusCode: 404,
     };
-    await fire('onHookEvent', ask('core.download', failure));
+    await fire('onHookEvent', ask('onDownload', failure));
     expect(onDownload).toHaveBeenCalledWith(failure, undefined);
     const request = {
       url: 'https://a.example',
@@ -699,7 +709,7 @@ describe('page requests', () => {
       newWindow: false,
       userInitiated: true,
     };
-    await fire('onHookEvent', ask('core.navigationRequest', request, 2));
+    await fire('onHookEvent', ask('onNavigationRequest', request, 2));
     expect(onNavigationRequest).toHaveBeenCalledWith(request, expect.any(AbortSignal));
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: 'allow' });
     expect(mockAnswer).toHaveBeenCalledTimes(2);
@@ -714,7 +724,7 @@ describe('page requests', () => {
     });
     await fire(
       'onHookEvent',
-      ask('core.permissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2)
+      ask('onPermissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2)
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
     expect(error).toHaveBeenCalledWith(
@@ -723,7 +733,7 @@ describe('page requests', () => {
     );
     await fire(
       'onHookEvent',
-      ask('core.fileRequest', { accept: [], multiple: false, capture: false }, 3)
+      ask('onFileRequest', { accept: [], multiple: false, capture: false }, 3)
     );
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
     error.mockRestore();
@@ -740,11 +750,11 @@ describe('page requests', () => {
     });
     const asked = fire(
       'onHookEvent',
-      ask('core.permissionRequest', { origin: 'https://a.example', resources: [] }, 5)
+      ask('onPermissionRequest', { origin: 'https://a.example', resources: [] }, 5)
     );
-    await fire('onHookEvent', ask('core.askCancelled', { askId: 6 }));
+    await fire('onHookEvent', ask('askCancelled', { askId: 6 }));
     expect(signal?.aborted).toBe(false);
-    await fire('onHookEvent', ask('core.askCancelled', { askId: 5 }));
+    await fire('onHookEvent', ask('askCancelled', { askId: 5 }));
     expect(signal?.aborted).toBe(true);
     release(true);
     await asked;
@@ -767,11 +777,11 @@ describe('page requests', () => {
     });
     // Outside act: an open act scope would hold back the unmount's effect cleanups.
     const asked = native().onHookEvent({
-      nativeEvent: { name: 'core.permissionRequest', payload: {}, askId: 1 },
+      nativeEvent: { key: 'core', name: 'onPermissionRequest', payload: {}, askId: 1 },
     });
     await fire(
       'onHookEvent',
-      ask('core.fileRequest', { accept: [], multiple: false, capture: false }, 2)
+      ask('onFileRequest', { accept: [], multiple: false, capture: false }, 2)
     );
     await act(async () => root.unmount());
     expect(signals.map((signal) => signal.aborted)).toEqual([true, false]);
@@ -795,14 +805,14 @@ describe('page requests', () => {
       newWindow: false,
       userInitiated: true,
     });
-    await fire('onHookEvent', ask('core.openExternal', request('intent://a#Intent;end'), 1));
+    await fire('onHookEvent', ask('onOpenExternal', request('intent://a#Intent;end'), 1));
     expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: false });
-    await fire('onHookEvent', ask('core.openExternal', request('tel:1'), 2));
+    await fire('onHookEvent', ask('onOpenExternal', request('tel:1'), 2));
     expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: true });
-    await fire('onHookEvent', ask('core.openExternal', request('tel:2'), 3));
+    await fire('onHookEvent', ask('onOpenExternal', request('tel:2'), 3));
     // Native counts anything but false as opened by the app, so undefined and a throw answer null.
     expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
-    await fire('onHookEvent', ask('core.openExternal', request('tel:3'), 4));
+    await fire('onHookEvent', ask('onOpenExternal', request('tel:3'), 4));
     expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: null });
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onOpenExternal failed',

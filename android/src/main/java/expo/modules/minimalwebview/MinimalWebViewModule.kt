@@ -72,12 +72,6 @@ class MinimalWebViewModule : Module() {
     // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
     OnActivityEntersBackground {
       if (webViewCreated) CookieManager.getInstance().flush()
-      MinimalWebView.inBackground = true
-    }
-
-    // A WebView whose renderer died in the background is rebuilt now.
-    OnActivityEntersForeground {
-      MinimalWebView.inBackground = false
     }
 
     // Best effort: an error only means the first WebView starts WebView as before.

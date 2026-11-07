@@ -132,10 +132,10 @@ class HooksTest {
     val warnings = mutableListOf<String>()
     val deciders = Deciders { warnings += it }
     val overriding = { client: String -> client.startsWith("auth") }
-    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("plain", "auth1", "auth2"), overriding))
-    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("auth1", "auth2"), overriding))
-    assertEquals("auth1", deciders.first("onJsAlert", listOf("auth1"), overriding))
-    assertNull(deciders.first("onJsPrompt", listOf("plain"), overriding))
+    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("plain", "auth1", "auth2"), overrides = overriding))
+    assertEquals("auth1", deciders.first("onReceivedHttpAuthRequest", listOf("auth1", "auth2"), overrides = overriding))
+    assertEquals("auth1", deciders.first("onJsAlert", listOf("auth1"), overrides = overriding))
+    assertNull(deciders.first("onJsPrompt", listOf("plain"), overrides = overriding))
     assertEquals(listOf("onReceivedHttpAuthRequest: more than one hook client overrides it; only the first one gets it"), warnings)
   }
 
@@ -144,11 +144,13 @@ class HooksTest {
     val warnings = mutableListOf<String>()
     val deciders = Deciders { warnings += it }
     val overriding = { client: String -> client == "navigation" }
-    assertNull(deciders.first("shouldOverrideUrlLoading", listOf("plain"), overriding))
+    val lost = "navigationRules, their defaults and onNavigationRequest don't apply to navigations"
+    assertNull(deciders.first("shouldOverrideUrlLoading", listOf("plain"), lost, overriding))
     assertTrue(warnings.isEmpty())
     // The same callback again, as after a crash's recovery attaches the same clients: no second warning.
-    repeat(2) { assertEquals("navigation", deciders.first("shouldOverrideUrlLoading", listOf("plain", "navigation"), overriding)) }
-    deciders.first("onReceivedHttpAuthRequest", listOf("navigation"), overriding)
+    repeat(2) { assertEquals("navigation", deciders.first("shouldOverrideUrlLoading", listOf("plain", "navigation"), lost, overriding)) }
+    // Without `lost`, taking a decision warns of nothing.
+    assertEquals("navigation", deciders.first("onReceivedHttpAuthRequest", listOf("navigation"), overrides = overriding))
     assertEquals(
       listOf(
         "shouldOverrideUrlLoading: a hook client takes it, so navigationRules, their defaults and onNavigationRequest " +

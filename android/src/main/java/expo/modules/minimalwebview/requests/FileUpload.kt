@@ -26,7 +26,7 @@ internal class FileUpload(private val owner: MinimalWebView) {
 
   /** The app's prop, else the system chooser (its intent ignores `capture`). [callback] is answered once. */
   fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: FileChooserParams) {
-    if ("fileRequest" !in owner.requestHandlers) {
+    if ("onFileRequest" !in owner.requestHandlers) {
       val module = owner.appContext.registry.getModule<MinimalWebViewModule>()
       if (module == null) callback.onReceiveValue(null) else module.openFileChooser(params.createIntent(), callback::onReceiveValue)
       return
@@ -36,7 +36,7 @@ internal class FileUpload(private val owner: MinimalWebView) {
       "multiple" to (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE),
       "capture" to params.isCaptureEnabled
     )
-    owner.asks.ask("core.fileRequest", request) { answer ->
+    owner.asks.ask("core", "onFileRequest", request) { answer ->
       val uris = (answer as? List<*>)?.mapNotNull { (it as? String)?.let(Uri::parse) }
       callback.onReceiveValue(uris?.toTypedArray())
     }

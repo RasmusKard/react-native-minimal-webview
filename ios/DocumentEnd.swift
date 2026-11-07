@@ -21,20 +21,3 @@ public enum DocumentEnd {
   /// The view is unmounting; the hooks' ``WebViewContext/onDestroyed(_:)`` handlers run after it.
   case closing
 }
-
-final class DocumentScope {
-  private var registrants: [(onEnd: (DocumentEnd) -> Void, skipsOpening: Bool)] = []
-  private var open = false
-
-  /// With `skipsOpening`, `onEnd` doesn't hear a commit that opens a Document while none is open.
-  func register(skipsOpening: Bool = false, _ onEnd: @escaping (DocumentEnd) -> Void) {
-    registrants.append((onEnd, skipsOpening))
-  }
-
-  /// Tells every registrant, in registration order.
-  func end(_ reason: DocumentEnd) {
-    let opening = reason == .committed && !open
-    open = reason == .committed
-    registrants.forEach { if !(opening && $0.skipsOpening) { $0.onEnd(reason) } }
-  }
-}

@@ -3,7 +3,7 @@ package expo.modules.minimalwebview
 
 /**
  * Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until JS answers it through [answer]
- * or native gives up (null, and `core.askCancelled` to JS): a Document end, a timeout or the platform. [send] puts an
+ * or native gives up (null, and the core's `askCancelled` to JS): a Document end, a timeout or the platform. [send] puts an
  * event on the view's `onHookEvent`, which reaches the app's extensions' `onEvent`. Main thread only.
  */
 internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
@@ -13,14 +13,14 @@ internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   private var closed = false
 
   /** Sends the ask to JS and returns its id, for [cancel]. Once the view closed it answers null at once. */
-  fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
+  fun ask(key: String, name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
     if (closed) {
       onAnswer(null)
       return 0 // no ask: cancel(0) finds nothing
     }
     val id = ++nextId
     pending[id] = onAnswer
-    send(mapOf("name" to name, "payload" to payload, "askId" to id))
+    send(mapOf("key" to key, "name" to name, "payload" to payload, "askId" to id))
     return id
   }
 
@@ -32,7 +32,7 @@ internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   /** Native gives up on an ask: its callback gets null, and JS aborts the handler's signal unless [tell] is false. */
   fun cancel(id: Int, tell: Boolean = true) {
     val onAnswer = pending.remove(id) ?: return
-    if (tell) send(mapOf("name" to "core.askCancelled", "payload" to mapOf("askId" to id)))
+    if (tell) send(mapOf("key" to "core", "name" to "askCancelled", "payload" to mapOf("askId" to id)))
     onAnswer(null)
   }
 

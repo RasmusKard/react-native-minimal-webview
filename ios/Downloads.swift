@@ -32,7 +32,7 @@ final class Downloads: NSObject, WKDownloadDelegate {
 
   func downloadDidFinish(_ download: WKDownload) {
     guard let file = files.removeValue(forKey: ObjectIdentifier(download)) else { return }
-    view?.emit("core.download", [
+    view?.emit("core", "onDownload", [
       "ok": true, "uri": file.url.absoluteString, "filename": file.url.lastPathComponent, "mimeType": file.mimeType,
       "url": serverUrl(download)
     ])
@@ -40,7 +40,7 @@ final class Downloads: NSObject, WKDownloadDelegate {
 
   func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
     let file = files.removeValue(forKey: ObjectIdentifier(download))
-    view?.emit("core.download", [
+    view?.emit("core", "onDownload", [
       "ok": false, "kind": (error as NSError).domain == NSURLErrorDomain ? "network" : "data",
       "filename": file?.url.lastPathComponent ?? "", "url": serverUrl(download), "description": error.localizedDescription
     ])

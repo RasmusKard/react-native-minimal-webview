@@ -21,7 +21,7 @@ extension MinimalWebView {
     )
     // A navigation WebKit marks as a download (`<a download>`, blob:). One no hook takes (no onDownload) is dropped:
     // .allow would show it as a page.
-    let download = action.shouldPerformDownload && requestHandlers.contains("download")
+    let download = action.shouldPerformDownload && requestHandlers.contains("onDownload")
     let dropped = action.shouldPerformDownload && !download
     run(request) { [weak self] allowed in
       guard allowed else { return decide(.cancel) }
@@ -77,13 +77,13 @@ extension MinimalWebView {
     // WebKit has no redirect flag, so a tap on that URL isn't asked again either; Android skips only redirects.
     let decision = NavigationRules.decide(
       navigationRules, request, asked: askedAndAllowed[request.mainFrame] ?? [],
-      canAsk: requestHandlers.contains("navigationRequest")
+      canAsk: requestHandlers.contains("onNavigationRequest")
     )
     guard decision.action == "ask" else {
       finish(request, decision.action, decision.rule, completion)
       return
     }
-    let id = asks.ask("core.navigationRequest", request.payload) { [weak self] answer in
+    let id = asks.ask("core", "onNavigationRequest", request.payload) { [weak self] answer in
       // The view can be gone: the decision handler must still be called.
       guard let self else { return completion(false) }
       let action = NavigationRules.answer(answer)
@@ -99,9 +99,9 @@ extension MinimalWebView {
   private func finish(_ request: NavigationRules.Request, _ action: String, _ rule: Int?, _ completion: (Bool) -> Void) {
     completion(action == "allow")
     guard action == "external" else { return report(request, action, rule) }
-    guard requestHandlers.contains("openExternal") else { return open(request, rule) }
+    guard requestHandlers.contains("onOpenExternal") else { return open(request, rule) }
     // A page that moved on first answers nil, which counts as opened. No timeout: nothing waits for the answer.
-    asks.ask("core.openExternal", request.payload) { [weak self] answer in
+    asks.ask("core", "onOpenExternal", request.payload) { [weak self] answer in
       if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, "external", rule) }
     }
   }

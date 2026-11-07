@@ -38,13 +38,13 @@ internal class Permissions(private val owner: MinimalWebView) {
    * frame's origin but not the frame: one that isn't the top-level page's is denied (main frame only).
    */
   private fun decide(key: Any, origin: String, resources: List<String>, deny: () -> Unit, grant: () -> Unit): Boolean {
-    if ("permissionRequest" !in owner.requestHandlers) return false
+    if ("onPermissionRequest" !in owner.requestHandlers) return false
     val value = originOf(origin)
     if (resources.isEmpty() || value != originOf(owner.webView.url)) {
       deny()
       return true
     }
-    waiting[key] = owner.asks.ask("core.permissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
+    waiting[key] = owner.asks.ask("core", "onPermissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
       // Not there: Chromium cancelled the request, and it takes no answer.
       if (waiting.remove(key) == null) return@ask
       if (answer == true) grant() else deny()

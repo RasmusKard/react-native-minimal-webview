@@ -75,7 +75,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
   }
 
   private fun report(active: Boolean) {
-    if ("fullscreenChange" in owner.requestHandlers) owner.emit("core.fullscreenChange", mapOf("active" to active))
+    if ("onFullscreenChange" in owner.requestHandlers) owner.emit("core", "onFullscreenChange", mapOf("active" to active))
   }
 
   private fun controller() = owner.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }

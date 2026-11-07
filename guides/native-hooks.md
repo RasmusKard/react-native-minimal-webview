@@ -150,7 +150,7 @@ type PageLoaded = HookEvent<'pageLoaded', { count: number }>;
 export const pageCounter = (onLoaded: (count: number) => void): HookExtension => ({
   key: 'myApp.pageCounter',
   onEvent: (event) => {
-    if (event.name !== 'pageLoaded') return; // relative to the key
+    if (event.name !== 'pageLoaded') return;
     onLoaded((event as PageLoaded).payload.count);
   },
 });

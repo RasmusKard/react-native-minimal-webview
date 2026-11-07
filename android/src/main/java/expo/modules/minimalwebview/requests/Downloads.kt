@@ -44,7 +44,7 @@ internal class Downloads(private val owner: MinimalWebView) {
 
   /** Returns true when the app's prop takes the download. */
   fun onDownloadStart(download: DownloadInfo): Boolean {
-    if ("download" !in owner.requestHandlers) return false
+    if ("onDownload" !in owner.requestHandlers) return false
     val name = safeName(URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType))
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
@@ -88,7 +88,7 @@ internal class Downloads(private val owner: MinimalWebView) {
       owner.mainHandler.post {
         when (result) {
           is String -> owner.emit(
-            "core.download",
+            "core", "onDownload",
             mapOf("ok" to true, "uri" to Uri.fromFile(file).toString(), "filename" to name, "mimeType" to result, "url" to serverUrl(url))
           )
           is Exception -> failed(name, url, result)
@@ -136,10 +136,10 @@ internal class Downloads(private val owner: MinimalWebView) {
   private fun failed(name: String, url: String, error: Exception) {
     Log.w(TAG, "download of $name failed", error)
     if (error is HttpStatus) {
-      return owner.emit("core.download", mapOf("ok" to false, "kind" to "http", "filename" to name, "url" to url, "statusCode" to error.code))
+      return owner.emit("core", "onDownload", mapOf("ok" to false, "kind" to "http", "filename" to name, "url" to url, "statusCode" to error.code))
     }
     owner.emit(
-      "core.download",
+      "core", "onDownload",
       mapOf("ok" to false, "kind" to kind(error, serverUrl(url) != null), "filename" to name, "url" to serverUrl(url), "description" to (error.message ?: error.toString()))
     )
   }
