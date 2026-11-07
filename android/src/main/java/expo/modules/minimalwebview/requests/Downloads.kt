@@ -8,7 +8,6 @@ import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.TAG
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
@@ -81,11 +80,8 @@ internal class Downloads(private val owner: MinimalWebView) {
       val result = try {
         file.parentFile?.mkdirs()
         write(file)
-      } catch (e: IllegalArgumentException) {
-        e // invalid base64
-      } catch (e: IOException) {
-        e
-      } catch (e: JSONException) {
+      } catch (e: Exception) {
+        // bad base64 or forged JSON from the page: no failure may reach the io thread
         e
       }
       if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
