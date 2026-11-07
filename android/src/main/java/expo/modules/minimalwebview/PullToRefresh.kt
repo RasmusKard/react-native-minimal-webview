@@ -20,8 +20,9 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
   /** Holds the WebView. SwipeRefreshLayout keeps its first child as its target for good, so a crash swaps the WebView here. */
   val content = FrameLayout(owner.context)
 
-  /** Always around [content]; the prop sets `isEnabled`. */
+  /** Always around [content]; off until the first prop batch, then the prop sets `isEnabled`. */
   val layout: SwipeRefreshLayout = Layout(owner.context).apply {
+    isEnabled = false
     addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     setOnRefreshListener { owner.reload() }
     setOnChildScrollUpCallback { _, _ -> owner.webView.canScrollVertically(-1) || innerScrolled != false }

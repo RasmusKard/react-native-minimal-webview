@@ -44,9 +44,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
     if (navigation.isSameDocument) return
     owner.fileUpload.cancel()
     owner.pendingUrl = navigation.url
-    owner.loading = true
-    owner.outcome = null
-    owner.stateChanged()
+    owner.loadStarted()
   }
 
   override fun onNavigationRedirected(navigation: Navigation) {
@@ -58,7 +56,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
   override fun onNavigationCompleted(navigation: Navigation) {
     // The Document ends before `url` moves on, so its handlers see the page that ended: as on iOS, and before 146,
     // where onPageStarted comes ahead of doUpdateVisitedHistory.
-    if (navigation.didCommit() && !navigation.isSameDocument) owner.newDocument()
+    if (navigation.didCommit() && !navigation.isSameDocument) owner.endDocument(DocumentEnd.COMMITTED)
     if (navigation.didCommit()) owner.url = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
@@ -70,19 +68,14 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
         else -> "finished"
       }
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
-      if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) {
-        owner.loading = false
-        owner.pageFinished()
-      }
+      if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) owner.loadEnded()
     }
     owner.stateChanged()
   }
 
   override fun onPageLoadEvent(page: Page) {
     loadedPages += page
-    owner.loading = false
-    owner.pageFinished()
-    owner.stateChanged()
+    owner.loadEnded()
   }
 }
 
@@ -94,8 +87,8 @@ private val FLOAT = java.lang.Float.TYPE
 
 internal class Client(private val owner: MinimalWebView, private val navigation: MinimalWebViewNavigation) : WebViewClient() {
   /** The first hook client that overrides a decision callback, or null: the core decides. */
-  private fun deciding(name: String, vararg types: Class<*>) =
-    owner.deciders.first(name, owner.clients) { it.overrides(name, *types) }
+  private fun deciding(name: String, vararg types: Class<*>, lost: String? = null) =
+    owner.deciders.first(name, owner.clients, lost) { it.overrides(name, *types) }
 
   /** Every hook client that overrides an observation callback, after the core. */
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebViewClient) -> Unit) =
@@ -108,7 +101,10 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   // Not called for POST, the initial loadUrl, or reissued loads; called again for their redirects.
   override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
     val url = request.url.toString()
-    val override = deciding("shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java)?.shouldOverrideUrlLoading(view, request)
+    val override = deciding(
+      "shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java,
+      lost = "navigationRules, their defaults and onNavigationRequest don't apply to navigations"
+    )?.shouldOverrideUrlLoading(view, request)
       ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture(), request.isRedirect))
     if (!override && request.isForMainFrame) allowedMainFrameUrl = url
     return override
@@ -119,10 +115,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   // blocked redirect) gets no load events and no outcome here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
-      owner.newDocument()
-      owner.loading = true
-      owner.outcome = null
-      owner.stateChanged()
+      owner.endDocument(DocumentEnd.COMMITTED)
+      owner.loadStarted()
     }
     observing("onPageStarted", WEB_VIEW, STRING, Bitmap::class.java) { it.onPageStarted(view, url, favicon) }
   }
@@ -130,9 +124,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun onPageFinished(view: WebView, url: String?) {
     if (!owner.hasNavigationListener) {
       owner.outcome = owner.outcome ?: "finished" // "failed" when a main-frame error came first
-      owner.loading = false
-      owner.pageFinished()
-      owner.stateChanged()
+      owner.loadEnded()
     }
     observing("onPageFinished", WEB_VIEW, STRING) { it.onPageFinished(view, url) }
   }
@@ -177,7 +169,10 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   @SuppressLint("WebViewClientOnReceivedSslError") // because the core always cancels; it only reports the error
   override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, sslError: SslError) {
-    val hook = deciding("onReceivedSslError", WEB_VIEW, SslErrorHandler::class.java, SslError::class.java)
+    val hook = deciding(
+      "onReceivedSslError", WEB_VIEW, SslErrorHandler::class.java, SslError::class.java,
+      lost = "the core doesn't cancel SSL errors or report them to onError"
+    )
     if (hook != null) return hook.onReceivedSslError(view, handler, sslError)
     handler.cancel()
     // Also called for subresources (an ad image): only the main frame's URL is a page error. Without NavigationListener
@@ -230,20 +225,26 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 }
 
 internal class ChromeClient(private val owner: MinimalWebView, private val navigation: MinimalWebViewNavigation) : WebChromeClient() {
-  private fun deciding(name: String, vararg types: Class<*>) =
-    owner.deciders.first(name, owner.chromeClients) { it.overrides(name, *types) }
+  private fun deciding(name: String, vararg types: Class<*>, lost: String? = null) =
+    owner.deciders.first(name, owner.chromeClients, lost) { it.overrides(name, *types) }
 
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebChromeClient) -> Unit) =
     owner.chromeClients.forEach { if (it.overrides(name, *types)) block(it) }
 
   override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean =
-    deciding("onCreateWindow", WEB_VIEW, BOOLEAN, BOOLEAN, Message::class.java)?.onCreateWindow(view, isDialog, isUserGesture, resultMsg)
+    deciding(
+      "onCreateWindow", WEB_VIEW, BOOLEAN, BOOLEAN, Message::class.java,
+      lost = "navigationRules, their defaults and onNavigationRequest don't apply to new windows"
+    )?.onCreateWindow(view, isDialog, isUserGesture, resultMsg)
       ?: navigation.createWindow(isUserGesture, resultMsg)
 
   // A hook client, else the app's prop (onFileRequest), else the system chooser (its intent ignores `capture`).
   override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
     val once = owner.fileUpload.hold(callback) // before the hook branch: a hook's chooser is held too
-    val hook = deciding("onShowFileChooser", WEB_VIEW, ValueCallback::class.java, FileChooserParams::class.java)
+    val hook = deciding(
+      "onShowFileChooser", WEB_VIEW, ValueCallback::class.java, FileChooserParams::class.java,
+      lost = "onFileRequest doesn't apply"
+    )
     if (hook != null) return hook.onShowFileChooser(view, once, params)
     owner.fileUpload.onShowFileChooser(once, params)
     return true
@@ -251,7 +252,7 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
 
   // Without a hook client or the app's prop: deny (never grant device access by default).
   override fun onPermissionRequest(request: PermissionRequest) {
-    val hook = deciding("onPermissionRequest", PermissionRequest::class.java)
+    val hook = deciding("onPermissionRequest", PermissionRequest::class.java, lost = "onPermissionRequest and the default deny don't apply")
     when {
       hook != null -> hook.onPermissionRequest(request)
       !owner.permissions.onPermissionRequest(request) -> request.deny()
@@ -259,7 +260,10 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   }
 
   override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
-    val hook = deciding("onGeolocationPermissionsShowPrompt", STRING, GeolocationPermissions.Callback::class.java)
+    val hook = deciding(
+      "onGeolocationPermissionsShowPrompt", STRING, GeolocationPermissions.Callback::class.java,
+      lost = "onPermissionRequest and the default deny don't apply to location"
+    )
     when {
       hook != null -> hook.onGeolocationPermissionsShowPrompt(origin, callback)
       !owner.permissions.onGeolocationPrompt(origin, callback) -> callback.invoke(origin, false, false)
@@ -267,7 +271,10 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
   }
 
   override fun onShowCustomView(view: View, callback: CustomViewCallback) {
-    val hook = deciding("onShowCustomView", View::class.java, CustomViewCallback::class.java)
+    val hook = deciding(
+      "onShowCustomView", View::class.java, CustomViewCallback::class.java,
+      lost = "the core's fullscreen and onFullscreenChange don't apply"
+    )
     when {
       hook != null -> hook.onShowCustomView(view, callback)
       !owner.fullscreen.onShowCustomView(view, callback) -> callback.onCustomViewHidden()

@@ -43,7 +43,7 @@ public enum MinimalWebViewHooks {
   ///     package's name.
   ///   - webViewClass: The WKWebView subclass that each WebView enabling this hook is made from, to override what
   ///     WKWebView lets a subclass override; nil leaves the class to the other hooks. When the enabled hooks name
-  ///     different classes, the first one's in registration order makes the view, and a `core.warning` names the
+  ///     different classes, the first one's in registration order makes the view, and a warning names the
   ///     others. Those still attach, so check the class `attach` gets. The hidden view that `window.open('')` gets is
   ///     always a plain WKWebView.
   ///   - configure: Runs before the WKWebView exists, with the configuration it is created from: after the
@@ -116,11 +116,11 @@ public protocol WebViewContext: AnyObject {
   /// - Any other callback goes only to the first delegate that implements it.
   ///
   /// Taking a decision switches off what the core decides from the app's props or their defaults, the default
-  /// navigation rules' security checks included, and a `core.warning` names the callback and what stops applying. A
+  /// navigation rules' security checks included, and a warning names the callback and what stops applying. A
   /// delegate that takes the action policy decides navigations instead of the navigation rules, which still decide new
   /// windows unless a UI delegate takes `createWebViewWith`.
   ///
-  /// A decision more than one delegate implements still goes only to the first, and a `core.warning` names it. Each
+  /// A decision more than one delegate implements still goes only to the first, and a warning names it. Each
   /// warning comes once per WebView, when the delegate is added.
   ///
   /// While `onDownload` is set, a delegate whose `didBecome` sets `download.delegate` takes the download, and
@@ -141,8 +141,8 @@ public protocol WebViewContext: AnyObject {
   ///
   /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
   var refreshControl: UIRefreshControl? { get }
-  /// Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative
-  /// to the key. It is dropped while the hook is off, and after the view closed.
+  /// Sends an event to JS: the extension with the hook's key gets `{ name, payload }` in its `onEvent`. It is dropped
+  /// while the hook is off, and after the view closed.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the extension's `onEvent` return value, a
   /// promise awaited.
@@ -219,13 +219,13 @@ final class HookContext: WebViewContext {
   var refreshControl: UIRefreshControl? { view?.refreshControl }
 
   func emit(_ event: String, _ payload: [String: Any]) {
-    onMain { [self] in if isOn { view?.emit("\(key).\(event)", payload) } }
+    onMain { [self] in if isOn { view?.emit(key, event, payload) } }
   }
 
   func ask(_ event: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) {
     onMain { [self] in
       guard let view, isOn else { return onAnswer(nil) }
-      view.asks.ask("\(key).\(event)", payload, onAnswer)
+      view.asks.ask(key, event, payload, onAnswer)
     }
   }
 

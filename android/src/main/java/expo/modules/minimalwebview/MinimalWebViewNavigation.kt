@@ -36,7 +36,7 @@ internal class MinimalWebViewNavigation(
   /** Returns true to cancel the navigation (shouldOverrideUrlLoading's meaning). */
   fun decide(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
-    val decision = NavigationRules.decide(owner.navigationRules, request, asked, "navigationRequest" in owner.requestHandlers)
+    val decision = NavigationRules.decide(owner.navigationRules, request, asked, "onNavigationRequest" in owner.requestHandlers)
     val action = if (decision.action == "ask" && !request.mainFrame) {
       // Android can't hold a navigation, so `ask` cancels and reissues it: a subframe's can't be reissued.
       Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
@@ -69,7 +69,7 @@ internal class MinimalWebViewNavigation(
   // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the gesture flag and the redirect chain.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
     val referrer = webView.url
-    val id = owner.asks.ask("core.navigationRequest", fields(request)) { answer ->
+    val id = owner.asks.ask("core", "onNavigationRequest", fields(request)) { answer ->
       val action = NavigationRules.answer(answer)
       if (action == "allow") {
         askedAndAllowed += request.url
@@ -101,9 +101,9 @@ internal class MinimalWebViewNavigation(
    */
   private fun openExternal(request: NavigationRules.Request, rule: Int?) {
     val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
-    if ("openExternal" !in owner.requestHandlers) return report(open(request.url))
+    if ("onOpenExternal" !in owner.requestHandlers) return report(open(request.url))
     // A page that moved on first answers null, which counts as opened. No timeout: nothing waits for the answer.
-    owner.asks.ask("core.openExternal", fields(request)) { answer ->
+    owner.asks.ask("core", "onOpenExternal", fields(request)) { answer ->
       report(answer != false || open(request.url))
     }
   }
