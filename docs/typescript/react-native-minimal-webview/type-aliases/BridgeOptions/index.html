@@ -6430,7 +6430,7 @@
 subdomains only (not the domain itself), an IP literal, or <code>'*'</code> for any origin, opaque ones too.</p>
 <p>Each takes an optional port. http or https, no path, ASCII (punycode) hosts; case is ignored, and a missing port
 means 80 or 443.</p>
-<h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
+<p><strong>Example</strong></p>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">createBridge</span><span class="p">({</span><span class="w"> </span><span class="nx">allowedOrigins</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'https://example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'https://*.example.com'</span><span class="p">,</span><span class="w"> </span><span class="s1">'http://[::1]:8080'</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
 </span></code></pre></div>
 <hr />

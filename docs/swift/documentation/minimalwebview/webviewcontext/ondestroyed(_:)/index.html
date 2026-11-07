@@ -6332,8 +6332,8 @@
 
 <h1 id="ondestroyed_">onDestroyed(_:)<a class="headerlink" href="#ondestroyed_" title="Permanent link">&para;</a></h1>
 <p>Runs <code>handler</code> once this view closes, with <a href="../../documentend/closing/"><code>DocumentEnd.closing</code></a>, the only reason it gets on iOS.</p>
-<div class="language-swift highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">func</span><span class="w"> </span><span class="nf">onDestroyed</span><span class="p">(</span><span class="kc">_</span><span class="w"> </span><span class="n">handler</span><span class="p">:</span><span class="w"> </span><span class="p">@</span><span class="n">escaping</span><span class="w"> </span><span class="p">(</span><span class="n">DocumentEnd</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Void</span><span class="p">)</span>
-</span></code></pre></div>
+<pre><code>func onDestroyed(_ handler: @escaping (<a href="../../documentend/">DocumentEnd</a>) -&gt; Void)</code></pre>
+
 <h2 id="discussion">Discussion<a class="headerlink" href="#discussion" title="Permanent link">&para;</a></h2>
 <p>It comes after the <a href=".././ondocumentend(_:)/"><code>onDocumentEnd(_:)</code></a> handlers that get <code>closing</code>. The WKWebView has stopped loading, paused
 its media and left the view by then, but is still alive, and the context does nothing.</p>

@@ -1,4 +1,4 @@
-.md-typeset h5 { text-transform: none; }
 .md-typeset thead:not(:has(th:not(:empty))) { display: none; }
 .md-typeset table code { word-break: normal; }
 .md-nav--primary .md-ellipsis { overflow-wrap: anywhere; }
+.md-typeset .kotlin-signature { padding: .8em 1.25em; overflow-x: auto; font-family: var(--md-code-font-family); font-size: .85em; color: var(--md-code-fg-color); background-color: var(--md-code-bg-color); border-radius: .4rem; }

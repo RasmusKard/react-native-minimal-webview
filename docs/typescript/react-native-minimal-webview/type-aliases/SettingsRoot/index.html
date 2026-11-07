@@ -3578,23 +3578,6 @@
         
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  SettingsRoot
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -3610,65 +3593,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#type-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Parameters
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#type-declaration" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Declaration
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Type Declaration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#other" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        other?
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -6191,11 +6115,6 @@
                       
                     
                     
-                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-                      <div class="md-sidebar-button__wrapper">
-                        <label class="md-sidebar-button" for="__toc"></label>
-                      </div>
-                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -6207,53 +6126,6 @@
   
     
   
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#type-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Parameters
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#type-declaration" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Declaration
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Type Declaration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#other" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        other?
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -6454,7 +6326,7 @@
 </span></code></pre></div>
 <p>A settings root: its generated keys (<a href="../IOSSettingKeys/">IOSSettingKeys</a>, <a href="../AndroidSettingKeys/">AndroidSettingKeys</a>, from the SDK headers), so a
 misspelled key fails to compile, and <code>other</code> for the keys they lack.</p>
-<h2 id="type-parameters">Type Parameters<a class="headerlink" href="#type-parameters" title="Permanent link">&para;</a></h2>
+<p><strong>Type Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6467,8 +6339,8 @@ misspelled key fails to compile, and <code>other</code> for the keys they lack.<
 </tr>
 </tbody>
 </table>
-<h2 id="type-declaration">Type Declaration<a class="headerlink" href="#type-declaration" title="Permanent link">&para;</a></h2>
-<h3 id="other">other?<a class="headerlink" href="#other" title="Permanent link">&para;</a></h3>
+<p><strong>Type Declaration</strong></p>
+<p><strong>other?</strong></p>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">other?</span><span class="o">:</span><span class="w"> </span><span class="kt">Record</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">SettingValue</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">undefined</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="nx">K</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nx">keyof</span><span class="w"> </span><span class="nx">Keys</span><span class="p">]</span><span class="nx">?</span><span class="o">:</span><span class="w"> </span><span class="kt">never</span><span class="w"> </span><span class="p">};</span>
 </span></code></pre></div>
 <p>Any other key the platform has (a newer SDK's, one the headers don't list), untyped. It is set as if it were at
