@@ -278,7 +278,7 @@ describe('extensions', () => {
     await show({ extensions: [ext('a', { items: [1] }, () => 'second')] });
     expect(native().hookOptions).toBe(first);
     await fire('onHookEvent', event('a', 'x', 1));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'second' });
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, '"second"');
     await show({ extensions: [ext('a', { items: [2] })] });
     expect(native().hookOptions).not.toBe(first);
     expect(native().hookOptions).toEqual({ a: { items: [2] } });
@@ -291,7 +291,7 @@ describe('extensions', () => {
     });
     expect(native().hookOptions).toEqual({ a: 2, b: true });
     await fire('onHookEvent', event('a', 'x', 1));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'two' });
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, '"two"');
     expect(warn.mock.calls).toEqual([
       [
         '[react-native-minimal-webview] extensions: two extensions have the key a; the later one wins',
@@ -311,7 +311,7 @@ describe('extensions', () => {
       { name: 'prompt', payload: { n: 1 } },
       expect.any(AbortSignal)
     );
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: 'long' });
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, '"long"');
     await fire('onHookEvent', event('pkg', 'dialogs.prompt'));
     expect(short).toHaveBeenCalledWith({ name: 'dialogs.prompt', payload: { n: 1 } }, undefined);
     expect(long).toHaveBeenCalledTimes(1);
@@ -328,14 +328,26 @@ describe('extensions', () => {
       ['quiet', 2],
     ] as const) {
       await fire('onHookEvent', event(key, 'label', askId));
-      expect(mockAnswer).toHaveBeenLastCalledWith(askId, { value: null });
+      expect(mockAnswer).toHaveBeenLastCalledWith(askId, 'null');
     }
     await fire('onHookEvent', event('other', 'label'));
     expect(own).not.toHaveBeenCalled();
     await show({ extensions: [false, ext('quiet')] });
     await fire('onHookEvent', event('a', 'ask', 5));
     expect(own).not.toHaveBeenCalled();
-    expect(mockAnswer).toHaveBeenLastCalledWith(5, { value: null });
+    expect(mockAnswer).toHaveBeenLastCalledWith(5, 'null');
+  });
+
+  it('answers null for an answer JSON cannot encode', async () => {
+    const cyclic: Record<string, unknown> = {};
+    cyclic['self'] = cyclic;
+    const { fire } = await mount({
+      extensions: [ext('a', true, () => cyclic), ext('b', true, () => () => {})],
+    });
+    await fire('onHookEvent', event('a', 'x', 1));
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, 'null');
+    await fire('onHookEvent', event('b', 'x', 2));
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, 'null');
   });
 
   it('answers null and logs when an onEvent throws', async () => {
@@ -348,7 +360,7 @@ describe('extensions', () => {
       ],
     });
     await fire('onHookEvent', event('a', 'x', 1));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: null });
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, 'null');
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onEvent failed for a.x',
       expect.any(Error)
@@ -691,7 +703,7 @@ describe('page requests', () => {
       { accept: [], multiple: false, capture: false },
       expect.any(AbortSignal)
     );
-    expect(mockAnswer).toHaveBeenCalledWith(1, { value: ['file:///a.txt'] });
+    expect(mockAnswer).toHaveBeenCalledWith(1, '["file:///a.txt"]');
     await fire('onHookEvent', ask('onFullscreenChange', { active: true }));
     expect(onFullscreenChange).toHaveBeenCalledWith({ active: true }, undefined);
     const failure = {
@@ -711,7 +723,7 @@ describe('page requests', () => {
     };
     await fire('onHookEvent', ask('onNavigationRequest', request, 2));
     expect(onNavigationRequest).toHaveBeenCalledWith(request, expect.any(AbortSignal));
-    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: 'allow' });
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, '"allow"');
     expect(mockAnswer).toHaveBeenCalledTimes(2);
   });
 
@@ -726,7 +738,7 @@ describe('page requests', () => {
       'onHookEvent',
       ask('onPermissionRequest', { origin: 'https://example.com', resources: ['camera'] }, 2)
     );
-    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: null });
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, 'null');
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onPermissionRequest failed',
       expect.any(Error)
@@ -735,7 +747,7 @@ describe('page requests', () => {
       'onHookEvent',
       ask('onFileRequest', { accept: [], multiple: false, capture: false }, 3)
     );
-    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, 'null');
     error.mockRestore();
   });
 
@@ -806,14 +818,14 @@ describe('page requests', () => {
       userInitiated: true,
     });
     await fire('onHookEvent', ask('onOpenExternal', request('intent://a#Intent;end'), 1));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, { value: false });
+    expect(mockAnswer).toHaveBeenLastCalledWith(1, 'false');
     await fire('onHookEvent', ask('onOpenExternal', request('tel:1'), 2));
-    expect(mockAnswer).toHaveBeenLastCalledWith(2, { value: true });
+    expect(mockAnswer).toHaveBeenLastCalledWith(2, 'true');
     await fire('onHookEvent', ask('onOpenExternal', request('tel:2'), 3));
     // Native counts anything but false as opened by the app, so undefined and a throw answer null.
-    expect(mockAnswer).toHaveBeenLastCalledWith(3, { value: null });
+    expect(mockAnswer).toHaveBeenLastCalledWith(3, 'null');
     await fire('onHookEvent', ask('onOpenExternal', request('tel:3'), 4));
-    expect(mockAnswer).toHaveBeenLastCalledWith(4, { value: null });
+    expect(mockAnswer).toHaveBeenLastCalledWith(4, 'null');
     expect(error).toHaveBeenCalledWith(
       '[react-native-minimal-webview] onOpenExternal failed',
       expect.any(Error)

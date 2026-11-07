@@ -28,6 +28,7 @@ import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.Serializable
 
 /**
@@ -118,8 +119,8 @@ class MinimalWebViewModule : Module() {
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
-      AsyncFunction("answer") { view: MinimalWebView, askId: Int, answer: Map<String, Any?> ->
-        view.asks.answer(askId, answer["value"])
+      AsyncFunction("answer") { view: MinimalWebView, askId: Int, json: String ->
+        view.asks.answer(askId, fromJson(JSONTokener(json).nextValue()))
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("hook") { view: MinimalWebView, name: String, method: String, args: String, promise: Promise ->
         hook(view, name, method, args, promise)

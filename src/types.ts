@@ -679,9 +679,9 @@ export type HookExtension = {
   options?: unknown;
   /**
    * Each of the hook's events: it goes to the extension with the hook's key (the later of two with one key), and one no
-   * extension owns is dropped. For an `ask`, the return value (a promise is awaited) is the answer, and `undefined`
-   * answers null. `signal` is set only for an `ask`, and aborts when native stops waiting for the answer: an ask has no
-   * timeout, but one still open when the page goes away is answered null.
+   * extension owns is dropped. For an `ask`, the return value (a promise is awaited) is the answer, and `undefined`, or
+   * a value JSON can't encode, answers null. `signal` is set only for an `ask`, and aborts when native stops waiting for
+   * the answer: an ask has no timeout, but one still open when the page goes away is answered null.
    *
    * The latest `onEvent` always takes the events: a render with new handlers sends native nothing.
    */
