@@ -2,8 +2,7 @@ import { runInNewContext } from 'node:vm';
 
 import vectors from './vectors/origin-rules.json';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
-import { type OriginForms, originForms, parseOrigin } from '../bridge/origins';
-import { MATCHES_ORIGIN } from '../bridge/pageClient.generated';
+import { matchesOrigin, originForms, parseOrigin } from '../bridge/origins';
 
 // The page-side matcher takes `location.origin`, which is always serialized: lowercase, no default port. The other
 // origins in the vectors are for the native matchers.
@@ -21,8 +20,6 @@ describe('origin rules (shared cases)', () => {
     expect(() => createBridge({ allowedOrigins: [rule] })).toThrow('invalid allowedOrigins');
   });
 
-  type Matcher = (forms: OriginForms, origin: string) => boolean;
-  const matchesOrigin = runInNewContext(MATCHES_ORIGIN) as Matcher;
   it.each(cases)('the injected scripts guard: %s', (_name, c) => {
     expect(matchesOrigin(originForms(c.rules), c.origin)).toBe(c.allowed);
   });

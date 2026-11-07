@@ -37,18 +37,15 @@ export const originForms = (rules: string[]): OriginForms => {
   return forms;
 };
 
-// Stryker disable all: its text ships and is tested as MATCHES_ORIGIN (originRules vectors), kept equal by build:page-client --check
 /** Whether `text` holds `part` at index `at`, compared character by character. */
 function hasAt(text: string, part: string, at: number) {
   for (let k = 0; k < part.length; k++) if (text[at + k] !== part[k]) return false;
   return true;
 }
 
-// Exported and @public (for knip) though nothing imports it: build-page-client.mts cuts out its text as MATCHES_ORIGIN.
 /**
  * Whether `origin`, as `location.origin` serializes it, matches `forms`. Only `===`, indexing and `length`, no
  * built-in method: it runs at document start in frames whose built-ins another same-origin frame may have patched.
- * @public
  */
 export function matchesOrigin(forms: OriginForms, origin: string) {
   if (forms.any) return true;
