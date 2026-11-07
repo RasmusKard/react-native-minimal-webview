@@ -6253,7 +6253,7 @@
 
 
 <h1 id="minimalwebviewhooks">MinimalWebViewHooks<a class="headerlink" href="#minimalwebviewhooks" title="Permanent link">&para;</a></h1>
-<p>object <a href="">MinimalWebViewHooks</a></p>
+<p class="kotlin-signature">object MinimalWebViewHooks</p>
 <p>Native hooks: Kotlin in an app's or a package's own Expo module that gets the real <a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a> behind this package's WebViews and chains its own clients to it, with no protocol to implement.</p>
 <p>The <a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/">native hooks guide</a> walks through one.</p>
 <p>Leave alone what the core owns: the WebView's own client slots (add to <a href="../-web-view-context/clients/">WebViewContext.clients</a> and <a href="../-web-view-context/chrome-clients/">WebViewContext.chromeClients</a> instead), its touch and scroll-change listeners (<a href="../-web-view-context/touch-listeners/">WebViewContext.touchListeners</a> and <a href="../-web-view-context/scroll-listeners/">WebViewContext.scrollListeners</a>), the bridge's web message listener and document-start scripts, and the download listener (<a href="../-web-view-context/on-download-start/">WebViewContext.onDownloadStart</a>).</p>
@@ -6268,7 +6268,7 @@
 <tbody>
 <tr>
 <td><a href="register/">register</a></td>
-<td>fun <a href="register/">register</a>(key: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, webViewFactory: (<a href="https://developer.android.com/reference/kotlin/android/content/Context.html">Context</a>) -&gt; <a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a>? = null, configure: (<a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a>, <a href="../-web-view-context/">WebViewContext</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>? = null, attach: (<a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a>, <a href="../-web-view-context/">WebViewContext</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Registers the hook for <a href="register/">key</a>. Call it from your module's <code>OnCreate</code>, before the first WebView.</td>
+<td>fun <a href="register/">register</a>(key: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, webViewFactory: (<a href="https://developer.android.com/reference/kotlin/android/content/Context.html">Context</a>) -&gt; <a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a>? = null, configure: (<a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a>, <a href="../-web-view-context/">WebViewContext</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>? = null, attach: (<a href="https://developer.android.com/reference/kotlin/android/webkit/WebView.html">WebView</a>, <a href="../-web-view-context/">WebViewContext</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br> Registers the hook for <a href="register/">key</a>. Call it from your module's <code>OnCreate</code>, before the first WebView.</td>
 </tr>
 </tbody>
 </table>

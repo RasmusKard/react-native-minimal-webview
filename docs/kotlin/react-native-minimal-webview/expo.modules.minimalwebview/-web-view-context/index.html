@@ -6288,7 +6288,7 @@
 
 
 <h1 id="webviewcontext">WebViewContext<a class="headerlink" href="#webviewcontext" title="Permanent link">&para;</a></h1>
-<p>interface <a href="">WebViewContext</a></p>
+<p class="kotlin-signature">interface WebViewContext</p>
 <p>One WebView as one hook sees it, for one attach.</p>
 <p>Each attach gets a new context, and the handlers registered on it belong to that attach: after a renderer crash, the new WebView's <code>attach</code> registers them again.</p>
 <p>Call <a href="emit/">emit</a> and <a href="ask/">ask</a> from any thread, and the rest on the main thread, where the handlers and the answers run.</p>
@@ -6305,27 +6305,27 @@
 <tbody>
 <tr>
 <td><a href="chrome-clients/">chromeClients</a></td>
-<td>abstract val <a href="chrome-clients/">chromeClients</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/webkit/WebChromeClient.html">WebChromeClient</a>&gt;<br>The hook chrome clients, routed as <a href="clients/">clients</a> are.</td>
+<td>abstract val <a href="chrome-clients/">chromeClients</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/webkit/WebChromeClient.html">WebChromeClient</a>&gt;<br> The hook chrome clients, routed as <a href="clients/">clients</a> are.</td>
 </tr>
 <tr>
 <td><a href="clients/">clients</a></td>
-<td>abstract val <a href="clients/">clients</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/webkit/WebViewClient.html">WebViewClient</a>&gt;<br>The hook clients, in order; add yours in <code>attach</code>. While the hook is off, none of them gets a callback.</td>
+<td>abstract val <a href="clients/">clients</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/webkit/WebViewClient.html">WebViewClient</a>&gt;<br> The hook clients, in order; add yours in <code>attach</code>. While the hook is off, none of them gets a callback.</td>
 </tr>
 <tr>
 <td><a href="options/">options</a></td>
-<td>abstract val <a href="options/">options</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?<br>This hook's extension's <code>options</code>, the new ones after a change; null while the hook is off.</td>
+<td>abstract val <a href="options/">options</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?<br> This hook's extension's <code>options</code>, the new ones after a change; null while the hook is off.</td>
 </tr>
 <tr>
 <td><a href="scroll-listeners/">scrollListeners</a></td>
-<td>abstract val <a href="scroll-listeners/">scrollListeners</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/view/View.OnScrollChangeListener.html">View.OnScrollChangeListener</a>&gt;<br>The hooks' scroll listeners: each one gets every scroll change, in order.</td>
+<td>abstract val <a href="scroll-listeners/">scrollListeners</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/view/View.OnScrollChangeListener.html">View.OnScrollChangeListener</a>&gt;<br> The hooks' scroll listeners: each one gets every scroll change, in order.</td>
 </tr>
 <tr>
 <td><a href="touch-listeners/">touchListeners</a></td>
-<td>abstract val <a href="touch-listeners/">touchListeners</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/view/View.OnTouchListener.html">View.OnTouchListener</a>&gt;<br>The hooks' touch listeners, in order, called until one returns true: that one consumes the touch, which neither the later listeners nor the WebView get.</td>
+<td>abstract val <a href="touch-listeners/">touchListeners</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a>&lt;<a href="https://developer.android.com/reference/kotlin/android/view/View.OnTouchListener.html">View.OnTouchListener</a>&gt;<br> The hooks' touch listeners, in order, called until one returns true: that one consumes the touch, which neither the later listeners nor the WebView get.</td>
 </tr>
 <tr>
 <td><a href="url/">url</a></td>
-<td>abstract val <a href="url/">url</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><br>The committed URL, the one <code>useWebViewState</code> reports; empty before the first commit.</td>
+<td>abstract val <a href="url/">url</a>: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><br> The committed URL, the one <code>useWebViewState</code> reports; empty before the first commit.</td>
 </tr>
 </tbody>
 </table>
@@ -6340,31 +6340,31 @@
 <tbody>
 <tr>
 <td><a href="ask/">ask</a></td>
-<td>abstract fun <a href="ask/">ask</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, onAnswer: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Sends the event as <a href="emit/">emit</a> does, and calls <a href="ask/">onAnswer</a> with JS's answer: the extension's <code>onEvent</code> return value, a promise awaited, in JSON types as <a href="handle/">handle</a>'s arguments are.</td>
+<td>abstract fun <a href="ask/">ask</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, onAnswer: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br> Sends the event as <a href="emit/">emit</a> does, and calls <a href="ask/">onAnswer</a> with JS's answer: the extension's <code>onEvent</code> return value, a promise awaited, in JSON types as <a href="handle/">handle</a>'s arguments are.</td>
 </tr>
 <tr>
 <td><a href="emit/">emit</a></td>
-<td>abstract fun <a href="emit/">emit</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;)<br>Sends an event to JS: the extension with the hook's key gets <code>{ name, payload }</code> in its <code>onEvent</code>. It is dropped while the hook is off, and after the context's attach ended.</td>
+<td>abstract fun <a href="emit/">emit</a>(name: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, payload: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html">Map</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;)<br> Sends an event to JS: the extension with the hook's key gets <code>{ name, payload }</code> in its <code>onEvent</code>. It is dropped while the hook is off, and after the context's attach ended.</td>
 </tr>
 <tr>
 <td><a href="handle/">handle</a></td>
-<td>abstract fun <a href="handle/">handle</a>(method: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, handler: (args: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, reply: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Answers JS's <code>ref.hook("&lt;key&gt;", method, args)</code>: <a href="handle/">handler</a> gets the arguments and calls <code>reply</code> exactly once.</td>
+<td>abstract fun <a href="handle/">handle</a>(method: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, handler: (args: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html">List</a>&lt;<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?&gt;, reply: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br> Answers JS's <code>ref.hook("&lt;key&gt;", method, args)</code>: <a href="handle/">handler</a> gets the arguments and calls <code>reply</code> exactly once.</td>
 </tr>
 <tr>
 <td><a href="on-destroyed/">onDestroyed</a></td>
-<td>abstract fun <a href="on-destroyed/">onDestroyed</a>(handler: (<a href="../-document-end/">DocumentEnd</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Runs <a href="on-destroyed/">handler</a> once this attach's WebView is destroyed: with <a href="../-document-end/-c-l-o-s-i-n-g/">DocumentEnd.CLOSING</a> at unmount, or with <a href="../-document-end/-c-r-a-s-h-e-d/">DocumentEnd.CRASHED</a> after a renderer crash. It comes after the <a href="on-document-end/">onDocumentEnd</a> handlers that get the same reason, and the context does nothing by then.</td>
+<td>abstract fun <a href="on-destroyed/">onDestroyed</a>(handler: (<a href="../-document-end/">DocumentEnd</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br> Runs <a href="on-destroyed/">handler</a> once this attach's WebView is destroyed: with <a href="../-document-end/-c-l-o-s-i-n-g/">DocumentEnd.CLOSING</a> at unmount, or with <a href="../-document-end/-c-r-a-s-h-e-d/">DocumentEnd.CRASHED</a> after a renderer crash. It comes after the <a href="on-document-end/">onDocumentEnd</a> handlers that get the same reason, and the context does nothing by then.</td>
 </tr>
 <tr>
 <td><a href="on-document-end/">onDocumentEnd</a></td>
-<td>abstract fun <a href="on-document-end/">onDocumentEnd</a>(handler: (<a href="../-document-end/">DocumentEnd</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Runs <a href="on-document-end/">handler</a> at each end of the Document (see <a href="../-document-end/">DocumentEnd</a>), after the core's own resets: per-page state belongs here.</td>
+<td>abstract fun <a href="on-document-end/">onDocumentEnd</a>(handler: (<a href="../-document-end/">DocumentEnd</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br> Runs <a href="on-document-end/">handler</a> at each end of the Document (see <a href="../-document-end/">DocumentEnd</a>), after the core's own resets: per-page state belongs here.</td>
 </tr>
 <tr>
 <td><a href="on-download-start/">onDownloadStart</a></td>
-<td>abstract fun <a href="on-download-start/">onDownloadStart</a>(handler: (url: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, userAgent: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, contentDisposition: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, mimeType: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, contentLength: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-long/index.html">Long</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a>)<br>Offers <a href="on-download-start/">handler</a> each download the page starts, with <a href="https://developer.android.com/reference/kotlin/android/webkit/DownloadListener.html">DownloadListener</a>'s arguments (an unknown disposition or MIME type is empty), before the <code>onDownload</code> prop and the core's opening it externally.</td>
+<td>abstract fun <a href="on-download-start/">onDownloadStart</a>(handler: (url: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, userAgent: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, contentDisposition: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, mimeType: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a>, contentLength: <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-long/index.html">Long</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a>)<br> Offers <a href="on-download-start/">handler</a> each download the page starts, with <a href="https://developer.android.com/reference/kotlin/android/webkit/DownloadListener.html">DownloadListener</a>'s arguments (an unknown disposition or MIME type is empty), before the <code>onDownload</code> prop and the core's opening it externally.</td>
 </tr>
 <tr>
 <td><a href="on-options-change/">onOptionsChange</a></td>
-<td>abstract fun <a href="on-options-change/">onOptionsChange</a>(handler: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br>Runs <a href="on-options-change/">handler</a> with this hook's extension's new <code>options</code> each time they change, live on the same WebView; null when the hook turns off.</td>
+<td>abstract fun <a href="on-options-change/">onOptionsChange</a>(handler: (<a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html">Any</a>?) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)<br> Runs <a href="on-options-change/">handler</a> with this hook's extension's new <code>options</code> each time they change, live on the same WebView; null when the hook turns off.</td>
 </tr>
 </tbody>
 </table>

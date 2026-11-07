@@ -6263,7 +6263,7 @@
 
 
 <h1 id="ondestroyed">onDestroyed<a class="headerlink" href="#ondestroyed" title="Permanent link">&para;</a></h1>
-<p>abstract fun <a href="../on-destroyed/">onDestroyed</a>(handler: (<a href="../../-document-end/">DocumentEnd</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)</p>
+<p class="kotlin-signature">abstract fun onDestroyed(handler: (<a href="../../-document-end/">DocumentEnd</a>) -&gt; <a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a>)</p>
 <p>Runs <a href="../on-destroyed/">handler</a> once this attach's WebView is destroyed: with <a href="../../-document-end/-c-l-o-s-i-n-g/">DocumentEnd.CLOSING</a> at unmount, or with <a href="../../-document-end/-c-r-a-s-h-e-d/">DocumentEnd.CRASHED</a> after a renderer crash. It comes after the <a href="../on-document-end/">onDocumentEnd</a> handlers that get the same reason, and the context does nothing by then.</p>
 <p>Clean up here, and release what must outlive the WebView, such as a <a href="https://developer.android.com/reference/kotlin/androidx/webkit/ProfileStore.html">ProfileStore</a> profile.</p>
 
