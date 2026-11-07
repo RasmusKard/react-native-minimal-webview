@@ -247,13 +247,20 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const [asks] = useState(() => new Map<number, AbortController>());
   useEffect(() => () => asks.forEach((controller) => controller.abort()), [asks]);
 
+  // The core's own events: a warning for the developer, and an ask native stopped waiting for.
+  const onCoreEvent = (name: string, payload: Record<string, unknown>) => {
+    if (name === 'warning')
+      console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
+    else if (name === 'askCancelled') asks.get(payload['askId'] as number)?.abort();
+    else return false;
+    return true;
+  };
+
   const onHookEvent = async ({
     nativeEvent: { key, name, payload, askId },
   }: Native<AskableEvent>) => {
     const core = key === 'core';
-    if (core && name === 'warning')
-      return console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
-    if (core && name === 'askCancelled') return asks.get(payload['askId'] as number)?.abort();
+    if (core && onCoreEvent(name, payload)) return;
     const request = REQUESTS.find((prop) => core && prop === name);
     // The later of two extensions with one key, as in useHookOptions. No hook is registered under `core`.
     const owner = props.extensions?.findLast((e): e is HookExtension => !!e && e.key === key);
@@ -268,10 +275,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     }
     const failure = request ? `${request} failed` : `onEvent failed for ${key}.${name}`;
     let value: unknown = null;
-    // Native waits on this handler: one that throws still answers, with null (native's safe default).
     try {
       value = await handler?.(payload, controller?.signal);
     } catch (error) {
+      // Native waits on this handler: one that throws still answers, with null (native's safe default).
       console.error(`[react-native-minimal-webview] ${failure}`, error);
     }
     if (askId === undefined) return;
