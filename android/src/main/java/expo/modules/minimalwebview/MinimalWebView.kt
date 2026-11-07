@@ -40,16 +40,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
-  private var current: WebView? = null
-  /**
-   * Made at first use, the first prop batch, so that the configure hooks see their options (`hookOptions`). Replaced after a renderer
-   * crash; while [recovering] it is the destroyed one.
-   */
-  internal var webView: WebView
-    get() = current ?: createWebView().also { current = it }
-    private set(value) {
-      current = value
-    }
+  /** Set by the first prop batch and replaced after a renderer crash; while [recovering] it is the destroyed one. */
+  internal lateinit var webView: WebView
+    private set
+  private val hasWebView get() = ::webView.isInitialized
 
   // Props, applied together in applyProps()
   internal var source: WebViewSource? = null
@@ -61,7 +55,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     set(value) {
       val old = field
       field = value
-      if (hookKeys != null) optionsChanged(old)
+      if (hasWebView) optionsChanged(old)
     }
   internal var injectedScripts: List<InjectedScript>? = null
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
@@ -84,10 +78,9 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val permissions = Permissions(this)
   private val downloads = Downloads(this)
   /** The keys of the extensions that are on (`hookOptions`) the first WebView was made with, and those attached later: they pick the hooks, also for one after a crash. */
-  private var hookKeys: Set<String>? = null
+  private var hookKeys: Set<String> = emptySet()
   /** The hooks' contexts for the current WebView, in attach order. Chromium's IO thread reads it (shouldInterceptRequest). */
   @Volatile private var hookContexts: List<HookContext> = emptyList()
-  private var mounted = false
 
   internal val asks = Asks { onHookEvent(it) }
   internal val deciders = Deciders { message -> mainHandler.post { warn(message) } }
@@ -127,9 +120,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   }
 
   private fun createWebView(): WebView {
-    val first = hookKeys == null
-    val keys = hookKeys ?: hookOptions.keys.also { hookKeys = it }
-    val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keys)
+    // recover() calls this while the dead WebView is still set: the keys and the one-time warnings carry over.
+    val first = !hasWebView
+    if (first) hookKeys = hookOptions.keys
+    val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, hookKeys)
     val (maker, unused) = pickFactory(attaching)
     val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
     hookContexts = attaching.map { HookContext(it, this) }
@@ -197,10 +191,11 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     // The dead WebView after a crash takes nothing: recover() applies the props to the new one.
     if (recovering) return
     // The first prop batch sets up the first WebView: the hooks get their options with it.
-    if (mounted) {
+    if (hasWebView) {
       applySettings()
       scripts.update()
     } else {
+      webView = createWebView()
       setUp()
     }
     refresher.layout.isEnabled = pullToRefresh
@@ -218,13 +213,12 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   /** Readies a new WebView, the first or the one after a crash, in one order: settings, layout, hooks, scripts. */
   private fun setUp() {
-    mounted = true
     applySettings(force = true)
     // addView(view) alone would give the view WRAP_CONTENT, and Chromium then resolves CSS vh to 0.
     refresher.content.addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     // React Native ignores requestLayout: a WebView added after it laid this view out (a crash) needs its own pass.
     if (isLaidOut) measureAndLayout()
-    attachHooks()
+    hookContexts.forEach { it.hook.attach(webView, it) }
     scripts.install()
   }
 
@@ -275,8 +269,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** A warning for the app's developer, which JS logs with console.warn. */
   internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
 
-  private fun attachHooks() = hookContexts.forEach { it.hook.attach(webView, it) }
-
   /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
   private fun detachHooks(): List<HookContext> {
     val detached = hookContexts
@@ -293,7 +285,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
-      } else if (key !in hookKeys.orEmpty() && old[key] == null) {
+      } else if (key !in hookKeys && old[key] == null) {
         attachLate(key)
       }
     }
@@ -307,7 +299,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       val why = if (hook.configure != null) "configure" else "a webViewFactory"
       return warn("extension $key: its hook has $why, so it attaches only when the WebView is created")
     }
-    hookKeys = hookKeys.orEmpty() + key
+    hookKeys = hookKeys + key
     // The WebView the recovery builds attaches it with the others.
     if (recovering) return
     val context = HookContext(hook, this)
@@ -353,18 +345,18 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     progress = 0.0
     pageFinished()
     onProcessGone(mapOf("didCrash" to didCrash, "recovered" to reload))
-    if (canRecover()) recover() else waiting += this
+    // A detached view's window reports GONE: onWindowVisibilityChanged recovers once it is shown.
+    if (windowVisibility == View.VISIBLE) recover()
     stateChanged() // after onProcessGone: the cut-off load ends as failed
   }
-
-  private fun canRecover() = isAttachedToWindow && !inBackground
 
   /** The renderer died and the new WebView isn't built yet: the one in [webView] is destroyed. */
   internal val recovering get() = pendingRecovery != null
 
-  override fun onAttachedToWindow() {
-    super.onAttachedToWindow()
-    if (canRecover()) recover()
+  // Also on attach: dispatchAttachedToWindow calls this unless the window is GONE.
+  override fun onWindowVisibilityChanged(visibility: Int) {
+    super.onWindowVisibilityChanged(visibility)
+    if (visibility == View.VISIBLE) recover()
   }
 
   /**
@@ -374,7 +366,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private fun recover(reload: Boolean = false) {
     val recovery = pendingRecovery ?: return
     pendingRecovery = null
-    waiting -= this
     webView = createWebView()
     setUp()
     refresher.layout.isEnabled = pullToRefresh
@@ -389,12 +380,13 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun destroy() {
     destroyed = true
     pendingRecovery = null
-    waiting -= this
     document.end(DocumentEnd.CLOSING)
     val detached = detachHooks()
     downloads.detach()
-    webView.stopLoading()
-    webView.destroy()
+    if (hasWebView) {
+      webView.stopLoading()
+      webView.destroy()
+    }
     // shortcut: still in the layout here, unlike after a crash; if ProfileStore.deleteProfile in onDestroyed throws
     // "in use" on a device, remove the WebView from refresher.content before destroy() first.
     detached.forEach { it.destroyed(DocumentEnd.CLOSING) }
@@ -441,15 +433,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal companion object {
     // The app's WebViews share one renderer, so the crash-loop guard counts its deaths for the whole process.
     private val crashTimes = ArrayDeque<Long>()
-    /** The views whose renderer died while they couldn't be seen. */
-    private val waiting = mutableSetOf<MinimalWebView>()
-
-    /** Whether the app is in the background (the module observes it); coming back recovers the waiting views. */
-    var inBackground = false
-      set(value) {
-        field = value
-        waiting.filter { it.canRecover() }.forEach { it.recover() }
-      }
   }
 }
 
