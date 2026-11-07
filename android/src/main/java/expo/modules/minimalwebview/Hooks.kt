@@ -59,7 +59,7 @@ object MinimalWebViewHooks {
    * @param webViewFactory makes each WebView this hook is attached to, on or off: the first one and each after a
    *   renderer crash, as a subclass that overrides what WebView lets a subclass override. Null leaves it to the other
    *   hooks. When the attached hooks name different factories (the same object is one), the first one's in
-   *   registration order makes the WebView, and a `core.warning` names the others. Those still attach, so check the
+   *   registration order makes the WebView, and a warning names the others. Those still attach, so check the
    *   class `attach` gets.
    * @param configure runs on the main thread as soon as each WebView this hook is attached to, on or off, is made,
    *   before the package sets it up ([WebViewCompat.setProfile][androidx.webkit.WebViewCompat.setProfile] goes here).
@@ -126,7 +126,7 @@ internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<Minima
 
 /**
  * Picks the hook client that gets a decision callback: the first of the clients that override it. It calls [warn] with
- * a `core.warning` message naming the callback, once per callback and reason: when more than one client overrides it,
+ * a warning naming the callback, once per callback and reason: when more than one client overrides it,
  * and, when the caller passes `lost` (what stops applying once a client takes the decision: the app's props or their
  * defaults that would decide it otherwise), when one client takes it.
  */
@@ -188,13 +188,13 @@ interface WebViewContext {
    * - Every other callback reaches the core first, then each client that overrides it.
    *
    * Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation
-   * rules' security checks included, and a `core.warning` names the callback and what stops applying.
+   * rules' security checks included, and a warning names the callback and what stops applying.
    *
    * A client that overrides `shouldOverrideUrlLoading` decides navigations instead of the navigation rules, which still
    * decide new windows unless a chrome client overrides `onCreateWindow`. A new window the rules allow loads in place
    * with `loadUrl`, which doesn't reach `shouldOverrideUrlLoading` (on iOS that load reaches the deciding delegate).
    *
-   * A decision more than one client overrides still goes only to the first, and a `core.warning` names it. Each warning
+   * A decision more than one client overrides still goes only to the first, and a warning names it. Each warning
    * comes once per WebView, when its decision first comes.
    *
    * Overriding a variant the base class forwards to counts as overriding the callback: [WebViewClientCompat]'s
@@ -225,8 +225,8 @@ interface WebViewContext {
   val scrollListeners: MutableList<View.OnScrollChangeListener>
 
   /**
-   * Sends an event to JS as `<key>.<name>`: the extension's `onEvent` gets `{ name, payload }`, with `name` relative to
-   * the key. It is dropped while the hook is off, and after the context's attach ended.
+   * Sends an event to JS: the extension with the hook's key gets `{ name, payload }` in its `onEvent`. It is dropped
+   * while the hook is off, and after the context's attach ended.
    */
   fun emit(name: String, payload: Map<String, Any?>)
 
@@ -361,10 +361,10 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
   override fun emit(name: String, payload: Map<String, Any?>) =
-    onMain { ifRouted { view.emit("$key.$name", payload) } }
+    onMain { ifRouted { view.emit(key, name, payload) } }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { askIfRouted(onAnswer) { view.asks.ask("$key.$name", payload, onAnswer) } }
+    onMain { askIfRouted(onAnswer) { view.asks.ask(key, name, payload, onAnswer) } }
 
   override fun onDocumentEnd(handler: (DocumentEnd) -> Unit) {
     documentEndHandlers += handler

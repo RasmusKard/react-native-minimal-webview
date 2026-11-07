@@ -79,14 +79,14 @@ for (scheme, host, port, expected) in [
 var sent: [[String: Any]] = []
 var replies: [String?] = []
 let asks = Asks { sent.append($0) }
-func ask() -> Int { asks.ask("hook.q", ["a": 1]) { replies.append($0 as? String) } }
+func ask() -> Int { asks.ask("hook", "q", ["a": 1]) { replies.append($0 as? String) } }
 func cancelled() -> [Int] {
-  sent.filter { $0["name"] as? String == "core.askCancelled" }.compactMap { ($0["payload"] as? [String: Any])?["askId"] as? Int }
+  sent.filter { $0["key"] as? String == "core" && $0["name"] as? String == "askCancelled" }.compactMap { ($0["payload"] as? [String: Any])?["askId"] as? Int }
 }
 let answered = ask()
 asks.answer(answered, "yes")
 asks.answer(answered, "late")
-check("ask answered once: \(replies), \(sent)", replies == ["yes"] && sent.first?["name"] as? String == "hook.q" && sent.first?["askId"] as? Int == answered)
+check("ask answered once: \(replies), \(sent)", replies == ["yes"] && sent.first?["key"] as? String == "hook" && sent.first?["name"] as? String == "q" && sent.first?["askId"] as? Int == answered)
 let timedOut = ask()
 asks.cancel(timedOut)
 asks.answer(timedOut, "late")

@@ -61,7 +61,10 @@ async function loadHtml(h: Harness, body: string) {
 const webViewClass = async (h: Harness) =>
   await h.ref.current?.call(ios ? 'webView.description' : 'webView.toString').catch(errorCode);
 
-/** Events of this package's hooks that no extension took: App logs those, and those of an extension without `onEvent`. */
+/**
+ * This package's hook events App logs: the onScroll hook's that no extension took, and those of an extension without
+ * `onEvent`.
+ */
 const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.startsWith(KEY));
 
 /**

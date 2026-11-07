@@ -37,7 +37,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
   /// The user scripts installScripts added: the others in the content controller are a hook's.
   var ownScripts: [WKUserScript] = []
-  /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes.
+  /// The page requests JS has a prop for, by prop name (`onDownload`, `onNavigationRequest`, ...), read when a request
+  /// comes.
   var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 
@@ -364,7 +365,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     decisionHandler: @escaping @MainActor (WKNavigationResponsePolicy) -> Void
   ) {
     if Downloads.isDownload(navigationResponse) {
-      if requestHandlers.contains("download") { return decisionHandler(.download) }
+      if requestHandlers.contains("onDownload") { return decisionHandler(.download) }
       // A file no hook takes (no onDownload).
       if let url = navigationResponse.response.url {
         openDownload(url)
@@ -386,7 +387,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func became(_ download: WKDownload, _ callback: (WKNavigationDelegate) -> Void) {
-    if requestHandlers.contains("download") { download.delegate = downloads }
+    if requestHandlers.contains("onDownload") { download.delegate = downloads }
     forward(callback)
   }
 
@@ -493,11 +494,11 @@ extension MinimalWebView {
     }
   }
 
-  func emit(_ name: String, _ payload: [String: Any]) {
-    onHookEvent(["name": name, "payload": payload])
+  func emit(_ key: String, _ name: String, _ payload: [String: Any]) {
+    onHookEvent(["key": key, "name": name, "payload": payload])
   }
 
   func warn(_ message: String) {
-    emit("core.warning", ["message": message])
+    emit("core", "warning", ["message": message])
   }
 }

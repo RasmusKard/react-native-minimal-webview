@@ -51,13 +51,13 @@ extension MinimalWebView: WKUIDelegate {
     decisionHandler: @escaping @MainActor (WKPermissionDecision) -> Void
   ) {
     guard frame.isMainFrame else { return decisionHandler(.deny) }
-    guard requestHandlers.contains("permissionRequest") else { return decisionHandler(.prompt) }
+    guard requestHandlers.contains("onPermissionRequest") else { return decisionHandler(.prompt) }
     let resources: [String] = switch type {
     case .camera: ["camera"]
     case .microphone: ["microphone"]
     default: ["camera", "microphone"]
     }
-    asks.ask("core.permissionRequest", ["origin": OriginRules.origin(of: origin), "resources": resources]) { answer in
+    asks.ask("core", "onPermissionRequest", ["origin": OriginRules.origin(of: origin), "resources": resources]) { answer in
       decisionHandler(answer as? Bool == true ? .grant : .deny)
     }
   }

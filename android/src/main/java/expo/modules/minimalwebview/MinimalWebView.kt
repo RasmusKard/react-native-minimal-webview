@@ -63,7 +63,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var pullToRefresh = false
   private val refresher = PullToRefresh(this)
   /**
-   * The page requests JS has a prop for (`fileRequest`, `download`, `navigationRequest`, ...), read when a request comes.
+   * The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), read when a request comes.
    */
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
@@ -257,7 +257,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   }
 
   /** A warning for the app's developer, which JS logs with console.warn. */
-  internal fun warn(message: String) = emit("core.warning", mapOf("message" to message))
+  internal fun warn(message: String) = emit("core", "warning", mapOf("message" to message))
 
   /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
   private fun detachHooks(): List<HookContext> {
@@ -300,7 +300,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** The handler a hook registered with `context.handle` for [method], if it is attached and on. */
   internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key && it.routed }?.handlers?.get(method)
 
-  fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
+  fun emit(key: String, name: String, payload: Map<String, Any?>) =
+    onHookEvent(mapOf("key" to key, "name" to name, "payload" to payload))
 
   private var documentOpen = false
 

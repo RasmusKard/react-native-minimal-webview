@@ -647,7 +647,7 @@ export type AndroidSettings = {
  * @group Native hooks
  */
 export type HookEvent<N extends string = string, P = Record<string, unknown>> = {
-  /** The event's name, relative to the extension's key: `pageLoaded` for `'pageCounter.pageLoaded'`. */
+  /** The name the hook sent it with, such as `pageLoaded`. */
   name: N;
   /** What the hook sent with it. */
   payload: P;
@@ -678,11 +678,10 @@ export type HookExtension = {
    */
   options?: unknown;
   /**
-   * Each of the hook's events, with `name` relative to `key`: it goes to the extension whose key its name starts with
-   * (`'<key>.'`; the longest key, when several do), and one no extension owns is dropped. For an `ask`, the return
-   * value (a promise is awaited) is the answer, and `undefined` answers null. `signal` is set only for an `ask`, and
-   * aborts when native stops waiting for the answer: an ask has no timeout, but one still open when the page goes away
-   * is answered null.
+   * Each of the hook's events: it goes to the extension with the hook's key (the later of two with one key), and one no
+   * extension owns is dropped. For an `ask`, the return value (a promise is awaited) is the answer, and `undefined`
+   * answers null. `signal` is set only for an `ask`, and aborts when native stops waiting for the answer: an ask has no
+   * timeout, but one still open when the page goes away is answered null.
    *
    * The latest `onEvent` always takes the events: a render with new handlers sends native nothing.
    */

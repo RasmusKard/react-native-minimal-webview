@@ -31,23 +31,29 @@ const own = <T,>({ target: _, ...event }: T & { target?: unknown }) => event as 
 export type BridgeEvent =
   { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
-/** A hook's event as native sends it: `name` is `'<key>.<event name>'`. `askId` is set when native waits for the answer. */
-export type AskableEvent = { name: string; payload: Record<string, unknown>; askId?: number };
+/**
+ * An event as native sends it: `key` is the hook's key, `core` for the core's own. `askId` is set when native waits for
+ * the answer.
+ */
+export type AskableEvent = {
+  key: string;
+  name: string;
+  payload: Record<string, unknown>;
+  askId?: number;
+};
 
 /**
- * Page requests the core answers natively, by native event name (`core.` plus the key). Native asks JS only for those
- * whose prop is set, and reads the set when the request comes, so a prop can come and go.
+ * Page requests the core answers natively, by prop name. Native asks JS only for those whose prop is set, and reads the
+ * set when the request comes, so a prop can come and go.
  */
-const REQUESTS = {
-  navigationRequest: 'onNavigationRequest',
-  openExternal: 'onOpenExternal',
-  fileRequest: 'onFileRequest',
-  fullscreenChange: 'onFullscreenChange',
-  permissionRequest: 'onPermissionRequest',
-  download: 'onDownload',
-} as const;
-/** The core's own events; everything else is a hook's, for its extension's `onEvent`. */
-const CORE = 'core.';
+const REQUESTS = [
+  'onNavigationRequest',
+  'onOpenExternal',
+  'onFileRequest',
+  'onFullscreenChange',
+  'onPermissionRequest',
+  'onDownload',
+] as const;
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
 const OWN = [
@@ -67,7 +73,7 @@ const OWN = [
   'onProcessGone',
   'onLoadStart',
   'onLoadEnd',
-  ...Object.values(REQUESTS),
+  ...REQUESTS,
   'ref',
   'children',
 ] as const satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
@@ -133,15 +139,6 @@ const nativeModule = () =>
     preconnect(url: string): Promise<void>;
     setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
-
-/** Runs a JS handler that native waits on: one that throws still answers, with null (native's safe default). */
-const settle = <T,>(handler: () => T | Promise<T>, failure: string) =>
-  Promise.resolve()
-    .then(handler)
-    .catch((error: unknown) => {
-      console.error(`[react-native-minimal-webview] ${failure}`, error);
-      return null;
-    });
 
 /**
  * A WebView whose native side decides navigations and owns the navigation state: see {@link WebViewProps} and
@@ -246,33 +243,37 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const requestHandlers = useRequestHandlers(props);
   const hookOptions = useHookOptions(props.extensions);
 
-  // One per ask in flight, by id: aborted when native stops waiting (`core.askCancelled`) or at unmount.
+  // One per ask in flight, by id: aborted when native stops waiting (the core's `askCancelled`) or at unmount.
   const [asks] = useState(() => new Map<number, AbortController>());
   useEffect(() => () => asks.forEach((controller) => controller.abort()), [asks]);
 
-  const onHookEvent = async ({ nativeEvent: { name, payload, askId } }: Native<AskableEvent>) => {
-    if (name === `${CORE}warning`)
+  const onHookEvent = async ({
+    nativeEvent: { key, name, payload, askId },
+  }: Native<AskableEvent>) => {
+    const core = key === 'core';
+    if (core && name === 'warning')
       return console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
-    if (name === `${CORE}askCancelled`) return asks.get(payload['askId'] as number)?.abort();
-    const request = name.startsWith(CORE)
-      ? REQUESTS[name.slice(CORE.length) as keyof typeof REQUESTS]
-      : undefined;
+    if (core && name === 'askCancelled') return asks.get(payload['askId'] as number)?.abort();
+    const request = REQUESTS.find((prop) => core && prop === name);
+    // The later of two extensions with one key, as in useHookOptions. No hook is registered under `core`.
+    const owner = props.extensions?.findLast((e): e is HookExtension => !!e && e.key === key);
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
-      : (_: unknown, signal?: AbortSignal) => {
-          const owner = ownerOf(props.extensions, name);
-          return owner?.onEvent?.({ name: name.slice(owner.key.length + 1), payload }, signal);
-        };
+      : (_: unknown, signal?: AbortSignal) => owner?.onEvent?.({ name, payload }, signal);
     // Only an ask can be cancelled, so only an ask gets a signal.
     let controller: AbortController | undefined;
     if (askId !== undefined) {
       controller = new AbortController();
       asks.set(askId, controller);
     }
-    const value = await settle(
-      () => handler?.(payload, controller?.signal),
-      request ? `${request} failed` : `onEvent failed for ${name}`
-    );
+    const failure = request ? `${request} failed` : `onEvent failed for ${key}.${name}`;
+    let value: unknown = null;
+    // Native waits on this handler: one that throws still answers, with null (native's safe default).
+    try {
+      value = await handler?.(payload, controller?.signal);
+    } catch (error) {
+      console.error(`[react-native-minimal-webview] ${failure}`, error);
+    }
     if (askId === undefined) return;
     asks.delete(askId);
     // Native already answered a cancelled ask with null; a late answer would find nothing.
@@ -318,10 +319,7 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
 
 /** The page requests with a prop set, as a new array only when that set changes. */
 function useRequestHandlers(props: WebViewProps) {
-  const key = Object.entries(REQUESTS)
-    .filter(([, prop]) => props[prop])
-    .map(([event]) => event)
-    .join();
+  const key = REQUESTS.filter((prop) => props[prop]).join();
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
@@ -349,16 +347,6 @@ function useHookOptions(extensions: WebViewProps['extensions']) {
     )
   );
   return useMemo(() => JSON.parse(json) as Record<string, unknown>, [json]);
-}
-
-/** The extension whose key is the longest prefix of the event's `name` (`'<key>.'`); the later of equal keys. */
-function ownerOf(extensions: WebViewProps['extensions'], name: string) {
-  let owner: HookExtension | undefined;
-  for (const extension of extensions ?? []) {
-    if (!extension || !name.startsWith(`${extension.key}.`)) continue;
-    if (!owner || extension.key.length >= owner.key.length) owner = extension;
-  }
-  return owner;
 }
 
 /** Bridges by identity, for the creation key. */
