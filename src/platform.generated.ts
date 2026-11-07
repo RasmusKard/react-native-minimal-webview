@@ -500,7 +500,8 @@ export type AndroidSettingKeys = {
  *
  * An option set's `all` is the OR of its listed bits, not `NSUIntegerMax`, which JSON can't carry.
  * `WebsiteDataType` has the data type names the `websiteDataStore` methods take, for `call`; `WebViewDataType` is
- * the option set `webView.fetchDataOfTypes:` takes.
+ * the option set `webView.fetchDataOfTypes:` takes, and `CookiePolicy` the value
+ * `httpCookieStore.setCookiePolicy:completionHandler:` takes.
  * @group Platform settings
  * @ios
  * @namespace
@@ -508,41 +509,48 @@ export type AndroidSettingKeys = {
  */
 export const IOSConstants = {
   /** @enum */
-  SelectionGranularity: {
-    dynamic: 0,
-    character: 1,
+  IndicatorStyle: {
+    default: 0,
+    black: 1,
+    white: 2,
   },
   /** @enum */
-  AudiovisualMediaTypes: {
+  KeyboardDismissMode: {
     none: 0,
-    audio: 1,
-    video: 2,
-    all: 3,
+    onDrag: 1,
+    interactive: 2,
+    onDragWithAccessory: 3,
+    interactiveWithAccessory: 4,
+  },
+  /** @enum */
+  ContentInsetAdjustmentBehavior: {
+    automatic: 0,
+    scrollableAxes: 1,
+    never: 2,
+    always: 3,
+  },
+  /** @enum */
+  DataDetectorTypes: {
+    none: 0,
+    phoneNumber: 1,
+    link: 2,
+    address: 4,
+    calendarEvent: 8,
+    trackingNumber: 16,
+    flightNumber: 32,
+    lookupSuggestion: 64,
+    all: 127,
+  },
+  /** @enum */
+  CookiePolicy: {
+    allow: 0,
+    disallow: 1,
   },
   /** @enum */
   InactiveSchedulingPolicy: {
     suspend: 0,
     throttle: 1,
     none: 2,
-  },
-  /** @enum */
-  ContentMode: {
-    recommended: 0,
-    mobile: 1,
-    desktop: 2,
-  },
-  /** @enum */
-  WebpagePreferencesUpgradeToHTTPSPolicy: {
-    keepAsRequested: 0,
-    automaticFallbackToHTTP: 1,
-    userMediatedFallbackToHTTP: 2,
-    errorOnFailure: 3,
-  },
-  /** @enum */
-  SecurityRestrictionMode: {
-    none: 0,
-    maximizeCompatibility: 1,
-    lockdown: 2,
   },
   /** @enum */
   MediaPlaybackState: {
@@ -569,37 +577,35 @@ export const IOSConstants = {
     sessionStorage: 1,
   },
   /** @enum */
-  DataDetectorTypes: {
+  SelectionGranularity: {
+    dynamic: 0,
+    character: 1,
+  },
+  /** @enum */
+  AudiovisualMediaTypes: {
     none: 0,
-    phoneNumber: 1,
-    link: 2,
-    address: 4,
-    calendarEvent: 8,
-    trackingNumber: 16,
-    flightNumber: 32,
-    lookupSuggestion: 64,
-    all: 127,
+    audio: 1,
+    video: 2,
+    all: 3,
   },
   /** @enum */
-  IndicatorStyle: {
-    default: 0,
-    black: 1,
-    white: 2,
+  ContentMode: {
+    recommended: 0,
+    mobile: 1,
+    desktop: 2,
   },
   /** @enum */
-  KeyboardDismissMode: {
+  WebpagePreferencesUpgradeToHTTPSPolicy: {
+    keepAsRequested: 0,
+    automaticFallbackToHTTP: 1,
+    userMediatedFallbackToHTTP: 2,
+    errorOnFailure: 3,
+  },
+  /** @enum */
+  SecurityRestrictionMode: {
     none: 0,
-    onDrag: 1,
-    interactive: 2,
-    onDragWithAccessory: 3,
-    interactiveWithAccessory: 4,
-  },
-  /** @enum */
-  ContentInsetAdjustmentBehavior: {
-    automatic: 0,
-    scrollableAxes: 1,
-    never: 2,
-    always: 3,
+    maximizeCompatibility: 1,
+    lockdown: 2,
   },
   /** @enum */
   WebsiteDataType: {
