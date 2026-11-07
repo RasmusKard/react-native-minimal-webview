@@ -908,7 +908,7 @@ describe('navigation state across remounts', () => {
       ).onNavigationState({ nativeEvent: state });
     });
 
-  it("passes on the documented keys only, not React Native's own", async () => {
+  it("strips React Native's target", async () => {
     const ref = createWebViewRef();
     const onNavigation = jest.fn();
     const onProcessGone = jest.fn();

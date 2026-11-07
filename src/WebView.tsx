@@ -1,5 +1,5 @@
 import { requireNativeModule, requireNativeView } from 'expo';
-import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, type ViewProps } from 'react-native';
 
 import { CONNECTION } from './bridge/createBridge';
@@ -7,7 +7,7 @@ import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
 import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
 import { defaultNavigationRules } from './defaultNavigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
-import { type Attachment, INITIAL_STATE, useAttach } from './refStore';
+import { useAttach } from './refStore';
 import type {
   HookExtension,
   InjectedScript,
@@ -25,43 +25,8 @@ type Native<T> = { nativeEvent: T };
 /** The native view's event props, by name and payload. */
 type NativeHandlers<E> = { [K in keyof E]: (event: Native<E[K]>) => void };
 
-/**
- * A type's documented keys, to pick from its native event: React Native adds its own (`target`, the view's tag). A
- * `Record`, so that a key missing here, or not in the type, fails to compile.
- */
-const keysOf = <T,>(keys: Record<keyof T, true>) => Object.keys(keys) as (keyof T)[];
-const pick = <T,>(event: T, keys: (keyof T)[]) =>
-  Object.fromEntries(keys.map((key) => [key, event[key]])) as T;
-const STATE_KEYS = keysOf<NavigationState>({
-  url: true,
-  pendingUrl: true,
-  title: true,
-  loading: true,
-  progress: true,
-  canGoBack: true,
-  canGoForward: true,
-  outcome: true,
-});
-const NAVIGATION_KEYS = keysOf<NavigationEvent>({
-  url: true,
-  mainFrame: true,
-  newWindow: true,
-  userInitiated: true,
-  action: true,
-  rule: true,
-});
-const ERROR_KEYS = keysOf<Exclude<LoadErrorEvent, { kind: 'http' }>>({
-  kind: true,
-  url: true,
-  code: true,
-  description: true,
-});
-const HTTP_ERROR_KEYS = keysOf<Extract<LoadErrorEvent, { kind: 'http' }>>({
-  kind: true,
-  url: true,
-  statusCode: true,
-});
-const PROCESS_GONE_KEYS = keysOf<ProcessGoneEvent>({ didCrash: true, recovered: true });
+/** The event without the `target` (the view's tag) React Native adds to every native event. */
+const own = <T,>({ target: _, ...event }: T & { target?: unknown }) => event as T;
 
 /** A page's message comes with its origin, as native verified it (`location.origin` form). */
 export type BridgeEvent =
@@ -191,8 +156,6 @@ export function WebView(props: WebViewProps) {
 /** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
 function WebViewInstance({ ref, ...props }: WebViewProps) {
   const native = useRef<NativeMethods>(null);
-  const attachmentRef = useRef<Attachment>(undefined);
-  const { onNavigationState, onError, lastRef } = useLoadEvents(props, attachmentRef);
 
   // The rejecters of native calls not settled yet. An unmount rejects them: native may never answer (a hook handler
   // that never replies), and a late answer then settles nothing.
@@ -251,7 +214,16 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
         mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
-  useAttach(ref, handle, lastRef, attachmentRef);
+  const publish = useAttach(ref, handle);
+
+  // onLoadStart and onLoadEnd are the edges of `loading`; native sets the ended load's `outcome`.
+  const onNavigationState = ({ nativeEvent }: Native<NavigationState>) => {
+    const state = own(nativeEvent);
+    const was = publish(state);
+    props.onNavigationStateChange?.(state);
+    if (!was.loading && state.loading) props.onLoadStart?.(state);
+    if (was.loading && !state.loading) props.onLoadEnd?.(state);
+  };
 
   // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
@@ -322,16 +294,12 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={hookOptions}
       requestHandlers={requestHandlers}
-      onNavigation={({ nativeEvent }) => props.onNavigation?.(pick(nativeEvent, NAVIGATION_KEYS))}
-      onNavigationState={({ nativeEvent }) =>
-        onNavigationState({ nativeEvent: pick(nativeEvent, STATE_KEYS) })
-      }
+      onNavigation={({ nativeEvent }) => props.onNavigation?.(own(nativeEvent))}
+      onNavigationState={onNavigationState}
       onBridge={onBridge}
       onHookEvent={onHookEvent}
-      onError={onError}
-      onProcessGone={({ nativeEvent }) =>
-        props.onProcessGone?.(pick(nativeEvent, PROCESS_GONE_KEYS))
-      }
+      onError={({ nativeEvent }) => props.onError?.(own(nativeEvent))}
+      onProcessGone={({ nativeEvent }) => props.onProcessGone?.(own(nativeEvent))}
     />
   );
 }
@@ -471,29 +439,6 @@ function platformSettings(props: WebViewProps): NativeSettings {
     },
     webView: { ...rnw.webView, ...webView },
   };
-}
-
-/** Load events: onLoadStart and onLoadEnd are the edges of `loading`; native sets the ended load's `outcome`. */
-function useLoadEvents(props: WebViewProps, attachmentRef: RefObject<Attachment | undefined>) {
-  const lastRef = useRef(INITIAL_STATE);
-
-  const onNavigationState = ({ nativeEvent: state }: Native<NavigationState>) => {
-    const was = lastRef.current.loading;
-    lastRef.current = state;
-    attachmentRef.current?.update(state);
-    props.onNavigationStateChange?.(state);
-    if (!was && state.loading) props.onLoadStart?.(state);
-    if (was && !state.loading) props.onLoadEnd?.(state);
-  };
-
-  const onError = ({ nativeEvent }: Native<LoadErrorEvent>) =>
-    props.onError?.(
-      nativeEvent.kind === 'http'
-        ? pick(nativeEvent, HTTP_ERROR_KEYS)
-        : pick(nativeEvent, ERROR_KEYS)
-    );
-
-  return { onNavigationState, onError, lastRef };
 }
 
 /**
