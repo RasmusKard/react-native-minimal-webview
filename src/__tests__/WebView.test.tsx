@@ -84,7 +84,9 @@ async function mount(props: Partial<WebViewProps> = {}) {
   await show(props);
   const native = (i = 0) => nativeAt(root, i);
   const fire = (event: `on${string}`, nativeEvent: object, i = 0) =>
-    act(async () => native(i)[event]({ nativeEvent }));
+    act(async () => {
+      await native(i)[event]({ nativeEvent });
+    });
   return { root, show, native, fire };
 }
 
@@ -810,7 +812,9 @@ describe('page requests', () => {
 
 describe('navigation state across remounts', () => {
   const fireState = (root: ReturnType<typeof createRoot>, state: NavigationState, i = 0) =>
-    act(async () => nativeAt(root, i).onNavigationState({ nativeEvent: state }));
+    act(async () => {
+      await nativeAt(root, i).onNavigationState({ nativeEvent: state });
+    });
 
   it("strips React Native's target", async () => {
     const ref = createWebViewRef();
