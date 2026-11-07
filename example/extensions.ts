@@ -51,8 +51,9 @@ async function loadHtml(h: Harness, body: string) {
     html: `<!doctype html>${VIEWPORT}<title>${title}</title>${body}`,
     baseUrl: h.pages,
   });
+  // A poll in flight when the html commits rejects with `navigated`; the next poll retries.
   return !!(await until(
-    async () => (await h.ref.current?.evaluate('document.title')) === title,
+    async () => (await h.ref.current?.evaluate('document.title').catch(errorCode)) === title,
     10000
   ));
 }
