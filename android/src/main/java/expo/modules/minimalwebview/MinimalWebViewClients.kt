@@ -44,9 +44,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
     if (navigation.isSameDocument) return
     owner.fileUpload.cancel()
     owner.pendingUrl = navigation.url
-    owner.loading = true
-    owner.outcome = null
-    owner.stateChanged()
+    owner.loadStarted()
   }
 
   override fun onNavigationRedirected(navigation: Navigation) {
@@ -58,7 +56,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
   override fun onNavigationCompleted(navigation: Navigation) {
     // The Document ends before `url` moves on, so its handlers see the page that ended: as on iOS, and before 146,
     // where onPageStarted comes ahead of doUpdateVisitedHistory.
-    if (navigation.didCommit() && !navigation.isSameDocument) owner.newDocument()
+    if (navigation.didCommit() && !navigation.isSameDocument) owner.endDocument(DocumentEnd.COMMITTED)
     if (navigation.didCommit()) owner.url = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
@@ -70,19 +68,14 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
         else -> "finished"
       }
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
-      if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) {
-        owner.loading = false
-        owner.pageFinished()
-      }
+      if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) owner.loadEnded()
     }
     owner.stateChanged()
   }
 
   override fun onPageLoadEvent(page: Page) {
     loadedPages += page
-    owner.loading = false
-    owner.pageFinished()
-    owner.stateChanged()
+    owner.loadEnded()
   }
 }
 
@@ -122,10 +115,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   // blocked redirect) gets no load events and no outcome here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
-      owner.newDocument()
-      owner.loading = true
-      owner.outcome = null
-      owner.stateChanged()
+      owner.endDocument(DocumentEnd.COMMITTED)
+      owner.loadStarted()
     }
     observing("onPageStarted", WEB_VIEW, STRING, Bitmap::class.java) { it.onPageStarted(view, url, favicon) }
   }
@@ -133,9 +124,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun onPageFinished(view: WebView, url: String?) {
     if (!owner.hasNavigationListener) {
       owner.outcome = owner.outcome ?: "finished" // "failed" when a main-frame error came first
-      owner.loading = false
-      owner.pageFinished()
-      owner.stateChanged()
+      owner.loadEnded()
     }
     observing("onPageFinished", WEB_VIEW, STRING) { it.onPageFinished(view, url) }
   }

@@ -1,7 +1,7 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
 // and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions changes a hook hears, the
-// DocumentScope dispatch cases, the Asks contract and ReadAccess's roots. Not part of the pod (see the podspec).
-//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentScope.swift ios/Asks.swift \
+// Asks contract and ReadAccess's roots. Not part of the pod (see the podspec).
+//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift \
 //     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
 import Foundation
 import WebKit
@@ -74,29 +74,6 @@ for (scheme, host, port, expected) in [
   let got = OriginRules.origin(scheme, host, port)
   check("origin(\(scheme), \(host), \(port)): expected \(expected), got \(got)", got == expected)
 }
-
-// DocumentScope: every registrant hears each end once, in registration order; one added after an end hears the next.
-let scope = DocumentScope()
-var heard: [String] = []
-scope.register { heard.append("a:\($0)") }
-scope.register { heard.append("b:\($0)") }
-scope.end(.committed)
-scope.end(.crashed)
-check("document scope order: \(heard)", heard == ["a:committed", "b:committed", "a:crashed", "b:crashed"])
-var late: [DocumentEnd] = []
-scope.register { late.append($0) }
-scope.end(.closing)
-check("document scope late registrant: \(late)", late == [.closing])
-// A skipsOpening registrant doesn't hear the commit that opens a Document with none open: the first, or the one after
-// a crash. Every other end, a crash or close with none open included, reaches it.
-let opening = DocumentScope()
-var skipped: [DocumentEnd] = []
-var unskipped: [DocumentEnd] = []
-opening.register(skipsOpening: true) { skipped.append($0) }
-opening.register { unskipped.append($0) }
-let openingEnds: [DocumentEnd] = [.committed, .committed, .crashed, .crashed, .committed, .committed, .closing]
-openingEnds.forEach(opening.end)
-check("document scope opening: \(skipped), \(unskipped)", skipped == [.committed, .crashed, .crashed, .committed, .closing] && unskipped == openingEnds)
 
 // Asks: each ask is answered once, by JS or with nil when native gives up; JS hears of a cancel except at closing.
 var sent: [[String: Any]] = []

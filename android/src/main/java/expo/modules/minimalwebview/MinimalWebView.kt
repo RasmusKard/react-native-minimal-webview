@@ -36,7 +36,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
-  private val document = DocumentScope()
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
@@ -108,15 +107,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // Reset in this order at every end; the asks last, so a throw in hook or Chromium code can't skip the core's
-    // resets.
-    document.register { fileUpload.cancel() }
-    document.register { navigation.documentEnded() }
-    document.register { scripts.documentEnded(it) }
-    document.register { fullscreen.documentEnded(it) }
-    document.register(skipsOpening = true) { asks.documentEnded(it) }
-    // The hooks' own handlers, per attach: the scope has no unregister, and a crash attaches the hooks again.
-    document.register(skipsOpening = true) { reason -> hookContexts.forEach { it.documentEnded(reason) } }
   }
 
   private fun createWebView(): WebView {
@@ -312,9 +302,34 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   fun emit(name: String, payload: Map<String, Any?>) = onHookEvent(mapOf("name" to name, "payload" to payload))
 
-  internal fun newDocument() = document.end(DocumentEnd.COMMITTED)
+  private var documentOpen = false
 
-  internal fun pageFinished() = refresher.pageFinished()
+  internal fun endDocument(reason: DocumentEnd) {
+    // The first commit after mount or a crash opens a Document and ends none: the asks and hooks don't hear it.
+    val opening = reason == DocumentEnd.COMMITTED && !documentOpen
+    documentOpen = reason == DocumentEnd.COMMITTED
+    fileUpload.cancel()
+    navigation.documentEnded()
+    scripts.documentEnded(reason)
+    fullscreen.documentEnded(reason)
+    if (opening) return
+    // The asks and hooks last, so a throw in hook or Chromium code can't skip the core's resets.
+    asks.documentEnded(reason)
+    hookContexts.forEach { it.documentEnded(reason) }
+  }
+
+  internal fun loadStarted() {
+    loading = true
+    outcome = null
+    stateChanged()
+  }
+
+  /** A load ended (callers set outcome first): loading stops, and the spinner with it. */
+  internal fun loadEnded() {
+    loading = false
+    refresher.pageFinished()
+    stateChanged()
+  }
 
   internal fun bridgePost(message: String) = scripts.post(message)
 
@@ -328,7 +343,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun processGone(didCrash: Boolean, at: Long) {
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
-    document.end(DocumentEnd.CRASHED)
+    endDocument(DocumentEnd.CRASHED)
     val detached = detachHooks()
     val dead = webView
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
@@ -343,7 +358,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     loading = false
     pendingUrl = null
     progress = 0.0
-    pageFinished()
+    refresher.pageFinished()
     onProcessGone(mapOf("didCrash" to didCrash, "recovered" to reload))
     // A detached view's window reports GONE: onWindowVisibilityChanged recovers once it is shown.
     if (windowVisibility == View.VISIBLE) recover()
@@ -380,7 +395,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun destroy() {
     destroyed = true
     pendingRecovery = null
-    document.end(DocumentEnd.CLOSING)
+    endDocument(DocumentEnd.CLOSING)
     val detached = detachHooks()
     downloads.detach()
     if (hasWebView) {

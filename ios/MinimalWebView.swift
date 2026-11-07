@@ -63,7 +63,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The URL this view loads itself (source, reload after an error, an allowed new window): it skips the rules.
   var programmaticUrl: URL?
   private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
-  let document = DocumentScope()
   /// The attached hooks' contexts in attach order, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [HookContext] = []
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
@@ -94,24 +93,26 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
-    // Reset in this order at every end. In the deinit fallback self is already nil, so only the asks end (captured
-    // without the view): WebKit throws for a decision handler released uncalled.
-    document.register(skipsOpening: true) { [asks] in asks.documentEnded($0) }
-    document.register { [weak self] _ in self?.failEvaluations() }
-    document.register { [weak self] reason in
-      guard let self else { return }
-      bridgeOrigin = nil
-      // JS queues bridge messages until the next page is ready; at unmount it rejects what is in flight itself.
-      if reason != .closing, bridgeScript != nil { onBridge(["navigated": true]) }
-    }
-    document.register { [weak self] _ in self?.askedAndAllowed.removeAll() }
-    document.register { [weak self] _ in self?.dismissDialog() }
+    // Made here, not lazily in the deinit fallback's endDocument(.closing), where its closure can't form a weak self.
+    _ = asks
+  }
+
+  private var documentOpen = false
+
+  private func endDocument(_ reason: DocumentEnd) {
+    // The first commit after mount or a crash opens a Document and ends none: the asks and hooks don't hear it.
+    let opening = reason == .committed && !documentOpen
+    documentOpen = reason == .committed
+    if !opening { asks.documentEnded(reason) }
+    failEvaluations()
+    bridgeOrigin = nil
+    // JS queues bridge messages until the next page is ready; at unmount it rejects what is in flight itself.
+    if reason != .closing, bridgeScript != nil { onBridge(["navigated": true]) }
+    askedAndAllowed.removeAll()
+    dismissDialog()
     // The spinner belongs to a load, and a crash ends the load without a delegate callback.
-    document.register { [weak self] reason in if reason == .crashed { self?.refreshControl.endRefreshing() } }
-    // The hooks' own handlers, on their contexts: the scope has no unregister.
-    document.register(skipsOpening: true) { [weak self] reason in
-      self?.hookContexts.forEach { $0.documentEnded(reason) }
-    }
+    if reason == .crashed { refreshControl.endRefreshing() }
+    if !opening { hookContexts.forEach { $0.documentEnded(reason) } }
   }
 
   /// Called once per prop batch. `source` loads last so everything else is ready first.
@@ -257,7 +258,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// Once: from invalidate, or from deinit if that never ran.
   private func tearDown() {
     guard let webView else { return }
-    document.end(.closing)
+    endDocument(.closing)
     cookies.detach()
     let closed = hookContexts
     closed.forEach { $0.detach() }
@@ -390,7 +391,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-    document.end(.committed)
+    endDocument(.committed)
     programmaticUrl = nil
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
@@ -425,7 +426,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is null on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
-    document.end(.crashed)
+    endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered {
       // The source again, with its headers (an html one isn't in the history), also when nothing has committed yet.
