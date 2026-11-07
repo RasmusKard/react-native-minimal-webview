@@ -116,8 +116,8 @@ export type NativeMethods = {
   reload(): Promise<void>;
   stopLoading(): Promise<void>;
   bridgePost(message: string): Promise<void>;
-  /** Answers a native `ask`. The value is wrapped: native arguments can't be of any type. */
-  answer(askId: number, answer: { value: unknown }): Promise<void>;
+  /** Answers a native `ask`. `json` is JSON, as for `call`. */
+  answer(askId: number, json: string): Promise<void>;
   /** The JSON-encoded result. */
   evaluate(script: string): Promise<string>;
   /** Reads a platform setting: the JSON of its value. */
@@ -284,7 +284,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     if (askId === undefined) return;
     asks.delete(askId);
     // Native already answered a cancelled ask with null; a late answer would find nothing.
-    if (!controller?.signal.aborted) await native.current?.answer(askId, { value: value ?? null });
+    if (!controller?.signal.aborted) await native.current?.answer(askId, answerJson(value));
   };
 
   return (
@@ -309,6 +309,15 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       onProcessGone={({ nativeEvent }) => props.onProcessGone?.(own(nativeEvent))}
     />
   );
+}
+
+/** An ask's answer for native: null for one JSON can't encode (a function, a cycle, a BigInt), so the ask settles. */
+function answerJson(value: unknown) {
+  try {
+    return JSON.stringify(value) ?? 'null';
+  } catch {
+    return 'null';
+  }
 }
 
 /**
