@@ -1384,23 +1384,6 @@
         
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  NavigationEvent
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -1416,65 +1399,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#type-declaration" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Declaration
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Type Declaration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#action" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        action
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rule" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        rule
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -6191,11 +6115,6 @@
                       
                     
                     
-                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-                      <div class="md-sidebar-button__wrapper">
-                        <label class="md-sidebar-button" for="__toc"></label>
-                      </div>
-                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -6207,53 +6126,6 @@
   
     
   
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#type-declaration" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Declaration
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Type Declaration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#action" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        action
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rule" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        rule
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -6422,12 +6294,12 @@
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kr">type</span><span class="w"> </span><span class="nx">NavigationEvent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">NavigationRequest</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="nx">object</span><span class="p">;</span>
 </span></code></pre></div>
 <p>A navigation decision, for <code>onNavigation</code>.</p>
-<h2 id="type-declaration">Type Declaration<a class="headerlink" href="#type-declaration" title="Permanent link">&para;</a></h2>
-<h3 id="action">action<a class="headerlink" href="#action" title="Permanent link">&para;</a></h3>
+<p><strong>Type Declaration</strong></p>
+<p><strong>action</strong></p>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="kt">NavigationAction</span><span class="p">;</span>
 </span></code></pre></div>
 <p>Without <code>onOpenExternal</code>, or when it returns false, an <code>external</code> URL that no app opens is reported as <code>block</code>.</p>
-<h3 id="rule">rule<a class="headerlink" href="#rule" title="Permanent link">&para;</a></h3>
+<p><strong>rule</strong></p>
 <div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">rule</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
 </span></code></pre></div>
 <p>Index of the matching rule in <code>navigationRules</code>, or in <a href="../../variables/defaultNavigationRules/">defaultNavigationRules</a> when that is unset; null when

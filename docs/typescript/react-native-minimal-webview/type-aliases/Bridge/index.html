@@ -1817,28 +1817,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#see" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        See
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#type-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Parameters
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#methods" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6287,28 +6265,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#see" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        See
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#type-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Type Parameters
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#methods" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6576,9 +6532,9 @@ meanwhile, and only the latest 1000 are kept: an older call rejects with <code>u
 Unmounting rejects the calls in flight with <code>navigated</code>.</p>
 <p>The page's <code>window.nativeBridge</code> has the same four methods, <code>call(method, params?, { timeoutMs? })</code>, <code>handle</code>, <code>emit</code>
 and <code>on</code>, and its calls reject with a <a href="../CodedError/">CodedError</a>.</p>
-<h2 id="see">See<a class="headerlink" href="#see" title="Permanent link">&para;</a></h2>
+<p><strong>See</strong></p>
 <p><a href="https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge">Bridge example</a></p>
-<h2 id="type-parameters">Type Parameters<a class="headerlink" href="#type-parameters" title="Permanent link">&para;</a></h2>
+<p><strong>Type Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6608,7 +6564,7 @@ and <code>on</code>, and its calls reject with a <a href="../CodedError/">CodedE
 <p>Calls a method the page registered with <code>nativeBridge.handle</code>.</p>
 <p>Rejects with a <a href="../CodedError/">CodedError</a>: <code>timeout</code>, <code>not_found</code>, <code>handler_error</code>, <code>navigated</code> or <code>unavailable</code>.
 <code>timeoutMs</code> overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain <code>RangeError</code>.</p>
-<h4 id="type-parameters_1">Type Parameters<a class="headerlink" href="#type-parameters_1" title="Permanent link">&para;</a></h4>
+<p><strong>Type Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6656,7 +6612,7 @@ and <code>on</code>, and its calls reject with a <a href="../CodedError/">CodedE
 </span></code></pre></div>
 <p>Fires an event the page listens to with <code>nativeBridge.on</code>.</p>
 <p>Dropped if the page goes away before it arrives, or if the page has no listener for it.</p>
-<h4 id="type-parameters_2">Type Parameters<a class="headerlink" href="#type-parameters_2" title="Permanent link">&para;</a></h4>
+<p><strong>Type Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6696,7 +6652,7 @@ and <code>on</code>, and its calls reject with a <a href="../CodedError/">CodedE
 </span></code></pre></div>
 <p>Answers <code>nativeBridge.call(method, params)</code> from the page.</p>
 <p>One handler per method: a later one replaces it. Returns an unsubscribe function, which removes only this handler.</p>
-<h4 id="type-parameters_3">Type Parameters<a class="headerlink" href="#type-parameters_3" title="Permanent link">&para;</a></h4>
+<p><strong>Type Parameters</strong></p>
 <table>
 <thead>
 <tr>
@@ -6736,7 +6692,7 @@ and <code>on</code>, and its calls reject with a <a href="../CodedError/">CodedE
 </span></code></pre></div>
 <p>Listens to <code>nativeBridge.emit(event, payload)</code> from the page. Returns an unsubscribe function.</p>
 <p>A listener that throws is reported as an unhandled promise rejection, and the event's later listeners don't run.</p>
-<h4 id="type-parameters_4">Type Parameters<a class="headerlink" href="#type-parameters_4" title="Permanent link">&para;</a></h4>
+<p><strong>Type Parameters</strong></p>
 <table>
 <thead>
 <tr>
