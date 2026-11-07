@@ -2,9 +2,8 @@ import { requireNativeModule, requireNativeView } from 'expo';
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, type ViewProps } from 'react-native';
 
-import { CONNECTION } from './bridge/createBridge';
-import { codedError, invalidOrigins, originForms } from './bridge/endpoint';
-import { MATCHES_ORIGIN } from './bridge/pageClient.generated';
+import { CONNECTION, originGuard } from './bridge/createBridge';
+import { codedError } from './bridge/endpoint';
 import { defaultNavigationRules } from './defaultNavigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
 import { useAttach } from './refStore';
@@ -312,16 +311,8 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
   return scripts?.map(({ code, allFrames, origins }) => {
     if (!Array.isArray(origins))
       throw new Error("injectedScripts: every script needs origins (['*'] for every origin)");
-    const invalid = invalidOrigins(origins);
-    if (invalid.length) {
-      throw new Error(
-        `injectedScripts: invalid origins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
-      );
-    }
-    const forms = originForms(origins);
-    if (forms.any) return { code, allFrames };
-    const guard = `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
-    return { code: `if (${guard}) (() => {\n${code}\n})();`, allFrames };
+    const guard = originGuard('injectedScripts: invalid origins', origins);
+    return { code: guard ? `if (${guard}) (() => {\n${code}\n})();` : code, allFrames };
   });
 }
 

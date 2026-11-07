@@ -6,8 +6,9 @@ import type {
   BridgeSender,
 } from '../types';
 import { DEFAULTS } from '../types.defaults';
-import { codedError, createEndpoint, invalidOrigins } from './endpoint';
-import { PAGE_CLIENT } from './pageClient.generated';
+import { codedError, createEndpoint } from './endpoint';
+import { invalidOrigins, originForms } from './origins';
+import { MATCHES_ORIGIN, PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
 /** What `<WebView>` needs from a bridge: `Bridge`'s `[CONNECTION]`, a key the package doesn't export. */
@@ -27,6 +28,21 @@ export type BridgeConnection = {
 
 export const CONNECTION = Symbol('bridgeConnection');
 
+/**
+ * A page-side expression true where `location.origin` matches `origins`, or null when they include `*`. Throws an
+ * `Error` starting with `what` for a rule that is neither `*` nor what `parseOrigin` takes.
+ */
+export function originGuard(what: string, origins: string[]): string | null {
+  const invalid = invalidOrigins(origins);
+  if (invalid.length) {
+    throw new Error(
+      `${what} ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
+    );
+  }
+  const forms = originForms(origins);
+  return forms.any ? null : `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
+}
+
 const MAX_QUEUE = 1000;
 
 /**
@@ -42,13 +58,8 @@ export function createBridge<
   Methods extends BridgeMethodMap = BridgeMethodMap,
   Events extends BridgeEventMap = BridgeEventMap,
 >(options: BridgeOptions): Bridge<Methods, Events> {
-  // `*` or what the page client parses: addWebMessageListener's rules minus custom schemes.
-  const invalid = invalidOrigins(options.allowedOrigins);
-  if (invalid.length) {
-    throw new Error(
-      `createBridge: invalid allowedOrigins ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
-    );
-  }
+  // `*` or what origins.ts parses: addWebMessageListener's rules minus custom schemes.
+  const guard = originGuard('createBridge: invalid allowedOrigins', options.allowedOrigins);
   const timeoutMs = options.timeoutMs ?? DEFAULTS.BridgeOptions.timeoutMs;
   if (!(timeoutMs >= 0)) {
     throw new Error(
@@ -120,7 +131,7 @@ export function createBridge<
 
   const connection: BridgeConnection = {
     allowedOrigins: options.allowedOrigins,
-    script: `(${PAGE_CLIENT})(window, ${Number(timeoutMs)}, ${JSON.stringify(options.allowedOrigins)});`,
+    script: `${guard ? `if (${guard}) ` : ''}(${PAGE_CLIENT})(window, ${Number(timeoutMs)});`,
     attach(next) {
       // Two WebViews would steal each other's replies, and either one's detach would cut off the other.
       if (post)
