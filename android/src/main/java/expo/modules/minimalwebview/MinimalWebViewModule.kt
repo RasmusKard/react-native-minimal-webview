@@ -170,15 +170,10 @@ private fun live(view: MinimalWebView, action: (WebView) -> Unit) {
   if (!view.recovering) action(view.webView)
 }
 
-private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) {
-  if (view.recovering) return promise.reject("unavailable", RECOVERING, null)
+private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) = native(view, promise) {
   val handler = view.hookHandler(name, method)
-    ?: return promise.reject("not_found", "no attached hook `$name` handles `$method`", null)
-  try {
-    handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } }
-  } catch (e: Exception) {
-    promise.reject("native_error", e.message, e)
-  }
+    ?: throw PlatformException("not_found", "no attached hook `$name` handles `$method`")
+  handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } }
 }
 
 /**
