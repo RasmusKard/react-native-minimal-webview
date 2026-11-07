@@ -87,12 +87,6 @@ class HooksTest {
   }
 
   @Test
-  fun `an extension's options turn its hook on unless they are null or false`() {
-    for (value in listOf(null, false)) assertFalse("$value", enables(value))
-    for (value in listOf(true, 0.0, "", mapOf<String, Any>(), listOf<Any>())) assertTrue("$value", enables(value))
-  }
-
-  @Test
   fun `the hooks under the creation keys attach in registration order, and a key without one is reported`() {
     val (attaching, unregistered) = selectHooks(listOf(hook("b"), hook("a"), hook("c")), setOf("a", "b", "typo"))
     assertEquals(listOf("b", "a"), attaching.map { it.key })
@@ -134,26 +128,6 @@ class HooksTest {
   }
 
   @Test
-  fun `a key turned on while not attached is added late, and an attached one never is`() {
-    val attached = setOf("a")
-    assertTrue(addedLate("b", null, mapOf("enabled" to false), attached))
-    assertTrue(addedLate("b", false, 0.0, attached))
-    assertFalse("on already, so attached or warned already", addedLate("b", true, mapOf("enabled" to false), attached))
-    assertFalse("turned off", addedLate("b", true, false, attached))
-    assertFalse("attached, so its hook gets the change", addedLate("a", false, true, attached))
-  }
-
-  @Test
-  fun `a late key attaches a hook without configure or a factory, and warns for one with either or none`() {
-    assertNull(lateAttachWarning("a", hook("a")))
-    val configured = MinimalWebViewHooks.Hook("b", null, { _, _ -> }) { _, _ -> }
-    assertTrue(lateAttachWarning("b", configured).orEmpty().contains("attaches only when the WebView is created"))
-    val made = hook("c") { WebView(it) }
-    assertTrue(lateAttachWarning("c", made).orEmpty().contains("attaches only when the WebView is created"))
-    assertTrue(lateAttachWarning("typo", null).orEmpty().contains("no hook is registered"))
-  }
-
-  @Test
   fun `a decision goes to the first client that overrides it, and two that do warn once per callback`() {
     val warnings = mutableListOf<String>()
     val deciders = Deciders { warnings += it }
@@ -186,19 +160,19 @@ class HooksTest {
 
   @Test
   fun `an off or detached attachment drops emits and answers asks null at once`() {
-    for (off in listOf(Attachment(null), Attachment(false), Attachment("on").also { it.detach() })) {
+    for (off in listOf(Attachment(null), Attachment("on").also { it.detach() })) {
       var sent = 0
       val answers = mutableListOf<Any?>()
-      off.emit { sent++ }
-      off.ask({ answers += it }) { sent++ }
+      off.ifRouted { sent++ }
+      off.askIfRouted({ answers += it }) { sent++ }
       assertEquals(0, sent)
       assertEquals(listOf<Any?>(null), answers)
     }
     val on = Attachment(true)
     var sent = 0
     val answers = mutableListOf<Any?>()
-    on.emit { sent++ }
-    on.ask({ answers += it }) { sent++ }
+    on.ifRouted { sent++ }
+    on.askIfRouted({ answers += it }) { sent++ }
     assertEquals(2, sent)
     assertTrue(answers.isEmpty())
   }
@@ -223,7 +197,7 @@ class HooksTest {
 
   @Test
   fun `an off hook's clients, chrome clients and listeners are not routed`() {
-    val off = Attachment(false)
+    val off = Attachment(null)
     off.clients += Plain()
     off.chromeClients += WebChromeClient()
     off.touchListeners += View.OnTouchListener { _, _ -> true }
@@ -235,11 +209,11 @@ class HooksTest {
   }
 
   @Test
-  fun `a false set after mount reaches the options handlers as null, and a value turns the hook on again`() {
+  fun `a key removed after mount reaches the options handlers as null, and a value turns the hook on again`() {
     val attachment = Attachment(mapOf("a" to 1.0))
     val seen = mutableListOf<Any?>()
     attachment.onOptionsChange { seen += it }
-    attachment.optionsChanged(false)
+    attachment.optionsChanged(null)
     assertNull(attachment.options)
     assertFalse(attachment.routed)
     attachment.optionsChanged(true)
@@ -278,19 +252,5 @@ class HooksTest {
     assertEquals(listOf("skips", "takes"), offered)
     off.optionsChanged(true)
     assertTrue(off.downloadStarted("u", "ua", "", "", -1))
-  }
-
-  @Test
-  fun `a change between two off values doesn't reach the options handlers`() {
-    val attachment = Attachment(false)
-    val seen = mutableListOf<Any?>()
-    attachment.onOptionsChange { seen += it }
-    attachment.optionsChanged(null)
-    attachment.optionsChanged(false)
-    assertTrue(seen.isEmpty())
-    attachment.optionsChanged(true)
-    attachment.optionsChanged(false)
-    attachment.optionsChanged(null)
-    assertEquals(listOf<Any?>(true, null), seen)
   }
 }

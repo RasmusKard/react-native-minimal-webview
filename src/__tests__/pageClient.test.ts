@@ -7,13 +7,12 @@ type NativeBridge = {
   __receive(text: string): Promise<void>;
 };
 
-/** A page on an allowed origin with the Android transport: records what the page sends and its pageshow listener. */
+/** A page with the Android transport: records what the page sends and its pageshow listener. */
 function page(readyState = 'complete') {
   const sent: { kind: string; id?: string; doc?: string; value?: unknown }[] = [];
   let onDomReady: (() => void) | undefined;
   let onPageShow: ((event: { persisted: boolean }) => void) | undefined;
   const w = {
-    location: { origin: 'https://example.com' },
     nativeBridgeTransport: {
       postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
       onmessage: null,
@@ -29,7 +28,7 @@ function page(readyState = 'complete') {
     },
   } as unknown as PageWindow;
   Object.assign(w, { top: w });
-  installPageClient(w, 10_000, ['https://example.com']);
+  installPageClient(w, 10_000);
   const bridge = w.nativeBridge as NativeBridge;
   return {
     sent,

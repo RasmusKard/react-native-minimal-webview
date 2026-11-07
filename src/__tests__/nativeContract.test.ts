@@ -82,7 +82,10 @@ test('the page requests JS routes are the ones native asks for, and each platfor
   expect(asked.filter((name) => !requests.includes(name))).toEqual([]);
   expect(gated('android', /"(\w+)" !?in owner\.requestHandlers/g)).toEqual(requests);
   expect(
-    [...gated('ios', /requestHandlers\.contains\("(\w+)"\)/g), ...ANDROID_ONLY_REQUESTS].sort()
+    [
+      ...new Set(gated('ios', /requestHandlers\.contains\("(\w+)"\)/g)),
+      ...ANDROID_ONLY_REQUESTS,
+    ].sort()
   ).toEqual(requests);
   told.forEach((name) => expect(ts).toContain(`\`\${CORE}${name}\``));
 });
@@ -370,10 +373,14 @@ const outcome = { finished: 1, failed: 1, cancelled: 1 } satisfies Record<
 >;
 const kind = { network: 1, ssl: 1, http: 1 } satisfies Record<LoadErrorEvent['kind'], 1>;
 const downloadKind = { network: 1, http: 1, data: 1 } satisfies Record<DownloadFailure['kind'], 1>;
-const source = { uri: 1, headers: 1, body: 1, readAccessRoot: 1, html: 1, baseUrl: 1 } satisfies Record<
-  AllKeys<WebViewSource>,
-  1
->;
+const source = {
+  uri: 1,
+  headers: 1,
+  body: 1,
+  readAccessRoot: 1,
+  html: 1,
+  baseUrl: 1,
+} satisfies Record<AllKeys<WebViewSource>, 1>;
 // `origins` stays in JS: WebView.tsx folds it into the code.
 const script = { code: 1, allFrames: 1 } satisfies Record<keyof Omit<InjectedScript, 'origins'>, 1>;
 const iosRoots = {
@@ -554,7 +561,13 @@ test('the bridge transport has the names the page client uses', () => {
 });
 
 // What only one platform's hooks get.
-const ANDROID_ONLY_CONTEXT = ['chromeClients', 'clients', 'onDownloadStart', 'scrollListeners', 'touchListeners'];
+const ANDROID_ONLY_CONTEXT = [
+  'chromeClients',
+  'clients',
+  'onDownloadStart',
+  'scrollListeners',
+  'touchListeners',
+];
 const IOS_ONLY_CONTEXT = ['navigationDelegates', 'refreshControl', 'uiDelegates'];
 
 test("a hook's WebViewContext has the same members on both platforms, bar the platform-only ones", () => {

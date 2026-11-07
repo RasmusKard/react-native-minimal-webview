@@ -189,7 +189,7 @@ final class HookContext: WebViewContext {
   init(_ hook: MinimalWebViewHooks.Hook, _ view: MinimalWebView) {
     self.hook = hook
     self.view = view
-    options = enabledValue(view.hookOptions[hook.key])
+    options = view.hookOptions[hook.key]
   }
 
   /// The view closed: the context keeps nothing of it and nothing the hook gave it, and nothing routes it.
@@ -246,7 +246,7 @@ final class HookContext: WebViewContext {
   }
 
   func optionsChanged(_ value: Any?) {
-    options = enabledValue(value)
+    options = value
     view?.routeDelegates()
     optionsHandlers.forEach { $0(options) }
   }

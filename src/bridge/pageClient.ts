@@ -4,7 +4,7 @@
 // WKScriptMessageHandler at `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at
 // `window.nativeBridgeTransport`), native -> page through `__receive` (iOS callAsyncJavaScript) or the transport's
 // `onmessage` (Android). Messages follow ./protocol.ts; answers to either side's calls travel as ordinary messages.
-import { createEndpoint, matchesOrigin, originForms } from './endpoint';
+import { createEndpoint } from './endpoint';
 import type { BridgeMessage as Message } from './protocol';
 
 type PageWindow = Window & {
@@ -18,11 +18,9 @@ type PageWindow = Window & {
   };
 };
 
-/** Installs only on an allowed origin (Android origin-rule format), matching what native accepts. */
-export function installPageClient(w: PageWindow, timeoutMs: number, allowedOrigins: string[]) {
-  const allowed = matchesOrigin(originForms(allowedOrigins), w.location.origin);
+export function installPageClient(w: PageWindow, timeoutMs: number) {
   // Main frame only (Android injects into allowed-origin iframes too, but only the main frame's messages are taken).
-  if (w.nativeBridge || !allowed || w !== w.top) return;
+  if (w.nativeBridge || w !== w.top) return;
   // This document's token (protocol.ts `doc`).
   const doc = Math.random().toString(36).slice(2, 10);
 

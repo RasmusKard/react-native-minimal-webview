@@ -7,6 +7,7 @@
   "mutate": [
     "src/bridge/createBridge.ts",
     "src/bridge/endpoint.ts",
+    "src/bridge/origins.ts",
     "src/bridge/protocol.ts",
     "src/bridge/pageClient.ts",
     "src/WebView.tsx",

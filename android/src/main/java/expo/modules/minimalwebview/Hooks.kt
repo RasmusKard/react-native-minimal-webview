@@ -98,8 +98,6 @@ object MinimalWebViewHooks {
   }
 }
 
-internal fun enables(value: Any?) = value != null && value != false
-
 /**
  * Which [hooks] attach to a WebView created with the enabled `hookOptions` [keys]: the ones registered under them, in
  * registration order. Second, the keys no hook is registered under.
@@ -124,24 +122,6 @@ internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<Minima
   val named = attaching.filter { it.webViewFactory != null }
   val maker = named.firstOrNull()
   return maker to named.filter { it.webViewFactory !== maker?.webViewFactory }.map { it.key }
-}
-
-/**
- * Whether a `hookOptions` change from [old] to [value] turns on [key], one that is not attached ([keys]): its hook
- * attaches now, or [lateAttachWarning] says why not.
- */
-internal fun addedLate(key: String, old: Any?, value: Any?, keys: Set<String>) =
-  key !in keys && !enables(old) && enables(value)
-
-/** Why the [hook] registered under [key] can't attach to a WebView that exists already, or null when it can. */
-internal fun lateAttachWarning(key: String, hook: MinimalWebViewHooks.Hook?) = when {
-  hook == null -> "extension $key: no hook is registered under this key"
-  // configure runs before the package sets the WebView up, and a factory makes it: too late for one that exists.
-  hook.configure != null || hook.webViewFactory != null -> {
-    val why = if (hook.configure != null) "configure" else "a webViewFactory"
-    "extension $key: its hook has $why, so it attaches only when the WebView is created"
-  }
-  else -> null
 }
 
 /**
@@ -322,13 +302,12 @@ interface WebViewContext {
 }
 
 /**
- * What the core keeps for one [HookContext]: the hook's `hookOptions` value, its lists, and whether the core routes
- * them. Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach are
- * volatile; the rest is main thread only.
+ * [HookContext]'s base: the hook's `hookOptions` value (null while its key is absent), its lists, and whether the core
+ * routes them. Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach
+ * are volatile; the rest is main thread only.
  */
-internal class Attachment(value: Any?) {
-  /** The hook's `hookOptions` value; null while the hook is off. */
-  @Volatile var options: Any? = value.takeIf { enables(it) }
+internal open class Attachment(value: Any?) {
+  @Volatile var options: Any? = value
     private set
   @Volatile private var detached = false
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
@@ -349,16 +328,13 @@ internal class Attachment(value: Any?) {
     optionsHandlers += handler
   }
 
-  /**
-   * The hook's new `hookOptions` [value]: an off one (null or false) reaches the handlers as null, unless it was off
-   * already.
-   */
+  /** The hook's new `hookOptions` [value], null when its key is gone; the view calls it only for a changed value. */
   fun optionsChanged(value: Any?) {
-    if (options == null && !enables(value)) return
-    options = value.takeIf { enables(it) }
-    optionsHandlers.forEach { it(options) }
+    options = value
+    optionsHandlers.forEach { it(value) }
   }
 
+  /** The attach ended: the core routes nothing of it, and the emits and asks that follow reach nothing. */
   fun detach() {
     detached = true
   }
@@ -371,11 +347,11 @@ internal class Attachment(value: Any?) {
   fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =
     routed && downloadHandlers.any { it(url, userAgent, contentDisposition, mimeType, contentLength) }
 
-  fun emit(send: () -> Unit) {
+  fun ifRouted(send: () -> Unit) {
     if (routed) send()
   }
 
-  fun ask(onAnswer: (Any?) -> Unit, send: () -> Unit) {
+  fun askIfRouted(onAnswer: (Any?) -> Unit, send: () -> Unit) {
     if (routed) send() else onAnswer(null)
   }
 }
@@ -388,29 +364,19 @@ internal fun <T> routed(attachments: List<Attachment>, pick: (Attachment) -> Lis
  * A hook's view of the WebView, one per hook and WebView: the core's context with the hook's key on its events. The
  * handlers live here, so the WebView after a crash gets the ones its `attach` registers again.
  */
-internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view: MinimalWebView) : WebViewContext {
+internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view: MinimalWebView) :
+  Attachment(view.hookOptions[hook.key]), WebViewContext {
   val key get() = hook.key
-  val attachment = Attachment(view.hookOptions[hook.key])
-  override val options get() = attachment.options
   override val url get() = view.url
-  override val clients get() = attachment.clients
-  override val chromeClients get() = attachment.chromeClients
-  override val touchListeners get() = attachment.touchListeners
-  override val scrollListeners get() = attachment.scrollListeners
   private val documentEndHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
 
-  /** The attach ended: the core routes nothing of it, and the emits and asks that follow reach nothing. */
-  fun detach() = attachment.detach()
-
   override fun emit(name: String, payload: Map<String, Any?>) =
-    onMain { attachment.emit { view.emit("$key.$name", payload) } }
+    onMain { ifRouted { view.emit("$key.$name", payload) } }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { attachment.ask(onAnswer) { view.asks.ask("$key.$name", payload, onAnswer) } }
-
-  override fun onOptionsChange(handler: (Any?) -> Unit) = attachment.onOptionsChange(handler)
+    onMain { askIfRouted(onAnswer) { view.asks.ask("$key.$name", payload, onAnswer) } }
 
   override fun onDocumentEnd(handler: (DocumentEnd) -> Unit) {
     documentEndHandlers += handler
@@ -420,12 +386,6 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     destroyedHandlers += handler
   }
 
-  override fun onDownloadStart(
-    handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
-  ) {
-    attachment.onDownloadStart(handler)
-  }
-
   override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
     handlers[method] = handler
   }
@@ -433,10 +393,6 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   fun documentEnded(reason: DocumentEnd) = documentEndHandlers.forEach { it(reason) }
 
   fun destroyed(reason: DocumentEnd) = destroyedHandlers.forEach { it(reason) }
-
-  /** Whether one of this hook's download handlers took the download. */
-  fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =
-    attachment.downloadStarted(url, userAgent, contentDisposition, mimeType, contentLength)
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {

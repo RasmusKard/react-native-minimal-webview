@@ -32,8 +32,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var sharedCookies = false
   private let cookies = SharedCookies()
   var navigationRules: [[String: Any]]?
-  var injectedScripts: [InjectedScript] = []
-  var installedScripts: NSArray?
+  var injectedScripts: [InjectedScript] = [] {
+    didSet { if let webView { installScripts(webView.configuration.userContentController) } }
+  }
   /// The user scripts installScripts added: the others in the content controller are a hook's.
   var ownScripts: [WKUserScript] = []
   /// The page requests JS has a prop for (`download`, `navigationRequest`, ...), read when a request comes.
@@ -78,7 +79,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var updateScheduled = false
   private var crashTimes: [Date] = []
   /// `evaluate` calls waiting for their result, by id, until a new document or a dead web process rejects them.
-  var evaluations: [Int: (Result<String, EvaluateError>) -> Void] = [:]
+  var evaluations: [Int: Promise] = [:]
   var nextEvaluation = 0
 
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
@@ -117,9 +118,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   func applyProps() {
     if webView == nil { createWebView() }
     guard let webView, !preparing else { return }
-    if installedScripts != injectedScripts.map({ $0.toDictionary() }) as NSArray {
-      installScripts(webView.configuration.userContentController)
-    }
     report(platformSettings.apply(settings, webView: webView))
     let refresh = pullToRefresh ? refreshControl : nil
     if webView.scrollView.refreshControl !== refresh { webView.scrollView.refreshControl = refresh }
@@ -209,10 +207,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // The creation-time settings (`ios.configuration`) and the configure hooks go first and the bridge after them,
     // so nothing they set displaces the content controller the bridge is installed in.
     report(platformSettings.apply(settings, webView: nil, configuration: configuration))
-    hookContexts = MinimalWebViewHooks.hooks.filter { enables(hookOptions[$0.key]) }.map { HookContext($0, self) }
+    hookContexts = MinimalWebViewHooks.hooks.filter { hookOptions[$0.key] != nil }.map { HookContext($0, self) }
     for context in hookContexts { context.hook.configure?(configuration, context) }
     // A typo, or a hook's module not linked or not rebuilt.
-    for key in hookOptions.keys where enables(hookOptions[key]) && !hookContexts.contains(where: { $0.key == key }) {
+    for key in hookOptions.keys where !hookContexts.contains(where: { $0.key == key }) {
       warn("extension \(key): no hook is registered under this key")
     }
     if bridgeScript != nil {
@@ -364,13 +362,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     decidePolicyFor navigationResponse: WKNavigationResponse,
     decisionHandler: @escaping @MainActor (WKNavigationResponsePolicy) -> Void
   ) {
-    if let policy = downloads.decidePolicy(for: navigationResponse) {
-      return decisionHandler(policy)
-    }
-    // A file no hook takes (no onDownload).
-    if Downloads.isDownload(navigationResponse), let url = navigationResponse.response.url {
-      openDownload(url)
-      return decisionHandler(.cancel)
+    if Downloads.isDownload(navigationResponse) {
+      if requestHandlers.contains("download") { return decisionHandler(.download) }
+      // A file no hook takes (no onDownload).
+      if let url = navigationResponse.response.url {
+        openDownload(url)
+        return decisionHandler(.cancel)
+      }
     }
     if navigationResponse.isForMainFrame, let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400 {
       onError(["kind": "http", "url": response.url?.absoluteString ?? "", "statusCode": response.statusCode])
@@ -387,7 +385,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func became(_ download: WKDownload, _ callback: (WKNavigationDelegate) -> Void) {
-    downloads.didBecome(download)
+    if requestHandlers.contains("download") { download.delegate = downloads }
     forward(callback)
   }
 
@@ -446,11 +444,10 @@ extension MinimalWebView {
   private func optionsChanged(from old: [String: Any]) {
     for key in inRegistrationOrder(Set(old.keys).union(hookOptions.keys), MinimalWebViewHooks.hooks.map(\.key)) {
       let (was, value) = (old[key], hookOptions[key])
-      guard enables(was) || enables(value) else { continue }
       if staysOn(was, value) { continue }
       if let context = hookContexts.first(where: { $0.key == key }) {
         context.optionsChanged(value)
-      } else if !enables(was) {
+      } else if was == nil {
         attachLate(key)
       }
     }

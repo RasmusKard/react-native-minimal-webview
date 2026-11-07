@@ -16,9 +16,9 @@ const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 describe('createBridge', () => {
   afterEach(() => jest.useRealTimers());
 
-  it('injects a page client that runs on its own, with its timeout and origins', async () => {
+  it('injects a page client that runs on its own, with its timeout', async () => {
     const { connection } = setup(2500);
-    expect(connection.script).toMatch(/\)\(window, 2500, \["https:\/\/example.com"\]\);$/);
+    expect(connection.script).toMatch(/\)\(window, 2500\);$/);
     const sent: { kind: string; doc: string; value?: unknown }[] = [];
     const transport = {
       postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
@@ -34,8 +34,11 @@ describe('createBridge', () => {
     };
     Object.assign(page, { top: page });
     // eslint-disable-next-line no-new-func -- because the script native injects is what this test runs, as the page would
-    const inject = new Function('window', connection.script) as (window: unknown) => void;
-    inject(page);
+    const inject = new Function('window', 'location', connection.script) as (
+      window: unknown,
+      location: unknown
+    ) => void;
+    inject(page, page.location);
     page.nativeBridge?.handle('double', (n) => n * 2);
     const doc = sent[0]?.doc;
     transport.onmessage?.({
@@ -209,18 +212,6 @@ describe('createBridge', () => {
     connection.markUnavailable();
     await expect(inFlight).rejects.toMatchObject({ code: 'unavailable' });
     await expect(bridge.call('later')).rejects.toMatchObject({ code: 'unavailable' });
-  });
-
-  it('rejects malformed allowedOrigins up front', () => {
-    expect(() => createBridge({ allowedOrigins: ['https://example.com/'] })).toThrow(
-      /invalid allowedOrigins/
-    );
-    expect(() => createBridge({ allowedOrigins: ['example.com'] })).toThrow(
-      /invalid allowedOrigins/
-    );
-    expect(() =>
-      createBridge({ allowedOrigins: ['*', 'https://*.example.com', 'http://localhost:8090'] })
-    ).not.toThrow();
   });
 
   it('queues messages after a navigation until the new page is ready', () => {

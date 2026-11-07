@@ -1,3 +1,4 @@
+import ExpoModulesCore
 import WebKit
 
 /// The scripts the view runs in the page: the injected scripts, `evaluate`, and the bridge transport (page -> RN through a
@@ -19,26 +20,25 @@ extension MinimalWebView {
       ownScripts.append(WKUserScript(source: code, injectionTime: .atDocumentStart, forMainFrameOnly: script.allFrames != true, in: .page))
     }
     (ownScripts + hooks).forEach { controller.addUserScript($0) }
-    installedScripts = injectedScripts.map { $0.toDictionary() } as NSArray
   }
 
   /// The `evaluate` ref method. A new document rejects what is still waiting: WebKit settles a call whose page went
   /// away seconds later or never.
-  func evaluate(_ script: String, onResult: @escaping (Result<String, EvaluateError>) -> Void) {
-    guard let webView else { return onResult(.failure(EvaluateError(code: "unavailable", message: "No WebView"))) }
+  func evaluate(_ script: String, _ promise: Promise) {
+    guard let webView else { return promise.reject("unavailable", "No WebView") }
     let id = nextEvaluation
     nextEvaluation += 1
-    evaluations[id] = onResult
+    evaluations[id] = promise
     let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
     webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { [weak self] result in
       // Already rejected when its page went away.
-      guard let onResult = self?.evaluations.removeValue(forKey: id) else { return }
+      guard let promise = self?.evaluations.removeValue(forKey: id) else { return }
       switch result {
-      case .success(let value): onResult(.success(value as? String ?? "null"))
+      case .success(let value): promise.resolve(value as? String ?? "null")
       case .failure(let error):
         // The thrown error's own text, as on Android; WebKit's localizedDescription is generic.
         let message = (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? error.localizedDescription
-        onResult(.failure(EvaluateError(code: "script_error", message: message)))
+        promise.reject("script_error", message)
       }
     }
   }
@@ -47,7 +47,7 @@ extension MinimalWebView {
   func failEvaluations() {
     let waiting = evaluations.values
     evaluations = [:]
-    waiting.forEach { $0(.failure(EvaluateError(code: "navigated", message: "the page navigated before the script finished"))) }
+    waiting.forEach { $0.reject("navigated", "the page navigated before the script finished") }
   }
 
   func bridgeReceive(_ message: WKScriptMessage) {
@@ -68,11 +68,6 @@ extension MinimalWebView {
     let deliver = "if (origin === '*' || location.origin === origin) window.nativeBridge?.__receive(message)"
     webView?.callAsyncJavaScript(deliver, arguments: ["message": text, "origin": bridgeOrigin], in: nil, in: .page)
   }
-}
-
-struct EvaluateError: Error {
-  let code: String
-  let message: String
 }
 
 /// Holds the view weakly: WKUserContentController retains its handlers.

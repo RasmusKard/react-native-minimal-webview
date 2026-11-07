@@ -153,22 +153,10 @@ func inRegistrationOrder(_ keys: Set<String>, _ registered: [String]) -> [String
   registered.filter(keys.contains) + keys.subtracting(registered).sorted()
 }
 
-/// A `hookOptions` value as its hook sees it: nil while the hook is off (nil, absent, null or false).
-func enabledValue(_ value: Any?) -> Any? {
-  guard let value, !(value is NSNull) else { return nil }
-  // An identity check: `as? Bool` would take an NSNumber 0 for false too.
-  return (value as AnyObject) !== kCFBooleanFalse ? value : nil
-}
-
-/// Whether a `hookOptions` value turns its hook on.
-func enables(_ value: Any?) -> Bool {
-  enabledValue(value) != nil
-}
-
 /// Whether a `hookOptions` change leaves the hook on with the same value, so its hook has nothing to hear. Both values
 /// must be on, and equal as JSON: `NSNumber(false).isEqual(NSNumber(0))` is true, at any depth, as Android's isn't.
 func staysOn(_ was: Any?, _ value: Any?) -> Bool {
-  guard let was = enabledValue(was), let value = enabledValue(value) else { return false }
+  guard let was, let value else { return false }
   let json = { (value: Any) in try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys]) }
   return json(was).map { $0 == json(value) } ?? false
 }

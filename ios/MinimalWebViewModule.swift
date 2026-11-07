@@ -45,7 +45,7 @@ public class MinimalWebViewModule: Module {
         hook(view, name, method, args, promise)
       }
       AsyncFunction("evaluate") { (view: MinimalWebView, script: String, promise: Promise) in
-        evaluate(view, script, promise)
+        view.evaluate(script, promise)
       }
     }
   }
@@ -56,15 +56,6 @@ private func call(_ view: MinimalWebView, _ path: String, _ argsJson: String, _ 
   native(view, promise) { webView in
     try view.platformSettings.call(path, args: args, webView: webView) { json, error in
       if let error { promise.reject("native_error", error) } else { promise.resolve(json) }
-    }
-  }
-}
-
-private func evaluate(_ view: MinimalWebView, _ script: String, _ promise: Promise) {
-  view.evaluate(script) { result in
-    switch result {
-    case .success(let json): promise.resolve(json)
-    case .failure(let error): promise.reject(error.code, error.message)
     }
   }
 }
