@@ -747,10 +747,10 @@ export type CodedError = Error & { code: ErrorCode };
  * unmounted), and a late answer is dropped.
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop. iOS shows a `UIAlertController` titled with the
- * frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
- * auth challenge is cancelled on Android, and gets WebKit's default handling on iOS: without a stored credential, the
- * site's 401 page shows. `dialogs` and `basicAuthCredential` of
- * `@react-native-minimal-webview/extensions` take them over, or a native hook does.
+ * frame's host, or `JavaScript` for a frame without one (`data:`, sandboxed, `file:`), one at a time (one that comes
+ * while another shows is cancelled), and Android WebView's own dialogs. An auth challenge is cancelled on Android, and
+ * gets WebKit's default handling on iOS: without a stored credential, the site's 401 page shows. `dialogs` and
+ * `basicAuthCredential` of `@react-native-minimal-webview/extensions` take them over, or a native hook does.
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
