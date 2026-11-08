@@ -216,10 +216,12 @@ async function reset(h: Harness) {
   h.setAsk(undefined);
   h.setPermission(undefined);
   h.setFileRequest(undefined);
-  const loads = h.events.loads.length;
-  h.remount();
-  // The state is the old WebView's until the new one reports: wait for the new one's load to end.
-  await waitFor(h, (s) => s.url !== '' && idle(s) && h.events.loads.slice(loads).includes('end'));
+  await waitForLoad(
+    h,
+    () => h.remount(),
+    (s) => s.url !== '' && idle(s),
+    10000
+  );
   clearEvents(h);
 }
 
@@ -260,6 +262,23 @@ export const waitFor = async (
 ) => (await until(() => predicate(h.state()), ms, 50)) === true;
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+
+/**
+ * Runs `act`, then waits for a load that ends after it (onLoadEnd) and for `done`, by default the idle page: whether
+ * both came within `ms`. Until the new load reports, the state can still be the old page's (or the old WebView's), so
+ * `done` alone could match too early.
+ */
+export async function waitForLoad(
+  h: Harness,
+  act: () => unknown,
+  done: (s: NavigationState) => boolean = idle,
+  ms = 15000
+) {
+  const loads = h.events.loads.length;
+  await act();
+  return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && done(s), ms);
+}
+
 /** An `onOpenExternal` that records each URL in `into` and answers that the app opened it. */
 export const recordExternal =
   (into: string[]): WebViewProps['onOpenExternal'] =>
@@ -884,25 +903,28 @@ export const fresh = (h: Harness, path: string) =>
   `${path.startsWith('http') ? '' : h.pages}${path}${path.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
 /**
- * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
- * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
- * that don't recreate it (`extensions`, whose keys pick the hooks with configure only when it is created), it
- * remounts too.
+ * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. With
+ * `remount`, for props that don't recreate it (`extensions`, whose keys pick the hooks with configure only when it is
+ * created), it remounts too.
  */
 export async function recreate(h: Harness, props: HarnessProps, remount = false) {
-  const loads = h.events.loads.length;
-  h.setProps(props);
-  if (remount) h.remount();
-  return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s), 15000);
+  return await waitForLoad(h, () => {
+    h.setProps(props);
+    if (remount) h.remount();
+  });
 }
 
-/** Loads `uri` and waits until it is the idle page and its load has ended. */
-export async function openPage(h: Harness, uri: string, ms = 15000) {
-  const loads = h.events.loads.length;
-  h.load(uri);
-  const ok = await waitFor(
+/** Loads `page`, a URL or a source with one, and waits until it is the idle page and its load has ended. */
+export async function openPage(
+  h: Harness,
+  page: string | Extract<WebViewSource, { uri: string }>,
+  ms = 15000
+) {
+  const source = typeof page === 'string' ? { uri: page } : page;
+  const ok = await waitForLoad(
     h,
-    (s) => s.url === uri && idle(s) && h.events.loads.slice(loads).includes('end'),
+    () => h.loadSource(source),
+    (s) => s.url === source.uri && idle(s),
     ms
   );
   await sleep(100); // events the native side sends right after onLoadEnd (onNavigation, an extension's)
@@ -1164,44 +1186,33 @@ async function crash(h: Harness) {
   r.check('a setting applies before a crash', !!(await userAgent()));
   clearEvents(h);
   const firstKillAt = Date.now();
-  const loadsBefore = h.events.loads.length;
   const countsBefore = h.events.pageCounts.length;
-  const first = await kill(1);
-  r.check('processGone reported and recovered', first?.recovered === true, first);
-  r.check(
-    'the page reloads',
-    await waitFor(
-      h,
-      (s) => h.events.loads.slice(loadsBefore).includes('end') && s.url === page && idle(s),
-      15000
-    ),
-    h.state()
+  let first: ProcessGoneEvent | undefined;
+  const reloaded = await waitForLoad(
+    h,
+    async () => (first = await kill(1)),
+    (s) => s.url === page && idle(s)
   );
+  r.check('processGone reported and recovered', first?.recovered === true, first);
+  r.check('the page reloads', reloaded, h.state());
   // A page other than the source reloads its history entry in place: back still goes to the page before it, and
   // forward from there to it (Android restores the dead WebView's history into the new one). This is the second of
   // the crash loop's kills.
   const second = fresh(h, '/bridge.html');
-  const loads = h.events.loads.length;
-  await h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`);
-  await waitFor(
+  await waitForLoad(
     h,
-    (s) => h.events.loads.slice(loads).includes('end') && s.url === second && idle(s),
-    15000
+    () => h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`),
+    (s) => s.url === second && idle(s)
   );
-  const reloads = h.events.loads.length;
-  const killed = await kill(2);
+  let killed: ProcessGoneEvent | undefined;
+  const inPlace = await waitForLoad(
+    h,
+    async () => (killed = await kill(2)),
+    (s) => s.url === second && idle(s) && s.canGoBack
+  );
   r.check(
     'a second page reloads in place, canGoBack unchanged',
-    killed?.recovered === true &&
-      (await waitFor(
-        h,
-        (s) =>
-          h.events.loads.slice(reloads).includes('end') &&
-          s.url === second &&
-          idle(s) &&
-          s.canGoBack,
-        15000
-      )),
+    killed?.recovered === true && inPlace,
     h.state()
   );
   h.ref.current?.goBack();
@@ -1227,11 +1238,9 @@ async function crash(h: Harness) {
   // Android builds a new WebView on recovery: its settings must be applied again.
   r.check('the setting is still applied after recovery', !!(await userAgent()));
 
-  const thirdLoads = h.events.loads.length;
-  await kill(3);
   // The recovery reload ends first: before WebView 146 the state reads idle before it starts, and it would cut off
   // the navigation below.
-  await waitFor(h, (s) => h.events.loads.slice(thirdLoads).includes('end') && idle(s), 15000);
+  await waitForLoad(h, () => kill(3));
   // The 4th kill cuts off a slow load: with no reload to end it, the core must. Before WebView 146 the load starts at
   // commit, after the delay, so the kill lands on the committed slow page instead.
   await until(
@@ -1259,14 +1268,12 @@ async function crash(h: Harness) {
     await waitFor(h, (s) => !s.loading, 5000),
     h.state()
   );
-  const retryLoads = h.events.loads.length;
-  h.ref.current?.reload();
   r.check(
     'reload() brings the page back after giving up',
-    (await waitFor(
+    (await waitForLoad(
       h,
-      (s) => s.url === onScreen && idle(s) && h.events.loads.slice(retryLoads).includes('end'),
-      15000
+      () => h.ref.current?.reload(),
+      (s) => s.url === onScreen && idle(s)
     )) && (await h.ref.current?.evaluate('location.href').catch(errorCode)) === onScreen,
     h.state()
   );
@@ -1300,13 +1307,10 @@ async function crash(h: Harness) {
   // A POST source on screen isn't sent again unasked (a payment form): recovery stops, and reload() sends it.
   const post = fresh(h, '/post');
   const body = `amount=9.99&t=${Date.now()}`;
-  h.loadSource({ uri: post, body });
-  await waitFor(h, (s) => s.url === post && idle(s));
+  await openPage(h, { uri: post, body }, 10000);
   const postGone = await kill(7);
   r.check('a POST source is not sent again on recovery', postGone?.recovered === false, postGone);
-  const postLoads = h.events.loads.length;
-  h.ref.current?.reload();
-  await waitFor(h, (s) => idle(s) && h.events.loads.slice(postLoads).includes('end'), 15000);
+  await waitForLoad(h, () => h.ref.current?.reload());
   r.check(
     'reload() sends the POST source after a crash',
     (await text(h, 'body')) === body,
@@ -2364,19 +2368,20 @@ async function fullscreen(h: Harness) {
   await sleep(300);
   r.info('TAP', await tapPoint(h, 'fullscreen'));
   await waitFor(h, () => h.events.fullscreen.at(-1) === true, 10000);
-  const [gone, loads] = [h.events.gone.length, h.events.loads.length];
-  r.info('KILL', 'in fullscreen');
-  await waitFor(h, () => h.events.gone.length > gone, 15000);
-  r.check(
-    'a crash leaves fullscreen',
-    await waitFor(h, () => h.events.fullscreen.at(-1) === false, 5000),
-    h.events.fullscreen
-  );
-  // The recovery load: the state reads idle until it starts, so wait for its end event, as the crash suite does.
-  await waitFor(
+  // The kill in fullscreen, then the recovery load.
+  await waitForLoad(
     h,
-    (s) => h.events.loads.slice(loads).includes('end') && s.url.includes('/media.html') && idle(s),
-    15000
+    async () => {
+      const gone = h.events.gone.length;
+      r.info('KILL', 'in fullscreen');
+      await waitFor(h, () => h.events.gone.length > gone, 15000);
+      r.check(
+        'a crash leaves fullscreen',
+        await waitFor(h, () => h.events.fullscreen.at(-1) === false, 5000),
+        h.events.fullscreen
+      );
+    },
+    (s) => s.url.includes('/media.html') && idle(s)
   );
   r.done();
 }
@@ -2649,8 +2654,7 @@ async function network(h: Harness) {
   const r = reporter('network');
 
   const headersPage = fresh(h, '/headers');
-  h.loadSource({ uri: headersPage, headers: { 'X-Test-Header': 'hello' } });
-  await waitFor(h, (s) => s.url === headersPage && idle(s));
+  await openPage(h, { uri: headersPage, headers: { 'X-Test-Header': 'hello' } }, 10000);
   r.check(
     'source.headers reach the first request',
     (await text(h, 'headers')).includes('"x-test-header":"hello"')
@@ -2847,17 +2851,19 @@ async function sources(h: Harness) {
 
   const post = fresh(h, '/post');
   const body = `amount=9.99&t=${Date.now()}`;
-  h.loadSource({ uri: post, body });
-  await waitFor(h, (s) => s.url === post && idle(s));
+  await openPage(h, { uri: post, body }, 10000);
   r.check(
     'source.body is sent as a form POST',
     (await text(h, 'body')) === body,
     await text(h, 'body')
   );
   await h.ref.current?.evaluate(`document.getElementById('body').textContent = 'stale'`);
-  const loads = h.events.loads.length;
-  h.ref.current?.reload();
-  await waitFor(h, () => h.events.loads.slice(loads).includes('end'));
+  await waitForLoad(
+    h,
+    () => h.ref.current?.reload(),
+    () => true,
+    10000
+  );
   await sleep(300);
   r.check('reload sends the POST again', (await text(h, 'body')) === body, await text(h, 'body'));
 
@@ -2870,8 +2876,12 @@ async function sources(h: Harness) {
     '<!doctype html><link rel="stylesheet" href="style.css"><script src="app.js"></script><p id="local">local</p>'
   );
   if (Platform.OS === 'android') h.setProps({ android: { settings: { allowFileAccess: true } } });
-  h.loadSource({ uri: index.uri });
-  await waitFor(h, (s) => s.url.endsWith('/index.html') && idle(s));
+  await waitForLoad(
+    h,
+    () => h.loadSource({ uri: index.uri }),
+    (s) => s.url.endsWith('/index.html') && idle(s),
+    10000
+  );
   const loaded = await h.ref.current?.evaluate(
     `[getComputedStyle(document.body).color, window.__asset, document.getElementById('local')?.textContent]`
   );
@@ -2889,9 +2899,7 @@ async function sources(h: Harness) {
     const without = [await read('app.js'), await read(server)];
     h.setProps({ ios: { preferences: { allowFileAccessFromFileURLs: true } } });
     await sleep(300);
-    const reloads = h.events.loads.length;
-    h.ref.current?.reload();
-    await waitFor(h, (s) => h.events.loads.slice(reloads).includes('end') && idle(s));
+    await waitForLoad(h, () => h.ref.current?.reload(), idle, 10000);
     const sibling = await read('app.js');
     r.check(
       'ios.preferences.allowFileAccessFromFileURLs lets a file: page fetch a sibling file',

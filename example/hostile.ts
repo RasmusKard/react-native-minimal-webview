@@ -17,6 +17,7 @@ import {
   tapPoint,
   until,
   waitFor,
+  waitForLoad,
 } from './harness';
 import { all } from './shapes';
 
@@ -507,9 +508,7 @@ async function fileScope({ h, r, android }: Suite) {
       readAccessRoot?: string,
       load = () => h.loadSource({ uri: file.uri, readAccessRoot })
     ) => {
-      const loads = h.events.loads.length;
-      load();
-      await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s));
+      await waitForLoad(h, load, idle, 10000);
       await sleep(300);
       return (await evaluate(
         h,
