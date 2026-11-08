@@ -48,10 +48,8 @@ export type Harness = {
   bridge: Bridge;
   /** Payloads of `pageEvent` events the page emitted. */
   pageEvents: unknown[];
-  setFileRequest: (
-    handler: ((request: FileRequest) => Promise<string[] | null>) | undefined
-  ) => void;
-  setPermission: (handler: ((request: PermissionRequest) => Promise<boolean>) | undefined) => void;
+  setFileRequest: (handler: WebViewProps['onFileRequest']) => void;
+  setPermission: (handler: WebViewProps['onPermissionRequest']) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
   setProps: (props: HarnessProps) => void;
   /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
@@ -793,11 +791,14 @@ async function upload(h: Harness) {
   file.write('hello from the app cache');
   const requests: FileRequest[] = [];
   let answer: string[] | null = null;
+  // With `hang`, the handler never settles; `abortedAt` is when its signal aborted.
   let hang = false;
-  h.setFileRequest(async (request) => {
+  let abortedAt = 0;
+  h.setFileRequest(async (request, signal) => {
     requests.push(request);
-    if (hang) return await new Promise<null>(() => {});
-    return answer;
+    if (!hang) return answer;
+    signal.addEventListener('abort', () => (abortedAt = Date.now()));
+    return await new Promise<null>(() => {});
   });
   const open = async () => {
     await openPage(h, fresh(h, '/upload.html'));
@@ -843,7 +844,8 @@ async function upload(h: Harness) {
     again
   );
 
-  // A handler that never settles holds the page's chooser (WebView allows one); the next page cancels it.
+  // A handler that never settles holds the page's chooser (WebView allows one); the next page cancels it and aborts
+  // the handler's signal.
   hang = true;
   const held = requests.length;
   r.info('TAP', 'never settles');
@@ -854,7 +856,14 @@ async function upload(h: Harness) {
     requests.length - held
   );
   hang = false;
+  const navigatedAt = Date.now();
   await open();
+  await until(() => abortedAt, 2000);
+  r.check(
+    "navigating away aborts the held handler's signal",
+    abortedAt >= navigatedAt,
+    abortedAt ? abortedAt - navigatedAt : 'not aborted'
+  );
   const afterHang = await tapAndRead('after navigation');
   r.check(
     'after navigating, the next request reaches JS and uploads',
@@ -2175,11 +2184,16 @@ async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequest[] = [];
   let answer = false;
-  const handler = async (request: PermissionRequest) => {
+  // With `hold`, the handler never settles unless `release` answers it; `abortedAt` is when its signal aborted.
+  let hold = false;
+  let release: (value: boolean) => void = () => {};
+  let abortedAt = 0;
+  h.setPermission(async (request, signal) => {
     asked.push(request);
-    return answer;
-  };
-  h.setPermission(handler);
+    if (!hold) return answer;
+    signal.addEventListener('abort', () => (abortedAt = Date.now()));
+    return await new Promise<boolean>((resolve) => (release = resolve));
+  });
   const press = async (id: string) => (await pageLog(h, () => click(h, id)))?.join() ?? 'no result';
   await openPage(h, fresh(h, '/device.html'));
   answer = false;
@@ -2237,16 +2251,7 @@ async function permissionsSuite(h: Harness) {
 
   // A handler that never settles: the next page cancels its request (deny), aborts its signal and asks the app again.
   await openPage(h, fresh(h, '/device.html'));
-  let release: (value: boolean) => void = () => {};
-  let abortedAt = 0;
-  h.setProps({
-    onPermissionRequest: (request, signal) => {
-      asked.push(request);
-      signal.addEventListener('abort', () => (abortedAt = Date.now()));
-      return new Promise<boolean>((resolve) => (release = resolve));
-    },
-  });
-  await sleep(300);
+  hold = true;
   askedBefore = asked.length;
   await click(h, 'camera');
   await until(() => asked.length > askedBefore, 10000, 200);
@@ -2255,8 +2260,7 @@ async function permissionsSuite(h: Harness) {
     asked.length === askedBefore + 1,
     asked.length - askedBefore
   );
-  h.setProps({});
-  await sleep(300);
+  hold = false;
   const navigatedAt = Date.now();
   await openPage(h, fresh(h, '/device.html'));
   await until(() => abortedAt, 2000);
