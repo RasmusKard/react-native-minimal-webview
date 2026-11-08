@@ -1388,6 +1388,9 @@ async function settings(h: Harness) {
   const { lines: warnings, warned, stop } = captureWarnings();
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
+  /** Whether `read` gives `want` within 3 s: a setting reaches the WebView, and the page, on their own schedule. */
+  const becomes = async (read: () => Promise<unknown> | undefined, want: unknown) =>
+    !!(await until(async () => (await read()) === want, 3000));
   // An 8px span's computed size: the minimum font size setting raises it.
   const fontSize = () =>
     page(`(() => {
@@ -1435,21 +1438,26 @@ async function settings(h: Harness) {
           },
         },
       });
-      await sleep(500);
       r.check(
         'a UIScrollView struct applies',
-        (await page('scrollY')) === 30,
+        await becomes(() => page('scrollY'), 30),
         await page('scrollY')
       );
+      // Removed by the update that set the offset, which has applied.
       r.check(
         'a removed key (preferences.minimumFontSize) goes back to its start-up value',
         (await get('preferences.minimumFontSize')) === 0
       );
       const width = (await page('innerWidth')) as number;
       h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
-      await sleep(500);
-      const zoomed = (await page('innerWidth')) as number;
-      r.check('a WKWebView number applies', Math.abs(zoomed * 2 - width) <= 2, { width, zoomed });
+      const zoomedIn = await until(
+        async () => Math.abs(((await page('innerWidth')) as number) * 2 - width) <= 2,
+        3000
+      );
+      r.check('a WKWebView number applies', !!zoomedIn, {
+        width,
+        zoomed: await page('innerWidth'),
+      });
       h.setProps({
         ios: {
           configuration,
@@ -1470,8 +1478,8 @@ async function settings(h: Harness) {
           scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
         },
       });
-      await sleep(500);
-      r.check('get reads a BOOL', (await get('scrollView.bounces')) === false);
+      // bounces starts out true; the inset comes in the same update.
+      r.check('get reads a BOOL', await becomes(() => get('scrollView.bounces'), false));
       const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
       r.check(
         'get reads a struct',
@@ -1604,9 +1612,8 @@ async function settings(h: Harness) {
           webView: { networkAvailable: false, other: { _private: 1, webViewClient: null } },
         },
       });
-      await sleep(500);
-      r.check('a WebSettings setter applies', (await fontSize()) === '30px', await fontSize());
-      r.check('a WebView setter applies', (await page('navigator.onLine')) === false);
+      r.check('a WebSettings setter applies', await becomes(fontSize, '30px'), await fontSize());
+      r.check('a WebView setter applies', await becomes(() => page('navigator.onLine'), false));
       await openPage(h, fresh(h, '/'));
       const paymentAfter = await payment();
       r.since(
