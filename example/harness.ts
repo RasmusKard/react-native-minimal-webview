@@ -301,8 +301,11 @@ const viewportHeight = async (h: Harness) =>
     `(() => { const d = document.createElement('div'); d.style.height = '100vh'; document.body.append(d); const v = d.offsetHeight; d.remove(); return v; })()`
   )) as number;
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
-const click = (h: Harness, id: string) =>
-  h.ref.current?.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
+/** A click from script on `id`; with `frame`, on an element in that same-origin iframe. */
+const click = (h: Harness, id: string, frame?: string) =>
+  h.ref.current?.evaluate(
+    `${frame ? `document.getElementById(${JSON.stringify(frame)}).contentDocument` : 'document'}.getElementById(${JSON.stringify(id)}).click()`
+  );
 
 /** Committed url and the page's location.href agree, once the coalesced state event has arrived. */
 async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
@@ -975,6 +978,16 @@ export const tapPoint = async (h: Harness, id: string, frame?: string) =>
     ];
   })()`)) as [number, number]
   ).join(' ');
+
+/**
+ * A user gesture on `id` (with `frame`, on an element in that same-origin iframe): the driver's real tap on Android,
+ * asked for with a `TAP` request; a click from script on iOS, which WebKit counts as one. A click on a page that went
+ * away shows in the check that follows.
+ */
+export async function tap(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
+  if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, id, frame));
+  else await click(h, id, frame)?.catch(errorCode);
+}
 
 /**
  * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
@@ -1774,16 +1787,8 @@ async function navigation(h: Harness) {
     external
   );
 
-  // Script-opened windows are off by default, so new windows come from a tap: a real one on Android (the harness asks
-  // the driver), a click from evaluate on iOS (WebKit counts evaluate as a user gesture).
-  const tap = async (id: string) => {
-    if (Platform.OS !== 'android') {
-      await click(h, id);
-      return;
-    }
-    r.info('TAP', await tapPoint(h, id));
-  };
-  await tap('open');
+  // Script-opened windows are off by default, so new windows come from a tap.
+  await tap(h, r, 'open');
   await waitFor(h, () => lastNavigation()?.url === 'https://example.com/popup', 15000);
   r.check(
     'a tapped window.open to another site goes external (newWindow)',
@@ -1796,7 +1801,7 @@ async function navigation(h: Harness) {
     lastNavigation()
   );
 
-  await tap('blank');
+  await tap(h, r, 'blank');
   const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000);
   r.check('a tapped target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
 
@@ -1832,11 +1837,7 @@ async function navigation(h: Harness) {
   );
   await openPage(h, fresh(h, '/nav.html'));
   // A real tap keeps the gesture flag true, in case a WebView ever decides an iframe's http(s) navigation.
-  if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
-  else
-    await h.ref.current?.evaluate(
-      `document.getElementById('frame').contentDocument.getElementById('redirect').click()`
-    );
+  await tap(h, r, 'redirect', 'frame');
   // Decisions about the iframe's navigation come before it moves (its redirect ends on /spa.html?from=redirect).
   const frameUrl = () =>
     h.ref.current?.evaluate(`document.getElementById('frame').contentWindow.location.href`);

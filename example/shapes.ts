@@ -19,7 +19,7 @@ import {
   recordExternal,
   reporter,
   sleep,
-  tapPoint,
+  tap,
   until,
   waitFor,
 } from './harness';
@@ -128,10 +128,7 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
     },
     // A click on a page that went away shows in the check that follows, so the suite goes on.
     click: (id, frame) => host.evaluate(`${byId(id, frame)}.click()`).catch(String),
-    tap: async (id, frame) => {
-      if (Platform.OS !== 'android') return await host.click(id, frame);
-      r.info('TAP', await tapPoint(h, id, frame));
-    },
+    tap: (id, frame) => tap(h, r, id, frame),
     evaluate: async (script) => await h.ref.current?.evaluate(script),
     state: h.state,
     goBack: () => h.ref.current?.goBack(),
