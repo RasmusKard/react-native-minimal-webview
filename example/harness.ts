@@ -633,7 +633,6 @@ async function bridge(h: Harness) {
   const gone = await pending;
   r.since(WEBVIEW.evaluate, 'navigation rejects an evaluate in flight', gone === 'navigated', gone);
   await waitFor(h, (s) => s.url.includes('next=1') && idle(s));
-  await sleep(500);
   const again = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works again after navigation', again === 2, again);
 
@@ -1224,7 +1223,6 @@ async function crash(h: Harness) {
   );
   const recoveredVh = await viewportHeight(h);
   r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
-  await sleep(1000);
   r.since(
     WEBVIEW.bridge,
     'the bridge works after recovery',
@@ -1371,7 +1369,6 @@ async function mountSettings(h: Harness) {
     ua
   );
   await openPage(h, fresh(h, '/bridge.html'));
-  await sleep(500);
   r.since(
     WEBVIEW.bridge,
     'the bridge works after the remount',
