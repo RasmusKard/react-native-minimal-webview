@@ -423,16 +423,29 @@ async function urlTracking(h: Harness) {
   r.done();
 }
 
+/** Runs `act`, then waits for what onNavigation reports about a URL ending in `path`: that, or undefined after 3 s. */
+async function nextDecision(h: Harness, act: () => unknown, path: string) {
+  const before = h.events.navigations.length;
+  await act();
+  return await until(
+    () => h.events.navigations.slice(before).find((n) => n.url.endsWith(path)),
+    3000
+  );
+}
+
 // The `ask` rule (NavigationRule.action).
 async function reissue(h: Harness) {
   const r = reporter('reissue');
   const asked: string[] = [];
   let answer: 'allow' | 'block' | 'late' = 'allow';
-  h.setAsk(async (request) => {
-    asked.push(request.url);
+  const ask = async (url: string): Promise<'allow' | 'block'> => {
+    asked.push(url);
     if (answer === 'late') await sleep(1500);
     return answer === 'block' ? 'block' : 'allow';
-  });
+  };
+  // The handler's answer to the latest ask: it settles once the handler has answered.
+  let answered: Promise<unknown> = Promise.resolve();
+  h.setAsk((request) => (answered = ask(request.url)));
   h.setRules([
     { host: ['localhost', '127.0.0.1'], path: ['/checkout', '/headers'], action: 'ask' },
     { scheme: ['http', 'https'], action: 'allow' },
@@ -459,21 +472,24 @@ async function reissue(h: Harness) {
     h.state()
   );
 
+  const checkout = () => nextDecision(h, () => click(h, 'checkout'), '/checkout/pay');
   answer = 'block';
-  await click(h, 'checkout');
-  await sleep(1500);
-  r.check('block stays on the page', h.state().url === start && asked.length === 2, {
-    url: h.state().url,
-    asked,
-  });
+  const blocked = await checkout();
+  r.check(
+    'block stays on the page',
+    blocked?.action === 'block' && h.state().url === start && asked.length === 2,
+    { decision: blocked, url: h.state().url, asked }
+  );
 
+  // The timeout blocks after 1 s, before the handler answers allow.
   answer = 'late';
-  await click(h, 'checkout');
-  await sleep(2500);
+  const timedOut = await checkout();
+  await answered;
+  await sleep(1000); // a load the late allow wrongly started would have committed by now
   r.check(
     'a late answer is ignored (timeout blocks)',
-    h.state().url === start && asked.length === 3,
-    { url: h.state().url, asked }
+    timedOut?.action === 'block' && h.state().url === start && asked.length === 3,
+    { decision: timedOut, url: h.state().url, asked }
   );
 
   answer = 'allow';
@@ -2811,9 +2827,16 @@ async function bfcache(h: Harness) {
     { path: ['/checkout'], action: 'ask' },
     { path: ['/blocked'], action: 'block' },
   ]);
-  await h.ref.current?.evaluate(`location.href = '/blocked/page'`);
-  await sleep(1000);
-  r.check('a block rule holds on the restored page', h.state().url === second, h.state());
+  const blocked = await nextDecision(
+    h,
+    () => h.ref.current?.evaluate(`location.href = '/blocked/page'`),
+    '/blocked/page'
+  );
+  r.check(
+    'a block rule holds on the restored page',
+    blocked?.action === 'block' && h.state().url === second,
+    { decision: blocked, state: h.state() }
+  );
   await h.ref.current?.evaluate(`location.href = '/checkout/pay?bf=1'`);
   r.check(
     'an ask rule asks on the restored page and allow loads it',
