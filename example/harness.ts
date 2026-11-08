@@ -2515,7 +2515,7 @@ async function sampleExtension(h: Harness) {
   const warnings = captureWarnings();
   try {
     h.setProps({ extensions: [sampleHook('hookAuth'), pageCounter()], withoutPageCounter: true });
-    await until(() => warnings.warned('hookOptions.sample.pageCounter'), 3000, 100);
+    await until(() => warnings.warned('extension sample.pageCounter'), 3000, 100);
   } finally {
     warnings.stop();
   }
