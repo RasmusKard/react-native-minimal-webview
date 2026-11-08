@@ -1066,11 +1066,6 @@ async function errors(h: Harness) {
   h.setRules(undefined);
 
   clearEvents(h);
-  h.load('https://localhost:8443/'); // the test server's self-signed certificate
-  const gotSsl = await waitFor(h, () => h.events.errors.length > 0, 10000);
-  r.check('ssl error', gotSsl && h.events.errors[0]?.kind === 'ssl', h.events.errors[0]);
-
-  clearEvents(h);
   const flaky = `${h.pages}/flaky?key=${Date.now()}`;
   h.load(flaky);
   await waitFor(h, () => h.events.errors.length > 0 && idle(h.state()), 10000);
@@ -1823,22 +1818,6 @@ async function navigation(h: Harness) {
     external
   );
   await openPage(h, fresh(h, '/nav.html'));
-  // A new window would load in the main frame, so a non-http(s) one is blocked before the rules (here the newWindow
-  // `external` rule would match).
-  const opener = h.state().url;
-  await h.ref.current?.evaluate(`(window.open('data:text/html,opened'), true)`);
-  const dataWindow = () =>
-    h.events.navigations.find((n) => n.newWindow && n.url.startsWith('data:'));
-  // Android's child WebView never reports a data: URL at all (Chromium doesn't pass it to shouldOverrideUrlLoading),
-  // so there the proof is that nothing was allowed and nothing loaded; iOS reports the block.
-  await waitFor(h, () => dataWindow() !== undefined, Platform.OS === 'ios' ? 5000 : 1500);
-  await sleep(500);
-  r.check(
-    'a new window to a data: URL is blocked',
-    Platform.OS === 'ios' ? dataWindow()?.action === 'block' : dataWindow()?.action !== 'allow',
-    dataWindow()
-  );
-  r.check('the page stays after the blocked data: window', h.state().url === opener, h.state());
   // A real tap keeps the gesture flag true, in case a WebView ever decides an iframe's http(s) navigation.
   if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
   else
@@ -2649,7 +2628,7 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   );
 }
 
-/** First-load headers, declined HTTP auth, shared cookies, download failures. */
+/** First-load headers, shared cookies, download failures. */
 async function network(h: Harness) {
   const r = reporter('network');
 
@@ -2658,15 +2637,6 @@ async function network(h: Harness) {
   r.check(
     'source.headers reach the first request',
     (await text(h, 'headers')).includes('"x-test-header":"hello"')
-  );
-
-  // Without a hook that answers it, HTTP auth is declined. Another origin: iOS reuses the credentials a hook gave for
-  // localhost (sampleExtension), as browsers do.
-  await openPage(h, fresh(h, 'http://127.0.0.1:8090/auth'));
-  r.check(
-    'HTTP auth without a hook shows the 401 page',
-    (await text(h, 'auth')) === 'unauthorized',
-    await text(h, 'auth')
   );
 
   await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);

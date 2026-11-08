@@ -259,6 +259,13 @@ async function newWindows(suite: Suite) {
     );
     if (scriptMayRun && sentinels !== before)
       r.info(`known limit (WebView): T5 a tapped ${label} ran its script`, sentinels);
+    // Android's child WebView never reports a data: URL (Chromium doesn't pass it to shouldOverrideUrlLoading).
+    if (!android && id === 'open-data')
+      r.check(
+        `T5 a tapped ${label} is reported as blocked`,
+        decisions.some((n) => n.newWindow && n.url.startsWith('data:') && n.action === 'block'),
+        decisions
+      );
     r.info(`T5 ${label}: decisions`, decisions);
   }
 }
