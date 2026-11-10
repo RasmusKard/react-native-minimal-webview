@@ -263,29 +263,25 @@ for (a, b, same) in sameURLCases {
 
 // (domain, code, outcome, onError kind) of a main-frame load WebKit ends with an error.
 let webKit = "WebKitErrorDomain"
+func failed(_ codes: [Int], _ kind: String) -> [(String, Int, String, String?)] {
+  codes.map { (NSURLErrorDomain, $0, "failed", kind) }
+}
 let endCases: [(String, Int, String, String?)] = [
   (NSURLErrorDomain, NSURLErrorCancelled, "cancelled", nil),
   (webKit, 102, "cancelled", nil), // frame load interrupted by a policy change
   (webKit, 204, "finished", nil), // plug-in will handle load: a media document
-  (NSURLErrorDomain, NSURLErrorSecureConnectionFailed, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorServerCertificateHasBadDate, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorServerCertificateUntrusted, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorServerCertificateHasUnknownRoot, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorServerCertificateNotYetValid, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorClientCertificateRejected, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorClientCertificateRequired, "failed", "ssl"),
-  (NSURLErrorDomain, NSURLErrorSecureConnectionFailed + 1, "failed", "network"),
-  (NSURLErrorDomain, NSURLErrorClientCertificateRequired - 1, "failed", "network"),
-  (NSURLErrorDomain, NSURLErrorNotConnectedToInternet, "failed", "network"),
-  (NSURLErrorDomain, NSURLErrorTimedOut, "failed", "network"),
-  (NSURLErrorDomain, NSURLErrorCannotFindHost, "failed", "network"),
-  (NSURLErrorDomain, NSURLErrorAppTransportSecurityRequiresSecureConnection, "failed", "network"),
+] + failed([
+  NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateUntrusted,
+  NSURLErrorServerCertificateHasUnknownRoot, NSURLErrorServerCertificateNotYetValid,
+  NSURLErrorClientCertificateRejected, NSURLErrorClientCertificateRequired,
+], "ssl") + failed([
+  NSURLErrorSecureConnectionFailed + 1, NSURLErrorClientCertificateRequired - 1, NSURLErrorNotConnectedToInternet,
+  NSURLErrorTimedOut, NSURLErrorCannotFindHost, NSURLErrorAppTransportSecurityRequiresSecureConnection, 102, 204,
+], "network") + [
   (webKit, 101, "failed", "network"), // cannot show URL: a scheme WebKit doesn't load
   (webKit, 103, "failed", "network"), // a restricted port
   (webKit, NSURLErrorCancelled, "failed", "network"),
   (webKit, NSURLErrorServerCertificateUntrusted, "failed", "network"),
-  (NSURLErrorDomain, 102, "failed", "network"),
-  (NSURLErrorDomain, 204, "failed", "network"),
   ("WKErrorDomain", 102, "failed", "network"),
 ]
 for (domain, code, outcome, kind) in endCases {
