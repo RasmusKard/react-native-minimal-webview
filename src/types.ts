@@ -677,10 +677,11 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
  *
  * A package with a native hook exports a function that returns one, so that an app turns the hook on by putting it in
  * `extensions`.
+ * @typeParam E - The hook's events, to type `onEvent`: a union of {@link HookEvent}s, which nothing checks at runtime.
  * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  * @group Native hooks
  */
-export type HookExtension = {
+export type HookExtension<E extends HookEvent = HookEvent> = {
   /**
    * The key the hook is registered under.
    *
@@ -692,8 +693,7 @@ export type HookExtension = {
    * What the hook gets as its options. Null or false switches the hook off, as does leaving its extension out of
    * `extensions`: it stays attached and gets null, but the core routes none of its delegates, clients or listeners,
    * drops its events, answers its asks with null, and rejects `ref.hook` calls to its handlers with `not_found`.
-   * Turning it on again gives it the new options.
-   * @default `true`
+   * Undefined, the default, means `true`. Turning it on again gives it the new options.
    */
   options?: unknown;
   /**
@@ -704,7 +704,7 @@ export type HookExtension = {
    *
    * The latest `onEvent` always takes the events: a render with new handlers sends native nothing.
    */
-  onEvent?: (event: HookEvent, signal?: AbortSignal) => unknown;
+  onEvent?(event: E, signal?: AbortSignal): unknown;
 };
 
 /**

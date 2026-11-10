@@ -24,12 +24,7 @@ export type PageCounterEvent =
 export const pageCounter = (
   options: true | { global: string } = true,
   onEvent?: (event: PageCounterEvent, signal?: AbortSignal) => unknown
-): HookExtension => ({
-  key: 'sample.pageCounter',
-  options,
-  // Only this hook's events reach it, and they are its PageCounterEvents.
-  onEvent: onEvent && ((event, signal) => onEvent(event as PageCounterEvent, signal)),
-});
+): HookExtension<PageCounterEvent> => ({ key: 'sample.pageCounter', options, onEvent });
 
 /**
  * One of the sample's hooks that take no options, for the `extensions` prop. A caller that wants its events sets
