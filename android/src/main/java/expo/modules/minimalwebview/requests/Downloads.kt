@@ -7,6 +7,7 @@ import android.webkit.CookieManager
 import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.TAG
+import expo.modules.minimalwebview.profileOf
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -36,8 +37,8 @@ internal data class DownloadInfo(
 
 /**
  * The `onDownload` prop. WebView hands over only the URL, so http(s) is fetched again, through `HttpURLConnection` and
- * `CookieManager` rather than React Native's OkHttp, so the package builds without `react-android`. Nothing here may
- * crash the app: the page controls the URL.
+ * the WebView profile's `CookieManager` rather than React Native's OkHttp, so the package builds without
+ * `react-android`. Nothing here may crash the app: the page controls the URL.
  */
 internal class Downloads(private val owner: MinimalWebView) {
   private val io = Executors.newSingleThreadExecutor()
@@ -56,7 +57,7 @@ internal class Downloads(private val owner: MinimalWebView) {
   }
 
   private fun fetch(download: DownloadInfo, name: String) {
-    val cookies = CookieManager.getInstance()
+    val cookies = profileOf(owner.webView)?.cookieManager ?: CookieManager.getInstance()
     save(name, download.url) { file -> fetchTo(download, file, cookies::getCookie, cookies::setCookie) }
   }
 

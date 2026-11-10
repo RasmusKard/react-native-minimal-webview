@@ -597,7 +597,8 @@ export type IOSSettings = {
  * recreated, with a warning.
  *
  * The ref's {@link WebViewRef.get | get} and {@link WebViewRef.call | call} take these roots, plus `cookieManager` and
- * `webStorage`; a key is the getter's name without `get` or `is`.
+ * `webStorage`, the WebView profile's (`webView.profile`, the default one unless set); a key is the getter's name
+ * without `get` or `is`.
  * @example
  * ```tsx
  * <WebView
@@ -879,7 +880,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, which waits for it, and
    * the WebView's cookie changes, deletions included, back as they happen.
    *
-   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background.
+   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background. A
+   * WebView on another `android.webView.profile` has that profile's cookies instead.
    * @default `false`
    * @ios
    */
