@@ -608,7 +608,8 @@ export type IOSSettings = {
  * Android settings by setter name without `set`.
  *
  * Any public setter works, including ones a newer SDK or androidx.webkit adds (under a root's `other`). The keys the
- * SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}.
+ * SDK lists autocomplete, with their `@since`; the constants are in {@link AndroidConstants}. An `int` setter takes a
+ * number up to `0xFFFFFFFF`, truncated, so an ARGB color such as `0xFF202020` works.
  *
  * A key with no public setter for the value's type, or one this device's WebView lacks, is skipped with a warning;
  * nothing here can crash the app. A root's default keys are the package's, and yours go over them; a key the package
