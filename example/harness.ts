@@ -36,8 +36,8 @@ export type Harness = {
   pages: string;
   platform: string;
   ref: WebViewRefObject;
-  /** Where the WebView sits in the window, in dp, for a driver's TAP; kept current by App's onLayout. */
-  webViewOffset: { x: number; y: number };
+  /** Where the WebView sits in the window and its height, in dp, for a driver's TAP; kept current by App's onLayout. */
+  webViewOffset: { x: number; y: number; height: number };
   state: () => NavigationState;
   /** Remounts the WebView (a new `key`) without re-rendering App. */
   remount: () => void;
@@ -988,8 +988,9 @@ export const text = async (h: Harness, id: string) =>
   )) as string;
 
 /**
- * Android: the screen pixels of an element's centre, `x y`, for a driver's TAP; with `frame`, of an element inside
- * that same-origin iframe.
+ * The screen point of an element's centre, `x y`, for a driver's TAP: pixels on Android, points on iOS; with `frame`,
+ * of an element inside that same-origin iframe. On iOS WebKit starts the page below the part of the WebView that is
+ * under the status bar, so innerHeight falls short of the WebView's height by that much (nothing covers its bottom).
  */
 export const tapPoint = async (h: Harness, id: string, frame?: string) =>
   (
@@ -998,22 +999,31 @@ export const tapPoint = async (h: Harness, id: string, frame?: string) =>
     const e = (f ? f.contentDocument : document).getElementById(${JSON.stringify(id)});
     (f ?? e).scrollIntoView({ block: 'center' });
     const fr = f?.getBoundingClientRect(), x = fr ? fr.left + f.clientLeft : 0, y = fr ? fr.top + f.clientTop : 0;
-    const b = e.getBoundingClientRect(), d = devicePixelRatio;
+    const b = e.getBoundingClientRect(), d = ${Platform.OS === 'android' ? 'devicePixelRatio' : 1};
+    const top = ${Platform.OS === 'android' ? 0 : `Math.max(0, ${h.webViewOffset.height} - innerHeight)`};
     return [
       Math.round((${h.webViewOffset.x} + x + b.left + b.width / 2) * d),
-      Math.round((${h.webViewOffset.y} + y + b.top + b.height / 2) * d),
+      Math.round((${h.webViewOffset.y} + top + y + b.top + b.height / 2) * d),
     ];
   })()`)) as [number, number]
   ).join(' ');
 
 /**
  * A user gesture on `id` (with `frame`, on an element in that same-origin iframe): the driver's real tap on Android,
- * asked for with a `TAP` request; a click from script on iOS, which WebKit counts as one. A click on a page that went
- * away shows in the check that follows.
+ * asked for with a `TAP` request; a click from script on iOS, which WebKit runs as a gesture but the core doesn't count
+ * as `userInitiated`. A click on a page that went away shows in the check that follows.
  */
 export async function tap(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
   if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, id, frame));
   else await click(h, id, frame)?.catch(errorCode);
+}
+
+/**
+ * The driver's real tap on `id` (with `frame`, on an element in that same-origin iframe), asked for with a `TAP`
+ * request. A check that needs `userInitiated` uses it on iOS too, where the core counts a link only after a touch.
+ */
+export async function touch(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
+  r.info('TAP', await tapPoint(h, id, frame));
 }
 
 /**

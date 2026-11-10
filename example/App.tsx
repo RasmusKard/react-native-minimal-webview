@@ -58,7 +58,7 @@ const events: Harness['events'] = {
   overlay: { error: false },
 };
 const pageEvents: unknown[] = [];
-const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
+const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0, height: 0 };
 
 /** The page counter's events, into the logs. */
 function onPageCounterEvent(event: PageCounterEvent) {
@@ -170,7 +170,9 @@ export default function App() {
         ref={webViewBox}
         style={styles.webview}
         onLayout={() =>
-          webViewBox.current?.measureInWindow((x, y) => Object.assign(webViewOffset, { x, y }))
+          webViewBox.current?.measureInWindow((x, y, _width, height) =>
+            Object.assign(webViewOffset, { x, y, height })
+          )
         }>
         <Remountable>
           <WebView
