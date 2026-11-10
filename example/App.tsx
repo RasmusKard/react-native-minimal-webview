@@ -16,8 +16,6 @@ import {
   AndroidWebView,
   WebView,
   createBridge,
-  type PermissionRequest,
-  type FileRequest,
   type HookEvent,
   type HookExtension,
   useWebViewState,
@@ -116,12 +114,8 @@ export default function App() {
     return b;
   }, []);
 
-  const permissionRef = useRef<((request: PermissionRequest) => Promise<boolean>) | undefined>(
-    undefined
-  );
-  const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
-    undefined
-  );
+  const permissionRef = useRef<WebViewProps['onPermissionRequest']>(undefined);
+  const fileRequestRef = useRef<WebViewProps['onFileRequest']>(undefined);
   // The page counter, then a suite's `extensions`, unless it asks `withoutPageCounter`. An extension without `onEvent`
   // logs its events.
   const { extensions = [], withoutPageCounter, ...props } = extraProps;
@@ -192,12 +186,14 @@ export default function App() {
               ...(logged.some((e) => e && e.key === strayEvents.key) ? [] : [strayEvents]),
             ]}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
-            onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
+            onFileRequest={(request, signal) => fileRequestRef.current?.(request, signal) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
             onDownload={(result) =>
               result.ok ? events.downloads.push(result) : events.downloadFailures.push(result)
             }
-            onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
+            onPermissionRequest={(request, signal) =>
+              permissionRef.current?.(request, signal) ?? false
+            }
             android={{
               webView: { acceptThirdPartyCookies: true },
               settings: {

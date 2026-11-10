@@ -8,7 +8,15 @@ import { Platform } from 'react-native';
 import type { NavigationRule } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
-import { type Harness, launchMarks, openPage, reporter, sleep, until } from './harness';
+import {
+  type Harness,
+  launchMarks,
+  openPage,
+  reporter,
+  sleep,
+  until,
+  waitForLoad,
+} from './harness';
 
 type Policy = 'default' | 'rule' | 'ask';
 /** A native stamp pair from the sample.perf probe: the page asked to go to `i`, and that navigation started (ns). */
@@ -314,23 +322,27 @@ async function measure(host: PerfHost, r: Report) {
 /** This library, with the props that would otherwise be inside the numbers off and the probe on. */
 async function libraryHost(h: Harness): Promise<PerfHost> {
   let loadEnded: (() => void) | undefined;
-  const loads = h.events.loads.length;
   // Shared cookies make each source load wait for one setCookie per native cookie; the page counter runs a script on
   // each load. The probe's key attaches only when the WebView is created: a remount.
-  h.setProps({
-    sharedCookies: false,
-    pullToRefresh: false,
-    extensions: [sampleHook('perf')],
-    withoutPageCounter: true,
-    onLoadEnd: ({ outcome }) => {
-      h.events.loads.push('end');
-      h.events.outcomes.push(outcome);
-      loadEnded?.();
-      loadEnded = undefined;
+  await waitForLoad(
+    h,
+    () => {
+      h.setProps({
+        sharedCookies: false,
+        pullToRefresh: false,
+        extensions: [sampleHook('perf')],
+        withoutPageCounter: true,
+        onLoadEnd: ({ outcome }) => {
+          h.events.loads.push('end');
+          h.events.outcomes.push(outcome);
+          loadEnded?.();
+          loadEnded = undefined;
+        },
+      });
+      h.remount();
     },
-  });
-  h.remount();
-  await until(() => h.events.loads.slice(loads).includes('end'), 15000, 50);
+    () => true
+  );
   const rules: Record<Policy, NavigationRule[] | undefined> = {
     default: undefined,
     rule: [{ scheme: ['http', 'https'], action: 'allow' }],
