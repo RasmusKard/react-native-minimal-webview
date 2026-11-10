@@ -1,7 +1,8 @@
 name: test
 on:
   pull_request:
-    paths-ignore: ['**.md', 'docs/**']
+    # Of the Markdown, only the pages whose samples .github/scripts/check-doc-samples.mts type-checks
+    paths: ['**', '!**.md', '!docs/**', 'README.md', 'extensions/README.md', 'guides/*.md']
 
 permissions: { contents: read }
 
