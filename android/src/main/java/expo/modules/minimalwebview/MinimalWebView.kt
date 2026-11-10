@@ -262,14 +262,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** A warning for the app's developer, which JS logs with console.warn. */
   internal fun warn(message: String) = emit("core", "warning", mapOf("message" to message))
 
-  /** Returns the contexts it detached: their onDestroyed handlers run once the WebView is destroyed. */
-  private fun detachHooks(): List<HookContext> {
-    val detached = hookContexts
-    hookContexts.forEach { it.detach() }
-    hookContexts = emptyList()
-    return detached
-  }
-
   /** Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewFactory` whose key turns on. */
   private fun optionsChanged(old: Map<String, Any?>) {
     for (key in inRegistrationOrder(old.keys + hookOptions.keys, MinimalWebViewHooks.hooks.map { it.key })) {
@@ -347,15 +339,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun processGone(cause: String, at: Long) {
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
-    endDocument(DocumentEnd.CRASHED)
-    val detached = detachHooks()
-    val dead = webView
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
     val restorable = !showsSource(source, url)
-    val history = Bundle().takeIf { reload && restorable && dead.saveState(it) != null }
-    refresher.content.removeView(dead)
-    dead.destroy()
-    detached.forEach { it.destroyed(DocumentEnd.CRASHED) }
+    val history = Bundle().takeIf { reload && restorable && webView.saveState(it) != null }
+    tearDown(DocumentEnd.CRASHED)
     pendingRecovery = Recovery(reload, history)
     // Nothing will end the load the crash cut off. `url` stays: loadAgain() loads it.
     if (loading) outcome = "failed"
@@ -398,17 +385,28 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal fun destroy() {
     destroyed = true
-    pendingRecovery = null
-    endDocument(DocumentEnd.CLOSING)
-    val detached = detachHooks()
     downloads.detach()
-    if (hasWebView) {
-      webView.stopLoading()
-      webView.destroy()
+    // A crash tore the WebView down already, and detached the hooks; with none, there is nothing to tear down.
+    if (!hasWebView || recovering) {
+      pendingRecovery = null
+      return endDocument(DocumentEnd.CLOSING)
     }
-    // shortcut: still in the layout here, unlike after a crash; if ProfileStore.deleteProfile in onDestroyed throws
-    // "in use" on a device, remove the WebView from refresher.content before destroy() first.
-    detached.forEach { it.destroyed(DocumentEnd.CLOSING) }
+    webView.stopLoading()
+    tearDown(DocumentEnd.CLOSING)
+  }
+
+  /**
+   * Ends the Document with [reason] and destroys the WebView: the hooks detach, the WebView leaves the layout and is
+   * destroyed, and then the detached hooks' onDestroyed handlers run.
+   */
+  private fun tearDown(reason: DocumentEnd) {
+    endDocument(reason)
+    val detached = hookContexts
+    detached.forEach { it.detach() }
+    hookContexts = emptyList()
+    refresher.content.removeView(webView)
+    webView.destroy()
+    detached.forEach { it.destroyed(reason) }
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {
@@ -434,14 +432,20 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun emitState() {
     if (destroyed) return
+    // While a recovery waits, `webView` is the destroyed one: the history stays as JS saw it last.
+    val (back, forward) = if (recovering) {
+      (lastEmitted?.get("canGoBack") ?: false) to (lastEmitted?.get("canGoForward") ?: false)
+    } else {
+      webView.canGoBack() to webView.canGoForward()
+    }
     val state = mapOf(
       "url" to url,
       "pendingUrl" to pendingUrl,
       "title" to title,
       "loading" to loading,
       "progress" to progress,
-      "canGoBack" to webView.canGoBack(),
-      "canGoForward" to webView.canGoForward(),
+      "canGoBack" to back,
+      "canGoForward" to forward,
       "outcome" to if (loading) null else outcome
     )
     if (state == lastEmitted) return
