@@ -79,7 +79,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var outcome: String?
   private var lastEmitted: NSDictionary?
   private var updateScheduled = false
-  private var crashTimes: [Date] = []
+  private var crashTimes: [TimeInterval] = []
   /// `evaluate` calls waiting for their result, by id, until a new document or a dead web process rejects them.
   var evaluations: [Int: Promise] = [:]
   var nextEvaluation = 0
@@ -438,7 +438,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
   /// WebKit does not say whether it crashed or was killed for memory, so its `cause` is `unknown` on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
+    let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource
     endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered { loadAgain() }
