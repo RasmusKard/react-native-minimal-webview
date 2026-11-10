@@ -56,6 +56,20 @@ class PlatformSettingsTest {
     assertEquals(null to listOf(2), set("zoom", 2.0)) // a static compat method takes the leading object first
   }
 
+  @Test
+  fun wrapsAnArgbColorIntoAnIntAndRejectsOneOutOfRange() {
+    assertEquals(null to listOf(-16777216), set("int", 4278190080.0)) // 0xFF000000
+    assertEquals(null to listOf(-1), set("int", 4294967295.5)) // 0xFFFFFFFF, truncated
+    assertEquals(null to listOf(Int.MIN_VALUE), set("int", -2147483648.0))
+    assertEquals(emptyList<Any?>(), set("int", 4294967296.0).second) // 0x100000000
+    assertEquals(emptyList<Any?>(), set("int", -2147483649.0).second)
+    assertEquals(emptyList<Any?>(), set("int", Double.NaN).second)
+    // ref.call('settings.setInt', [0xFF202020]), as setBackgroundColor gets it
+    val fake = Fake()
+    call(fake, "setInt", 4280295456.0)
+    assertEquals(listOf<Any?>(-14671840), fake.values)
+  }
+
   /** A `settings` root over [fake]. */
   private fun rootOf(fake: Fake) = PlatformSettings { if (it == "settings") listOf(Target(Fake::class.java, fake, null)) else null }
 

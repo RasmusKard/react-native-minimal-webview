@@ -12,6 +12,7 @@ import org.json.JSONObject
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import kotlin.math.truncate
 
 /**
  * The `android` settings prop, `{ settings: {…}, webView: {…} }`, applied by name through reflection, so a public
@@ -246,13 +247,23 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       if (value == null) return if (type.isPrimitive) NONE else null
       return when (type.kotlin.javaObjectType) {
         Boolean::class.javaObjectType -> value as? Boolean
-        Int::class.javaObjectType -> (value as? Number)?.toInt()
+        Int::class.javaObjectType -> (value as? Number)?.let(::intOf)
         Long::class.javaObjectType -> (value as? Number)?.toLong()
         Float::class.javaObjectType -> (value as? Number)?.toFloat()
         Double::class.javaObjectType -> (value as? Number)?.toDouble()
         String::class.java, CharSequence::class.java -> value as? String
         else -> if (value !is Boolean && type.isInstance(value)) value else null
       } ?: NONE
+    }
+
+    /**
+     * [number] truncated to an int, or null outside `Int.MIN_VALUE..0xFFFFFFFF`. Above `Int.MAX_VALUE` it wraps, as
+     * Java's `(int) 0xFF000000L` does, so an ARGB color written as JS writes it, `0xFF000000`, is `-16777216`.
+     * Kotlin's `Double.toInt()` would clamp it to `Int.MAX_VALUE`.
+     */
+    private fun intOf(number: Number): Int? {
+      val whole = truncate(number.toDouble())
+      return if (whole >= Int.MIN_VALUE && whole <= UInt.MAX_VALUE.toDouble()) whole.toLong().toInt() else null
     }
 
     /** Invokes, unwrapping the target's own exception; a compat feature this WebView lacks reads as unsupported. */
