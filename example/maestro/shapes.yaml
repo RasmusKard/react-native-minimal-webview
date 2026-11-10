@@ -3,8 +3,8 @@ name: shapes
 env:
   SUITE: shapes
 ---
-# Android: real taps where the harness asks (iOS clicks from script): iframe links, new windows, a tel: link, a capture
-# input, two SPA routes; then one back press for the BackHandler recipe.
+# Real taps where the harness asks. Android: iframe links, new windows, a tel: link, a capture input, two SPA routes;
+# then one back press for the BackHandler recipe. iOS clicks the others from script, and taps only E10's two tel: links.
 - runFlow: subflows/launch.yaml
 - runFlow:
     when: { platform: Android }
@@ -17,4 +17,13 @@ env:
             - runFlow: subflows/tap-request-point.yaml
       - runFlow: { file: subflows/await.yaml, env: { N: 14 } }
       - back
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - repeat:
+          times: 2
+          commands:
+            - evalScript: ${output.n = (output.n || 0) + 1}
+            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+            - runFlow: subflows/tap-request-point.yaml
 - runFlow: subflows/finish.yaml

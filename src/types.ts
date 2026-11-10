@@ -119,11 +119,20 @@ export type NavigationRule = {
    */
   newWindow?: boolean;
   /**
-   * A user gesture started it.
+   * A user gesture started it: the user's tap, click or key press.
    *
-   * A `location.href` change or `window.open` from a click handler is true on Android, but false on iOS, where only a
-   * tapped link is. A redirect of a load the core starts itself (an allowed new window, and on Android an allowed
-   * `ask`) is never user-initiated.
+   * - Android: WebView's flag (`hasGesture()`, `onCreateWindow`'s `isUserGesture`), Chromium's user activation, which
+   *   a tap that doesn't scroll, a click or a key press gives the page for up to 5 s. Any navigation the page starts in
+   *   that time is true: a `location.href` change or `window.open` from a click handler, a timer's, a link a script
+   *   clicks.
+   * - iOS: only a link activation (`<a>`, `<area>`, `target=_blank` too) within 1 s after a tap on the WebView that
+   *   scrolls and zooms nothing. WebKit reports a link a script clicks as it does a tapped one, so the core times the
+   *   tap itself. A `location.href` change or `window.open` is false, from a click handler too, as is a link activated
+   *   from a hardware keyboard; a tapped link's redirect is true only within that second. VoiceOver and Switch Control
+   *   activate a link without a touch: while either runs, every link activation is true, a script's too.
+   *
+   * A redirect of a load the core starts itself (an allowed new window, and on Android an allowed `ask`) is never
+   * user-initiated.
    */
   userInitiated?: boolean;
   /**

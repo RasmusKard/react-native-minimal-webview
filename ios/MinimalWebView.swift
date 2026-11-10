@@ -47,6 +47,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var observations: [NSKeyValueObservation] = []
   private(set) lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
+  /// When the user last tapped the WKWebView: a link activation counts as user-initiated only right after a tap.
+  let taps = Taps(target: nil, action: nil)
   /// The decision warnings sent, shared and taken (DelegateProxy): one each per view.
   private var warnedDecisions: Set<String> = []
 
@@ -228,6 +230,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     webView.navigationDelegate = proxy
     webView.uiDelegate = proxy
+    webView.addGestureRecognizer(taps)
     addSubview(webView)
     let update = { [weak self] in self?.scheduleUpdate() }
     observations = [
