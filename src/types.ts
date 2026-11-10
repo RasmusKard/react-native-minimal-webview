@@ -226,12 +226,10 @@ export type LoadErrorEvent =
  */
 export type ProcessGoneEvent = {
   /**
-   * Whether the renderer crashed (true) or the system killed it for memory (false); null on iOS, where WebKit doesn't
-   * say.
-   *
-   * Test it with `=== true` or `=== false`, not as a condition.
+   * Why it died: `crash` when the renderer crashed, `memory` when the system killed it to reclaim memory, and `unknown`
+   * on iOS, where WebKit doesn't say.
    */
-  didCrash: boolean | null;
+  cause: 'crash' | 'memory' | 'unknown';
   /**
    * Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the view's window is visible,
    * with the history restored unless the `source` page was on screen, and with the props applied but not what `call`
@@ -599,7 +597,8 @@ export type IOSSettings = {
  * recreated, with a warning.
  *
  * The ref's {@link WebViewRef.get | get} and {@link WebViewRef.call | call} take these roots, plus `cookieManager` and
- * `webStorage`; a key is the getter's name without `get` or `is`.
+ * `webStorage`, the WebView profile's (`webView.profile`, the default one unless set); a key is the getter's name
+ * without `get` or `is`.
  * @example
  * ```tsx
  * <WebView
@@ -747,10 +746,10 @@ export type CodedError = Error & { code: ErrorCode };
  * unmounted), and a late answer is dropped.
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop. iOS shows a `UIAlertController` titled with the
- * frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
- * auth challenge is cancelled on Android, and gets WebKit's default handling on iOS: without a stored credential, the
- * site's 401 page shows. `dialogs` and `basicAuthCredential` of
- * `@react-native-minimal-webview/extensions` take them over, or a native hook does.
+ * frame's host, or `JavaScript` for a frame without one (`data:`, sandboxed, `file:`), one at a time (one that comes
+ * while another shows is cancelled), and Android WebView's own dialogs. An auth challenge is cancelled on Android, and
+ * gets WebKit's default handling on iOS: without a stored credential, the site's 401 page shows. `dialogs` and
+ * `basicAuthCredential` of `@react-native-minimal-webview/extensions` take them over, or a native hook does.
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
@@ -795,7 +794,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation they decide is blocked.
    *
-   * `about:`, `blob:`, `data:` and `javascript:` always load in place.
+   * `about:`, `data:` and `javascript:` always load in place. A `blob:` URL is decided as the origin it carries:
+   * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
+   * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.
    *
    * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
    * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
@@ -879,7 +880,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, which waits for it, and
    * the WebView's cookie changes, deletions included, back as they happen.
    *
-   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background.
+   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background. A
+   * WebView on another `android.webView.profile` has that profile's cookies instead.
    * @default `false`
    * @ios
    */

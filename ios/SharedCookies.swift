@@ -9,11 +9,9 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   /// The WebView's cookies at the last copy: one gone from it since is deleted from native too.
   private var copied: [HTTPCookie] = []
 
+  /// Once: the view's one WKWebView, which a crash keeps.
   func didCreate(_ webView: WKWebView) {
-    store?.remove(self)
     store = webView.configuration.websiteDataStore.httpCookieStore
-    // Another store may not hold what the last one did: missing from it is not deleted.
-    copied = []
     if enabled { store?.add(self) }
   }
 
@@ -24,9 +22,8 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   }
 
   /// Work that must finish before a `source` load: calls `done` once the native cookies are in the WebView.
-  func prepare(_ webView: WKWebView, done: @escaping () -> Void) {
-    guard enabled else { return done() }
-    let store = webView.configuration.websiteDataStore.httpCookieStore
+  func prepare(done: @escaping () -> Void) {
+    guard enabled, let store else { return done() }
     let group = DispatchGroup()
     // shortcut: one setCookie per cookie, use iOS 26's batch setCookies once the minimum allows
     for cookie in HTTPCookieStorage.shared.cookies ?? [] {
