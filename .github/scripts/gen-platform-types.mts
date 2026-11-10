@@ -59,6 +59,14 @@ const IOS_DEFINES = [
 ];
 const ANDROIDX_API_DIR =
   'https://api.github.com/repos/androidx/androidx/contents/webkit/webkit/api?ref=androidx-main';
+/** The androidx.webkit version android/build.gradle pins, and its minor. */
+const pinnedWebkit = () => {
+  const [, version, minor] = readFileSync(
+    new URL('../../android/build.gradle', import.meta.url),
+    'utf8'
+  ).match(/androidx\.webkit:webkit:((\d+\.\d+)\.\d+)/)!;
+  return { version, minor };
+};
 
 async function importInputs() {
   const sdk = execFileSync('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-path'])
@@ -129,10 +137,7 @@ async function importInputs() {
   ]);
   writeFileSync(new URL('android-webkit-constants.txt', inputs), constants);
   // androidx freezes a minor's API at its first beta or rc (api/1.17.0-rc01.txt): the last such file of the pinned minor.
-  const [, version, minor] = readFileSync(
-    new URL('../../android/build.gradle', import.meta.url),
-    'utf8'
-  ).match(/androidx\.webkit:webkit:((\d+\.\d+)\.\d+)/)!;
+  const { version, minor } = pinnedWebkit();
   const listing = await fetch(ANDROIDX_API_DIR);
   if (!listing.ok) throw new Error(`${ANDROIDX_API_DIR}: ${listing.status}`);
   const file = ((await listing.json()) as { name: string; download_url: string }[])
@@ -566,6 +571,12 @@ export const AndroidConstants = ${object({
 if (process.argv.includes('--import')) await importInputs();
 const output = await generate();
 if (process.argv.includes('--check')) {
+  const vendored = read('androidx-webkit-api.txt').match(/^\/\/ androidx\.webkit (\S+):/)?.[1];
+  const { version } = pinnedWebkit();
+  if (vendored !== version)
+    throw new Error(
+      `platform-headers/androidx-webkit-api.txt is androidx.webkit ${vendored}, android/build.gradle pins ${version}: run npm run gen:platform-types -- --import`
+    );
   if (readFileSync(target, 'utf8') !== output.ts || readFileSync(swiftTarget, 'utf8') !== output.swift)
     throw new Error(
       'platform.generated.ts or PlatformCompletions.generated.swift is stale: run npm run gen:platform-types'
