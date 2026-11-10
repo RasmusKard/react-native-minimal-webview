@@ -21,11 +21,9 @@ final class Downloads: NSObject, WKDownloadDelegate {
     suggestedFilename: String,
     completionHandler: @escaping @MainActor (URL?) -> Void
   ) {
-    // The server or the page names the file: only its last path component is kept, so it stays in its directory.
-    let name = (suggestedFilename as NSString).lastPathComponent
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    let file = dir.appendingPathComponent(name.isEmpty ? "download" : name)
+    let file = dir.appendingPathComponent(DownloadName.safe(suggestedFilename))
     files[ObjectIdentifier(download)] = (file, response.mimeType ?? "application/octet-stream")
     completionHandler(file)
   }
