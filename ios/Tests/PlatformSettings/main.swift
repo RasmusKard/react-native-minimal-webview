@@ -1,5 +1,5 @@
 // PlatformSettings.swift on a real WKWebView: each coercion, the rejections and their reasons, the KVC guard, and
-// get/call path resolution. Built as Mac Catalyst, so it runs on the Mac with no simulator (.github/CONTRIBUTING.md).
+// get/call path resolution. Built as Mac Catalyst, so it runs on the Mac with no simulator (ios/Tests/run.sh).
 // Not part of the pod (see the podspec). Catalyst's roots have no writable NSURL or NSNumber property to try.
 import WebKit
 

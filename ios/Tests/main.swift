@@ -1,9 +1,7 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
 // and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions changes a hook hears, the
 // Asks contract, ReadAccess's roots and Loads' URL comparison and load ends. Not part of the pod (see the podspec).
-//   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift \
-//     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/Tests/main.swift \
-//     -o /tmp/rules && /tmp/rules
+// ios/Tests/run.sh builds and runs it.
 import Foundation
 import WebKit
 

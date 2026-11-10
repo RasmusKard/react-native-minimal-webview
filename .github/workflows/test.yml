@@ -11,35 +11,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typescript:
+  # `npm run check`, as .github/CONTRIBUTING.md runs it locally.
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npx tsc --noEmit -p src/__tests__/tsconfig.json
-      - run: cd example && npm ci && npx tsc --noEmit
-      - run: npm test -- --watchAll=false   # its pretest checks the generated files
-      - run: npm run prepare   # clean build
-
-  # The Swift tests: the navigation and origin rule matchers and crash recovery against the shared cases in
-  # src/__tests__/vectors/, the ask, delegate proxy, read root, same URL and load end cases, and the PlatformSettings tests
-  # as Mac Catalyst. macOS: DelegateProxy.swift needs WebKit.
-  swift-rules:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - run: >-
-          xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift
-          ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/Tests/main.swift -o rules && ./rules
-      - run: |
-          F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios17.0-macabi
-          xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o mrw.o
-          xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSettings/Bridging.h \
-            ios/PlatformSettings.swift ios/PlatformCompletions.generated.swift ios/Tests/PlatformSettings/main.swift mrw.o \
-            -o settings
-          ./settings
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci && (cd example && npm ci) && npm run check
 
   # The on-device suites (example/harness.ts) need an emulator and a simulator, so they run locally: see
   # .github/CONTRIBUTING.md.
