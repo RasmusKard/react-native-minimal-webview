@@ -19,19 +19,19 @@ import type {
   WebViewRefObject,
 } from '../types';
 
-const mockAnswer = jest.fn();
-const mockNavigate = jest.fn();
+const mockAnswer = jest.fn(async (_askId: number, _json: string) => {});
+const mockNavigate = jest.fn(async (_to: string) => {});
 const mockEvaluate = jest.fn(async (_script: string) => '{"a":1}');
 const mockHook = jest.fn(async (name: string, method: string, args: string) =>
   JSON.stringify({ name, method, args })
 );
-const mockBridgePost = jest.fn<void, [json: string]>();
+const mockBridgePost = jest.fn(async (_json: string) => {});
 const mockMount = jest.fn();
 const mockNativeModule = {
   defaultUserAgent: 'Mozilla/5.0 (Android)',
   warmUp: jest.fn(),
-  preconnect: jest.fn(),
-  setWebContentsDebuggingEnabled: jest.fn(),
+  preconnect: jest.fn(async (_url: string) => {}),
+  setWebContentsDebuggingEnabled: jest.fn(async (_enabled: boolean) => {}),
 };
 // The view is a host element of the name WebView.tsx asks for (MinimalWebView), whose ref has the native `answer`,
 // `goBack`, `goForward`, `reload`, `stopLoading`, `bridgePost`, `evaluate`, `get`, `call` and `hook` methods; `get`,
@@ -48,10 +48,10 @@ jest.mock('expo', () => {
         }, []);
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
-          goBack: () => void mockNavigate('back'),
-          goForward: () => void mockNavigate('forward'),
-          reload: () => void mockNavigate('reload'),
-          stopLoading: () => void mockNavigate('stop'),
+          goBack: () => mockNavigate('back'),
+          goForward: () => mockNavigate('forward'),
+          reload: () => mockNavigate('reload'),
+          stopLoading: () => mockNavigate('stop'),
           bridgePost: mockBridgePost,
           evaluate: mockEvaluate,
           get: async (path: string) => JSON.stringify({ get: path }),
@@ -1144,4 +1144,54 @@ describe('navigation state across remounts', () => {
       expect(renders).toBeGreaterThan(before);
     }
   );
+});
+
+describe('native calls nothing awaits', () => {
+  const notRegistered = Object.assign(new Error('no view'), { code: 'ERR_VIEW_NOT_FOUND' });
+  const failure = new Error('native failed');
+  const settled = () => act(() => new Promise<void>((resolve) => setImmediate(resolve)));
+  let error: jest.SpyInstance;
+  beforeEach(() => (error = jest.spyOn(console, 'error').mockImplementation(() => {})));
+  afterEach(() => jest.restoreAllMocks());
+
+  it('navigation does nothing for a view Android has not registered yet, and logs any other rejection', async () => {
+    const ref = createWebViewRef();
+    await act(async () =>
+      createRoot().render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+    const methods = ['goBack', 'goForward', 'reload', 'stopLoading'] as const;
+    for (const method of methods) {
+      mockNavigate.mockRejectedValueOnce(notRegistered).mockRejectedValueOnce(failure);
+      ref.current?.[method]();
+      ref.current?.[method]();
+    }
+    await settled();
+    expect(error.mock.calls).toEqual(
+      methods.map((method) => [`[react-native-minimal-webview] ${method} failed`, failure])
+    );
+  });
+
+  it('logs a failed bridge post', async () => {
+    const bridge = createBridge({ allowedOrigins: ['https://example.com'] });
+    bridge.handle('ping', () => 'pong');
+    const { fire } = await mount({ bridge });
+    mockBridgePost.mockRejectedValueOnce(failure);
+    const call = { doc: 'd1', kind: 'call', id: 'p1', method: 'ping' };
+    await fire('onBridge', { message: JSON.stringify(call), origin: 'https://example.com' });
+    await settled();
+    expect(error).toHaveBeenCalledWith('[react-native-minimal-webview] bridgePost failed', failure);
+  });
+
+  it("logs AndroidWebView's failed calls", async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    mockNativeModule.preconnect.mockRejectedValueOnce(failure);
+    mockNativeModule.setWebContentsDebuggingEnabled.mockRejectedValueOnce(failure);
+    AndroidWebView.preconnect('https://example.com');
+    AndroidWebView.setWebContentsDebuggingEnabled(true);
+    await settled();
+    expect(error.mock.calls).toEqual([
+      ['[react-native-minimal-webview] preconnect failed', failure],
+      ['[react-native-minimal-webview] setWebContentsDebuggingEnabled failed', failure],
+    ]);
+  });
 });
