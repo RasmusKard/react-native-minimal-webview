@@ -4,8 +4,8 @@ import Foundation
 /// MinimalWebView.kt). Cases: src/__tests__/vectors/recovery.json.
 enum Recovery {
   /// Whether the committed `url` is the page of the `source` with this `uri`: equal up to trailing slashes (WebKit
-  /// commits `https://example.com` as `https://example.com/`). Not `sameURL`'s rule: that one picks out our own loads,
-  /// which skip the navigation rules.
+  /// commits `https://example.com` as `https://example.com/`). Not `Loads.sameURL`'s rule: that one picks out our own
+  /// loads, which skip the navigation rules.
   static func showsSource(_ uri: String, _ url: String) -> Bool {
     func trimmed(_ url: String) -> String { url.replacingOccurrences(of: "/+$", with: "", options: .regularExpression) }
     return trimmed(uri) == trimmed(url)
