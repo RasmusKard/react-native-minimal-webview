@@ -144,6 +144,32 @@ describe('createBridge', () => {
     expect(sent).toMatchObject([{ id: 'p1', kind: 'result', value: 'new' }]);
   });
 
+  it('answers not_found once a handler is unsubscribed, without running it', async () => {
+    const { bridge, sent, fromPage } = setup();
+    const handler = jest.fn(() => 'answer');
+    const off = bridge.handle('m', handler);
+    off();
+    fromPage({ id: 'p1', kind: 'call', method: 'm' });
+    await flush();
+    expect(handler).not.toHaveBeenCalled();
+    expect(sent).toMatchObject([
+      { id: 'p1', kind: 'error', error: { code: 'not_found', message: 'no handler for m' } },
+    ]);
+  });
+
+  it('answers handler_error with the text of a thrown non-Error', async () => {
+    const { bridge, sent, fromPage } = setup();
+    bridge.handle('m', () => {
+      // eslint-disable-next-line no-throw-literal -- because a handler can throw anything
+      throw 'nope';
+    });
+    fromPage({ id: 'p1', kind: 'call', method: 'm' });
+    await flush();
+    expect(sent).toMatchObject([
+      { id: 'p1', kind: 'error', error: { code: 'handler_error', message: 'nope' } },
+    ]);
+  });
+
   it('rejects calls in flight when a new page becomes ready', async () => {
     const { bridge, fromPage } = setup();
     fromPage({ kind: 'ready' });
@@ -204,6 +230,26 @@ describe('createBridge', () => {
     off();
     fromPage({ kind: 'event', method: 'scrolled', params: 2 });
     expect(seen).toEqual([1]);
+  });
+
+  it("runs an event's other listeners when one throws, and reports the throw as an unhandled rejection", () => {
+    const { bridge, fromPage } = setup();
+    const reported: unknown[] = [];
+    jest.spyOn(Promise, 'reject').mockImplementation((reason: unknown) => {
+      reported.push(reason);
+      return new Promise<never>(() => {});
+    });
+    const seen: number[] = [];
+    const failure = new Error('listener failed');
+    bridge.on('tick', (payload) => {
+      seen.push(payload as number);
+      throw failure;
+    });
+    bridge.on('tick', (payload) => seen.push((payload as number) * 10));
+    fromPage({ kind: 'event', method: 'tick', params: 1 });
+    jest.restoreAllMocks();
+    expect(seen).toEqual([1, 10]);
+    expect(reported).toEqual([failure]);
   });
 
   it('rejects calls immediately once native reports the bridge unavailable', async () => {

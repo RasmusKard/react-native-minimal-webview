@@ -4,6 +4,7 @@ type PageWindow = Parameters<typeof installPageClient>[0];
 type NativeBridge = {
   call(method: string, params?: unknown): Promise<unknown>;
   handle(method: string, handler: (params: unknown) => unknown): void;
+  on(event: string, listener: (payload: unknown) => void): () => void;
   __receive(text: string): Promise<void>;
 };
 
@@ -87,6 +88,26 @@ describe('page client messages from native', () => {
     const id = sent.at(-1)!.id!;
     await bridge.__receive(JSON.stringify({ id, doc, kind: 'result', value: 'ok' }));
     await expect(call).resolves.toBe('ok');
+  });
+
+  it("runs an event's other listeners when one throws, and reports the throw as an unhandled rejection", async () => {
+    const { sent, bridge } = page();
+    const reported: unknown[] = [];
+    jest.spyOn(Promise, 'reject').mockImplementation((reason: unknown) => {
+      reported.push(reason);
+      return new Promise<never>(() => {});
+    });
+    const failure = new Error('listener failed');
+    const seen: unknown[] = [];
+    bridge.on('tick', () => {
+      throw failure;
+    });
+    bridge.on('tick', (payload) => seen.push(payload));
+    const event = { doc: sent[0]!.doc, kind: 'event', method: 'tick', params: 1 };
+    await bridge.__receive(JSON.stringify(event));
+    jest.restoreAllMocks();
+    expect(seen).toEqual([1]);
+    expect(reported).toEqual([failure]);
   });
 
   it('puts one token on everything it sends, and drops messages for another document', async () => {
