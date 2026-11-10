@@ -25,6 +25,8 @@ internal object Seams {
       touches++
       false
     }
+    // A JS number arrives as a Double, a whole one too.
+    context.handle("twice") { args, reply -> reply((args[0] as Double) * 2) }
     context.handle("touch") { _, reply ->
       val now = SystemClock.uptimeMillis()
       for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_CANCEL)) {

@@ -7,9 +7,7 @@ enum RefreshControlLightMode {
 
   static func register() {
     MinimalWebViewHooks.register(key) { _, context in
-      let apply = { context.refreshControl?.tintColor = context.options != nil ? .white : nil }
-      apply()
-      context.onOptionsChange { _ in apply() }
+      context.onOptions { [weak context] options in context?.refreshControl?.tintColor = options != nil ? .white : nil }
     }
   }
 }

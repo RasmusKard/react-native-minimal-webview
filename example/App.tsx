@@ -16,8 +16,6 @@ import {
   AndroidWebView,
   WebView,
   createBridge,
-  type PermissionRequest,
-  type FileRequest,
   type HookEvent,
   type HookExtension,
   useWebViewState,
@@ -60,7 +58,7 @@ const events: Harness['events'] = {
   overlay: { error: false },
 };
 const pageEvents: unknown[] = [];
-const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0 };
+const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0, height: 0 };
 
 /** The page counter's events, into the logs. */
 function onPageCounterEvent(event: PageCounterEvent) {
@@ -116,12 +114,8 @@ export default function App() {
     return b;
   }, []);
 
-  const permissionRef = useRef<((request: PermissionRequest) => Promise<boolean>) | undefined>(
-    undefined
-  );
-  const fileRequestRef = useRef<((request: FileRequest) => Promise<string[] | null>) | undefined>(
-    undefined
-  );
+  const permissionRef = useRef<WebViewProps['onPermissionRequest']>(undefined);
+  const fileRequestRef = useRef<WebViewProps['onFileRequest']>(undefined);
   // The page counter, then a suite's `extensions`, unless it asks `withoutPageCounter`. An extension without `onEvent`
   // logs its events.
   const { extensions = [], withoutPageCounter, ...props } = extraProps;
@@ -176,7 +170,9 @@ export default function App() {
         ref={webViewBox}
         style={styles.webview}
         onLayout={() =>
-          webViewBox.current?.measureInWindow((x, y) => Object.assign(webViewOffset, { x, y }))
+          webViewBox.current?.measureInWindow((x, y, _width, height) =>
+            Object.assign(webViewOffset, { x, y, height })
+          )
         }>
         <Remountable>
           <WebView
@@ -192,12 +188,14 @@ export default function App() {
               ...(logged.some((e) => e && e.key === strayEvents.key) ? [] : [strayEvents]),
             ]}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
-            onFileRequest={(request) => fileRequestRef.current?.(request) ?? null}
+            onFileRequest={(request, signal) => fileRequestRef.current?.(request, signal) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
             onDownload={(result) =>
               result.ok ? events.downloads.push(result) : events.downloadFailures.push(result)
             }
-            onPermissionRequest={(request) => permissionRef.current?.(request) ?? false}
+            onPermissionRequest={(request, signal) =>
+              permissionRef.current?.(request, signal) ?? false
+            }
             android={{
               webView: { acceptThirdPartyCookies: true },
               settings: {

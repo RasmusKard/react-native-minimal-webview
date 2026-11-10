@@ -16,6 +16,7 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
@@ -154,10 +155,14 @@ internal class Deciders(private val warn: (String) -> Unit) {
  *
  * Call [emit] and [ask] from any thread, and the rest on the main thread, where the handlers and the answers run.
  *
+ * Values from JS, the [options], an [ask]'s answer and a [handle] handler's arguments, come in JSON types: a number as
+ * a `Double`, an object as a `Map<String, Any?>`, an array as a `List<Any?>`, and a string, a boolean and null as
+ * themselves.
+ *
  * The hook is on while its extension's `options` are not null or false;
  * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
- * says what off means. [onOptionsChange] still runs while it is off, so the hook can release what it holds, and again
- * when the hook turns on.
+ * says what off means. [onOptions] runs when the hook turns off, so it can release what it holds, and again when it
+ * turns on.
  *
  * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing: its
  * lists reach no WebView and its [emit] reaches nothing.
@@ -166,8 +171,7 @@ interface WebViewContext {
   /**
    * This hook's extension's `options`, the new ones after a change; null while the hook is off.
    *
-   * They come in JSON types: a number as a `Double`, an object as a `Map`, an array as a `List`. After a change they
-   * are the new value already when the [onOptionsChange] handlers run.
+   * After a change they are the new value already when the [onOptions] handlers run.
    */
   val options: Any?
 
@@ -241,13 +245,13 @@ interface WebViewContext {
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
   /**
-   * Runs [handler] with this hook's extension's new `options` each time they change, live on the same WebView; null
-   * when the hook turns off.
+   * Runs [handler] at once with this hook's extension's `options`, then with the new ones each time they change, live
+   * on the same WebView; null while the hook is off.
    *
    * The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
-   * value to another doesn't run it.
+   * value to another doesn't run it, and a context kept after its attach ended never does.
    */
-  fun onOptionsChange(handler: (Any?) -> Unit)
+  fun onOptions(handler: (options: Any?) -> Unit)
 
   /**
    * Runs [handler] at each end of the Document (see [DocumentEnd]), after the core's own resets: per-page state
@@ -278,15 +282,39 @@ interface WebViewContext {
   )
 
   /**
-   * Answers JS's `ref.hook("<key>", method, args)`: [handler] gets the arguments and calls `reply` exactly once.
+   * Answers JS's `ref.hook("<key>", method, args)`: [handler] gets the arguments and a [HookReply], which it calls with
+   * the reply or [fails][HookReply.fail], then or later.
    *
-   * The arguments come in JSON types (a number as an `Int`, `Long` or `Double`), and the reply must be a value JSON can
-   * encode. One handler per method: the last one wins.
+   * One handler per method: the last one wins.
    *
-   * A handler that throws, or a reply JSON can't encode, rejects the JS call with `native_error`. A handler that never
-   * replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't settle it.
+   * A handler that throws before it replies rejects the JS call with `handler_error` and the exception's message. A
+   * handler that never replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't
+   * settle it.
    */
-  fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
+  fun handle(method: String, handler: (args: List<Any?>, reply: HookReply) -> Unit)
+}
+
+/**
+ * The answer to one JS `ref.hook` call, which a [WebViewContext.handle] handler gets: call it with the value the call
+ * resolves with, or [fail] it.
+ *
+ * Only the first reply or fail counts: any after it does nothing. Call it from any thread.
+ */
+class HookReply internal constructor(
+  private val resolve: (Any?) -> Unit,
+  private val reject: (String) -> Unit
+) : (Any?) -> Unit {
+  private val settled = AtomicBoolean()
+
+  /** Resolves the JS call with [value]. A value JSON can't encode rejects it with `native_error` instead. */
+  override fun invoke(value: Any?) {
+    if (settled.compareAndSet(false, true)) resolve(value)
+  }
+
+  /** Rejects the JS call with `handler_error` and [message]. */
+  fun fail(message: String) {
+    if (settled.compareAndSet(false, true)) reject(message)
+  }
 }
 
 /**
@@ -312,8 +340,11 @@ internal open class Attachment(value: Any?) {
   /** Whether the hook is on and the attach is still there: the core routes the lists and passes events and asks. */
   val routed get() = options != null && !detached
 
-  fun onOptionsChange(handler: (Any?) -> Unit) {
+  /** Runs [handler] with the options now and after each change; never once detached. */
+  fun onOptions(handler: (Any?) -> Unit) {
+    if (detached) return
     optionsHandlers += handler
+    handler(options)
   }
 
   /** The hook's new `hookOptions` [value], null when its key is gone; the view calls it only for a changed value. */
@@ -358,7 +389,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val url get() = view.url
   private val documentEndHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
-  val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
+  val handlers = mutableMapOf<String, (List<Any?>, HookReply) -> Unit>()
 
   override fun emit(name: String, payload: Map<String, Any?>) =
     onMain { ifRouted { view.emit(key, name, payload) } }
@@ -374,7 +405,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     destroyedHandlers += handler
   }
 
-  override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
+  override fun handle(method: String, handler: (args: List<Any?>, reply: HookReply) -> Unit) {
     handlers[method] = handler
   }
 

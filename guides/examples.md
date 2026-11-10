@@ -18,7 +18,8 @@ import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  const { canGoBack } = useWebViewState(ref);
+  // Only canGoBack: Browser doesn't re-render as a page loads
+  const canGoBack = useWebViewState(ref, (state) => state.canGoBack);
 
   // Android's back button is the app's to handle
   useEffect(() => {
@@ -58,7 +59,10 @@ function onInboxNotification() {
 
 ## Navigation rules
 
-Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it.
+Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. The rules
+don't decide form POSTs, an iframe's to the top frame too:
+[`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
+says where they load.
 
 ```tsx
 import { WebView, defaultNavigationRules } from 'react-native-minimal-webview';
@@ -94,16 +98,16 @@ import { useEffect, useMemo } from 'react';
 import { Button, Platform, Share } from 'react-native';
 import { WebView, createBridge } from 'react-native-minimal-webview';
 
-type Methods = {
-  share: { params: { url: string }; result: boolean }; // handled in React Native
-  getCartCount: { result: number }; // handled by the page
+type ShopBridge = {
+  reactNative: { share: { params: { url: string }; result: boolean } }; // handled in React Native
+  page: { getCartCount: { result: number } }; // handled by the page
+  events: { themeChanged: 'light' | 'dark' };
 };
-type Events = { themeChanged: 'light' | 'dark' };
 
 export function Shop() {
   // Once: a new bridge recreates the WebView
   const bridge = useMemo(
-    () => createBridge<Methods, Events>({ allowedOrigins: ['https://example.com'] }),
+    () => createBridge<ShopBridge>({ allowedOrigins: ['https://example.com'] }),
     []
   );
 
@@ -208,7 +212,7 @@ await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
 ]);
 const cookies = await ref.current?.call('httpCookieStore.getAllCookies:'); // [{ Name, Value, Domain, Path, … }]
 
-// Android: the app-wide CookieManager
+// Android: the CookieManager of the WebView's profile, the app-wide one by default
 await ref.current?.call('cookieManager.setCookie', [
   'https://example.com',
   `session=${token}; Secure`,
