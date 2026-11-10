@@ -11,13 +11,11 @@ enum MenuItems {
     MinimalWebViewHooks.register(key, webViewClass: MenuWKWebView.self) { webView, context in
       // Another hook's class won (the core warns): no menu.
       guard let view = webView as? MenuWKWebView else { return }
-      let apply = { [weak view] in
-        let options = context.options as? [String: Any]
+      context.onOptions { [weak view] options in
+        let options = options as? [String: Any]
         view?.menuItems = options?["items"] as? [[String: Any]]
         view?.suppressMenuItems = Set(options?["suppress"] as? [String] ?? [])
       }
-      apply()
-      context.onOptionsChange { _ in apply() }
       view.onMenuItem = { [weak view] key in
         guard let view else { return }
         let label = view.menuItems?.first { $0["key"] as? String == key }?["label"] ?? ""

@@ -10,8 +10,6 @@ internal object AndroidLayerType {
 
   // Attach runs again on the WebView that replaces a crashed one, so it gets the layer type too.
   fun register() = MinimalWebViewHooks.register(KEY) { webView, context ->
-    val apply = { webView.setLayerType(TYPES[context.options] ?: View.LAYER_TYPE_NONE, null) }
-    apply()
-    context.onOptionsChange { apply() }
+    context.onOptions { webView.setLayerType(TYPES[it] ?: View.LAYER_TYPE_NONE, null) }
   }
 }

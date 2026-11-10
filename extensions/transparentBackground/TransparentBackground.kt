@@ -9,8 +9,6 @@ internal object TransparentBackground {
 
   // White is WebView's default: it has no getter for the color it had.
   fun register() = MinimalWebViewHooks.register(KEY) { webView, context ->
-    val apply = { webView.setBackgroundColor(if (context.options != null) Color.TRANSPARENT else Color.WHITE) }
-    apply()
-    context.onOptionsChange { apply() }
+    context.onOptions { webView.setBackgroundColor(if (it != null) Color.TRANSPARENT else Color.WHITE) }
   }
 }

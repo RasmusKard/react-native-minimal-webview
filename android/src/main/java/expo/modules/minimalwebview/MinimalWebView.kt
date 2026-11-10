@@ -51,7 +51,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var navigationRules: List<Map<String, Any?>>? = null
   internal var bridgeScript: String? = null
   internal var bridgeOrigins: List<String>? = null
-  /** The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptionsChange). */
+  /** The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptions). */
   internal var hookOptions: Map<String, Any?> = emptyMap()
     set(value) {
       val old = field

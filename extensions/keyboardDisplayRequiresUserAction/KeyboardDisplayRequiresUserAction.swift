@@ -15,11 +15,9 @@ enum KeyboardDisplayRequiresUserAction {
   static func register() {
     MinimalWebViewHooks.register(key) { webView, context in
       guard replaced else { return }
-      let apply = { [weak webView] in
-        if context.options != nil { views.add(webView) } else { views.remove(webView) }
+      context.onOptions { [weak webView] options in
+        if options != nil { views.add(webView) } else { views.remove(webView) }
       }
-      apply()
-      context.onOptionsChange { _ in apply() }
       context.onDestroyed { [weak webView] _ in views.remove(webView) }
     }
   }
