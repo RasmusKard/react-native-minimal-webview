@@ -474,6 +474,14 @@ describe('injectedScripts', () => {
     expect(run(script, 'https://evil.com', patch).ran).toBe(false);
   });
 
+  it('sends scripts changed after mount to the same native view', async () => {
+    mockMount.mockClear();
+    const { native, show } = await mount({ injectedScripts: [{ code: 'a()', origins: ['*'] }] });
+    await show({ injectedScripts: [{ code: 'b()', allFrames: true, origins: ['*'] }] });
+    expect(native().injectedScripts).toEqual([{ code: 'b()', allFrames: true }]);
+    expect(mockMount).toHaveBeenCalledTimes(1);
+  });
+
   it('throws at render for a script without origins or with an invalid rule', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     const scripts = (origins: unknown) => [{ code, origins }] as WebViewProps['injectedScripts'];
