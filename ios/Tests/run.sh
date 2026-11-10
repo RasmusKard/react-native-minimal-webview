@@ -6,7 +6,7 @@ out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift ios/Recovery.swift \
-  ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/Tests/main.swift -o "$out/rules"
+  ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/DownloadName.swift ios/Tests/main.swift -o "$out/rules"
 "$out/rules"
 
 # The PlatformSettings tests, as Mac Catalyst.
