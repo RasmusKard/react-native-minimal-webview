@@ -124,6 +124,7 @@ extension MinimalWebView {
   }
 
   private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
+    guard requestHandlers.contains("onNavigation") else { return }
     onNavigation(request.payload.merging(["action": action, "rule": rule as Any? ?? NSNull()]) { $1 })
   }
 }

@@ -37,8 +37,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
   /// The user scripts installScripts added: the others in the content controller are a hook's.
   var ownScripts: [WKUserScript] = []
-  /// The page requests JS has a prop for, by prop name (`onDownload`, `onNavigationRequest`, ...), read when a request
-  /// comes.
+  /// The page requests JS has a prop for, by prop name (`onDownload`, `onNavigationRequest`, ...), and `onNavigation`, read when a
+  /// request comes or a decision is reported.
   var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 

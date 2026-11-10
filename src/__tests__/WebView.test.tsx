@@ -710,6 +710,13 @@ describe('page requests', () => {
     expect(native().requestHandlers).toEqual([]);
   });
 
+  it('tells native to send navigation decisions only while onNavigation is set', async () => {
+    const { show, native } = await mount({ onNavigation: () => {} });
+    expect(native().requestHandlers).toEqual(['onNavigation']);
+    await show({});
+    expect(native().requestHandlers).toEqual([]);
+  });
+
   it('routes each request to its prop and answers with its result', async () => {
     const onFileRequest = jest.fn(async () => ['file:///a.txt']);
     const onFullscreenChange = jest.fn();
