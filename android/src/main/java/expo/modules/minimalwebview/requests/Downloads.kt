@@ -195,10 +195,13 @@ internal class Downloads(private val owner: MinimalWebView) {
       }
     }
 
+    /** Whether a download follows a redirect [from] one URL [to] another: only to https, or from http to http. */
+    fun redirectAllowed(from: URL, to: URL) = to.protocol == "https" || (to.protocol == "http" && from.protocol == "http")
+
     /**
      * Opens [url] and follows its redirects (http to https too) by hand: each hop sends the cookies for its own URL and
-     * stores what the server sets back, as React Native's fetch does. A hop goes only to https, or from http to http:
-     * Chrome blocks an insecure download started from a secure one.
+     * stores what the server sets back, as React Native's fetch does. A hop must be [redirectAllowed]: Chrome blocks an
+     * insecure download started from a secure one.
      */
     private fun connect(url: URL, userAgent: String, cookie: (String) -> String?, setCookie: (String, String) -> Unit): HttpURLConnection {
       var current = url
@@ -217,9 +220,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         if (code !in 300..399 || location == null) return connection
         connection.disconnect()
         val next = URL(current, location)
-        if (next.protocol != "https" && (next.protocol != "http" || current.protocol != "http")) {
-          throw IOException("refused a redirect from ${current.protocol} to ${next.protocol}")
-        }
+        if (!redirectAllowed(current, next)) throw IOException("refused a redirect from ${current.protocol} to ${next.protocol}")
         current = next
       }
       throw IOException("more than $MAX_REDIRECTS redirects")
