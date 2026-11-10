@@ -110,6 +110,44 @@ class DownloadsTest {
   }
 
   @Test
+  fun decodesADataUrlAsABrowserDoes() {
+    val latin1 = byteArrayOf('c'.code.toByte(), 'a'.code.toByte(), 'f'.code.toByte(), 0xE9.toByte())
+    for ((url, bytes, type) in listOf(
+      Triple("data:text/plain,hi there", "hi there".toByteArray(), "text/plain"),
+      Triple("data:text/plain,a%20b%2C%e2%82%ac 100%", "a b,€ 100%".toByteArray(), "text/plain"),
+      Triple("data:text/plain;charset=iso-8859-1,caf%E9", latin1, "text/plain"), // not UTF-8: the bytes as they are
+      Triple("data:image/png;base64,SGVsbG8=", "Hello".toByteArray(), "image/png"),
+      Triple("data:application/pdf;base64,%2B%2F8%3D", byteArrayOf(0xFB.toByte(), 0xFF.toByte()), "application/pdf"),
+      Triple("data:text/csv;charset=utf-8;base64,YSxi", "a,b".toByteArray(), "text/csv"),
+      Triple("data:text/plain;BASE64,SGVs%20bG8", "Hello".toByteArray(), "text/plain"),
+      Triple("data:;base64,SGk=", "Hi".toByteArray(), "application/octet-stream"),
+      Triple("data:,", ByteArray(0), "application/octet-stream")
+    )) {
+      val (decodedBytes, decodedType) = Downloads.decodeDataUrl(url)
+      assertArrayEquals(url, bytes, decodedBytes)
+      assertEquals(url, type, decodedType)
+    }
+  }
+
+  @Test
+  fun failsAMalformedDataUrl() {
+    for (url in listOf("data:text/plain;base64,SGVsb", "data:;base64,SGk=SGk=", "data:text/plain", "data:")) {
+      assertThrows(url, IllegalArgumentException::class.java) { Downloads.decodeDataUrl(url) }
+    }
+  }
+
+  @Test
+  fun readsABlobChunkAndAnEmptyBlobsBareDataUrl() {
+    val (bytes, type) = Downloads.decodeChunk("data:image/png;base64,SGVsbG8=")
+    assertArrayEquals("Hello".toByteArray(), bytes)
+    assertEquals("image/png", type)
+    val (empty, emptyType) = Downloads.decodeChunk("data:") // FileReader.readAsDataURL of an empty blob in Chromium
+    assertArrayEquals(ByteArray(0), empty)
+    assertEquals("application/octet-stream", emptyType)
+    assertThrows(IllegalArgumentException::class.java) { Downloads.decodeChunk("data:text/plain") }
+  }
+
+  @Test
   fun copiesABodyUpToTheCap() {
     val output = ByteArrayOutputStream()
     Downloads.copyCapped(ByteArrayInputStream(body), output, body.size.toLong())

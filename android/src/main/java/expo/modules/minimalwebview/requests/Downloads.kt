@@ -1,7 +1,6 @@
 package expo.modules.minimalwebview.requests
 
 import android.net.Uri
-import android.util.Base64
 import android.util.Log
 import android.webkit.CookieManager
 import androidx.webkit.URLUtilCompat
@@ -17,6 +16,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Base64
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -49,7 +49,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     val name = safeName(URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType))
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
-      download.url.startsWith("data:") -> save(name, download.url) { file -> writeDataUrl(file, download.url) }
+      download.url.startsWith("data:") -> save(name, download.url) { file -> append(file, decodeDataUrl(download.url)) }
       download.url.startsWith("http:") || download.url.startsWith("https:") -> fetch(download, name)
       else -> failed(name, download.url, IOException("unsupported URL scheme"))
     }
@@ -61,13 +61,10 @@ internal class Downloads(private val owner: MinimalWebView) {
     save(name, download.url) { file -> fetchTo(download, file, cookies::getCookie, cookies::setCookie) }
   }
 
-  /** Appends [data] (a data: URL) to [file] and returns its MIME type. */
-  private fun writeDataUrl(file: File, data: String): String {
-    val header = data.substringBefore(',')
-    // The body may be percent-encoded even when base64 (encodeURIComponent of the base64 text).
-    val body = data.substringAfter(',').let { if ('%' in it) Uri.decode(it) else it }
-    file.appendBytes(if (header.endsWith(";base64")) Base64.decode(body, Base64.DEFAULT) else body.toByteArray())
-    return header.removePrefix("data:").substringBefore(';').ifEmpty { "application/octet-stream" }
+  /** Appends a decoded data: URL's bytes to [file], creating it, and returns its MIME type. */
+  private fun append(file: File, data: Pair<ByteArray, String>): String {
+    file.appendBytes(data.first)
+    return data.second
   }
 
   /**
@@ -82,7 +79,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         file.parentFile?.mkdirs()
         write(file)
       } catch (e: Exception) {
-        // bad base64 or forged JSON from the page: no failure may reach the io thread
+        // a malformed data: URL or forged JSON from the page: no failure may reach the io thread
         e
       }
       if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
@@ -108,7 +105,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     var type: String
     do {
       val (size, data) = readChunk(url, offset)
-      type = writeDataUrl(file, data)
+      type = append(file, decodeChunk(data))
       offset += CHUNK_BYTES
       if (offset > MAX_BYTES) throw TooLarge() // the page's own size check can be forged
     } while (offset < size)
@@ -158,6 +155,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     const val CHUNK_BYTES = 4L * 1024 * 1024
     const val MAX_REDIRECTS = 20 // OkHttp's, which React Native's fetch uses
     const val TIMEOUT_MS = 30_000
+    private val PERCENT_ESCAPE = Regex("%[0-9A-Fa-f]{2}")
 
     /**
      * A failed download's `kind` other than `http`: everything but a [fetched] (http(s)) download's own IOException is
@@ -166,6 +164,36 @@ internal class Downloads(private val owner: MinimalWebView) {
     fun kind(error: Exception, fetched: Boolean) =
       // shortcut: a disk error while an http(s) body streams reads as network; tell them apart if apps need to.
       if (fetched && error is IOException && error !is TooLarge) "network" else "data"
+
+    /**
+     * A data: URL's bytes and its MIME type, application/octet-stream when it names none. As in a browser, the body is
+     * percent-decoded to bytes, even when base64 (encodeURIComponent of the base64 text), and `;base64` is in any case.
+     * Throws IllegalArgumentException for a URL without a comma or with bad base64.
+     */
+    fun decodeDataUrl(url: String): Pair<ByteArray, String> {
+      val comma = url.indexOf(',')
+      require(comma >= 0) { "a data: URL without a comma" }
+      val header = url.substring(0, comma).removePrefix("data:")
+      val body = percentDecode(url.substring(comma + 1))
+      // The MIME decoder skips what isn't base64 (whitespace above all), as android.util.Base64 does.
+      val bytes = if (header.endsWith(";base64", ignoreCase = true)) Base64.getMimeDecoder().decode(body) else body
+      return bytes to header.substringBefore(';').ifEmpty { "application/octet-stream" }
+    }
+
+    /**
+     * A blob chunk's bytes and MIME type, from FileReader's data: URL. Chromium reads an empty blob as a bare `data:`,
+     * which [decodeDataUrl] refuses (a page's own data: URL without a comma is malformed): that is no bytes.
+     */
+    fun decodeChunk(data: String): Pair<ByteArray, String> =
+      if (data == "data:") ByteArray(0) to "application/octet-stream" else decodeDataUrl(data)
+
+    /** [text]'s UTF-8 bytes, each `%` and two hex digits made the byte they name: not decoded as UTF-8 again. */
+    private fun percentDecode(text: String): ByteArray {
+      if ('%' !in text) return text.toByteArray() // a blob's chunks: spares two copies of megabytes
+      // Latin-1 maps each byte to one char and back, so the escapes are replaced in a string.
+      val latin1 = String(text.toByteArray(), Charsets.ISO_8859_1)
+      return PERCENT_ESCAPE.replace(latin1) { it.value.substring(1).toInt(16).toChar().toString() }.toByteArray(Charsets.ISO_8859_1)
+    }
 
     /** `guessFileName` keeps a page's `.` or `..` (a directory: the save fails with EISDIR) and can be empty. */
     fun safeName(name: String) = if (name.isEmpty() || name == "." || name == "..") "download" else name
