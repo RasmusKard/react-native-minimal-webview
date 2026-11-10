@@ -21,7 +21,7 @@ installs the example app, and generates `example/android` or `example/ios` the f
 ## Checks
 
 ```sh
-npm run check                                                              # both packages: TS tests, ESLint, knip, type-checks, build, TSDoc
+npm run check                                                              # both packages: TS tests, ESLint, knip, type-checks (the docs' samples too), build, TSDoc
 npm run mutation                                                           # Stryker on the files .config/stryker.config.json lists; fails below its break threshold
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)   # Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
 ios/Tests/run.sh                                                           # Swift tests, the PlatformSettings ones as Mac Catalyst
@@ -48,8 +48,9 @@ example/maestro/run.sh ios <simulator udid> bridge network   # only the named on
 
 Run the app on one device per platform at a time: every instance of a platform takes its suites from the same queue.
 
-Android emulators need a Google APIs system image, not a Play Store one: the Play Store updates Android System WebView
-in the background. Start them with `-gpu host`, or they may render in software.
+Android emulators need a Google APIs system image:
+[guides/android-system-webview.md](../guides/android-system-webview.md#test-the-oldest-versions) says why. Start them
+with `-gpu host`, or they may render in software.
 
 ```sh
 sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a'

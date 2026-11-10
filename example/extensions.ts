@@ -87,7 +87,7 @@ export async function extensions(h: Harness) {
     await privacy(h, r);
     await (ios ? keyboard(h, r) : android(h, r));
     const stray = warnings.lines.filter(
-      (line) => line.includes(`hookOptions.${KEY}.`) && !line.includes(`${KEY}.menuItems`)
+      (line) => line.includes(`extension ${KEY}.`) && !line.includes(`${KEY}.menuItems`)
     );
     r.check(
       'no extension key warns: each is registered, and sent only on its platforms',
@@ -204,14 +204,21 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
       lines
     );
   }
-  const got = seen.map(({ type, message, defaultValue }) => [type, message, defaultValue]);
+  // Only a prompt has a defaultValue, and only iOS says the frame.
+  const got = seen.map((dialog) => [
+    dialog.type,
+    dialog.message,
+    'defaultValue' in dialog ? dialog.defaultValue : '-',
+    dialog.mainFrame ?? '-',
+  ]);
+  const frame = ios ? true : '-';
   r.check(
-    "onDialog gets each dialog's type, message and default text",
+    "onDialog gets each dialog's type, message, a prompt's default text and, on iOS, mainFrame",
     JSON.stringify(got) ===
       JSON.stringify([
-        ['alert', 'hello', null],
-        ['confirm', 'ok?', null],
-        ['prompt', 'name?', 'default'],
+        ['alert', 'hello', '-', frame],
+        ['confirm', 'ok?', '-', frame],
+        ['prompt', 'name?', 'default', frame],
       ]),
     seen
   );
@@ -232,7 +239,7 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
 }
 
 async function scroll(h: Harness, r: Reporter) {
-  const scrolls: ScrollEvent['nativeEvent'][] = [];
+  const scrolls: ScrollEvent[] = [];
   // react-native-webview's default, so the offsets have no inset in them.
   const insets = {
     scrollView: {
@@ -241,7 +248,7 @@ async function scroll(h: Harness, r: Reporter) {
   };
   h.setProps({
     ios: insets,
-    extensions: [onScroll(({ nativeEvent }) => scrolls.push(nativeEvent))],
+    extensions: [onScroll((event) => scrolls.push(event))],
   });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
   await h.ref.current?.evaluate('scrollTo(0, 400)');
@@ -269,14 +276,10 @@ async function scroll(h: Harness, r: Reporter) {
 }
 
 async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof captureWarnings>) {
-  const chosen: CustomMenuSelectionEvent['nativeEvent'][] = [];
+  const chosen: CustomMenuSelectionEvent[] = [];
   await recreate(
     h,
-    {
-      extensions: [
-        menuItems({ items: MENU, onSelect: ({ nativeEvent }) => chosen.push(nativeEvent) }),
-      ],
-    },
+    { extensions: [menuItems({ items: MENU, onSelect: (event) => chosen.push(event) })] },
     true
   );
   const made = await webViewClass(h);
@@ -299,7 +302,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   );
   await recreate(h, {}, true);
   h.setProps({ extensions: [menuItems({ items: MENU })] });
-  await until(() => warnings.warned(`hookOptions.${KEY}.menuItems`), 3000);
+  await until(() => warnings.warned(`extension ${KEY}.menuItems`), 3000);
   r.check(
     'menuItems set after creation warns that its hook attaches only when the WebView is created',
     warnings.warned('attaches only when the WebView is created'),

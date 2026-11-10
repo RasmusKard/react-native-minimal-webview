@@ -1,22 +1,32 @@
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
- * A page's `alert`, `confirm` or `prompt`, for {@link dialogs}.
+ * A page's `alert`, `confirm` or `prompt`, for {@link dialogs}: `type` says which, and only a prompt has a
+ * `defaultValue`.
  * @group Events
  */
-export type Dialog = {
-  type: 'alert' | 'confirm' | 'prompt';
-  message: string;
-  /** A prompt's default text; null for an alert or a confirm. */
-  defaultValue: string | null;
-  /** The URL of the page (iOS: of the frame) that opened it. */
-  url: string;
-  /**
-   * Whether the main frame opened it.
-   * @ios
-   */
-  isTopFrame?: boolean;
-};
+export type Dialog =
+  | {
+      type: 'alert' | 'confirm';
+      message: string;
+      /** The URL of the page (iOS: of the frame) that opened it. */
+      url: string;
+      /**
+       * Whether the main frame opened it.
+       * @ios
+       */
+      mainFrame?: boolean;
+    }
+  | {
+      type: 'prompt';
+      message: string;
+      /** The prompt's default text. */
+      defaultValue: string | null;
+      /** As for an alert. */
+      url: string;
+      /** @ios */
+      mainFrame?: boolean;
+    };
 
 /**
  * Answers the page's `alert`, `confirm` and `prompt` with `onDialog` instead of the native dialogs; the page waits for
@@ -33,9 +43,8 @@ export type Dialog = {
  */
 export const dialogs = (
   onDialog: (dialog: Dialog, signal: AbortSignal) => unknown
-): HookExtension => ({
+): HookExtension<HookEvent<Dialog['type'], Dialog>> => ({
   key: '@react-native-minimal-webview/extensions.dialogs',
   // Each dialog is an ask, which has a signal; the event's name is the dialog's type.
-  onEvent: ({ name, payload }, signal) =>
-    onDialog({ ...payload, type: name } as Dialog, signal as AbortSignal),
+  onEvent: ({ payload }, signal) => onDialog(payload, signal as AbortSignal),
 });

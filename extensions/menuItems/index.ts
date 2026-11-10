@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * An item of the text selection menu, for {@link menuItems}.
@@ -32,16 +32,15 @@ export type SuppressMenuItem =
   | 'share';
 
 /**
- * An item chosen from the text selection menu, for {@link menuItems}.
+ * An item chosen from the text selection menu, for {@link menuItems}: what react-native-webview's event has in
+ * `nativeEvent`.
  * @group Events
  */
 export type CustomMenuSelectionEvent = {
-  nativeEvent: {
-    label: string;
-    key: string;
-    /** The main frame's selected text (`window.getSelection()`). */
-    selectedText: string;
-  };
+  label: string;
+  key: string;
+  /** The main frame's selected text (`window.getSelection()`). */
+  selectedText: string;
 };
 
 /**
@@ -60,13 +59,12 @@ export function menuItems(menu: {
   /** @ios */
   suppress?: readonly SuppressMenuItem[];
   onSelect?: (event: CustomMenuSelectionEvent) => void;
-}): HookExtension | null {
+}): HookExtension<HookEvent<'selection', CustomMenuSelectionEvent>> | null {
   const { items, suppress, onSelect } = menu;
   if (!items && !(Platform.OS === 'ios' && suppress)) return null;
   return {
     key: '@react-native-minimal-webview/extensions.menuItems',
     options: { items, suppress },
-    onEvent: ({ payload }) =>
-      onSelect?.({ nativeEvent: payload as CustomMenuSelectionEvent['nativeEvent'] }),
+    onEvent: ({ payload }) => onSelect?.(payload),
   };
 }

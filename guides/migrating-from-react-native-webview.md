@@ -82,7 +82,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onLoad` | `onLoadEnd`, with `state.outcome === 'finished'` |
 | `onLoadProgress` | `progress` in `useWebViewState` |
 | `onError`, `onHttpError` | `onError`, whose `kind` is `'network'`, `'ssl'` or `'http'` |
-| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone` |
+| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone`, whose `cause` is `'crash'`, `'memory'` or, on iOS, `'unknown'` |
 | `renderLoading`, `renderError`, `startInLoadingState` | Your own views ([below](#loading-and-error-screens)) |
 | `onContentSizeChange` | An injected script, as for the [scroll position](#scroll-position) |
 | `source={require('./page.html')}` | A `file://` URI from expo-asset ([local files](examples.md#local-files)) |
@@ -100,7 +100,8 @@ WebKit's data store clears with `call` ([reading and calling](examples.md#readin
 
 These props are functions of
 [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/), which
-has the setup. You pass each one in the `extensions` prop:
+has the setup. You pass each one in the `extensions` prop, and their callbacks get the event without
+react-native-webview's `nativeEvent` around it:
 
 | react-native-webview | Here |
 |---|---|
@@ -234,7 +235,7 @@ import {
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  const { loading } = useWebViewState(ref);
+  const loading = useWebViewState(ref, (state) => state.loading);
   const [error, setError] = useState<LoadErrorEvent | null>(null);
 
   return (

@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   # The Swift tests: the navigation and origin rule matchers and crash recovery against the shared cases in
-  # src/__tests__/vectors/, the ask, delegate proxy and read root cases, and the PlatformSettings tests as Mac Catalyst.
+  # src/__tests__/vectors/, the ask, delegate proxy, read root, same URL and load end cases, and the PlatformSettings tests as Mac Catalyst.
   # macOS: DelegateProxy.swift needs WebKit.
   swift-rules:
     runs-on: macos-latest

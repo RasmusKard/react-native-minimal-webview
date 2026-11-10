@@ -1,4 +1,5 @@
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 import WebKit
 
 /// Navigation rules, `ask`, new windows and external opening. The decision handler is held while JS answers an
@@ -10,14 +11,14 @@ extension MinimalWebView {
     // rules, as on Android (shouldOverrideUrlLoading is not called for them).
     guard let targetFrame = action.targetFrame else { return decide(allowInPlace) }
     let mainFrame = targetFrame.isMainFrame
-    let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
+    let own = mainFrame && programmaticUrl.map { Loads.sameURL($0, target) } == true
     if own || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
       if own { programmaticUrl = nil }
       return decide(allowInPlace)
     }
     let request = NavigationRules.Request(
-      url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: action.navigationType == .linkActivated
+      url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: userInitiated(action)
     )
     // A navigation WebKit marks as a download (`<a download>`, blob:). One no hook takes (no onDownload) is dropped:
     // .allow would show it as a page.
@@ -31,6 +32,16 @@ extension MinimalWebView {
       }
       decide(download ? .download : allowInPlace)
     }
+  }
+
+  /// Whether a user gesture started `action`: a link activation right after a tap on this view (`Taps`). WebKit reports
+  /// every navigation with a triggering event as `.linkActivated` (NavigationAction.cpp's navigationType), a link a
+  /// script clicks (`element.click()`) too, and no public WKNavigationAction property tells a real one apart. VoiceOver
+  /// and Switch Control activate a link with no touch: while either runs, a link activation counts on its own. A
+  /// hardware keyboard's doesn't count.
+  private func userInitiated(_ action: WKNavigationAction) -> Bool {
+    action.navigationType == .linkActivated
+      && (taps.recent || UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning)
   }
 
   /// A download no `onDownload` takes.
@@ -48,11 +59,11 @@ extension MinimalWebView {
     for action: WKNavigationAction,
     windowFeatures: WKWindowFeatures
   ) -> WKWebView? {
-    let userInitiated = action.navigationType == .linkActivated
+    let tapped = userInitiated(action)
     guard let target = action.request.url?.absoluteString, !target.isEmpty, target != "about:blank" else {
-      return WindowCatcher.window(configuration) { [weak self] request in self?.openWindow(request, userInitiated) }
+      return WindowCatcher.window(configuration) { [weak self] request in self?.openWindow(request, tapped) }
     }
-    openWindow(action.request, userInitiated)
+    openWindow(action.request, tapped)
     return nil
   }
 
@@ -113,17 +124,8 @@ extension MinimalWebView {
   }
 
   private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
+    guard requestHandlers.contains("onNavigation") else { return }
     onNavigation(request.payload.merging(["action": action, "rule": rule as Any? ?? NSNull()]) { $1 })
-  }
-
-  /// Equal URLs, treating an empty path as "/": WebKit turns `https://example.com` into `https://example.com/`.
-  static func sameURL(_ a: URL, _ b: URL) -> Bool {
-    func normalized(_ url: URL) -> String? {
-      guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-      if components.percentEncodedPath.isEmpty { components.percentEncodedPath = "/" }
-      return components.string
-    }
-    return normalized(a) == normalized(b)
   }
 }
 
@@ -180,3 +182,63 @@ private let newWindowTimeout: TimeInterval = 5
 /// goes to WebKit unchecked on every OS: an NS_ENUM's `init(rawValue:)` accepts any value, so `?? .allow` only
 /// satisfies the type, and nothing falls back if WebKit drops the value; only an app that claims a domain could tell.
 private let allowInPlace = WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2) ?? .allow
+
+/// When a tap on the WKWebView last ended, for `userInitiated`. It only watches the view's touches: it never
+/// recognizes, so it cancels, delays and prevents nothing (scrolling, links, text selection and the pull-to-refresh
+/// control work as without it), and it fails at each touch's end, or as soon as the touch scrolls.
+final class Taps: UIGestureRecognizer, UIGestureRecognizerDelegate {
+  /// In system uptime, a clock the device time doesn't move.
+  private var lastTap: TimeInterval = -.infinity
+
+  override init(target: Any?, action: Selector?) {
+    super.init(target: target, action: action)
+    cancelsTouchesInView = false
+    delaysTouchesEnded = false
+    delegate = self
+  }
+
+  /// A tap ended within `tapWindow`.
+  var recent: Bool { ProcessInfo.processInfo.systemUptime - lastTap <= tapWindow }
+
+  override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+    super.touchesMoved(touches, with: event)
+    if scrolls(touches) { state = .failed }
+  }
+
+  override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+    super.touchesEnded(touches, with: event)
+    if !scrolls(touches) { lastTap = ProcessInfo.processInfo.systemUptime }
+    state = .failed
+  }
+
+  override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+    super.touchesCancelled(touches, with: event)
+    state = .failed
+  }
+
+  /// A touch that scrolls or zooms the page, or a scrollable box in it (WebKit gives each its own UIScrollView), is no
+  /// tap, as in Chromium, where lifting a finger after a scroll gives the page no user activation
+  /// (pointer_event_manager.cc).
+  private func scrolls(_ touches: Set<UITouch>) -> Bool {
+    touches.contains { touch in
+      touch.gestureRecognizers?.contains { recognizer in
+        guard let scrollView = recognizer.view as? UIScrollView else { return false }
+        return scrollView.isDragging || scrollView.isZooming
+      } == true
+    }
+  }
+
+  /// Another recognizer that recognizes before the touch ends (WebKit's touch events one begins at touch down) leaves
+  /// this one watching instead of failing it.
+  func gestureRecognizer(
+    _ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+  ) -> Bool {
+    true
+  }
+}
+
+/// WebKit sends a tap's click once the finger lifts, at once on a page sized to the device (`width=device-width`) or
+/// after its double-tap wait (about 350 ms) on one that can zoom, and the link's decision follows from the web content
+/// process. A second covers that on a busy page, and a redirect of the tapped link that answers within it; it leaves a
+/// script little time to ride on an unrelated tap, where Chromium's user activation lasts 5 s.
+private let tapWindow: TimeInterval = 1

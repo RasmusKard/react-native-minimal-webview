@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * A failed request that isn't the main frame's, for {@link onLoadSubResourceError}: shaped as the core's
@@ -18,16 +18,16 @@ export type SubResourceErrorEvent = {
  * Calls `handler` for each of the page's requests that fails, such as an image, a script or an iframe, but not the
  * main frame's, which goes to `onError`: react-native-webview's `onLoadSubResourceError`. Null on iOS.
  *
- * A request whose SSL check fails isn't reported, unlike in react-native-webview.
+ * A request whose SSL check fails isn't reported; react-native-webview's reports only those.
  * @android
  * @group Extensions
  */
 export const onLoadSubResourceError = (
   handler: (event: SubResourceErrorEvent) => void
-): HookExtension | null =>
+): HookExtension<HookEvent<'error', SubResourceErrorEvent>> | null =>
   Platform.OS === 'android'
     ? {
         key: '@react-native-minimal-webview/extensions.onLoadSubResourceError',
-        onEvent: ({ payload }) => handler(payload as SubResourceErrorEvent),
+        onEvent: ({ payload }) => handler(payload),
       }
     : null;

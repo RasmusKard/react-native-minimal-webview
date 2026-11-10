@@ -19,7 +19,8 @@ import {
   recordExternal,
   reporter,
   sleep,
-  tapPoint,
+  tap,
+  touch,
   until,
   waitFor,
 } from './harness';
@@ -41,8 +42,13 @@ export type ShapeHost = {
   open: (path: string) => Promise<string>;
   /** A click from script; with `frame`, on an element in that same-origin iframe. */
   click: (id: string, frame?: string) => Promise<unknown>;
-  /** A user gesture: the driver's real tap on Android, a click from script on iOS (WebKit counts it as one). */
+  /**
+   * A user gesture: the driver's real tap on Android, a click from script on iOS (WebKit runs it as a gesture, but it
+   * isn't `userInitiated`).
+   */
   tap: (id: string, frame?: string) => Promise<unknown>;
+  /** The driver's real tap, on iOS too: for a check that needs `userInitiated`. */
+  touch: (id: string, frame?: string) => Promise<unknown>;
   evaluate: (script: string) => Promise<unknown>;
   state: () => NavigationState;
   goBack: () => void;
@@ -128,10 +134,8 @@ function libraryHost(h: Harness, r: ReturnType<typeof reporter>): ShapeHost {
     },
     // A click on a page that went away shows in the check that follows, so the suite goes on.
     click: (id, frame) => host.evaluate(`${byId(id, frame)}.click()`).catch(String),
-    tap: async (id, frame) => {
-      if (Platform.OS !== 'android') return await host.click(id, frame);
-      r.info('TAP', await tapPoint(h, id, frame));
-    },
+    tap: (id, frame) => tap(h, r, id, frame),
+    touch: (id, frame) => touch(h, r, id, frame),
     evaluate: async (script) => await h.ref.current?.evaluate(script),
     state: h.state,
     goBack: () => h.ref.current?.goBack(),
@@ -542,13 +546,14 @@ async function schemeDefaults({ r, s, android }: Shape) {
       intent
     );
 
+  // Real taps on iOS too: the default rules open other schemes only from a gesture, which there takes a touch.
   await s.use('none');
   await hub(s);
-  await s.tap('tel'); // the default rules open other schemes only from a gesture
-  await until(() => decision(s, 'tel:') !== undefined, 3000);
+  await s.touch('tel');
+  await until(() => decision(s, 'tel:') !== undefined, 15000);
   const main = { external: s.external.join(), decision: s.decisions.at(-1) };
   s.clear();
-  const tapped = await lines(s, () => s.tap('frame-tel', 'frame'));
+  const tapped = await lines(s, () => s.touch('frame-tel', 'frame'));
   await sleep(1000);
   const framed = decision(s, 'tel:+3725550000');
   r.check(
@@ -761,7 +766,10 @@ async function backButton({ r, s, android }: Shape) {
   }
 }
 
-/** In run order; the Android taps come in this order too (A4, A5, B6, D1–D5, E10, G1, then the back press). */
+/**
+ * In run order; the Android taps come in this order too (A4, A5, B6, D1–D5, E10's two, G1, H1's two, then the back
+ * press), and the iOS ones are E10's two.
+ */
 const BLOCKS = [
   hybrid,
   frames,

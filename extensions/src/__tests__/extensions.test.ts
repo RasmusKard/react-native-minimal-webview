@@ -4,6 +4,7 @@ import type { HookExtension } from 'react-native-minimal-webview';
 import {
   androidLayerType,
   basicAuthCredential,
+  type Dialog,
   dialogs,
   downloadManager,
   hideKeyboardAccessoryView,
@@ -76,18 +77,23 @@ describe('the extensions', () => {
     expect(keyboardDisplayRequiresUserAction(true)).toBeNull();
   });
 
-  it("calls react-native-webview's callbacks with { nativeEvent }", () => {
+  it('calls onScroll and onSelect with the event as it came', () => {
     const scrolled = jest.fn();
-    const scroll = { contentOffset: { x: 0, y: 400 } };
+    const scroll = {
+      contentOffset: { x: 0, y: 400 },
+      contentInset: { top: 0, left: 0, bottom: 0, right: 0 },
+      contentSize: { width: 400, height: 2000 },
+      layoutMeasurement: { width: 400, height: 800 },
+    };
     onScroll(scrolled).onEvent!({ name: 'scroll', payload: scroll });
-    expect(scrolled).toHaveBeenCalledWith({ nativeEvent: scroll });
+    expect(scrolled).toHaveBeenCalledWith(scroll);
     const selected = jest.fn();
     const selection = { key: 'hl', label: 'Highlight', selectedText: 'word' };
     menuItems({ items: MENU, onSelect: selected })!.onEvent!({
       name: 'selection',
       payload: selection,
     });
-    expect(selected).toHaveBeenCalledWith({ nativeEvent: selection });
+    expect(selected).toHaveBeenCalledWith(selection);
   });
 
   it('calls onLoadSubResourceError with the event as it came', () => {
@@ -98,12 +104,18 @@ describe('the extensions', () => {
     expect(failed).toHaveBeenCalledWith(error);
   });
 
-  it('calls onDialog with the dialog and its type, and returns its answer', async () => {
+  it('calls onDialog with the dialog as it came, and returns its answer', async () => {
     const onDialog = jest.fn(async () => 'typed');
     const signal = new AbortController().signal;
-    const prompt = { message: 'name?', defaultValue: 'default', url: 'https://example.com/' };
+    const prompt: Dialog = {
+      type: 'prompt',
+      message: 'name?',
+      defaultValue: 'default',
+      url: 'https://example.com/',
+      mainFrame: true,
+    };
     const answer = dialogs(onDialog).onEvent!({ name: 'prompt', payload: prompt }, signal);
     await expect(answer).resolves.toBe('typed');
-    expect(onDialog).toHaveBeenCalledWith({ ...prompt, type: 'prompt' }, signal);
+    expect(onDialog).toHaveBeenCalledWith(prompt, signal);
   });
 });

@@ -1,20 +1,19 @@
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
- * A scroll, for {@link onScroll}: react-native-webview's event, in points (iOS) or dp (Android).
+ * A scroll, for {@link onScroll}, in points (iOS) or dp (Android): what react-native-webview's event has in
+ * `nativeEvent`.
  * @group Events
  */
 export type ScrollEvent = {
-  nativeEvent: {
-    contentOffset: { x: number; y: number };
-    /** All 0 on Android. */
-    contentInset: { top: number; left: number; bottom: number; right: number };
-    contentSize: { width: number; height: number };
-    /** The WebView's own size. */
-    layoutMeasurement: { width: number; height: number };
-    /** @ios */
-    zoomScale?: number;
-  };
+  contentOffset: { x: number; y: number };
+  /** All 0 on Android. */
+  contentInset: { top: number; left: number; bottom: number; right: number };
+  contentSize: { width: number; height: number };
+  /** The WebView's own size. */
+  layoutMeasurement: { width: number; height: number };
+  /** @ios */
+  zoomScale?: number;
 };
 
 /**
@@ -24,7 +23,9 @@ export type ScrollEvent = {
  * `never`, react-native-webview's default.
  * @group Extensions
  */
-export const onScroll = (handler: (event: ScrollEvent) => void): HookExtension => ({
+export const onScroll = (
+  handler: (event: ScrollEvent) => void
+): HookExtension<HookEvent<'scroll', ScrollEvent>> => ({
   key: '@react-native-minimal-webview/extensions.onScroll',
-  onEvent: ({ payload }) => handler({ nativeEvent: payload as ScrollEvent['nativeEvent'] }),
+  onEvent: ({ payload }) => handler(payload),
 });
