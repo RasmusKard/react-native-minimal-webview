@@ -140,6 +140,16 @@ const nativeModule = () =>
     setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
 
+/** Android rejects a view function with this until Expo has registered the view. */
+const notRegistered = (error: unknown) =>
+  (error as { code?: string } | null)?.code === 'ERR_VIEW_NOT_FOUND';
+
+/** A native call nothing awaits: a rejection is logged, bar one for a view not registered yet, where it does nothing. */
+const unawaited = (call: Promise<unknown> | undefined, name: string) =>
+  void call?.catch((error: unknown) => {
+    if (!notRegistered(error)) console.error(`[react-native-minimal-webview] ${name} failed`, error);
+  });
+
 /**
  * A WebView whose native side decides navigations and owns the navigation state: see {@link WebViewProps} and
  * {@link WebViewRef}.
@@ -185,23 +195,23 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
           }
         );
       });
-    // Android rejects a view function with ERR_VIEW_NOT_FOUND until Expo has registered the view: retry each frame.
+    // Retries each frame until Expo has registered the view.
     const mounted = async (call: () => Promise<string> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
           return JSON.parse(await settled(call() ?? gone())) as unknown;
         } catch (error) {
-          if ((error as { code?: string }).code !== 'ERR_VIEW_NOT_FOUND') throw error;
+          if (!notRegistered(error)) throw error;
           if (frame === 60 || AppState.currentState === 'background') gone();
           await new Promise((resolve) => requestAnimationFrame(resolve));
         }
       }
     };
     return {
-      goBack: () => void native.current?.goBack(),
-      goForward: () => void native.current?.goForward(),
-      reload: () => void native.current?.reload(),
-      stopLoading: () => void native.current?.stopLoading(),
+      goBack: () => unawaited(native.current?.goBack(), 'goBack'),
+      goForward: () => unawaited(native.current?.goForward(), 'goForward'),
+      reload: () => unawaited(native.current?.reload(), 'reload'),
+      stopLoading: () => unawaited(native.current?.stopLoading(), 'stopLoading'),
       evaluate: (script) => mounted(() => native.current?.evaluate(script)),
       get: (key) => mounted(() => native.current?.get(key)),
       call: (method, args = []) =>
@@ -230,7 +240,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const connection = props.bridge?.[CONNECTION];
   useEffect(() => {
     if (!connection) return undefined;
-    connection.attach((message) => void native.current?.bridgePost(message));
+    connection.attach((message) => unawaited(native.current?.bridgePost(message), 'bridgePost'));
     return () => connection.detach();
   }, [connection]);
 
@@ -482,7 +492,7 @@ export const AndroidWebView = {
    * @android
    */
   preconnect(url: string): void {
-    if (Platform.OS === 'android') void nativeModule().preconnect(url);
+    if (Platform.OS === 'android') unawaited(nativeModule().preconnect(url), 'preconnect');
   },
   /**
    * Turns remote debugging (`chrome://inspect`) of every WebView in the app on or off.
@@ -493,6 +503,10 @@ export const AndroidWebView = {
    * @android
    */
   setWebContentsDebuggingEnabled(enabled: boolean): void {
-    if (Platform.OS === 'android') void nativeModule().setWebContentsDebuggingEnabled(enabled);
+    if (Platform.OS === 'android')
+      unawaited(
+        nativeModule().setWebContentsDebuggingEnabled(enabled),
+        'setWebContentsDebuggingEnabled'
+      );
   },
 };
