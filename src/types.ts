@@ -381,7 +381,7 @@ export type Bridge<
   /**
    * Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function.
    *
-   * A listener that throws is reported as an unhandled promise rejection, and the event's later listeners don't run.
+   * A listener that throws is reported as an unhandled promise rejection; the event's other listeners still run.
    */
   on<E extends keyof Events & string>(
     event: E,
