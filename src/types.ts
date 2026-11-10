@@ -119,11 +119,20 @@ export type NavigationRule = {
    */
   newWindow?: boolean;
   /**
-   * A user gesture started it.
+   * A user gesture started it: the user's tap, click or key press.
    *
-   * A `location.href` change or `window.open` from a click handler is true on Android, but false on iOS, where only a
-   * tapped link is. A redirect of a load the core starts itself (an allowed new window, and on Android an allowed
-   * `ask`) is never user-initiated.
+   * - Android: WebView's flag (`hasGesture()`, `onCreateWindow`'s `isUserGesture`), Chromium's user activation, which
+   *   a tap that doesn't scroll, a click or a key press gives the page for up to 5 s. Any navigation the page starts in
+   *   that time is true: a `location.href` change or `window.open` from a click handler, a timer's, a link a script
+   *   clicks.
+   * - iOS: only a link activation (`<a>`, `<area>`, `target=_blank` too) within 1 s after a tap on the WebView that
+   *   scrolls and zooms nothing. WebKit reports a link a script clicks as it does a tapped one, so the core times the
+   *   tap itself. A `location.href` change or `window.open` is false, from a click handler too, as is a link activated
+   *   from a hardware keyboard; a tapped link's redirect is true only within that second. VoiceOver and Switch Control
+   *   activate a link without a touch: while either runs, every link activation is true, a script's too.
+   *
+   * A redirect of a load the core starts itself (an allowed new window, and on Android an allowed `ask`) is never
+   * user-initiated.
    */
   userInitiated?: boolean;
   /**
@@ -226,12 +235,10 @@ export type LoadErrorEvent =
  */
 export type ProcessGoneEvent = {
   /**
-   * Whether the renderer crashed (true) or the system killed it for memory (false); null on iOS, where WebKit doesn't
-   * say.
-   *
-   * Test it with `=== true` or `=== false`, not as a condition.
+   * Why it died: `crash` when the renderer crashed, `memory` when the system killed it to reclaim memory, and `unknown`
+   * on iOS, where WebKit doesn't say.
    */
-  didCrash: boolean | null;
+  cause: 'crash' | 'memory' | 'unknown';
   /**
    * Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the view's window is visible,
    * with the history restored unless the `source` page was on screen, and with the props applied but not what `call`
@@ -385,7 +392,7 @@ export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
   /**
    * Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function.
    *
-   * A listener that throws is reported as an unhandled promise rejection, and the event's later listeners don't run.
+   * A listener that throws is reported as an unhandled promise rejection; the event's other listeners still run.
    */
   on<E extends keyof Schema['events'] & string>(
     event: E,
@@ -610,7 +617,8 @@ export type IOSSettings = {
  * recreated, with a warning.
  *
  * The ref's {@link WebViewRef.get | get} and {@link WebViewRef.call | call} take these roots, plus `cookieManager` and
- * `webStorage`; a key is the getter's name without `get` or `is`.
+ * `webStorage`, the WebView profile's (`webView.profile`, the default one unless set); a key is the getter's name
+ * without `get` or `is`.
  * @example
  * ```tsx
  * <WebView
@@ -758,10 +766,10 @@ export type CodedError = Error & { code: ErrorCode };
  * unmounted), and a late answer is dropped.
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop. iOS shows a `UIAlertController` titled with the
- * frame's host, one at a time (one that comes while another shows is cancelled), and Android WebView's own dialogs. An
- * auth challenge is cancelled on Android, and gets WebKit's default handling on iOS: without a stored credential, the
- * site's 401 page shows. `dialogs` and `basicAuthCredential` of
- * `@react-native-minimal-webview/extensions` take them over, or a native hook does.
+ * frame's host, or `JavaScript` for a frame without one (`data:`, sandboxed, `file:`), one at a time (one that comes
+ * while another shows is cancelled), and Android WebView's own dialogs. An auth challenge is cancelled on Android, and
+ * gets WebKit's default handling on iOS: without a stored credential, the site's 401 page shows. `dialogs` and
+ * `basicAuthCredential` of `@react-native-minimal-webview/extensions` take them over, or a native hook does.
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
@@ -806,7 +814,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation they decide is blocked.
    *
-   * `about:`, `blob:`, `data:` and `javascript:` always load in place.
+   * `about:`, `data:` and `javascript:` always load in place. A `blob:` URL is decided as the origin it carries:
+   * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
+   * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.
    *
    * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
    * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
@@ -860,7 +870,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * The bridge to the page, from `createBridge`, of any schema.
    *
    * Read when the WebView is created: another bridge recreates it (the page reloads and the navigation state starts
-   * over), so make it once (`useMemo`). A bridge serves one mounted WebView at a time: attaching it to a second throws.
+   * over), so make it once, at module scope or with `useMemo` (in development, a WebView warns the first time another
+   * bridge replaces its own). A bridge serves one mounted WebView at a time: attaching it to a second throws.
    *
    * On Android with a WebView older than 101 there is no bridge: calls reject with `unavailable`, and a warning says
    * so, once per process.
@@ -890,7 +901,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Copies `HTTPCookieStorage` (native requests) into the WebView before each `source` load, which waits for it, and
    * the WebView's cookie changes, deletions included, back as they happen.
    *
-   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background.
+   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background. A
+   * WebView on another `android.webView.profile` has that profile's cookies instead.
    * @default `false`
    * @ios
    */

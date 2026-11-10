@@ -95,7 +95,14 @@ export function createEndpoint<Sender = void>(
           return;
         }
         case 'event':
-          listeners.get(message.method)?.forEach((listener) => listener(message.params, sender));
+          listeners.get(message.method)?.forEach((listener) => {
+            // An unhandled rejection reports the error without stopping the other listeners.
+            try {
+              listener(message.params, sender);
+            } catch (error) {
+              void Promise.reject(error);
+            }
+          });
           return;
         case 'result':
         case 'error': {

@@ -8,6 +8,7 @@ import { defaultNavigationRules } from './defaultNavigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
 import { useAttach } from './refStore';
 import type {
+  Bridge,
   HookExtension,
   InjectedScript,
   LoadErrorEvent,
@@ -43,8 +44,8 @@ export type AskableEvent = {
 };
 
 /**
- * Page requests the core answers natively, by prop name. Native asks JS only for those whose prop is set, and reads the
- * set when the request comes, so a prop can come and go.
+ * Page requests the core answers natively, by prop name, and `onNavigation`, for the decisions it reports. Native sends
+ * JS each only while its prop is set, and reads the set when it would send one, so a prop can come and go.
  */
 const REQUESTS = [
   'onNavigationRequest',
@@ -53,6 +54,7 @@ const REQUESTS = [
   'onFullscreenChange',
   'onPermissionRequest',
   'onDownload',
+  'onNavigation',
 ] as const;
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
@@ -67,7 +69,6 @@ const OWN = [
   'pullToRefresh',
   'sharedCookies',
   'extensions',
-  'onNavigation',
   'onNavigationStateChange',
   'onError',
   'onProcessGone',
@@ -146,7 +147,27 @@ const nativeModule = () =>
  * @group WebView
  */
 export function WebView(props: WebViewProps) {
+  useBridgeChangeWarning(props.bridge);
   return <WebViewInstance key={creationKey(props)} {...props} />;
+}
+
+/**
+ * Warns in development, once per WebView, when another bridge replaces its bridge, which recreated it: a bridge made
+ * in render (`bridge={createBridge(…)}`) would reload the page at every render.
+ */
+function useBridgeChangeWarning(bridge: Bridge | undefined) {
+  const last = useRef(bridge);
+  const warned = useRef(false);
+  useEffect(() => {
+    if (__DEV__ && !warned.current && last.current && bridge && bridge !== last.current) {
+      warned.current = true;
+      console.warn(
+        '[react-native-minimal-webview] bridge: another bridge recreated the WebView, and its page loaded again; ' +
+          'create the bridge once, at module scope or with useMemo'
+      );
+    }
+    last.current = bridge;
+  }, [bridge]);
 }
 
 /** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
@@ -333,7 +354,7 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
   });
 }
 
-/** The page requests with a prop set, as a new array only when that set changes. */
+/** The `REQUESTS` with a prop set, as a new array only when that set changes. */
 function useRequestHandlers(props: WebViewProps) {
   const key = REQUESTS.filter((prop) => props[prop]).join();
   return useMemo(() => (key ? key.split(',') : []), [key]);

@@ -37,8 +37,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
   /// The user scripts installScripts added: the others in the content controller are a hook's.
   var ownScripts: [WKUserScript] = []
-  /// The page requests JS has a prop for, by prop name (`onDownload`, `onNavigationRequest`, ...), read when a request
-  /// comes.
+  /// The page requests JS has a prop for, by prop name (`onDownload`, `onNavigationRequest`, ...), and `onNavigation`, read when a
+  /// request comes or a decision is reported.
   var requestHandlers: Set<String> = []
   private var loadedSource: NSDictionary?
 
@@ -47,6 +47,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var observations: [NSKeyValueObservation] = []
   private(set) lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
+  /// When the user last tapped the WKWebView: a link activation counts as user-initiated only right after a tap.
+  let taps = Taps(target: nil, action: nil)
   /// The decision warnings sent, shared and taken (DelegateProxy): one each per view.
   private var warnedDecisions: Set<String> = []
 
@@ -130,7 +132,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes = []
     preparing = true
-    cookies.prepare(webView) { [weak self, weak webView] in
+    cookies.prepare { [weak self, weak webView] in
       guard let self, let webView, webView === self.webView else { return }
       preparing = false
       load(next)
@@ -228,6 +230,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     webView.navigationDelegate = proxy
     webView.uiDelegate = proxy
+    webView.addGestureRecognizer(taps)
     addSubview(webView)
     let update = { [weak self] in self?.scheduleUpdate() }
     observations = [
@@ -334,19 +337,17 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     proxy.navigationDelegates.forEach(callback)
   }
 
-  /// Main-frame failures only. Superseded navigations (cancelled) and policy cancels (frame load interrupted: a
-  /// download, a 204, a blocked redirect) are not errors. Returns whether it was one.
-  private func failed(_ error: Error) -> Bool {
+  /// A main-frame load WebKit ended with `error`: reports it to onError when it failed (`Loads.ended`), and returns its
+  /// outcome.
+  private func ended(with error: Error) -> String {
     let nsError = error as NSError
-    let cancelled = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
-    let interrupted = nsError.domain == "WebKitErrorDomain" && nsError.code == 102
-    guard !cancelled, !interrupted else { return false }
+    let end = Loads.ended(by: nsError)
+    guard let kind = end.kind else { return end.outcome }
     let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
       ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
-    let ssl = nsError.domain == NSURLErrorDomain && (NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed).contains(nsError.code)
     failedUrl = failing
-    onError(["kind": ssl ? "ssl" : "network", "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
-    return true
+    onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
+    return end.outcome
   }
 
   // MARK: WKNavigationDelegate
@@ -416,7 +417,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func loadEnded(_ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
-    outcome = error.map { failed($0) ? "failed" : "cancelled" } ?? "finished"
+    outcome = error.map { ended(with: $0) } ?? "finished"
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
     scheduleUpdate()
@@ -424,7 +425,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
-  /// WebKit does not say whether it crashed or was killed for memory, so `didCrash` is null on iOS.
+  /// WebKit does not say whether it crashed or was killed for memory, so its `cause` is `unknown` on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     endDocument(.crashed)
@@ -434,7 +435,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       // Any other page: reload() relaunches the process with the back-forward list's item, so history stays.
       if onSource || webView.backForwardList.currentItem == nil, let source { load(source) } else { reload() }
     }
-    onProcessGone(["didCrash": NSNull(), "recovered": recovered])
+    onProcessGone(["cause": "unknown", "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }

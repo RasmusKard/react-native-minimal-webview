@@ -38,5 +38,5 @@ export const sampleHook = (
   name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf'
 ): HookExtension => ({ key: `sample.${name}` });
 
-/** The `sample.seams` hook's counter (Android): how many of its WebViews were destroyed at unmount. */
+/** The `sample.seams` hook's counter: how many of its WebViews were closed at unmount. */
 export const seams = requireNativeModule<{ closedViews(): Promise<number> }>('SampleExtension');
