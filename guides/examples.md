@@ -58,7 +58,10 @@ function onInboxNotification() {
 
 ## Navigation rules
 
-Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it.
+Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. The rules
+don't decide form POSTs, an iframe's to the top frame too:
+[`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
+says where they load.
 
 ```tsx
 import { WebView, defaultNavigationRules } from 'react-native-minimal-webview';
