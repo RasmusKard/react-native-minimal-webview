@@ -34,14 +34,14 @@ On a connected device, `adb shell dumpsys webviewupdate` names the WebView packa
 
 ## Update a device's WebView
 
-Update Android System WebView in the Play Store. On an emulator, use a Google APIs system image: a Play Store image
-updates WebView in the background, so its version moves under your tests.
+Update Android System WebView in the Play Store.
 
 ## Test the oldest versions
 
-An emulator with a Google APIs image keeps the WebView its image shipped with, and the images of older API levels ship
-older WebViews. Run the app there to see the features above off. [CONTRIBUTING][contributing] lists the images for the
-oldest supported versions and how to create the emulators.
+Test on an emulator with a Google APIs system image, not a Play Store one: it keeps the WebView it shipped with, while
+the Play Store updates WebView in the background and moves its version under your tests. The images of older API
+levels ship older WebViews: run the app there to see the features above off. [CONTRIBUTING][contributing] lists the
+images for the oldest supported versions and how to create the emulators.
 
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [onDownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload

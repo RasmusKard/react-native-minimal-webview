@@ -7,7 +7,10 @@ import type { HookExtension } from 'react-native-minimal-webview';
 export type BasicAuthCredential = { username: string; password: string };
 
 /**
- * Answers HTTP auth challenges with `credential`, on every host: react-native-webview's `basicAuthCredential`.
+ * Answers HTTP auth challenges with `credential`: react-native-webview's `basicAuthCredential`.
+ *
+ * It goes to every server that challenges, not only yours: any host the WebView loads a page, an iframe or a
+ * subresource from, a third party's too, and over plain `http:` as well as `https:`.
  *
  * iOS answers HTTP basic challenges, and Android every HTTP auth request, digest included. Neither sends the credential
  * again once the site has rejected it: the site's 401 page shows. A change applies from the next challenge.

@@ -223,8 +223,8 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 | Its `options` change | Its `onOptionsChange` handlers run, without a reload |
 | Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
 | Its key is removed, or its `options` become null or false | `onOptionsChange` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptionsChange` runs with the new options. |
-| The renderer crashes | iOS: `onDocumentEnd` with `crashed`; the `WKWebView` reloads and nothing attaches again. Android: `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context. |
-| The WebView unmounts | `onDocumentEnd`, then `onDestroyed`, with `closing`: clean up there. |
+| The renderer crashes | iOS: `onDocumentEnd` with `.crashed`; the `WKWebView` reloads and nothing attaches again. Android: `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context. |
+| The WebView unmounts | `onDocumentEnd`, then `onDestroyed`, with `.closing` on iOS and `CLOSING` on Android: clean up there. |
 
 `DocumentEnd` ([Swift][documentend], [Kotlin][documentendkt]) says exactly when a page ends, and what each reason means.
 `onDestroyed` says what is still alive when it runs.
@@ -243,7 +243,6 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 | Callbacks go in | `navigationDelegates`, `uiDelegates` | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
 | `configure` gets | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up |
 | Your own WebView class | `webViewClass:` | `webViewFactory =` |
-| `onDestroyed` reasons | `closing` | `closing` and `crashed` |
 | Only on this platform | `refreshControl` | `onDownloadStart` |
 
 ## Reference

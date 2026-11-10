@@ -15,7 +15,10 @@ import type { HookExtension } from 'react-native-minimal-webview';
  * @group Extensions
  */
 export const downloadManager = (options?: {
-  /** The toast's text, react-native-webview's `'Downloading'` when it isn't set. */
+  /**
+   * The toast's text.
+   * @default `'Downloading'`
+   */
   downloadingMessage?: string;
 }): HookExtension | null =>
   Platform.OS === 'android'
