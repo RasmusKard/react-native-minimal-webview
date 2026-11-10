@@ -21,7 +21,7 @@ installs the example app, and generates `example/android` or `example/ios` the f
 ## Checks
 
 ```sh
-npm run check                                                              # both packages: TS tests, ESLint, knip, type-checks, build, TSDoc
+npm run check                                                              # both packages: TS tests, ESLint, knip, type-checks (the docs' samples too), build, TSDoc
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest)   # Kotlin tests; -PmrwCoverage adds JaCoCo coverage
 xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules   # Swift tests
 F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios17.0-macabi   # with the next line: the PlatformSettings tests, as Mac Catalyst
