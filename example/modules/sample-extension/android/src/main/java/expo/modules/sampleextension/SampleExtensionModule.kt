@@ -30,8 +30,12 @@ class SampleExtensionModule : Module() {
         context.onOptionsChange { counter.stamp(webView) }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply -> reply(counter.count) }
-        // A handler can reply later, here with the app's answer to an ask.
-        context.handle("label") { _, reply -> context.ask("label", mapOf("count" to counter.count), reply) }
+        // A handler can reply later, here with the app's answer to an ask, and fail the JS call when there is none.
+        context.handle("label") { _, reply ->
+          context.ask("label", mapOf("count" to counter.count)) { answer ->
+            if (answer != null) reply(answer) else reply.fail("the app gave no label")
+          }
+        }
         context.onDocumentEnd { reason ->
           if (reason != DocumentEnd.CLOSING) {
             context.emit("documentEnd", mapOf("reason" to reason.name.lowercase(), "url" to context.url))

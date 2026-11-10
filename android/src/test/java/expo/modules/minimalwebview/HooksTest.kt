@@ -255,4 +255,18 @@ class HooksTest {
     off.optionsChanged(true)
     assertTrue(off.downloadStarted("u", "ua", "", "", -1))
   }
+
+  @Test
+  fun `a hook reply settles its call once, and a reply or a fail after the first does nothing`() {
+    val settled = mutableListOf<String>()
+    val replied = HookReply({ settled += "resolve $it" }, { settled += "reject $it" })
+    replied(1.0)
+    replied(2.0)
+    replied.fail("late")
+    val failed = HookReply({ settled += "resolve $it" }, { settled += "reject $it" })
+    failed.fail("no label")
+    failed("late")
+    failed.fail("again")
+    assertEquals(listOf("resolve 1.0", "reject no label"), settled)
+  }
 }

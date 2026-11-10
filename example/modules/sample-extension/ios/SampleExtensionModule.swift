@@ -16,8 +16,12 @@ public class SampleExtensionModule: Module {
         context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }
-        // An ask's answer can be the reply.
-        context.handle("label") { _, reply in context.ask("label", ["count": counter.count], reply) }
+        // A handler can reply later, here with the app's answer to an ask, and fail the JS call when there is none.
+        context.handle("label") { _, reply in
+          context.ask("label", ["count": counter.count]) { answer in
+            if let answer { reply(answer) } else { reply.fail("the app gave no label") }
+          }
+        }
         context.onDocumentEnd { reason in
           guard reason != .closing else { return }
           context.emit("documentEnd", ["reason": "\(reason)", "url": context.url])

@@ -472,7 +472,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: / to "\w+"|listOf\("\w+"\)/g,
     },
     { name: 'rule actions', keys: actions, site: /val actions = setOf\([^)]*\)/g },
-    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
   ios: [
     { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*/g },
@@ -514,7 +514,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       lacks: ['geolocation', 'protectedMedia'],
     },
     { name: 'rule actions', keys: actions, site: /let actions: Set<String> = \[[^\]]*\]/g },
-    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
 };
 

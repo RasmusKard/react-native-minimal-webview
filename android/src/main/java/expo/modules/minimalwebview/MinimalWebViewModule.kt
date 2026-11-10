@@ -168,7 +168,15 @@ private fun live(view: MinimalWebView, action: (WebView) -> Unit) {
 private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) = native(view, promise) {
   val handler = view.hookHandler(name, method)
     ?: throw PlatformException("not_found", "no attached hook `$name` handles `$method`")
-  handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } }
+  val reply = HookReply(
+    resolve = { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } },
+    reject = { promise.reject("handler_error", it, null) }
+  )
+  try {
+    handler(fromJson(JSONArray(args)) as List<Any?>, reply)
+  } catch (e: Exception) {
+    reply.fail(e.message ?: e.toString())
+  }
 }
 
 /**

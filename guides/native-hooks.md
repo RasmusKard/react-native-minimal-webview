@@ -197,7 +197,7 @@ Everything crosses as JSON.
 |---|---|
 | `context.emit(name, payload)` | The extension's `onEvent` gets `<name>` |
 | `context.ask(name, payload, onAnswer)` | `onEvent`'s return value, a promise awaited, is the answer |
-| `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with the reply |
+| `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
 | `context.options`, `context.onOptionsChange` | The extension's `options`; a change arrives live |
 
 When an `ask` goes unanswered, and how a failing or silent `handle` handler reaches JS, are on `ask` and `handle` of
