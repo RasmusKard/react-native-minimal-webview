@@ -8,15 +8,18 @@ import type { BridgeSender, Download, DownloadResult } from 'react-native-minima
 import {
   type Harness,
   WEBVIEW,
+  captureWarnings,
+  errorCode,
   fresh,
   idle,
   openPage,
   recordExternal,
   reporter,
   sleep,
-  tapPoint,
+  tap,
   until,
   waitFor,
+  waitForLoad,
 } from './harness';
 import { all } from './shapes';
 
@@ -33,19 +36,14 @@ type FrameReport = {
   injected: string | null;
 };
 
-const errorCode = (error: unknown) => (error as { code?: string }).code;
 /** The script's value, or the error code it rejected with. */
 const evaluate = async (h: Harness, script: string) =>
   await h.ref.current?.evaluate(script).catch(errorCode);
 
-/**
- * A user gesture on `id`: the driver's real tap on Android, a click from script on iOS (WebKit counts it as one).
- * Whether the page saw the click.
- */
-async function gesture({ h, r, android }: Suite, id: string) {
+/** A user gesture on `id` (`tap`): whether the page saw the click. */
+async function gesture({ h, r }: Suite, id: string) {
   const before = Number(await evaluate(h, 'window.testLog.length'));
-  if (android) r.info('TAP', await tapPoint(h, id));
-  else await evaluate(h, `(document.getElementById(${JSON.stringify(id)}).click(), 1)`);
+  await tap(h, r, id);
   const seen = async () =>
     String(await evaluate(h, `window.testLog.slice(${before}).join()`)).includes(`click ${id}`);
   return (await until(seen, 15000)) === true;
@@ -258,6 +256,13 @@ async function newWindows(suite: Suite) {
     );
     if (scriptMayRun && sentinels !== before)
       r.info(`known limit (WebView): T5 a tapped ${label} ran its script`, sentinels);
+    // Android's child WebView never reports a data: URL (Chromium doesn't pass it to shouldOverrideUrlLoading).
+    if (!android && id === 'open-data')
+      r.check(
+        `T5 a tapped ${label} is reported as blocked`,
+        decisions.some((n) => n.newWindow && n.url.startsWith('data:') && n.action === 'block'),
+        decisions
+      );
     r.info(`T5 ${label}: decisions`, decisions);
   }
 }
@@ -507,9 +512,7 @@ async function fileScope({ h, r, android }: Suite) {
       readAccessRoot?: string,
       load = () => h.loadSource({ uri: file.uri, readAccessRoot })
     ) => {
-      const loads = h.events.loads.length;
-      load();
-      await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s));
+      await waitForLoad(h, load, idle, 10000);
       await sleep(300);
       return (await evaluate(
         h,
@@ -547,19 +550,17 @@ async function fileScope({ h, r, android }: Suite) {
         JSON.stringify(retried) === '["local",true,true,false,false]',
         retried
       );
-      const warnings: string[] = [];
-      const warn = console.warn;
-      console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(' '));
+      const warnings = captureWarnings();
       try {
         const fallback = await read(first!, 'https://example.com/');
         r.check(
           "T8 a readAccessRoot that isn't a file: URL warns, and the file's directory applies",
           JSON.stringify(fallback) === '["local",true,false,false,false]' &&
-            warnings.some((line) => line.includes('readAccessRoot')),
-          { fallback, warnings }
+            warnings.warned('readAccessRoot'),
+          { fallback, warnings: warnings.lines }
         );
       } finally {
-        console.warn = warn;
+        warnings.stop();
       }
       return;
     }
