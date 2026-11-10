@@ -10,7 +10,7 @@ extension MinimalWebView {
     // rules, as on Android (shouldOverrideUrlLoading is not called for them).
     guard let targetFrame = action.targetFrame else { return decide(allowInPlace) }
     let mainFrame = targetFrame.isMainFrame
-    let own = mainFrame && programmaticUrl.map { Self.sameURL($0, target) } == true
+    let own = mainFrame && programmaticUrl.map { Loads.sameURL($0, target) } == true
     if own || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
       if own { programmaticUrl = nil }
@@ -114,16 +114,6 @@ extension MinimalWebView {
 
   private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
     onNavigation(request.payload.merging(["action": action, "rule": rule as Any? ?? NSNull()]) { $1 })
-  }
-
-  /// Equal URLs, treating an empty path as "/": WebKit turns `https://example.com` into `https://example.com/`.
-  static func sameURL(_ a: URL, _ b: URL) -> Bool {
-    func normalized(_ url: URL) -> String? {
-      guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-      if components.percentEncodedPath.isEmpty { components.percentEncodedPath = "/" }
-      return components.string
-    }
-    return normalized(a) == normalized(b)
   }
 }
 

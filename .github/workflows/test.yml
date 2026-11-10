@@ -24,7 +24,7 @@ jobs:
       - run: npm run prepare   # clean build
 
   # The Swift tests: the navigation and origin rule matchers and crash recovery against the shared cases in
-  # src/__tests__/vectors/, the ask, delegate proxy and read root cases, and the PlatformSettings tests
+  # src/__tests__/vectors/, the ask, delegate proxy, read root, same URL and load end cases, and the PlatformSettings tests
   # as Mac Catalyst. macOS: DelegateProxy.swift needs WebKit.
   swift-rules:
     runs-on: macos-latest
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v7
       - run: >-
           xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift
-          ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o rules && ./rules
+          ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/Tests/main.swift -o rules && ./rules
       - run: |
           F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks" T=arm64-apple-ios17.0-macabi
           xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWExceptions.m ios/MRWInvoke.m -o mrw.o
