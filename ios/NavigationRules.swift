@@ -28,7 +28,11 @@ enum NavigationRules {
     let params: [String]
   }
 
-  private static let internalSchemes: Set<String> = ["about", "blob", "data", "javascript"]
+  /// Load in place without the rules.
+  private static let internalSchemes: Set<String> = ["about", "data", "javascript"]
+  /// Never open as a new window, whatever the rules say: the core loads an allowed new window in the main frame itself,
+  /// past the engine's limits on what a page may navigate the top frame to.
+  private static let noNewWindowSchemes = internalSchemes.union(["blob", "file"])
   private static let actions: Set<String> = ["allow", "block", "external", "ask"]
   private static let answers: Set<String> = ["allow", "block", "external"]
 
@@ -48,28 +52,43 @@ enum NavigationRules {
 
   private static func match(_ rules: [[String: Any]]?, _ request: Request) -> Decision {
     let scheme = request.url.firstIndex(of: ":").map { request.url[..<$0].lowercased() } ?? ""
-    // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
-    // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
-    if request.newWindow, internalSchemes.contains(scheme) || scheme == "file" { return Decision(action: "block", rule: nil) }
+    if request.newWindow, noNewWindowSchemes.contains(scheme) { return Decision(action: "block", rule: nil) }
     if internalSchemes.contains(scheme) { return Decision(action: "allow", rule: nil) }
     // JS sends defaultNavigationRules when the prop is unset; no rules, nil or empty, match nothing.
-    guard let rules, !rules.isEmpty else { return Decision(action: "block", rule: nil) }
-    // shortcut: an unparseable URL has no host and path "/", so only host-less rules match, parse it if one must
-    let components = URLComponents(string: request.url)
-    // encodedHost keeps an IDNA host in its xn-- form; `host` would decode it.
-    var host = (components?.encodedHost ?? components?.host)?.lowercased()
-    if host?.hasSuffix(".") == true { host?.removeLast() }
-    if host?.isEmpty == true { host = nil }
-    let rawPath = components?.percentEncodedPath ?? ""
-    // No authority (`myapp:/abs`, `myapp:open`): the path is "/", as in Kotlin. `file:///x` has an empty one, not none.
-    let path = rawPath.isEmpty || components?.host == nil ? "/" : rawPath
-    let params = components?.percentEncodedQuery?.split(separator: "&").map(String.init) ?? []
-    let parts = Parts(scheme: scheme, host: host, path: path, params: params)
+    guard let rules, !rules.isEmpty,
+      let parts = scheme == "blob" ? blobOrigin(request.url) : urlParts(scheme, request.url)
+    else { return Decision(action: "block", rule: nil) }
     guard let index = rules.firstIndex(where: { matches($0, parts, request) }) else {
       return Decision(action: "block", rule: nil)
     }
     let action = rules[index]["action"] as? String
     return Decision(action: action.flatMap { actions.contains($0) ? $0 : nil } ?? "block", rule: index)
+  }
+
+  private static func urlParts(_ scheme: String, _ url: String) -> Parts {
+    // shortcut: an unparseable URL has no host and path "/", so only host-less rules match, parse it if one must
+    let components = URLComponents(string: url)
+    let rawPath = components?.percentEncodedPath ?? ""
+    // No authority (`myapp:/abs`, `myapp:open`): the path is "/", as in Kotlin. `file:///x` has an empty one, not none.
+    let path = rawPath.isEmpty || components?.host == nil ? "/" : rawPath
+    let params = components?.percentEncodedQuery?.split(separator: "&").map(String.init) ?? []
+    return Parts(scheme: scheme, host: host(components), path: path, params: params)
+  }
+
+  /// A blob: document has the origin its URL carries (`blob:https://a.test/…`), so the rules see that origin, with
+  /// path "/"; nil for an opaque one (`blob:null/…`), which no rule describes.
+  private static func blobOrigin(_ url: String) -> Parts? {
+    let components = URLComponents(string: String(url.dropFirst("blob:".count)))
+    guard let scheme = components?.scheme?.lowercased() else { return nil }
+    return Parts(scheme: scheme, host: host(components), path: "/", params: [])
+  }
+
+  /// Lowercased, without a trailing dot; nil when there is none.
+  private static func host(_ components: URLComponents?) -> String? {
+    // encodedHost keeps an IDNA host in its xn-- form; `host` would decode it.
+    var host = (components?.encodedHost ?? components?.host)?.lowercased()
+    if host?.hasSuffix(".") == true { host?.removeLast() }
+    return host?.isEmpty == true ? nil : host
   }
 
   /// nil when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing.
