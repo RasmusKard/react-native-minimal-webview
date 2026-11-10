@@ -44,6 +44,8 @@ public class SampleExtensionModule: Module {
       MinimalWebViewHooks.register("sample.seams") { webView, context in
         context.refreshControl?.tintColor = .white
         context.handle("tint") { [weak webView] _, reply in reply(webView?.scrollView.refreshControl?.tintColor == .white) }
+        // A JS number arrives as an NSNumber, which reads as a Double.
+        context.handle("twice") { args, reply in reply((args.first as? Double).map { $0 * 2 }) }
         context.onDestroyed { reason in if reason == .closing { Seams.closed += 1 } }
       }
     }
