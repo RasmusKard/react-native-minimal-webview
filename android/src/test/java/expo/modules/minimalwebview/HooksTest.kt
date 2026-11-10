@@ -249,6 +249,22 @@ class HooksTest {
   }
 
   @Test
+  fun `a detached attachment empties its lists and drops its options handlers, so a kept context holds nothing`() {
+    val attachment = Attachment(true)
+    val seen = mutableListOf<Any?>()
+    attachment.onOptions { seen += it }
+    attachment.clients += Plain()
+    attachment.chromeClients += WebChromeClient()
+    attachment.touchListeners += View.OnTouchListener { _, _ -> true }
+    attachment.scrollListeners += View.OnScrollChangeListener { _, _, _, _, _ -> }
+    attachment.detach()
+    val lists = listOf(attachment.clients, attachment.chromeClients, attachment.touchListeners, attachment.scrollListeners)
+    assertTrue(lists.all { it.isEmpty() })
+    attachment.optionsChanged(null)
+    assertEquals(listOf<Any?>(true), seen) // only the call on registering
+  }
+
+  @Test
   fun `a detached context's list edits reach no WebView`() {
     val attachment = Attachment(true)
     val attachments = listOf(attachment)

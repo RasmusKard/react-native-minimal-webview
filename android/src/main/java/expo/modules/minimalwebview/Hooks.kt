@@ -1,6 +1,7 @@
 package expo.modules.minimalwebview
 
 import android.content.Context
+import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
@@ -164,8 +165,9 @@ internal class Deciders(private val warn: (String) -> Unit) {
  * says what off means. [onOptions] runs when the hook turns off, so it can release what it holds, and again when it
  * turns on.
  *
- * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing: its
- * lists reach no WebView and its [emit] reaches nothing.
+ * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing and
+ * holds nothing of the WebView: its lists are emptied and reach no WebView, its handlers are dropped once the
+ * [onDestroyed] ones ran, its [url] is empty and its [emit] reaches nothing.
  */
 interface WebViewContext {
   /**
@@ -176,7 +178,7 @@ interface WebViewContext {
   val options: Any?
 
   /**
-   * The committed URL, the one `useWebViewState` reports; empty before the first commit.
+   * The committed URL, the one `useWebViewState` reports; empty before the first commit and after the attach ended.
    *
    * Inside [onDocumentEnd] it is still the page that ended. With WebView 146 and later, `onPageStarted` comes after the
    * commit that ends the Document, so `url` is already the new page there.
@@ -320,7 +322,7 @@ class HookReply internal constructor(
 /**
  * [HookContext]'s base: the hook's `hookOptions` value (null while its key is absent), its lists, and whether the core
  * routes them. Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach
- * are volatile; the rest is main thread only.
+ * are volatile; the rest is main thread only. [detach] empties the lists and drops the handlers.
  */
 internal open class Attachment(value: Any?) {
   @Volatile var options: Any? = value
@@ -354,8 +356,14 @@ internal open class Attachment(value: Any?) {
   }
 
   /** The attach ended: the core routes nothing of it, and the emits and asks that follow reach nothing. */
-  fun detach() {
+  open fun detach() {
     detached = true
+    optionsHandlers.clear()
+    downloadHandlers.clear()
+    clients.clear()
+    chromeClients.clear()
+    touchListeners.clear()
+    scrollListeners.clear()
   }
 
   fun onDownloadStart(handler: (String, String, String, String, Long) -> Boolean) {
@@ -381,21 +389,32 @@ internal fun <T> routed(attachments: List<Attachment>, pick: (Attachment) -> Lis
 
 /**
  * A hook's view of the WebView, one per hook and WebView: the core's context with the hook's key on its events. The
- * handlers live here, so the WebView after a crash gets the ones its `attach` registers again.
+ * handlers live here, so the WebView after a crash gets the ones its `attach` registers again. A hook can keep the
+ * context past its attach (an async callback): [detach] then leaves it holding nothing of the view.
  */
-internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view: MinimalWebView) :
+internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebView) :
   Attachment(view.hookOptions[hook.key]), WebViewContext {
+  /** Null once the attach ended. Main thread only. */
+  private var view: MinimalWebView? = view
   val key get() = hook.key
-  override val url get() = view.url
+  override val url get() = view?.url.orEmpty()
   private val documentEndHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, HookReply) -> Unit>()
 
+  /** The attach ended: also drops the view and what the hook gave it, bar the [onDestroyed] handlers [destroyed] runs next. */
+  override fun detach() {
+    super.detach()
+    view = null
+    handlers.clear()
+    documentEndHandlers.clear()
+  }
+
   override fun emit(name: String, payload: Map<String, Any?>) =
-    onMain { ifRouted { view.emit(key, name, payload) } }
+    onMain { ifRouted { view?.emit(key, name, payload) } }
 
   override fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit) =
-    onMain { askIfRouted(onAnswer) { view.asks.ask(key, name, payload, onAnswer) } }
+    onMain { askIfRouted(onAnswer) { view?.asks?.ask(key, name, payload, onAnswer) } }
 
   override fun onDocumentEnd(handler: (DocumentEnd) -> Unit) {
     documentEndHandlers += handler
@@ -411,11 +430,20 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
 
   fun documentEnded(reason: DocumentEnd) = documentEndHandlers.forEach { it(reason) }
 
-  fun destroyed(reason: DocumentEnd) = destroyedHandlers.forEach { it(reason) }
+  /** The attach's WebView is destroyed: the handlers run once, and the context drops them. */
+  fun destroyed(reason: DocumentEnd) {
+    val handlers = destroyedHandlers.toList()
+    destroyedHandlers.clear()
+    handlers.forEach { it(reason) }
+  }
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {
-    if (Looper.myLooper() == Looper.getMainLooper()) block() else view.mainHandler.post { block() }
+    if (Looper.myLooper() == Looper.getMainLooper()) block() else main.post { block() }
+  }
+
+  private companion object {
+    val main = Handler(Looper.getMainLooper())
   }
 }
 

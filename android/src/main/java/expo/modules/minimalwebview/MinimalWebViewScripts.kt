@@ -23,6 +23,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
    * in only here: JS fixes `bridge` at mount.
    */
   fun install() {
+    // After a crash they are the destroyed WebView's: removing them would call into it.
+    scriptHandlers.clear()
     installEvaluate()
     installBridge()
     installScripts(force = true)
