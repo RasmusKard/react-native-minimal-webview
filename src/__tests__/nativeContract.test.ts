@@ -475,12 +475,12 @@ const VALUES: Record<Platform, ValueRow[]> = {
     { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
   ],
   ios: [
-    { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*/g },
+    { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*|(?<=outcome: )"\w+"/g },
     {
       name: 'error kind',
       keys: kind,
-      files: ['MinimalWebView.swift'],
-      site: /(?<="kind": )[^,]*/g,
+      files: ['MinimalWebView.swift', 'Loads.swift'],
+      site: /(?<="kind": )[^,]*|(?<=kind: )"\w+"/g,
     },
     {
       name: 'download failure kind',
