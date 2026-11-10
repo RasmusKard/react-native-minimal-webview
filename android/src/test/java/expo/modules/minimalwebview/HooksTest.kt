@@ -211,10 +211,33 @@ class HooksTest {
   }
 
   @Test
+  fun `an options handler runs at once with the options, then with each change`() {
+    val attachment = Attachment(mapOf("a" to 1.0))
+    val seen = mutableListOf<Any?>()
+    attachment.onOptions { seen += it }
+    assertEquals(listOf<Any?>(mapOf("a" to 1.0)), seen)
+    attachment.optionsChanged(mapOf("a" to 2.0))
+    assertEquals(listOf<Any?>(mapOf("a" to 1.0), mapOf("a" to 2.0)), seen)
+    val off = mutableListOf<Any?>()
+    Attachment(null).onOptions { off += it }
+    assertEquals(listOf<Any?>(null), off)
+  }
+
+  @Test
+  fun `an options handler registered on a detached context never runs`() {
+    val attachment = Attachment(true)
+    attachment.detach()
+    val seen = mutableListOf<Any?>()
+    attachment.onOptions { seen += it }
+    assertTrue(seen.isEmpty())
+  }
+
+  @Test
   fun `a key removed after mount reaches the options handlers as null, and a value turns the hook on again`() {
     val attachment = Attachment(mapOf("a" to 1.0))
     val seen = mutableListOf<Any?>()
-    attachment.onOptionsChange { seen += it }
+    attachment.onOptions { seen += it }
+    seen.clear()
     attachment.optionsChanged(null)
     assertNull(attachment.options)
     assertFalse(attachment.routed)
