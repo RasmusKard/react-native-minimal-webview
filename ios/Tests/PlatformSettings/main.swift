@@ -64,8 +64,9 @@ rejects("webView", "scrollView.bounces", false, "private and nested keys are not
 rejects("webView", "URL", "https://example.com", "read-only")
 rejects("nope", "key", 1, "unknown root: use \(PlatformSettings.roots)")
 check("a root that isn't an object", settings.apply(["preferences": 1], webView: view).first?["reason"], "not an object")
-rejects("configuration", "suppressesIncrementalRendering", false, "read once when the WebView is created; remount with a new key to change it")
-check("a rejection is reported once", reason("configuration", "suppressesIncrementalRendering", false), nil)
+check("the configuration root live is skipped", reason("configuration", "suppressesIncrementalRendering", false), nil)
+rejects("preferences", "minimumFontSize", "1", "a d property can't take 1")
+check("a rejection is reported once", reason("preferences", "minimumFontSize", "1"), nil)
 
 // A removed key goes back to its value before the first write; a configuration key stays (removing it recreates the
 // WebView).
