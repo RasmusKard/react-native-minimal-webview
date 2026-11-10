@@ -191,7 +191,8 @@ Then rebuild the app: `npx expo run:ios`, `npx expo run:android`.
 
 ## Talk to JS
 
-Everything crosses as JSON.
+Everything crosses as JSON. `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]) says which native types
+the values from JS arrive as.
 
 | Native | JS |
 |---|---|

@@ -241,7 +241,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       return args
     }
 
-    /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double (or Int) and fit every numeric type. */
+    /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double and fit every numeric type. */
     private fun coerce(value: Any?, type: Class<*>): Any? {
       if (value == null) return if (type.isPrimitive) NONE else null
       return when (type.kotlin.javaObjectType) {
