@@ -10,6 +10,7 @@ on:
       - package-lock.json
       - example/package-lock.json
       - android/build.gradle
+      - extensions/build.gradle
       - example/modules/sample-extension/android/build.gradle
       - .github/workflows/kotlin.yml
 
@@ -20,18 +21,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The Kotlin unit tests, the navigation rule matcher among them against the shared cases in src/__tests__/vectors/.
-  # There is no Kotlin origin matcher: Android matches origins itself (addWebMessageListener).
+  # The Kotlin unit tests, the navigation rule matcher among them against the shared cases in src/__tests__/vectors/,
+  # and the Kotlin of extensions/ and the example's sample-extension, compiled. There is no Kotlin origin matcher:
+  # Android matches origins itself (addWebMessageListener).
   kotlin-rules:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm }
+        with: { node-version-file: .nvmrc, cache: npm }
       - uses: actions/setup-java@v6
         with: { distribution: zulu, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v6
         with: { cache-read-only: false }
       - run: npm ci && (cd example && npm ci)
       - run: cd example && npx expo prebuild --platform android --no-install
-      - run: cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest
+      - run: >-
+          cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest
+          :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin

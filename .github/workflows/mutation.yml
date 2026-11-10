@@ -1,7 +1,7 @@
 name: mutation
 on:
   pull_request:
-    paths: ['src/bridge/**', 'src/__tests__/**', '.config/stryker.config.json']
+    paths: ['src/bridge/**', 'src/WebView.tsx', 'src/refStore.ts', 'src/__tests__/**', '.config/stryker.config.json']
 
 permissions: { contents: read }
 
@@ -16,6 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm }
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
       - run: npm run mutation
