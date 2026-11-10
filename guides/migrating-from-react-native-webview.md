@@ -234,7 +234,7 @@ import {
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  const { loading } = useWebViewState(ref);
+  const loading = useWebViewState(ref, (state) => state.loading);
   const [error, setError] = useState<LoadErrorEvent | null>(null);
 
   return (
