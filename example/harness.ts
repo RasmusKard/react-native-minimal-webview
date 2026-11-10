@@ -2617,6 +2617,8 @@ async function sampleExtension(h: Harness) {
 /** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
 async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   await recreate(h, { extensions: [sampleHook('seams')] }, true);
+  const twice = await h.ref.current?.hook('sample.seams', 'twice', [21]).catch(errorCode);
+  r.check('its handle handler reads a whole JS number as a Double', twice === 42, twice);
   if (Platform.OS === 'ios') {
     const tinted = await h.ref.current?.hook('sample.seams', 'tint').catch(errorCode);
     r.check(

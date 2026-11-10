@@ -205,13 +205,14 @@ private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Un
     }
   }
 
-/** Nested maps and lists, with JSON null as null. */
+/** Nested maps and lists, with JSON null as null and every number a Double, as Expo converts a JS value. */
 private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence().associateWith { fromJson(get(it)) }
 
 private fun fromJson(value: Any?): Any? = when (value) {
   JSONObject.NULL -> null
   is JSONObject -> value.toMap()
   is JSONArray -> List(value.length()) { fromJson(value.get(it)) }
+  is Number -> value.toDouble()
   else -> value
 }
 

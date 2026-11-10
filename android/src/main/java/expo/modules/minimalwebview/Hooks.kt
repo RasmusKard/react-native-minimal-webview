@@ -155,6 +155,10 @@ internal class Deciders(private val warn: (String) -> Unit) {
  *
  * Call [emit] and [ask] from any thread, and the rest on the main thread, where the handlers and the answers run.
  *
+ * Values from JS, the [options], an [ask]'s answer and a [handle] handler's arguments, come in JSON types: a number as
+ * a `Double`, an object as a `Map<String, Any?>`, an array as a `List<Any?>`, and a string, a boolean and null as
+ * themselves.
+ *
  * The hook is on while its extension's `options` are not null or false;
  * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
  * says what off means. [onOptions] runs when the hook turns off, so it can release what it holds, and again when it
@@ -167,8 +171,7 @@ interface WebViewContext {
   /**
    * This hook's extension's `options`, the new ones after a change; null while the hook is off.
    *
-   * They come in JSON types: a number as a `Double`, an object as a `Map`, an array as a `List`. After a change they
-   * are the new value already when the [onOptions] handlers run.
+   * After a change they are the new value already when the [onOptions] handlers run.
    */
   val options: Any?
 
@@ -282,8 +285,7 @@ interface WebViewContext {
    * Answers JS's `ref.hook("<key>", method, args)`: [handler] gets the arguments and a [HookReply], which it calls with
    * the reply or [fails][HookReply.fail], then or later.
    *
-   * The arguments come in JSON types (a number as an `Int`, `Long` or `Double`). One handler per method: the last one
-   * wins.
+   * One handler per method: the last one wins.
    *
    * A handler that throws before it replies rejects the JS call with `handler_error` and the exception's message. A
    * handler that never replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't
