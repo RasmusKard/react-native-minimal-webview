@@ -8,7 +8,6 @@ import { defaultNavigationRules } from './defaultNavigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
 import { useAttach } from './refStore';
 import type {
-  Bridge,
   HookExtension,
   InjectedScript,
   LoadErrorEvent,
@@ -155,7 +154,7 @@ export function WebView(props: WebViewProps) {
  * Warns in development, once per WebView, when another bridge replaces its bridge, which recreated it: a bridge made
  * in render (`bridge={createBridge(…)}`) would reload the page at every render.
  */
-function useBridgeChangeWarning(bridge: Bridge | undefined) {
+function useBridgeChangeWarning(bridge: WebViewProps['bridge']) {
   const last = useRef(bridge);
   const warned = useRef(false);
   useEffect(() => {
