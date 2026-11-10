@@ -130,7 +130,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes = []
     preparing = true
-    cookies.prepare(webView) { [weak self, weak webView] in
+    cookies.prepare { [weak self, weak webView] in
       guard let self, let webView, webView === self.webView else { return }
       preparing = false
       load(next)
