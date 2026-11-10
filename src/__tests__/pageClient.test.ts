@@ -7,8 +7,11 @@ type NativeBridge = {
   __receive(text: string): Promise<void>;
 };
 
-/** A page with the Android transport: records what the page sends and its pageshow listener. */
-function page(readyState = 'complete') {
+/**
+ * A page with the Android transport, the top window or an iframe of another: records what the page sends and its
+ * pageshow listener.
+ */
+function page(readyState = 'complete', { inFrame = false } = {}) {
   const sent: { kind: string; id?: string; doc?: string; value?: unknown }[] = [];
   let onDomReady: (() => void) | undefined;
   let onPageShow: ((event: { persisted: boolean }) => void) | undefined;
@@ -27,16 +30,27 @@ function page(readyState = 'complete') {
       if (type === 'pageshow') onPageShow = listener;
     },
   } as unknown as PageWindow;
-  Object.assign(w, { top: w });
+  Object.assign(w, { top: inFrame ? {} : w });
   installPageClient(w, 10_000);
   const bridge = w.nativeBridge as NativeBridge;
   return {
     sent,
     bridge,
+    /** Native's side of the Android transport: a message to the page. */
+    deliver: (message: object) =>
+      w.nativeBridgeTransport!.onmessage!({ data: JSON.stringify(message) }),
     domReady: () => onDomReady?.(),
     show: (persisted: boolean) => onPageShow?.({ persisted }),
   };
 }
+
+describe('page client install', () => {
+  it('installs nothing in an iframe', () => {
+    const { sent, bridge } = page('complete', { inFrame: true });
+    expect(bridge).toBeUndefined();
+    expect(sent).toEqual([]);
+  });
+});
 
 describe('page client ready', () => {
   it('is sent at once when the document is already parsed', () => {
@@ -87,6 +101,14 @@ describe('page client messages from native', () => {
     const id = sent.at(-1)!.id!;
     await bridge.__receive(JSON.stringify({ id, doc, kind: 'result', value: 'ok' }));
     await expect(call).resolves.toBe('ok');
+  });
+
+  it("takes the answer to its own call from the Android transport's onmessage", async () => {
+    const { sent, bridge, deliver } = page();
+    const call = bridge.call('echo', 1);
+    deliver({ id: sent.at(-1)!.id, doc: sent[0]!.doc, kind: 'result', value: 'ok' });
+    const unanswered = new Promise((resolve) => setImmediate(resolve, 'unanswered'));
+    await expect(Promise.race([call, unanswered])).resolves.toBe('ok');
   });
 
   it('puts one token on everything it sends, and drops messages for another document', async () => {
