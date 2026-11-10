@@ -849,7 +849,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * The bridge to the page, from `createBridge`.
    *
    * Read when the WebView is created: another bridge recreates it (the page reloads and the navigation state starts
-   * over), so make it once (`useMemo`). A bridge serves one mounted WebView at a time: attaching it to a second throws.
+   * over), so make it once, at module scope or with `useMemo` (in development, a WebView warns the first time another
+   * bridge replaces its own). A bridge serves one mounted WebView at a time: attaching it to a second throws.
    *
    * On Android with a WebView older than 101 there is no bridge: calls reject with `unavailable`, and a warning says
    * so, once per process.
