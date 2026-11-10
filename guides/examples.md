@@ -147,6 +147,31 @@ window.nativeBridge.on('themeChanged', (theme) => {
 const shared = await window.nativeBridge.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
 ```
 
+A TypeScript page types `window.nativeBridge` with
+[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/),
+a type-only import: the page's project needs the package as a dev dependency, and must share or copy the schema type.
+
+```ts
+// A module script
+import type { PageBridge } from 'react-native-minimal-webview';
+
+type ShopBridge = {
+  reactNative: { share: { params: { url: string }; result: boolean } };
+  page: { getCartCount: { result: number } };
+  events: { themeChanged: 'light' | 'dark' };
+};
+
+declare global {
+  interface Window {
+    nativeBridge?: PageBridge<ShopBridge>; // only in the app, on an allowed origin
+  }
+}
+
+const cart: string[] = [];
+window.nativeBridge?.handle('getCartCount', () => cart.length);
+const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 });
+```
+
 ## Platform settings
 
 Any setting by its platform name, and any public method through `call`.
