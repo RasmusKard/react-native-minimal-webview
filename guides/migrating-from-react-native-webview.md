@@ -100,7 +100,8 @@ WebKit's data store clears with `call` ([reading and calling](examples.md#readin
 
 These props are functions of
 [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/), which
-has the setup. You pass each one in the `extensions` prop:
+has the setup. You pass each one in the `extensions` prop, and their callbacks get the event without
+react-native-webview's `nativeEvent` around it:
 
 | react-native-webview | Here |
 |---|---|
