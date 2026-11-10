@@ -721,7 +721,8 @@ export type FullscreenChangeEvent = { active: boolean };
  * - `not_found`: nothing by that name answers: no bridge handler for the method, no attached hook `name` that is on
  *   and handles `method`, or no such root, key, method (on Android, one that takes these arguments) or selector (on
  *   this OS or WebView version too; a private `_` key of an iOS `get` too), or a malformed path.
- * - `handler_error`: the handler of a bridge call, on either side, failed; the `message` is its error's.
+ * - `handler_error`: the handler of a bridge call, on either side, or of a `hook` call failed; the `message` is its
+ *   error's.
  * - `script_error`: `evaluate`'s script threw, rejected or didn't parse.
  * - `native_error`: the platform refused or failed the call: a member the core owns (or a private selector for an iOS
  *   `call`), a key `get` can't read, wrong arguments (iOS), a completion handler `call` can't await, a native
@@ -1111,9 +1112,10 @@ export type WebViewRef = {
    * Calls the `method` handler the native hook `name` registered with `context.handle`, with `args`, and resolves with
    * its reply; both cross as JSON.
    *
-   * The reply converts as {@link WebViewRef.call | call}'s results do. Rejects with a {@link CodedError}: `not_found`
-   * or `native_error`. A navigation or a crash doesn't settle a call whose handler hasn't replied; only an unmount
-   * does.
+   * The reply converts as {@link WebViewRef.call | call}'s results do. Rejects with a {@link CodedError}:
+   * `not_found`, `unavailable` (Android), `handler_error` when the handler fails the call (`reply.fail(message)`, or a
+   * throw on Android), or `native_error` for a reply JSON can't encode. A navigation or a crash doesn't settle a call
+   * whose handler hasn't replied; only an unmount does.
    */
   hook(name: string, method: string, args?: unknown[]): Promise<unknown>;
 };

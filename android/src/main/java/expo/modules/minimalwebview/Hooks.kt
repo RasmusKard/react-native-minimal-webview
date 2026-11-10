@@ -16,6 +16,7 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
@@ -278,15 +279,40 @@ interface WebViewContext {
   )
 
   /**
-   * Answers JS's `ref.hook("<key>", method, args)`: [handler] gets the arguments and calls `reply` exactly once.
+   * Answers JS's `ref.hook("<key>", method, args)`: [handler] gets the arguments and a [HookReply], which it calls with
+   * the reply or [fails][HookReply.fail], then or later.
    *
-   * The arguments come in JSON types (a number as an `Int`, `Long` or `Double`), and the reply must be a value JSON can
-   * encode. One handler per method: the last one wins.
+   * The arguments come in JSON types (a number as an `Int`, `Long` or `Double`). One handler per method: the last one
+   * wins.
    *
-   * A handler that throws, or a reply JSON can't encode, rejects the JS call with `native_error`. A handler that never
-   * replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't settle it.
+   * A handler that throws before it replies rejects the JS call with `handler_error` and the exception's message. A
+   * handler that never replies leaves the call waiting until the WebView unmounts: a navigation or a crash doesn't
+   * settle it.
    */
-  fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit)
+  fun handle(method: String, handler: (args: List<Any?>, reply: HookReply) -> Unit)
+}
+
+/**
+ * The answer to one JS `ref.hook` call, which a [WebViewContext.handle] handler gets: call it with the value the call
+ * resolves with, or [fail] it.
+ *
+ * Only the first reply or fail counts: any after it does nothing. Call it from any thread.
+ */
+class HookReply internal constructor(
+  private val resolve: (Any?) -> Unit,
+  private val reject: (String) -> Unit
+) : (Any?) -> Unit {
+  private val settled = AtomicBoolean()
+
+  /** Resolves the JS call with [value]. A value JSON can't encode rejects it with `native_error` instead. */
+  override fun invoke(value: Any?) {
+    if (settled.compareAndSet(false, true)) resolve(value)
+  }
+
+  /** Rejects the JS call with `handler_error` and [message]. */
+  fun fail(message: String) {
+    if (settled.compareAndSet(false, true)) reject(message)
+  }
 }
 
 /**
@@ -361,7 +387,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
   override val url get() = view.url
   private val documentEndHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
-  val handlers = mutableMapOf<String, (List<Any?>, (Any?) -> Unit) -> Unit>()
+  val handlers = mutableMapOf<String, (List<Any?>, HookReply) -> Unit>()
 
   override fun emit(name: String, payload: Map<String, Any?>) =
     onMain { ifRouted { view.emit(key, name, payload) } }
@@ -377,7 +403,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, private val view:
     destroyedHandlers += handler
   }
 
-  override fun handle(method: String, handler: (args: List<Any?>, reply: (Any?) -> Unit) -> Unit) {
+  override fun handle(method: String, handler: (args: List<Any?>, reply: HookReply) -> Unit) {
     handlers[method] = handler
   }
 

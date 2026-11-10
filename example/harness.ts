@@ -2491,6 +2491,9 @@ async function sampleExtension(h: Harness) {
     !!live && kept === true && h.state().url === url && h.events.loads.length === loads,
     { live, kept, url: h.state().url, newLoads: h.events.loads.length - loads }
   );
+  // Without onEvent the hook's `label` ask is answered null, and its handler fails the call.
+  const failed = await h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
+  r.check('reply.fail rejects ref.hook with handler_error', failed === 'handler_error', failed);
   h.setProps({});
   if (Platform.OS === 'ios') {
     h.load(`${h.pages}/redirect?to=${encodeURIComponent('/spa.html?from=hook')}`);
