@@ -118,4 +118,27 @@ describe('the extensions', () => {
     await expect(answer).resolves.toBe('typed');
     expect(onDialog).toHaveBeenCalledWith(prompt, signal);
   });
+
+  it.each<[Dialog['type'], unknown, unknown]>([
+    ['confirm', true, true],
+    ['confirm', 1, false],
+    ['confirm', 'yes', false],
+    ['confirm', undefined, false],
+    ['prompt', '', ''],
+    ['prompt', 1, null],
+    ['prompt', true, null],
+    ['prompt', undefined, null],
+  ])('answers a %s whose onDialog returns %p with %p', async (type, returned, answer) => {
+    const event = { name: type, payload: { type, message: '', defaultValue: null, url: '' } as Dialog };
+    const signal = new AbortController().signal;
+    await expect(dialogs(() => returned).onEvent!(event, signal)).resolves.toBe(answer);
+  });
+
+  it('rejects when onDialog throws, which the core answers with null', async () => {
+    const event = { name: 'confirm' as const, payload: { type: 'confirm', message: '', url: '' } as Dialog };
+    const failing = dialogs(() => {
+      throw new Error('no');
+    });
+    await expect(failing.onEvent!(event, new AbortController().signal)).rejects.toThrow('no');
+  });
 });
