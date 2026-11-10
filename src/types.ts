@@ -815,6 +815,12 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation they decide is blocked.
    *
+   * A malformed rule, one with an unknown key, a field of the wrong type (a list that isn't an array of strings, a flag
+   * that isn't a boolean) or no valid `action`, blocks every navigation that reaches it, whatever it was meant to match
+   * or do: native would otherwise skip the key or flag and match more than intended, and so could allow more than a
+   * correct rule would. In development a warning names the rule's index and the problem, once. The rules before it
+   * decide as usual; one that isn't an array is `[]`.
+   *
    * `about:`, `data:` and `javascript:` always load in place. A `blob:` URL is decided as the origin it carries:
    * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
    * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.

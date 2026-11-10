@@ -178,6 +178,76 @@ describe('WebView', () => {
   });
 });
 
+describe('navigationRules', () => {
+  const withRules = (rules: unknown) => ({ navigationRules: rules as NavigationRule[] });
+  const warnings = () => jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+  it('sends valid rules as they are, an undefined field (unset) included, without a warning', async () => {
+    const warn = warnings();
+    const rules = [{ host: undefined, mainFrame: false, newWindow: true, action: 'ask' }];
+    expect((await mount(withRules(rules))).native().navigationRules).toBe(rules);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("takes the native vectors' rulesets as they are, but for the two with a malformed rule", async () => {
+    const warn = warnings();
+    const { rulesets } = jest.requireActual<{ rulesets: Record<string, unknown> }>(
+      './vectors/navigation-rules.json'
+    );
+    const sent: string[] = [];
+    for (const [name, rules] of Object.entries(rulesets)) {
+      const { native } = await mount(withRules(rules));
+      if (native().navigationRules !== rules) sent.push(name);
+    }
+    expect(sent).toEqual(['notAList', 'unknownAction']);
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  const ACTION = 'action must be one of ["allow","block","external","ask"]';
+  it.each([
+    [[null], 'must be an object, not null'],
+    [['allow'], 'must be an object, not "allow"'],
+    [[{ hosts: ['example.com'], action: 'allow' }], 'unknown key "hosts"'],
+    [
+      [{ host: 'example.com', action: 'allow' }],
+      'host must be an array of strings, not "example.com"',
+    ],
+    [[{ query: null, action: 'allow' }], 'query must be an array of strings, not null'],
+    [
+      [{ scheme: ['https', 1], action: 'allow' }],
+      'scheme must be an array of strings, not ["https",1]',
+    ],
+    [[{ mainFrame: 'true', action: 'allow' }], 'mainFrame must be true or false, not "true"'],
+    [[{ userInitiated: null, action: 'allow' }], 'userInitiated must be true or false, not null'],
+    [[{ host: ['example.com'] }], `${ACTION}, not undefined`],
+    [[{ action: 'deny' }], `${ACTION}, not "deny"`],
+  ])('blocks all at a malformed rule, and warns once, for %j', async (rules, problem) => {
+    const warn = warnings();
+    const good = { host: ['a.com'], action: 'allow' };
+    const { native, show } = await mount(withRules([good, ...rules, good]));
+    expect(native().navigationRules).toEqual([good, { action: 'block' }, good]);
+    await show(withRules([good, ...rules, good]));
+    expect(warn.mock.calls).toEqual([
+      [
+        `[react-native-minimal-webview] navigationRules[1]: ${problem}; it blocks every navigation that reaches it`,
+      ],
+    ]);
+    warn.mockRestore();
+  });
+
+  it('treats rules that are not an array as none, with a warning', async () => {
+    const warn = warnings();
+    const { native } = await mount(withRules({ 0: { action: 'allow' } }));
+    expect(native().navigationRules).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] navigationRules: must be an array, not {"0":{"action":"allow"}}; treated as []'
+    );
+    warn.mockRestore();
+  });
+});
+
 describe('load events and errors', () => {
   async function renderLoads() {
     const seen: string[] = [];
