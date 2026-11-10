@@ -470,7 +470,7 @@ extension MinimalWebView {
     hook.attach(webView, context)
   }
 
-  func hookHandler(_ key: String, _ method: String) -> (([Any], @escaping (Any?) -> Void) -> Void)? {
+  func hookHandler(_ key: String, _ method: String) -> (([Any], HookReply) -> Void)? {
     hookContexts.first { $0.key == key && $0.isOn }?.handlers[method]
   }
 

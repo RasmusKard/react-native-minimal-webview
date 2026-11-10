@@ -65,13 +65,17 @@ private func hook(_ view: MinimalWebView, _ name: String, _ method: String, _ ar
   guard let handler = view.hookHandler(name, method) else {
     return promise.reject("not_found", "no attached hook `\(name)` handles `\(method)`")
   }
-  handler((try? JSONSerialization.jsonObject(with: Data(args.utf8))) as? [Any] ?? []) { value in
-    do {
-      promise.resolve(try PlatformSettings.json { __MRWJsonable(value) })
-    } catch {
-      reject(promise, error)
-    }
-  }
+  let reply = HookReply(
+    resolve: { value in
+      do {
+        promise.resolve(try PlatformSettings.json { __MRWJsonable(value) })
+      } catch {
+        reject(promise, error)
+      }
+    },
+    reject: { promise.reject("handler_error", $0) }
+  )
+  handler((try? JSONSerialization.jsonObject(with: Data(args.utf8))) as? [Any] ?? [], reply)
 }
 
 private func native(_ view: MinimalWebView, _ promise: Promise, _ body: (WKWebView) throws -> Void) {

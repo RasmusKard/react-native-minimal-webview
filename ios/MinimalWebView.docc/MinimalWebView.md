@@ -9,4 +9,5 @@ with the [native hooks guide](https://rasmuskard.github.io/react-native-minimal-
 
 - ``MinimalWebViewHooks``
 - ``WebViewContext``
+- ``HookReply``
 - ``DocumentEnd``
