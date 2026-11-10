@@ -69,7 +69,7 @@ for testCase in originCases {
 for (scheme, host, port, expected) in [
   ("https", "example.com", 0, "https://example.com"), ("https", "example.com", 443, "https://example.com"),
   ("http", "localhost", 8090, "http://localhost:8090"), ("http", "::1", 8090, "http://[::1]:8090"),
-  ("http", "[::1]", 80, "http://[::1]"),
+  ("http", "[::1]", 80, "http://[::1]"), ("", "", 0, "null"),
 ] {
   let got = OriginRules.origin(scheme, host, port)
   check("origin(\(scheme), \(host), \(port)): expected \(expected), got \(got)", got == expected)
