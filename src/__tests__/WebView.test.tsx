@@ -19,19 +19,19 @@ import type {
   WebViewRefObject,
 } from '../types';
 
-const mockAnswer = jest.fn();
-const mockNavigate = jest.fn();
+const mockAnswer = jest.fn(async (_askId: number, _json: string) => {});
+const mockNavigate = jest.fn(async (_to: string) => {});
 const mockEvaluate = jest.fn(async (_script: string) => '{"a":1}');
 const mockHook = jest.fn(async (name: string, method: string, args: string) =>
   JSON.stringify({ name, method, args })
 );
-const mockBridgePost = jest.fn<void, [json: string]>();
+const mockBridgePost = jest.fn(async (_json: string) => {});
 const mockMount = jest.fn();
 const mockNativeModule = {
   defaultUserAgent: 'Mozilla/5.0 (Android)',
   warmUp: jest.fn(),
-  preconnect: jest.fn(),
-  setWebContentsDebuggingEnabled: jest.fn(),
+  preconnect: jest.fn(async (_url: string) => {}),
+  setWebContentsDebuggingEnabled: jest.fn(async (_enabled: boolean) => {}),
 };
 // The view is a host element of the name WebView.tsx asks for (MinimalWebView), whose ref has the native `answer`,
 // `goBack`, `goForward`, `reload`, `stopLoading`, `bridgePost`, `evaluate`, `get`, `call` and `hook` methods; `get`,
@@ -48,10 +48,10 @@ jest.mock('expo', () => {
         }, []);
         useImperativeHandle(ref as never, () => ({
           answer: mockAnswer,
-          goBack: () => void mockNavigate('back'),
-          goForward: () => void mockNavigate('forward'),
-          reload: () => void mockNavigate('reload'),
-          stopLoading: () => void mockNavigate('stop'),
+          goBack: () => mockNavigate('back'),
+          goForward: () => mockNavigate('forward'),
+          reload: () => mockNavigate('reload'),
+          stopLoading: () => mockNavigate('stop'),
           bridgePost: mockBridgePost,
           evaluate: mockEvaluate,
           get: async (path: string) => JSON.stringify({ get: path }),
@@ -120,7 +120,7 @@ describe('WebView', () => {
     await fire('onNavigationState', navState({ url: 'https://example.com/', loading: true }));
     await fire('onNavigationState', navState({ url: 'https://example.com/' }));
     await fire('onNavigation', { url: 'https://example.com/', action: 'external' });
-    await fire('onProcessGone', { didCrash: true, recovered: true });
+    await fire('onProcessGone', { cause: 'crash', recovered: true });
     await fire('onError', { kind: 'http', url: 'https://example.com/', statusCode: 500 });
     await fire('onBridge', { message: '{}', origin: 'https://example.com' });
     await fire('onBridge', { navigated: true });
@@ -428,6 +428,24 @@ describe('bridge', () => {
     await show({ bridge: newBridge() });
     expect(mockMount).toHaveBeenCalledTimes(2);
   });
+
+  it('warns in development, once, when another bridge replaces the bridge', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const bridge = newBridge();
+    const { show } = await mount({ bridge });
+    await show({});
+    await show({ bridge });
+    await show({ bridge });
+    expect(warn).not.toHaveBeenCalled();
+    await show({ bridge: newBridge() });
+    await show({ bridge: newBridge() });
+    expect(warn.mock.calls).toEqual([
+      [
+        '[react-native-minimal-webview] bridge: another bridge recreated the WebView, and its page loaded again; ' +
+          'create the bridge once, at module scope or with useMemo',
+      ],
+    ]);
+  });
 });
 
 describe('injectedScripts', () => {
@@ -472,6 +490,14 @@ describe('injectedScripts', () => {
       Array.prototype.indexOf = () => 0;
       Object.defineProperty(Object.prototype, 'any', { get: () => true });`;
     expect(run(script, 'https://evil.com', patch).ran).toBe(false);
+  });
+
+  it('sends scripts changed after mount to the same native view', async () => {
+    mockMount.mockClear();
+    const { native, show } = await mount({ injectedScripts: [{ code: 'a()', origins: ['*'] }] });
+    await show({ injectedScripts: [{ code: 'b()', allFrames: true, origins: ['*'] }] });
+    expect(native().injectedScripts).toEqual([{ code: 'b()', allFrames: true }]);
+    expect(mockMount).toHaveBeenCalledTimes(1);
   });
 
   it('throws at render for a script without origins or with an invalid rule', async () => {
@@ -684,6 +710,13 @@ describe('page requests', () => {
     expect(native().requestHandlers).toEqual([]);
   });
 
+  it('tells native to send navigation decisions only while onNavigation is set', async () => {
+    const { show, native } = await mount({ onNavigation: () => {} });
+    expect(native().requestHandlers).toEqual(['onNavigation']);
+    await show({});
+    expect(native().requestHandlers).toEqual([]);
+  });
+
   it('routes each request to its prop and answers with its result', async () => {
     const onFileRequest = jest.fn(async () => ['file:///a.txt']);
     const onFullscreenChange = jest.fn();
@@ -861,9 +894,9 @@ describe('navigation state across remounts', () => {
       rule: null,
     };
     await fire('onNavigation', { ...navigation, ...target });
-    await fire('onProcessGone', { didCrash: true, recovered: true, ...target });
+    await fire('onProcessGone', { cause: 'crash', recovered: true, ...target });
     expect(onNavigation).toHaveBeenCalledWith(navigation);
-    expect(onProcessGone).toHaveBeenCalledWith({ didCrash: true, recovered: true });
+    expect(onProcessGone).toHaveBeenCalledWith({ cause: 'crash', recovered: true });
   });
 
   it("createWebViewRef's current is the mounted WebView's ref, and null while none is", async () => {
@@ -1111,4 +1144,54 @@ describe('navigation state across remounts', () => {
       expect(renders).toBeGreaterThan(before);
     }
   );
+});
+
+describe('native calls nothing awaits', () => {
+  const notRegistered = Object.assign(new Error('no view'), { code: 'ERR_VIEW_NOT_FOUND' });
+  const failure = new Error('native failed');
+  const settled = () => act(() => new Promise<void>((resolve) => setImmediate(resolve)));
+  let error: jest.SpyInstance;
+  beforeEach(() => (error = jest.spyOn(console, 'error').mockImplementation(() => {})));
+  afterEach(() => jest.restoreAllMocks());
+
+  it('navigation does nothing for a view Android has not registered yet, and logs any other rejection', async () => {
+    const ref = createWebViewRef();
+    await act(async () =>
+      createRoot().render(<WebView ref={ref} source={{ uri: 'https://example.com' }} />)
+    );
+    const methods = ['goBack', 'goForward', 'reload', 'stopLoading'] as const;
+    for (const method of methods) {
+      mockNavigate.mockRejectedValueOnce(notRegistered).mockRejectedValueOnce(failure);
+      ref.current?.[method]();
+      ref.current?.[method]();
+    }
+    await settled();
+    expect(error.mock.calls).toEqual(
+      methods.map((method) => [`[react-native-minimal-webview] ${method} failed`, failure])
+    );
+  });
+
+  it('logs a failed bridge post', async () => {
+    const bridge = createBridge({ allowedOrigins: ['https://example.com'] });
+    bridge.handle('ping', () => 'pong');
+    const { fire } = await mount({ bridge });
+    mockBridgePost.mockRejectedValueOnce(failure);
+    const call = { doc: 'd1', kind: 'call', id: 'p1', method: 'ping' };
+    await fire('onBridge', { message: JSON.stringify(call), origin: 'https://example.com' });
+    await settled();
+    expect(error).toHaveBeenCalledWith('[react-native-minimal-webview] bridgePost failed', failure);
+  });
+
+  it("logs AndroidWebView's failed calls", async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    mockNativeModule.preconnect.mockRejectedValueOnce(failure);
+    mockNativeModule.setWebContentsDebuggingEnabled.mockRejectedValueOnce(failure);
+    AndroidWebView.preconnect('https://example.com');
+    AndroidWebView.setWebContentsDebuggingEnabled(true);
+    await settled();
+    expect(error.mock.calls).toEqual([
+      ['[react-native-minimal-webview] preconnect failed', failure],
+      ['[react-native-minimal-webview] setWebContentsDebuggingEnabled failed', failure],
+    ]);
+  });
 });

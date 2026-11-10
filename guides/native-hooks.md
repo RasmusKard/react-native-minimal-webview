@@ -191,14 +191,15 @@ Then rebuild the app: `npx expo run:ios`, `npx expo run:android`.
 
 ## Talk to JS
 
-Everything crosses as JSON.
+Everything crosses as JSON. `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]) says which native types
+the values from JS arrive as.
 
 | Native | JS |
 |---|---|
 | `context.emit(name, payload)` | The extension's `onEvent` gets `<name>` |
 | `context.ask(name, payload, onAnswer)` | `onEvent`'s return value, a promise awaited, is the answer |
-| `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with the reply |
-| `context.options`, `context.onOptionsChange` | The extension's `options`; a change arrives live |
+| `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
+| `context.options`, `context.onOptions(handler)` | The extension's `options`: the handler gets them at once, then each change, live |
 
 When an `ask` goes unanswered, and how a failing or silent `handle` handler reaches JS, are on `ask` and `handle` of
 `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]).
@@ -220,9 +221,9 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 |---|---|
 | A WebView with its key mounts | Android: the `webViewFactory`, if it has one. Then `configure`, if it has one, then `attach` |
 | The page ends: a navigation commits, a crash, or unmount | Its `onDocumentEnd` handlers run. Reset per-page state there. |
-| Its `options` change | Its `onOptionsChange` handlers run, without a reload |
+| Its `options` change | Its `onOptions` handlers run, without a reload |
 | Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
-| Its key is removed, or its `options` become null or false | `onOptionsChange` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptionsChange` runs with the new options. |
+| Its key is removed, or its `options` become null or false | `onOptions` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptions` runs with the new options. |
 | The renderer crashes | iOS: `onDocumentEnd` with `crashed`; the `WKWebView` reloads and nothing attaches again. Android: `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context. |
 | The WebView unmounts | `onDocumentEnd`, then `onDestroyed`, with `closing`: clean up there. |
 
@@ -243,7 +244,6 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 | Callbacks go in | `navigationDelegates`, `uiDelegates` | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
 | `configure` gets | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up |
 | Your own WebView class | `webViewClass:` | `webViewFactory =` |
-| `onDestroyed` reasons | `closing` | `closing` and `crashed` |
 | Only on this platform | `refreshControl` | `onDownloadStart` |
 
 ## Reference

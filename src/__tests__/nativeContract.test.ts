@@ -116,7 +116,7 @@ const httpError = { kind: 1, url: 1, statusCode: 1 } satisfies Record<
   keyof Extract<LoadErrorEvent, { kind: 'http' }>,
   1
 >;
-const processGone = { didCrash: 1, recovered: 1 } satisfies Record<keyof ProcessGoneEvent, 1>;
+const processGone = { cause: 1, recovered: 1 } satisfies Record<keyof ProcessGoneEvent, 1>;
 const message = { message: 1, origin: 1 } satisfies Record<
   keyof Extract<BridgeEvent, { message: string }>,
   1
@@ -472,15 +472,15 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: / to "\w+"|listOf\("\w+"\)/g,
     },
     { name: 'rule actions', keys: actions, site: /val actions = setOf\([^)]*\)/g },
-    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
   ios: [
-    { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*/g },
+    { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*|(?<=outcome: )"\w+"/g },
     {
       name: 'error kind',
       keys: kind,
-      files: ['MinimalWebView.swift'],
-      site: /(?<="kind": )[^,]*/g,
+      files: ['MinimalWebView.swift', 'Loads.swift'],
+      site: /(?<="kind": )[^,]*|(?<=kind: )"\w+"/g,
     },
     {
       name: 'download failure kind',
@@ -514,7 +514,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       lacks: ['geolocation', 'protectedMedia'],
     },
     { name: 'rule actions', keys: actions, site: /let actions: Set<String> = \[[^\]]*\]/g },
-    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout', 'handler_error'] },
+    { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
 };
 

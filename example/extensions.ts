@@ -87,7 +87,7 @@ export async function extensions(h: Harness) {
     await privacy(h, r);
     await (ios ? keyboard(h, r) : android(h, r));
     const stray = warnings.lines.filter(
-      (line) => line.includes(`hookOptions.${KEY}.`) && !line.includes(`${KEY}.menuItems`)
+      (line) => line.includes(`extension ${KEY}.`) && !line.includes(`${KEY}.menuItems`)
     );
     r.check(
       'no extension key warns: each is registered, and sent only on its platforms',
@@ -295,7 +295,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   );
   await recreate(h, {}, true);
   h.setProps({ extensions: [menuItems({ items: MENU })] });
-  await until(() => warnings.warned(`hookOptions.${KEY}.menuItems`), 3000);
+  await until(() => warnings.warned(`extension ${KEY}.menuItems`), 3000);
   r.check(
     'menuItems set after creation warns that its hook attaches only when the WebView is created',
     warnings.warned('attaches only when the WebView is created'),

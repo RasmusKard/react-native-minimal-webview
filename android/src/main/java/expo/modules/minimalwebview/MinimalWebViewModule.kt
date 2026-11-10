@@ -72,7 +72,7 @@ class MinimalWebViewModule : Module() {
     // Cookies live in memory until flushed; persist them before the process can be killed. Only once a WebView was
     // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
     OnActivityEntersBackground {
-      if (webViewCreated) CookieManager.getInstance().flush()
+      if (webViewCreated) flushCookies()
     }
 
     // Best effort: an error only means the first WebView starts WebView as before.
@@ -143,6 +143,17 @@ private fun preconnect(url: String) {
   }
 }
 
+/**
+ * Writes the cookies of the default profile and every other one to disk: a WebView on another `android.webView.profile`
+ * keeps its own.
+ */
+private fun flushCookies() {
+  CookieManager.getInstance().flush()
+  if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return
+  val store = ProfileStore.getInstance()
+  store.allProfileNames.forEach { store.getProfile(it)?.cookieManager?.flush() }
+}
+
 /** Before the first WebView only stored, for each new WebView to apply: setting it now would start WebView. */
 private fun setWebContentsDebugging(enabled: Boolean) {
   webContentsDebugging = enabled
@@ -168,7 +179,15 @@ private fun live(view: MinimalWebView, action: (WebView) -> Unit) {
 private fun hook(view: MinimalWebView, name: String, method: String, args: String, promise: Promise) = native(view, promise) {
   val handler = view.hookHandler(name, method)
     ?: throw PlatformException("not_found", "no attached hook `$name` handles `$method`")
-  handler(fromJson(JSONArray(args)) as List<Any?>) { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } }
+  val reply = HookReply(
+    resolve = { native(view, promise) { promise.resolve(PlatformSettings.toJson(it)) } },
+    reject = { promise.reject("handler_error", it, null) }
+  )
+  try {
+    handler(fromJson(JSONArray(args)) as List<Any?>, reply)
+  } catch (e: Exception) {
+    reply.fail(e.message ?: e.toString())
+  }
 }
 
 /**
@@ -186,13 +205,14 @@ private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Un
     }
   }
 
-/** Nested maps and lists, with JSON null as null. */
+/** Nested maps and lists, with JSON null as null and every number a Double, as Expo converts a JS value. */
 private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence().associateWith { fromJson(get(it)) }
 
 private fun fromJson(value: Any?): Any? = when (value) {
   JSONObject.NULL -> null
   is JSONObject -> value.toMap()
   is JSONArray -> List(value.length()) { fromJson(value.get(it)) }
+  is Number -> value.toDouble()
   else -> value
 }
 

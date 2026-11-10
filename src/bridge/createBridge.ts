@@ -1,10 +1,4 @@
-import type {
-  Bridge,
-  BridgeEventMap,
-  BridgeMethodMap,
-  BridgeOptions,
-  BridgeSender,
-} from '../types';
+import type { Bridge, BridgeOptions, BridgeSchema, BridgeSender } from '../types';
 import { DEFAULTS } from '../types.defaults';
 import { codedError, createEndpoint } from './endpoint';
 import { invalidOrigins, originForms } from './origins';
@@ -48,16 +42,15 @@ const MAX_QUEUE = 1000;
 /**
  * Creates a {@link Bridge} to the pages of `allowedOrigins`, for one WebView's `bridge` prop.
  *
- * The type arguments type the method names, params, results and event payloads of `call`, `handle`, `emit` and `on`;
- * nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an `Error` for an
- * invalid origin rule or timeout.
+ * The type argument, a {@link BridgeSchema}, types the method names, params, results and event payloads of `handle`,
+ * `call`, `emit` and `on`, each side's apart; nothing checks them at runtime, so a handler still validates what an
+ * untrusted page sends. Throws an `Error` for an invalid origin rule or timeout.
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
-export function createBridge<
-  Methods extends BridgeMethodMap = BridgeMethodMap,
-  Events extends BridgeEventMap = BridgeEventMap,
->(options: BridgeOptions): Bridge<Methods, Events> {
+export function createBridge<Schema extends BridgeSchema = BridgeSchema>(
+  options: BridgeOptions
+): Bridge<Schema> {
   // `*` or what origins.ts parses: addWebMessageListener's rules minus custom schemes.
   const guard = originGuard('createBridge: invalid allowedOrigins', options.allowedOrigins);
   const timeoutMs = options.timeoutMs ?? DEFAULTS.BridgeOptions.timeoutMs;
@@ -91,7 +84,11 @@ export function createBridge<
         const dropped = queue.length > MAX_QUEUE ? queue.shift() : undefined;
         if (dropped?.kind === 'call') {
           const call = endpoint.pending.get(dropped.id);
-          endpoint.rejectPending('unavailable', 'the bridge queue was full', (pending) => pending === call);
+          endpoint.rejectPending(
+            'unavailable',
+            'the bridge queue was full',
+            (pending) => pending === call
+          );
         }
       }
     },
@@ -107,7 +104,8 @@ export function createBridge<
   const receive = (text: string, origin: string) => {
     const message = parseBridgeMessage(text);
     if (typeof message === 'string') {
-      if (__DEV__) console.warn(`[react-native-minimal-webview] dropped a bridge message: ${message}`);
+      if (__DEV__)
+        console.warn(`[react-native-minimal-webview] dropped a bridge message: ${message}`);
       return;
     }
     if (message.kind !== 'ready') {
@@ -174,5 +172,5 @@ export function createBridge<
     emit: endpoint.emit,
     on: endpoint.on,
     [CONNECTION]: connection,
-  } as Bridge as Bridge<Methods, Events>;
+  } as Bridge as unknown as Bridge<Schema>; // the schema types only what callers pass
 }

@@ -19,7 +19,7 @@ import java.lang.reflect.Modifier
  * `settings.textZoom: 120` calls `WebSettings.setTextZoom(120)`, else `WebSettingsCompat.setTextZoom(settings, 120)`.
  * `webView.acceptThirdPartyCookies: true` calls `WebView.set…`, else `WebViewCompat.set…(webView, …)`, else
  * `CookieManager.set…(webView, …)`. [get] reads through the matching getter and [call] invokes a method; for those two,
- * `cookieManager` and `webStorage` (the process-wide instances) are roots as well.
+ * `cookieManager` and `webStorage`, the WebView profile's, are roots as well.
  *
  * Only public SDK methods: `getMethods()` returns nothing else, and reflection on them is allowed. A key with no public
  * setter for the value's type, a feature this device's WebView lacks (`UnsupportedOperationException`) or a method the
@@ -47,7 +47,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     // Before the new values, so restoring one can't undo another that depends on it.
     val rejected = restore(removedFrom = settings.orEmpty()).toMutableList()
     for ((rootName, entries) in settings.orEmpty()) {
-      val targets = targets(rootName)?.takeIf { rootName in listOf("settings", "webView") }
+      val targets = settingsTargets(rootName)
       if (targets == null || entries !is Map<*, *>) {
         rejected += mapOf("key" to rootName, "reason" to "unknown root: use settings or webView")
         continue
@@ -63,6 +63,11 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     }
     return rejected
   }
+
+  /** The targets of a root the prop has, `settings` or `webView`; null for another. */
+  private fun settingsTargets(rootName: String) =
+    // Not targets() first: the other roots are the WebView profile's, which `webView.profile` may not have set yet.
+    if (rootName in listOf("settings", "webView")) targets(rootName) else null
 
   /** [set], keeping the value it replaces the first time under [id]; returns the problem, or null when it was set. */
   private fun write(targets: List<Target>, id: String, key: String, value: Any?): String? {
@@ -128,7 +133,10 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   internal companion object {
     private val NONE = Any()
 
-    /** The targets of [root] on [webView], or null for an unknown root. */
+    /**
+     * The targets of [root] on [webView], or null for an unknown root. `cookieManager` and `webStorage` are the WebView
+     * profile's ([profileOf]).
+     */
     fun targets(webView: WebView, root: String): List<Target>? = when (root) {
       "settings" -> listOf(
         Target(WebSettings::class.java, webView.settings, null),
@@ -137,10 +145,11 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       "webView" -> listOf(
         Target(WebView::class.java, webView, null),
         Target(WebViewCompat::class.java, null, webView),
+        // Any instance: its (webView, …) methods set the WebView's own settings.
         Target(CookieManager::class.java, CookieManager.getInstance(), webView)
       )
-      "cookieManager" -> listOf(Target(CookieManager::class.java, CookieManager.getInstance(), null))
-      "webStorage" -> listOf(Target(WebStorage::class.java, WebStorage.getInstance(), null))
+      "cookieManager" -> listOf(Target(CookieManager::class.java, profileOf(webView)?.cookieManager ?: CookieManager.getInstance(), null))
+      "webStorage" -> listOf(Target(WebStorage::class.java, profileOf(webView)?.webStorage ?: WebStorage.getInstance(), null))
       else -> null
     }
 
@@ -232,7 +241,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       return args
     }
 
-    /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double (or Int) and fit every numeric type. */
+    /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double and fit every numeric type. */
     private fun coerce(value: Any?, type: Class<*>): Any? {
       if (value == null) return if (type.isPrimitive) NONE else null
       return when (type.kotlin.javaObjectType) {

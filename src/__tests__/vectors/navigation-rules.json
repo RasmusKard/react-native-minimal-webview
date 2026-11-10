@@ -1,5 +1,5 @@
 {
-  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false, asked [] (URLs an `ask` already allowed) and canAsk true (something can answer an `ask`). `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to an internal scheme (about, blob, data, javascript) or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, blob:, data: and javascript: URLs always allow and skip the rules; (2) with no rules (null or []) nothing matches, so the rest blocks: for an unset prop JS sends the `defaults` ruleset, which equals defaultNavigationRules; (3) with rules, the first rule whose set fields all match wins, and no match blocks; a rule action other than allow, block, external or ask blocks; (4) an `ask` blocks when canAsk is false, else allows when the URL is in asked. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path, or any path of a URL without an authority (`myapp:/abs`), counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`. `answers`: an `ask` answer of allow, block or external stands; anything else blocks.",
+  "description": "Shared navigation rule cases for the Kotlin and Swift matchers. Request fields default to mainFrame true, newWindow false, userInitiated false, asked [] (URLs an `ask` already allowed) and canAsk true (something can answer an `ask`). `rules` names a ruleset or is null (no navigationRules). `expect.rule` is the index of the matching rule, or null when a default decided. Semantics: (0) a new window to about:, blob:, data:, javascript: or file: blocks, before anything else, so no rule can allow it; (1) otherwise about:, data: and javascript: URLs always allow and skip the rules; (2) with no rules (null or []) nothing matches, so the rest blocks: for an unset prop JS sends the `defaults` ruleset, which equals defaultNavigationRules; (3) with rules, the first rule whose set fields all match wins, and no match blocks; a blob: URL is matched as the origin it carries: its inner URL's scheme and host, path '/' and no query (`blob:https://a.test/x` as `https://a.test/`), and one with an opaque origin (`blob:null/x`, an inner URL without a scheme) blocks; a rule action other than allow, block, external or ask blocks; (4) an `ask` blocks when canAsk is false, else allows when the URL is in asked. Matching: scheme, host, path and query are lists, and a rule whose field is not a list never matches; scheme exact and case-insensitive; host case-insensitive without port, userinfo or a trailing dot, exact or `*.` suffix (subdomains only); path is a plain prefix of the percent-encoded path, an empty path, or any path of a URL without an authority (`myapp:/abs`), counts as '/'; query entries are compared, case-sensitive, with the parameters of the percent-encoded query (its non-empty `&`-separated parts, the fragment excluded): `name=value` equals a parameter, `name` equals a parameter's text before its first `=`. `answers`: an `ask` answer of allow, block or external stands; anything else blocks.",
   "rulesets": {
     "defaults": [
       {
@@ -281,13 +281,93 @@
       }
     },
     {
-      "name": "internal: blob skips rules",
+      "name": "blob: the app's own origin goes through the rules as that origin",
       "rules": "app",
       "request": {
         "url": "blob:https://example.com/0f9e7c"
       },
       "expect": {
         "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "blob: another origin's in the main frame gets what that origin gets",
+      "rules": "app",
+      "request": {
+        "url": "blob:https://other.test/0f9e7c"
+      },
+      "expect": {
+        "action": "external",
+        "rule": 5
+      }
+    },
+    {
+      "name": "blob: another origin's in an iframe gets what that origin gets",
+      "rules": "app",
+      "request": {
+        "url": "blob:https://other.test/0f9e7c",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 4
+      }
+    },
+    {
+      "name": "blob: the host matches without its port or case, and the path is '/'",
+      "rules": "app",
+      "request": {
+        "url": "BLOB:HTTPS://Shop.Example.com:8443/checkout"
+      },
+      "expect": {
+        "action": "allow",
+        "rule": 2
+      }
+    },
+    {
+      "name": "blob: a file: origin's goes through the rules as file:",
+      "rules": "defaults",
+      "request": {
+        "url": "blob:file:///0f9e7c",
+        "userInitiated": true
+      },
+      "expect": {
+        "action": "block",
+        "rule": 0
+      }
+    },
+    {
+      "name": "blob: an opaque origin's blocks even under a catch-all allow",
+      "rules": "notAList",
+      "request": {
+        "url": "blob:null/0f9e7c"
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "blob: an opaque origin's blocks in an iframe too",
+      "rules": "notAList",
+      "request": {
+        "url": "blob:null/0f9e7c",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "block",
+        "rule": null
+      }
+    },
+    {
+      "name": "no rules: blob blocks",
+      "rules": null,
+      "request": {
+        "url": "blob:https://example.com/0f9e7c"
+      },
+      "expect": {
+        "action": "block",
         "rule": null
       }
     },

@@ -3,20 +3,29 @@
 // and over https with a self-signed certificate (localhost:8443).
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
-import type { BridgeSender, Download, DownloadResult } from 'react-native-minimal-webview';
+import type {
+  BridgeSender,
+  Download,
+  DownloadResult,
+  NavigationEvent,
+} from 'react-native-minimal-webview';
 
 import {
   type Harness,
   WEBVIEW,
+  captureWarnings,
+  errorCode,
   fresh,
   idle,
   openPage,
   recordExternal,
   reporter,
   sleep,
-  tapPoint,
+  tap,
+  touch,
   until,
   waitFor,
+  waitForLoad,
 } from './harness';
 import { all } from './shapes';
 
@@ -33,19 +42,17 @@ type FrameReport = {
   injected: string | null;
 };
 
-const errorCode = (error: unknown) => (error as { code?: string }).code;
 /** The script's value, or the error code it rejected with. */
 const evaluate = async (h: Harness, script: string) =>
   await h.ref.current?.evaluate(script).catch(errorCode);
 
 /**
- * A user gesture on `id`: the driver's real tap on Android, a click from script on iOS (WebKit counts it as one).
- * Whether the page saw the click.
+ * A user gesture on `id` (`tap`; `real` taps for real on iOS too, where a click from script isn't `userInitiated`):
+ * whether the page saw the click.
  */
-async function gesture({ h, r, android }: Suite, id: string) {
+async function gesture({ h, r }: Suite, id: string, real = false) {
   const before = Number(await evaluate(h, 'window.testLog.length'));
-  if (android) r.info('TAP', await tapPoint(h, id));
-  else await evaluate(h, `(document.getElementById(${JSON.stringify(id)}).click(), 1)`);
+  await (real ? touch : tap)(h, r, id);
   const seen = async () =>
     String(await evaluate(h, `window.testLog.slice(${before}).join()`)).includes(`click ${id}`);
   return (await until(seen, 15000)) === true;
@@ -258,13 +265,21 @@ async function newWindows(suite: Suite) {
     );
     if (scriptMayRun && sentinels !== before)
       r.info(`known limit (WebView): T5 a tapped ${label} ran its script`, sentinels);
+    // Android's child WebView never reports a data: URL (Chromium doesn't pass it to shouldOverrideUrlLoading).
+    if (!android && id === 'open-data')
+      r.check(
+        `T5 a tapped ${label} is reported as blocked`,
+        decisions.some((n) => n.newWindow && n.url.startsWith('data:') && n.action === 'block'),
+        decisions
+      );
     r.info(`T5 ${label}: decisions`, decisions);
   }
 }
 
 /**
- * F1: with no rules, a page that sends the main frame to a custom scheme with no gesture is blocked; a tapped link to
- * one goes external, and one through a 302 is recorded.
+ * F1: with no rules, a page that sends the main frame to a custom scheme with no gesture is blocked, from a script and
+ * through a link it clicks itself; a tapped link to one goes external, and one through a 302 is recorded. The taps are
+ * real on iOS too, where the core counts a link only after a touch.
  */
 async function defaultScheme(suite: Suite) {
   const { h, r } = suite;
@@ -276,26 +291,48 @@ async function defaultScheme(suite: Suite) {
   await sleep(300);
   const page = fresh(h, '/hostile.html');
   await openPage(h, page);
-  const url = 'mrwhostile://open?from=script';
-  const navigations = h.events.navigations.length;
-  await evaluate(h, `(location.href = ${JSON.stringify(url)}, 1)`);
-  await until(() => h.events.navigations.slice(navigations).some((n) => n.url === url), 3000);
-  await sleep(300);
-  const decision = h.events.navigations.slice(navigations).find((n) => n.url === url);
-  r.check(
-    'F1 with no rules, a scripted custom-scheme navigation is blocked and never reaches onOpenExternal',
+  /** Runs `script` in the page: the decision about `url`, once one came. */
+  const scripted = async (script: string, url: string) => {
+    const navigations = h.events.navigations.length;
+    await evaluate(h, script);
+    await until(() => h.events.navigations.slice(navigations).some((n) => n.url === url), 3000);
+    await sleep(300);
+    return h.events.navigations.slice(navigations).find((n) => n.url === url);
+  };
+  const blocked = (decision: NavigationEvent | undefined) =>
     all(
       decision?.mainFrame === true,
       decision?.userInitiated === false,
       decision?.action === 'block',
       external.length === 0,
       h.state().url === page
-    ),
+    );
+  const url = 'mrwhostile://open?from=script';
+  const decision = await scripted(`(location.href = ${JSON.stringify(url)}, 1)`, url);
+  r.check(
+    'F1 with no rules, a scripted custom-scheme navigation is blocked and never reaches onOpenExternal',
+    blocked(decision),
     { decision, external }
+  );
+  // WebKit reports a link that a script clicks as .linkActivated, as it does a tapped one.
+  const link = 'mrwhostile://open?from=click';
+  const timer = await scripted(
+    `(() => {
+      const a = Object.assign(document.createElement('a'), { href: ${JSON.stringify(link)} });
+      document.body.append(a);
+      setTimeout(() => a.click(), 0);
+      return 1;
+    })()`,
+    link
+  );
+  r.check(
+    'F1 with no rules, a custom-scheme link the page clicks from a timer is blocked as not user-initiated',
+    blocked(timer),
+    { decision: timer, external }
   );
   const tapped = async (id: string, target: string) => {
     const before = h.events.navigations.length;
-    const clicked = await gesture(suite, id);
+    const clicked = await gesture(suite, id, true);
     await until(() => h.events.navigations.slice(before).some((n) => n.url === target), 5000);
     return { clicked, decision: h.events.navigations.slice(before).find((n) => n.url === target) };
   };
@@ -507,9 +544,7 @@ async function fileScope({ h, r, android }: Suite) {
       readAccessRoot?: string,
       load = () => h.loadSource({ uri: file.uri, readAccessRoot })
     ) => {
-      const loads = h.events.loads.length;
-      load();
-      await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s));
+      await waitForLoad(h, load, idle, 10000);
       await sleep(300);
       return (await evaluate(
         h,
@@ -547,19 +582,17 @@ async function fileScope({ h, r, android }: Suite) {
         JSON.stringify(retried) === '["local",true,true,false,false]',
         retried
       );
-      const warnings: string[] = [];
-      const warn = console.warn;
-      console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(' '));
+      const warnings = captureWarnings();
       try {
         const fallback = await read(first!, 'https://example.com/');
         r.check(
           "T8 a readAccessRoot that isn't a file: URL warns, and the file's directory applies",
           JSON.stringify(fallback) === '["local",true,false,false,false]' &&
-            warnings.some((line) => line.includes('readAccessRoot')),
-          { fallback, warnings }
+            warnings.warned('readAccessRoot'),
+          { fallback, warnings: warnings.lines }
         );
       } finally {
-        console.warn = warn;
+        warnings.stop();
       }
       return;
     }
@@ -585,7 +618,10 @@ async function fileScope({ h, r, android }: Suite) {
   }
 }
 
-/** In run order; the Android taps all come from newWindows (five) and defaultScheme (two). */
+/**
+ * In run order; the Android taps all come from newWindows (five) and defaultScheme (two), the iOS ones from
+ * defaultScheme (two).
+ */
 const BLOCKS = [
   bridgeGate,
   staleAnswer,

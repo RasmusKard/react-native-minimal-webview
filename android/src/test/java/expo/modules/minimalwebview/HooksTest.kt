@@ -211,10 +211,33 @@ class HooksTest {
   }
 
   @Test
+  fun `an options handler runs at once with the options, then with each change`() {
+    val attachment = Attachment(mapOf("a" to 1.0))
+    val seen = mutableListOf<Any?>()
+    attachment.onOptions { seen += it }
+    assertEquals(listOf<Any?>(mapOf("a" to 1.0)), seen)
+    attachment.optionsChanged(mapOf("a" to 2.0))
+    assertEquals(listOf<Any?>(mapOf("a" to 1.0), mapOf("a" to 2.0)), seen)
+    val off = mutableListOf<Any?>()
+    Attachment(null).onOptions { off += it }
+    assertEquals(listOf<Any?>(null), off)
+  }
+
+  @Test
+  fun `an options handler registered on a detached context never runs`() {
+    val attachment = Attachment(true)
+    attachment.detach()
+    val seen = mutableListOf<Any?>()
+    attachment.onOptions { seen += it }
+    assertTrue(seen.isEmpty())
+  }
+
+  @Test
   fun `a key removed after mount reaches the options handlers as null, and a value turns the hook on again`() {
     val attachment = Attachment(mapOf("a" to 1.0))
     val seen = mutableListOf<Any?>()
-    attachment.onOptionsChange { seen += it }
+    attachment.onOptions { seen += it }
+    seen.clear()
     attachment.optionsChanged(null)
     assertNull(attachment.options)
     assertFalse(attachment.routed)
@@ -254,5 +277,19 @@ class HooksTest {
     assertEquals(listOf("skips", "takes"), offered)
     off.optionsChanged(true)
     assertTrue(off.downloadStarted("u", "ua", "", "", -1))
+  }
+
+  @Test
+  fun `a hook reply settles its call once, and a reply or a fail after the first does nothing`() {
+    val settled = mutableListOf<String>()
+    val replied = HookReply({ settled += "resolve $it" }, { settled += "reject $it" })
+    replied(1.0)
+    replied(2.0)
+    replied.fail("late")
+    val failed = HookReply({ settled += "resolve $it" }, { settled += "reject $it" })
+    failed.fail("no label")
+    failed("late")
+    failed.fail("again")
+    assertEquals(listOf("resolve 1.0", "reject no label"), settled)
   }
 }
