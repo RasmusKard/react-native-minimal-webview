@@ -7,9 +7,10 @@ import type { HookExtension } from 'react-native-minimal-webview';
  * On iOS the WebView gets a data store of its own that isn't saved: its cookies, cache and storage go with it.
  * `sharedCookies` still copies cookies in and out.
  *
- * Android has no incognito WebView: this clears the app's cookies and HTTP cache, for its other WebViews too, and
- * turns the cache off. Cookies set after that are kept, as is the pages' own storage, such as `localStorage`. The
- * WebView that replaces one whose renderer crashed clears them again.
+ * Android has no incognito WebView: this clears the cookies and HTTP cache of the WebView's profile, the app's unless
+ * `android.webView.profile` names another, for the profile's other WebViews too, and turns the cache off. Cookies set
+ * after that are kept, as is the pages' own storage, such as `localStorage`. The WebView that replaces one whose
+ * renderer crashed clears them again.
  * @group Extensions
  */
 export const incognito = (): HookExtension => ({

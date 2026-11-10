@@ -4,7 +4,6 @@ import android.app.DownloadManager as SystemDownloadManager
 import android.net.Uri
 import android.os.Environment
 import android.util.Log
-import android.webkit.CookieManager
 import android.widget.Toast
 import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.MinimalWebViewHooks
@@ -31,7 +30,7 @@ internal object DownloadManager {
           .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
           .addRequestHeader("User-Agent", userAgent)
         if (mimeType.isNotEmpty()) request.setMimeType(mimeType)
-        CookieManager.getInstance().getCookie(url)?.let { request.addRequestHeader("Cookie", it) }
+        cookieManager(webView).getCookie(url)?.let { request.addRequestHeader("Cookie", it) }
         webView.context.getSystemService(SystemDownloadManager::class.java).enqueue(request)
       } catch (e: RuntimeException) {
         // A disabled Download Manager fails in setDestinationInExternalPublicDir (a NullPointerException) or enqueue.

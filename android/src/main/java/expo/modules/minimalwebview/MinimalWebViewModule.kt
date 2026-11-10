@@ -72,7 +72,7 @@ class MinimalWebViewModule : Module() {
     // Cookies live in memory until flushed; persist them before the process can be killed. Only once a WebView was
     // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
     OnActivityEntersBackground {
-      if (webViewCreated) CookieManager.getInstance().flush()
+      if (webViewCreated) flushCookies()
     }
 
     // Best effort: an error only means the first WebView starts WebView as before.
@@ -141,6 +141,17 @@ private fun preconnect(url: String) {
     WebViewFeature.isFeatureSupported(WebViewFeature.ENQUEUE_PRECONNECT) -> profile.enqueuePreconnect(url)
     WebViewFeature.isFeatureSupported(WebViewFeature.PRECONNECT) -> profile.preconnect(url)
   }
+}
+
+/**
+ * Writes the cookies of the default profile and every other one to disk: a WebView on another `android.webView.profile`
+ * keeps its own.
+ */
+private fun flushCookies() {
+  CookieManager.getInstance().flush()
+  if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return
+  val store = ProfileStore.getInstance()
+  store.allProfileNames.forEach { store.getProfile(it)?.cookieManager?.flush() }
 }
 
 /** Before the first WebView only stored, for each new WebView to apply: setting it now would start WebView. */

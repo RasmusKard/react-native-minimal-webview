@@ -211,7 +211,7 @@ await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
 ]);
 const cookies = await ref.current?.call('httpCookieStore.getAllCookies:'); // [{ Name, Value, Domain, Path, … }]
 
-// Android: the app-wide CookieManager
+// Android: the CookieManager of the WebView's profile, the app-wide one by default
 await ref.current?.call('cookieManager.setCookie', [
   'https://example.com',
   `session=${token}; Secure`,
