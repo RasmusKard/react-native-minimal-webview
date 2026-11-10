@@ -12,6 +12,7 @@ import type {
   InjectedScript,
   LoadErrorEvent,
   NavigationEvent,
+  NavigationRule,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
@@ -272,6 +273,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
 
   const requestHandlers = useRequestHandlers(props);
   const hookOptions = useHookOptions(props.extensions);
+  const navigationRules = useNavigationRules(props.navigationRules);
 
   // One per ask in flight, by id: aborted when native stops waiting (the core's `askCancelled`) or at unmount.
   const [asks] = useState(() => new Map<number, AbortController>());
@@ -325,7 +327,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       settings={settings}
       pullToRefresh={props.pullToRefresh}
       sharedCookies={Platform.OS === 'ios' ? props.sharedCookies : undefined}
-      navigationRules={props.navigationRules ?? defaultNavigationRules}
+      navigationRules={navigationRules}
       injectedScripts={injectedScripts}
       bridgeScript={connection?.script}
       bridgeOrigins={connection?.allowedOrigins}
@@ -361,6 +363,93 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
     const guard = originGuard('injectedScripts: invalid origins', origins);
     return { code: guard ? `if (${guard}) (() => {\n${code}\n})();` : code, allFrames };
   });
+}
+
+/** Each rule field's kind, from its type, so that a field missing here, or not in the type, fails to compile. */
+const RULE_FIELDS = new Map(
+  Object.entries({
+    scheme: 'list',
+    host: 'list',
+    path: 'list',
+    query: 'list',
+    mainFrame: 'flag',
+    newWindow: 'flag',
+    userInitiated: 'flag',
+    action: 'action',
+  } satisfies {
+    [K in keyof NavigationRule]-?: NonNullable<NavigationRule[K]> extends readonly string[]
+      ? 'list'
+      : NonNullable<NavigationRule[K]> extends boolean
+        ? 'flag'
+        : 'action';
+  })
+);
+const ACTIONS: unknown[] = Object.keys({
+  allow: 0,
+  block: 0,
+  external: 0,
+  ask: 0,
+} satisfies Record<NavigationRule['action'], 0>);
+
+/** A value as a warning shows it. */
+const shown = (value: unknown) => JSON.stringify(value) ?? String(value);
+
+/** What a field of each kind takes, as a warning says it, and the check. */
+const FIELD_KINDS = {
+  list: {
+    takes: 'an array of strings',
+    ok: (value: unknown) =>
+      Array.isArray(value) && value.every((entry) => typeof entry === 'string'),
+  },
+  flag: { takes: 'true or false', ok: (value: unknown) => typeof value === 'boolean' },
+  action: { takes: `one of ${shown(ACTIONS)}`, ok: (value: unknown) => ACTIONS.includes(value) },
+};
+
+/** What is wrong with a rule, if anything. */
+function ruleProblem(rule: unknown) {
+  if (typeof rule !== 'object' || rule === null) return `must be an object, not ${shown(rule)}`;
+  // A missing action is checked as an undefined one; any other field may be undefined (unset).
+  for (const [key, value] of Object.entries({ action: undefined, ...rule })) {
+    const kind = RULE_FIELDS.get(key);
+    if (!kind) return `unknown key ${shown(key)}`;
+    if ((value !== undefined || kind === 'action') && !FIELD_KINDS[kind].ok(value))
+      return `${key} must be ${FIELD_KINDS[kind].takes}, not ${shown(value)}`;
+  }
+  return undefined;
+}
+
+/**
+ * The rules as native gets them. Native skips an unknown key and a flag that isn't a boolean, which would widen a rule
+ * (`hosts` would match every host), so a malformed rule becomes one that blocks whatever reaches it, never more than
+ * the rule meant, and a development warning names it. The same array when no rule is malformed.
+ */
+function useNavigationRules(rules: WebViewProps['navigationRules']) {
+  const given: unknown = rules ?? defaultNavigationRules;
+  const { checked, warnings } = useMemo(() => {
+    if (!Array.isArray(given))
+      return {
+        checked: [],
+        warnings: [`navigationRules: must be an array, not ${shown(given)}; treated as []`],
+      };
+    const problems = given.map(ruleProblem);
+    return {
+      checked: problems.some(Boolean)
+        ? given.map((rule: unknown, i) => (problems[i] ? { action: 'block' } : rule))
+        : given,
+      warnings: problems.flatMap((problem, i) =>
+        problem
+          ? [`navigationRules[${i}]: ${problem}; it blocks every navigation that reaches it`]
+          : []
+      ),
+    };
+  }, [given]);
+  const json = JSON.stringify(warnings);
+  useEffect(() => {
+    if (!__DEV__) return;
+    for (const warning of JSON.parse(json) as string[])
+      console.warn(`[react-native-minimal-webview] ${warning}`);
+  }, [json]);
+  return checked as NavigationRule[];
 }
 
 /** The `REQUESTS` with a prop set, as a new array only when that set changes. */
