@@ -147,11 +147,11 @@ import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 type PageLoaded = HookEvent<'pageLoaded', { count: number }>;
 
-export const pageCounter = (onLoaded: (count: number) => void): HookExtension => ({
+export const pageCounter = (onLoaded: (count: number) => void): HookExtension<PageLoaded> => ({
   key: 'myApp.pageCounter',
   onEvent: (event) => {
     if (event.name !== 'pageLoaded') return;
-    onLoaded((event as PageLoaded).payload.count);
+    onLoaded(event.payload.count);
   },
 });
 ```

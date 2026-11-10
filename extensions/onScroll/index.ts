@@ -1,4 +1,4 @@
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * A scroll, for {@link onScroll}, in points (iOS) or dp (Android): what react-native-webview's event has in
@@ -23,7 +23,9 @@ export type ScrollEvent = {
  * `never`, react-native-webview's default.
  * @group Extensions
  */
-export const onScroll = (handler: (event: ScrollEvent) => void): HookExtension => ({
+export const onScroll = (
+  handler: (event: ScrollEvent) => void
+): HookExtension<HookEvent<'scroll', ScrollEvent>> => ({
   key: '@react-native-minimal-webview/extensions.onScroll',
-  onEvent: ({ payload }) => handler(payload as ScrollEvent),
+  onEvent: ({ payload }) => handler(payload),
 });

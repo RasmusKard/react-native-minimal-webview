@@ -1,4 +1,4 @@
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * A page's `alert`, `confirm` or `prompt`, for {@link dialogs}.
@@ -33,9 +33,9 @@ export type Dialog = {
  */
 export const dialogs = (
   onDialog: (dialog: Dialog, signal: AbortSignal) => unknown
-): HookExtension => ({
+): HookExtension<HookEvent<Dialog['type'], Omit<Dialog, 'type'>>> => ({
   key: '@react-native-minimal-webview/extensions.dialogs',
   // Each dialog is an ask, which has a signal; the event's name is the dialog's type.
   onEvent: ({ name, payload }, signal) =>
-    onDialog({ ...payload, type: name } as Dialog, signal as AbortSignal),
+    onDialog({ ...payload, type: name }, signal as AbortSignal),
 });
