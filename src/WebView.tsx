@@ -8,6 +8,7 @@ import { defaultNavigationRules } from './defaultNavigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
 import { useAttach } from './refStore';
 import type {
+  Bridge,
   HookExtension,
   InjectedScript,
   LoadErrorEvent,
@@ -146,7 +147,27 @@ const nativeModule = () =>
  * @group WebView
  */
 export function WebView(props: WebViewProps) {
+  useBridgeChangeWarning(props.bridge);
   return <WebViewInstance key={creationKey(props)} {...props} />;
+}
+
+/**
+ * Warns in development, once per WebView, when another bridge replaces its bridge, which recreated it: a bridge made
+ * in render (`bridge={createBridge(…)}`) would reload the page at every render.
+ */
+function useBridgeChangeWarning(bridge: Bridge | undefined) {
+  const last = useRef(bridge);
+  const warned = useRef(false);
+  useEffect(() => {
+    if (__DEV__ && !warned.current && last.current && bridge && bridge !== last.current) {
+      warned.current = true;
+      console.warn(
+        '[react-native-minimal-webview] bridge: another bridge recreated the WebView, and its page loaded again; ' +
+          'create the bridge once, at module scope or with useMemo'
+      );
+    }
+    last.current = bridge;
+  }, [bridge]);
 }
 
 /** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
