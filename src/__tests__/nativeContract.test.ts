@@ -116,7 +116,7 @@ const httpError = { kind: 1, url: 1, statusCode: 1 } satisfies Record<
   keyof Extract<LoadErrorEvent, { kind: 'http' }>,
   1
 >;
-const processGone = { didCrash: 1, recovered: 1 } satisfies Record<keyof ProcessGoneEvent, 1>;
+const processGone = { cause: 1, recovered: 1 } satisfies Record<keyof ProcessGoneEvent, 1>;
 const message = { message: 1, origin: 1 } satisfies Record<
   keyof Extract<BridgeEvent, { message: string }>,
   1

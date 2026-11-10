@@ -120,7 +120,7 @@ describe('WebView', () => {
     await fire('onNavigationState', navState({ url: 'https://example.com/', loading: true }));
     await fire('onNavigationState', navState({ url: 'https://example.com/' }));
     await fire('onNavigation', { url: 'https://example.com/', action: 'external' });
-    await fire('onProcessGone', { didCrash: true, recovered: true });
+    await fire('onProcessGone', { cause: 'crash', recovered: true });
     await fire('onError', { kind: 'http', url: 'https://example.com/', statusCode: 500 });
     await fire('onBridge', { message: '{}', origin: 'https://example.com' });
     await fire('onBridge', { navigated: true });
@@ -861,9 +861,9 @@ describe('navigation state across remounts', () => {
       rule: null,
     };
     await fire('onNavigation', { ...navigation, ...target });
-    await fire('onProcessGone', { didCrash: true, recovered: true, ...target });
+    await fire('onProcessGone', { cause: 'crash', recovered: true, ...target });
     expect(onNavigation).toHaveBeenCalledWith(navigation);
-    expect(onProcessGone).toHaveBeenCalledWith({ didCrash: true, recovered: true });
+    expect(onProcessGone).toHaveBeenCalledWith({ cause: 'crash', recovered: true });
   });
 
   it("createWebViewRef's current is the mounted WebView's ref, and null while none is", async () => {

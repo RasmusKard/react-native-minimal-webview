@@ -226,12 +226,10 @@ export type LoadErrorEvent =
  */
 export type ProcessGoneEvent = {
   /**
-   * Whether the renderer crashed (true) or the system killed it for memory (false); null on iOS, where WebKit doesn't
-   * say.
-   *
-   * Test it with `=== true` or `=== false`, not as a condition.
+   * Why it died: `crash` when the renderer crashed, `memory` when the system killed it to reclaim memory, and `unknown`
+   * on iOS, where WebKit doesn't say.
    */
-  didCrash: boolean | null;
+  cause: 'crash' | 'memory' | 'unknown';
   /**
    * Whether the core reloads the page: on iOS in place; on Android in a new WebView, once the view's window is visible,
    * with the history restored unless the `source` page was on screen, and with the props applied but not what `call`
