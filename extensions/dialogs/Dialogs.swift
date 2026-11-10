@@ -46,14 +46,16 @@ enum Dialogs {
       ask(webView, "prompt", (prompt, defaultText), frame) { completionHandler($0 as? String) }
     }
 
+    /// The payload is the JS `Dialog`: only a prompt has a `defaultValue`.
     private func ask(
       _ webView: WKWebView, _ type: String, _ text: (message: String, defaultValue: String?), _ frame: WKFrameInfo,
       _ onAnswer: @escaping (Any?) -> Void
     ) {
-      let payload: [String: Any] = [
-        "message": text.message, "defaultValue": text.defaultValue ?? NSNull(),
-        "url": frame.request.url?.absoluteString ?? "", "isTopFrame": frame.isMainFrame
+      var payload: [String: Any] = [
+        "type": type, "message": text.message,
+        "url": frame.request.url?.absoluteString ?? "", "mainFrame": frame.isMainFrame
       ]
+      if type == "prompt" { payload["defaultValue"] = text.defaultValue ?? NSNull() }
       // As the core does for its own dialogs: an accessibility query into the blocked page hangs until the answer.
       webView.accessibilityElementsHidden = true
       context.ask(type, payload) { [weak webView] answer in

@@ -204,14 +204,21 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
       lines
     );
   }
-  const got = seen.map(({ type, message, defaultValue }) => [type, message, defaultValue]);
+  // Only a prompt has a defaultValue, and only iOS says the frame.
+  const got = seen.map((dialog) => [
+    dialog.type,
+    dialog.message,
+    'defaultValue' in dialog ? dialog.defaultValue : '-',
+    dialog.mainFrame ?? '-',
+  ]);
+  const frame = ios ? true : '-';
   r.check(
-    "onDialog gets each dialog's type, message and default text",
+    "onDialog gets each dialog's type, message, a prompt's default text and, on iOS, mainFrame",
     JSON.stringify(got) ===
       JSON.stringify([
-        ['alert', 'hello', null],
-        ['confirm', 'ok?', null],
-        ['prompt', 'name?', 'default'],
+        ['alert', 'hello', '-', frame],
+        ['confirm', 'ok?', '-', frame],
+        ['prompt', 'name?', 'default', frame],
       ]),
     seen
   );

@@ -4,6 +4,7 @@ import type { HookExtension } from 'react-native-minimal-webview';
 import {
   androidLayerType,
   basicAuthCredential,
+  type Dialog,
   dialogs,
   downloadManager,
   hideKeyboardAccessoryView,
@@ -103,12 +104,18 @@ describe('the extensions', () => {
     expect(failed).toHaveBeenCalledWith(error);
   });
 
-  it('calls onDialog with the dialog and its type, and returns its answer', async () => {
+  it('calls onDialog with the dialog as it came, and returns its answer', async () => {
     const onDialog = jest.fn(async () => 'typed');
     const signal = new AbortController().signal;
-    const prompt = { message: 'name?', defaultValue: 'default', url: 'https://example.com/' };
+    const prompt: Dialog = {
+      type: 'prompt',
+      message: 'name?',
+      defaultValue: 'default',
+      url: 'https://example.com/',
+      mainFrame: true,
+    };
     const answer = dialogs(onDialog).onEvent!({ name: 'prompt', payload: prompt }, signal);
     await expect(answer).resolves.toBe('typed');
-    expect(onDialog).toHaveBeenCalledWith({ ...prompt, type: 'prompt' }, signal);
+    expect(onDialog).toHaveBeenCalledWith(prompt, signal);
   });
 });
