@@ -98,16 +98,16 @@ import { useEffect, useMemo } from 'react';
 import { Button, Platform, Share } from 'react-native';
 import { WebView, createBridge } from 'react-native-minimal-webview';
 
-type Methods = {
-  share: { params: { url: string }; result: boolean }; // handled in React Native
-  getCartCount: { result: number }; // handled by the page
+type ShopBridge = {
+  reactNative: { share: { params: { url: string }; result: boolean } }; // handled in React Native
+  page: { getCartCount: { result: number } }; // handled by the page
+  events: { themeChanged: 'light' | 'dark' };
 };
-type Events = { themeChanged: 'light' | 'dark' };
 
 export function Shop() {
   // Once: a new bridge recreates the WebView
   const bridge = useMemo(
-    () => createBridge<Methods, Events>({ allowedOrigins: ['https://example.com'] }),
+    () => createBridge<ShopBridge>({ allowedOrigins: ['https://example.com'] }),
     []
   );
 

@@ -303,34 +303,46 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
 ) => Result | Promise<Result>;
 
 /**
- * The methods either side may call, for `createBridge<Methods>`.
+ * What crosses a bridge, for `createBridge<Schema>`: the methods each side handles, which the other side calls, and the
+ * events.
  *
- * One map covers both directions, so a method is named once, whichever side handles it. With a map, `handle` and
- * `call` take only its methods: another name doesn't compile. A `type`, not an `interface` (an interface has no index
- * signature, so it doesn't satisfy `Record`).
+ * With a schema, `handle` takes only the `reactNative` methods and `call` only the `page` ones, `emit` and `on` only its
+ * events (another name doesn't compile), and `params` or a payload is required where its type doesn't allow
+ * `undefined`. A method's `params` and `result` are left out when it has none. Every key is required: `{}` for a side
+ * that handles nothing. The method and event maps are `type`s or written inline, not `interfaces` (an interface has no
+ * index signature, so it doesn't satisfy `Record`).
  * @example
  * ```ts
- * type Methods = { share: { params: { url: string }; result: boolean } };
- * const bridge = createBridge<Methods>({ allowedOrigins: ['https://example.com'] });
+ * type ShopBridge = {
+ *   reactNative: { share: { params: { url: string }; result: boolean } };
+ *   page: { getCartCount: { result: number } };
+ *   events: { themeChanged: 'light' | 'dark' };
+ * };
+ * const bridge = createBridge<ShopBridge>({ allowedOrigins: ['https://example.com'] });
  * ```
  * @group Bridge
  */
-export type BridgeMethodMap = Record<string, { params?: unknown; result?: unknown }>;
-/**
- * The events either side may emit, for `createBridge<Methods, Events>`.
- *
- * With a map, `emit` and `on` take only its events: another name doesn't compile.
- * @example
- * ```ts
- * type Events = { themeChanged: 'light' | 'dark' };
- * const bridge = createBridge<Methods, Events>({ allowedOrigins: ['https://example.com'] });
- * ```
- * @group Bridge
- */
-export type BridgeEventMap = Record<string, unknown>;
+export type BridgeSchema = {
+  /** The methods React Native answers with `bridge.handle`, and the page calls with `nativeBridge.call`. */
+  reactNative: Record<string, { params?: unknown; result?: unknown }>;
+  /** The methods the page answers with `nativeBridge.handle`, and React Native calls with `bridge.call`. */
+  page: Record<string, { params?: unknown; result?: unknown }>;
+  /** The events, by name and payload, that either side emits and the other listens to. */
+  events: Record<string, unknown>;
+};
+
+type ParamsOf<Method> = 'params' extends keyof Method ? Method['params' & keyof Method] : undefined;
+type ResultOf<Method> = 'result' extends keyof Method ? Method['result' & keyof Method] : unknown;
+/** `call`'s arguments after the method: `params`, required unless they can be `undefined`, then the options. */
+type CallArgs<Method> =
+  undefined extends ParamsOf<Method>
+    ? [params?: ParamsOf<Method>, options?: { timeoutMs?: number }]
+    : [params: ParamsOf<Method>, options?: { timeoutMs?: number }];
+/** `emit`'s argument after the event: the payload, required unless it can be `undefined`. */
+type PayloadArg<Payload> = undefined extends Payload ? [payload?: Payload] : [payload: Payload];
 
 /**
- * A promise-based RPC channel to `window.nativeBridge` in the page.
+ * A promise-based RPC channel to `window.nativeBridge` in the page, typed by a {@link BridgeSchema}.
  *
  * Attach it with the `bridge` prop. Handlers and listeners belong to the bridge, not to a WebView: they stay across
  * unmounts. Messages have no size limit.
@@ -348,44 +360,43 @@ export type BridgeEventMap = Record<string, unknown>;
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
-export type Bridge<
-  Methods extends BridgeMethodMap = BridgeMethodMap,
-  Events extends BridgeEventMap = BridgeEventMap,
-> = {
+export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
   /**
-   * Answers `nativeBridge.call(method, params)` from the page.
+   * Answers `nativeBridge.call(method, params)` from the page, for a method of the schema's `reactNative`.
    *
    * One handler per method: a later one replaces it. Returns an unsubscribe function, which removes only this handler.
    */
-  handle<M extends keyof Methods & string>(
+  handle<M extends keyof Schema['reactNative'] & string>(
     method: M,
-    handler: BridgeHandler<Methods[M]['params'], Methods[M]['result']>
+    handler: BridgeHandler<ParamsOf<Schema['reactNative'][M]>, ResultOf<Schema['reactNative'][M]>>
   ): () => void;
   /**
-   * Calls a method the page registered with `nativeBridge.handle`.
+   * Calls a method of the schema's `page`, which the page registered with `nativeBridge.handle`.
    *
    * Rejects with a {@link CodedError}: `timeout`, `not_found`, `handler_error`, `navigated` or `unavailable`.
    * `timeoutMs` overrides the bridge's for this call, and one that isn't 0 or more rejects with a plain `RangeError`.
    */
-  call<M extends keyof Methods & string>(
+  call<M extends keyof Schema['page'] & string>(
     method: M,
-    params?: Methods[M]['params'],
-    options?: { timeoutMs?: number }
-  ): Promise<Methods[M]['result']>;
+    ...args: CallArgs<Schema['page'][M]>
+  ): Promise<ResultOf<Schema['page'][M]>>;
   /**
    * Fires an event the page listens to with `nativeBridge.on`.
    *
    * Dropped if the page goes away before it arrives, or if the page has no listener for it.
    */
-  emit<E extends keyof Events & string>(event: E, payload?: Events[E]): void;
+  emit<E extends keyof Schema['events'] & string>(
+    event: E,
+    ...payload: PayloadArg<Schema['events'][E]>
+  ): void;
   /**
    * Listens to `nativeBridge.emit(event, payload)` from the page. Returns an unsubscribe function.
    *
    * A listener that throws is reported as an unhandled promise rejection; the event's other listeners still run.
    */
-  on<E extends keyof Events & string>(
+  on<E extends keyof Schema['events'] & string>(
     event: E,
-    listener: (payload: Events[E], sender: BridgeSender) => void
+    listener: (payload: Schema['events'][E], sender: BridgeSender) => void
   ): () => void;
   /** What `<WebView>` attaches to. Only `createBridge` sets it, so a hand-made or mock `Bridge` doesn't type-check. */
   readonly [CONNECTION]: BridgeConnection;
@@ -856,7 +867,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
     signal: AbortSignal
   ) => boolean | void | Promise<boolean | void>;
   /**
-   * The bridge to the page, from `createBridge`.
+   * The bridge to the page, from `createBridge`, of any schema.
    *
    * Read when the WebView is created: another bridge recreates it (the page reloads and the navigation state starts
    * over), so make it once, at module scope or with `useMemo` (in development, a WebView warns the first time another
@@ -865,7 +876,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * On Android with a WebView older than 101 there is no bridge: calls reject with `unavailable`, and a warning says
    * so, once per process.
    */
-  bridge?: Bridge;
+  bridge?: Pick<Bridge, typeof CONNECTION>;
   /**
    * The native hooks to turn on, as {@link HookExtension}s: a package with a native hook exports a function that
    * returns one.

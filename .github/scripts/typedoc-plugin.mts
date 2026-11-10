@@ -10,7 +10,7 @@ export function load(app: Application) {
       variable.setFlag(ReflectionFlag.Const, false);
   });
   // A page's title is its name: typedoc-plugin-markdown's `{name}` adds a type alias's type parameters
-  // (`Bridge<Methods, Events>`) but not a function's, which are on its signature. No placeholder leaves them out, and
+  // (`Bridge<Schema>`) but not a function's, which are on its signature. No placeholder leaves them out, and
   // .config/typedoc.json can't hold a template function.
   app.on(Application.EVENT_BOOTSTRAP_END, () =>
     app.options.setValue('pageTitleTemplates', {
