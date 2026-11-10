@@ -189,19 +189,30 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// The ref's reload: an explicit retry starts the crash-loop guard over, like a new source. Recovery uses reload().
+  /// The ref's reload: an explicit retry starts the crash-loop guard over, like a new source. Pull-to-refresh uses
+  /// reload().
   func retry() {
     crashTimes = []
     reload()
   }
 
   func reload() {
-    if onPostSource, let source {
+    // WebKit's reload redoes no failed load or POST, and loads nothing while `url` is nil (no commit, a dead process).
+    if let webView, webView.url != nil, failedUrl == nil, !onPostSource { webView.reload() } else { loadAgain() }
+  }
+
+  /// The page on screen loaded again, as crash recovery does: the `source` when that is the page or nothing has
+  /// committed (with its headers, its POST body or its html, which isn't in the history), else the failed URL, else
+  /// the back-forward list's item (a dead web process relaunches with it, so history stays). A `source` being prepared
+  /// loads once it is ready instead.
+  private func loadAgain() {
+    guard let webView, !preparing else { return }
+    if let source, onSource || failedUrl == nil && webView.backForwardList.currentItem == nil {
       load(source)
     } else if let failedUrl, let target = URL(string: failedUrl) {
       loadProgrammatic(URLRequest(url: target))
     } else {
-      webView?.reload()
+      webView.reload()
     }
   }
 
@@ -430,11 +441,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: Date()) && !onPostSource
     endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
-    if recovered {
-      // The source again, with its headers (an html one isn't in the history), also when nothing has committed yet.
-      // Any other page: reload() relaunches the process with the back-forward list's item, so history stays.
-      if onSource || webView.backForwardList.currentItem == nil, let source { load(source) } else { reload() }
-    }
+    if recovered { loadAgain() }
     onProcessGone(["cause": "unknown", "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }

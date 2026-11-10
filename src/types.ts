@@ -1032,7 +1032,8 @@ export type WebViewRef = {
   /** Goes forward one page; does nothing unless `canGoForward`. */
   goForward(): void;
   /**
-   * Reloads the page; after a failed load, retries the failed URL.
+   * Reloads the page; after a failed load, retries it (the `source` again, with its headers, when that failed), and
+   * loads the `source` when nothing is loaded.
    *
    * Sends a POST `source` again, and lifts the limit on {@link ProcessGoneEvent.recovered | crash recovery}.
    */
