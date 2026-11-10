@@ -118,10 +118,10 @@ for testCase in guardCases {
   guard let name = testCase["name"] as? String, let crashes = testCase["crashes"] as? [[String: Any]] else {
     fail("malformed case \(testCase)")
   }
-  var times: [Date] = []
+  var times: [TimeInterval] = []
   let reloads = crashes.map { crash in
     guard let at = crash["at"] as? Double else { fail("malformed crash \(crash)") }
-    return Recovery.crashAllowsReload(&times, now: Date(timeIntervalSince1970: at / 1000))
+    return Recovery.crashAllowsReload(&times, now: at / 1000)
   }
   let expected = crashes.compactMap { $0["reload"] as? Bool }
   check("recovery \(name): expected reloads \(expected), got \(reloads)", reloads == expected)
