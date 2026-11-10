@@ -63,8 +63,9 @@ internal class MinimalWebViewNavigation(
     "userInitiated" to request.userInitiated
   )
 
-  private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) =
-    onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
+  private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) {
+    if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
+  }
 
   // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the gesture flag and the redirect chain.
   private fun ask(request: NavigationRules.Request, rule: Int?) {

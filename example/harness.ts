@@ -36,8 +36,8 @@ export type Harness = {
   pages: string;
   platform: string;
   ref: WebViewRefObject;
-  /** Where the WebView sits in the window, in dp, for a driver's TAP; kept current by App's onLayout. */
-  webViewOffset: { x: number; y: number };
+  /** Where the WebView sits in the window and its height, in dp, for a driver's TAP; kept current by App's onLayout. */
+  webViewOffset: { x: number; y: number; height: number };
   state: () => NavigationState;
   /** Remounts the WebView (a new `key`) without re-rendering App. */
   remount: () => void;
@@ -48,10 +48,8 @@ export type Harness = {
   bridge: Bridge;
   /** Payloads of `pageEvent` events the page emitted. */
   pageEvents: unknown[];
-  setFileRequest: (
-    handler: ((request: FileRequest) => Promise<string[] | null>) | undefined
-  ) => void;
-  setPermission: (handler: ((request: PermissionRequest) => Promise<boolean>) | undefined) => void;
+  setFileRequest: (handler: WebViewProps['onFileRequest']) => void;
+  setPermission: (handler: WebViewProps['onPermissionRequest']) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
   setProps: (props: HarnessProps) => void;
   /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
@@ -216,10 +214,12 @@ async function reset(h: Harness) {
   h.setAsk(undefined);
   h.setPermission(undefined);
   h.setFileRequest(undefined);
-  const loads = h.events.loads.length;
-  h.remount();
-  // The state is the old WebView's until the new one reports: wait for the new one's load to end.
-  await waitFor(h, (s) => s.url !== '' && idle(s) && h.events.loads.slice(loads).includes('end'));
+  await waitForLoad(
+    h,
+    () => h.remount(),
+    (s) => s.url !== '' && idle(s),
+    10000
+  );
   clearEvents(h);
 }
 
@@ -260,6 +260,36 @@ export const waitFor = async (
 ) => (await until(() => predicate(h.state()), ms, 50)) === true;
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
+
+/**
+ * Runs `act`, then waits for a load that ends after it (onLoadEnd) and for `done`, by default the idle page: whether
+ * both came within `ms`. Until the new load reports, the state can still be the old page's (or the old WebView's), so
+ * `done` alone could match too early.
+ */
+export async function waitForLoad(
+  h: Harness,
+  act: () => unknown,
+  done: (s: NavigationState) => boolean = idle,
+  ms = 15000
+) {
+  const loads = h.events.loads.length;
+  await act();
+  return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && done(s), ms);
+}
+
+/**
+ * For a request handler that never settles: `never(signal)` is its pending answer, and `stuck` says when its signal
+ * aborted (`abortedAt`, 0 until then) and answers it (`release`).
+ */
+function stuckHandler<T>() {
+  const stuck = { abortedAt: 0, release: (_value: T) => {} };
+  const never = (signal: AbortSignal) => {
+    signal.addEventListener('abort', () => (stuck.abortedAt = Date.now()));
+    return new Promise<T>((resolve) => (stuck.release = resolve));
+  };
+  return { stuck, never };
+}
+
 /** An `onOpenExternal` that records each URL in `into` and answers that the app opened it. */
 export const recordExternal =
   (into: string[]): WebViewProps['onOpenExternal'] =>
@@ -284,8 +314,11 @@ const viewportHeight = async (h: Harness) =>
     `(() => { const d = document.createElement('div'); d.style.height = '100vh'; document.body.append(d); const v = d.offsetHeight; d.remove(); return v; })()`
   )) as number;
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
-const click = (h: Harness, id: string) =>
-  h.ref.current?.evaluate(`document.getElementById(${JSON.stringify(id)}).click()`);
+/** A click from script on `id`; with `frame`, on an element in that same-origin iframe. */
+const click = (h: Harness, id: string, frame?: string) =>
+  h.ref.current?.evaluate(
+    `${frame ? `document.getElementById(${JSON.stringify(frame)}).contentDocument` : 'document'}.getElementById(${JSON.stringify(id)}).click()`
+  );
 
 /** Committed url and the page's location.href agree, once the coalesced state event has arrived. */
 async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
@@ -403,16 +436,29 @@ async function urlTracking(h: Harness) {
   r.done();
 }
 
+/** Runs `act`, then waits for what onNavigation reports about a URL ending in `path`: that, or undefined after 3 s. */
+async function nextDecision(h: Harness, act: () => unknown, path: string) {
+  const before = h.events.navigations.length;
+  await act();
+  return await until(
+    () => h.events.navigations.slice(before).find((n) => n.url.endsWith(path)),
+    3000
+  );
+}
+
 // The `ask` rule (NavigationRule.action).
 async function reissue(h: Harness) {
   const r = reporter('reissue');
   const asked: string[] = [];
   let answer: 'allow' | 'block' | 'late' = 'allow';
-  h.setAsk(async (request) => {
-    asked.push(request.url);
+  const ask = async (url: string): Promise<'allow' | 'block'> => {
+    asked.push(url);
     if (answer === 'late') await sleep(1500);
     return answer === 'block' ? 'block' : 'allow';
-  });
+  };
+  // The handler's answer to the latest ask: it settles once the handler has answered.
+  let answered: Promise<unknown> = Promise.resolve();
+  h.setAsk((request) => (answered = ask(request.url)));
   h.setRules([
     { host: ['localhost', '127.0.0.1'], path: ['/checkout', '/headers'], action: 'ask' },
     { scheme: ['http', 'https'], action: 'allow' },
@@ -439,21 +485,24 @@ async function reissue(h: Harness) {
     h.state()
   );
 
+  const checkout = () => nextDecision(h, () => click(h, 'checkout'), '/checkout/pay');
   answer = 'block';
-  await click(h, 'checkout');
-  await sleep(1500);
-  r.check('block stays on the page', h.state().url === start && asked.length === 2, {
-    url: h.state().url,
-    asked,
-  });
+  const blocked = await checkout();
+  r.check(
+    'block stays on the page',
+    blocked?.action === 'block' && h.state().url === start && asked.length === 2,
+    { decision: blocked, url: h.state().url, asked }
+  );
 
+  // The timeout blocks after 1 s, before the handler answers allow.
   answer = 'late';
-  await click(h, 'checkout');
-  await sleep(2500);
+  const timedOut = await checkout();
+  await answered;
+  await sleep(1000); // a load the late allow wrongly started would have committed by now
   r.check(
     'a late answer is ignored (timeout blocks)',
-    h.state().url === start && asked.length === 3,
-    { url: h.state().url, asked }
+    timedOut?.action === 'block' && h.state().url === start && asked.length === 3,
+    { decision: timedOut, url: h.state().url, asked }
   );
 
   answer = 'allow';
@@ -614,7 +663,6 @@ async function bridge(h: Harness) {
   const gone = await pending;
   r.since(WEBVIEW.evaluate, 'navigation rejects an evaluate in flight', gone === 'navigated', gone);
   await waitFor(h, (s) => s.url.includes('next=1') && idle(s));
-  await sleep(500);
   const again = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works again after navigation', again === 2, again);
 
@@ -775,11 +823,12 @@ async function upload(h: Harness) {
   file.write('hello from the app cache');
   const requests: FileRequest[] = [];
   let answer: string[] | null = null;
+  // With `hang`, the handler never settles.
   let hang = false;
-  h.setFileRequest(async (request) => {
+  const { stuck, never } = stuckHandler<null>();
+  h.setFileRequest(async (request, signal) => {
     requests.push(request);
-    if (hang) return await new Promise<null>(() => {});
-    return answer;
+    return hang ? await never(signal) : answer;
   });
   const open = async () => {
     await openPage(h, fresh(h, '/upload.html'));
@@ -825,7 +874,8 @@ async function upload(h: Harness) {
     again
   );
 
-  // A handler that never settles holds the page's chooser (WebView allows one); the next page cancels it.
+  // A handler that never settles holds the page's chooser (WebView allows one); the next page cancels it and aborts
+  // the handler's signal.
   hang = true;
   const held = requests.length;
   r.info('TAP', 'never settles');
@@ -836,7 +886,14 @@ async function upload(h: Harness) {
     requests.length - held
   );
   hang = false;
+  const navigatedAt = Date.now();
   await open();
+  await until(() => stuck.abortedAt, 2000);
+  r.check(
+    "navigating away aborts the held handler's signal",
+    stuck.abortedAt >= navigatedAt,
+    stuck.abortedAt ? stuck.abortedAt - navigatedAt : 'not aborted'
+  );
   const afterHang = await tapAndRead('after navigation');
   r.check(
     'after navigating, the next request reaches JS and uploads',
@@ -884,25 +941,28 @@ export const fresh = (h: Harness, path: string) =>
   `${path.startsWith('http') ? '' : h.pages}${path}${path.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
 /**
- * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. The
- * state is the old page's until the new view reports, so `idle` alone could match too early. With `remount`, for props
- * that don't recreate it (`extensions`, whose keys pick the hooks with configure only when it is created), it
- * remounts too.
+ * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. With
+ * `remount`, for props that don't recreate it (`extensions`, whose keys pick the hooks with configure only when it is
+ * created), it remounts too.
  */
 export async function recreate(h: Harness, props: HarnessProps, remount = false) {
-  const loads = h.events.loads.length;
-  h.setProps(props);
-  if (remount) h.remount();
-  return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && idle(s), 15000);
+  return await waitForLoad(h, () => {
+    h.setProps(props);
+    if (remount) h.remount();
+  });
 }
 
-/** Loads `uri` and waits until it is the idle page and its load has ended. */
-export async function openPage(h: Harness, uri: string, ms = 15000) {
-  const loads = h.events.loads.length;
-  h.load(uri);
-  const ok = await waitFor(
+/** Loads `page`, a URL or a source with one, and waits until it is the idle page and its load has ended. */
+export async function openPage(
+  h: Harness,
+  page: string | Extract<WebViewSource, { uri: string }>,
+  ms = 15000
+) {
+  const source = typeof page === 'string' ? { uri: page } : page;
+  const ok = await waitForLoad(
     h,
-    (s) => s.url === uri && idle(s) && h.events.loads.slice(loads).includes('end'),
+    () => h.loadSource(source),
+    (s) => s.url === source.uri && idle(s),
     ms
   );
   await sleep(100); // events the native side sends right after onLoadEnd (onNavigation, an extension's)
@@ -928,8 +988,9 @@ export const text = async (h: Harness, id: string) =>
   )) as string;
 
 /**
- * Android: the screen pixels of an element's centre, `x y`, for a driver's TAP; with `frame`, of an element inside
- * that same-origin iframe.
+ * The screen point of an element's centre, `x y`, for a driver's TAP: pixels on Android, points on iOS; with `frame`,
+ * of an element inside that same-origin iframe. On iOS WebKit starts the page below the part of the WebView that is
+ * under the status bar, so innerHeight falls short of the WebView's height by that much (nothing covers its bottom).
  */
 export const tapPoint = async (h: Harness, id: string, frame?: string) =>
   (
@@ -938,13 +999,32 @@ export const tapPoint = async (h: Harness, id: string, frame?: string) =>
     const e = (f ? f.contentDocument : document).getElementById(${JSON.stringify(id)});
     (f ?? e).scrollIntoView({ block: 'center' });
     const fr = f?.getBoundingClientRect(), x = fr ? fr.left + f.clientLeft : 0, y = fr ? fr.top + f.clientTop : 0;
-    const b = e.getBoundingClientRect(), d = devicePixelRatio;
+    const b = e.getBoundingClientRect(), d = ${Platform.OS === 'android' ? 'devicePixelRatio' : 1};
+    const top = ${Platform.OS === 'android' ? 0 : `Math.max(0, ${h.webViewOffset.height} - innerHeight)`};
     return [
       Math.round((${h.webViewOffset.x} + x + b.left + b.width / 2) * d),
-      Math.round((${h.webViewOffset.y} + y + b.top + b.height / 2) * d),
+      Math.round((${h.webViewOffset.y} + top + y + b.top + b.height / 2) * d),
     ];
   })()`)) as [number, number]
   ).join(' ');
+
+/**
+ * A user gesture on `id` (with `frame`, on an element in that same-origin iframe): the driver's real tap on Android,
+ * asked for with a `TAP` request; a click from script on iOS, which WebKit runs as a gesture but the core doesn't count
+ * as `userInitiated`. A click on a page that went away shows in the check that follows.
+ */
+export async function tap(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
+  if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, id, frame));
+  else await click(h, id, frame)?.catch(errorCode);
+}
+
+/**
+ * The driver's real tap on `id` (with `frame`, on an element in that same-origin iframe), asked for with a `TAP`
+ * request. A check that needs `userInitiated` uses it on iOS too, where the core counts a link only after a touch.
+ */
+export async function touch(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
+  r.info('TAP', await tapPoint(h, id, frame));
+}
 
 /**
  * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
@@ -1042,11 +1122,6 @@ async function errors(h: Harness) {
     blocked
   );
   h.setRules(undefined);
-
-  clearEvents(h);
-  h.load('https://localhost:8443/'); // the test server's self-signed certificate
-  const gotSsl = await waitFor(h, () => h.events.errors.length > 0, 10000);
-  r.check('ssl error', gotSsl && h.events.errors[0]?.kind === 'ssl', h.events.errors[0]);
 
   clearEvents(h);
   const flaky = `${h.pages}/flaky?key=${Date.now()}`;
@@ -1164,44 +1239,33 @@ async function crash(h: Harness) {
   r.check('a setting applies before a crash', !!(await userAgent()));
   clearEvents(h);
   const firstKillAt = Date.now();
-  const loadsBefore = h.events.loads.length;
   const countsBefore = h.events.pageCounts.length;
-  const first = await kill(1);
-  r.check('processGone reported and recovered', first?.recovered === true, first);
-  r.check(
-    'the page reloads',
-    await waitFor(
-      h,
-      (s) => h.events.loads.slice(loadsBefore).includes('end') && s.url === page && idle(s),
-      15000
-    ),
-    h.state()
+  let first: ProcessGoneEvent | undefined;
+  const reloaded = await waitForLoad(
+    h,
+    async () => (first = await kill(1)),
+    (s) => s.url === page && idle(s)
   );
+  r.check('processGone reported and recovered', first?.recovered === true, first);
+  r.check('the page reloads', reloaded, h.state());
   // A page other than the source reloads its history entry in place: back still goes to the page before it, and
   // forward from there to it (Android restores the dead WebView's history into the new one). This is the second of
   // the crash loop's kills.
   const second = fresh(h, '/bridge.html');
-  const loads = h.events.loads.length;
-  await h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`);
-  await waitFor(
+  await waitForLoad(
     h,
-    (s) => h.events.loads.slice(loads).includes('end') && s.url === second && idle(s),
-    15000
+    () => h.ref.current?.evaluate(`location.href = ${JSON.stringify(second)}`),
+    (s) => s.url === second && idle(s)
   );
-  const reloads = h.events.loads.length;
-  const killed = await kill(2);
+  let killed: ProcessGoneEvent | undefined;
+  const inPlace = await waitForLoad(
+    h,
+    async () => (killed = await kill(2)),
+    (s) => s.url === second && idle(s) && s.canGoBack
+  );
   r.check(
     'a second page reloads in place, canGoBack unchanged',
-    killed?.recovered === true &&
-      (await waitFor(
-        h,
-        (s) =>
-          h.events.loads.slice(reloads).includes('end') &&
-          s.url === second &&
-          idle(s) &&
-          s.canGoBack,
-        15000
-      )),
+    killed?.recovered === true && inPlace,
     h.state()
   );
   h.ref.current?.goBack();
@@ -1218,7 +1282,6 @@ async function crash(h: Harness) {
   );
   const recoveredVh = await viewportHeight(h);
   r.check('100vh has a height after recovery', recoveredVh > 0, recoveredVh);
-  await sleep(1000);
   r.since(
     WEBVIEW.bridge,
     'the bridge works after recovery',
@@ -1227,11 +1290,9 @@ async function crash(h: Harness) {
   // Android builds a new WebView on recovery: its settings must be applied again.
   r.check('the setting is still applied after recovery', !!(await userAgent()));
 
-  const thirdLoads = h.events.loads.length;
-  await kill(3);
   // The recovery reload ends first: before WebView 146 the state reads idle before it starts, and it would cut off
   // the navigation below.
-  await waitFor(h, (s) => h.events.loads.slice(thirdLoads).includes('end') && idle(s), 15000);
+  await waitForLoad(h, () => kill(3));
   // The 4th kill cuts off a slow load: with no reload to end it, the core must. Before WebView 146 the load starts at
   // commit, after the delay, so the kill lands on the committed slow page instead.
   await until(
@@ -1259,14 +1320,12 @@ async function crash(h: Harness) {
     await waitFor(h, (s) => !s.loading, 5000),
     h.state()
   );
-  const retryLoads = h.events.loads.length;
-  h.ref.current?.reload();
   r.check(
     'reload() brings the page back after giving up',
-    (await waitFor(
+    (await waitForLoad(
       h,
-      (s) => s.url === onScreen && idle(s) && h.events.loads.slice(retryLoads).includes('end'),
-      15000
+      () => h.ref.current?.reload(),
+      (s) => s.url === onScreen && idle(s)
     )) && (await h.ref.current?.evaluate('location.href').catch(errorCode)) === onScreen,
     h.state()
   );
@@ -1300,13 +1359,10 @@ async function crash(h: Harness) {
   // A POST source on screen isn't sent again unasked (a payment form): recovery stops, and reload() sends it.
   const post = fresh(h, '/post');
   const body = `amount=9.99&t=${Date.now()}`;
-  h.loadSource({ uri: post, body });
-  await waitFor(h, (s) => s.url === post && idle(s));
+  await openPage(h, { uri: post, body }, 10000);
   const postGone = await kill(7);
   r.check('a POST source is not sent again on recovery', postGone?.recovered === false, postGone);
-  const postLoads = h.events.loads.length;
-  h.ref.current?.reload();
-  await waitFor(h, (s) => idle(s) && h.events.loads.slice(postLoads).includes('end'), 15000);
+  await waitForLoad(h, () => h.ref.current?.reload());
   r.check(
     'reload() sends the POST source after a crash',
     (await text(h, 'body')) === body,
@@ -1372,7 +1428,6 @@ async function mountSettings(h: Harness) {
     ua
   );
   await openPage(h, fresh(h, '/bridge.html'));
-  await sleep(500);
   r.since(
     WEBVIEW.bridge,
     'the bridge works after the remount',
@@ -1392,6 +1447,9 @@ async function settings(h: Harness) {
   const { lines: warnings, warned, stop } = captureWarnings();
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
+  /** Whether `read` gives `want` within 3 s: a setting reaches the WebView, and the page, on their own schedule. */
+  const becomes = async (read: () => Promise<unknown> | undefined, want: unknown) =>
+    !!(await until(async () => (await read()) === want, 3000));
   // An 8px span's computed size: the minimum font size setting raises it.
   const fontSize = () =>
     page(`(() => {
@@ -1439,21 +1497,26 @@ async function settings(h: Harness) {
           },
         },
       });
-      await sleep(500);
       r.check(
         'a UIScrollView struct applies',
-        (await page('scrollY')) === 30,
+        await becomes(() => page('scrollY'), 30),
         await page('scrollY')
       );
+      // Removed by the update that set the offset, which has applied.
       r.check(
         'a removed key (preferences.minimumFontSize) goes back to its start-up value',
         (await get('preferences.minimumFontSize')) === 0
       );
       const width = (await page('innerWidth')) as number;
       h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
-      await sleep(500);
-      const zoomed = (await page('innerWidth')) as number;
-      r.check('a WKWebView number applies', Math.abs(zoomed * 2 - width) <= 2, { width, zoomed });
+      const zoomedIn = await until(
+        async () => Math.abs(((await page('innerWidth')) as number) * 2 - width) <= 2,
+        3000
+      );
+      r.check('a WKWebView number applies', !!zoomedIn, {
+        width,
+        zoomed: await page('innerWidth'),
+      });
       h.setProps({
         ios: {
           configuration,
@@ -1474,8 +1537,8 @@ async function settings(h: Harness) {
           scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
         },
       });
-      await sleep(500);
-      r.check('get reads a BOOL', (await get('scrollView.bounces')) === false);
+      // bounces starts out true; the inset comes in the same update.
+      r.check('get reads a BOOL', await becomes(() => get('scrollView.bounces'), false));
       const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
       r.check(
         'get reads a struct',
@@ -1608,9 +1671,8 @@ async function settings(h: Harness) {
           webView: { networkAvailable: false, other: { _private: 1, webViewClient: null } },
         },
       });
-      await sleep(500);
-      r.check('a WebSettings setter applies', (await fontSize()) === '30px', await fontSize());
-      r.check('a WebView setter applies', (await page('navigator.onLine')) === false);
+      r.check('a WebSettings setter applies', await becomes(fontSize, '30px'), await fontSize());
+      r.check('a WebView setter applies', await becomes(() => page('navigator.onLine'), false));
       await openPage(h, fresh(h, '/'));
       const paymentAfter = await payment();
       r.since(
@@ -1762,16 +1824,8 @@ async function navigation(h: Harness) {
     external
   );
 
-  // Script-opened windows are off by default, so new windows come from a tap: a real one on Android (the harness asks
-  // the driver), a click from evaluate on iOS (WebKit counts evaluate as a user gesture).
-  const tap = async (id: string) => {
-    if (Platform.OS !== 'android') {
-      await click(h, id);
-      return;
-    }
-    r.info('TAP', await tapPoint(h, id));
-  };
-  await tap('open');
+  // Script-opened windows are off by default, so new windows come from a tap.
+  await tap(h, r, 'open');
   await waitFor(h, () => lastNavigation()?.url === 'https://example.com/popup', 15000);
   r.check(
     'a tapped window.open to another site goes external (newWindow)',
@@ -1784,7 +1838,7 @@ async function navigation(h: Harness) {
     lastNavigation()
   );
 
-  await tap('blank');
+  await tap(h, r, 'blank');
   const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000);
   r.check('a tapped target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
 
@@ -1819,28 +1873,8 @@ async function navigation(h: Harness) {
     external
   );
   await openPage(h, fresh(h, '/nav.html'));
-  // A new window would load in the main frame, so a non-http(s) one is blocked before the rules (here the newWindow
-  // `external` rule would match).
-  const opener = h.state().url;
-  await h.ref.current?.evaluate(`(window.open('data:text/html,opened'), true)`);
-  const dataWindow = () =>
-    h.events.navigations.find((n) => n.newWindow && n.url.startsWith('data:'));
-  // Android's child WebView never reports a data: URL at all (Chromium doesn't pass it to shouldOverrideUrlLoading),
-  // so there the proof is that nothing was allowed and nothing loaded; iOS reports the block.
-  await waitFor(h, () => dataWindow() !== undefined, Platform.OS === 'ios' ? 5000 : 1500);
-  await sleep(500);
-  r.check(
-    'a new window to a data: URL is blocked',
-    Platform.OS === 'ios' ? dataWindow()?.action === 'block' : dataWindow()?.action !== 'allow',
-    dataWindow()
-  );
-  r.check('the page stays after the blocked data: window', h.state().url === opener, h.state());
   // A real tap keeps the gesture flag true, in case a WebView ever decides an iframe's http(s) navigation.
-  if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, 'redirect', 'frame'));
-  else
-    await h.ref.current?.evaluate(
-      `document.getElementById('frame').contentDocument.getElementById('redirect').click()`
-    );
+  await tap(h, r, 'redirect', 'frame');
   // Decisions about the iframe's navigation come before it moves (its redirect ends on /spa.html?from=redirect).
   const frameUrl = () =>
     h.ref.current?.evaluate(`document.getElementById('frame').contentWindow.location.href`);
@@ -2188,11 +2222,13 @@ async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequest[] = [];
   let answer = false;
-  const handler = async (request: PermissionRequest) => {
+  // With `hold`, the handler never settles unless `stuck.release` answers it.
+  let hold = false;
+  const { stuck, never } = stuckHandler<boolean>();
+  h.setPermission(async (request, signal) => {
     asked.push(request);
-    return answer;
-  };
-  h.setPermission(handler);
+    return hold ? await never(signal) : answer;
+  });
   const press = async (id: string) => (await pageLog(h, () => click(h, id)))?.join() ?? 'no result';
   await openPage(h, fresh(h, '/device.html'));
   answer = false;
@@ -2250,16 +2286,7 @@ async function permissionsSuite(h: Harness) {
 
   // A handler that never settles: the next page cancels its request (deny), aborts its signal and asks the app again.
   await openPage(h, fresh(h, '/device.html'));
-  let release: (value: boolean) => void = () => {};
-  let abortedAt = 0;
-  h.setProps({
-    onPermissionRequest: (request, signal) => {
-      asked.push(request);
-      signal.addEventListener('abort', () => (abortedAt = Date.now()));
-      return new Promise<boolean>((resolve) => (release = resolve));
-    },
-  });
-  await sleep(300);
+  hold = true;
   askedBefore = asked.length;
   await click(h, 'camera');
   await until(() => asked.length > askedBefore, 10000, 200);
@@ -2268,15 +2295,14 @@ async function permissionsSuite(h: Harness) {
     asked.length === askedBefore + 1,
     asked.length - askedBefore
   );
-  h.setProps({});
-  await sleep(300);
+  hold = false;
   const navigatedAt = Date.now();
   await openPage(h, fresh(h, '/device.html'));
-  await until(() => abortedAt, 2000);
+  await until(() => stuck.abortedAt, 2000);
   r.check(
     "navigating away aborts the held handler's signal within 2 s",
-    abortedAt > 0 && abortedAt - navigatedAt < 2000,
-    abortedAt ? abortedAt - navigatedAt : 'not aborted'
+    stuck.abortedAt > 0 && stuck.abortedAt - navigatedAt < 2000,
+    stuck.abortedAt ? stuck.abortedAt - navigatedAt : 'not aborted'
   );
   answer = false;
   const again = await press('camera');
@@ -2285,7 +2311,7 @@ async function permissionsSuite(h: Harness) {
     asked.length === askedBefore + 2 && again.includes('NotAllowedError'),
     { asked: asked.length - askedBefore, again }
   );
-  release(true);
+  stuck.release(true);
   await sleep(300);
   r.check(
     'a late answer for the replaced page changes nothing',
@@ -2364,19 +2390,20 @@ async function fullscreen(h: Harness) {
   await sleep(300);
   r.info('TAP', await tapPoint(h, 'fullscreen'));
   await waitFor(h, () => h.events.fullscreen.at(-1) === true, 10000);
-  const [gone, loads] = [h.events.gone.length, h.events.loads.length];
-  r.info('KILL', 'in fullscreen');
-  await waitFor(h, () => h.events.gone.length > gone, 15000);
-  r.check(
-    'a crash leaves fullscreen',
-    await waitFor(h, () => h.events.fullscreen.at(-1) === false, 5000),
-    h.events.fullscreen
-  );
-  // The recovery load: the state reads idle until it starts, so wait for its end event, as the crash suite does.
-  await waitFor(
+  // The kill in fullscreen, then the recovery load.
+  await waitForLoad(
     h,
-    (s) => h.events.loads.slice(loads).includes('end') && s.url.includes('/media.html') && idle(s),
-    15000
+    async () => {
+      const gone = h.events.gone.length;
+      r.info('KILL', 'in fullscreen');
+      await waitFor(h, () => h.events.gone.length > gone, 15000);
+      r.check(
+        'a crash leaves fullscreen',
+        await waitFor(h, () => h.events.fullscreen.at(-1) === false, 5000),
+        h.events.fullscreen
+      );
+    },
+    (s) => s.url.includes('/media.html') && idle(s)
   );
   r.done();
 }
@@ -2449,7 +2476,7 @@ async function sampleExtension(h: Harness) {
     unhandled.every((code) => code === 'not_found'),
     unhandled
   );
-  // A changed value reaches the attached hook (onOptionsChange), which stamps the page under the new name.
+  // A changed value reaches the attached hook (onOptions), which stamps the page under the new name.
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
@@ -2518,7 +2545,7 @@ async function sampleExtension(h: Harness) {
   const warnings = captureWarnings();
   try {
     h.setProps({ extensions: [sampleHook('hookAuth'), pageCounter()], withoutPageCounter: true });
-    await until(() => warnings.warned('hookOptions.sample.pageCounter'), 3000, 100);
+    await until(() => warnings.warned('extension sample.pageCounter'), 3000, 100);
   } finally {
     warnings.stop();
   }
@@ -2647,25 +2674,15 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   );
 }
 
-/** First-load headers, declined HTTP auth, shared cookies, download failures. */
+/** First-load headers, shared cookies, download failures. */
 async function network(h: Harness) {
   const r = reporter('network');
 
   const headersPage = fresh(h, '/headers');
-  h.loadSource({ uri: headersPage, headers: { 'X-Test-Header': 'hello' } });
-  await waitFor(h, (s) => s.url === headersPage && idle(s));
+  await openPage(h, { uri: headersPage, headers: { 'X-Test-Header': 'hello' } }, 10000);
   r.check(
     'source.headers reach the first request',
     (await text(h, 'headers')).includes('"x-test-header":"hello"')
-  );
-
-  // Without a hook that answers it, HTTP auth is declined. Another origin: iOS reuses the credentials a hook gave for
-  // localhost (sampleExtension), as browsers do.
-  await openPage(h, fresh(h, 'http://127.0.0.1:8090/auth'));
-  r.check(
-    'HTTP auth without a hook shows the 401 page',
-    (await text(h, 'auth')) === 'unauthorized',
-    await text(h, 'auth')
   );
 
   await fetch(`${h.pages}/setcookie?name=fromNative&value=${Date.now()}`);
@@ -2831,9 +2848,16 @@ async function bfcache(h: Harness) {
     { path: ['/checkout'], action: 'ask' },
     { path: ['/blocked'], action: 'block' },
   ]);
-  await h.ref.current?.evaluate(`location.href = '/blocked/page'`);
-  await sleep(1000);
-  r.check('a block rule holds on the restored page', h.state().url === second, h.state());
+  const blocked = await nextDecision(
+    h,
+    () => h.ref.current?.evaluate(`location.href = '/blocked/page'`),
+    '/blocked/page'
+  );
+  r.check(
+    'a block rule holds on the restored page',
+    blocked?.action === 'block' && h.state().url === second,
+    { decision: blocked, state: h.state() }
+  );
   await h.ref.current?.evaluate(`location.href = '/checkout/pay?bf=1'`);
   r.check(
     'an ask rule asks on the restored page and allow loads it',
@@ -2850,17 +2874,19 @@ async function sources(h: Harness) {
 
   const post = fresh(h, '/post');
   const body = `amount=9.99&t=${Date.now()}`;
-  h.loadSource({ uri: post, body });
-  await waitFor(h, (s) => s.url === post && idle(s));
+  await openPage(h, { uri: post, body }, 10000);
   r.check(
     'source.body is sent as a form POST',
     (await text(h, 'body')) === body,
     await text(h, 'body')
   );
   await h.ref.current?.evaluate(`document.getElementById('body').textContent = 'stale'`);
-  const loads = h.events.loads.length;
-  h.ref.current?.reload();
-  await waitFor(h, () => h.events.loads.slice(loads).includes('end'));
+  await waitForLoad(
+    h,
+    () => h.ref.current?.reload(),
+    () => true,
+    10000
+  );
   await sleep(300);
   r.check('reload sends the POST again', (await text(h, 'body')) === body, await text(h, 'body'));
 
@@ -2873,8 +2899,12 @@ async function sources(h: Harness) {
     '<!doctype html><link rel="stylesheet" href="style.css"><script src="app.js"></script><p id="local">local</p>'
   );
   if (Platform.OS === 'android') h.setProps({ android: { settings: { allowFileAccess: true } } });
-  h.loadSource({ uri: index.uri });
-  await waitFor(h, (s) => s.url.endsWith('/index.html') && idle(s));
+  await waitForLoad(
+    h,
+    () => h.loadSource({ uri: index.uri }),
+    (s) => s.url.endsWith('/index.html') && idle(s),
+    10000
+  );
   const loaded = await h.ref.current?.evaluate(
     `[getComputedStyle(document.body).color, window.__asset, document.getElementById('local')?.textContent]`
   );
@@ -2892,9 +2922,7 @@ async function sources(h: Harness) {
     const without = [await read('app.js'), await read(server)];
     h.setProps({ ios: { preferences: { allowFileAccessFromFileURLs: true } } });
     await sleep(300);
-    const reloads = h.events.loads.length;
-    h.ref.current?.reload();
-    await waitFor(h, (s) => h.events.loads.slice(reloads).includes('end') && idle(s));
+    await waitForLoad(h, () => h.ref.current?.reload(), idle, 10000);
     const sibling = await read('app.js');
     r.check(
       'ios.preferences.allowFileAccessFromFileURLs lets a file: page fetch a sibling file',

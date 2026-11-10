@@ -120,7 +120,7 @@ describe('WebView', () => {
     await fire('onNavigationState', navState({ url: 'https://example.com/', loading: true }));
     await fire('onNavigationState', navState({ url: 'https://example.com/' }));
     await fire('onNavigation', { url: 'https://example.com/', action: 'external' });
-    await fire('onProcessGone', { didCrash: true, recovered: true });
+    await fire('onProcessGone', { cause: 'crash', recovered: true });
     await fire('onError', { kind: 'http', url: 'https://example.com/', statusCode: 500 });
     await fire('onBridge', { message: '{}', origin: 'https://example.com' });
     await fire('onBridge', { navigated: true });
@@ -428,6 +428,24 @@ describe('bridge', () => {
     await show({ bridge: newBridge() });
     expect(mockMount).toHaveBeenCalledTimes(2);
   });
+
+  it('warns in development, once, when another bridge replaces the bridge', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const bridge = newBridge();
+    const { show } = await mount({ bridge });
+    await show({});
+    await show({ bridge });
+    await show({ bridge });
+    expect(warn).not.toHaveBeenCalled();
+    await show({ bridge: newBridge() });
+    await show({ bridge: newBridge() });
+    expect(warn.mock.calls).toEqual([
+      [
+        '[react-native-minimal-webview] bridge: another bridge recreated the WebView, and its page loaded again; ' +
+          'create the bridge once, at module scope or with useMemo',
+      ],
+    ]);
+  });
 });
 
 describe('injectedScripts', () => {
@@ -472,6 +490,14 @@ describe('injectedScripts', () => {
       Array.prototype.indexOf = () => 0;
       Object.defineProperty(Object.prototype, 'any', { get: () => true });`;
     expect(run(script, 'https://evil.com', patch).ran).toBe(false);
+  });
+
+  it('sends scripts changed after mount to the same native view', async () => {
+    mockMount.mockClear();
+    const { native, show } = await mount({ injectedScripts: [{ code: 'a()', origins: ['*'] }] });
+    await show({ injectedScripts: [{ code: 'b()', allFrames: true, origins: ['*'] }] });
+    expect(native().injectedScripts).toEqual([{ code: 'b()', allFrames: true }]);
+    expect(mockMount).toHaveBeenCalledTimes(1);
   });
 
   it('throws at render for a script without origins or with an invalid rule', async () => {
@@ -684,6 +710,13 @@ describe('page requests', () => {
     expect(native().requestHandlers).toEqual([]);
   });
 
+  it('tells native to send navigation decisions only while onNavigation is set', async () => {
+    const { show, native } = await mount({ onNavigation: () => {} });
+    expect(native().requestHandlers).toEqual(['onNavigation']);
+    await show({});
+    expect(native().requestHandlers).toEqual([]);
+  });
+
   it('routes each request to its prop and answers with its result', async () => {
     const onFileRequest = jest.fn(async () => ['file:///a.txt']);
     const onFullscreenChange = jest.fn();
@@ -861,9 +894,9 @@ describe('navigation state across remounts', () => {
       rule: null,
     };
     await fire('onNavigation', { ...navigation, ...target });
-    await fire('onProcessGone', { didCrash: true, recovered: true, ...target });
+    await fire('onProcessGone', { cause: 'crash', recovered: true, ...target });
     expect(onNavigation).toHaveBeenCalledWith(navigation);
-    expect(onProcessGone).toHaveBeenCalledWith({ didCrash: true, recovered: true });
+    expect(onProcessGone).toHaveBeenCalledWith({ cause: 'crash', recovered: true });
   });
 
   it("createWebViewRef's current is the mounted WebView's ref, and null while none is", async () => {

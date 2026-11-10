@@ -27,6 +27,7 @@ describe('parseBridgeMessage', () => {
   it.each([
     ['not JSON', '{', 'not JSON'],
     ['a non-object', '42', 'missing doc'],
+    ['null', 'null', 'missing doc'],
     ['a missing doc', JSON.stringify({ kind: 'ready' }), 'missing doc'],
     ['an unknown kind', JSON.stringify({ doc: 'd', id: '1', kind: 'ping' }), 'unknown kind'],
     [
@@ -44,6 +45,16 @@ describe('parseBridgeMessage', () => {
       'an empty event name',
       JSON.stringify({ doc: 'd', kind: 'event', method: '' }),
       'missing method',
+    ],
+    [
+      'an error without id',
+      JSON.stringify({ doc: 'd', kind: 'error', error: { code: 'timeout', message: '' } }),
+      'missing id',
+    ],
+    [
+      'a null error',
+      JSON.stringify({ doc: 'd', id: '1', kind: 'error', error: null }),
+      'malformed error',
     ],
     [
       'a non-string error code',

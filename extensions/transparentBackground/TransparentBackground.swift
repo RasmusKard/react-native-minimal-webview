@@ -9,9 +9,7 @@ enum TransparentBackground {
   static func register() {
     MinimalWebViewHooks.register(key) { webView, context in
       let opaque = webView.isOpaque
-      let apply = { [weak webView] in webView?.isOpaque = context.options == nil && opaque }
-      apply()
-      context.onOptionsChange { _ in apply() }
+      context.onOptions { [weak webView] options in webView?.isOpaque = options == nil && opaque }
     }
   }
 }

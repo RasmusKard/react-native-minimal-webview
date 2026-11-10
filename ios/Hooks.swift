@@ -87,8 +87,8 @@ public enum MinimalWebViewHooks {
 ///
 /// A hook is on while its extension's `options` are not null or false;
 /// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
-/// says what off means. ``onOptionsChange(_:)`` still runs while it is off, so the hook can undo what it set up, and
-/// again when the hook turns on.
+/// says what off means. ``onOptions(_:)`` runs when the hook turns off, so it can undo what it set up, and again when
+/// it turns on.
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
@@ -151,9 +151,12 @@ public protocol WebViewContext: AnyObject {
   /// answers nil at once while the hook is off, and after the view closed.
   /// An ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
-  /// Runs `handler` with this hook's extension's new `options` each time they change, live; nil when the hook turns
-  /// off.
-  func onOptionsChange(_ handler: @escaping (Any?) -> Void)
+  /// Runs `handler` at once with this hook's extension's `options`, then with the new ones each time they change,
+  /// live; nil while the hook is off.
+  ///
+  /// The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
+  /// value to another doesn't run it, and a context kept after the view closed never does.
+  func onOptions(_ handler: @escaping (_ options: Any?) -> Void)
   /// Runs `handler` at each end of the Document (see ``DocumentEnd``), after the core's own resets: per-page
   /// state belongs here.
   func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void)
@@ -263,8 +266,10 @@ final class HookContext: WebViewContext {
     }
   }
 
-  func onOptionsChange(_ handler: @escaping (Any?) -> Void) {
+  func onOptions(_ handler: @escaping (_ options: Any?) -> Void) {
+    guard view != nil else { return }
     optionsHandlers.append(handler)
+    handler(options)
   }
 
   func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void) {

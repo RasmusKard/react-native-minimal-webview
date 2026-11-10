@@ -24,10 +24,13 @@ class DownloadsTest {
   private val received = CopyOnWriteArrayList<String>() // each request's path, Cookie and User-Agent
   private val stored = mutableListOf<String>() // each Set-Cookie, with the URL it came from
 
-  // The JDK's HttpServer isn't on the classpath of Android's unit tests: a server that answers each path with a fixed head.
+  // The JDK's HttpServer isn't on the classpath of Android's unit tests: a server that answers each path with a fixed
+  // head, and the body "done", with its Content-Length unless the head has one.
   private val routes = mapOf(
     "/start" to "302 Found\r\nLocation: next?hop=2\r\nSet-Cookie: hop=1", // a relative Location
     "/next" to "200 OK\r\nContent-Type: text/plain; charset=utf-8",
+    "/untyped" to "200 OK",
+    "/huge" to "200 OK\r\nContent-Length: ${Downloads.MAX_BYTES + 1}",
     "/missing" to "404 Not Found",
     "/loop" to "302 Found\r\nLocation: /loop",
     "/ftp" to "302 Found\r\nLocation: ftp://127.0.0.1/file"
@@ -63,6 +66,32 @@ class DownloadsTest {
     }
     assertEquals("the first request and 20 redirects", 21, received.count { it.startsWith("/loop") })
     assertEquals(404, assertThrows(HttpStatus::class.java) { fetch("/missing") }.code)
+  }
+
+  @Test
+  fun followsARedirectOnlyToHttpsOrFromHttpToHttp() {
+    for ((from, to, allowed) in listOf(
+      Triple("http", "https", true),
+      Triple("https", "https", true),
+      Triple("http", "http", true),
+      Triple("https", "http", false),
+      Triple("http", "ftp", false),
+      Triple("https", "file", false)
+    )) {
+      assertEquals("$from to $to", allowed, Downloads.redirectAllowed(URL("$from://a.test/"), URL("$to://b.test/")))
+    }
+  }
+
+  @Test
+  fun failsAContentLengthOverTheCapBeforeReading() {
+    assertThrows(TooLarge::class.java) { fetch("/huge") }
+    assertEquals(0L, file.length())
+  }
+
+  @Test
+  fun typesAnUntypedResponseAsOctetStream() {
+    assertEquals("application/octet-stream", fetch("/untyped"))
+    assertEquals("done", file.readText())
   }
 
   @Test
@@ -106,7 +135,9 @@ class DownloadsTest {
     fun header(name: String) = head.firstOrNull { it.startsWith("$name: ", ignoreCase = true) }?.substringAfter(": ")
     val path = head.first().split(' ')[1]
     received += "$path ${header("Cookie")} ${header("User-Agent")}"
-    val response = "HTTP/1.1 ${routes.getValue(path.substringBefore('?'))}\r\nContent-Length: 4\r\nConnection: close\r\n\r\ndone"
+    val route = routes.getValue(path.substringBefore('?'))
+    val length = if ("Content-Length" in route) "" else "\r\nContent-Length: 4"
+    val response = "HTTP/1.1 $route$length\r\nConnection: close\r\n\r\ndone"
     socket.getOutputStream().write(response.toByteArray())
   }
 }

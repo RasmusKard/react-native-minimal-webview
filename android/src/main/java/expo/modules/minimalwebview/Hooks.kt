@@ -157,8 +157,8 @@ internal class Deciders(private val warn: (String) -> Unit) {
  *
  * The hook is on while its extension's `options` are not null or false;
  * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
- * says what off means. [onOptionsChange] still runs while it is off, so the hook can release what it holds, and again
- * when the hook turns on.
+ * says what off means. [onOptions] runs when the hook turns off, so it can release what it holds, and again when it
+ * turns on.
  *
  * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing: its
  * lists reach no WebView and its [emit] reaches nothing.
@@ -168,7 +168,7 @@ interface WebViewContext {
    * This hook's extension's `options`, the new ones after a change; null while the hook is off.
    *
    * They come in JSON types: a number as a `Double`, an object as a `Map`, an array as a `List`. After a change they
-   * are the new value already when the [onOptionsChange] handlers run.
+   * are the new value already when the [onOptions] handlers run.
    */
   val options: Any?
 
@@ -242,13 +242,13 @@ interface WebViewContext {
   fun ask(name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit)
 
   /**
-   * Runs [handler] with this hook's extension's new `options` each time they change, live on the same WebView; null
-   * when the hook turns off.
+   * Runs [handler] at once with this hook's extension's `options`, then with the new ones each time they change, live
+   * on the same WebView; null while the hook is off.
    *
    * The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
-   * value to another doesn't run it.
+   * value to another doesn't run it, and a context kept after its attach ended never does.
    */
-  fun onOptionsChange(handler: (Any?) -> Unit)
+  fun onOptions(handler: (options: Any?) -> Unit)
 
   /**
    * Runs [handler] at each end of the Document (see [DocumentEnd]), after the core's own resets: per-page state
@@ -338,8 +338,11 @@ internal open class Attachment(value: Any?) {
   /** Whether the hook is on and the attach is still there: the core routes the lists and passes events and asks. */
   val routed get() = options != null && !detached
 
-  fun onOptionsChange(handler: (Any?) -> Unit) {
+  /** Runs [handler] with the options now and after each change; never once detached. */
+  fun onOptions(handler: (Any?) -> Unit) {
+    if (detached) return
     optionsHandlers += handler
+    handler(options)
   }
 
   /** The hook's new `hookOptions` [value], null when its key is gone; the view calls it only for a changed value. */
