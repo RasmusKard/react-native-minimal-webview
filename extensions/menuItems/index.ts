@@ -32,16 +32,15 @@ export type SuppressMenuItem =
   | 'share';
 
 /**
- * An item chosen from the text selection menu, for {@link menuItems}.
+ * An item chosen from the text selection menu, for {@link menuItems}: what react-native-webview's event has in
+ * `nativeEvent`.
  * @group Events
  */
 export type CustomMenuSelectionEvent = {
-  nativeEvent: {
-    label: string;
-    key: string;
-    /** The main frame's selected text (`window.getSelection()`). */
-    selectedText: string;
-  };
+  label: string;
+  key: string;
+  /** The main frame's selected text (`window.getSelection()`). */
+  selectedText: string;
 };
 
 /**
@@ -66,7 +65,6 @@ export function menuItems(menu: {
   return {
     key: '@react-native-minimal-webview/extensions.menuItems',
     options: { items, suppress },
-    onEvent: ({ payload }) =>
-      onSelect?.({ nativeEvent: payload as CustomMenuSelectionEvent['nativeEvent'] }),
+    onEvent: ({ payload }) => onSelect?.(payload as CustomMenuSelectionEvent),
   };
 }
