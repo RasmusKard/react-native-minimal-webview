@@ -243,7 +243,6 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 | Callbacks go in | `navigationDelegates`, `uiDelegates` | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
 | `configure` gets | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up |
 | Your own WebView class | `webViewClass:` | `webViewFactory =` |
-| `onDestroyed` reasons | `closing` | `closing` and `crashed` |
 | Only on this platform | `refreshControl` | `onDownloadStart` |
 
 ## Reference

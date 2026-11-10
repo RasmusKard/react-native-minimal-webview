@@ -13,7 +13,14 @@ internal object NavigationRules {
   /** [action] is allow, block, external or ask; [rule] is the matching rule's index, null when a default decided. */
   data class Decision(val action: String, val rule: Int?)
 
-  private val internalSchemes = setOf("about", "blob", "data", "javascript")
+  /** Load in place without the rules. */
+  private val internalSchemes = setOf("about", "data", "javascript")
+
+  /**
+   * Never open as a new window, whatever the rules say: the core loads an allowed new window in the main frame itself,
+   * past the engine's limits on what a page may navigate the top frame to.
+   */
+  private val noNewWindowSchemes = internalSchemes + setOf("blob", "file")
   private val actions = setOf("allow", "block", "external", "ask")
   private val answers = setOf("allow", "block", "external")
 
@@ -36,13 +43,12 @@ internal object NavigationRules {
 
   private fun match(rules: List<Map<String, Any?>>?, request: Request): Decision {
     val scheme = request.url.substringBefore(':', "").lowercase()
-    // The core loads an allowed new window in the main frame itself, past the engine's limits on what a page may
-    // navigate the top frame to, so internal schemes and file: never open as a new window, whatever the rules say.
-    if (request.newWindow && (scheme in internalSchemes || scheme == "file")) return Decision("block", null)
+    if (request.newWindow && scheme in noNewWindowSchemes) return Decision("block", null)
     if (scheme in internalSchemes) return Decision("allow", null)
     // JS sends defaultNavigationRules when the prop is unset; no rules, null or empty, match nothing.
     if (rules.isNullOrEmpty()) return Decision("block", null)
-    val parts = parts(scheme, request.url)
+    val parts = (if (scheme == "blob") blobOrigin(request.url) else parts(scheme, request.url))
+      ?: return Decision("block", null)
     val index = rules.indexOfFirst { matches(it, parts, request) }
     return if (index < 0) Decision("block", null) else Decision((rules[index]["action"] as? String)?.takeIf { it in actions } ?: "block", index)
   }
@@ -59,6 +65,15 @@ internal object NavigationRules {
     val path = match.groupValues[3]
     val params = match.groups[4]?.value?.split('&')?.filter { it.isNotEmpty() }.orEmpty()
     return Parts(scheme, hostOf(authority), if (authority != null && path.isNotEmpty()) path else "/", params)
+  }
+
+  /**
+   * A blob: document has the origin its URL carries (`blob:https://a.test/…`), so the rules see that origin, with
+   * path "/"; null for an opaque one (`blob:null/…`), which no rule describes.
+   */
+  private fun blobOrigin(url: String): Parts? {
+    val match = urlParts.find(url.substringAfter(':')) ?: return null
+    return Parts(match.groupValues[1].lowercase(), hostOf(match.groups[2]?.value), "/", emptyList())
   }
 
   /** Host without userinfo, port or a trailing dot, lowercased; null when there is none. */
