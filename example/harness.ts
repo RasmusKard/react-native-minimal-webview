@@ -2449,7 +2449,7 @@ async function sampleExtension(h: Harness) {
     unhandled.every((code) => code === 'not_found'),
     unhandled
   );
-  // A changed value reaches the attached hook (onOptionsChange), which stamps the page under the new name.
+  // A changed value reaches the attached hook (onOptions), which stamps the page under the new name.
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');

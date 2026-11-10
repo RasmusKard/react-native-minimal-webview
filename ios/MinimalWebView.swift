@@ -16,7 +16,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
-  /// The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptionsChange).
+  /// The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptions).
   var hookOptions: [String: Any] = [:] {
     didSet { if webView != nil { optionsChanged(from: oldValue) } }
   }
