@@ -18,7 +18,8 @@ import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  const { canGoBack } = useWebViewState(ref);
+  // Only canGoBack: Browser doesn't re-render as a page loads
+  const canGoBack = useWebViewState(ref, (state) => state.canGoBack);
 
   // Android's back button is the app's to handle
   useEffect(() => {
