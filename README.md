@@ -60,12 +60,12 @@ A setting or method a newer SDK adds works without a release of this package: se
 
 The core adds only what the platform APIs lack:
 
-| | react-native-webview | react-native-minimal-webview |
-|---|---|---|
-| Navigation decisions | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively |
-| Page messaging | `postMessage` strings, any page | Typed promise bridge, `allowedOrigins` only |
-| Navigation state | `onNavigationStateChange` events you keep in state | `useWebViewState(ref)` |
-| Page camera and microphone | Granted to any page on Android, after asking the OS | Your app answers `onPermissionRequest` |
+|                            | react-native-webview                                 | react-native-minimal-webview                |
+| -------------------------- | ---------------------------------------------------- | ------------------------------------------- |
+| Navigation decisions       | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively         |
+| Page messaging             | `postMessage` strings, any page                      | Typed promise bridge, `allowedOrigins` only |
+| Navigation state           | `onNavigationStateChange` events you keep in state   | `useWebViewState(ref)`                      |
+| Page camera and microphone | Granted to any page on Android, after asking the OS  | Your app answers `onPermissionRequest`      |
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
@@ -92,12 +92,12 @@ npx pod-install
 
 ### Requirements
 
-| Platform | Minimum |
-|---|---|
-| iOS | 17.0: `ios.deploymentTarget: '17.0'`, for example with `expo-build-properties` |
-| Android | API 29: `android.minSdkVersion: 29`, for example with `expo-build-properties` |
-| Expo SDK | 53 (React Native 0.79, React 19) |
-| Architecture | New architecture only |
+| Platform     | Minimum                                                                        |
+| ------------ | ------------------------------------------------------------------------------ |
+| iOS          | 17.0: `ios.deploymentTarget: '17.0'`, for example with `expo-build-properties` |
+| Android      | API 29: `android.minSdkVersion: 29`, for example with `expo-build-properties`  |
+| Expo SDK     | 53 (React Native 0.79, React 19)                                               |
+| Architecture | New architecture only                                                          |
 
 Some features need a newer Android System WebView: [which ones](guides/android-system-webview.md).
 
@@ -113,17 +113,17 @@ export function Browser() {
 
 Then pick what you need:
 
-| To | See |
-|---|---|
-| Show the URL, progress or a back button | [Navigation state](guides/examples.md#navigation-state) |
-| Keep the WebView on your sites, open the rest externally | [Navigation rules](guides/examples.md#navigation-rules) |
-| Call the page from the app, and the app from the page | [The bridge](guides/examples.md#the-bridge) |
-| Change a WebView setting | [Platform settings](guides/examples.md#platform-settings) |
-| Share cookies with native requests | [Cookies](guides/examples.md#cookies) |
-| Run a script on every page | [Scripts](guides/examples.md#scripts) |
-| Load bundled HTML | [Local files](guides/examples.md#local-files) |
-| Answer file pickers, permissions and downloads | [Page requests](guides/examples.md#page-requests) |
-| Use the native `WKWebView` or `WebView` | [Native hooks](guides/native-hooks.md) |
+| To                                                                                | See                                                                                                                          |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Show the URL, progress or a back button                                           | [Navigation state](guides/examples.md#navigation-state)                                                                      |
+| Keep the WebView on your sites, open the rest externally                          | [Navigation rules](guides/examples.md#navigation-rules)                                                                      |
+| Call the page from the app, and the app from the page                             | [The bridge](guides/examples.md#the-bridge)                                                                                  |
+| Change a WebView setting                                                          | [Platform settings](guides/examples.md#platform-settings)                                                                    |
+| Share cookies with native requests                                                | [Cookies](guides/examples.md#cookies)                                                                                        |
+| Run a script on every page                                                        | [Scripts](guides/examples.md#scripts)                                                                                        |
+| Load bundled HTML                                                                 | [Local files](guides/examples.md#local-files)                                                                                |
+| Answer file pickers, permissions and downloads                                    | [Page requests](guides/examples.md#page-requests)                                                                            |
+| Use the native `WKWebView` or `WebView`                                           | [Native hooks](guides/native-hooks.md)                                                                                       |
 | Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) |
 
 ## Contributing

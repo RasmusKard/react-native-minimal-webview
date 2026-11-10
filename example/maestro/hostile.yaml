@@ -14,7 +14,7 @@ env:
           times: 7
           commands:
             - evalScript: ${output.tap = output.tap + 1}
-            - runFlow: { file: subflows/await.yaml, env: { N: "${output.tap}" } }
+            - runFlow: { file: subflows/await.yaml, env: { N: '${output.tap}' } }
             - runFlow: subflows/tap-request-point.yaml
 - runFlow:
     when: { platform: iOS }
@@ -24,6 +24,6 @@ env:
           times: 2
           commands:
             - evalScript: ${output.tap = output.tap + 1}
-            - runFlow: { file: subflows/await.yaml, env: { N: "${output.tap}" } }
+            - runFlow: { file: subflows/await.yaml, env: { N: '${output.tap}' } }
             - runFlow: subflows/tap-request-point.yaml
 - runFlow: subflows/finish.yaml

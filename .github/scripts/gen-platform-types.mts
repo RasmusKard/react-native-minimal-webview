@@ -577,7 +577,10 @@ if (process.argv.includes('--check')) {
     throw new Error(
       `platform-headers/androidx-webkit-api.txt is androidx.webkit ${vendored}, android/build.gradle pins ${version}: run npm run gen:platform-types -- --import`
     );
-  if (readFileSync(target, 'utf8') !== output.ts || readFileSync(swiftTarget, 'utf8') !== output.swift)
+  if (
+    readFileSync(target, 'utf8') !== output.ts ||
+    readFileSync(swiftTarget, 'utf8') !== output.swift
+  )
     throw new Error(
       'platform.generated.ts or PlatformCompletions.generated.swift is stale: run npm run gen:platform-types'
     );
