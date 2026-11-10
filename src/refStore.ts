@@ -5,6 +5,7 @@ import {
   type RefObject,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
   useSyncExternalStore,
 } from 'react';
@@ -122,11 +123,42 @@ export function useAttach(
 
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
- * re-renders on every change, and follows a remount.
+ * re-renders on every change, `progress` included, and follows a remount. With `select`, it re-renders only when what
+ * `select` picks changes.
  * @see [Navigation state example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-state)
  * @group Navigation
  */
-export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState {
+export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState;
+/**
+ * What `select` returns for the navigation state of the WebView mounted with `ref`; re-renders only when that changes
+ * (by `Object.is`), and follows a remount. `useWebViewState(ref, (state) => state.canGoBack)` doesn't re-render as a
+ * page loads.
+ *
+ * `select` must be pure: it can run more than once for a state, and it can be a new function at each render. A new
+ * object or array from it is never the last one, so it re-renders on every change.
+ */
+export function useWebViewState<T>(
+  ref: RefObject<WebViewRef | null>,
+  select: (state: NavigationState) => T
+): T;
+export function useWebViewState<T>(
+  ref: RefObject<WebViewRef | null>,
+  select?: (state: NavigationState) => T
+): NavigationState | T {
   const { nav } = adapterFor(ref);
-  return useSyncExternalStore(nav.subscribe, nav.getState);
+  const getSnapshot = useMemo<() => NavigationState | T>(
+    () => (select ? selectFrom(nav.getState, select) : nav.getState),
+    [nav, select]
+  );
+  return useSyncExternalStore(nav.subscribe, getSnapshot);
+}
+
+/** `select` of the current state, run again only for another state: a snapshot is the same value until a change. */
+function selectFrom<T>(getState: () => NavigationState, select: (state: NavigationState) => T) {
+  let last: { state: NavigationState; selected: T } | undefined;
+  return () => {
+    const state = getState();
+    if (last?.state !== state) last = { state, selected: select(state) };
+    return last.selected;
+  };
 }

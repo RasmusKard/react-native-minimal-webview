@@ -25,7 +25,7 @@ final class PlatformSettings {
   private var originals: [String: Any] = [:]
 
   /// Applies `settings`. While creating (`configuration` given, no WebView yet) only the `configuration` root applies;
-  /// live, every other root does, a changed `configuration` key is reported once, and a key applied before and missing
+  /// live, every other root does (JS remounts the view for a new `configuration`), and a key applied before and missing
   /// now goes back to its value before the first write. Returns the rejected keys.
   func apply(_ settings: [String: Any], webView: WKWebView?, configuration: WKWebViewConfiguration? = nil) -> [[String: String]] {
     var rejected: [[String: String]] = []
@@ -38,16 +38,12 @@ final class PlatformSettings {
         continue
       }
       let isConfiguration = rootName == "configuration"
-      guard isConfiguration || !creating else { continue }
+      guard isConfiguration == creating else { continue }
       for (key, value) in entries {
         let id = "\(rootName).\(key)"
         let boxed = value as? NSObject ?? NSNull()
         if applied[id] == boxed { continue }
         applied[id] = boxed
-        if isConfiguration, !creating {
-          rejected.append(["key": id, "reason": "read once when the WebView is created; remount with a new key to change it"])
-          continue
-        }
         guard let object = root(rootName, webView: webView, configuration: configuration) else {
           rejected.append(["key": id, "reason": "unknown root: use \(Self.roots)"])
           continue

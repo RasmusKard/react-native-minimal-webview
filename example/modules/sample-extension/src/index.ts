@@ -8,7 +8,8 @@ import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
  * - `redirect` (iOS) and `commitVisible` (Android): delegate callbacks the core doesn't implement itself.
  * - `documentEnd`: from `context.onDocumentEnd`, with `context.url` as it was there.
  * - `label`: an ask, answered by `onEvent`'s return value. `ref.hook('sample.pageCounter', 'label')` resolves with
- *   that answer, and `ref.hook('sample.pageCounter', 'count')` with the count.
+ *   that answer, or rejects with `handler_error` when it is null, and `ref.hook('sample.pageCounter', 'count')`
+ *   resolves with the count.
  */
 export type PageCounterEvent =
   | HookEvent<'pageLoaded', { url: string; count: number }>
@@ -38,5 +39,5 @@ export const sampleHook = (
   name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf'
 ): HookExtension => ({ key: `sample.${name}` });
 
-/** The `sample.seams` hook's counter (Android): how many of its WebViews were destroyed at unmount. */
+/** The `sample.seams` hook's counter: how many of its WebViews were closed at unmount. */
 export const seams = requireNativeModule<{ closedViews(): Promise<number> }>('SampleExtension');

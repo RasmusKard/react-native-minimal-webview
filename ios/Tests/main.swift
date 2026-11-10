@@ -1,8 +1,9 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
 // and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions changes a hook hears, the
-// Asks contract and ReadAccess's roots. Not part of the pod (see the podspec).
+// Asks contract, ReadAccess's roots and Loads' URL comparison and load ends. Not part of the pod (see the podspec).
 //   xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swift ios/Asks.swift \
-//     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Tests/main.swift -o /tmp/rules && /tmp/rules
+//     ios/Recovery.swift ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/Tests/main.swift \
+//     -o /tmp/rules && /tmp/rules
 import Foundation
 import WebKit
 
@@ -69,7 +70,7 @@ for testCase in originCases {
 for (scheme, host, port, expected) in [
   ("https", "example.com", 0, "https://example.com"), ("https", "example.com", 443, "https://example.com"),
   ("http", "localhost", 8090, "http://localhost:8090"), ("http", "::1", 8090, "http://[::1]:8090"),
-  ("http", "[::1]", 80, "http://[::1]"),
+  ("http", "[::1]", 80, "http://[::1]"), ("", "", 0, "null"),
 ] {
   let got = OriginRules.origin(scheme, host, port)
   check("origin(\(scheme), \(host), \(port)): expected \(expected), got \(got)", got == expected)
@@ -236,5 +237,63 @@ for (name, file, root, expected, warns) in readCases {
     access.root.isFileURL && access.root.standardizedFileURL == URL(string: expected)!.standardizedFileURL
       && (access.warning != nil) == warns)
 }
+// (a, b, whether they are the same URL as WebKit reports it): our own load is the navigation to its URL.
+let sameURLCases: [(String, String, Bool)] = [
+  ("https://example.com/x", "https://example.com/x", true),
+  ("https://example.com", "https://example.com/", true),
+  ("https://example.com?a=1", "https://example.com/?a=1", true),
+  ("https://Example.COM/x", "https://example.com/x", true),
+  ("HTTPS://example.com/x", "https://example.com/x", true),
+  ("https://example.com:443/", "https://example.com/", true),
+  ("http://example.com:80", "http://example.com/", true),
+  ("https://Example.com:443", "https://example.com/", true),
+  ("file:///a/index.html", "file:///a/index.html", true),
+  ("https://example.com:8443/", "https://example.com/", false),
+  ("http://example.com:443/", "http://example.com/", false),
+  ("https://example.com/X", "https://example.com/x", false),
+  ("https://example.com/x/", "https://example.com/x", false),
+  ("https://example.com/?a=1", "https://example.com/?A=1", false),
+  ("https://example.com/?", "https://example.com/", false),
+  ("https://example.com/#a", "https://example.com/", false),
+  ("https://User@example.com/", "https://user@example.com/", false),
+  ("https://example.com/", "https://example.org/", false),
+]
+for (a, b, same) in sameURLCases {
+  let (first, second) = (URL(string: a)!, URL(string: b)!)
+  check("same URL, \(a) and \(b): expected \(same)", Loads.sameURL(first, second) == same && Loads.sameURL(second, first) == same)
+}
+
+// (domain, code, outcome, onError kind) of a main-frame load WebKit ends with an error.
+let webKit = "WebKitErrorDomain"
+let endCases: [(String, Int, String, String?)] = [
+  (NSURLErrorDomain, NSURLErrorCancelled, "cancelled", nil),
+  (webKit, 102, "cancelled", nil), // frame load interrupted by a policy change
+  (webKit, 204, "finished", nil), // plug-in will handle load: a media document
+  (NSURLErrorDomain, NSURLErrorSecureConnectionFailed, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorServerCertificateHasBadDate, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorServerCertificateUntrusted, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorServerCertificateHasUnknownRoot, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorServerCertificateNotYetValid, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorClientCertificateRejected, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorClientCertificateRequired, "failed", "ssl"),
+  (NSURLErrorDomain, NSURLErrorSecureConnectionFailed + 1, "failed", "network"),
+  (NSURLErrorDomain, NSURLErrorClientCertificateRequired - 1, "failed", "network"),
+  (NSURLErrorDomain, NSURLErrorNotConnectedToInternet, "failed", "network"),
+  (NSURLErrorDomain, NSURLErrorTimedOut, "failed", "network"),
+  (NSURLErrorDomain, NSURLErrorCannotFindHost, "failed", "network"),
+  (NSURLErrorDomain, NSURLErrorAppTransportSecurityRequiresSecureConnection, "failed", "network"),
+  (webKit, 101, "failed", "network"), // cannot show URL: a scheme WebKit doesn't load
+  (webKit, 103, "failed", "network"), // a restricted port
+  (webKit, NSURLErrorCancelled, "failed", "network"),
+  (webKit, NSURLErrorServerCertificateUntrusted, "failed", "network"),
+  (NSURLErrorDomain, 102, "failed", "network"),
+  (NSURLErrorDomain, 204, "failed", "network"),
+  ("WKErrorDomain", 102, "failed", "network"),
+]
+for (domain, code, outcome, kind) in endCases {
+  let end = Loads.ended(by: NSError(domain: domain, code: code))
+  check("load end, \(domain) \(code): expected \(outcome) \(kind ?? "nil"), got \(end.outcome) \(end.kind ?? "nil")", end.outcome == outcome && end.kind == kind)
+}
+
 print("\(total - failed)/\(total) cases pass")
 exit(failed == 0 ? 0 : 1)

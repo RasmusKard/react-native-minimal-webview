@@ -10,10 +10,12 @@ import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.Profile
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
@@ -49,7 +51,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var navigationRules: List<Map<String, Any?>>? = null
   internal var bridgeScript: String? = null
   internal var bridgeOrigins: List<String>? = null
-  /** The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptionsChange). */
+  /** The `hookOptions` prop, made from the `extensions` prop's options: each hook's value by key. A change reaches the attached hooks (onOptions). */
   internal var hookOptions: Map<String, Any?> = emptyMap()
     set(value) {
       val old = field
@@ -63,7 +65,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var pullToRefresh = false
   private val refresher = PullToRefresh(this)
   /**
-   * The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), read when a request comes.
+   * The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), and `onNavigation`, read when a
+   * request comes or a decision is reported.
    */
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
@@ -341,7 +344,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
    * The render process died. The WebView can't be reused: it goes now, after saving its history. The new one is built
    * at once if the view can be seen, else once it can (Android's guidance: not in the background).
    */
-  internal fun processGone(didCrash: Boolean, at: Long) {
+  internal fun processGone(cause: String, at: Long) {
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
     endDocument(DocumentEnd.CRASHED)
@@ -360,7 +363,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingUrl = null
     progress = 0.0
     refresher.pageFinished()
-    onProcessGone(mapOf("didCrash" to didCrash, "recovered" to reload))
+    onProcessGone(mapOf("cause" to cause, "recovered" to reload))
     // A detached view's window reports GONE: onWindowVisibilityChanged recovers once it is shown.
     if (windowVisibility == View.VISIBLE) recover()
     stateChanged() // after onProcessGone: the cut-off load ends as failed
@@ -465,6 +468,14 @@ internal fun failed(message: String, error: Exception): Boolean {
   Log.w(TAG, message, error)
   return false
 }
+
+/**
+ * [webView]'s profile (`android.webView.profile`), or null when WebView has only the default one: then the process-wide
+ * [CookieManager] and [WebStorage][android.webkit.WebStorage] are its. Only once the WebView is set up, so that it is
+ * the profile the WebView ends on.
+ */
+internal fun profileOf(webView: WebView): Profile? =
+  if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) WebViewCompat.getProfile(webView) else null
 
 /**
  * Whether the committed [url] is the [source]'s page (or nothing has committed yet). An html source's page is its

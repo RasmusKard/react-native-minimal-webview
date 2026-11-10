@@ -26,12 +26,19 @@ class SampleExtensionModule : Module() {
       }) { webView, context ->
         val counter = PageCounter(context)
         context.clients += counter
-        // A change of the extension's `options` arrives live; context.options is already the new value.
-        context.onOptionsChange { counter.stamp(webView) }
+        // The extension's `options` arrive at once, then live on each change, with no reload.
+        context.onOptions { options ->
+          counter.global = (options as? Map<*, *>)?.get("global") as? String ?: "__pageCount"
+          counter.stamp(webView)
+        }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply -> reply(counter.count) }
-        // A handler can reply later, here with the app's answer to an ask.
-        context.handle("label") { _, reply -> context.ask("label", mapOf("count" to counter.count), reply) }
+        // A handler can reply later, here with the app's answer to an ask, and fail the JS call when there is none.
+        context.handle("label") { _, reply ->
+          context.ask("label", mapOf("count" to counter.count)) { answer ->
+            if (answer != null) reply(answer) else reply.fail("the app gave no label")
+          }
+        }
         context.onDocumentEnd { reason ->
           if (reason != DocumentEnd.CLOSING) {
             context.emit("documentEnd", mapOf("reason" to reason.name.lowercase(), "url" to context.url))
@@ -96,6 +103,7 @@ private class HookDialogs(private val context: WebViewContext) : WebChromeClient
 private class PageCounter(private val context: WebViewContext) : WebViewClient() {
   var count = 0
     private set
+  var global = "__pageCount"
 
   override fun onPageFinished(view: WebView, url: String?) {
     count += 1
@@ -108,7 +116,6 @@ private class PageCounter(private val context: WebViewContext) : WebViewClient()
   }
 
   fun stamp(view: WebView) {
-    val global = (context.options as? Map<*, *>)?.get("global") as? String ?: "__pageCount"
     view.evaluateJavascript("window[${JSONObject.quote(global)}] = $count", null)
   }
 }

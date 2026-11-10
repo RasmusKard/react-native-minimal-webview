@@ -12,12 +12,19 @@ public class SampleExtensionModule: Module {
       }) { webView, context in
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
-        // A change of the extension's `options` arrives live, with no reload; `context.options` is already the new value.
-        context.onOptionsChange { [weak webView] _ in if let webView { counter.stamp(webView) } }
+        // The extension's `options` arrive at once, then live on each change, with no reload.
+        context.onOptions { [weak webView] options in
+          counter.global = (options as? [String: Any])?["global"] as? String ?? "__pageCount"
+          if let webView { counter.stamp(webView) }
+        }
         // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }
-        // An ask's answer can be the reply.
-        context.handle("label") { _, reply in context.ask("label", ["count": counter.count], reply) }
+        // A handler can reply later, here with the app's answer to an ask, and fail the JS call when there is none.
+        context.handle("label") { _, reply in
+          context.ask("label", ["count": counter.count]) { answer in
+            if let answer { reply(answer) } else { reply.fail("the app gave no label") }
+          }
+        }
         context.onDocumentEnd { reason in
           guard reason != .closing else { return }
           context.emit("documentEnd", ["reason": "\(reason)", "url": context.url])
@@ -131,6 +138,7 @@ private final class HookDialogs: NSObject, WKUIDelegate {
 private final class PageCounter: NSObject, WKNavigationDelegate {
   private let context: WebViewContext
   private(set) var count = 0
+  var global = "__pageCount"
 
   init(context: WebViewContext) {
     self.context = context
@@ -147,7 +155,6 @@ private final class PageCounter: NSObject, WKNavigationDelegate {
   }
 
   func stamp(_ webView: WKWebView) {
-    let global = (context.options as? [String: Any])?["global"] as? String ?? "__pageCount"
     webView.callAsyncJavaScript("window[name] = count", arguments: ["name": global, "count": count], in: nil, in: .page)
   }
 }

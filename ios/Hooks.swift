@@ -87,8 +87,8 @@ public enum MinimalWebViewHooks {
 ///
 /// A hook is on while its extension's `options` are not null or false;
 /// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
-/// says what off means. ``onOptionsChange(_:)`` still runs while it is off, so the hook can undo what it set up, and
-/// again when the hook turns on.
+/// says what off means. ``onOptions(_:)`` runs when the hook turns off, so it can undo what it set up, and again when
+/// it turns on.
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
@@ -151,9 +151,12 @@ public protocol WebViewContext: AnyObject {
   /// answers nil at once while the hook is off, and after the view closed.
   /// An ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
-  /// Runs `handler` with this hook's extension's new `options` each time they change, live; nil when the hook turns
-  /// off.
-  func onOptionsChange(_ handler: @escaping (Any?) -> Void)
+  /// Runs `handler` at once with this hook's extension's `options`, then with the new ones each time they change,
+  /// live; nil while the hook is off.
+  ///
+  /// The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
+  /// value to another doesn't run it, and a context kept after the view closed never does.
+  func onOptions(_ handler: @escaping (_ options: Any?) -> Void)
   /// Runs `handler` at each end of the Document (see ``DocumentEnd``), after the core's own resets: per-page
   /// state belongs here.
   func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void)
@@ -164,13 +167,47 @@ public protocol WebViewContext: AnyObject {
   ///
   /// Clean up here: what `attach` set up on the WKWebView, such as an observation or a swapped class.
   func onDestroyed(_ handler: @escaping (DocumentEnd) -> Void)
-  /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments and calls `reply` exactly once, and
-  /// both cross as JSON.
+  /// Answers JS's `ref.hook("<key>", method, args)`: `handler` gets the arguments, which cross as JSON, and a
+  /// ``HookReply``, which it calls with the reply or fails, then or later.
   ///
-  /// One handler per method: the last one wins. A handler can't fail: a reply JSON can't encode rejects the JS call
-  /// with `native_error`. A handler that never replies leaves the call waiting until the view unmounts: a navigation or
-  /// a crash doesn't settle it.
-  func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: @escaping (Any?) -> Void) -> Void)
+  /// One handler per method: the last one wins. A handler that never replies leaves the call waiting until the view
+  /// unmounts: a navigation or a crash doesn't settle it.
+  func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: HookReply) -> Void)
+}
+
+/// The answer to one JS `ref.hook` call, which a ``WebViewContext/handle(_:_:)`` handler gets: call it with the value
+/// the call resolves with, or ``fail(_:)`` it.
+///
+/// Only the first reply or fail counts: any after it does nothing. Call it from any thread.
+public final class HookReply {
+  private let resolve: (Any?) -> Void
+  private let reject: (String) -> Void
+  private let lock = NSLock()
+  private var settled = false
+
+  init(resolve: @escaping (Any?) -> Void, reject: @escaping (String) -> Void) {
+    self.resolve = resolve
+    self.reject = reject
+  }
+
+  /// Resolves the JS call with `value`, which crosses as JSON: a value JSON can't encode rejects it with
+  /// `native_error` instead.
+  public func callAsFunction(_ value: Any?) {
+    if first() { resolve(value) }
+  }
+
+  /// Rejects the JS call with `handler_error` and `message`.
+  public func fail(_ message: String) {
+    if first() { reject(message) }
+  }
+
+  private func first() -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    let first = !settled
+    settled = true
+    return first
+  }
 }
 
 /// A hook's view of the WebView: the core's context with the hook's key on its events. The view owns it. A hook can
@@ -184,7 +221,7 @@ final class HookContext: WebViewContext {
   private var optionsHandlers: [(Any?) -> Void] = []
   private var documentEndHandlers: [(DocumentEnd) -> Void] = []
   private var destroyedHandlers: [(DocumentEnd) -> Void] = []
-  private(set) var handlers: [String: ([Any], @escaping (Any?) -> Void) -> Void] = [:]
+  private(set) var handlers: [String: ([Any], HookReply) -> Void] = [:]
 
   init(_ hook: MinimalWebViewHooks.Hook, _ view: MinimalWebView) {
     self.hook = hook
@@ -229,8 +266,10 @@ final class HookContext: WebViewContext {
     }
   }
 
-  func onOptionsChange(_ handler: @escaping (Any?) -> Void) {
+  func onOptions(_ handler: @escaping (_ options: Any?) -> Void) {
+    guard view != nil else { return }
     optionsHandlers.append(handler)
+    handler(options)
   }
 
   func onDocumentEnd(_ handler: @escaping (DocumentEnd) -> Void) {
@@ -241,7 +280,7 @@ final class HookContext: WebViewContext {
     destroyedHandlers.append(handler)
   }
 
-  func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: @escaping (Any?) -> Void) -> Void) {
+  func handle(_ method: String, _ handler: @escaping (_ args: [Any], _ reply: HookReply) -> Void) {
     handlers[method] = handler
   }
 

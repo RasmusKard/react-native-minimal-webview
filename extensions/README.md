@@ -83,8 +83,8 @@ The Swift keeps its type names: they belong to your module.
 A changed `hideKeyboardAccessoryView` also needs a `suffix` of its own: the runtime class it makes is found by that
 name.
 
-A copied `downloadManager` also needs `implementation 'androidx.webkit:webkit:<version>'`, with the version in the
-core's `android/build.gradle`, in your module's `android/build.gradle`.
+A copied `downloadManager` or `incognito` also needs the extensions' `src/Cookies.kt`: copy it next to the extension's
+`.kt` file, and change its `package` line too.
 
 With this package installed as well, a `package` line you forgot to change fails the Android build with a duplicate
 class. A key you forgot to rename registers two hooks under one key: `register`, in the
