@@ -795,7 +795,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation they decide is blocked.
    *
-   * `about:`, `blob:`, `data:` and `javascript:` always load in place.
+   * `about:`, `data:` and `javascript:` always load in place. A `blob:` URL is decided as the origin it carries:
+   * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
+   * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.
    *
    * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
    * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
