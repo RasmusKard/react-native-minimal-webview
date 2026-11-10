@@ -406,8 +406,9 @@ export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
  * from the page's side.
  *
  * `handle` takes the schema's `page` methods, and its handler gets the params only (no sender), `call` takes the
- * `reactNative` ones, and `emit` and `on` take the `events`. `call` rejects with a {@link CodedError}, and its timeout
- * defaults to the bridge's `timeoutMs`.
+ * `reactNative` ones, and `emit` and `on` take the `events`. `call` rejects with a {@link CodedError}: `timeout`,
+ * `not_found`, `handler_error`, or `navigated` when the page comes back from the back-forward cache. Its timeout
+ * defaults to the bridge's `timeoutMs`, and a `timeoutMs` that isn't 0 or more rejects with a plain `RangeError`.
  *
  * `window.nativeBridge` exists only in the main frame of a page on one of the bridge's `allowedOrigins`, so a page
  * declares it optional. The page's project needs this package as a dev dependency for the type, which is a type-only
