@@ -4,11 +4,12 @@
 // WKScriptMessageHandler at `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at
 // `window.nativeBridgeTransport`), native -> page through `__receive` (iOS callAsyncJavaScript) or the transport's
 // `onmessage` (Android). Messages follow ./protocol.ts; answers to either side's calls travel as ordinary messages.
+import type { PageBridge } from '../types';
 import { createEndpoint } from './endpoint';
 import type { BridgeMessage as Message } from './protocol';
 
 type PageWindow = Window & {
-  nativeBridge?: unknown;
+  nativeBridge?: PageBridge & { __receive(text: string): Promise<void> };
   nativeBridgeTransport?: {
     postMessage(message: string): void;
     onmessage: ((event: { data: string }) => void) | null;

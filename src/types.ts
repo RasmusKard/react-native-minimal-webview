@@ -355,8 +355,7 @@ type PayloadArg<Payload> = undefined extends Payload ? [payload?: Payload] : [pa
  * meanwhile, and only the latest 1000 are kept: an older call rejects with `unavailable`.
  * Unmounting rejects the calls in flight with `navigated`.
  *
- * The page's `window.nativeBridge` has the same four methods, `call(method, params?, { timeoutMs? })`, `handle`, `emit`
- * and `on`, and its calls reject with a {@link CodedError}.
+ * The page's `window.nativeBridge` has the same four methods, from its side: {@link PageBridge}.
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
@@ -400,6 +399,55 @@ export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
   ): () => void;
   /** What `<WebView>` attaches to. Only `createBridge` sets it, so a hand-made or mock `Bridge` doesn't type-check. */
   readonly [CONNECTION]: BridgeConnection;
+};
+
+/**
+ * The page's `window.nativeBridge`, for the page's own TypeScript: the same {@link BridgeSchema} as {@link Bridge}, read
+ * from the page's side.
+ *
+ * `handle` takes the schema's `page` methods, and its handler gets the params only (no sender), `call` takes the
+ * `reactNative` ones, and `emit` and `on` take the `events`. `call` rejects with a {@link CodedError}, and its timeout
+ * defaults to the bridge's `timeoutMs`.
+ *
+ * `window.nativeBridge` exists only in the main frame of a page on one of the bridge's `allowedOrigins`, so a page
+ * declares it optional. The page's project needs this package as a dev dependency for the type, which is a type-only
+ * import and costs nothing at runtime, and must share or copy the schema type.
+ * @example
+ * ```ts
+ * import type { PageBridge } from 'react-native-minimal-webview';
+ *
+ * declare global {
+ *   interface Window {
+ *     nativeBridge?: PageBridge<ShopBridge>;
+ *   }
+ * }
+ * ```
+ * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#in-the-page)
+ * @group Bridge
+ */
+export type PageBridge<Schema extends BridgeSchema = BridgeSchema> = {
+  /** Answers `bridge.call(method, params)` from React Native. A later handler replaces it. Returns an unsubscribe function. */
+  handle<M extends keyof Schema['page'] & string>(
+    method: M,
+    handler: (
+      params: ParamsOf<Schema['page'][M]>
+    ) => ResultOf<Schema['page'][M]> | Promise<ResultOf<Schema['page'][M]>>
+  ): () => void;
+  /** Calls a method React Native registered with `bridge.handle`: `call(method, params, { timeoutMs })`. */
+  call<M extends keyof Schema['reactNative'] & string>(
+    method: M,
+    ...args: CallArgs<Schema['reactNative'][M]>
+  ): Promise<ResultOf<Schema['reactNative'][M]>>;
+  /** Fires an event React Native listens to with `bridge.on`. */
+  emit<E extends keyof Schema['events'] & string>(
+    event: E,
+    ...payload: PayloadArg<Schema['events'][E]>
+  ): void;
+  /** Listens to `bridge.emit(event, payload)` from React Native. Returns an unsubscribe function. */
+  on<E extends keyof Schema['events'] & string>(
+    event: E,
+    listener: (payload: Schema['events'][E]) => void
+  ): () => void;
 };
 
 /**
