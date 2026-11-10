@@ -9,8 +9,8 @@ import type { HookExtension } from 'react-native-minimal-webview';
  *
  * Android has no incognito WebView: this clears the cookies and HTTP cache of the WebView's profile, the app's unless
  * `android.webView.profile` names another, for the profile's other WebViews too, and turns the cache off. Cookies set
- * after that are kept, as is the pages' own storage, such as `localStorage`. The WebView that replaces one whose
- * renderer crashed clears them again.
+ * after that are kept, as is the pages' own storage, such as `localStorage`. If the extension is still on, the
+ * WebView that replaces one whose renderer crashed clears them again.
  * @group Extensions
  */
 export const incognito = (): HookExtension => ({
