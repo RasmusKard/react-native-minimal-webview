@@ -76,18 +76,18 @@ describe('the extensions', () => {
     expect(keyboardDisplayRequiresUserAction(true)).toBeNull();
   });
 
-  it("calls react-native-webview's callbacks with { nativeEvent }", () => {
+  it('calls onScroll and onSelect with the event as it came', () => {
     const scrolled = jest.fn();
     const scroll = { contentOffset: { x: 0, y: 400 } };
     onScroll(scrolled).onEvent!({ name: 'scroll', payload: scroll });
-    expect(scrolled).toHaveBeenCalledWith({ nativeEvent: scroll });
+    expect(scrolled).toHaveBeenCalledWith(scroll);
     const selected = jest.fn();
     const selection = { key: 'hl', label: 'Highlight', selectedText: 'word' };
     menuItems({ items: MENU, onSelect: selected })!.onEvent!({
       name: 'selection',
       payload: selection,
     });
-    expect(selected).toHaveBeenCalledWith({ nativeEvent: selection });
+    expect(selected).toHaveBeenCalledWith(selection);
   });
 
   it('calls onLoadSubResourceError with the event as it came', () => {

@@ -29,7 +29,7 @@ export function Browser() {
       style={{ flex: 1 }}
       extensions={[
         basicAuthCredential({ username: 'user', password: 'secret' }),
-        onScroll(({ nativeEvent }) => console.log(nativeEvent.contentOffset.y)),
+        onScroll(({ contentOffset }) => console.log(contentOffset.y)),
       ]}
     />
   );

@@ -232,7 +232,7 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
 }
 
 async function scroll(h: Harness, r: Reporter) {
-  const scrolls: ScrollEvent['nativeEvent'][] = [];
+  const scrolls: ScrollEvent[] = [];
   // react-native-webview's default, so the offsets have no inset in them.
   const insets = {
     scrollView: {
@@ -241,7 +241,7 @@ async function scroll(h: Harness, r: Reporter) {
   };
   h.setProps({
     ios: insets,
-    extensions: [onScroll(({ nativeEvent }) => scrolls.push(nativeEvent))],
+    extensions: [onScroll((event) => scrolls.push(event))],
   });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
   await h.ref.current?.evaluate('scrollTo(0, 400)');
@@ -269,14 +269,10 @@ async function scroll(h: Harness, r: Reporter) {
 }
 
 async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof captureWarnings>) {
-  const chosen: CustomMenuSelectionEvent['nativeEvent'][] = [];
+  const chosen: CustomMenuSelectionEvent[] = [];
   await recreate(
     h,
-    {
-      extensions: [
-        menuItems({ items: MENU, onSelect: ({ nativeEvent }) => chosen.push(nativeEvent) }),
-      ],
-    },
+    { extensions: [menuItems({ items: MENU, onSelect: (event) => chosen.push(event) })] },
     true
   );
   const made = await webViewClass(h);
