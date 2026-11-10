@@ -82,7 +82,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onLoad` | `onLoadEnd`, with `state.outcome === 'finished'` |
 | `onLoadProgress` | `progress` in `useWebViewState` |
 | `onError`, `onHttpError` | `onError`, whose `kind` is `'network'`, `'ssl'` or `'http'` |
-| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone` |
+| `onContentProcessDidTerminate`, `onRenderProcessGone` | `onProcessGone`, whose `cause` is `'crash'`, `'memory'` or, on iOS, `'unknown'` |
 | `renderLoading`, `renderError`, `startInLoadingState` | Your own views ([below](#loading-and-error-screens)) |
 | `onContentSizeChange` | An injected script, as for the [scroll position](#scroll-position) |
 | `source={require('./page.html')}` | A `file://` URI from expo-asset ([local files](examples.md#local-files)) |

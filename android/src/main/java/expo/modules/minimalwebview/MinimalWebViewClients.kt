@@ -213,7 +213,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     // Returning true keeps the app alive; a stale WebView (already replaced) needs nothing more.
     // Timed here: every WebView on the renderer hears of its death back to back, before any recovery runs.
     val at = SystemClock.elapsedRealtime()
-    if (view === owner.webView) owner.mainHandler.post { owner.processGone(detail.didCrash(), at) }
+    if (view === owner.webView) owner.mainHandler.post { owner.processGone(if (detail.didCrash()) "crash" else "memory", at) }
     observing("onRenderProcessGone", WEB_VIEW, RenderProcessGoneDetail::class.java) { it.onRenderProcessGone(view, detail) }
     return true
   }
