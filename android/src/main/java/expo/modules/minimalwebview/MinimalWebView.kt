@@ -63,7 +63,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var pullToRefresh = false
   private val refresher = PullToRefresh(this)
   /**
-   * The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), read when a request comes.
+   * The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), and `onNavigation`, read when a
+   * request comes or a decision is reported.
    */
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null

@@ -43,8 +43,8 @@ export type AskableEvent = {
 };
 
 /**
- * Page requests the core answers natively, by prop name. Native asks JS only for those whose prop is set, and reads the
- * set when the request comes, so a prop can come and go.
+ * Page requests the core answers natively, by prop name, and `onNavigation`, for the decisions it reports. Native sends
+ * JS each only while its prop is set, and reads the set when it would send one, so a prop can come and go.
  */
 const REQUESTS = [
   'onNavigationRequest',
@@ -53,6 +53,7 @@ const REQUESTS = [
   'onFullscreenChange',
   'onPermissionRequest',
   'onDownload',
+  'onNavigation',
 ] as const;
 
 /** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
@@ -67,7 +68,6 @@ const OWN = [
   'pullToRefresh',
   'sharedCookies',
   'extensions',
-  'onNavigation',
   'onNavigationStateChange',
   'onError',
   'onProcessGone',
@@ -333,7 +333,7 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
   });
 }
 
-/** The page requests with a prop set, as a new array only when that set changes. */
+/** The `REQUESTS` with a prop set, as a new array only when that set changes. */
 function useRequestHandlers(props: WebViewProps) {
   const key = REQUESTS.filter((prop) => props[prop]).join();
   return useMemo(() => (key ? key.split(',') : []), [key]);
