@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * An item of the text selection menu, for {@link menuItems}.
@@ -59,12 +59,12 @@ export function menuItems(menu: {
   /** @ios */
   suppress?: readonly SuppressMenuItem[];
   onSelect?: (event: CustomMenuSelectionEvent) => void;
-}): HookExtension | null {
+}): HookExtension<HookEvent<'selection', CustomMenuSelectionEvent>> | null {
   const { items, suppress, onSelect } = menu;
   if (!items && !(Platform.OS === 'ios' && suppress)) return null;
   return {
     key: '@react-native-minimal-webview/extensions.menuItems',
     options: { items, suppress },
-    onEvent: ({ payload }) => onSelect?.(payload as CustomMenuSelectionEvent),
+    onEvent: ({ payload }) => onSelect?.(payload),
   };
 }

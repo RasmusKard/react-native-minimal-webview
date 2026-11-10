@@ -388,7 +388,8 @@ function useHookOptions(extensions: WebViewProps['extensions']) {
   const json = JSON.stringify(
     withoutOff(
       Object.fromEntries(
-        on.map(({ key, options = DEFAULTS.HookExtension.options }) => [key, options])
+        // An unset `options` is `true` (HookExtension.options).
+        on.map(({ key, options = true }) => [key, options])
       )
     )
   );

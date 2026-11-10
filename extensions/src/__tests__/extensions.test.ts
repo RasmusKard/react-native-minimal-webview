@@ -78,7 +78,12 @@ describe('the extensions', () => {
 
   it('calls onScroll and onSelect with the event as it came', () => {
     const scrolled = jest.fn();
-    const scroll = { contentOffset: { x: 0, y: 400 } };
+    const scroll = {
+      contentOffset: { x: 0, y: 400 },
+      contentInset: { top: 0, left: 0, bottom: 0, right: 0 },
+      contentSize: { width: 400, height: 2000 },
+      layoutMeasurement: { width: 400, height: 800 },
+    };
     onScroll(scrolled).onEvent!({ name: 'scroll', payload: scroll });
     expect(scrolled).toHaveBeenCalledWith(scroll);
     const selected = jest.fn();

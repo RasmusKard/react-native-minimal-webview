@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { HookExtension } from 'react-native-minimal-webview';
+import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
  * A failed request that isn't the main frame's, for {@link onLoadSubResourceError}: shaped as the core's
@@ -24,10 +24,10 @@ export type SubResourceErrorEvent = {
  */
 export const onLoadSubResourceError = (
   handler: (event: SubResourceErrorEvent) => void
-): HookExtension | null =>
+): HookExtension<HookEvent<'error', SubResourceErrorEvent>> | null =>
   Platform.OS === 'android'
     ? {
         key: '@react-native-minimal-webview/extensions.onLoadSubResourceError',
-        onEvent: ({ payload }) => handler(payload as SubResourceErrorEvent),
+        onEvent: ({ payload }) => handler(payload),
       }
     : null;
