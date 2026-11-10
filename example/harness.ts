@@ -277,6 +277,19 @@ export async function waitForLoad(
   return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && done(s), ms);
 }
 
+/**
+ * For a request handler that never settles: `never(signal)` is its pending answer, and `stuck` says when its signal
+ * aborted (`abortedAt`, 0 until then) and answers it (`release`).
+ */
+function stuckHandler<T>() {
+  const stuck = { abortedAt: 0, release: (_value: T) => {} };
+  const never = (signal: AbortSignal) => {
+    signal.addEventListener('abort', () => (stuck.abortedAt = Date.now()));
+    return new Promise<T>((resolve) => (stuck.release = resolve));
+  };
+  return { stuck, never };
+}
+
 /** An `onOpenExternal` that records each URL in `into` and answers that the app opened it. */
 export const recordExternal =
   (into: string[]): WebViewProps['onOpenExternal'] =>
@@ -810,14 +823,12 @@ async function upload(h: Harness) {
   file.write('hello from the app cache');
   const requests: FileRequest[] = [];
   let answer: string[] | null = null;
-  // With `hang`, the handler never settles; `abortedAt` is when its signal aborted.
+  // With `hang`, the handler never settles.
   let hang = false;
-  let abortedAt = 0;
+  const { stuck, never } = stuckHandler<null>();
   h.setFileRequest(async (request, signal) => {
     requests.push(request);
-    if (!hang) return answer;
-    signal.addEventListener('abort', () => (abortedAt = Date.now()));
-    return await new Promise<null>(() => {});
+    return hang ? await never(signal) : answer;
   });
   const open = async () => {
     await openPage(h, fresh(h, '/upload.html'));
@@ -877,11 +888,11 @@ async function upload(h: Harness) {
   hang = false;
   const navigatedAt = Date.now();
   await open();
-  await until(() => abortedAt, 2000);
+  await until(() => stuck.abortedAt, 2000);
   r.check(
     "navigating away aborts the held handler's signal",
-    abortedAt >= navigatedAt,
-    abortedAt ? abortedAt - navigatedAt : 'not aborted'
+    stuck.abortedAt >= navigatedAt,
+    stuck.abortedAt ? stuck.abortedAt - navigatedAt : 'not aborted'
   );
   const afterHang = await tapAndRead('after navigation');
   r.check(
@@ -2201,15 +2212,12 @@ async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequest[] = [];
   let answer = false;
-  // With `hold`, the handler never settles unless `release` answers it; `abortedAt` is when its signal aborted.
+  // With `hold`, the handler never settles unless `stuck.release` answers it.
   let hold = false;
-  let release: (value: boolean) => void = () => {};
-  let abortedAt = 0;
+  const { stuck, never } = stuckHandler<boolean>();
   h.setPermission(async (request, signal) => {
     asked.push(request);
-    if (!hold) return answer;
-    signal.addEventListener('abort', () => (abortedAt = Date.now()));
-    return await new Promise<boolean>((resolve) => (release = resolve));
+    return hold ? await never(signal) : answer;
   });
   const press = async (id: string) => (await pageLog(h, () => click(h, id)))?.join() ?? 'no result';
   await openPage(h, fresh(h, '/device.html'));
@@ -2280,11 +2288,11 @@ async function permissionsSuite(h: Harness) {
   hold = false;
   const navigatedAt = Date.now();
   await openPage(h, fresh(h, '/device.html'));
-  await until(() => abortedAt, 2000);
+  await until(() => stuck.abortedAt, 2000);
   r.check(
     "navigating away aborts the held handler's signal within 2 s",
-    abortedAt > 0 && abortedAt - navigatedAt < 2000,
-    abortedAt ? abortedAt - navigatedAt : 'not aborted'
+    stuck.abortedAt > 0 && stuck.abortedAt - navigatedAt < 2000,
+    stuck.abortedAt ? stuck.abortedAt - navigatedAt : 'not aborted'
   );
   answer = false;
   const again = await press('camera');
@@ -2293,7 +2301,7 @@ async function permissionsSuite(h: Harness) {
     asked.length === askedBefore + 2 && again.includes('NotAllowedError'),
     { asked: asked.length - askedBefore, again }
   );
-  release(true);
+  stuck.release(true);
   await sleep(300);
   r.check(
     'a late answer for the replaced page changes nothing',
