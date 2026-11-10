@@ -428,6 +428,24 @@ describe('bridge', () => {
     await show({ bridge: newBridge() });
     expect(mockMount).toHaveBeenCalledTimes(2);
   });
+
+  it('warns in development, once, when another bridge replaces the bridge', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const bridge = newBridge();
+    const { show } = await mount({ bridge });
+    await show({});
+    await show({ bridge });
+    await show({ bridge });
+    expect(warn).not.toHaveBeenCalled();
+    await show({ bridge: newBridge() });
+    await show({ bridge: newBridge() });
+    expect(warn.mock.calls).toEqual([
+      [
+        '[react-native-minimal-webview] bridge: another bridge recreated the WebView, and its page loaded again; ' +
+          'create the bridge once, at module scope or with useMemo',
+      ],
+    ]);
+  });
 });
 
 describe('injectedScripts', () => {
