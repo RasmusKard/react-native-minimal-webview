@@ -1,6 +1,6 @@
 // Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
 // and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions changes a hook hears, the
-// Asks contract, ReadAccess's roots and Loads' URL comparison and load ends. Not part of the pod (see the podspec).
+// Asks contract, ReadAccess's roots, Loads' URL comparison and load ends and DownloadName. Not part of the pod (see the podspec).
 // ios/Tests/run.sh builds and runs it.
 import Foundation
 import WebKit
@@ -291,6 +291,14 @@ let endCases: [(String, Int, String, String?)] = [
 for (domain, code, outcome, kind) in endCases {
   let end = Loads.ended(by: NSError(domain: domain, code: code))
   check("load end, \(domain) \(code): expected \(outcome) \(kind ?? "nil"), got \(end.outcome) \(end.kind ?? "nil")", end.outcome == outcome && end.kind == kind)
+}
+// (suggested name, the name saved): Android's DownloadsTest cases, and the `/` that guessFileName replaces there.
+let nameCases: [(String, String)] = [
+  (".", "download"), ("..", "download"), ("", "download"), ("...", "..."), ("a.txt", "a.txt"),
+  ("a/b.txt", "a_b.txt"), ("../x", ".._x"), ("/", "_"), ("../..", ".._.."),
+]
+for (name, expected) in nameCases {
+  check("download name \(name): expected \(expected), got \(DownloadName.safe(name))", DownloadName.safe(name) == expected)
 }
 
 print("\(total - failed)/\(total) cases pass")
