@@ -1022,7 +1022,12 @@ export async function tap(h: Harness, r: ReturnType<typeof reporter>, id: string
  * The driver's real tap on `id` (with `frame`, on an element in that same-origin iframe), asked for with a `TAP`
  * request. A check that needs `userInitiated` uses it on iOS too, where the core counts a link only after a touch.
  */
-export async function touch(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
+export async function touch(
+  h: Harness,
+  r: ReturnType<typeof reporter>,
+  id: string,
+  frame?: string
+) {
   r.info('TAP', await tapPoint(h, id, frame));
 }
 

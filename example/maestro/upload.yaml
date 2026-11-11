@@ -14,16 +14,16 @@ env:
           times: 6
           commands:
             - evalScript: ${output.n = (output.n || 0) + 1}
-            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
-            - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
+            - runFlow: { file: subflows/await.yaml, env: { N: '${output.n}' } }
+            - tapOn: { point: '50%, 49%', waitToSettleTimeoutMs: 200 }
       - repeat:
           times: 2
           commands:
             - evalScript: ${output.n = output.n + 1}
-            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
-            - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
+            - runFlow: { file: subflows/await.yaml, env: { N: '${output.n}' } }
+            - tapOn: { point: '50%, 49%', waitToSettleTimeoutMs: 200 }
             - extendedWaitUntil: { notVisible: { id: harness-request }, timeout: 10000 }
             - back
       - runFlow: { file: subflows/await.yaml, env: { N: 9 } }
-      - tapOn: { point: "50%, 49%", waitToSettleTimeoutMs: 200 }
+      - tapOn: { point: '50%, 49%', waitToSettleTimeoutMs: 200 }
 - runFlow: subflows/finish.yaml

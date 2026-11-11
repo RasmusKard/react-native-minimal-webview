@@ -148,7 +148,8 @@ const notRegistered = (error: unknown) =>
 /** A native call nothing awaits: a rejection is logged, bar one for a view not registered yet, where it does nothing. */
 const unawaited = (call: Promise<unknown> | undefined, name: string) =>
   void call?.catch((error: unknown) => {
-    if (!notRegistered(error)) console.error(`[react-native-minimal-webview] ${name} failed`, error);
+    if (!notRegistered(error))
+      console.error(`[react-native-minimal-webview] ${name} failed`, error);
   });
 
 /**
