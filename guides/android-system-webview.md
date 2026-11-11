@@ -14,11 +14,11 @@ The core checks each feature at run time. On an older WebView the feature is off
 
 ## What needs a newer WebView
 
-| WebView | Features |
-|---|---|
-| 83 | [`evaluate`][evaluate]; `blob:` downloads with [`onDownload`][onDownload] |
-| 101 | the [bridge][bridge]; [`injectedScripts`][injectedScripts] |
-| 146 | [`pendingUrl`][pendingUrl]; [`onLoadStart`][onLoadStart] and `onLoadEnd` for a load that never commits; SSL errors on back and forward loads in [`onError`][onError]; [`backForwardCacheEnabled`][settings] on by default |
+| WebView | Features                                                                                                                                                                                                                  |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 83      | [`evaluate`][evaluate]; `blob:` downloads with [`onDownload`][onDownload]                                                                                                                                                 |
+| 101     | the [bridge][bridge]; [`injectedScripts`][injectedScripts]                                                                                                                                                                |
+| 146     | [`pendingUrl`][pendingUrl]; [`onLoadStart`][onLoadStart] and `onLoadEnd` for a load that never commits; SSL errors on back and forward loads in [`onError`][onError]; [`backForwardCacheEnabled`][settings] on by default |
 
 Each feature's API reference says what it does on an older WebView.
 

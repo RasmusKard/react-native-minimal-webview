@@ -7,7 +7,17 @@ complexity:
   LongParameterList: { active: true, functionThreshold: 6, constructorThreshold: 7 }
   LargeClass: { active: true, threshold: 600 }
   NestedBlockDepth: { active: true, threshold: 4 }
-  TooManyFunctions: { active: true, thresholdInFiles: 11, thresholdInClasses: 11, thresholdInInterfaces: 11, thresholdInObjects: 11, thresholdInEnums: 11, ignorePrivate: true, ignoreOverridden: true }
+  TooManyFunctions:
+    {
+      active: true,
+      thresholdInFiles: 11,
+      thresholdInClasses: 11,
+      thresholdInInterfaces: 11,
+      thresholdInObjects: 11,
+      thresholdInEnums: 11,
+      ignorePrivate: true,
+      ignoreOverridden: true,
+    }
   ComplexCondition: { active: true, threshold: 4 }
 style:
   active: true

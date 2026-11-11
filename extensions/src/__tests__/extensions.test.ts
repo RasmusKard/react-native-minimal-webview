@@ -30,20 +30,48 @@ describe('the extensions', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it.each<[string, HookExtension | null, string, unknown]>([
-    ['basicAuthCredential', basicAuthCredential({ username: 'u', password: 'p' }), 'basicAuthCredential', { username: 'u', password: 'p' }],
+    [
+      'basicAuthCredential',
+      basicAuthCredential({ username: 'u', password: 'p' }),
+      'basicAuthCredential',
+      { username: 'u', password: 'p' },
+    ],
     ['dialogs', dialogs(() => true), 'dialogs', undefined],
     ['incognito', incognito(), 'incognito', undefined],
     ['menuItems', menuItems({ items: MENU, onSelect: () => {} }), 'menuItems', { items: MENU }],
-    ['menuItems with suppress only', menuItems({ suppress: ['copy'] }), 'menuItems', { suppress: ['copy'] }],
+    [
+      'menuItems with suppress only',
+      menuItems({ suppress: ['copy'] }),
+      'menuItems',
+      { suppress: ['copy'] },
+    ],
     ['onScroll', onScroll(() => {}), 'onScroll', undefined],
     ['transparentBackground', transparentBackground(), 'transparentBackground', undefined],
-    ['hideKeyboardAccessoryView', hideKeyboardAccessoryView(), 'hideKeyboardAccessoryView', undefined],
-    ['keyboardDisplayRequiresUserAction', keyboardDisplayRequiresUserAction(false), 'keyboardDisplayRequiresUserAction', undefined],
+    [
+      'hideKeyboardAccessoryView',
+      hideKeyboardAccessoryView(),
+      'hideKeyboardAccessoryView',
+      undefined,
+    ],
+    [
+      'keyboardDisplayRequiresUserAction',
+      keyboardDisplayRequiresUserAction(false),
+      'keyboardDisplayRequiresUserAction',
+      undefined,
+    ],
     ['refreshControlLightMode', refreshControlLightMode(), 'refreshControlLightMode', undefined],
-    ['removeIosKeyboardObserver', removeIosKeyboardObserver(), 'removeIosKeyboardObserver', undefined],
-  ])('%s has its key and options on iOS (none: the default, true)', (_, extension, name, options) => {
-    expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
-  });
+    [
+      'removeIosKeyboardObserver',
+      removeIosKeyboardObserver(),
+      'removeIosKeyboardObserver',
+      undefined,
+    ],
+  ])(
+    '%s has its key and options on iOS (none: the default, true)',
+    (_, extension, name, options) => {
+      expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
+    }
+  );
 
   it('gives the Android ones their key on Android, and null for the iOS ones and suppress alone', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
@@ -52,7 +80,10 @@ describe('the extensions', () => {
       key: `${K}.androidLayerType`,
       options: 'software',
     });
-    expect(plain(menuItems({ items: MENU }))).toEqual({ key: `${K}.menuItems`, options: { items: MENU } });
+    expect(plain(menuItems({ items: MENU }))).toEqual({
+      key: `${K}.menuItems`,
+      options: { items: MENU },
+    });
     expect(plain(transparentBackground())).toEqual({ key: `${K}.transparentBackground` });
     expect(plain(incognito())).toEqual({ key: `${K}.incognito` });
     expect(plain(downloadManager())).toEqual({ key: `${K}.downloadManager` });
@@ -99,7 +130,11 @@ describe('the extensions', () => {
   it('calls onLoadSubResourceError with the event as it came', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     const failed = jest.fn();
-    const error = { url: 'http://127.0.0.1:1/x.png', code: -6, description: 'net::ERR_CONNECTION_REFUSED' };
+    const error = {
+      url: 'http://127.0.0.1:1/x.png',
+      code: -6,
+      description: 'net::ERR_CONNECTION_REFUSED',
+    };
     onLoadSubResourceError(failed)!.onEvent!({ name: 'error', payload: error });
     expect(failed).toHaveBeenCalledWith(error);
   });
@@ -129,13 +164,19 @@ describe('the extensions', () => {
     ['prompt', true, null],
     ['prompt', undefined, null],
   ])('answers a %s whose onDialog returns %p with %p', async (type, returned, answer) => {
-    const event = { name: type, payload: { type, message: '', defaultValue: null, url: '' } as Dialog };
+    const event = {
+      name: type,
+      payload: { type, message: '', defaultValue: null, url: '' } as Dialog,
+    };
     const signal = new AbortController().signal;
     await expect(dialogs(() => returned).onEvent!(event, signal)).resolves.toBe(answer);
   });
 
   it('rejects when onDialog throws, which the core answers with null', async () => {
-    const event = { name: 'confirm' as const, payload: { type: 'confirm', message: '', url: '' } as Dialog };
+    const event = {
+      name: 'confirm' as const,
+      payload: { type: 'confirm', message: '', url: '' } as Dialog,
+    };
     const failing = dialogs(() => {
       throw new Error('no');
     });

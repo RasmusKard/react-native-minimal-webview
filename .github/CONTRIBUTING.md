@@ -21,7 +21,7 @@ installs the example app, and generates `example/android` or `example/ios` the f
 ## Checks
 
 ```sh
-npm run check                                                              # both packages: TS tests, ESLint, knip, type-checks (the docs' samples too), build, TSDoc
+npm run check                                                              # both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc
 npm run mutation                                                           # Stryker on the files .config/stryker.config.json lists; fails below its break threshold
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)   # Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
 ios/Tests/run.sh                                                           # Swift tests, the PlatformSettings ones as Mac Catalyst

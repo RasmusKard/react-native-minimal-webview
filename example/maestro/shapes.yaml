@@ -13,7 +13,7 @@ env:
           times: 13
           commands:
             - evalScript: ${output.n = (output.n || 0) + 1}
-            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+            - runFlow: { file: subflows/await.yaml, env: { N: '${output.n}' } }
             - runFlow: subflows/tap-request-point.yaml
       - runFlow: { file: subflows/await.yaml, env: { N: 14 } }
       - back
@@ -24,6 +24,6 @@ env:
           times: 2
           commands:
             - evalScript: ${output.n = (output.n || 0) + 1}
-            - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+            - runFlow: { file: subflows/await.yaml, env: { N: '${output.n}' } }
             - runFlow: subflows/tap-request-point.yaml
 - runFlow: subflows/finish.yaml

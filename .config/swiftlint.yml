@@ -1,8 +1,17 @@
 # Complexity rules only; ios/Tests is the Swift rule tests' main.swift.
 included: [../ios, ../extensions]
 excluded: [../ios/Tests]
-strict: true  # a warning fails too
-only_rules: [cyclomatic_complexity, function_body_length, type_body_length, file_length, nesting, function_parameter_count, large_tuple]
+strict: true # a warning fails too
+only_rules:
+  [
+    cyclomatic_complexity,
+    function_body_length,
+    type_body_length,
+    file_length,
+    nesting,
+    function_parameter_count,
+    large_tuple,
+  ]
 cyclomatic_complexity: { warning: 10, error: 15, ignores_case_statements: true }
 function_body_length: { warning: 40, error: 54 }
 type_body_length: { warning: 250, error: 350 }

@@ -2,7 +2,11 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["../src/index.ts", "../extensions/src/index.ts"],
   "tsconfig": "tsconfig.typedoc.json",
-  "plugin": ["typedoc-plugin-markdown", "../.github/scripts/typedoc-plugin.mts", "tsdoc-defaults/typedoc"],
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "../.github/scripts/typedoc-plugin.mts",
+    "tsdoc-defaults/typedoc"
+  ],
   "readme": "none",
   "excludeScopesInPaths": true,
   "useCodeBlocks": true,
@@ -16,5 +20,16 @@
   "sortEntryPoints": false,
   "pageTitleTemplates": { "index": "TypeScript API" },
   "validation": { "notExported": false },
-  "groupOrder": ["Extensions", "Values", "WebView", "Navigation", "Events", "Bridge", "Scripts", "Page requests", "Native hooks", "Platform settings"]
+  "groupOrder": [
+    "Extensions",
+    "Values",
+    "WebView",
+    "Navigation",
+    "Events",
+    "Bridge",
+    "Scripts",
+    "Page requests",
+    "Native hooks",
+    "Platform settings"
+  ]
 }

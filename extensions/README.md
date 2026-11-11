@@ -1,6 +1,7 @@
 # @react-native-minimal-webview/extensions
 
 <!-- #region intro -->
+
 Native hooks for [react-native-minimal-webview](https://github.com/RasmusKard/react-native-minimal-webview) that bring
 back react-native-webview props, such as `onScroll` and `basicAuthCredential`, and add JS-answered dialogs.
 <!-- #endregion intro -->
@@ -8,6 +9,7 @@ back react-native-webview props, such as `onScroll` and `basicAuthCredential`, a
 ## Setup
 
 <!-- #region setup -->
+
 It has the core's [requirements](https://github.com/RasmusKard/react-native-minimal-webview#requirements). Install both, then
 rebuild the app, since the package has native code:
 
@@ -35,26 +37,27 @@ export function Browser() {
   );
 }
 ```
+
 <!-- #endregion setup -->
 
 ## Extensions
 
-| Function | Platforms |
-|---|---|
-| [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/) | iOS, Android |
-| [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/) | iOS, Android |
-| [`incognito()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/) | iOS, Android |
-| [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/) | iOS, Android (`suppress`: iOS) |
-| [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/) | iOS, Android |
-| [`transparentBackground()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/) | iOS, Android |
-| [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/) | iOS |
-| [`keyboardDisplayRequiresUserAction(required)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/) | iOS |
-| [`refreshControlLightMode()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/) | iOS |
-| [`removeIosKeyboardObserver()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/) | iOS |
-| [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/) | Android |
-| [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/) | Android |
-| [`downloadManager({ downloadingMessage })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/) | Android |
-| [`onLoadSubResourceError(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/) | Android |
+| Function                                                                                                                                                                      | Platforms                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/)                           | iOS, Android                   |
+| [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/)                                                     | iOS, Android                   |
+| [`incognito()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/)                                                         | iOS, Android                   |
+| [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/)                            | iOS, Android (`suppress`: iOS) |
+| [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/)                                                    | iOS, Android                   |
+| [`transparentBackground()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/transparentBackground/)                                 | iOS, Android                   |
+| [`hideKeyboardAccessoryView()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/hideKeyboardAccessoryView/)                         | iOS                            |
+| [`keyboardDisplayRequiresUserAction(required)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/keyboardDisplayRequiresUserAction/) | iOS                            |
+| [`refreshControlLightMode()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/refreshControlLightMode/)                             | iOS                            |
+| [`removeIosKeyboardObserver()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/removeIosKeyboardObserver/)                         | iOS                            |
+| [`nestedScrollEnabled()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/nestedScrollEnabled/)                                     | Android                        |
+| [`androidLayerType(type)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/androidLayerType/)                                       | Android                        |
+| [`downloadManager({ downloadingMessage })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/downloadManager/)                       | Android                        |
+| [`onLoadSubResourceError(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/)                        | Android                        |
 
 Each function's [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) page has its
 behavior and limits. Its code is in the folder named after it: the TS, and the Swift or Kotlin for each platform it has.

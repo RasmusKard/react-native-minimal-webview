@@ -28,7 +28,7 @@
     "clean": "rm -rf build extensions/build",
     "pretest": "npm run build:page-client -- --check && npm run gen:platform-types -- --check && npm run gen:defaults -- --check",
     "test": "jest",
-    "lint": "eslint --max-warnings 0 src extensions example .github",
+    "lint": "eslint --max-warnings 0 src extensions example .github && prettier --check .",
     "prepare": "npm run clean && npm run build",
     "check": "npm test && npm run lint && knip --config .config/knip.json && tsc --noEmit -p src/__tests__/tsconfig.json && tsc --noEmit -p extensions/src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && node .github/scripts/check-doc-samples.mts && npm run prepare && npm run docs:check",
     "mutation": "stryker run .config/stryker.config.json",

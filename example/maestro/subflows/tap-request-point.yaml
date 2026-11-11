@@ -2,4 +2,4 @@ appId: expo.modules.minimalwebview.example
 ---
 # Taps the screen point the harness asked for in its current request (output.request, from await.yaml).
 - runScript: ../scripts/point.js
-- tapOn: { point: "${output.x}, ${output.y}", waitToSettleTimeoutMs: 200 }
+- tapOn: { point: '${output.x}, ${output.y}', waitToSettleTimeoutMs: 200 }

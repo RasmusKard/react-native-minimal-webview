@@ -11,12 +11,12 @@ A native hook is Swift or Kotlin in your own Expo module that gets the real `WKW
 
 Reach for a hook when the props and the ref can't do the job:
 
-| To | Use |
-|---|---|
-| Change a setting | The [`ios` and `android` props](examples.md#platform-settings) |
-| Read a property or call a method once | The ref's [`get` and `call`](examples.md#reading-and-calling) |
-| Bring back a react-native-webview prop | An [extension][extensions], a hook someone already wrote |
-| Handle WebView callbacks, keep native state, or subclass the WebView | A native hook |
+| To                                                                   | Use                                                            |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Change a setting                                                     | The [`ios` and `android` props](examples.md#platform-settings) |
+| Read a property or call a method once                                | The ref's [`get` and `call`](examples.md#reading-and-calling)  |
+| Bring back a react-native-webview prop                               | An [extension][extensions], a hook someone already wrote       |
+| Handle WebView callbacks, keep native state, or subclass the WebView | A native hook                                                  |
 
 A hook can implement any delegate or client callback. It runs natively, with no JS round trip.
 
@@ -194,12 +194,12 @@ Then rebuild the app: `npx expo run:ios`, `npx expo run:android`.
 Everything crosses as JSON. `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]) says which native types
 the values from JS arrive as.
 
-| Native | JS |
-|---|---|
-| `context.emit(name, payload)` | The extension's `onEvent` gets `<name>` |
-| `context.ask(name, payload, onAnswer)` | `onEvent`'s return value, a promise awaited, is the answer |
-| `context.handle(method, handler)` | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
-| `context.options`, `context.onOptions(handler)` | The extension's `options`: the handler gets them at once, then each change, live |
+| Native                                          | JS                                                                                                                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `context.emit(name, payload)`                   | The extension's `onEvent` gets `<name>`                                                                                      |
+| `context.ask(name, payload, onAnswer)`          | `onEvent`'s return value, a promise awaited, is the answer                                                                   |
+| `context.handle(method, handler)`               | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
+| `context.options`, `context.onOptions(handler)` | The extension's `options`: the handler gets them at once, then each change, live                                             |
 
 When an `ask` goes unanswered, and how a failing or silent `handle` handler reaches JS, are on `ask` and `handle` of
 `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]).
@@ -217,15 +217,15 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 
 ## Lifecycle
 
-| When | What the hook gets |
-|---|---|
-| A WebView with its key mounts | Android: the `webViewFactory`, if it has one. Then `configure`, if it has one, then `attach` |
-| The page ends: a navigation commits, a crash, or unmount | Its `onDocumentEnd` handlers run. Reset per-page state there. |
-| Its `options` change | Its `onOptions` handlers run, without a reload |
-| Its key turns on after mount | `attach` runs then, unless the hook has `configure` or its own WebView class |
-| Its key is removed, or its `options` become null or false | `onOptions` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptions` runs with the new options. |
-| The renderer crashes | iOS: `onDocumentEnd` with `crashed`; the `WKWebView` reloads and nothing attaches again. Android: `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context. |
-| The WebView unmounts | `onDocumentEnd`, then `onDestroyed`, with `closing`: clean up there. |
+| When                                                      | What the hook gets                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A WebView with its key mounts                             | Android: the `webViewFactory`, if it has one. Then `configure`, if it has one, then `attach`                                                                                                                                   |
+| The page ends: a navigation commits, a crash, or unmount  | Its `onDocumentEnd` handlers run. Reset per-page state there.                                                                                                                                                                  |
+| Its `options` change                                      | Its `onOptions` handlers run, without a reload                                                                                                                                                                                 |
+| Its key turns on after mount                              | `attach` runs then, unless the hook has `configure` or its own WebView class                                                                                                                                                   |
+| Its key is removed, or its `options` become null or false | `onOptions` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptions` runs with the new options.                                                                                     |
+| The renderer crashes                                      | iOS: `onDocumentEnd` with `crashed`; the `WKWebView` reloads and nothing attaches again. Android: `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context. |
+| The WebView unmounts                                      | `onDocumentEnd`, then `onDestroyed`, with `closing`: clean up there.                                                                                                                                                           |
 
 `DocumentEnd` ([Swift][documentend], [Kotlin][documentendkt]) says exactly when a page ends, and what each reason means.
 `onDestroyed` says what is still alive when it runs.
@@ -239,12 +239,12 @@ Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift],
 
 ## Platform differences
 
-| | iOS | Android |
-|---|---|---|
-| Callbacks go in | `navigationDelegates`, `uiDelegates` | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
-| `configure` gets | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up |
-| Your own WebView class | `webViewClass:` | `webViewFactory =` |
-| Only on this platform | `refreshControl` | `onDownloadStart` |
+|                        | iOS                                                  | Android                                                         |
+| ---------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| Callbacks go in        | `navigationDelegates`, `uiDelegates`                 | `clients`, `chromeClients`, `touchListeners`, `scrollListeners` |
+| `configure` gets       | The `WKWebViewConfiguration`, before the view exists | The new `WebView`, before the core sets it up                   |
+| Your own WebView class | `webViewClass:`                                      | `webViewFactory =`                                              |
+| Only on this platform  | `refreshControl`                                     | `onDownloadStart`                                               |
 
 ## Reference
 

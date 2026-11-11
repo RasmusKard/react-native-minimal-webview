@@ -9,6 +9,6 @@ env:
     times: 7
     commands:
       - evalScript: ${output.n = (output.n || 0) + 1}
-      - runFlow: { file: subflows/await.yaml, env: { N: "${output.n}" } }
+      - runFlow: { file: subflows/await.yaml, env: { N: '${output.n}' } }
       - runScript: scripts/kill.js
 - runFlow: subflows/finish.yaml
