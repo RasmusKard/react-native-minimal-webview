@@ -1,7 +1,3 @@
----
-title: Examples
----
-
 # Examples
 
 Examples of the main interfaces. What each prop, method and type does is in its TSDoc, generated into the
@@ -57,10 +53,48 @@ function onInboxNotification() {
 <WebView ref={webView} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />;
 ```
 
+## Loading and error screens
+
+Draw a spinner and your own error screen over the WebView, from the navigation state, `onError` and `onProcessGone`.
+
+```tsx
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-webview';
+
+export function Browser() {
+  const ref = useRef<WebViewRef>(null);
+  const loading = useWebViewState(ref, (state) => state.loading);
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <WebView
+        ref={ref}
+        source={{ uri: 'https://example.com' }}
+        onError={(e) => e.kind !== 'http' && setFailed(true)} // on 'http' the site's own error page shows
+        // The core reloads after a crash, unless the page keeps crashing: then the retry is the user's
+        onProcessGone={(e) => !e.recovered && setFailed(true)}
+        onLoadStart={() => setFailed(false)}
+        style={{ flex: 1 }}
+      />
+      {failed ? (
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+          <Text>Could not load the page</Text>
+          <Button title="Retry" onPress={() => ref.current?.reload()} />
+        </View>
+      ) : loading ? (
+        <ActivityIndicator style={StyleSheet.absoluteFill} />
+      ) : null}
+    </View>
+  );
+}
+```
+
 ## Navigation rules
 
 Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs,
-an iframe's to the top frame included, skip the rules:
+an iframe's to the main frame included, skip the rules:
 [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
 says where they load.
 
@@ -75,7 +109,7 @@ export function Site() {
       navigationRules={[
         { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
         { host: ['example.com', '*.example.com'], action: 'allow' },
-        { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
+        { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // embedded content stays in the page
         { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
         { scheme: ['http', 'https'], action: 'external' }, // other sites, and new windows
         ...defaultNavigationRules, // file: blocked, other schemes external from a user gesture
@@ -137,64 +171,26 @@ A page on an allowed origin has the same four methods on `window.nativeBridge`, 
 [`Bridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/Bridge/) describes.
 
 ```js
-// A module script
+// A module script, for the top-level await
 const cart = [];
-window.nativeBridge.handle('getCartCount', () => cart.length);
-window.nativeBridge.on('themeChanged', (theme) => {
+// ?. because a browser, or an origin the bridge doesn't allow, has no window.nativeBridge
+window.nativeBridge?.handle('getCartCount', () => cart.length);
+window.nativeBridge?.on('themeChanged', (theme) => {
   document.documentElement.dataset.theme = theme;
 });
 
-const shared = await window.nativeBridge.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
+const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
 ```
+
+An event reaches one page and is never repeated for a later one. A page that needs the current value, such as the theme,
+asks for it with a `call` as it loads, and listens for the changes.
 
 A TypeScript page types `window.nativeBridge` with
-[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/),
-a type-only import: the page's project needs the package as a dev dependency, and must share or copy the schema type.
-
-```ts
-// A module script
-import type { PageBridge } from 'react-native-minimal-webview';
-
-type ShopBridge = {
-  reactNative: { share: { params: { url: string }; result: boolean } };
-  page: { getCartCount: { result: number } };
-  events: { themeChanged: 'light' | 'dark' };
-};
-
-declare global {
-  interface Window {
-    nativeBridge?: PageBridge<ShopBridge>; // only in the app, on an allowed origin
-  }
-}
-
-const cart: string[] = [];
-window.nativeBridge?.handle('getCartCount', () => cart.length);
-const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 });
-```
+[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/).
 
 ## Platform settings
 
-Any setting by its platform name, and any public method through `call`.
-
-```tsx
-import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-webview';
-
-<WebView
-  source={{ uri: 'https://example.com' }}
-  style={{ flex: 1 }}
-  ios={{
-    configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
-    preferences: { minimumFontSize: 12 }, // WKPreferences
-    webpagePreferences: { allowsContentJavaScript: false }, // WKWebpagePreferences
-    webView: { allowsBackForwardNavigationGestures: true }, // WKWebView
-    scrollView: { bounces: false }, // its UIScrollView
-  }}
-  android={{
-    settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }, // WebSettings
-    webView: { overScrollMode: 2, verticalScrollBarEnabled: false }, // WebView
-  }}
-/>;
-```
+[Use a platform API](platform-apis.md) shows how to write any setting by its platform name.
 
 ### Reading and calling
 
@@ -252,7 +248,8 @@ set.
 
 ## Scripts
 
-Run a script in every page before the page's own, or evaluate one in the page that is open.
+Run a script in every page before the page's own scripts and before its DOM exists, or evaluate one in the page that
+is open.
 
 ```tsx
 import { WebView, createWebViewRef } from 'react-native-minimal-webview';
@@ -336,19 +333,27 @@ import { WebView } from 'react-native-minimal-webview';
 
 ### Permissions
 
-Give the camera to your own site only, once the OS has granted it.
+Give the camera and the microphone to your own site only, once the OS has granted them.
 
 ```tsx
 import { Camera } from 'expo-camera';
-import { WebView } from 'react-native-minimal-webview';
+import { WebView, type PermissionResource } from 'react-native-minimal-webview';
+
+// Asks the OS for what the page wants; a resource this app doesn't give has no entry
+const askOS: Partial<Record<PermissionResource, () => Promise<{ granted: boolean }>>> = {
+  camera: Camera.requestCameraPermissionsAsync,
+  microphone: Camera.requestMicrophonePermissionsAsync,
+};
 
 <WebView
   source={{ uri: 'https://meet.example.com' }}
   style={{ flex: 1 }}
   onPermissionRequest={async ({ origin, resources }) => {
     if (origin !== 'https://meet.example.com') return false;
-    if (resources.some((resource) => resource !== 'camera')) return false;
-    return (await Camera.requestCameraPermissionsAsync()).granted;
+    for (const resource of resources) {
+      if (!(await askOS[resource]?.())?.granted) return false; // a video call asks for both at once
+    }
+    return true;
   }}
 />;
 ```
@@ -376,7 +381,7 @@ import { WebView } from 'react-native-minimal-webview';
 
 Open a file the page downloads.
 
-`preview()` needs expo-file-system 58 or later.
+`preview()` needs expo-file-system 58 (Expo SDK 58) or later.
 
 ```tsx
 import { File } from 'expo-file-system';
@@ -391,6 +396,13 @@ import { WebView } from 'react-native-minimal-webview';
 />;
 ```
 
-## Native hooks
+## Debugging the page
 
-The [native hooks guide](native-hooks.md) builds one, from module to the `extensions` prop.
+Inspect the page's DOM, console and network from a desktop browser.
+
+- iOS: Safari's Develop menu lists the page while
+  [`ios.webView.inspectable`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/#webview)
+  is on, as it is in development.
+- Android: Chrome's `chrome://inspect` lists it in a debug build, and
+  [`AndroidWebView.setWebContentsDebuggingEnabled`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/)
+  turns it on in any build.

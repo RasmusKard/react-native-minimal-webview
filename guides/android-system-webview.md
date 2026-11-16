@@ -1,7 +1,3 @@
----
-title: Android System WebView versions
----
-
 # Android System WebView versions
 
 Some features need a newer Android System WebView than the [minimum Android version](../README.md#requirements)
@@ -10,6 +6,9 @@ brings.
 Android System WebView updates apart from Android, so a device's API level doesn't tell you its WebView.
 
 The core checks each feature at run time. On an older WebView the feature is off, and nothing crashes.
+
+The package has no minimum WebView version. The oldest one a device can have is 74, which Android 10 shipped with:
+there every feature in the table below is off.
 
 ## What needs a newer WebView
 
@@ -31,14 +30,12 @@ The version is the Chrome version in the WebView's user agent: read
 
 On a connected device, `adb shell dumpsys webviewupdate` names the WebView package in use and its version.
 
-Users update Android System WebView in the Play Store.
-
 ## Test the oldest versions
 
 Test on an emulator with a Google APIs system image, not a Play Store one: it keeps the WebView it shipped with, while
 the Play Store updates WebView in the background and moves its version under your tests. The images of older API
-levels ship older WebViews: run the app there to see the features above off. [CONTRIBUTING][contributing] lists the
-images for the oldest supported versions and how to create the emulators.
+levels ship older WebViews: run the app there to see the features above off. The API 29 `default` image has
+WebView 74. [CONTRIBUTING][contributing] lists the images its suites run on and how to create the emulators.
 
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [onDownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload

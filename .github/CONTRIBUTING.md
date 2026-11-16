@@ -59,7 +59,7 @@ avdmanager create avd -n mrw-api37 -k 'system-images;android-37.1;google_apis_ps
 emulator -avd mrw-api37 -gpu host
 ```
 
-For the oldest supported versions:
+For the oldest versions the suites run on (they need `evaluate`, so not a WebView older than 83):
 
 - Android API 29, WebView 91: the `android-29` Google APIs image
 - Android WebView 133: the `android-36` Google APIs image

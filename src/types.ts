@@ -13,6 +13,7 @@ import type {
 
 /**
  * What the WebView loads: a URL, or an HTML string.
+ * @see [Local files example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#local-files)
  * @group WebView
  */
 export type WebViewSource =
@@ -247,6 +248,10 @@ export type ProcessGoneEvent = {
    * False while a POST `source` is on screen, which, as in a browser, isn't sent again unasked (`reload()` sends it),
    * and after more than 3 crashes in 60 s, counted for the whole app on Android, until the next
    * {@link WebViewRef.reload | reload()} (on iOS also a `source` change); pull-to-refresh doesn't lift it.
+   *
+   * While false the view is blank. Leave `reload()` to the user, as a retry button: called from `onProcessGone` it
+   * sends the POST again, or starts the crash loop over.
+   * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
    */
   recovered: boolean;
 };
@@ -260,6 +265,7 @@ export type ProcessGoneEvent = {
  *   origins: ['https://example.com'],
  * };
  * ```
+ * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
  * @group Scripts
  */
 export type InjectedScript = {
@@ -311,15 +317,7 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
  * `undefined`. A method's `params` and `result` are left out when it has none. Every key is required: `{}` for a side
  * that handles nothing. The method and event maps are `type`s or written inline, not `interfaces` (an interface has no
  * index signature, so it doesn't satisfy `Record`).
- * @example
- * ```ts
- * type ShopBridge = {
- *   reactNative: { share: { params: { url: string }; result: boolean } };
- *   page: { getCartCount: { result: number } };
- *   events: { themeChanged: 'light' | 'dark' };
- * };
- * const bridge = createBridge<ShopBridge>({ allowedOrigins: ['https://example.com'] });
- * ```
+ * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
 export type BridgeSchema = {
@@ -613,40 +611,39 @@ export type IOSPrivateSettingKeys = {
  * `httpCookieStore`.
  *
  * WebKit has no mixed-content setting: it applies its own policy.
- * @example
- * ```tsx
- * <WebView
- *   source={{ uri: 'https://example.com' }}
- *   ios={{
- *     configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link },
- *     scrollView: { bounces: false, contentInset: { top: 0, left: 0, bottom: 80, right: 0 } },
- *   }}
- * />
- * ```
  * @ios
- * @see [Platform settings example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings)
+ * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
  */
 export type IOSSettings = {
   /**
-   * `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
-   * reloads and the navigation state starts over). It is a copy, so `call` on it changes nothing.
+   * [`WKWebViewConfiguration`](https://developer.apple.com/documentation/webkit/wkwebviewconfiguration): read once,
+   * when the WKWebView is created; a change recreates the WebView (the page reloads and the navigation state starts
+   * over). It is compared by value, so an inline object with the same keys and values is no change. It is a copy, so
+   * `call` on it changes nothing.
    * @default `{ allowsInlineMediaPlayback: true }`
    */
   configuration?: SettingsRoot<
     IOSSettingKeys['configuration'] & IOSPrivateSettingKeys['configuration']
   >;
-  /** `WKPreferences` (`configuration.preferences`), live. */
+  /**
+   * [`WKPreferences`](https://developer.apple.com/documentation/webkit/wkpreferences) (`configuration.preferences`),
+   * live.
+   */
   preferences?: SettingsRoot<IOSSettingKeys['preferences'] & IOSPrivateSettingKeys['preferences']>;
-  /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
+  /**
+   * [`WKWebpagePreferences`](https://developer.apple.com/documentation/webkit/wkwebpagepreferences)
+   * (`configuration.defaultWebpagePreferences`), live from the next navigation.
+   */
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
-   * The `WKWebView`, live.
+   * The [`WKWebView`](https://developer.apple.com/documentation/webkit/wkwebview), live.
    * @default `{ inspectable: __DEV__ }`
+   * @see [Debugging the page](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#debugging-the-page)
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /**
-   * Its `UIScrollView`, live.
+   * Its [`UIScrollView`](https://developer.apple.com/documentation/uikit/uiscrollview), live.
    *
    * `directionalLockEnabled` is on by default, as react-native-webview has it.
    */
@@ -669,23 +666,14 @@ export type IOSSettings = {
  * The ref's {@link WebViewRef.get | get} and {@link WebViewRef.call | call} take these roots, plus `cookieManager` and
  * `webStorage`, the WebView profile's (`webView.profile`, the default one unless set); a key is the getter's name
  * without `get` or `is`.
- * @example
- * ```tsx
- * <WebView
- *   source={{ uri: 'https://example.com' }}
- *   android={{
- *     settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE },
- *     webView: { overScrollMode: 2 },
- *   }}
- * />
- * ```
  * @android
- * @see [Platform settings example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings)
+ * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
  */
 export type AndroidSettings = {
   /**
-   * `WebSettings` setters, then static `WebSettingsCompat` ones.
+   * [`WebSettings`](https://developer.android.com/reference/android/webkit/WebSettings) setters, then static
+   * [`WebSettingsCompat`](https://developer.android.com/reference/androidx/webkit/WebSettingsCompat) ones.
    *
    * Each new WebView starts with `javaScriptEnabled`, `domStorageEnabled`, `supportMultipleWindows` and
    * `builtInZoomControls` on; `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and
@@ -695,8 +683,9 @@ export type AndroidSettings = {
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
   /**
-   * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
-   * `acceptThirdPartyCookies`.
+   * [`WebView`](https://developer.android.com/reference/android/webkit/WebView) setters (static and inherited `View`
+   * ones too), then [`WebViewCompat`](https://developer.android.com/reference/androidx/webkit/WebViewCompat) ones,
+   * then `CookieManager`'s `acceptThirdPartyCookies`.
    *
    * `acceptThirdPartyCookies` is on by default, as react-native-webview has it. `webContentsDebuggingEnabled` is
    * refused: it is process-wide, set with {@link AndroidWebView.setWebContentsDebuggingEnabled}.
@@ -820,6 +809,7 @@ export type CodedError = Error & { code: ErrorCode };
  * while another shows is cancelled), and Android WebView's own dialogs. An auth challenge is cancelled on Android, and
  * gets WebKit's default handling on iOS: without a stored credential, the site's 401 page shows. `dialogs` and
  * `basicAuthCredential` of `@react-native-minimal-webview/extensions` take them over, or a native hook does.
+ * @sortStrategy source-order
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
@@ -856,6 +846,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
    * so, once per process).
+   * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
    */
   injectedScripts?: InjectedScript[];
   /**
@@ -863,26 +854,25 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * and with no match the navigation is blocked.
    *
    * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation they decide is blocked.
-   *
-   * A malformed rule, one with an unknown key, a field of the wrong type (a list that isn't an array of strings, a flag
-   * that isn't a boolean) or no valid `action`, blocks every navigation that reaches it, whatever it was meant to match
-   * or do: native would otherwise skip the key or flag and match more than intended, and so could allow more than a
-   * correct rule would. In development a warning names the rule's index and the problem, once. The rules before it
-   * decide as usual; one that isn't an array is `[]`.
-   *
-   * `about:`, `data:` and `javascript:` always load in place. A `blob:` URL is decided as the origin it carries:
-   * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
-   * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.
+   * A change applies from the next navigation.
    *
    * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
    * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
    * one to a new window loads in place on iOS, and on Android isn't shown (the request may still reach the server).
    *
+   * `about:`, `data:` and `javascript:` always load in place, except as a new window
+   * ({@link NavigationRule.newWindow}). A `blob:` URL is decided as the origin it carries:
+   * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
+   * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.
+   *
+   * A malformed rule, one with an unknown key, a field of the wrong type (a list that isn't an array of strings, a flag
+   * that isn't a boolean) or no valid `action`, blocks every navigation that reaches it, whatever it was meant to match
+   * or do. In development a warning names the rule's index and the problem, once. The rules before it decide as usual;
+   * one that isn't an array is `[]`.
+   *
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
    * when no app handles it, an http(s) `S.browser_fallback_url` goes through the rules (main frame, no user gesture),
    * and the `intent:` itself is reported as `block`.
-   *
-   * A change applies from the next navigation.
    *
    * A native hook can take these decisions, defaults included: see `WebViewContext.clients` (Android) and
    * `navigationDelegates` (iOS).
@@ -961,6 +951,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * WebView on another `android.webView.profile` has that profile's cookies instead.
    * @default `false`
    * @ios
+   * @see [Cookies example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#cookies)
    */
   sharedCookies?: boolean;
   /**
@@ -974,6 +965,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Until the answer settles, the page's next file request waits.
    * @android
+   * @see [File inputs example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#file-inputs)
    */
   onFileRequest?: (
     request: FileRequest,
@@ -985,6 +977,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Fullscreen works without it: the page's view covers the window, the system bars hide and back exits. iOS shows
    * WebKit's own fullscreen, not reported.
    * @android
+   * @see [Fullscreen video example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#fullscreen-video)
    */
   onFullscreenChange?: (event: FullscreenChangeEvent) => void;
   /**
@@ -999,6 +992,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Anything but true denies. `signal` also aborts when Android withdraws the request. Until the answer settles, the
    * page's next request of the same kind waits.
+   * @see [Permissions example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#permissions)
    */
   onPermissionRequest?: (
     request: PermissionRequest,
@@ -1019,6 +1013,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
    * reaches neither this prop nor the external fallback.
+   * @see [Downloads example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#downloads)
    */
   onDownload?: (result: DownloadResult) => void;
   /**
@@ -1041,6 +1036,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * with a WebView older than 146, an SSL error on a back/forward load isn't reported.
    *
    * A renderer crash isn't reported here: it makes the cut-off load's `outcome` `failed` and calls `onProcessGone`.
+   * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
    */
   onError?: (event: LoadErrorEvent) => void;
   /**
@@ -1074,6 +1070,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
  *
  * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
  * effect can come before the view exists), then reject with `unavailable`; in the background they don't wait.
+ * @sortStrategy source-order
  * @group WebView
  */
 export type WebViewRef = {
@@ -1102,6 +1099,7 @@ export type WebViewRef = {
    * its ISO string. The value is the page's, so treat it as page data. Rejects with a {@link CodedError}:
    * `script_error`, `navigated` or `unavailable`. There is no timeout: a page can hold a call until it navigates. On
    * Android with a WebView older than 83 it rejects with `unavailable`.
+   * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
    */
   evaluate(script: string): Promise<unknown>;
   /**
@@ -1112,11 +1110,7 @@ export type WebViewRef = {
    *
    * It reads the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
    * {@link CodedError}: `not_found`, `unavailable` (Android) or `native_error`.
-   * @example
-   * ```ts
-   * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
-   * const textZoom = await ref.current?.get('settings.textZoom'); // Android
-   * ```
+   * @see [Reading and calling example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#reading-and-calling)
    */
   get(key: string): Promise<unknown>;
   /**
@@ -1157,11 +1151,8 @@ export type WebViewRef = {
    * @returns The result: primitives, strings, and collections of them; on iOS also the structs as objects, an `NSURL`
    * as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage` as a base64 PNG and an `NSHTTPCookie` as its
    * properties (`Expires` in seconds). Any other object is `null`.
-   * @example
-   * ```ts
-   * await ref.current?.call('webView.clearCache', [true]); // Android
-   * await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true]); // iOS
-   * ```
+   * @see [Call a method](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/#4-call-a-method)
+   * @see [Reading and calling example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#reading-and-calling)
    */
   call(method: string, args?: unknown[]): Promise<unknown>;
   /**

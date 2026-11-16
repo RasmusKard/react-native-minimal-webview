@@ -23,13 +23,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
  * WebViews and chains its own clients to it, with no protocol to implement.
  *
- * The [native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
- * walks through one.
- *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
  * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
  * [WebViewContext.scrollListeners]), the bridge's web message listener and document-start scripts, and the download
  * listener ([WebViewContext.onDownloadStart]).
+ * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  */
 object MinimalWebViewHooks {
   internal class Hook(
@@ -166,8 +164,8 @@ internal class Deciders(private val warn: (String) -> Unit) {
  * turns on.
  *
  * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing and
- * holds nothing of the WebView: its lists are emptied and reach no WebView, its handlers are dropped once the
- * [onDestroyed] ones ran, its [url] is empty and its [emit] reaches nothing.
+ * holds nothing of the WebView.
+ * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  */
 interface WebViewContext {
   /**
@@ -189,8 +187,9 @@ interface WebViewContext {
    * The hook clients, in order; add yours in `attach`. While the hook is off, none of them gets a callback.
    *
    * Each callback reaches the clients by one of these rules:
-   * - A callback that returns a decision goes to the first client that overrides it, instead of the core and the
-   *   app's props.
+   * - A callback that decides something, by its return value or through the handler, request or callback it gets
+   *   (`onReceivedSslError`, `onReceivedHttpAuthRequest`, `onReceivedClientCertRequest`), goes to the first client
+   *   that overrides it, instead of the core and the app's props.
    * - Every other callback reaches the core first, then each client that overrides it.
    *
    * Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation
@@ -250,8 +249,7 @@ interface WebViewContext {
    * Runs [handler] at once with this hook's extension's `options`, then with the new ones each time they change, live
    * on the same WebView; null while the hook is off.
    *
-   * The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
-   * value to another doesn't run it, and a context kept after its attach ended never does.
+   * A change from one off value to another doesn't run it, and a context kept after its attach ended never does.
    */
   fun onOptions(handler: (options: Any?) -> Unit)
 
