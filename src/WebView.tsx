@@ -393,7 +393,14 @@ const ACTIONS: unknown[] = Object.keys({
 } satisfies Record<NavigationRule['action'], 0>);
 
 /** A value as a warning shows it. */
-const shown = (value: unknown) => JSON.stringify(value) ?? String(value);
+const shown = (value: unknown) => {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    // A BigInt, a circular value or a throwing toJSON: the message runs in production too, so it must not throw.
+    return typeof value === 'bigint' ? String(value) : Object.prototype.toString.call(value);
+  }
+};
 
 /** What a field of each kind takes, as a warning says it, and the check. */
 const FIELD_KINDS = {
