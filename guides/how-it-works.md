@@ -1,7 +1,3 @@
----
-title: How it works
----
-
 # How it works
 
 What runs where, and the terms the rest of the docs use: the core, frames, origins, rules and the bridge.

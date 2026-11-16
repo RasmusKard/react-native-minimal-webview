@@ -1,7 +1,3 @@
----
-title: Troubleshooting
----
-
 # Troubleshooting
 
 Symptoms, their usual causes in this package, and the reference entry that has the full rule.

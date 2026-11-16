@@ -1,7 +1,3 @@
----
-title: Native hooks
----
-
 # Native hooks
 
 A native hook is Swift or Kotlin in your own Expo module that gets the real `WKWebView` or `WebView` behind a
@@ -74,6 +70,7 @@ public class PageCounterModule: Module {
   public func definition() -> ModuleDefinition {
     Name("PageCounter")
     OnCreate {
+      // The first argument is the WKWebView, which this hook doesn't use
       MinimalWebViewHooks.register("myApp.pageCounter") { _, context in
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
@@ -116,6 +113,7 @@ class PageCounterModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("PageCounter")
     OnCreate {
+      // The first argument is the WebView, which this hook doesn't use
       MinimalWebViewHooks.register("myApp.pageCounter") { _, context ->
         val counter = PageCounter(context)
         context.clients += counter

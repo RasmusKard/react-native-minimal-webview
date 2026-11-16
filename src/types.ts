@@ -854,26 +854,25 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * and with no match the navigation is blocked.
    *
    * Unset, the rules are {@link defaultNavigationRules}; `[]` is no rules, so every navigation they decide is blocked.
+   * A change applies from the next navigation.
    *
-   * A malformed rule, one with an unknown key, a field of the wrong type (a list that isn't an array of strings, a flag
-   * that isn't a boolean) or no valid `action`, blocks every navigation that reaches it, whatever it was meant to match
-   * or do. In development a warning names the rule's index and the problem, once. The rules before it decide as usual;
-   * one that isn't an array is `[]`.
+   * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
+   * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
+   * one to a new window loads in place on iOS, and on Android isn't shown (the request may still reach the server).
    *
    * `about:`, `data:` and `javascript:` always load in place, except as a new window
    * ({@link NavigationRule.newWindow}). A `blob:` URL is decided as the origin it carries:
    * `blob:https://example.com/…` as `https://example.com/`, and one with an opaque origin (`blob:null/…`, made by a
    * `data:` or sandboxed frame, or a page from an html `source` without `baseUrl`) is blocked, a download of it too.
    *
-   * The `source` load, reloads and back/forward skip the rules; a redirect of the `source` load doesn't, nor on Android
-   * a redirect of a reload or back/forward. The rules never see a form POST, on either platform: it loads in place, and
-   * one to a new window loads in place on iOS, and on Android isn't shown (the request may still reach the server).
+   * A malformed rule, one with an unknown key, a field of the wrong type (a list that isn't an array of strings, a flag
+   * that isn't a boolean) or no valid `action`, blocks every navigation that reaches it, whatever it was meant to match
+   * or do. In development a warning names the rule's index and the problem, once. The rules before it decide as usual;
+   * one that isn't an array is `[]`.
    *
    * An `external` `intent:` URL (Android) opens only as a browsable intent, without its explicit component or selector;
    * when no app handles it, an http(s) `S.browser_fallback_url` goes through the rules (main frame, no user gesture),
    * and the `intent:` itself is reported as `block`.
-   *
-   * A change applies from the next navigation.
    *
    * A native hook can take these decisions, defaults included: see `WebViewContext.clients` (Android) and
    * `navigationDelegates` (iOS).

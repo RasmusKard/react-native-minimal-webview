@@ -1,7 +1,3 @@
----
-title: Use a platform API
----
-
 # Use a platform API
 
 How to get from a property or method in Apple's or Android's documentation to the key, value or `call` string this
@@ -33,12 +29,13 @@ which one.
 
 On iOS the key is the property's name. On Android it is the setter's name without `set`.
 
-| The platform's documentation                     | The prop                                                 |
-| ------------------------------------------------ | -------------------------------------------------------- |
-| `WKWebView`, `allowsLinkPreview`                 | `ios={{ webView: { allowsLinkPreview: false } }}`        |
-| `UIScrollView`, `bounces`                        | `ios={{ scrollView: { bounces: false } }}`               |
-| `WebSettings`, `setBuiltInZoomControls(boolean)` | `android={{ settings: { builtInZoomControls: false } }}` |
-| `WebSettings`, `setTextZoom(int)`                | `android={{ settings: { textZoom: 130 } }}`              |
+| The platform's documentation                     | The prop                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| `WKWebView`, `allowsLinkPreview`                 | `ios={{ webView: { allowsLinkPreview: false } }}`          |
+| `UIScrollView`, `bounces`                        | `ios={{ scrollView: { bounces: false } }}`                 |
+| `UIScrollView`, `contentOffset`, a `CGPoint`     | `ios={{ scrollView: { contentOffset: { x: 0, y: 80 } } }}` |
+| `WebSettings`, `setBuiltInZoomControls(boolean)` | `android={{ settings: { builtInZoomControls: false } }}`   |
+| `WebSettings`, `setTextZoom(int)`                | `android={{ settings: { textZoom: 130 } }}`                |
 
 The keys the SDKs list autocomplete, so a misspelled one doesn't compile. A key they lack, such as one a newer SDK
 added, goes under the root's `other`.

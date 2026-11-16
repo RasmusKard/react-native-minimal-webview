@@ -1,7 +1,3 @@
----
-title: Android System WebView versions
----
-
 # Android System WebView versions
 
 Some features need a newer Android System WebView than the [minimum Android version](../README.md#requirements)

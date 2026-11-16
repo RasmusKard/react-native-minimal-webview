@@ -1,7 +1,3 @@
----
-title: Examples
----
-
 # Examples
 
 Examples of the main interfaces. What each prop, method and type does is in its TSDoc, generated into the

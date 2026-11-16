@@ -1,7 +1,3 @@
----
-title: Migrating from react-native-webview
----
-
 # Migrating from react-native-webview
 
 Each react-native-webview prop's counterpart here, and the defaults and behavior that differ. The
