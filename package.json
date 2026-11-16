@@ -48,7 +48,7 @@
   "bugs": {
     "url": "https://github.com/RasmusKard/react-native-minimal-webview/issues"
   },
-  "author": "Rasmus Kard <rasmus.kard@delfi.ee> (https://github.com/RasmusKard)",
+  "author": "Rasmus Kard <rasmuskard@gmail.com> (https://github.com/RasmusKard)",
   "license": "MIT",
   "homepage": "https://github.com/RasmusKard/react-native-minimal-webview#readme",
   "devDependencies": {
