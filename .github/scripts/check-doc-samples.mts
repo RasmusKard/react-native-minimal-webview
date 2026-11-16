@@ -2,6 +2,8 @@
 // package, and reports each error at its line in the Markdown. Each sample is a module of its own in build/doc-samples/.
 // A relative import is the page's sample that exports what it imports. doc-samples.d.ts declares the modules the
 // samples import that aren't installed here.
+// Then checks that the reference leads to each example: a section of guides/examples.md with a sample is the target of
+// an `@see` in a doc comment of src/ or extensions/, and each such `@see` names a section that exists.
 // Run: node .github/scripts/check-doc-samples.mts (npm run check runs it).
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
@@ -72,3 +74,40 @@ for (const d of diagnostics) {
 }
 if (diagnostics.length) process.exit(1);
 console.log(`${samples.length} samples type-check`);
+
+const examples = readFileSync(join(root, 'guides/examples.md'), 'utf8');
+// the id GitHub and the docs site give a heading
+const anchor = (title: string) =>
+  title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+const sections = [...examples.matchAll(/^#{2,3} (.+)\n((?:(?!#{1,3} ).*\n)*)/gm)].map(
+  ([, title, body]) => ({ anchor: anchor(title), sample: /^```/m.test(body) })
+);
+const comments = ['src', 'extensions']
+  .flatMap((dir) =>
+    readdirSync(join(root, dir), { recursive: true, encoding: 'utf8' })
+      .filter((name) => /\.tsx?$/.test(name) && !/(^|\/)(node_modules|build)\//.test(name))
+      .map((name) => readFileSync(join(root, dir, name), 'utf8'))
+  )
+  .join('\n');
+const linked = new Set(
+  [...comments.matchAll(/@see \[[^\]]*\]\([^)]*\/guides\/examples\/#([\w-]+)\)/g)].map(
+    (match) => match[1]
+  )
+);
+const unlinked = [
+  ...sections
+    .filter((section) => section.sample && !linked.has(section.anchor))
+    .map((section) => `guides/examples.md#${section.anchor}: no doc comment links it with @see`),
+  ...[...linked]
+    .filter((id) => !sections.some((section) => section.anchor === id))
+    .map((id) => `@see guides/examples/#${id}: guides/examples.md has no such section`),
+];
+for (const problem of unlinked) console.error(problem);
+if (unlinked.length) process.exit(1);
+console.log(
+  `${sections.filter((section) => section.sample).length} examples are linked from the reference`
+);
