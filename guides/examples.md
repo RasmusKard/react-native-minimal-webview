@@ -177,69 +177,24 @@ A page on an allowed origin has the same four methods on `window.nativeBridge`, 
 ```js
 // A module script, for the top-level await
 const cart = [];
-window.nativeBridge.handle('getCartCount', () => cart.length);
-window.nativeBridge.on('themeChanged', (theme) => {
+// ?. because a browser, or an origin the bridge doesn't allow, has no window.nativeBridge
+window.nativeBridge?.handle('getCartCount', () => cart.length);
+window.nativeBridge?.on('themeChanged', (theme) => {
   document.documentElement.dataset.theme = theme;
 });
 
-const shared = await window.nativeBridge.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
+const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
 ```
-
-Opened in a browser, or from an origin the bridge doesn't allow, the page has no `window.nativeBridge`: the TypeScript
-sample below guards for it.
 
 An event reaches one page and is never repeated for a later one. A page that needs the current value, such as the theme,
 asks for it with a `call` as it loads, and listens for the changes.
 
 A TypeScript page types `window.nativeBridge` with
-[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/),
-a type-only import: the page's project needs the package as a dev dependency, and must share or copy the schema type.
-
-```ts
-// A module script, for the top-level await
-import type { PageBridge } from 'react-native-minimal-webview';
-
-type ShopBridge = {
-  reactNative: { share: { params: { url: string }; result: boolean } };
-  page: { getCartCount: { result: number } };
-  events: { themeChanged: 'light' | 'dark' };
-};
-
-declare global {
-  interface Window {
-    nativeBridge?: PageBridge<ShopBridge>; // only in the app, on an allowed origin
-  }
-}
-
-const cart: string[] = [];
-window.nativeBridge?.handle('getCartCount', () => cart.length);
-const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 });
-```
+[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/).
 
 ## Platform settings
 
-Any setting by its platform name, and any public method through `call`. [Use a platform API](platform-apis.md) shows
-how to find a key or a `call` string in Apple's and Android's documentation.
-
-```tsx
-import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-webview';
-
-<WebView
-  source={{ uri: 'https://example.com' }}
-  style={{ flex: 1 }}
-  ios={{
-    configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: a new value recreates the WebView
-    preferences: { minimumFontSize: 12 }, // WKPreferences
-    webpagePreferences: { allowsContentJavaScript: false }, // WKWebpagePreferences
-    webView: { allowsBackForwardNavigationGestures: true }, // WKWebView
-    scrollView: { bounces: false }, // its UIScrollView
-  }}
-  android={{
-    settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }, // WebSettings
-    webView: { overScrollMode: 2, verticalScrollBarEnabled: false }, // WebView
-  }}
-/>;
-```
+[Use a platform API](platform-apis.md) shows how to write any setting by its platform name.
 
 ### Reading and calling
 
@@ -455,20 +410,3 @@ Inspect the page's DOM, console and network from a desktop browser.
 - Android: Chrome's `chrome://inspect` lists it in a debug build, and
   [`AndroidWebView.setWebContentsDebuggingEnabled`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/)
   turns it on in any build.
-
-```tsx
-import { AndroidWebView, WebView } from 'react-native-minimal-webview';
-
-// An internal release build that testers debug
-AndroidWebView.setWebContentsDebuggingEnabled(true); // every WebView in the app
-
-<WebView
-  source={{ uri: 'https://example.com' }}
-  style={{ flex: 1 }}
-  ios={{ webView: { inspectable: true } }}
-/>;
-```
-
-## Native hooks
-
-The [native hooks guide](native-hooks.md) builds one, from module to the `extensions` prop.

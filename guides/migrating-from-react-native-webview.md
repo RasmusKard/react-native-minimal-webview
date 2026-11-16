@@ -8,12 +8,9 @@ Each react-native-webview prop's counterpart here, and the defaults and behavior
 [requirements](../README.md#requirements) are in the README.
 
 Most props are platform settings by the same name: `bounces` is `ios={{ scrollView: { bounces: false } }}`, and
-`textZoom` is `android={{ settings: { textZoom: 120 } }}`. Android keys are setter names without `set`, so
-`setBuiltInZoomControls` is `android.settings.builtInZoomControls`.
-
-The keys autocomplete, and an enum string becomes a constant: `cacheMode: 'LOAD_NO_CACHE'` is
-`AndroidConstants.WebSettings.LOAD_NO_CACHE` ([platform settings](examples.md#platform-settings)). For a prop no table
-here lists, [use a platform API](platform-apis.md) finds its key.
+`textZoom` is `android={{ settings: { textZoom: 120 } }}`. An enum string becomes a constant: `cacheMode: 'LOAD_NO_CACHE'`
+is `AndroidConstants.WebSettings.LOAD_NO_CACHE`. For a prop no table here lists, [use a platform API](platform-apis.md)
+finds its key.
 
 ## Defaults that differ
 
@@ -68,7 +65,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | Renderer crash                                                        | Reported                                                                               | The core reloads ([`onProcessGone`][onprocessgone])                                                                  | Remove your `reload()`, and offer a retry while [`recovered`][recovered] is false |
 | Messaging                                                             | Every page; on Android every frame                                                     | `allowedOrigins`, main frame                                                                                         | An iframe's: a native hook                                                        |
 | Injected script                                                       | Document end, every origin                                                             | Document start, its `origins`                                                                                        | `addEventListener('DOMContentLoaded', …)`; `origins: ['*']`                       |
-| Failed load                                                           | An error view over the page                                                            | iOS keeps the old page, Android shows its own                                                                        | The [error screen](#loading-and-error-screens)                                    |
+| Failed load                                                           | An error view over the page                                                            | iOS keeps the old page, Android shows its own                                                                        | The [error screen](examples.md#loading-and-error-screens)                         |
 | Android file input                                                    | Offers the camera when the app has its permission                                      | The system chooser, which ignores `capture`                                                                          | [`onFileRequest`][onfilerequest]                                                  |
 | Android camera and microphone, and location with `geolocationEnabled` | Granted to every page, after asking the OS                                             | Denied                                                                                                               | [`onPermissionRequest`][onpermissionrequest]                                      |
 | A link to another scheme (`tel:`, `myapp:`)                           | Opens externally                                                                       | Opens externally only from the main frame, after a user gesture ([`defaultNavigationRules`][defaultnavigationrules]) | An `external` rule for the scheme                                                 |
@@ -88,7 +85,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `onLoadProgress`                                                                               | `progress` in `useWebViewState`                                                 |
 | `onError`, `onHttpError`                                                                       | `onError`, whose `kind` is `'network'`, `'ssl'` or `'http'`                     |
 | `onContentProcessDidTerminate`, `onRenderProcessGone`                                          | `onProcessGone`, whose `cause` is `'crash'`, `'memory'` or, on iOS, `'unknown'` |
-| `renderLoading`, `renderError`, `startInLoadingState`                                          | Your own views ([below](#loading-and-error-screens))                            |
+| `renderLoading`, `renderError`, `startInLoadingState`                                          | [Your own views](examples.md#loading-and-error-screens), shown on every load    |
 | `onContentSizeChange`                                                                          | An injected script, as for the [scroll position](#scroll-position)              |
 | `source={require('./page.html')}`                                                              | A `file://` URI from expo-asset ([local files](examples.md#local-files))        |
 | `allowingReadAccessToURL`                                                                      | `source.readAccessRoot`                                                         |
@@ -100,8 +97,7 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | `nativeConfig`                                                                                 | A [native hook](native-hooks.md)                                                |
 | `containerStyle`                                                                               | A `View` around the WebView                                                     |
 
-On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` do nothing under the new architecture.
-WebKit's data store clears with `call` ([reading and calling](examples.md#reading-and-calling)).
+On iOS, WebKit's data store clears with `call` ([reading and calling](examples.md#reading-and-calling)).
 
 ### Props that became extensions
 
@@ -203,20 +199,17 @@ export function Browser() {
 Your rules replace the defaults, [`defaultNavigationRules`][defaultnavigationrules]: spread it after yours to keep them.
 A navigation no rule matches is blocked, where react-native-webview opened a URL outside `originWhitelist` externally.
 
-A rule decides natively, so a busy JS thread doesn't hold a navigation up. react-native-webview's Android blocks the UI
-thread while it waits for the callback, and lets the navigation through when the callback is late. Its iOS waits
-for the answer.
+A rule decides natively, so a busy JS thread doesn't hold a navigation up. A late `onNavigationRequest` answer blocks
+the navigation, where react-native-webview's Android let it through.
 
 The [request](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRequest/) has `mainFrame` in
 place of `isTopFrame`, and `userInitiated` in place of `navigationType: 'click'`. It has no `mainDocumentURL`. A new
-window (`onOpenWindow`) is a request with `newWindow: true`, and an allowed one loads in place, as with
-`setSupportMultipleWindows={false}`.
+window (`onOpenWindow`) is a request with `newWindow: true`.
 
 react-native-webview's iOS also asks about the `source` load, reloads, back/forward and form POSTs. The rules skip them
 ([`navigationRules`][navigationrules]).
 
 After the rules block a server redirect, the state is the page before it, with [`outcome`][outcome] `cancelled`.
-react-native-webview reports the redirecting URL as still loading (iOS), or the blocked URL as loaded (Android).
 
 ## injectJavaScript
 
@@ -271,23 +264,15 @@ export function Shop({ token }: { token: string }) {
 }
 ```
 
-## Loading and error screens
-
-Draw the loading and error views yourself, over the WebView, as in the
-[loading and error screens example](examples.md#loading-and-error-screens). It shows the spinner during every load;
-react-native-webview shows `renderLoading` for the first load and after `reload()` only.
-
 ## Scroll position
 
 An injected script can report the main frame's scroll position over the bridge, at most once per frame. For the offsets
 during a bounce or a pinch too, use the [`onScroll`][onscroll] extension.
 
-```tsx
-import { useEffect, useMemo, useState } from 'react';
-import { Text } from 'react-native';
-import { WebView, createBridge, type InjectedScript } from 'react-native-minimal-webview';
+```ts
+import type { InjectedScript } from 'react-native-minimal-webview';
 
-const scrollScript: InjectedScript = {
+export const scrollScript: InjectedScript = {
   code: `{ // a block: an origins ['*'] script shares the page's global scope
   let queued = false;
   addEventListener('scroll', () => {
@@ -298,29 +283,9 @@ const scrollScript: InjectedScript = {
 }`,
   origins: ['*'], // nativeBridge exists only on the bridge's allowedOrigins
 };
-
-export function Browser() {
-  const bridge = useMemo(() => createBridge({ allowedOrigins: ['https://example.com'] }), []);
-  const [scroll, setScroll] = useState({ x: 0, y: 0 });
-
-  useEffect(
-    () => bridge.on('scroll', (position) => setScroll(position as { x: number; y: number })),
-    [bridge]
-  );
-
-  return (
-    <>
-      <Text>{scroll.y}</Text>
-      <WebView
-        source={{ uri: 'https://example.com' }}
-        bridge={bridge}
-        injectedScripts={[scrollScript]}
-        style={{ flex: 1 }}
-      />
-    </>
-  );
-}
 ```
+
+Pass it in `injectedScripts` and listen with `bridge.on('scroll', …)`, as in the [bridge example](examples.md#the-bridge).
 
 [defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/defaultNavigationRules/
 [onfullscreenchange]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onfullscreenchange

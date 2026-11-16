@@ -11,12 +11,12 @@ A native hook is Swift or Kotlin in your own Expo module that gets the real `WKW
 
 Reach for a hook when the props and the ref can't do the job:
 
-| To                                                                   | Use                                                            |
-| -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Change a setting                                                     | The [`ios` and `android` props](examples.md#platform-settings) |
-| Read a property or call a method once                                | The ref's [`get` and `call`](examples.md#reading-and-calling)  |
-| Bring back a react-native-webview prop                               | An [extension][extensions], a hook someone already wrote       |
-| Handle WebView callbacks, keep native state, or subclass the WebView | A native hook                                                  |
+| To                                                                   | Use                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Change a setting                                                     | The [`ios` and `android` props](platform-apis.md#2-write-a-setting) |
+| Read a property or call a method once                                | The ref's [`get` and `call`](examples.md#reading-and-calling)       |
+| Bring back a react-native-webview prop                               | An [extension][extensions], a hook someone already wrote            |
+| Handle WebView callbacks, keep native state, or subclass the WebView | A native hook                                                       |
 
 A hook can implement any delegate or client callback. It runs natively, with no JS round trip.
 

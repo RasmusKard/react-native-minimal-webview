@@ -166,8 +166,7 @@ internal class Deciders(private val warn: (String) -> Unit) {
  * turns on.
  *
  * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing and
- * holds nothing of the WebView: its lists are emptied and reach no WebView, its handlers are dropped once the
- * [onDestroyed] ones ran, its [url] is empty and its [emit] reaches nothing.
+ * holds nothing of the WebView.
  */
 interface WebViewContext {
   /**
@@ -251,8 +250,7 @@ interface WebViewContext {
    * Runs [handler] at once with this hook's extension's `options`, then with the new ones each time they change, live
    * on the same WebView; null while the hook is off.
    *
-   * The hook turns off when the extension is removed, or its `options` become null or false. A change from one off
-   * value to another doesn't run it, and a context kept after its attach ended never does.
+   * A change from one off value to another doesn't run it, and a context kept after its attach ended never does.
    */
   fun onOptions(handler: (options: Any?) -> Unit)
 

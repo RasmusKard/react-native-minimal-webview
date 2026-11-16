@@ -98,12 +98,12 @@ npx pod-install
 
 ### Requirements
 
-| Platform     | Minimum                                                                        |
-| ------------ | ------------------------------------------------------------------------------ |
-| iOS          | 17.0: `ios.deploymentTarget: '17.0'`, for example with `expo-build-properties` |
-| Android      | API 29: `android.minSdkVersion: 29`, for example with `expo-build-properties`  |
-| Expo SDK     | 53 (React Native 0.79, React 19)                                               |
-| Architecture | [New architecture](https://reactnative.dev/architecture/landing-page) only     |
+| Platform     | Minimum                                                                    |
+| ------------ | -------------------------------------------------------------------------- |
+| iOS          | 17.0                                                                       |
+| Android      | API 29                                                                     |
+| Expo SDK     | 53 (React Native 0.79, React 19)                                           |
+| Architecture | [New architecture](https://reactnative.dev/architecture/landing-page) only |
 
 An Expo app sets the two minimums in `app.json`:
 
@@ -140,8 +140,7 @@ Then pick what you need:
 | Show a spinner and your own error screen                                          | [Loading and error screens](guides/examples.md#loading-and-error-screens)                                                    |
 | Keep the WebView on your sites, open the rest externally                          | [Navigation rules](guides/examples.md#navigation-rules)                                                                      |
 | Call the page from the app, and the app from the page                             | [The bridge](guides/examples.md#the-bridge)                                                                                  |
-| Change a WebView setting                                                          | [Platform settings](guides/examples.md#platform-settings)                                                                    |
-| Find the key or `call` string for a platform API                                  | [Use a platform API](guides/platform-apis.md)                                                                                |
+| Change a WebView setting, or call a platform method                               | [Use a platform API](guides/platform-apis.md)                                                                                |
 | Share cookies with native requests                                                | [Cookies](guides/examples.md#cookies)                                                                                        |
 | Run a script on every page                                                        | [Scripts](guides/examples.md#scripts)                                                                                        |
 | Load bundled HTML                                                                 | [Local files](guides/examples.md#local-files)                                                                                |

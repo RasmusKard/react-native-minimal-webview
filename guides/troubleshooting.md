@@ -13,16 +13,7 @@ with `[react-native-minimal-webview]`, so they show wherever your app's JS logs 
 device log only, on Android under the logcat tag `MinimalWebView`.
 
 For a navigation, [`onNavigation`][onnavigation] reports each decision and the index of the rule that made it:
-
-```tsx
-import { WebView } from 'react-native-minimal-webview';
-
-<WebView
-  source={{ uri: 'https://example.com' }}
-  style={{ flex: 1 }}
-  onNavigation={({ url, action, rule }) => console.log(action, url, rule)}
-/>;
-```
+`onNavigation={({ url, action, rule }) => console.log(action, url, rule)}`.
 
 ## `window.nativeBridge` is undefined
 
@@ -89,16 +80,6 @@ import { WebView } from 'react-native-minimal-webview';
   should see on `window`.
 - Android System WebView is older than 101.
 
-## A ref method rejects
-
-The error's `code` says why, the same way for every method: [`ErrorCode`][errorcode]. `unavailable` right after mount
-means the WebView wasn't there yet, and `navigated` means the page went away before the answer.
-
-## A feature is missing on one Android device
-
-Android System WebView updates apart from Android, and some features need a newer one:
-[Android System WebView versions](android-system-webview.md).
-
 [onnavigation]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onnavigation
 [allowedorigins]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeOptions/#allowedorigins
 [bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
@@ -110,4 +91,3 @@ Android System WebView updates apart from Android, and some features need a newe
 [debugging]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/
 [onprocessgone]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onprocessgone
 [injectedscript]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/InjectedScript/
-[errorcode]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/ErrorCode/

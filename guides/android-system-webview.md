@@ -34,14 +34,11 @@ The version is the Chrome version in the WebView's user agent: read
 
 On a connected device, `adb shell dumpsys webviewupdate` names the WebView package in use and its version.
 
-Users update Android System WebView in the Play Store.
-
 ## Test the oldest versions
 
 Test on an emulator with a Google APIs system image, not a Play Store one: it keeps the WebView it shipped with, while
 the Play Store updates WebView in the background and moves its version under your tests. The images of older API
-levels ship older WebViews: run the app there to see the features above off. For API 29 the Google APIs image has
-WebView 91, and the `default` one has 74. [CONTRIBUTING][contributing] lists the
+levels ship older WebViews: run the app there to see the features above off. The API 29 `default` image has WebView 74. [CONTRIBUTING][contributing] lists the
 images its suites run on and how to create the emulators.
 
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
