@@ -21,13 +21,13 @@ jobs:
   detekt:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - run: brew install detekt
       - run: detekt --input android/src/main,extensions --config .config/detekt.yml
 
   swiftlint:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - run: brew install swiftlint
       - run: swiftlint lint --config .config/swiftlint.yml
