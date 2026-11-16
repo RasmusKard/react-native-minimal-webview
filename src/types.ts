@@ -247,6 +247,10 @@ export type ProcessGoneEvent = {
    * False while a POST `source` is on screen, which, as in a browser, isn't sent again unasked (`reload()` sends it),
    * and after more than 3 crashes in 60 s, counted for the whole app on Android, until the next
    * {@link WebViewRef.reload | reload()} (on iOS also a `source` change); pull-to-refresh doesn't lift it.
+   *
+   * While false the view is blank. Leave `reload()` to the user, as a retry button: called from `onProcessGone` it
+   * sends the POST again, or starts the crash loop over.
+   * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
    */
   recovered: boolean;
 };

@@ -59,33 +59,30 @@ function onInboxNotification() {
 
 ## Loading and error screens
 
-Draw a spinner and your own error screen over the WebView, from the navigation state and `onError`.
+Draw a spinner and your own error screen over the WebView, from the navigation state, `onError` and `onProcessGone`.
 
 ```tsx
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
-import {
-  WebView,
-  useWebViewState,
-  type LoadErrorEvent,
-  type WebViewRef,
-} from 'react-native-minimal-webview';
+import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-webview';
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
   const loading = useWebViewState(ref, (state) => state.loading);
-  const [error, setError] = useState<LoadErrorEvent | null>(null);
+  const [failed, setFailed] = useState(false);
 
   return (
     <View style={{ flex: 1 }}>
       <WebView
         ref={ref}
         source={{ uri: 'https://example.com' }}
-        onError={(e) => e.kind !== 'http' && setError(e)} // on 'http' the site's own error page shows
-        onLoadStart={() => setError(null)}
+        onError={(e) => e.kind !== 'http' && setFailed(true)} // on 'http' the site's own error page shows
+        // The core reloads after a crash, unless the page keeps crashing: then the retry is the user's
+        onProcessGone={(e) => !e.recovered && setFailed(true)}
+        onLoadStart={() => setFailed(false)}
         style={{ flex: 1 }}
       />
-      {error ? (
+      {failed ? (
         <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
           <Text>Could not load the page</Text>
           <Button title="Retry" onPress={() => ref.current?.reload()} />
