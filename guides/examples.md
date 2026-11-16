@@ -57,6 +57,47 @@ function onInboxNotification() {
 <WebView ref={webView} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />;
 ```
 
+## Loading and error screens
+
+Draw a spinner and your own error screen over the WebView, from the navigation state and `onError`.
+
+```tsx
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import {
+  WebView,
+  useWebViewState,
+  type LoadErrorEvent,
+  type WebViewRef,
+} from 'react-native-minimal-webview';
+
+export function Browser() {
+  const ref = useRef<WebViewRef>(null);
+  const loading = useWebViewState(ref, (state) => state.loading);
+  const [error, setError] = useState<LoadErrorEvent | null>(null);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <WebView
+        ref={ref}
+        source={{ uri: 'https://example.com' }}
+        onError={(e) => e.kind !== 'http' && setError(e)} // on 'http' the site's own error page shows
+        onLoadStart={() => setError(null)}
+        style={{ flex: 1 }}
+      />
+      {error ? (
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+          <Text>Could not load the page</Text>
+          <Button title="Retry" onPress={() => ref.current?.reload()} />
+        </View>
+      ) : loading ? (
+        <ActivityIndicator style={StyleSheet.absoluteFill} />
+      ) : null}
+    </View>
+  );
+}
+```
+
 ## Navigation rules
 
 Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs,
@@ -137,7 +178,7 @@ A page on an allowed origin has the same four methods on `window.nativeBridge`, 
 [`Bridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/Bridge/) describes.
 
 ```js
-// A module script
+// A module script, for the top-level await
 const cart = [];
 window.nativeBridge.handle('getCartCount', () => cart.length);
 window.nativeBridge.on('themeChanged', (theme) => {
@@ -147,12 +188,18 @@ window.nativeBridge.on('themeChanged', (theme) => {
 const shared = await window.nativeBridge.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
 ```
 
+Opened in a browser, or from an origin the bridge doesn't allow, the page has no `window.nativeBridge`: the TypeScript
+sample below guards for it.
+
+An event reaches only the page that is open when it is sent. A page that needs the current value, such as the theme,
+asks for it with a `call` as it loads, and listens for the changes.
+
 A TypeScript page types `window.nativeBridge` with
 [`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/),
 a type-only import: the page's project needs the package as a dev dependency, and must share or copy the schema type.
 
 ```ts
-// A module script
+// A module script, for the top-level await
 import type { PageBridge } from 'react-native-minimal-webview';
 
 type ShopBridge = {
@@ -252,7 +299,8 @@ set.
 
 ## Scripts
 
-Run a script in every page before the page's own, or evaluate one in the page that is open.
+Run a script in every page before the page's own scripts and before its DOM exists, or evaluate one in the page that
+is open.
 
 ```tsx
 import { WebView, createWebViewRef } from 'react-native-minimal-webview';
@@ -396,6 +444,30 @@ import { WebView } from 'react-native-minimal-webview';
   onDownload={(result) =>
     result.ok ? new File(result.uri).preview() : console.warn('download failed', result.kind)
   }
+/>;
+```
+
+## Debugging the page
+
+Inspect the page's DOM, console and network from a desktop browser.
+
+- iOS: Safari's Develop menu lists the page while
+  [`ios.webView.inspectable`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/#webview)
+  is on, as it is in development.
+- Android: Chrome's `chrome://inspect` lists it in a debug build, and
+  [`AndroidWebView.setWebContentsDebuggingEnabled`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/)
+  turns it on in any build.
+
+```tsx
+import { AndroidWebView, WebView } from 'react-native-minimal-webview';
+
+// An internal release build that testers debug
+AndroidWebView.setWebContentsDebuggingEnabled(true); // every WebView in the app
+
+<WebView
+  source={{ uri: 'https://example.com' }}
+  style={{ flex: 1 }}
+  ios={{ webView: { inspectable: true } }}
 />;
 ```
 

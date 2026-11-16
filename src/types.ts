@@ -1042,6 +1042,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * with a WebView older than 146, an SSL error on a back/forward load isn't reported.
    *
    * A renderer crash isn't reported here: it makes the cut-off load's `outcome` `failed` and calls `onProcessGone`.
+   * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
    */
   onError?: (event: LoadErrorEvent) => void;
   /**

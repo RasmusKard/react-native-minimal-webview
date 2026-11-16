@@ -117,6 +117,7 @@ Then pick what you need:
 | To                                                                                | See                                                                                                                          |
 | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Show the URL, progress or a back button                                           | [Navigation state](guides/examples.md#navigation-state)                                                                      |
+| Show a spinner and your own error screen                                          | [Loading and error screens](guides/examples.md#loading-and-error-screens)                                                    |
 | Keep the WebView on your sites, open the rest externally                          | [Navigation rules](guides/examples.md#navigation-rules)                                                                      |
 | Call the page from the app, and the app from the page                             | [The bridge](guides/examples.md#the-bridge)                                                                                  |
 | Change a WebView setting                                                          | [Platform settings](guides/examples.md#platform-settings)                                                                    |
@@ -124,6 +125,7 @@ Then pick what you need:
 | Run a script on every page                                                        | [Scripts](guides/examples.md#scripts)                                                                                        |
 | Load bundled HTML                                                                 | [Local files](guides/examples.md#local-files)                                                                                |
 | Answer file pickers, permissions and downloads                                    | [Page requests](guides/examples.md#page-requests)                                                                            |
+| Inspect the page's DOM and console                                                | [Debugging the page](guides/examples.md#debugging-the-page)                                                                  |
 | Use the native `WKWebView` or `WebView`                                           | [Native hooks](guides/native-hooks.md)                                                                                       |
 | Bring back `basicAuthCredential`, `onScroll` and other react-native-webview props | [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) |
 

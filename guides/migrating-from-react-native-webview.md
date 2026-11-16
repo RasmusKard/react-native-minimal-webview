@@ -273,44 +273,9 @@ export function Shop({ token }: { token: string }) {
 
 ## Loading and error screens
 
-Draw the loading and error views yourself, over the WebView, from the navigation state and `onError`:
-
-```tsx
-import { useRef, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
-import {
-  WebView,
-  useWebViewState,
-  type LoadErrorEvent,
-  type WebViewRef,
-} from 'react-native-minimal-webview';
-
-export function Browser() {
-  const ref = useRef<WebViewRef>(null);
-  const loading = useWebViewState(ref, (state) => state.loading);
-  const [error, setError] = useState<LoadErrorEvent | null>(null);
-
-  return (
-    <View style={{ flex: 1 }}>
-      <WebView
-        ref={ref}
-        source={{ uri: 'https://example.com' }}
-        onError={(e) => e.kind !== 'http' && setError(e)} // on 'http' the site's own error page shows
-        onLoadStart={() => setError(null)}
-        style={{ flex: 1 }}
-      />
-      {error ? (
-        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-          <Text>Could not load the page</Text>
-          <Button title="Retry" onPress={() => ref.current?.reload()} />
-        </View>
-      ) : loading ? (
-        <ActivityIndicator style={StyleSheet.absoluteFill} />
-      ) : null}
-    </View>
-  );
-}
-```
+Draw the loading and error views yourself, over the WebView, as in the
+[loading and error screens example](examples.md#loading-and-error-screens). It shows the spinner during every load;
+react-native-webview shows `renderLoading` for the first load and after `reload()` only.
 
 ## Scroll position
 
