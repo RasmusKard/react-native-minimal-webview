@@ -4,8 +4,8 @@ title: Migrating from react-native-webview
 
 # Migrating from react-native-webview
 
-This page maps each react-native-webview prop to its counterpart here, and lists the defaults and behavior that
-differ and recipes for what has no prop. The [requirements](../README.md#requirements) are in the README.
+Each react-native-webview prop's counterpart here, and the defaults and behavior that differ. The
+[requirements](../README.md#requirements) are in the README.
 
 Most props are platform settings by the same name: `bounces` is `ios={{ scrollView: { bounces: false } }}`, and
 `textZoom` is `android={{ settings: { textZoom: 120 } }}`. Android keys are setter names without `set`, so
@@ -98,6 +98,8 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 On iOS, react-native-webview's `clearCache`, `clearHistory` and `clearFormData` do nothing under the new architecture.
 WebKit's data store clears with `call` ([reading and calling](examples.md#reading-and-calling)).
 
+### Props that became extensions
+
 These props are functions of
 [@react-native-minimal-webview/extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/), which
 has the setup. You pass each one in the `extensions` prop, and their callbacks get the event without
@@ -120,7 +122,7 @@ react-native-webview's `nativeEvent` around it:
 | `onLoadSubResourceError`                                  | [`onLoadSubResourceError`][onloadsubresourceerror]                       |
 | JS dialogs (no prop)                                      | [`dialogs`][dialogs]                                                     |
 
-The settings with another name:
+### Settings with another name
 
 | react-native-webview               | `ios`                                                    | `android`                                                                |
 | ---------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |

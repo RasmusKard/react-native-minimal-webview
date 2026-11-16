@@ -59,8 +59,8 @@ function onInboxNotification() {
 
 ## Navigation rules
 
-Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. The rules
-don't decide form POSTs, an iframe's to the top frame too:
+Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs,
+an iframe's to the top frame included, skip the rules:
 [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
 says where they load.
 
@@ -198,7 +198,7 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
 
 ### Reading and calling
 
-The ref of a mounted WebView, here from `createWebViewRef` ([Outside React](#outside-react)), has the methods.
+`get` reads a property and `call` calls a method, on a mounted WebView's ref.
 
 ```ts
 import { IOSConstants, createWebViewRef } from 'react-native-minimal-webview';
@@ -275,8 +275,8 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 
 ## Local files
 
-A bundled file loads from its `file://` URI, such as expo-asset's `localUri`.
-[`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) has each
+An HTML string loads with `html`, its relative URLs resolved against `baseUrl`. A bundled file loads from its `file://`
+URI, such as expo-asset's `localUri`. [`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) has each
 platform's file access.
 
 ```tsx
