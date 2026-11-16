@@ -3,6 +3,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    cooldown: { default-days: 3 }
     groups:
       actions: { patterns: ['*'] }
   # React Native minors and majors, Expo majors and React are SDK moves, made by hand; the rest comes grouped, once a
