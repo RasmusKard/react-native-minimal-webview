@@ -48,16 +48,6 @@ import { WebView } from 'react-native-minimal-webview';
 - On iOS a tapped universal link loads in place when a rule allows it. An `external` rule for its host opens the app
   that claims it.
 
-## A popup or a sign-in window doesn't open
-
-- A window the page opens without a user gesture is dropped unless `javaScriptCanOpenWindowsAutomatically` is on
-  (`ios.preferences`, `android.settings`).
-- An allowed new window loads in place, in the same WebView, and has no `window.opener`. A sign-in that reports back to
-  the page that opened it can't finish this way: use the provider's redirect flow, or write a native hook that makes
-  the second WebView.
-
-[`newWindow`][newwindow] has the rules for new windows.
-
 ## The camera, microphone or location is denied
 
 - Android denies every request without [`onPermissionRequest`][onpermissionrequest].
@@ -114,7 +104,6 @@ Android System WebView updates apart from Android, and some features need a newe
 [bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
 [navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules
 [defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/defaultNavigationRules/
-[newwindow]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#newwindow
 [onpermissionrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest
 [ondownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
 [iossettings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/
