@@ -1,0 +1,33 @@
+name: native-lint
+on:
+  pull_request:
+    paths:
+      - android/**
+      - ios/**
+      - extensions/**
+      - .config/detekt.yml
+      - .config/swiftlint.yml
+      - .github/workflows/native-lint.yml
+
+permissions: { contents: read }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The complexity and unused-code rules for Kotlin and Swift, as .github/CONTRIBUTING.md runs them locally.
+  # macOS for both: SwiftLint needs macOS, and Homebrew is on the PATH there.
+  detekt:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install detekt
+      - run: detekt --input android/src/main,extensions --config .config/detekt.yml
+
+  swiftlint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install swiftlint
+      - run: swiftlint lint --config .config/swiftlint.yml
