@@ -4,6 +4,7 @@
   "release-type": "node",
   "draft": true,
   "force-tag-creation": true,
+  "separate-pull-requests": true,
   "packages": {
     ".": {
       "exclude-paths": ["extensions"]
