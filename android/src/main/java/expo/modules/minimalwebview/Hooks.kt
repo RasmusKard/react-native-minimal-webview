@@ -189,8 +189,9 @@ interface WebViewContext {
    * The hook clients, in order; add yours in `attach`. While the hook is off, none of them gets a callback.
    *
    * Each callback reaches the clients by one of these rules:
-   * - A callback that returns a decision goes to the first client that overrides it, instead of the core and the
-   *   app's props.
+   * - A callback that decides something, by its return value or through the handler, request or callback it gets
+   *   (`onReceivedSslError`, `onReceivedHttpAuthRequest`, `onReceivedClientCertRequest`), goes to the first client
+   *   that overrides it, instead of the core and the app's props.
    * - Every other callback reaches the core first, then each client that overrides it.
    *
    * Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation

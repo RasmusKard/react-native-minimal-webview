@@ -219,7 +219,43 @@ serves only the origins you allow.
 
 Pages that use `window.ReactNativeWebView.postMessage` and `message` events keep working with
 [`reactNativeWebViewMessages`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/)
-in `injectedScripts`. Its example shows what replaces `onMessage` and `postMessage`.
+in `injectedScripts`, so the app can move first and the pages later. The bridge event `rnw` carries the messages both
+ways:
+
+```tsx
+import { useEffect, useMemo } from 'react';
+import { WebView, createBridge, reactNativeWebViewMessages } from 'react-native-minimal-webview';
+
+type Messages = { reactNative: {}; page: {}; events: { rnw: string } };
+
+export function Shop({ token }: { token: string }) {
+  const bridge = useMemo(
+    () => createBridge<Messages>({ allowedOrigins: ['https://example.com'] }),
+    []
+  );
+
+  useEffect(
+    () =>
+      // onMessage: the page called window.ReactNativeWebView.postMessage(data)
+      bridge.on('rnw', (data) => {
+        const message = JSON.parse(data) as { type: string };
+        // postMessage: the page gets a message event whose data is this string
+        if (message.type === 'getToken')
+          bridge.emit('rnw', JSON.stringify({ type: 'token', token }));
+      }),
+    [bridge, token]
+  );
+
+  return (
+    <WebView
+      source={{ uri: 'https://example.com' }}
+      bridge={bridge}
+      injectedScripts={[reactNativeWebViewMessages]}
+      style={{ flex: 1 }}
+    />
+  );
+}
+```
 
 ## Loading and error screens
 

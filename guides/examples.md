@@ -183,7 +183,7 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
   source={{ uri: 'https://example.com' }}
   style={{ flex: 1 }}
   ios={{
-    configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: read once, at creation
+    configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }, // WKWebViewConfiguration: a new value recreates the WebView
     preferences: { minimumFontSize: 12 }, // WKPreferences
     webpagePreferences: { allowsContentJavaScript: false }, // WKWebpagePreferences
     webView: { allowsBackForwardNavigationGestures: true }, // WKWebView
@@ -336,19 +336,27 @@ import { WebView } from 'react-native-minimal-webview';
 
 ### Permissions
 
-Give the camera to your own site only, once the OS has granted it.
+Give the camera and the microphone to your own site only, once the OS has granted them.
 
 ```tsx
 import { Camera } from 'expo-camera';
-import { WebView } from 'react-native-minimal-webview';
+import { WebView, type PermissionResource } from 'react-native-minimal-webview';
+
+// Asks the OS for what the page wants; a resource this app doesn't give has no entry
+const askOS: Partial<Record<PermissionResource, () => Promise<{ granted: boolean }>>> = {
+  camera: Camera.requestCameraPermissionsAsync,
+  microphone: Camera.requestMicrophonePermissionsAsync,
+};
 
 <WebView
   source={{ uri: 'https://meet.example.com' }}
   style={{ flex: 1 }}
   onPermissionRequest={async ({ origin, resources }) => {
     if (origin !== 'https://meet.example.com') return false;
-    if (resources.some((resource) => resource !== 'camera')) return false;
-    return (await Camera.requestCameraPermissionsAsync()).granted;
+    for (const resource of resources) {
+      if (!(await askOS[resource]?.())?.granted) return false; // a video call asks for both at once
+    }
+    return true;
   }}
 />;
 ```
@@ -376,7 +384,7 @@ import { WebView } from 'react-native-minimal-webview';
 
 Open a file the page downloads.
 
-`preview()` needs expo-file-system 58 or later.
+`preview()` needs expo-file-system 58 (Expo SDK 58) or later.
 
 ```tsx
 import { File } from 'expo-file-system';

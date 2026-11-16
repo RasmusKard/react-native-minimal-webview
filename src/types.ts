@@ -630,7 +630,8 @@ export type IOSPrivateSettingKeys = {
 export type IOSSettings = {
   /**
    * `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
-   * reloads and the navigation state starts over). It is a copy, so `call` on it changes nothing.
+   * reloads and the navigation state starts over). It is compared by value, so an inline object with the same keys and
+   * values is no change. It is a copy, so `call` on it changes nothing.
    * @default `{ allowsInlineMediaPlayback: true }`
    */
   configuration?: SettingsRoot<

@@ -11,14 +11,7 @@ import type { InjectedScript } from './types';
  * It needs the `bridge` prop: only the main frame of the pages in `allowedOrigins` gets `window.ReactNativeWebView`,
  * and only `postMessage`: there is no `injectedObjectJson`. Its `origins` are `['*']`, since the bridge already scopes
  * it.
- * @example
- * ```tsx
- * const bridge = createBridge({ allowedOrigins: ['https://example.com'] });
- * bridge.on('rnw', (data) => console.log(data)); // the page called ReactNativeWebView.postMessage(data)
- * bridge.emit('rnw', 'hello'); // the page gets a message event whose data is 'hello'
- *
- * <WebView source={{ uri: 'https://example.com' }} bridge={bridge} injectedScripts={[reactNativeWebViewMessages]} />;
- * ```
+ * @see [Messaging example](https://rasmuskard.github.io/react-native-minimal-webview/guides/migrating-from-react-native-webview/#postmessage-and-onmessage)
  * @group Scripts
  */
 export const reactNativeWebViewMessages: InjectedScript = {
