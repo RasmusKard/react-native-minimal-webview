@@ -620,6 +620,7 @@ export const AndroidWebView = {
    * WebView exists, it applies when the first one is made, so it doesn't start WebView. On iOS,
    * `ios.webView.inspectable` sets it per WebView.
    * @android
+   * @see [Debugging the page](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#debugging-the-page)
    */
   setWebContentsDebuggingEnabled(enabled: boolean): void {
     if (Platform.OS === 'android')

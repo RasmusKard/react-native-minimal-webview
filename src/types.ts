@@ -13,6 +13,7 @@ import type {
 
 /**
  * What the WebView loads: a URL, or an HTML string.
+ * @see [Local files example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#local-files)
  * @group WebView
  */
 export type WebViewSource =
@@ -264,6 +265,7 @@ export type ProcessGoneEvent = {
  *   origins: ['https://example.com'],
  * };
  * ```
+ * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
  * @group Scripts
  */
 export type InjectedScript = {
@@ -655,6 +657,7 @@ export type IOSSettings = {
   /**
    * The [`WKWebView`](https://developer.apple.com/documentation/webkit/wkwebview), live.
    * @default `{ inspectable: __DEV__ }`
+   * @see [Debugging the page](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#debugging-the-page)
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /**
@@ -870,6 +873,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
    * so, once per process).
+   * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
    */
   injectedScripts?: InjectedScript[];
   /**
@@ -975,6 +979,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * WebView on another `android.webView.profile` has that profile's cookies instead.
    * @default `false`
    * @ios
+   * @see [Cookies example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#cookies)
    */
   sharedCookies?: boolean;
   /**
@@ -988,6 +993,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Until the answer settles, the page's next file request waits.
    * @android
+   * @see [File inputs example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#file-inputs)
    */
   onFileRequest?: (
     request: FileRequest,
@@ -999,6 +1005,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Fullscreen works without it: the page's view covers the window, the system bars hide and back exits. iOS shows
    * WebKit's own fullscreen, not reported.
    * @android
+   * @see [Fullscreen video example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#fullscreen-video)
    */
   onFullscreenChange?: (event: FullscreenChangeEvent) => void;
   /**
@@ -1013,6 +1020,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * Anything but true denies. `signal` also aborts when Android withdraws the request. Until the answer settles, the
    * page's next request of the same kind waits.
+   * @see [Permissions example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#permissions)
    */
   onPermissionRequest?: (
     request: PermissionRequest,
@@ -1033,6 +1041,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * On Android a native hook's `WebViewContext.onDownloadStart` is offered each download first, and one it takes
    * reaches neither this prop nor the external fallback.
+   * @see [Downloads example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#downloads)
    */
   onDownload?: (result: DownloadResult) => void;
   /**
@@ -1118,6 +1127,7 @@ export type WebViewRef = {
    * its ISO string. The value is the page's, so treat it as page data. Rejects with a {@link CodedError}:
    * `script_error`, `navigated` or `unavailable`. There is no timeout: a page can hold a call until it navigates. On
    * Android with a WebView older than 83 it rejects with `unavailable`.
+   * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
    */
   evaluate(script: string): Promise<unknown>;
   /**
@@ -1133,6 +1143,7 @@ export type WebViewRef = {
    * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
    * const textZoom = await ref.current?.get('settings.textZoom'); // Android
    * ```
+   * @see [Reading and calling example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#reading-and-calling)
    */
   get(key: string): Promise<unknown>;
   /**
@@ -1179,6 +1190,7 @@ export type WebViewRef = {
    * await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true]); // iOS
    * ```
    * @see [Call a method](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/#4-call-a-method)
+   * @see [Reading and calling example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#reading-and-calling)
    */
   call(method: string, args?: unknown[]): Promise<unknown>;
   /**

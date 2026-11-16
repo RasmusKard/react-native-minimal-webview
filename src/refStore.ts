@@ -83,6 +83,7 @@ function createAdapter(): Adapter {
 
 /**
  * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it.
+ * @see [Outside React example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#outside-react)
  * @group WebView
  */
 export function createWebViewRef(): WebViewRefObject {

@@ -23,13 +23,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
  * WebViews and chains its own clients to it, with no protocol to implement.
  *
- * The [native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
- * walks through one.
- *
  * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
  * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
  * [WebViewContext.scrollListeners]), the bridge's web message listener and document-start scripts, and the download
  * listener ([WebViewContext.onDownloadStart]).
+ * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  */
 object MinimalWebViewHooks {
   internal class Hook(
@@ -167,6 +165,7 @@ internal class Deciders(private val warn: (String) -> Unit) {
  *
  * A context kept after its attach ended (the view closed, or a renderer crash replaced the WebView) does nothing and
  * holds nothing of the WebView.
+ * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  */
 interface WebViewContext {
   /**

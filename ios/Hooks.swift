@@ -3,15 +3,15 @@ import WebKit
 /// Native hooks: Swift in your own Expo module that gets the real WKWebView behind each WebView, its creation-time
 /// configuration and a ``WebViewContext``, with no protocol to implement.
 ///
-/// The [native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
-/// walks through one.
-///
 /// A hook attaches to each WebView whose `extensions` prop has an extension with its key that is on;
 /// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
 /// says when.
 ///
 /// - Important: Leave alone what the core owns: the WKWebView's own `navigationDelegate` and `uiDelegate` (add to the
 ///   context's lists instead), and the bridge's script message handler and user scripts.
+///
+/// ## See Also
+/// - [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
 public enum MinimalWebViewHooks {
   struct Hook {
     let key: String
@@ -92,6 +92,9 @@ public enum MinimalWebViewHooks {
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
 /// (`NSNull` inside an array).
+///
+/// ## See Also
+/// - [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
 public protocol WebViewContext: AnyObject {
   /// This hook's extension's `options`, the new ones after a change; nil while the hook is off.
   var options: Any? { get }
