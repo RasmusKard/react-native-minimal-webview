@@ -59,7 +59,7 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
     configuration: {
       mediaTypesRequiringUserActionForPlayback: IOSConstants.AudiovisualMediaTypes.none,
     },
-    // a property the generated keys don't list
+    // a property the generated keys don't list: a made-up name here
     webView: { other: { someNewerProperty: true } },
   }}
   android={{

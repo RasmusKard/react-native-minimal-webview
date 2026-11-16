@@ -18,8 +18,9 @@ What runs where, and the terms the rest of the docs use: the core, frames, origi
 | A native hook | Your own Swift or Kotlin, optional                                                          | Gets the native WebView itself ([native hooks](native-hooks.md))                                 |
 
 The core decides natively, from what the props gave it, so a busy JS thread doesn't hold the page up. JS is asked only
-where a prop says so: an `ask` rule ([`onNavigationRequest`][onnavigationrequest]), an `external` navigation when you pass
-[`onOpenExternal`][onopenexternal], and the page's requests for files and permissions ([page requests](examples.md#page-requests)).
+where a prop says so: an `ask` rule ([`onNavigationRequest`][onnavigationrequest]), an `external` navigation when you
+pass [`onOpenExternal`][onopenexternal], and the page's requests for files and permissions
+([page requests](examples.md#page-requests)).
 
 ## Frames and origins
 

@@ -9,8 +9,8 @@ Symptoms, their usual causes in this package, and the reference entry that has t
 ## Read the warnings first
 
 The core skips what it can't apply and says so, instead of failing. Its warnings are `console.warn` messages that start
-with `[react-native-minimal-webview]`, so they show wherever your app's JS logs do. A few go to the
-device log only, on Android under the logcat tag `MinimalWebView`.
+with `[react-native-minimal-webview]`, so they show wherever your app's JS logs do. A few go to the device log only, on
+Android under the logcat tag `MinimalWebView`.
 
 For a navigation, [`onNavigation`][onnavigation] reports each decision and the index of the rule that made it:
 `onNavigation={({ url, action, rule }) => console.log(action, url, rule)}`.

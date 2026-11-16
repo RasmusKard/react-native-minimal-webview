@@ -317,15 +317,7 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
  * `undefined`. A method's `params` and `result` are left out when it has none. Every key is required: `{}` for a side
  * that handles nothing. The method and event maps are `type`s or written inline, not `interfaces` (an interface has no
  * index signature, so it doesn't satisfy `Record`).
- * @example
- * ```ts
- * type ShopBridge = {
- *   reactNative: { share: { params: { url: string }; result: boolean } };
- *   page: { getCartCount: { result: number } };
- *   events: { themeChanged: 'light' | 'dark' };
- * };
- * const bridge = createBridge<ShopBridge>({ allowedOrigins: ['https://example.com'] });
- * ```
+ * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
 export type BridgeSchema = {
@@ -619,16 +611,6 @@ export type IOSPrivateSettingKeys = {
  * `httpCookieStore`.
  *
  * WebKit has no mixed-content setting: it applies its own policy.
- * @example
- * ```tsx
- * <WebView
- *   source={{ uri: 'https://example.com' }}
- *   ios={{
- *     configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link },
- *     scrollView: { bounces: false, contentInset: { top: 0, left: 0, bottom: 80, right: 0 } },
- *   }}
- * />
- * ```
  * @ios
  * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
@@ -684,16 +666,6 @@ export type IOSSettings = {
  * The ref's {@link WebViewRef.get | get} and {@link WebViewRef.call | call} take these roots, plus `cookieManager` and
  * `webStorage`, the WebView profile's (`webView.profile`, the default one unless set); a key is the getter's name
  * without `get` or `is`.
- * @example
- * ```tsx
- * <WebView
- *   source={{ uri: 'https://example.com' }}
- *   android={{
- *     settings: { textZoom: 120, cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE },
- *     webView: { overScrollMode: 2 },
- *   }}
- * />
- * ```
  * @android
  * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
@@ -711,8 +683,9 @@ export type AndroidSettings = {
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
   /**
-   * [`WebView`](https://developer.android.com/reference/android/webkit/WebView) setters (static and inherited `View` ones too), then
-   * [`WebViewCompat`](https://developer.android.com/reference/androidx/webkit/WebViewCompat) ones, then `CookieManager`'s `acceptThirdPartyCookies`.
+   * [`WebView`](https://developer.android.com/reference/android/webkit/WebView) setters (static and inherited `View`
+   * ones too), then [`WebViewCompat`](https://developer.android.com/reference/androidx/webkit/WebViewCompat) ones,
+   * then `CookieManager`'s `acceptThirdPartyCookies`.
    *
    * `acceptThirdPartyCookies` is on by default, as react-native-webview has it. `webContentsDebuggingEnabled` is
    * refused: it is process-wide, set with {@link AndroidWebView.setWebContentsDebuggingEnabled}.
@@ -1138,11 +1111,6 @@ export type WebViewRef = {
    *
    * It reads the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
    * {@link CodedError}: `not_found`, `unavailable` (Android) or `native_error`.
-   * @example
-   * ```ts
-   * const bounces = await ref.current?.get('scrollView.bounces'); // iOS
-   * const textZoom = await ref.current?.get('settings.textZoom'); // Android
-   * ```
    * @see [Reading and calling example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#reading-and-calling)
    */
   get(key: string): Promise<unknown>;
@@ -1184,11 +1152,6 @@ export type WebViewRef = {
    * @returns The result: primitives, strings, and collections of them; on iOS also the structs as objects, an `NSURL`
    * as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage` as a base64 PNG and an `NSHTTPCookie` as its
    * properties (`Expires` in seconds). Any other object is `null`.
-   * @example
-   * ```ts
-   * await ref.current?.call('webView.clearCache', [true]); // Android
-   * await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true]); // iOS
-   * ```
    * @see [Call a method](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/#4-call-a-method)
    * @see [Reading and calling example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#reading-and-calling)
    */
