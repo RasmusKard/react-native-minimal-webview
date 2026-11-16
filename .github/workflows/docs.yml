@@ -1,6 +1,7 @@
 name: docs
 on:
-  # gets a push trigger once the repo is public and the Pages source is switched to GitHub Actions
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
