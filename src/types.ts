@@ -831,6 +831,7 @@ export type CodedError = Error & { code: ErrorCode };
  * while another shows is cancelled), and Android WebView's own dialogs. An auth challenge is cancelled on Android, and
  * gets WebKit's default handling on iOS: without a stored credential, the site's 401 page shows. `dialogs` and
  * `basicAuthCredential` of `@react-native-minimal-webview/extensions` take them over, or a native hook does.
+ * @sortStrategy source-order
  * @group WebView
  */
 export interface WebViewProps extends Omit<ViewProps, 'children'> {
@@ -1086,6 +1087,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
  *
  * Those four wait up to about a second for a WebView that has just mounted (on Android, a call from the parent's first
  * effect can come before the view exists), then reject with `unavailable`; in the background they don't wait.
+ * @sortStrategy source-order
  * @group WebView
  */
 export type WebViewRef = {
