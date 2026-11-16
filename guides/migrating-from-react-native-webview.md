@@ -73,7 +73,6 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | Android camera and microphone, and location with `geolocationEnabled` | Granted to every page, after asking the OS                                             | Denied                                                                                                               | [`onPermissionRequest`][onpermissionrequest]                |
 | A link to another scheme (`tel:`, `myapp:`)                           | Opens externally                                                                       | Opens externally only from the main frame, after a user gesture ([`defaultNavigationRules`][defaultnavigationrules]) | An `external` rule for the scheme                           |
 | New window (`target=_blank`, `window.open`)                           | iOS: loads in place. Android: nothing shows, unless `setSupportMultipleWindows` is off | The rules decide it, and an allowed one loads in place ([`newWindow`][newwindow])                                    | A rule with `newWindow: true`                               |
-| Android `goBack`                                                      | One history entry                                                                      | Also skips the entries a page added without a user gesture ([`goBack`][goback])                                      |                                                             |
 | Android System WebView older than 101                                 | Messaging and injected scripts work                                                    | Neither does ([versions](android-system-webview.md))                                                                 |                                                             |
 
 ## Props that became something else
@@ -328,7 +327,6 @@ export function Browser() {
 [ondownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
 [recovered]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/ProcessGoneEvent/#recovered
 [newwindow]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#newwindow
-[goback]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#goback
 [outcome]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#outcome
 [debugging]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/
 [onprocessgone]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onprocessgone

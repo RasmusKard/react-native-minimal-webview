@@ -9,8 +9,8 @@ Symptoms, their usual causes in this package, and the reference entry that has t
 ## Read the warnings first
 
 The core skips what it can't apply and says so, instead of failing. Its warnings are `console.warn` messages that start
-with `[react-native-minimal-webview]`, so they show wherever your app's JS logs do. A few Android ones go to logcat
-only, under the tag `MinimalWebView`.
+with `[react-native-minimal-webview]`, so they show wherever your app's JS logs do. A few go to the
+device log only, on Android under the logcat tag `MinimalWebView`.
 
 For a navigation, [`onNavigation`][onnavigation] reports each decision and the index of the rule that made it:
 
@@ -62,7 +62,9 @@ import { WebView } from 'react-native-minimal-webview';
 
 - Android denies every request without [`onPermissionRequest`][onpermissionrequest].
 - The OS permission is missing: answering true doesn't grant it, so ask the OS first.
-- The request comes from an iframe, or from a page with an opaque origin: those are denied without asking.
+- The request comes from an iframe (on Android, one of another origin than the main frame's), or from a page with an
+  opaque origin: those are denied without asking.
+- On iOS, location never reaches `onPermissionRequest`: WebKit shows its own prompt.
 
 ## A download does nothing
 

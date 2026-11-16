@@ -191,7 +191,7 @@ const shared = await window.nativeBridge.call('share', { url: location.href }, {
 Opened in a browser, or from an origin the bridge doesn't allow, the page has no `window.nativeBridge`: the TypeScript
 sample below guards for it.
 
-An event reaches only the page that is open when it is sent. A page that needs the current value, such as the theme,
+An event reaches one page and is never repeated for a later one. A page that needs the current value, such as the theme,
 asks for it with a `call` as it loads, and listens for the changes.
 
 A TypeScript page types `window.nativeBridge` with

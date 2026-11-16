@@ -22,12 +22,12 @@ which one.
 | `websiteDataStore`   | [`WKWebsiteDataStore`][wkwebsitedatastore]         | `get`, `call`           |
 | `httpCookieStore`    | [`WKHTTPCookieStore`][wkhttpcookiestore]           | `get`, `call`           |
 
-| Root            | Android class                                                               | Takes                   |
-| --------------- | --------------------------------------------------------------------------- | ----------------------- |
-| `settings`      | [`WebSettings`][websettings], then [`WebSettingsCompat`][websettingscompat] | settings, `get`, `call` |
-| `webView`       | [`WebView`][webview], then [`WebViewCompat`][webviewcompat]                 | settings, `get`, `call` |
-| `cookieManager` | [`CookieManager`][cookiemanager]                                            | `get`, `call`           |
-| `webStorage`    | [`WebStorage`][webstorage]                                                  | `get`, `call`           |
+| Root            | Android class                                                                                                 | Takes                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `settings`      | [`WebSettings`][websettings], then [`WebSettingsCompat`][websettingscompat]                                   | settings, `get`, `call` |
+| `webView`       | [`WebView`][webview], then [`WebViewCompat`][webviewcompat], then `CookieManager`'s `acceptThirdPartyCookies` | settings, `get`, `call` |
+| `cookieManager` | [`CookieManager`][cookiemanager]                                                                              | `get`, `call`           |
+| `webStorage`    | [`WebStorage`][webstorage]                                                                                    | `get`, `call`           |
 
 ## 2. Write a setting
 
@@ -93,7 +93,8 @@ Objective-C. The selector is every argument label of the declaration, each with 
 | `- (void)getAllCookies:(void (^)(NSArray<NSHTTPCookie *> *))completionHandler;` | `call('httpCookieStore.getAllCookies:')`                                |
 
 A method with no argument has no colon. A trailing completion handler keeps its label in the selector but has no entry
-in the arguments: the call resolves with what it reports. On Android a trailing `ValueCallback` works the same way.
+in the arguments: the call resolves with what it reports, for the WebKit methods whose handlers [`call`][call] can
+await. On Android a trailing `ValueCallback` works the same way.
 
 The Swift name doesn't work, and often differs: Swift's `takeSnapshot(with:completionHandler:)` is the selector
 `takeSnapshotWithConfiguration:completionHandler:`.
