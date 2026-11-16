@@ -537,8 +537,8 @@ const layered = (...layers: NativeSettings[]) =>
 
 /**
  * The platform's settings for native: the package's defaults, react-native-webview's over them, the app's `ios` or
- * `android` roots over those, and `userAgent` on top. A removed `userAgent` falls back to Android's
- * `userAgentString: null` default; on iOS, native restores the removed key.
+ * `android` roots over those, and `userAgent` on top. Native restores the key of a removed `userAgent`. Android's
+ * own defaults are written natively.
  */
 function platformSettings(props: WebViewProps): NativeSettings {
   const [defaults, rnw, app, userAgent] =
@@ -550,7 +550,7 @@ function platformSettings(props: WebViewProps): NativeSettings {
           { webView: { customUserAgent: props.userAgent } },
         ]
       : [
-          flattened(DEFAULTS.AndroidSettings),
+          {},
           REACT_NATIVE_WEBVIEW_DEFAULTS.android,
           flattened(props.android),
           { settings: { userAgentString: props.userAgent } },
