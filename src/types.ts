@@ -692,7 +692,6 @@ export type AndroidSettings = {
    * `downloadFaviconsEnabled` off; `mixedContentMode` `MIXED_CONTENT_NEVER_ALLOW`; and, with WebView 146 and newer,
    * `backForwardCacheEnabled` on. `useWideViewPort` and `loadWithOverviewMode` are on by default, as
    * react-native-webview has them. `userAgentString: null` is WebView's default user agent.
-   * @default `{ userAgentString: null }`
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
   /**

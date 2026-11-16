@@ -694,9 +694,16 @@ describe('platform settings', () => {
 
     it('are the defaults alone without props', async () => {
       expect(await settingsOf({})).toEqual({
-        settings: { userAgentString: null, useWideViewPort: true, loadWithOverviewMode: true },
+        settings: { useWideViewPort: true, loadWithOverviewMode: true },
         webView: { acceptThirdPartyCookies: true },
       });
+    });
+
+    it('drop the key of a removed userAgent, for native to restore', async () => {
+      const { show, native } = await mount({ userAgent: 'Agent/1' });
+      expect(settingsIn(native()).settings.userAgentString).toBe('Agent/1');
+      await show({});
+      expect(settingsIn(native()).settings).not.toHaveProperty('userAgentString');
     });
 
     it('put userAgent over the app keys, and the app keys over the defaults', async () => {
