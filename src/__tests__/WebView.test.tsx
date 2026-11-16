@@ -237,6 +237,29 @@ describe('navigationRules', () => {
     warn.mockRestore();
   });
 
+  // Not in the it.each above: its %j title can't format these either.
+  it.each([
+    ['a BigInt', () => ({ action: 10n }), `${ACTION}, not 10`],
+    [
+      'a circular value',
+      () => {
+        const host: unknown[] = [];
+        host.push(host);
+        return { host, action: 'allow' };
+      },
+      'host must be an array of strings, not [object Array]',
+    ],
+  ])('blocks all at a rule with %s, and warns', async (_, rule, problem) => {
+    const warn = warnings();
+    const good = { host: ['a.com'], action: 'allow' };
+    const { native } = await mount(withRules([good, rule(), good]));
+    expect(native().navigationRules).toEqual([good, { action: 'block' }, good]);
+    expect(warn).toHaveBeenCalledWith(
+      `[react-native-minimal-webview] navigationRules[1]: ${problem}; it blocks every navigation that reaches it`
+    );
+    warn.mockRestore();
+  });
+
   it('blocks all at a hole in a sparse rules array, and warns', async () => {
     const warn = warnings();
     const good = { host: ['a.com'], action: 'allow' };
