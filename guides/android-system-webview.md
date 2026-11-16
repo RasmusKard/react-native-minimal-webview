@@ -11,6 +11,9 @@ Android System WebView updates apart from Android, so a device's API level doesn
 
 The core checks each feature at run time. On an older WebView the feature is off, and nothing crashes.
 
+The package has no minimum WebView version. The oldest one a device can have is 74, which Android 10 shipped with:
+there every feature in the table below is off.
+
 ## What needs a newer WebView
 
 | WebView | Features                                                                                                                                                                                                                  |
@@ -37,8 +40,9 @@ Users update Android System WebView in the Play Store.
 
 Test on an emulator with a Google APIs system image, not a Play Store one: it keeps the WebView it shipped with, while
 the Play Store updates WebView in the background and moves its version under your tests. The images of older API
-levels ship older WebViews: run the app there to see the features above off. [CONTRIBUTING][contributing] lists the
-images for the oldest supported versions and how to create the emulators.
+levels ship older WebViews: run the app there to see the features above off. For API 29 the Google APIs image has
+WebView 91, and the `default` one has 74. [CONTRIBUTING][contributing] lists the
+images its suites run on and how to create the emulators.
 
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [onDownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
