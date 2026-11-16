@@ -5,7 +5,7 @@ title: Native hooks
 # Native hooks
 
 A native hook is Swift or Kotlin in your own Expo module that gets the real `WKWebView` or `WebView` behind a
-`<WebView>`. This guide covers when to write one, how to write one, and how it shares the WebView with the core.
+`<WebView>`.
 
 ## When to write one
 

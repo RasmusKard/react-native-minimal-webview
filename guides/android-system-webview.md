@@ -5,8 +5,7 @@ title: Android System WebView versions
 # Android System WebView versions
 
 Some features need a newer Android System WebView than the [minimum Android version](../README.md#requirements)
-brings. This page says which features need which version, how to check and update a device's, and how to test the
-old ones.
+brings.
 
 Android System WebView updates apart from Android, so a device's API level doesn't tell you its WebView.
 
@@ -32,9 +31,7 @@ The version is the Chrome version in the WebView's user agent: read
 
 On a connected device, `adb shell dumpsys webviewupdate` names the WebView package in use and its version.
 
-## Update a device's WebView
-
-Update Android System WebView in the Play Store.
+Users update Android System WebView in the Play Store.
 
 ## Test the oldest versions
 
