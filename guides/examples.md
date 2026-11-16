@@ -101,7 +101,7 @@ export function Browser() {
 ## Navigation rules
 
 Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs,
-an iframe's to the top frame included, skip the rules:
+an iframe's to the main frame included, skip the rules:
 [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
 says where they load.
 
@@ -116,7 +116,7 @@ export function Site() {
       navigationRules={[
         { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
         { host: ['example.com', '*.example.com'], action: 'allow' },
-        { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // iframes
+        { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // embedded content stays in the page
         { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
         { scheme: ['http', 'https'], action: 'external' }, // other sites, and new windows
         ...defaultNavigationRules, // file: blocked, other schemes external from a user gesture
@@ -221,7 +221,8 @@ const shared = await window.nativeBridge?.call('share', { url: location.href }, 
 
 ## Platform settings
 
-Any setting by its platform name, and any public method through `call`.
+Any setting by its platform name, and any public method through `call`. [Use a platform API](platform-apis.md) shows
+how to find a key or a `call` string in Apple's and Android's documentation.
 
 ```tsx
 import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-webview';

@@ -12,7 +12,8 @@ Most props are platform settings by the same name: `bounces` is `ios={{ scrollVi
 `setBuiltInZoomControls` is `android.settings.builtInZoomControls`.
 
 The keys autocomplete, and an enum string becomes a constant: `cacheMode: 'LOAD_NO_CACHE'` is
-`AndroidConstants.WebSettings.LOAD_NO_CACHE` ([platform settings](examples.md#platform-settings)).
+`AndroidConstants.WebSettings.LOAD_NO_CACHE` ([platform settings](examples.md#platform-settings)). For a prop no table
+here lists, [use a platform API](platform-apis.md) finds its key.
 
 ## Defaults that differ
 

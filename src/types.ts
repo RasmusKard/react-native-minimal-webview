@@ -625,29 +625,37 @@ export type IOSPrivateSettingKeys = {
  * ```
  * @ios
  * @see [Platform settings example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings)
+ * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
  */
 export type IOSSettings = {
   /**
-   * `WKWebViewConfiguration`: read once, when the WKWebView is created; a change recreates the WebView (the page
-   * reloads and the navigation state starts over). It is compared by value, so an inline object with the same keys and
-   * values is no change. It is a copy, so `call` on it changes nothing.
+   * [`WKWebViewConfiguration`](https://developer.apple.com/documentation/webkit/wkwebviewconfiguration): read once,
+   * when the WKWebView is created; a change recreates the WebView (the page reloads and the navigation state starts
+   * over). It is compared by value, so an inline object with the same keys and values is no change. It is a copy, so
+   * `call` on it changes nothing.
    * @default `{ allowsInlineMediaPlayback: true }`
    */
   configuration?: SettingsRoot<
     IOSSettingKeys['configuration'] & IOSPrivateSettingKeys['configuration']
   >;
-  /** `WKPreferences` (`configuration.preferences`), live. */
+  /**
+   * [`WKPreferences`](https://developer.apple.com/documentation/webkit/wkpreferences) (`configuration.preferences`),
+   * live.
+   */
   preferences?: SettingsRoot<IOSSettingKeys['preferences'] & IOSPrivateSettingKeys['preferences']>;
-  /** `WKWebpagePreferences` (`configuration.defaultWebpagePreferences`), live from the next navigation. */
+  /**
+   * [`WKWebpagePreferences`](https://developer.apple.com/documentation/webkit/wkwebpagepreferences)
+   * (`configuration.defaultWebpagePreferences`), live from the next navigation.
+   */
   webpagePreferences?: SettingsRoot<IOSSettingKeys['webpagePreferences']>;
   /**
-   * The `WKWebView`, live.
+   * The [`WKWebView`](https://developer.apple.com/documentation/webkit/wkwebview), live.
    * @default `{ inspectable: __DEV__ }`
    */
   webView?: SettingsRoot<IOSSettingKeys['webView']>;
   /**
-   * Its `UIScrollView`, live.
+   * Its [`UIScrollView`](https://developer.apple.com/documentation/uikit/uiscrollview), live.
    *
    * `directionalLockEnabled` is on by default, as react-native-webview has it.
    */
@@ -682,11 +690,13 @@ export type IOSSettings = {
  * ```
  * @android
  * @see [Platform settings example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#platform-settings)
+ * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
  */
 export type AndroidSettings = {
   /**
-   * `WebSettings` setters, then static `WebSettingsCompat` ones.
+   * [`WebSettings`](https://developer.android.com/reference/android/webkit/WebSettings) setters, then static
+   * [`WebSettingsCompat`](https://developer.android.com/reference/androidx/webkit/WebSettingsCompat) ones.
    *
    * Each new WebView starts with `javaScriptEnabled`, `domStorageEnabled`, `supportMultipleWindows` and
    * `builtInZoomControls` on; `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and
@@ -696,8 +706,8 @@ export type AndroidSettings = {
    */
   settings?: SettingsRoot<AndroidSettingKeys['settings']>;
   /**
-   * `WebView` setters (static and inherited `View` ones too), then `WebViewCompat` ones, then `CookieManager`'s
-   * `acceptThirdPartyCookies`.
+   * [`WebView`](https://developer.android.com/reference/android/webkit/WebView) setters (static and inherited `View` ones too), then
+   * [`WebViewCompat`](https://developer.android.com/reference/androidx/webkit/WebViewCompat) ones, then `CookieManager`'s `acceptThirdPartyCookies`.
    *
    * `acceptThirdPartyCookies` is on by default, as react-native-webview has it. `webContentsDebuggingEnabled` is
    * refused: it is process-wide, set with {@link AndroidWebView.setWebContentsDebuggingEnabled}.
@@ -1164,6 +1174,7 @@ export type WebViewRef = {
    * await ref.current?.call('webView.clearCache', [true]); // Android
    * await ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 100 }, true]); // iOS
    * ```
+   * @see [Call a method](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/#4-call-a-method)
    */
   call(method: string, args?: unknown[]): Promise<unknown>;
   /**
