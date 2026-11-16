@@ -35,7 +35,7 @@
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
     "gen:defaults": "tsdoc-defaults",
-    "docs": "rn-cross-platform-docs generate --out build/docs/reference && rn-cross-platform-docs-zensical build --reference build/docs/reference --out build/docs/site --site-url https://rasmuskard.github.io/react-native-minimal-webview/ && rm -rf docs && cp -R build/docs/site/site docs && touch docs/.nojekyll",
+    "docs": "rn-cross-platform-docs generate --out build/docs/reference && rn-cross-platform-docs-zensical build --reference build/docs/reference --out build/docs/site --site-url https://rasmuskard.github.io/react-native-minimal-webview/",
     "docs:check": "typedoc --emit none"
   },
   "keywords": [

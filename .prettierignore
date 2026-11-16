@@ -4,9 +4,6 @@ src/platform.generated.ts
 src/types.defaults.ts
 .github/scripts/platform-headers/
 
-# Generated reference site (npm run docs), published as is
-docs/
-
 # Lockfiles, written by npm
 package-lock.json
 

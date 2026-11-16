@@ -32,9 +32,10 @@ periphery scan --config .config/periphery.yml                              # bui
 
 ## Docs site
 
-`npm run docs` generates the API reference for TypeScript, Kotlin and Swift and replaces `docs/`, which GitHub Pages
-serves, with the built site. Kotlin and Swift build the library, so it needs `example/android` and `example/ios`. How
-the site is laid out: [rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#zensical-site).
+The `docs` workflow builds the site and deploys it to GitHub Pages on every push to `main`. `npm run docs` builds it
+locally: it generates the API reference for TypeScript, Kotlin and Swift and writes the site to `build/docs/site/site`.
+Kotlin and Swift build the library, so it needs `example/android` and `example/ios`. How the site is laid out:
+[rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#zensical-site).
 
 ## On-device suites
 
