@@ -7,6 +7,9 @@ src/types.defaults.ts
 # Lockfiles, written by npm
 package-lock.json
 
+# Written by release-please
+.github/.release-please-manifest.json
+
 # Build output
 build/
 extensions/build/
