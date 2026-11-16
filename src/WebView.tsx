@@ -432,10 +432,11 @@ function useNavigationRules(rules: WebViewProps['navigationRules']) {
         checked: [],
         warnings: [`navigationRules: must be an array, not ${shown(given)}; treated as []`],
       };
-    const problems = given.map(ruleProblem);
+    // Array.from, not map: map skips a sparse array's holes, which would reach native unchecked.
+    const problems = Array.from(given, ruleProblem);
     return {
       checked: problems.some(Boolean)
-        ? given.map((rule: unknown, i) => (problems[i] ? { action: 'block' } : rule))
+        ? Array.from(given, (rule: unknown, i) => (problems[i] ? { action: 'block' } : rule))
         : given,
       warnings: problems.flatMap((problem, i) =>
         problem

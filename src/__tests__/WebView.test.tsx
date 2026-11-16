@@ -237,6 +237,19 @@ describe('navigationRules', () => {
     warn.mockRestore();
   });
 
+  it('blocks all at a hole in a sparse rules array, and warns', async () => {
+    const warn = warnings();
+    const good = { host: ['a.com'], action: 'allow' };
+    const rules: unknown[] = [good];
+    rules[2] = good;
+    const { native } = await mount(withRules(rules));
+    expect(native().navigationRules).toEqual([good, { action: 'block' }, good]);
+    expect(warn).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] navigationRules[1]: must be an object, not undefined; it blocks every navigation that reaches it'
+    );
+    warn.mockRestore();
+  });
+
   it('treats rules that are not an array as none, with a warning', async () => {
     const warn = warnings();
     const { native } = await mount(withRules({ 0: { action: 'allow' } }));
