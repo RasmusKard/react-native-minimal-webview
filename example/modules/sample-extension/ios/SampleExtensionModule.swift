@@ -133,9 +133,7 @@ private final class HookDialogs: NSObject, WKUIDelegate {
   }
 }
 
-/// Counts page loads in `didFinish`, which the core implements and fans out, and reports `didReceiveServerRedirect`,
-/// which the core doesn't implement but passes to every hook delegate. Its option, `true` or `{ global: name }`, names
-/// the page's global that gets the count (`__pageCount` by default).
+/// Counts page loads and stamps the count into the page; reports server redirects.
 private final class PageCounter: NSObject, WKNavigationDelegate {
   private let context: WebViewContext
   private(set) var count = 0

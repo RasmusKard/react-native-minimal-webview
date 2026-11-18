@@ -191,7 +191,8 @@ Then rebuild the app: `npx expo run:ios`, `npx expo run:android`.
 ## Talk to JS
 
 Everything crosses as JSON. `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]) says which native types
-the values from JS arrive as.
+values from JS arrive as, what happens to an unanswered `ask`, and what happens when a `handle` handler fails or never
+replies.
 
 | Native                                          | JS                                                                                                                           |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -200,19 +201,15 @@ the values from JS arrive as.
 | `context.handle(method, handler)`               | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
 | `context.options`, `context.onOptions(handler)` | The extension's `options`: the handler gets them at once, then each change                                                   |
 
-`ask` and `handle` on `WebViewContext` ([Swift][swiftContext], [Kotlin][kotlinContext]) say what happens when an `ask`
-goes unanswered and when a `handle` handler fails or never replies.
-
 ## Share the WebView with the core
 
-The core keeps the WebView's own delegate and client slots. Your hook adds to the context's lists instead.
+The core owns the WebView's own delegate and client slots, among what `MinimalWebViewHooks` ([Swift][swift],
+[Kotlin][kotlin]) says to leave alone; your hook adds to the context's lists instead.
 
 A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
 or a page gets the camera, goes to the first hook that implements it, and switches off the props that make it, such as
 `navigationRules`. The rules are on `WebViewContext`'s `navigationDelegates` ([Swift][swiftContext]) and `clients`
 ([Kotlin][kotlinContext]).
-
-Leave alone what the core owns, listed on `MinimalWebViewHooks` ([Swift][swift], [Kotlin][kotlin]).
 
 ## Lifecycle
 

@@ -2,11 +2,10 @@ import MinimalWebView
 import QuartzCore
 import WebKit
 
-/// The `perf` suite's probe (example/perf.ts). It only
-/// observes: `perfMark(i)` from the page stamps the moment before the page navigates to `…&i=<i>`, and
-/// `didStartProvisionalNavigation` (which every hook delegate gets) the moment that navigation starts. It implements no
-/// decision callback, so the core still decides every navigation. `ref.hook('sample.perf', 'drain')` hands the stamps
-/// to JS and clears them.
+/// The `perf` suite's probe (example/perf.ts). It only observes: `perfMark(i)` from the page stamps the moment before
+/// the page navigates to `…&i=<i>`, and `didStartProvisionalNavigation` (which every hook delegate gets) the moment
+/// that navigation starts. It implements no decision callback, so the core still decides every navigation.
+/// `ref.hook('sample.perf', 'drain')` hands the stamps to JS and clears them.
 enum PerfProbe {
   static func register() {
     MinimalWebViewHooks.register("sample.perf") { webView, context in

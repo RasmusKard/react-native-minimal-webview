@@ -87,8 +87,7 @@ public enum MinimalWebViewHooks {
 ///
 /// A hook is on while its extension's `options` are not null or false;
 /// [`HookExtension.options`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
-/// says what off means. ``onOptions(_:)`` runs when the hook turns off, so it can undo what it set up, and again when
-/// it turns on.
+/// says what off means.
 ///
 /// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, an array as
 /// `NSArray`. In an ask's answer and a ``handle(_:_:)`` handler's arguments, null is nil at the top level and `NSNull`
@@ -148,7 +147,7 @@ public protocol WebViewContext: AnyObject {
   /// Style it (`tintColor`), but leave its actions and where it is shown to the core.
   var refreshControl: UIRefreshControl? { get }
   /// Sends an event to JS: the extension with the hook's key gets `{ name, payload }` in its `onEvent`. It is dropped
-  /// while the hook is off, and after the view closed.
+  /// while the hook is off.
   func emit(_ name: String, _ payload: [String: Any])
   /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the extension's `onEvent` return value, a
   /// promise awaited.
@@ -158,9 +157,9 @@ public protocol WebViewContext: AnyObject {
   /// An ask made before the first commit (in `attach`, or after a crash) belongs to the Document that commit opens.
   func ask(_ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void)
   /// Runs `handler` at once with this hook's extension's `options`, then with the new ones each time they change,
-  /// live; nil while the hook is off.
+  /// live; nil while the hook is off, so it can undo what it set up.
   ///
-  /// A change from one off value to another doesn't run it, and a context kept after the view closed never does.
+  /// A change from one off value to another doesn't run it.
   func onOptions(_ handler: @escaping (_ options: Any?) -> Void)
   /// Runs `handler` at each end of the Document (see ``DocumentEnd``), after the core's own resets: per-page
   /// state belongs here.
@@ -196,9 +195,8 @@ public final class HookReply {
     self.reject = reject
   }
 
-  /// Resolves the JS call with `value`, converted as `ref.call`'s results are: JSON types, and also an `NSURL`, `NSDate`,
-  /// `NSData`, `UIImage`, `NSHTTPCookie`, `NSSet` or geometry struct; any other object arrives as null, and a non-finite
-  /// number rejects the call with `native_error` instead.
+  /// Resolves the JS call with `value`, converted as [`ref.call`'s results](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call) are;
+  /// a non-finite number rejects the call with `native_error` instead.
   public func callAsFunction(_ value: Any?) {
     if first() { resolve(value) }
   }

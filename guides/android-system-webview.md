@@ -11,17 +11,17 @@ in the table below is off.
 
 ## What needs a newer WebView
 
-| From WebView | Feature                                                                                 |
-| ------------ | --------------------------------------------------------------------------------------- |
-| 83           | [`evaluate`][evaluate]                                                                  |
-| 83           | `blob:` downloads with [`onDownload`][onDownload]                                       |
-| 101          | The [bridge][bridge]                                                                    |
-| 101          | [`injectedScripts`][injectedScripts]                                                    |
-| 146          | [`pendingUrl`][pendingUrl]                                                              |
-| 146          | [`onLoadStart`][onLoadStart] when a load starts, not when its response arrives          |
-| 146          | [`onLoadStart`][onLoadStart] and [`onLoadEnd`][onLoadEnd] for a load that never commits |
-| 146          | SSL errors on back/forward loads in [`onError`][onError]                                |
-| 146          | [`backForwardCacheEnabled`][settings], on by default                                    |
+| From WebView | Feature                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| 83           | [`evaluate`][evaluate]                                                                                        |
+| 83           | `blob:` downloads with [`onDownload`][onDownload]                                                             |
+| 101          | The [bridge][bridge]                                                                                          |
+| 101          | [`injectedScripts`][injectedScripts]                                                                          |
+| 146          | [`pendingUrl`][pendingUrl]                                                                                    |
+| 146          | [`loading`][loading] and [`onLoadStart`][onLoadStart] when a load starts, not when its response arrives       |
+| 146          | [`loading`][loading], [`onLoadStart`][onLoadStart] and [`onLoadEnd`][onLoadEnd] for a load that never commits |
+| 146          | SSL errors on back/forward loads in [`onError`][onError]                                                      |
+| 146          | [`backForwardCacheEnabled`][settings], on by default                                                          |
 
 Each feature's API reference says what it does on an older WebView.
 
@@ -48,6 +48,7 @@ the emulators.
 [bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
 [injectedScripts]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#injectedscripts
 [pendingUrl]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#pendingurl
+[loading]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationState/#loading
 [onLoadStart]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onloadstart
 [onLoadEnd]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onloadend
 [onError]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onerror

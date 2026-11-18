@@ -1,8 +1,7 @@
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
- * A page's `alert`, `confirm` or `prompt`, for {@link dialogs}: `type` says which, and only a prompt has a
- * `defaultValue`.
+ * A page's `alert`, `confirm` or `prompt`, for {@link dialogs}.
  * @group Events
  */
 export type Dialog =

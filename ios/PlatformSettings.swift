@@ -8,15 +8,7 @@ import WebKit
 /// is created; the other roots apply live, to `webView.configuration.preferences`,
 /// `webView.configuration.defaultWebpagePreferences`, the WKWebView and its scroll view.
 ///
-/// A value must fit the property's type:
-/// - BOOL, floats and NSString as themselves
-/// - integers, enums and option sets by raw value
-/// - NSURL from a string
-/// - UIColor from `#rrggbb` or `#rrggbbaa`
-/// - UIEdgeInsets, CGPoint, CGSize and CGRect from an object
-/// - `websiteDataStore` from `"default"` or `"nonPersistent"`
-///
-/// Anything else is rejected before KVC runs: a wrong value in an object-typed property can take the process down
+/// A value must fit the property's type (coerce); anything else is rejected before KVC runs: a wrong value in an object-typed property can take the process down
 /// (WebKit asserts), and an unknown key raises an Objective-C exception Swift can't catch. Underscore (private)
 /// properties are refused, and the only private keys accepted are the two react-native-webview sets by KVC
 /// (`privateBools`).

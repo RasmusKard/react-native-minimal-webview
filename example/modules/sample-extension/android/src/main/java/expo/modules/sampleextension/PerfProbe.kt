@@ -10,11 +10,10 @@ import android.webkit.WebViewClient
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /**
- * The `perf` suite's probe (example/perf.ts). It only
- * observes: `perfMark.mark(i)` from the page stamps the moment before the page navigates to `…&i=<i>` (on the
- * JavaBridge thread, synchronously), and the first main-frame `shouldInterceptRequest` for that URL the moment its
- * request starts (on Chromium's IO thread). It returns null there, as the core does without a hook, so every request
- * still loads as it would without the hook.
+ * The `perf` suite's probe (example/perf.ts). It only observes: `perfMark.mark(i)` from the page stamps the moment
+ * before the page navigates to `…&i=<i>` (on the JavaBridge thread, synchronously), and the first main-frame
+ * `shouldInterceptRequest` for that URL the moment its request starts (on Chromium's IO thread). It returns null there,
+ * as the core does without a hook, so every request still loads as it would without the hook.
  * `ref.hook('sample.perf', 'drain')` hands the stamps to JS and clears them.
  */
 internal object PerfProbe {
