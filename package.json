@@ -1,7 +1,7 @@
 {
   "name": "react-native-minimal-webview",
   "version": "1.0.0",
-  "description": "A minimal, extensible WebView for React Native (Expo Modules)",
+  "description": "A React Native WebView that hands you the iOS and Android WebView APIs, instead of wrapping each one in a prop",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "exports": {
@@ -41,6 +41,11 @@
   "keywords": [
     "react-native",
     "expo",
+    "webview",
+    "wkwebview",
+    "android-webview",
+    "ios",
+    "android",
     "react-native-minimal-webview",
     "MinimalWebView"
   ],

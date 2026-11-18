@@ -9,7 +9,7 @@ It runs on iOS and Android as an Expo module.
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) ·
 [How it works](guides/how-it-works.md) ·
 [Examples](guides/examples.md) ·
-[Platform APIs](guides/platform-apis.md) ·
+[Use a platform API](guides/platform-apis.md) ·
 [Native hooks](guides/native-hooks.md) ·
 [Migrating from react-native-webview](guides/migrating-from-react-native-webview.md) ·
 [Troubleshooting](guides/troubleshooting.md) ·
@@ -59,18 +59,14 @@ A setting or method a newer SDK adds works without a release of this package: se
 [`android`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#android) and
 [`call`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call).
 
-## What it changes from react-native-webview
-
-![The app sends rules and settings to the native WebView core and gets state and events back; the core answers the page's navigations; the bridge links the app and allowed origins](guides/how-it-works.svg)
+## What the core adds
 
 [How it works](guides/how-it-works.md) explains the parts. The core adds only what the platform APIs lack:
 
-|                            | react-native-webview                                 | react-native-minimal-webview                |
-| -------------------------- | ---------------------------------------------------- | ------------------------------------------- |
-| Navigation decisions       | `onShouldStartLoadWithRequest`, a JS round trip each | `navigationRules`, matched natively         |
-| Page messaging             | `postMessage` strings, any page                      | Typed promise bridge, `allowedOrigins` only |
-| Navigation state           | `onNavigationStateChange` events you keep in state   | `useWebViewState(ref)`                      |
-| Page camera and microphone | Granted to any page on Android, after asking the OS  | Your app answers `onPermissionRequest`      |
+- `navigationRules`: navigations decided natively, with a JS round trip only for an `ask` rule.
+- A typed promise bridge, open only to the bridge's `allowedOrigins`.
+- `useWebViewState(ref)`: the navigation state, kept natively.
+- `onPermissionRequest`: your app answers the page's permission requests (camera, microphone, location).
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
@@ -105,7 +101,7 @@ npx pod-install
 | Expo SDK     | 53 (React Native 0.79, React 19)                                           |
 | Architecture | [New architecture](https://reactnative.dev/architecture/landing-page) only |
 
-An Expo app sets the two minimums in `app.json`:
+An Expo app sets the two minimums with expo-build-properties (`npx expo install expo-build-properties`) in `app.json`:
 
 ```json
 {

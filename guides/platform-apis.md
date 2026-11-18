@@ -37,11 +37,10 @@ On iOS the key is the property's name. On Android it is the setter's name withou
 | `WebSettings`, `setBuiltInZoomControls(boolean)` | `android={{ settings: { builtInZoomControls: false } }}`   |
 | `WebSettings`, `setTextZoom(int)`                | `android={{ settings: { textZoom: 130 } }}`                |
 
-The keys the SDKs list autocomplete, so a misspelled one doesn't compile. A key they lack, such as one a newer SDK
+Keys the SDKs list appear in autocomplete, so a misspelled one doesn't compile. A key they lack, such as one a newer SDK
 added, goes under the root's `other`.
 
-A boolean, number or string is passed as it is. An enum or option set is a number, which
-[`IOSConstants`][iosconstants] and [`AndroidConstants`][androidconstants] name. [`IOSSettings`][iossettings] and
+A boolean, number or string is passed as it is. An enum or option set is a number. [`IOSConstants`][iosconstants] and [`AndroidConstants`][androidconstants] name the values of the classes they list; for another class's, such as `View`'s `overScrollMode`, use the number the platform's documentation gives. [`IOSSettings`][iossettings] and
 [`AndroidSettings`][androidsettings] list the other value types, the package's defaults for each root, and when a
 change applies.
 
@@ -97,8 +96,7 @@ The Swift name doesn't work, and often differs: Swift's `takeSnapshot(with:compl
 `takeSnapshotWithConfiguration:completionHandler:`.
 
 [`call`][call] lists how each argument type is written (a struct, an `NSDate`, an `NSSet`, a cookie), what a result
-converts to, and the methods the core keeps to itself. Unlike a setting, a call with an argument of the wrong class can
-crash the app on iOS.
+converts to, and the methods the core keeps to itself. Unlike a setting, a call can crash the app: on iOS with an object argument of the wrong class, on Android with a `null` listener or callback other than the trailing `ValueCallback`.
 
 ## When this isn't enough
 
