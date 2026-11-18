@@ -87,7 +87,6 @@ The Swift keeps its type names: they belong to your module.
 
 ### Steps for particular extensions
 
-- `hideKeyboardAccessoryView`: change the `suffix` constant in its `.swift` file to a value of your own, since the runtime class it makes is found by that name.
 - `downloadManager` and `incognito`: copy the extensions' `src/Cookies.kt` next to the extension's `.kt` file, and change its `package` line too.
 
 ### If you miss a step
