@@ -16,7 +16,7 @@ import androidx.webkit.WebViewClientCompat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -100,21 +100,14 @@ class HooksTest {
   }
 
   @Test
-  fun `a second hook under a key throws, naming it, and the same call again (a JS reload) replaces its hook`() {
-    // A module's OnCreate, which a reload runs again.
-    fun onCreate() = MinimalWebViewHooks.register("test.taken") { _, _ -> }
-    try {
-      onCreate()
-      onCreate()
-      val error = assertThrows(IllegalStateException::class.java) {
-        MinimalWebViewHooks.register("test.taken") { _, _ -> }
-      }
-      assertTrue(error.message, error.message.orEmpty().contains("`test.taken`"))
-      MinimalWebViewHooks.register("test.free") { _, _ -> }
-      assertEquals(listOf("test.taken", "test.free"), MinimalWebViewHooks.hooks.map { it.key }.filter { it.startsWith("test.") })
-    } finally {
-      MinimalWebViewHooks.hooks.removeAll { it.key.startsWith("test.") }
-    }
+  fun `a second hook under a key replaces the first in place, and other keys keep their order`() {
+    val hooks = mutableListOf<MinimalWebViewHooks.Hook>()
+    val second = hook("a")
+    assertFalse(putHook(hooks, hook("a")))
+    assertFalse(putHook(hooks, hook("b")))
+    assertTrue(putHook(hooks, second))
+    assertEquals(listOf("a", "b"), hooks.map { it.key })
+    assertSame(second, hooks[0])
   }
 
   @Test
