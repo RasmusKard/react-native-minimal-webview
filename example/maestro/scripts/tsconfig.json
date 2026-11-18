@@ -1,5 +1,4 @@
 {
-  "// ": "For editors and agent-guard only: Maestro's globals (maestro.d.ts) for the runScript scripts here.",
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,

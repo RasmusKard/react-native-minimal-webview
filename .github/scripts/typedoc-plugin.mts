@@ -1,5 +1,4 @@
-// The TypeDoc plugin .config/typedoc.json loads: drops the Const flag, which tells a caller nothing, titles each page by
-// its name and names the iOS tag as Apple does.
+// The TypeDoc plugin .config/typedoc.json loads.
 import { Application, Converter, PageEvent, ReflectionFlag, ReflectionKind } from 'typedoc';
 
 export function load(app: Application) {
