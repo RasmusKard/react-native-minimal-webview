@@ -310,6 +310,17 @@ describe('createBridge', () => {
     expect(sent).toEqual([]);
   });
 
+  it('rejects a queued message JSON cannot encode at the caller, and still sends the rest', async () => {
+    const { bridge, sent, fromPage } = setup(0);
+    const cyclic: { self?: unknown } = {};
+    cyclic.self = cyclic;
+    await expect(bridge.call('bad', cyclic)).rejects.toThrow(TypeError);
+    expect(() => bridge.emit('bad', 1n)).toThrow(TypeError);
+    bridge.emit('good', 1);
+    fromPage({ kind: 'ready' });
+    expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'good', params: 1 }]);
+  });
+
   it('rejects the oldest queued call with unavailable when the queue is full', async () => {
     const { bridge, sent, fromPage } = setup(0);
     const first = bridge.call('first');

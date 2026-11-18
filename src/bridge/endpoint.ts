@@ -52,7 +52,13 @@ export function createEndpoint<Sender = void>(
               )
             : undefined;
         pending.set(id, { resolve, reject, timer, sent: false });
-        send({ id, kind: 'call', method, params });
+        try {
+          send({ id, kind: 'call', method, params });
+        } catch (error) {
+          clearTimeout(timer);
+          pending.delete(id);
+          throw error;
+        }
       });
     },
     emit(event: string, payload?: unknown) {
