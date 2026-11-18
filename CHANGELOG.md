@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.0.1...react-native-minimal-webview-v1.1.0) (2026-11-18)
+
+
+### Features
+
+* Accept a bridge schema written with interfaces ([#170](https://github.com/RasmusKard/react-native-minimal-webview/issues/170)) ([3335bfd](https://github.com/RasmusKard/react-native-minimal-webview/commit/3335bfd38bcac03f0f4ddc5bd314c89f17f9c95f))
+* Deprecate the file: and line: parameters of MinimalWebViewHooks.register on iOS, which do nothing now ([#181](https://github.com/RasmusKard/react-native-minimal-webview/issues/181)) ([9f9b3d9](https://github.com/RasmusKard/react-native-minimal-webview/commit/9f9b3d9685fe4b4e929382eb6316d262dcac11b0))
+
+
+### Bug Fixes
+
+* Match a source URL to its page in the form the WebView commits it, so reload sends a POST source again ([#179](https://github.com/RasmusKard/react-native-minimal-webview/issues/179)) ([b25fda2](https://github.com/RasmusKard/react-native-minimal-webview/commit/b25fda2b602afedb75eceb9709435ae52f553c3c))
+* Replace a hook registered again under its key, with a warning, instead of crashing or replacing silently ([#180](https://github.com/RasmusKard/react-native-minimal-webview/issues/180)) ([edfa8b7](https://github.com/RasmusKard/react-native-minimal-webview/commit/edfa8b72b4a7fa092da064e4e5e21a42d6959920))
+
 ## [1.0.1](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.0.0...react-native-minimal-webview-v1.0.1) (2026-11-18)
 
 
