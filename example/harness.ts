@@ -257,6 +257,10 @@ export const waitFor = async (
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
 
+/** The native key the `userAgent` prop sets. */
+const USER_AGENT_KEY =
+  Platform.OS === 'ios' ? 'webView.customUserAgent' : 'settings.userAgentString';
+
 /**
  * Runs `act`, then waits for a load that ends after it (onLoadEnd) and for `done`, by default the idle page: whether
  * both came within `ms`. Until the new load reports, the state can still be the old page's (or the old WebView's), so
@@ -395,7 +399,7 @@ async function urlTracking(h: Harness) {
 
   const beforeSlow = h.state().url;
   await h.ref.current?.evaluate(`location.href = '/slow?ms=3000'`);
-  await sleep(1000);
+  await waitFor(h, (s) => (s.pendingUrl ?? '').includes('/slow'), 1000);
   const during = h.state();
   r.info('during slow load', {
     url: during.url,
@@ -513,7 +517,7 @@ async function reissue(h: Harness) {
   await h.ref.current?.evaluate(
     `(() => { const f = document.createElement('iframe'); f.src = '/checkout/frame'; document.body.append(f); f.onload = () => f.contentWindow.location.href = '/checkout/frame2'; })()`
   );
-  await sleep(1500);
+  await until(() => asked.length > beforeFrame, 1500); // on Android, where none must come, the whole 1.5 s
   if (Platform.OS === 'android') {
     r.check(
       'http(s) iframe navigations are not decided on Android',
@@ -1181,8 +1185,9 @@ async function ua(h: Harness) {
     suffixed.navigator === suffixed.header,
     suffixed
   );
+  const native = () => h.ref.current?.get(USER_AGENT_KEY).catch(errorCode);
   h.setProps({ userAgent: 'CustomAgent/2.0' });
-  await sleep(500);
+  await until(async () => (await native()) === 'CustomAgent/2.0', 3000);
   const custom = await read();
   r.check(
     'userAgent replaces the whole UA',
@@ -1190,7 +1195,7 @@ async function ua(h: Harness) {
     custom
   );
   h.setProps({});
-  await sleep(500);
+  await until(async () => (await native()) !== 'CustomAgent/2.0', 3000);
   const back = await read();
   r.check(
     'removing userAgent restores the default',
@@ -1228,7 +1233,9 @@ async function crash(h: Harness) {
         (await h.ref.current?.evaluate('navigator.userAgent').catch(errorCode)) === 'Crash/1'
     );
   h.setProps({ userAgent: 'Crash/1' });
-  await sleep(500);
+  await until(
+    async () => (await h.ref.current?.get(USER_AGENT_KEY).catch(errorCode)) === 'Crash/1'
+  );
   await openPage(h, page);
   r.info('a setting before the crash', await userAgent());
   clearEvents(h);
@@ -1508,7 +1515,10 @@ async function settings(h: Harness) {
           webpagePreferences: { preferredContentMode: IOSConstants.ContentMode.desktop },
         },
       });
-      await sleep(500);
+      await becomes(
+        () => get('webpagePreferences.preferredContentMode'),
+        IOSConstants.ContentMode.desktop
+      );
       await openPage(h, fresh(h, '/'));
       const desktop = await page('navigator.userAgent');
       r.check(
@@ -1673,9 +1683,10 @@ async function settings(h: Harness) {
           webView: { networkAvailable: true },
         },
       });
-      await sleep(500);
+      // The rejected minimumFontSize comes in the same update as networkAvailable.
+      const restored = await becomes(() => page('navigator.onLine'), true);
       r.check('and leaves the setting alone', (await fontSize()) === '30px', await fontSize());
-      r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
+      r.check('networkAvailable is restored', restored);
       r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
       r.since(
         WEBVIEW.paymentRequest,
@@ -1818,7 +1829,8 @@ async function navigation(h: Harness) {
     ios: { preferences: { javaScriptCanOpenWindowsAutomatically: true } },
     android: { settings: { javaScriptCanOpenWindowsAutomatically: true } },
   });
-  await sleep(500);
+  const optIn = `${Platform.OS === 'ios' ? 'preferences' : 'settings'}.javaScriptCanOpenWindowsAutomatically`;
+  await until(async () => (await h.ref.current?.get(optIn).catch(errorCode)) === true, 3000);
   h.loadSource(selfOpening('opted-in'));
   await waitFor(h, () => external.includes('https://example.com/opted-in'), 5000);
   r.check(
@@ -1836,7 +1848,7 @@ async function navigation(h: Harness) {
       async () => String(await frameUrl()?.catch(errorCode)).includes('from=redirect'),
       5000
     );
-    await sleep(300);
+    await until(() => h.events.navigations.some((n) => !n.mainFrame && n.action === 'allow'), 3000);
     const frames = h.events.navigations.filter((n) => !n.mainFrame);
     r.check(
       'iframe navigations are decided as mainFrame false',
@@ -1984,7 +1996,7 @@ async function injection(h: Harness) {
   });
   await sleep(500);
   await openPage(h, fresh(h, '/injection.html'));
-  await sleep(500);
+  await until(async () => (await text(h, 'end')) !== '', 3000); // the page's load listener fills it
   r.check('a script runs before page scripts', (await text(h, 'start')) === 'true');
   r.check(
     'its DOMContentLoaded listener runs once the DOM is parsed',
@@ -2861,7 +2873,7 @@ async function sources(h: Harness) {
       () => true,
       10000
     );
-    await sleep(300);
+    await until(async () => (await text(h, 'body').catch(() => 'stale')) !== 'stale', 3000);
     r.check(
       `reload sends the POST again${form}`,
       (await text(h, 'body')) === body,
@@ -2900,7 +2912,12 @@ async function sources(h: Harness) {
     const server = `${h.pages}/common.js`;
     const without = [await read('app.js'), await read(server)];
     h.setProps({ ios: { preferences: { allowFileAccessFromFileURLs: true } } });
-    await sleep(300);
+    await until(
+      async () =>
+        (await h.ref.current?.get('preferences.allowFileAccessFromFileURLs').catch(errorCode)) ===
+        true,
+      3000
+    );
     await waitForLoad(h, () => h.ref.current?.reload(), idle, 10000);
     const sibling = await read('app.js');
     r.check(
