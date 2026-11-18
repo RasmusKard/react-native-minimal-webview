@@ -1,5 +1,5 @@
 {
-  "description": "Shared crash recovery cases for showsSource and crashAllowsReload (MinimalWebView.kt, Recovery.swift). `source`: whether committed `url` is the page of a source with `uri`; an empty `url` or an html source is per platform. `crashGuard`: each case starts with no crashes; a crash at `at` ms reloads unless more than 3 crashes, it included, fall within the 60 s up to it, inclusive; a crash that doesn't reload counts too. Crashes are over 100 ms apart, because Android counts one renderer death's reports within 100 ms once.",
+  "description": "Shared crash recovery cases for showsSource and crashAllowsReload (MinimalWebView.kt, Recovery.swift). `source`: whether committed `url` is the page of a source with `uri`, which the WebView commits with the scheme and host lowercase and the default port dropped; an empty `url` or an html source is per platform. `crashGuard`: each case starts with no crashes; a crash at `at` ms reloads unless more than 3 crashes, it included, fall within the 60 s up to it, inclusive; a crash that doesn't reload counts too. Crashes are over 100 ms apart, because Android counts one renderer death's reports within 100 ms once.",
   "source": [
     {
       "name": "the same URL",
@@ -26,6 +26,42 @@
       "shows": true
     },
     {
+      "name": "an uppercase host",
+      "uri": "https://Example.com/page",
+      "url": "https://example.com/page",
+      "shows": true
+    },
+    {
+      "name": "an uppercase scheme",
+      "uri": "HTTPS://example.com/page",
+      "url": "https://example.com/page",
+      "shows": true
+    },
+    {
+      "name": "the default port",
+      "uri": "https://example.com:443/page",
+      "url": "https://example.com/page",
+      "shows": true
+    },
+    {
+      "name": "the default port with no path",
+      "uri": "https://Example.com:443",
+      "url": "https://example.com/",
+      "shows": true
+    },
+    {
+      "name": "another port",
+      "uri": "https://example.com:8443/page",
+      "url": "https://example.com/page",
+      "shows": false
+    },
+    {
+      "name": "a path in another case",
+      "uri": "https://example.com/Page",
+      "url": "https://example.com/page",
+      "shows": false
+    },
+    {
       "name": "another path",
       "uri": "https://example.com/page",
       "url": "https://example.com/other",
@@ -48,30 +84,72 @@
     {
       "name": "the 4th crash in 60 s doesn't reload, it counts too, and older crashes leave the window",
       "crashes": [
-        { "at": 0, "reload": true },
-        { "at": 10000, "reload": true },
-        { "at": 20000, "reload": true },
-        { "at": 30000, "reload": false },
-        { "at": 65000, "reload": false },
-        { "at": 100000, "reload": true }
+        {
+          "at": 0,
+          "reload": true
+        },
+        {
+          "at": 10000,
+          "reload": true
+        },
+        {
+          "at": 20000,
+          "reload": true
+        },
+        {
+          "at": 30000,
+          "reload": false
+        },
+        {
+          "at": 65000,
+          "reload": false
+        },
+        {
+          "at": 100000,
+          "reload": true
+        }
       ]
     },
     {
       "name": "a crash exactly 60 s back counts",
       "crashes": [
-        { "at": 0, "reload": true },
-        { "at": 1000, "reload": true },
-        { "at": 2000, "reload": true },
-        { "at": 60000, "reload": false }
+        {
+          "at": 0,
+          "reload": true
+        },
+        {
+          "at": 1000,
+          "reload": true
+        },
+        {
+          "at": 2000,
+          "reload": true
+        },
+        {
+          "at": 60000,
+          "reload": false
+        }
       ]
     },
     {
       "name": "a crash just over 60 s back doesn't",
       "crashes": [
-        { "at": 0, "reload": true },
-        { "at": 1000, "reload": true },
-        { "at": 2000, "reload": true },
-        { "at": 60001, "reload": true }
+        {
+          "at": 0,
+          "reload": true
+        },
+        {
+          "at": 1000,
+          "reload": true
+        },
+        {
+          "at": 2000,
+          "reload": true
+        },
+        {
+          "at": 60001,
+          "reload": true
+        }
       ]
     }
   ]
