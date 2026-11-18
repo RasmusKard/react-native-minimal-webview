@@ -9,7 +9,7 @@ export type Dialog =
   | {
       type: 'alert' | 'confirm';
       message: string;
-      /** The URL of the page (iOS: of the frame) that opened it. */
+      /** The URL of the frame that opened it. */
       url: string;
       /**
        * Whether the main frame opened it.
@@ -22,20 +22,25 @@ export type Dialog =
       message: string;
       /** The prompt's default text. */
       defaultValue: string | null;
-      /** As for an alert. */
+      /** The URL of the frame that opened it. */
       url: string;
-      /** @ios */
+      /**
+       * Whether the main frame opened it.
+       * @ios
+       */
       mainFrame?: boolean;
     };
 
 /**
  * Answers the page's `alert`, `confirm` and `prompt` with `onDialog` instead of the native dialogs; the page waits for
- * the answer. Not in react-native-webview, whose dialogs are native.
+ * the answer.
+ *
+ * Not in react-native-webview, whose dialogs are native.
  *
  * The return value (a promise is awaited) is the answer: `true` accepts a confirm, a string is a prompt's text, and
  * anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.
  *
- * `signal` aborts when native stops waiting for the answer, and the dialog is then dismissed;
+ * `signal` aborts when the core stops waiting for the answer, and the dialog is then dismissed;
  * {@link HookExtension.onEvent} has the rules.
  *
  * Without this extension, the default dialogs show, as `WebViewProps` describes.
@@ -45,8 +50,8 @@ export const dialogs = (
   onDialog: (dialog: Dialog, signal: AbortSignal) => unknown
 ): HookExtension<HookEvent<Dialog['type'], Dialog>> => ({
   key: '@react-native-minimal-webview/extensions.dialogs',
-  // Each dialog is an ask, which has a signal; the event's name is the dialog's type. The answer is checked here, once
-  // for both platforms (iOS would take a numeric 1 as true); a throw rejects, which the core answers with null.
+  // Each dialog is an ask, so it has a signal. A throw is not caught here: the core answers it with null. The answer is
+  // checked here, once for both platforms: iOS would take a numeric 1 as true.
   onEvent: async ({ payload }, signal) => {
     const answer = await onDialog(payload, signal as AbortSignal);
     if (payload.type === 'confirm') return answer === true;

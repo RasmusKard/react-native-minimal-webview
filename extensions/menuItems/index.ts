@@ -45,13 +45,14 @@ export type CustomMenuSelectionEvent = {
 
 /**
  * The text selection menu: react-native-webview's `menuItems`, `suppressMenuItems` and `onCustomMenuSelection`.
- * `items` replace the system's items, `onSelect` gets the one chosen, and on iOS `suppress` hides system items. Null
- * when neither is set on this platform (`suppress` alone on Android).
  *
- * Turn it on when the WebView is created. Once it has, a change, switching it off included, applies to the next menu.
+ * `items` replace the system's items, `onSelect` gets the one chosen, and on iOS `suppress` hides system items.
+ *
+ * Turn it on when the WebView is created. After that, a change, switching it off included, applies to the next menu.
  *
  * Its hook makes the WebView from a class of its own. When another hook's `webViewClass` or `webViewFactory`,
  * registered earlier, makes it instead, there is no menu and the core warns.
+ * @returns Null when `items` is unset and, on iOS, `suppress` is too.
  * @group Extensions
  */
 export function menuItems(menu: {

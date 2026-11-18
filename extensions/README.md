@@ -10,15 +10,16 @@ back react-native-webview props, such as `onScroll` and `basicAuthCredential`, a
 
 <!-- #region setup -->
 
-It has the core's [requirements](https://github.com/RasmusKard/react-native-minimal-webview#requirements). Install both, then
-rebuild the app, since the package has native code:
+It has the same [requirements](https://github.com/RasmusKard/react-native-minimal-webview#requirements) as
+react-native-minimal-webview. Install the two packages together, then rebuild the app, since this package has native
+code:
 
 ```sh
 npx expo install react-native-minimal-webview @react-native-minimal-webview/extensions
 ```
 
-Each extension is a function whose result goes into the core's
-[`extensions`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#extensions) prop:
+Each extension is a function whose result goes into the
+[`extensions`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#extensions) prop of `<WebView>`:
 
 ```tsx
 import { basicAuthCredential, onScroll } from '@react-native-minimal-webview/extensions';
@@ -74,24 +75,26 @@ To change an extension, or to take only one, copy it into a module of your own:
    - `index.ts`, the function that returns its `HookExtension`, into `src/` under the extension's name (such as
      `src/basicAuthCredential.ts`), and export it from your module's `index.ts`
 3. In the `.kt` file, change the `package` line to the one in your `<Name>Module.kt`.
-4. Register the hook in `<Name>Module.swift` and `<Name>Module.kt`, for each platform the extension has: call
-   `<Extension>.register()`, such as `BasicAuthCredential.register()`, in the module's `OnCreate` block, added to
-   `definition()` if it has none. Keep to one `OnCreate`: on Android a second one replaces the first. The copies share
-   your module's package, so they need no import.
+4. Register the hook, for each platform the extension has:
+   - Call `<Extension>.register()`, such as `BasicAuthCredential.register()`, in the `OnCreate` block of `<Name>Module.swift` and of `<Name>Module.kt`. Add one to `definition()` if it has none.
+   - Keep to one `OnCreate`: on Android a second one replaces the first.
+   - The copies share your module's package, so they need no import.
 5. In the hook key, replace the `@react-native-minimal-webview/extensions` prefix with your package's name, in the
    Swift, the Kotlin and the TS.
 6. Rebuild the app.
 
 The Swift keeps its type names: they belong to your module.
 
-A changed `hideKeyboardAccessoryView` also needs a `suffix` of its own: the runtime class it makes is found by that
-name.
+### Steps for particular extensions
 
-A copied `downloadManager` or `incognito` also needs the extensions' `src/Cookies.kt`: copy it next to the extension's
-`.kt` file, and change its `package` line too.
+- `hideKeyboardAccessoryView`: change the `suffix` constant in its `.swift` file to a value of your own, since the runtime class it makes is found by that name.
+- `downloadManager` and `incognito`: copy the extensions' `src/Cookies.kt` next to the extension's `.kt` file, and change its `package` line too.
 
-With this package installed as well, a `package` line you forgot to change fails the Android build with a duplicate
-class. A key you forgot to rename registers two hooks under one key: `register`, in the
-[iOS](https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/minimalwebviewhooks/) and
-[Android](https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-minimal-web-view-hooks/)
-hooks API, says what happens.
+### If you miss a step
+
+With this package installed as well:
+
+- A `package` line you forgot to change fails the Android build with a duplicate class.
+- A key you forgot to rename registers two hooks under one key. What happens is in `register` of the hooks API for
+  [iOS](https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/minimalwebviewhooks/) and
+  [Android](https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-minimal-web-view-hooks/).

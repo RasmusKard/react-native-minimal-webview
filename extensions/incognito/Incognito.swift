@@ -1,7 +1,7 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind `incognito()`: the WKWebView is created with a non-persistent data store.
+/// The hook behind `incognito()`.
 enum Incognito {
   static let key = "@react-native-minimal-webview/extensions.incognito"
 

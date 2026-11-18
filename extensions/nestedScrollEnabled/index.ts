@@ -3,9 +3,10 @@ import type { HookExtension } from 'react-native-minimal-webview';
 
 /**
  * Keeps a swipe that starts on the page for the page, inside a scrolling parent such as a `ScrollView`:
- * react-native-webview's `nestedScrollEnabled`. Null on iOS.
+ * react-native-webview's `nestedScrollEnabled`.
  *
  * `android.webView.nestedScrollingEnabled` doesn't do this: the parent still takes the swipe.
+ * @returns Null on iOS.
  * @android
  * @group Extensions
  */

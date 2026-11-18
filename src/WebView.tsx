@@ -152,7 +152,7 @@ const unawaited = (call: Promise<unknown> | undefined, name: string) =>
   });
 
 /**
- * A WebView whose native side decides navigations and owns the navigation state: see {@link WebViewProps} and
+ * A WebView whose core decides navigations and owns the navigation state: see {@link WebViewProps} and
  * {@link WebViewRef}.
  * @group WebView
  */

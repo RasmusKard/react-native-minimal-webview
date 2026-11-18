@@ -10,7 +10,10 @@ export type AndroidLayerType = 'none' | 'software' | 'hardware';
 
 /**
  * Sets the WebView's layer type, and keeps it on the WebView that replaces one whose renderer crashed:
- * react-native-webview's `androidLayerType`. Switched off, the layer type is `'none'` again. Null on iOS.
+ * react-native-webview's `androidLayerType`.
+ *
+ * Switched off, the layer type is `'none'` again.
+ * @returns Null on iOS.
  * @android
  * @group Extensions
  */

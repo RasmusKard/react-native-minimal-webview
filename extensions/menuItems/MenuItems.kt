@@ -35,9 +35,9 @@ internal object MenuItems {
   }
 }
 
-/** A WebView whose selection toolbar shows `menuItems` instead of the system's actions. */
+/** A WebView whose text selection menu shows `menuItems` instead of the system's items. */
 internal class MenuWebView(context: Context) : WebView(context) {
-  /** react-native-webview's `{ key, label }` items; null leaves the system's actions. */
+  /** react-native-webview's `{ key, label }` items; null leaves the system's items. */
   var menuItems: List<Map<*, *>>? = null
   var onMenuItem: ((item: Map<*, *>, done: () -> Unit) -> Unit)? = null
 

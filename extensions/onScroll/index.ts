@@ -7,7 +7,10 @@ import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
  */
 export type ScrollEvent = {
   contentOffset: { x: number; y: number };
-  /** All 0 on Android. */
+  /**
+   * The scroll view's own `contentInset` (iOS), without the automatic adjustment the offsets include. All 0 on
+   * Android.
+   */
   contentInset: { top: number; left: number; bottom: number; right: number };
   contentSize: { width: number; height: number };
   /** The WebView's own size. */

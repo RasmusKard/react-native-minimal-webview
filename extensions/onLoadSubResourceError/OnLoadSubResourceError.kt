@@ -7,7 +7,7 @@ import android.webkit.WebViewClient
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 
-/** The hook behind `onLoadSubResourceError()`: each failed request that isn't the main frame's. */
+/** The hook behind `onLoadSubResourceError()`. */
 internal object OnLoadSubResourceError {
   const val KEY = "@react-native-minimal-webview/extensions.onLoadSubResourceError"
 

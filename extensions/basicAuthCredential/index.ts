@@ -9,14 +9,14 @@ export type BasicAuthCredential = { username: string; password: string };
 /**
  * Answers HTTP auth challenges with `credential`: react-native-webview's `basicAuthCredential`.
  *
- * It goes to every server that challenges, not only yours: any host the WebView loads a page, an iframe or a
- * subresource from, a third party's too, and over plain `http:` as well as `https:`.
+ * It goes to every server that challenges: any host the WebView loads a page, an iframe or a subresource from, over
+ * `http:` as well as `https:`.
  *
  * iOS answers HTTP basic challenges, and Android every HTTP auth request, digest included. Neither sends the credential
  * again once the site has rejected it: the site's 401 page shows. A change applies from the next challenge.
  *
- * On iOS, a challenge it doesn't answer goes on to the native hooks' navigation delegates listed after it, then to
- * WebKit's default handling.
+ * With a native hook of your own that answers auth challenges too, the order of the hooks decides which one answers:
+ * see `navigationDelegates` (iOS) and `clients` (Android) of `WebViewContext`.
  *
  * A credential once accepted stays with the WebView's network session, as in a browser: after it changes or is
  * switched off, an origin that accepted it can still get it, until the app restarts.

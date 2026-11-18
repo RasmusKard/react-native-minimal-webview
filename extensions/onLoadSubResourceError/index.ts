@@ -16,9 +16,11 @@ export type SubResourceErrorEvent = {
 
 /**
  * Calls `handler` for each of the page's requests that fails, such as an image, a script or an iframe, but not the
- * main frame's, which goes to `onError`: react-native-webview's `onLoadSubResourceError`. Null on iOS.
+ * main frame's, which goes to `onError`: react-native-webview's `onLoadSubResourceError`.
  *
- * A request whose SSL check fails isn't reported; react-native-webview's reports only those.
+ * A request whose SSL check fails isn't reported. A response with an HTTP error status, such as a 404, isn't reported
+ * either: only network errors are.
+ * @returns Null on iOS.
  * @android
  * @group Extensions
  */

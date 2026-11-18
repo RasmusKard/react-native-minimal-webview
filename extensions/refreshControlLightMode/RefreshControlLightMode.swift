@@ -1,7 +1,7 @@
 import MinimalWebView
 import UIKit
 
-/// The hook behind `refreshControlLightMode()`: the refresh control's tint is white, and inherited again when it is off.
+/// The hook behind `refreshControlLightMode()`.
 enum RefreshControlLightMode {
   static let key = "@react-native-minimal-webview/extensions.refreshControlLightMode"
 

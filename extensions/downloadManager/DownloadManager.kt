@@ -9,9 +9,8 @@ import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /**
- * The hook behind `downloadManager()`, react-native-webview's default Android downloads: each http(s) download goes to
- * the system Download Manager, into the public Downloads folder, which needs no permission since API 29. Its value may
- * have `downloadingMessage`.
+ * The hook behind `downloadManager()`, react-native-webview's default Android downloads. The public Downloads
+ * folder needs no permission on API 29+, the package's minSdk. Its value may have `downloadingMessage`.
  */
 internal object DownloadManager {
   const val KEY = "@react-native-minimal-webview/extensions.downloadManager"
