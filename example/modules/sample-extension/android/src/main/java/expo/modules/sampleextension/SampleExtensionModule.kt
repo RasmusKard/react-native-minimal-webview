@@ -19,8 +19,7 @@ class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      // configure runs before the package sets the WebView up (`WebViewCompat.setProfile` goes here); the app's
-      // `android.settings` apply after it and win.
+      // The app's `android.settings` apply after configure and win.
       MinimalWebViewHooks.register("sample.pageCounter", configure = { webView, _ ->
         webView.settings.defaultFixedFontSize = 14
       }) { webView, context ->
@@ -95,11 +94,7 @@ private class HookDialogs(private val context: WebViewContext) : WebChromeClient
   }
 }
 
-/**
- * Counts page loads. `onPageFinished` and `onPageCommitVisible` are observation callbacks: each reaches every client
- * that overrides it, after the core. Its option, `true` or `{ global: name }`, names the page's global that gets the
- * count (`__pageCount` by default).
- */
+/** Counts page loads and stamps the count into the page; reports commit-visible. */
 private class PageCounter(private val context: WebViewContext) : WebViewClient() {
   var count = 0
     private set

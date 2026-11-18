@@ -14,8 +14,7 @@ public enum DocumentEnd {
   case committed
   /// The renderer (WebKit's web content process) died.
   ///
-  /// The WKWebView stays and reloads, unless `ProcessGoneEvent.recovered` in JS is false (a POST `source` on screen,
-  /// or crash recovery's limit). Nothing attaches again: the hooks' contexts, handlers and delegates stay.
+  /// The WKWebView stays and reloads, unless `ProcessGoneEvent.recovered` in JS is false. Nothing attaches again: the hooks' contexts, handlers and delegates stay.
   case crashed
   /// The view is closing; the hooks' ``WebViewContext/onDestroyed(_:)`` handlers run after it.
   case closing

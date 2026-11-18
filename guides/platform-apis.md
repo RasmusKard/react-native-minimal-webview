@@ -65,8 +65,6 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
 />;
 ```
 
-A key the device can't apply is skipped with a warning, never a crash.
-
 ## 3. Read a value
 
 [`get`][get] takes `root.key`. On iOS the key is the property's name, on Android the getter's name without `get` or

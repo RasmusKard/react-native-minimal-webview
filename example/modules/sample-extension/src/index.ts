@@ -5,9 +5,8 @@ import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
  * The events of the sample page counter hook, for {@link pageCounter}'s `onEvent`. A native
  * `context.emit('pageLoaded', …)` arrives as `pageLoaded`:
  * - `pageLoaded`: each page load; the hook also stamps the count into the page's `window.__pageCount`.
- * - `redirect` (iOS): `didReceiveServerRedirectForProvisionalNavigation`, which the core doesn't implement but passes
- *   to every hook delegate; `commitVisible` (Android): `onPageCommitVisible`, which reaches every client after the
- *   core.
+ * - `redirect` (iOS): `didReceiveServerRedirectForProvisionalNavigation`; `commitVisible` (Android):
+ *   `onPageCommitVisible`.
  * - `documentEnd`: from `context.onDocumentEnd`, with `context.url` as it was there.
  * - `label`: an ask, answered by `onEvent`'s return value.
  *

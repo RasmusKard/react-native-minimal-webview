@@ -5,12 +5,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Calls `selector` on `target` with the JSON `args` and resolves with the result as `MRWJsonable` makes it, or with
 /// why it couldn't.
 ///
-/// `args` are set by the method signature's type encodings:
-/// - booleans, numbers and strings as themselves, and nil from null;
-/// - the four structs (UIEdgeInsets, CGPoint, CGSize, CGRect) from objects;
-/// - `{ set: [] }`, `{ date: seconds }`, `{ data: base64 }` and `{ cookie: properties }` for an NSSet, NSDate, NSData
-///   or NSHTTPCookie;
-/// - any other object as is.
+/// `args` are set by the method signature's type encodings, in the forms WebViewRef.call's @param lists.
 ///
 /// A selector whose last argument is a block gets the shape `completion` names, and the block resolves, with the
 /// error's description as the error:
@@ -30,9 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 FOUNDATION_EXPORT void MRWInvoke(id target, SEL selector, NSArray *args, NSString *_Nullable completion,
                                  void (^resolve)(id _Nullable result, NSString *_Nullable error)) NS_REFINED_FOR_SWIFT;
 
-/// `value` as JSON: numbers, strings, URLs as strings, dates as seconds since 1970, NSData and UIImage (PNG) as
-/// base64, the four struct NSValues (UIEdgeInsets, CGPoint, CGSize, CGRect) as objects, an NSHTTPCookie as its
-/// `properties`, lists, sets and dictionaries of them; anything else, and nil, is null.
+/// `value` as JSON, in the forms WebViewRef.call's @returns lists; anything else, and nil, is null.
 FOUNDATION_EXPORT id MRWJsonable(id _Nullable value) NS_REFINED_FOR_SWIFT;
 
 NS_ASSUME_NONNULL_END

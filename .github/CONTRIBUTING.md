@@ -23,11 +23,11 @@ installs the example app, and generates `example/android` or `example/ios` the f
 ```sh
 # Both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc
 npm run check
-# Stryker on the files .config/stryker.config.json lists; fails below its break threshold
+# Stryker on the files .config/stryker.config.json lists
 npm run mutation
 # Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)
-# Swift tests, the PlatformSettings ones as Mac Catalyst
+# Swift tests
 ios/Tests/run.sh
 detekt --input android/src/main,extensions --config .config/detekt.yml
 swiftlint lint --config .config/swiftlint.yml

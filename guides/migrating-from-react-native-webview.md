@@ -202,8 +202,7 @@ export function Browser() {
 Your rules replace the defaults, [`defaultNavigationRules`][defaultnavigationrules]: spread it after yours to keep them.
 A navigation no rule matches is blocked, where react-native-webview opened a URL outside `originWhitelist` externally.
 
-A rule decides natively, so a busy JS thread doesn't hold a navigation up. A late `onNavigationRequest` answer blocks
-the navigation, where react-native-webview's Android let it through.
+A late `onNavigationRequest` answer blocks the navigation, where react-native-webview's Android let it through.
 
 The [request][navigationrequest] has `mainFrame` in
 place of `isTopFrame`, and `userInitiated` in place of `navigationType: 'click'`. It has no `mainDocumentURL`. A new

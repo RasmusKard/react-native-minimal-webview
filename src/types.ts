@@ -37,8 +37,6 @@ export type WebViewSource =
        *
        * Its `Content-Type` is `application/x-www-form-urlencoded` unless iOS `headers` set one; Android ignores
        * `headers` for a POST.
-       *
-       * `reload()` sends the POST again; {@link ProcessGoneEvent.recovered | crash recovery} doesn't.
        */
       body?: string;
       /**
@@ -504,7 +502,6 @@ export type BridgeOptions = {
 export type FileRequest = {
   /** Its `accept` list, lowercased and without invalid entries: MIME types and extensions (`.pdf`). */
   accept: string[];
-  /** Its `multiple` attribute. */
   multiple: boolean;
   /** Its `capture` attribute: the page wants the camera. */
   capture: boolean;
@@ -543,7 +540,8 @@ export type Download = {
   uri: string;
   /**
    * A plain file name without a path. The page chose it, like the content and `mimeType`, so don't open the file as
-   * trusted.
+   * trusted. On Android a `data:` or `blob:` link's name is guessed instead: WebView doesn't pass its `download`
+   * attribute.
    */
   filename: string;
   mimeType: string;
@@ -563,7 +561,6 @@ export type Download = {
  */
 export type DownloadFailure =
   | {
-      /** Tells it from a {@link Download}. */
       ok: false;
       kind: 'network' | 'data';
       /** Empty on iOS when the download failed before its response came. */
@@ -729,13 +726,11 @@ export type AndroidSettings = {
 /**
  * An event a native hook sent with `emit` or `ask`.
  * @typeParam N - The event's name, to type one hook's events.
- * @typeParam P - Its payload.
  * @group Native hooks
  */
 export type HookEvent<N extends string = string, P = Record<string, unknown>> = {
   /** The name the hook sent it with, such as `pageLoaded`. */
   name: N;
-  /** What the hook sent with it. */
   payload: P;
 };
 
@@ -984,7 +979,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
    * pull inside a scrolled inner scroller (`overflow: auto` or `scroll`) scrolls it instead.
    *
-   * It reloads as {@link WebViewRef.reload | reload()} does, a POST `source` included, but leaves the
+   * It reloads as {@link WebViewRef.reload | reload()} does, but leaves the
    * {@link ProcessGoneEvent.recovered | crash recovery} limit in place. A change applies at once.
    * @default `false`
    */
@@ -1100,12 +1095,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Android's WebViews share one renderer, so each of them reports its death.
    */
   onProcessGone?: (event: ProcessGoneEvent) => void;
-  /**
-   * `loading` went true.
-   *
-   * On Android with an Android System WebView older than 146, that is when the page commits (its response arrives),
-   * not when the load starts, and a load that never commits fires neither this nor `onLoadEnd`.
-   */
+  /** {@link NavigationState.loading | loading} went true. */
   onLoadStart?: (state: NavigationState) => void;
   /** `loading` went false: `state.outcome` says how the load ended. */
   onLoadEnd?: (state: NavigationState) => void;
@@ -1148,7 +1138,7 @@ export type WebViewRef = {
    * Sends a POST `source` again, and lifts the limit on {@link ProcessGoneEvent.recovered | crash recovery}.
    */
   reload(): void;
-  /** Stops the load: its `outcome` is `cancelled`, or on Android `finished` once the page has arrived. */
+  /** Stops the load; its {@link NavigationState.outcome | outcome} says how the load ended. */
   stopLoading(): void;
   /**
    * Runs an expression (not statements) in the page's main frame and awaits it.

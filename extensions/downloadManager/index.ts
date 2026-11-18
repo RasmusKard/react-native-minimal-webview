@@ -17,7 +17,7 @@ import type { HookExtension } from 'react-native-minimal-webview';
  */
 export const downloadManager = (options?: {
   /**
-   * The toast's text, `'Downloading'` when unset.
+   * The toast's text.
    * @default `'Downloading'`
    */
   downloadingMessage?: string;
