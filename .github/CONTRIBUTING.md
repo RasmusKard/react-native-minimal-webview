@@ -21,13 +21,18 @@ installs the example app, and generates `example/android` or `example/ios` the f
 ## Checks
 
 ```sh
-npm run check                                                              # both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc
-npm run mutation                                                           # Stryker on the files .config/stryker.config.json lists; fails below its break threshold
-(cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)   # Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
-ios/Tests/run.sh                                                           # Swift tests, the PlatformSettings ones as Mac Catalyst
+# Both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc
+npm run check
+# Stryker on the files .config/stryker.config.json lists; fails below its break threshold
+npm run mutation
+# Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
+(cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)
+# Swift tests, the PlatformSettings ones as Mac Catalyst
+ios/Tests/run.sh
 detekt --input android/src/main,extensions --config .config/detekt.yml
 swiftlint lint --config .config/swiftlint.yml
-periphery scan --config .config/periphery.yml                              # builds the example app, so it needs example/ios
+# Builds the example app, so it needs example/ios
+periphery scan --config .config/periphery.yml
 ```
 
 ## Docs site
@@ -35,7 +40,7 @@ periphery scan --config .config/periphery.yml                              # bui
 The `docs` workflow builds the site and deploys it to GitHub Pages on every push to `main`. `npm run docs` builds it
 locally: it generates the API reference for TypeScript, Kotlin and Swift and writes the site to `build/docs/site/site`.
 Kotlin and Swift build the library, so it needs `example/android` and `example/ios`. How the site is laid out:
-[rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#zensical-site).
+[rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#cli).
 
 ## On-device suites
 

@@ -2,6 +2,8 @@
 src/bridge/pageClient.generated.ts
 src/platform.generated.ts
 src/types.defaults.ts
+
+# Vendored SDK extracts, refreshed by gen-platform-types.mts --import
 .github/scripts/platform-headers/
 
 # Lockfiles, written by npm
@@ -18,7 +20,7 @@ extensions/build/
 eslint.config.cjs
 .prettierrc
 
-# Workflows are not reformatted in the same change that adds the check
+# Workflows are kept as written
 .github/workflows/
 
 # Pages served verbatim to the WebView on device by the harness; whitespace in them is part of the fixture

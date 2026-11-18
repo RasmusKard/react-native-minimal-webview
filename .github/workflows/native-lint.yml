@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The complexity and unused-code rules for Kotlin and Swift, as .github/CONTRIBUTING.md runs them locally.
+  # detekt (complexity and unused code) and SwiftLint (complexity), as .github/CONTRIBUTING.md runs them locally. Periphery runs locally only.
   # macOS for both: SwiftLint needs macOS, and Homebrew is on the PATH there.
   detekt:
     runs-on: macos-latest
