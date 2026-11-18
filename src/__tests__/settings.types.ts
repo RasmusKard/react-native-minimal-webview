@@ -28,6 +28,4 @@ const fromVariable: IOSSettings = { scrollView: misspelled };
 // @ts-expect-error because the value has the wrong type
 const wrongType: AndroidSettings = { settings: { textZoom: 'big' } };
 
-it('types the known settings keys and takes the others under other', () => {
-  expect([ios, android, typo, androidTypo, known, fromVariable, wrongType]).toHaveLength(7);
-});
+void [ios, android, typo, androidTypo, known, fromVariable, wrongType];

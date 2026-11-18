@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Swift tests, on macOS (.github/workflows/swift.yml says what they cover). Run from anywhere.
+# The Swift tests, on macOS. Run from anywhere.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 out="$(mktemp -d)"

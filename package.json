@@ -83,9 +83,14 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "clearMocks": true,
+    "restoreMocks": true,
     "roots": [
       "<rootDir>/src",
       "<rootDir>/extensions/src"
+    ],
+    "testMatch": [
+      "**/*.test.{ts,tsx}"
     ]
   },
   "peerDependencies": {

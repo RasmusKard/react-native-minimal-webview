@@ -58,7 +58,7 @@ async function mount(ref: WebViewRefObject, children: ReactNode) {
   };
 }
 
-// Each component records what it rendered with; a typed array checks the value's type follows the selector.
+// A typed array checks that the selected value's type follows the selector.
 describe('useWebViewState', () => {
   it('re-renders with a selector only when what it selects changes', async () => {
     const ref = createWebViewRef();

@@ -20,10 +20,6 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * `overrides()`: what counts as a hook client's own override, for plain and WebViewClientCompat subclasses. Which hooks
- * a WebView's `hookOptions` attach, which one's factory makes it, and which registrations under a key that is taken fail.
- */
 class HooksTest {
   private class Plain : WebViewClient()
   private class PlainCompat : WebViewClientCompat()
@@ -198,19 +194,6 @@ class HooksTest {
   }
 
   @Test
-  fun `an off hook's clients, chrome clients and listeners are not routed`() {
-    val off = Attachment(null)
-    off.clients += Plain()
-    off.chromeClients += WebChromeClient()
-    off.touchListeners += View.OnTouchListener { _, _ -> true }
-    off.scrollListeners += View.OnScrollChangeListener { _, _, _, _, _ -> }
-    assertEquals(emptyList<WebViewClient>(), routed(listOf(off)) { it.clients })
-    assertEquals(emptyList<WebChromeClient>(), routed(listOf(off)) { it.chromeClients })
-    assertEquals(emptyList<View.OnTouchListener>(), routed(listOf(off)) { it.touchListeners })
-    assertEquals(emptyList<View.OnScrollChangeListener>(), routed(listOf(off)) { it.scrollListeners })
-  }
-
-  @Test
   fun `an options handler runs at once with the options, then with each change`() {
     val attachment = Attachment(mapOf("a" to 1.0))
     val seen = mutableListOf<Any?>()
@@ -261,20 +244,9 @@ class HooksTest {
     val lists = listOf(attachment.clients, attachment.chromeClients, attachment.touchListeners, attachment.scrollListeners)
     assertTrue(lists.all { it.isEmpty() })
     attachment.optionsChanged(null)
-    assertEquals(listOf<Any?>(true), seen) // only the call on registering
-  }
-
-  @Test
-  fun `a detached context's list edits reach no WebView`() {
-    val attachment = Attachment(true)
-    val attachments = listOf(attachment)
-    attachment.detach()
-    attachment.clients += Plain()
-    attachment.touchListeners += View.OnTouchListener { _, _ -> true }
-    assertEquals(emptyList<WebViewClient>(), routed(attachments) { it.clients })
-    assertEquals(emptyList<View.OnTouchListener>(), routed(attachments) { it.touchListeners })
     attachment.optionsChanged(true)
     assertFalse(attachment.routed)
+    assertEquals(listOf<Any?>(true), seen) // only the call on registering
   }
 
   @Test

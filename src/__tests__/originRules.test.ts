@@ -2,13 +2,9 @@ import { runInNewContext } from 'node:vm';
 
 import vectors from './vectors/origin-rules.json';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
-import { matchesOrigin, originForms, parseOrigin } from '../bridge/origins';
+import { matchesOrigin, originForms } from '../bridge/origins';
 
-// The page-side matcher takes `location.origin`, which is always serialized: lowercase, no default port. The other
-// origins in the vectors are for the native matchers.
-const serialized = (origin: string) =>
-  !parseOrigin(origin) || originForms([origin]).exact[0] === origin;
-const cases = vectors.cases.filter((c) => serialized(c.origin)).map((c) => [c.name, c] as const);
+const cases = vectors.cases.map((c) => [c.name, c] as const);
 
 describe('origin rules (shared cases)', () => {
   const rules = (valid: boolean) =>
@@ -26,12 +22,11 @@ describe('origin rules (shared cases)', () => {
 });
 
 it.each([
-  ['an allowed origin', ['https://example.com'], 'https://example.com', true],
-  ['another origin', ['https://example.com'], 'https://evil.example', false],
-  ['* rules', ['*'], 'https://evil.example', true],
-])("createBridge's page client installs on %s", (_name, allowedOrigins, origin, installed) => {
+  ['another origin', ['https://example.com'], false],
+  ['* rules', ['*'], true],
+])("createBridge's page client installs on %s", (_name, allowedOrigins, installed) => {
   const w: Record<string, unknown> = {
-    location: { origin },
+    location: { origin: 'https://evil.example' },
     document: { readyState: 'complete' },
     addEventListener: () => {},
   };

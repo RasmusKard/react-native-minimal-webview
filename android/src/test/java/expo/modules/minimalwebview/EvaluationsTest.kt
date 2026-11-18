@@ -13,10 +13,13 @@ class EvaluationsTest {
   }
 
   @Test
-  fun `ids increase and are not reused after a Document end`() {
-    assertEquals(listOf(0, 1), List(2) { add() })
+  fun `a late reply from an ended Document doesn't settle a new evaluation`() {
+    val old = add()
     evaluations.failAll()
-    assertEquals(2, add())
+    results.clear()
+    add()
+    evaluations.settle("[$old, \"1\"]", mainFrame = true)
+    assertEquals(emptyList<String>(), results)
   }
 
   @Test

@@ -117,7 +117,11 @@ func invoke(_ selector: Selector, _ completion: String?) -> String? {
 check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")
 check("an error completion rejects with its description", invoke(#selector(Completions.fail(_:)), "error"), "nope")
 check("a block selector without a shape rejects", invoke(#selector(Completions.reportCount(_:)), nil), "the method takes a completion handler this package's SDK headers don't list: write a native hook")
-check("the completion table has the shape of a WebKit selector", platformCompletions["webView.evaluateJavaScript:completionHandler:"], "valueError")
+var paused: String?
+try! settings.call("webView.pauseAllMediaPlaybackWithCompletionHandler:", args: [], webView: view) { paused = $0 ?? $1 }
+let deadline = Date().addingTimeInterval(5)
+while paused == nil && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+check("a WebKit completion is found by its path", paused, "null")
 check("NaN as JSON throws", (thrown { try PlatformSettings.json { Double.nan } } as? String)?.hasPrefix("NSInvalidArgumentException:"), true)
 print("\(cases - failures)/\(cases) platform settings cases pass")
 exit(failures == 0 ? 0 : 1)

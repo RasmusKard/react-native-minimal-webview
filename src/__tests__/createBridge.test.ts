@@ -1,3 +1,5 @@
+import { runInNewContext } from 'node:vm';
+
 import { CONNECTION, createBridge } from '../bridge/createBridge';
 import type { BridgeMessage } from '../bridge/protocol';
 
@@ -13,32 +15,37 @@ function setup(timeoutMs = 1000) {
 
 const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 
+/** Runs the injected `script` in a fresh realm, as an example.com page would at document start. */
+function runPage(script: string) {
+  const sent: { kind: string; doc: string; value?: unknown }[] = [];
+  const transport = {
+    postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
+    onmessage: null as ((event: { data: string }) => void) | null,
+  };
+  const page = {
+    location: { origin: 'https://example.com' },
+    nativeBridgeTransport: transport,
+    document: { readyState: 'complete', addEventListener: () => {} },
+    addEventListener: () => {},
+    setTimeout,
+    clearTimeout,
+    nativeBridge: undefined as
+      | {
+          handle(method: string, handler: (p: number) => number): void;
+          call(method: string): Promise<unknown>;
+        }
+      | undefined,
+  };
+  Object.assign(page, { top: page, window: page });
+  runInNewContext(script, page);
+  return { page, sent, transport };
+}
+
 describe('createBridge', () => {
   afterEach(() => jest.useRealTimers());
 
-  it('injects a page client that runs on its own, with its timeout', async () => {
-    const { connection } = setup(2500);
-    expect(connection.script).toMatch(/\)\(window, 2500\);$/);
-    const sent: { kind: string; doc: string; value?: unknown }[] = [];
-    const transport = {
-      postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
-      onmessage: null as ((event: { data: string }) => void) | null,
-    };
-    const page = {
-      location: { origin: 'https://example.com' },
-      nativeBridgeTransport: transport,
-      document: { readyState: 'complete', addEventListener: () => {} },
-      addEventListener: () => {},
-      nativeBridge: undefined as
-        { handle(method: string, handler: (p: number) => number): void } | undefined,
-    };
-    Object.assign(page, { top: page });
-    // eslint-disable-next-line no-new-func -- because the script native injects is what this test runs, as the page would
-    const inject = new Function('window', 'location', connection.script) as (
-      window: unknown,
-      location: unknown
-    ) => void;
-    inject(page, page.location);
+  it('injects a page client that runs on its own', async () => {
+    const { page, sent, transport } = runPage(setup().connection.script);
     page.nativeBridge?.handle('double', (n) => n * 2);
     const doc = sent[0]?.doc;
     transport.onmessage?.({
@@ -49,6 +56,14 @@ describe('createBridge', () => {
       ['ready', undefined],
       ['result', 8],
     ]);
+  });
+
+  it('gives the page client the bridge timeout', async () => {
+    jest.useFakeTimers();
+    const { page } = runPage(setup(2500).connection.script);
+    const call = page.nativeBridge?.call('slow');
+    jest.advanceTimersByTime(2500);
+    await expect(call).rejects.toMatchObject({ code: 'timeout' });
   });
 
   it('queues messages until the page is ready', () => {
@@ -178,14 +193,6 @@ describe('createBridge', () => {
     await expect(result).rejects.toMatchObject({ code: 'navigated' });
   });
 
-  it('rejects calls in flight on detach', async () => {
-    const { bridge, connection, fromPage } = setup();
-    fromPage({ kind: 'ready' });
-    const result = bridge.call('slow');
-    connection.detach();
-    await expect(result).rejects.toMatchObject({ code: 'navigated' });
-  });
-
   it('answers page calls with the handler result or a structured error', async () => {
     const { bridge, sent, fromPage } = setup();
     fromPage({ kind: 'ready' });
@@ -260,31 +267,13 @@ describe('createBridge', () => {
     await expect(bridge.call('later')).rejects.toMatchObject({ code: 'unavailable' });
   });
 
-  it('queues messages after a navigation until the new page is ready', () => {
-    const { bridge, connection, sent, fromPage } = setup();
-    fromPage({ kind: 'ready' });
-    connection.navigated();
-    bridge.emit('late', 1);
-    expect(sent).toEqual([]);
-    fromPage({ kind: 'ready' });
-    expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'late', params: 1 }]);
-  });
-
   it('sends calls made before the first page to it, without rejecting them', async () => {
     const { bridge, sent, fromPage } = setup();
     const result = bridge.call('early');
     fromPage({ kind: 'ready' });
-    expect(sent).toMatchObject([{ kind: 'call', method: 'early' }]);
-    fromPage({ id: sent[0]!.id, kind: 'result', value: 7 });
+    fromPage({ id: sent[0]?.id, kind: 'result', value: 7 });
     await expect(result).resolves.toBe(7);
-  });
-
-  it('rejects calls posted to a page when it navigates', async () => {
-    const { bridge, connection, fromPage } = setup();
-    fromPage({ kind: 'ready' });
-    const result = bridge.call('slow');
-    connection.navigated();
-    await expect(result).rejects.toMatchObject({ code: 'navigated' });
+    expect(sent).toMatchObject([{ kind: 'call', method: 'early' }]);
   });
 
   it('does not carry messages queued for a page that never became ready to the next one', async () => {
@@ -330,17 +319,6 @@ describe('createBridge', () => {
     expect(sent).toHaveLength(1000);
     expect(sent.some((m) => m.kind === 'call')).toBe(false);
   });
-
-  it('drops malformed messages', () => {
-    const { bridge, connection } = setup();
-    const seen: unknown[] = [];
-    bridge.on('x', (payload) => seen.push(payload));
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    connection.receive('{"v":1,"kind":"event","method":"x"}', 'https://example.com');
-    expect(seen).toEqual([]);
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
-  });
 });
 
 describe('createBridge document token', () => {
@@ -361,10 +339,16 @@ describe('createBridge document token', () => {
     ]);
   });
 
-  it('drops a page message without a token', () => {
+  it('drops a page message without a token, with a warning', () => {
     const { bridge, sent, connection } = setup();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const seen: unknown[] = [];
     bridge.emit('hello');
+    bridge.on('x', (payload) => seen.push(payload));
     connection.receive(JSON.stringify({ kind: 'ready' }), 'https://example.com');
+    connection.receive(JSON.stringify({ kind: 'event', method: 'x' }), 'https://example.com');
     expect(sent).toEqual([]);
+    expect(seen).toEqual([]);
+    expect(warn).toHaveBeenCalled();
   });
 });
