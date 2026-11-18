@@ -10,7 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Stryker on the files .config/stryker.config.json lists; fails below its break threshold.
   stryker:
     runs-on: ubuntu-latest
     steps:
