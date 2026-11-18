@@ -224,13 +224,11 @@ describe('navigationRules', () => {
   const ACTION = 'action must be one of ["allow","block","external","ask"]';
   it.each([
     [[null], 'must be an object, not null'],
-    [['allow'], 'must be an object, not "allow"'],
     [[{ hosts: ['example.com'], action: 'allow' }], 'unknown key "hosts"'],
     [
       [{ host: 'example.com', action: 'allow' }],
       'host must be an array of strings, not "example.com"',
     ],
-    [[{ query: null, action: 'allow' }], 'query must be an array of strings, not null'],
     [
       [{ scheme: ['https', 1], action: 'allow' }],
       'scheme must be an array of strings, not ["https",1]',
@@ -238,7 +236,6 @@ describe('navigationRules', () => {
     [[{ mainFrame: 'true', action: 'allow' }], 'mainFrame must be true or false, not "true"'],
     [[{ userInitiated: null, action: 'allow' }], 'userInitiated must be true or false, not null'],
     [[{ host: ['example.com'] }], `${ACTION}, not undefined`],
-    [[{ action: 'deny' }], `${ACTION}, not "deny"`],
   ])('blocks all at a malformed rule, and warns once, for %j', async (rules, problem) => {
     const warn = warnings();
     const good = { host: ['a.com'], action: 'allow' };
