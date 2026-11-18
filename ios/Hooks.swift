@@ -49,15 +49,11 @@ public enum MinimalWebViewHooks {
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Register
   ///     what to run when the view goes away with ``WebViewContext/onDestroyed(_:)``. A renderer crash
   ///     reloads the same WKWebView, so nothing attaches again (see ``DocumentEnd/crashed``).
-  ///   - file: Ignored.
-  ///   - line: Ignored.
   public static func register(
     _ key: String,
     webViewClass: WKWebView.Type? = nil,
     configure: ((WKWebViewConfiguration, WebViewContext) -> Void)? = nil,
-    attach: @escaping (WKWebView, WebViewContext) -> Void,
-    file: String = #fileID,
-    line: Int = #line
+    attach: @escaping (WKWebView, WebViewContext) -> Void
   ) {
     guard key != "core" else { return NSLog("[react-native-minimal-webview] the hook key `core` is reserved: the hook is not registered") }
     let hook = Hook(key: key, webViewClass: webViewClass, configure: configure, attach: attach)
@@ -68,6 +64,19 @@ public enum MinimalWebViewHooks {
         + "every hook again; otherwise two hooks share the key and the last one wins, so prefix yours with your package's name"
     )
     hooks[index] = hook
+  }
+
+  /// Deprecated: `file` and `line` do nothing. Use ``register(_:webViewClass:configure:attach:)``.
+  @available(*, deprecated, message: "file: and line: do nothing; drop them")
+  public static func register(
+    _ key: String,
+    webViewClass: WKWebView.Type? = nil,
+    configure: ((WKWebViewConfiguration, WebViewContext) -> Void)? = nil,
+    attach: @escaping (WKWebView, WebViewContext) -> Void,
+    file: String = #fileID,
+    line: Int = #line
+  ) {
+    register(key, webViewClass: webViewClass, configure: configure, attach: attach)
   }
 }
 
