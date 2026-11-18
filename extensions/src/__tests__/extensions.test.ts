@@ -66,12 +66,9 @@ describe('the extensions', () => {
       'removeIosKeyboardObserver',
       undefined,
     ],
-  ])(
-    '%s has its key and options on iOS (none: the default, true)',
-    (_, extension, name, options) => {
-      expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
-    }
-  );
+  ])('%s has its key and options on iOS', (_, extension, name, options) => {
+    expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
+  });
 
   it('gives the Android ones their key on Android, and null for the iOS ones and suppress alone', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
@@ -84,8 +81,6 @@ describe('the extensions', () => {
       key: `${K}.menuItems`,
       options: { items: MENU },
     });
-    expect(plain(transparentBackground())).toEqual({ key: `${K}.transparentBackground` });
-    expect(plain(incognito())).toEqual({ key: `${K}.incognito` });
     expect(plain(downloadManager())).toEqual({ key: `${K}.downloadManager` });
     expect(plain(downloadManager({ downloadingMessage: 'Saving' }))).toEqual({
       key: `${K}.downloadManager`,

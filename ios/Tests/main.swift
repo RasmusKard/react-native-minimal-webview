@@ -1,6 +1,4 @@
-// Runs the shared navigation, origin rule and crash recovery cases against NavigationRules.swift, OriginRules.swift
-// and Recovery.swift, the DelegateProxy routing, the late hooks' order, the hookOptions changes a hook hears, the
-// Asks contract, ReadAccess's roots, Loads' URL comparison and load ends and DownloadName. Not part of the pod (see the podspec).
+// Tests of the iOS logic that runs without a WKWebView. Not part of the pod (see the podspec).
 // ios/Tests/run.sh builds and runs it.
 import Foundation
 import WebKit
@@ -74,7 +72,6 @@ for (scheme, host, port, expected) in [
   check("origin(\(scheme), \(host), \(port)): expected \(expected), got \(got)", got == expected)
 }
 
-// Asks: each ask is answered once, by JS or with nil when native gives up; JS hears of a cancel except at closing.
 var sent: [[String: Any]] = []
 var replies: [String?] = []
 let asks = Asks { sent.append($0) }
@@ -203,7 +200,6 @@ check("proxy a decision no prop makes, or a UI delegate's action policy: none ta
 let ordered = inRegistrationOrder(["typo", "c", "a", "b", "other"], ["b", "x", "a", "c"])
 check("hook order: got \(ordered)", ordered == ["b", "a", "c", "other", "typo"])
 
-// Only a change between two on values that are equal as JSON leaves the hook alone: false and 0 are equal to NSNumber.
 let falsy = NSNumber(value: false)
 let zero = NSNumber(value: 0)
 let changeCases: [(String, Any?, Any?, Bool)] = [
@@ -229,7 +225,6 @@ let readCases: [(String, String, String?, String, Bool)] = [
 ]
 for (name, file, root, expected, warns) in readCases {
   let access = ReadAccess.root(for: URL(string: file)!, root)
-  // loadFileURL raises for a non-file read root: every result must be a file URL.
   check(
     "read root, \(name): got \(access.root.absoluteString), warning \(access.warning ?? "none")",
     access.root.isFileURL && access.root.standardizedFileURL == URL(string: expected)!.standardizedFileURL

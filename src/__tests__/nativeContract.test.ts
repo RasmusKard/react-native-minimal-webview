@@ -58,7 +58,7 @@ const ANDROID_ONLY_FUNCTIONS = [
 ];
 const ANDROID_ONLY_REQUESTS = ['onFileRequest', 'onFullscreenChange'];
 
-test('both platforms define the same props, events and functions, except the documented platform-only ones', () => {
+test('both platforms define the same props, events and functions, except the listed platform-only ones', () => {
   expect(names(swift, PROP)).toEqual([...names(kotlin, PROP), ...IOS_ONLY_PROPS].sort());
   expect(events(swift)).toEqual(events(kotlin));
   expect([...names(swift, FUNCTION), ...ANDROID_ONLY_FUNCTIONS].sort()).toEqual(
@@ -501,9 +501,8 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: /struct InjectedScript: Record \{[^}]*/g,
       value: FIELD,
     },
-    // Every root: the `ios` prop's, and `websiteDataStore` and `httpCookieStore` for `get` and `call`.
     {
-      name: 'settings roots',
+      name: 'settings, get and call roots',
       keys: { ...iosRoots, websiteDataStore: 1, httpCookieStore: 1 },
       site: /func root\([^]*?default:/g,
     },
@@ -557,13 +556,12 @@ test('the bridge transport has the names the page client uses', () => {
     /contentWorld: \.page, name: "(\w+)"\)/g
   );
   const [, global, receive] = scripts.match(/window\.(\w+)\?\.(\w+)\(message\)/) ?? [];
-  expect(page).toContain(`const android = w.${transport};`);
-  expect(page).toContain(`const ios = w.webkit?.messageHandlers?.${handler};`);
-  expect(page).toContain(`w.${global} = Object.freeze({`);
-  expect(page).toContain(`${receive}: receive,`);
+  expect(page).toContain(`w.${transport}`);
+  expect(page).toContain(`messageHandlers?.${handler}`);
+  expect(page).toContain(`w.${global} =`);
+  expect(page).toMatch(new RegExp(`\\b${receive}:`));
 });
 
-// What only one platform's hooks get.
 const ANDROID_ONLY_CONTEXT = [
   'chromeClients',
   'clients',

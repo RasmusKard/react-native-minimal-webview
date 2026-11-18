@@ -133,16 +133,8 @@ function interfaces(bridge: Bridge<InterfaceShop>) {
   bridge.handle('unknown', () => true);
 }
 
-it('accepts a schema written with interfaces', () => {
-  createBridge<InterfaceShop>({
-    allowedOrigins: ['https://example.com'],
-  }) satisfies Bridge<InterfaceShop>;
-  expect(typeof interfaces).toBe('function');
-});
-
-it('types each side of the bridge from its schema, and leaves an untyped one unknown', () => {
-  const options = { allowedOrigins: ['https://example.com'] };
-  expect([typed, page, pageClient, untyped].length).toBe(4);
-  createBridge<Shop>(options) satisfies Bridge<Shop>;
-  createBridge(options) satisfies Bridge;
-});
+const options = { allowedOrigins: ['https://example.com'] };
+createBridge<Shop>(options) satisfies Bridge<Shop>;
+createBridge(options) satisfies Bridge;
+createBridge<InterfaceShop>(options) satisfies Bridge<InterfaceShop>;
+void [typed, page, pageClient, untyped, interfaces];

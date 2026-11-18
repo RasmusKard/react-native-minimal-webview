@@ -6,10 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
-/**
- * `PlatformSettings.apply`, `get` and `call` on a fake: a JS value coerced to each parameter type, the reason for each
- * rejection, and which overload `call` picks.
- */
 class PlatformSettingsTest {
   private class Fake {
     val values = mutableListOf<Any?>()

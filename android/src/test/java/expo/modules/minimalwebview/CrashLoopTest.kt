@@ -4,7 +4,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The crash-loop guard: at most 3 renderer deaths in 60 s reload, and the other WebViews' reports of one count once. */
+/** The crash-loop guard (crashAllowsReload): the shared vectors, and Android's counting one death's reports once. */
 class CrashLoopTest {
   private val vectors = JSONObject(
     checkNotNull(javaClass.getResource("/vectors/recovery.json")) { "test resource vectors/recovery.json missing" }.readText()
