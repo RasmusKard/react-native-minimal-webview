@@ -112,6 +112,34 @@ function untyped(bridge: Bridge, nativeBridge: PageBridge) {
   return [result, handMade];
 }
 
+interface ShopMethods {
+  share: { params: { url: string }; result: boolean };
+}
+interface ShopEvents {
+  themeChanged: 'light' | 'dark';
+}
+interface InterfaceShop {
+  reactNative: ShopMethods;
+  page: { getCartCount: { result: number } };
+  events: ShopEvents;
+}
+
+function interfaces(bridge: Bridge<InterfaceShop>) {
+  bridge.handle('share', ({ url }) => url.length > 0);
+  bridge.emit('themeChanged', 'dark');
+  // @ts-expect-error because the payload isn't one of the event's
+  bridge.emit('themeChanged', 'blue');
+  // @ts-expect-error because the method isn't in the schema
+  bridge.handle('unknown', () => true);
+}
+
+it('accepts a schema written with interfaces', () => {
+  createBridge<InterfaceShop>({
+    allowedOrigins: ['https://example.com'],
+  }) satisfies Bridge<InterfaceShop>;
+  expect(typeof interfaces).toBe('function');
+});
+
 it('types each side of the bridge from its schema, and leaves an untyped one unknown', () => {
   const options = { allowedOrigins: ['https://example.com'] };
   expect([typed, page, pageClient, untyped].length).toBe(4);

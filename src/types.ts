@@ -324,8 +324,6 @@ export type BridgeHandler<Params = unknown, Result = unknown> = (
  * - `params` or a payload is required where its type doesn't allow `undefined`.
  * - A method's `params` and `result` are left out when it has none.
  * - Every key is required: `{}` for a side that handles nothing.
- * - The method and event maps are `type`s or written inline, not `interfaces`: an interface has no index signature, so
- *   it doesn't satisfy `Record`.
  *
  * Params, results and payloads cross as JSON: a `Date` arrives as its ISO string, a `Map` or `Set` as `{}`, `NaN`
  * as `null`, and `undefined` properties and functions are left out. A handler's result that JSON can't encode (a
@@ -340,6 +338,16 @@ export type BridgeSchema = {
   page: Record<string, { params?: unknown; result?: unknown }>;
   /** The events, by name and payload, that either side emits and the other listens to. */
   events: Record<string, unknown>;
+};
+
+/**
+ * The constraint on a schema type `S`: a {@link BridgeSchema} keyed by `S`'s own names, so an `interface` satisfies it.
+ * @group Bridge
+ */
+export type SchemaOf<S> = {
+  [Side in keyof BridgeSchema]: {
+    [K in keyof S[Side & keyof S]]: BridgeSchema[Side][string];
+  };
 };
 
 type ParamsOf<Method> = 'params' extends keyof Method ? Method['params' & keyof Method] : undefined;
@@ -371,7 +379,7 @@ type PayloadArg<Payload> = undefined extends Payload ? [payload?: Payload] : [pa
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
-export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
+export type Bridge<Schema extends SchemaOf<Schema> = BridgeSchema> = {
   /**
    * Answers `nativeBridge.call(method, params)` from the page, for a method of the schema's `reactNative`.
    *
@@ -426,7 +434,7 @@ export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
  * @see [In the page example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#in-the-page)
  * @group Bridge
  */
-export type PageBridge<Schema extends BridgeSchema = BridgeSchema> = {
+export type PageBridge<Schema extends SchemaOf<Schema> = BridgeSchema> = {
   /**
    * Answers `bridge.call(method, params)` from React Native, for a method of the schema's `page`.
    *
