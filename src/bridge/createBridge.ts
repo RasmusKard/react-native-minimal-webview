@@ -1,4 +1,4 @@
-import type { Bridge, BridgeOptions, BridgeSchema, BridgeSender } from '../types';
+import type { Bridge, BridgeOptions, BridgeSchema, BridgeSender, SchemaOf } from '../types';
 import { DEFAULTS } from '../types.defaults';
 import { codedError, createEndpoint } from './endpoint';
 import { invalidOrigins, originForms } from './origins';
@@ -48,7 +48,7 @@ const MAX_QUEUE = 1000;
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */
-export function createBridge<Schema extends BridgeSchema = BridgeSchema>(
+export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
   options: BridgeOptions
 ): Bridge<Schema> {
   // `*` or what origins.ts parses: addWebMessageListener's rules minus custom schemes.
