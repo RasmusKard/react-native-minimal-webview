@@ -1,7 +1,6 @@
 import MinimalWebView
 import UIKit
 
-/// The hook behind `refreshControlLightMode()`.
 enum RefreshControlLightMode {
   static let key = "@react-native-minimal-webview/extensions.refreshControlLightMode"
 

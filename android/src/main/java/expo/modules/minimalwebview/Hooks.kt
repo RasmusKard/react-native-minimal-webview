@@ -110,11 +110,11 @@ internal fun selectHooks(
   return attaching to keys - attaching.map { it.key }.toSet()
 }
 
-/** Hooks whose keys turn on together attach in registration order, which orders their clients. */
+/** [keys] in registration order, then those no hook is registered under, sorted. */
 internal fun inRegistrationOrder(keys: Set<String>, registered: List<String>) =
   registered.filter { it in keys } + (keys - registered.toSet()).sorted()
 
-/** Picks the hook that makes the WebView from [attaching] (the first with a factory, null for a plain WebView), and the keys of the others whose factory is a different object. */
+/** The hook whose factory makes the WebView (null: a plain one), and the keys of the others with a different factory. */
 internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<MinimalWebViewHooks.Hook?, List<String>> {
   val named = attaching.filter { it.webViewFactory != null }
   val maker = named.firstOrNull()
@@ -379,11 +379,7 @@ internal open class Attachment(value: Any?) {
 internal fun <T> routed(attachments: List<Attachment>, pick: (Attachment) -> List<T>) =
   attachments.filter { it.routed }.flatMap(pick)
 
-/**
- * A hook's view of the WebView, one per hook and WebView: the core's context with the hook's key on its events. The
- * handlers live here, so the WebView after a crash gets the ones its `attach` registers again. A hook can keep the
- * context past its attach (an async callback): [detach] then leaves it holding nothing of the view.
- */
+/** The core's [WebViewContext] for one hook's attach: the hook's key goes on its events and asks. */
 internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebView) :
   Attachment(view.hookOptions[hook.key]), WebViewContext {
   /** Null once the attach ended. Main thread only. */

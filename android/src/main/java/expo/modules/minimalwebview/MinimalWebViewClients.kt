@@ -135,7 +135,6 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun onPageCommitVisible(view: WebView, url: String?) =
     observing("onPageCommitVisible", WEB_VIEW, STRING) { it.onPageCommitVisible(view, url) }
 
-  // On a background thread, as WebView calls it: a hook client that overrides it runs there too.
   override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
     deciding("shouldInterceptRequest", WEB_VIEW, WebResourceRequest::class.java)?.shouldInterceptRequest(view, request)
 

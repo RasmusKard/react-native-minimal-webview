@@ -3,7 +3,6 @@ package expo.modules.minimalwebviewextensions
 import android.graphics.Color
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/** The hook behind `transparentBackground()`. */
 internal object TransparentBackground {
   const val KEY = "@react-native-minimal-webview/extensions.transparentBackground"
 

@@ -38,7 +38,7 @@ internal class MinimalWebViewNavigation(
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "onNavigationRequest" in owner.requestHandlers)
     val action = if (decision.action == "ask" && !request.mainFrame) {
-      // Android can't hold a navigation, so `ask` cancels and reissues it: a subframe's can't be reissued.
+      // loadUrl reissues only a main-frame navigation.
       Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
       "block"
     } else {
@@ -67,7 +67,7 @@ internal class MinimalWebViewNavigation(
     if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
   }
 
-  // Cancel now, ask JS, reissue on allow. Never blocks the UI thread. Loses the gesture flag and the redirect chain.
+  // Cancel now, ask JS, reissue on allow; the redirect chain is lost.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
     val referrer = webView.url
     val id = owner.asks.ask("core", "onNavigationRequest", fields(request)) { answer ->
@@ -82,9 +82,9 @@ internal class MinimalWebViewNavigation(
     owner.mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
   }
 
-  // WebView's request headers on a navigation are empty, so the page's URL goes as the referrer. WebView applies its
-  // default policy to it (origin only cross-origin, none from https to http); the page's own referrer policy is lost.
-  // loadUrl skips shouldOverrideUrlLoading, so the reissued URL isn't asked again (its redirects still go to decide).
+  // WebView's request headers on a navigation are empty, so the page's URL goes as the Referer, trimmed by WebView's
+  // default policy (origin only cross-origin, none from https to http). loadUrl skips shouldOverrideUrlLoading, so the
+  // reissued URL isn't asked again (its redirects still go to decide).
   private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
   /** A download no `onDownload` takes. */

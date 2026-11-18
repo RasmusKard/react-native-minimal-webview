@@ -1,7 +1,7 @@
 // One side of the bridge, the same in RN (createBridge.ts) and in the page (pageClient.ts): calls with timeouts,
 // handlers and events. The transport, the `ready` handshake and the document tokens are each side's own. The page
 // client is compiled with this file into one script (.github/scripts/build-page-client.mts).
-import type { ErrorCode } from '../types';
+import type { CodedError, ErrorCode } from '../types';
 import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
 type Pending = {
@@ -12,8 +12,7 @@ type Pending = {
   sent: boolean;
 };
 
-/** A `CodedError` (types.ts): what a ref method or bridge call rejects with. */
-export const codedError = ({ code, message }: { code: ErrorCode; message: string }) =>
+export const codedError = ({ code, message }: { code: ErrorCode; message: string }): CodedError =>
   Object.assign(new Error(message), { code });
 
 /**

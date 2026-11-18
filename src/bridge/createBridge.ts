@@ -51,7 +51,7 @@ const MAX_QUEUE = 1000;
 export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
   options: BridgeOptions
 ): Bridge<Schema> {
-  // `*` or what origins.ts parses: addWebMessageListener's rules minus custom schemes.
+  // The rule syntax is addWebMessageListener's, minus custom schemes.
   const guard = originGuard('createBridge: invalid allowedOrigins', options.allowedOrigins);
   const timeoutMs = options.timeoutMs ?? DEFAULTS.BridgeOptions.timeoutMs;
   if (!(timeoutMs >= 0)) {

@@ -28,7 +28,7 @@ import expo.modules.minimalwebview.requests.FileUpload
 import expo.modules.minimalwebview.requests.FullscreenVideo
 import expo.modules.minimalwebview.requests.Permissions
 
-@Suppress("TooManyFunctions") // because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
+@Suppress("TooManyFunctions") // because the view is the aggregate root; a feature with state of its own gets its own class
 internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onNavigationState by EventDispatcher<Map<String, Any?>>()
   private val onBridge by EventDispatcher<Map<String, Any?>>()
@@ -459,7 +459,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 internal const val TAG = "MinimalWebView"
 internal const val RECOVERING = "the WebView is being rebuilt after its renderer died"
 
-/** Whether this process has made a WebView; until then WebView isn't started. */
+/** Whether this process has made a WebView. */
 @Volatile internal var webViewCreated = false
 
 /** What `setWebContentsDebuggingEnabled` set; null until it is called. */

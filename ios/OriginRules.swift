@@ -1,4 +1,5 @@
 import Foundation
+import WebKit
 
 /// Origin rules in Android's format (the bridge's `allowedOrigins`):
 /// `*`, an exact http(s) origin such as `https://example.com:8443`, or `https://*.example.com` for subdomains.
@@ -13,6 +14,11 @@ enum OriginRules {
     let defaultPort = scheme == "https" ? 443 : scheme == "http" ? 80 : nil
     let host = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
     return "\(scheme)://\(host)" + (port == 0 || port == defaultPort ? "" : ":\(port)")
+  }
+
+  /// The origin as `location.origin` writes it, so the bridge can compare the two exactly.
+  static func origin(of security: WKSecurityOrigin) -> String {
+    origin(security.protocol, security.host, security.port)
   }
 
   static func allows(_ rules: [String], _ origin: String) -> Bool {
