@@ -16,7 +16,7 @@
  * @groupDescription Native hooks
  * Turning native hooks on with the `extensions` prop, and what they send to each extension's `onEvent`.
  * @groupDescription Platform settings
- * WebKit and Android WebView properties, set by name through the `ios` and `android` props.
+ * WebKit, UIScrollView and Android WebView settings, set by their platform names through the `ios` and `android` props.
  * @module react-native-minimal-webview
  * @packageDocumentation
  */

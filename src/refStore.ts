@@ -12,7 +12,7 @@ import {
 
 import type { NavigationState, WebViewRef, WebViewRefObject } from './types';
 
-/** The state while no WebView is mounted with a ref: an empty `url`, so a stale URL never looks valid. */
+/** An empty `url`, so a stale URL never looks valid while no WebView is mounted. */
 const INITIAL_STATE: NavigationState = {
   url: '',
   pendingUrl: null,
@@ -82,7 +82,8 @@ function createAdapter(): Adapter {
 }
 
 /**
- * A ref to pass as a WebView's `ref`, made outside React (a module, a store) so code outside React can use it.
+ * A ref to pass as a WebView's `ref`, which a module or a store can hold, so code outside React can read the state and
+ * call the WebView.
  * @see [Outside React example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#outside-react)
  * @group WebView
  */
@@ -93,9 +94,9 @@ export function createWebViewRef(): WebViewRefObject {
 }
 
 /**
- * Puts `handle` in a callback or plain ref. Any ref object also gets the navigation state through its adapter, which a
- * createWebViewRef one is, so its `current` comes from the adapter too. Returns a function that records a new state,
- * passes it to the attached ref and returns the previous state.
+ * Attaches `handle` to `ref`. A callback or plain ref gets it through `useImperativeHandle`; a `createWebViewRef` ref
+ * serves it as its own `current`. Any ref object also gets the navigation state through its adapter.
+ * Returns a function that records a new state, passes it to the attached ref and returns the previous state.
  */
 export function useAttach(
   ref: Ref<WebViewRef> | undefined,
@@ -124,19 +125,18 @@ export function useAttach(
 
 /**
  * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
- * re-renders on every change, `progress` included, and follows a remount. With `select`, it re-renders only when what
- * `select` picks changes.
+ * re-renders on every change, `progress` included, and follows a remount.
  * @see [Navigation state example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-state)
  * @group Navigation
  */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState;
 /**
  * What `select` returns for the navigation state of the WebView mounted with `ref`; re-renders only when that changes
- * (by `Object.is`), and follows a remount. `useWebViewState(ref, (state) => state.canGoBack)` doesn't re-render as a
- * page loads.
+ * (by `Object.is`), and follows a remount.
  *
- * `select` must be pure: it can run more than once for a state, and it can be a new function at each render. A new
- * object or array from it is never the last one, so it re-renders on every change.
+ * `select` must be pure: it can run more than once for a state, and it can be a new function at each render. A
+ * `select` that returns a new object or array each time re-renders on every state change, because `Object.is` never
+ * matches it.
  */
 export function useWebViewState<T>(
   ref: RefObject<WebViewRef | null>,

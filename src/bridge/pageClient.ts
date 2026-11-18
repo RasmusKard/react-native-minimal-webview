@@ -34,7 +34,6 @@ export function installPageClient(w: PageWindow, timeoutMs: number) {
   };
   const endpoint = createEndpoint(send, timeoutMs, 'p');
 
-  /** Answers to native's calls go back through `send`, as messages. */
   const receive = async (text: string) => {
     const message = JSON.parse(text) as Message;
     if (message.doc === doc) await endpoint.receive(message, send);
@@ -47,7 +46,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number) {
     emit: endpoint.emit,
     handle: endpoint.handle,
     on: endpoint.on,
-    /** iOS's entry point (callAsyncJavaScript, origin-checked there); Android uses the transport's onmessage. */
+    /** iOS's entry point, origin-checked there. */
     __receive: receive,
   });
   // `ready` (protocol.ts) waits for DOMContentLoaded: a call delivered earlier would get `not_found`.
