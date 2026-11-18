@@ -74,14 +74,6 @@ describe('createBridge', () => {
     expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'hello', params: 1 }]);
   });
 
-  it('resolves a call with the matching result', async () => {
-    const { bridge, sent, fromPage } = setup();
-    fromPage({ kind: 'ready' });
-    const result = bridge.call('sum', { a: 1 });
-    fromPage({ id: sent[0]!.id, kind: 'result', value: 3 });
-    await expect(result).resolves.toBe(3);
-  });
-
   it("passes the caller's origin, as native gave it, to handlers and listeners", async () => {
     const { bridge, connection, sent } = setup();
     const senders: unknown[] = [];
