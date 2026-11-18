@@ -5,8 +5,9 @@ import Foundation
 /// Compared case-insensitively, a missing port is the scheme's default, and a malformed rule matches nothing.
 /// createBridge validates the rules on the JS side. Cases: src/__tests__/vectors/origin-rules.json.
 enum OriginRules {
-  /// The default port left out (WebKit reports it as 0), an IPv6 host in brackets, and an opaque origin (no scheme: an
-  /// html source without `baseUrl`, a sandboxed page) as `null`.
+  /// The origin string of a frame, `scheme://host[:port]`, or `null` for an opaque origin (no scheme: an html source
+  /// without `baseUrl`, a sandboxed page). The default port is left out (WebKit reports it as 0) and an IPv6 host is
+  /// bracketed.
   static func origin(_ scheme: String, _ host: String, _ port: Int) -> String {
     guard !scheme.isEmpty else { return "null" }
     let defaultPort = scheme == "https" ? 443 : scheme == "http" ? 80 : nil

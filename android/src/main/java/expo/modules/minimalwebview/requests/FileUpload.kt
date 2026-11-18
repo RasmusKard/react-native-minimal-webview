@@ -24,7 +24,7 @@ internal class FileUpload(private val owner: MinimalWebView) {
 
   fun cancel() = held?.onReceiveValue(null)
 
-  /** The app's prop, else the system chooser (its intent ignores `capture`). [callback] is answered once. */
+  /** The app's prop, else the system chooser (its intent ignores `capture`). */
   fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: FileChooserParams) {
     if ("onFileRequest" !in owner.requestHandlers) {
       val module = owner.appContext.registry.getModule<MinimalWebViewModule>()

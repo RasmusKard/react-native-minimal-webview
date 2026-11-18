@@ -20,8 +20,8 @@ extension MinimalWebView {
     let request = NavigationRules.Request(
       url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: userInitiated(action)
     )
-    // A navigation WebKit marks as a download (`<a download>`, blob:). One no hook takes (no onDownload) is dropped:
-    // .allow would show it as a page.
+    // A navigation WebKit marks as a download (`<a download>`, blob:). One no onDownload takes is cancelled, and an
+    // http(s) one opens outside the WebView (openDownload): .allow would show it as a page.
     let download = action.shouldPerformDownload && requestHandlers.contains("onDownload")
     let dropped = action.shouldPerformDownload && !download
     run(request) { [weak self] allowed in
@@ -34,11 +34,11 @@ extension MinimalWebView {
     }
   }
 
-  /// Whether a user gesture started `action`: a link activation right after a tap on this view (`Taps`). WebKit reports
-  /// every navigation with a triggering event as `.linkActivated` (NavigationAction.cpp's navigationType), a link a
-  /// script clicks (`element.click()`) too, and no public WKNavigationAction property tells a real one apart. VoiceOver
-  /// and Switch Control activate a link with no touch: while either runs, a link activation counts on its own. A
-  /// hardware keyboard's doesn't count.
+  /// Whether a user gesture started `action`: a link activation right after a tap on this view (`Taps`). WebKit
+  /// reports every navigation with a triggering event as `.linkActivated` (NavigationAction.cpp's navigationType),
+  /// including a link a script clicks (`element.click()`), and no public WKNavigationAction property tells a real one
+  /// apart. VoiceOver and Switch Control activate a link with no touch, so while either runs, a link activation counts
+  /// on its own. A hardware keyboard's activation doesn't.
   private func userInitiated(_ action: WKNavigationAction) -> Bool {
     action.navigationType == .linkActivated
       && (taps.recent || UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning)
@@ -83,9 +83,8 @@ extension MinimalWebView {
 
   /// Applies the rules (and `ask`) to a request and reports the outcome; `completion` gets whether to load it here.
   private func run(_ request: NavigationRules.Request, completion: @escaping (Bool) -> Void) {
-    // A URL an `ask` allowed is not asked again until the next main-frame commit (redirect loops). Without an
-    // onNavigationRequest prop nobody could allow it.
-    // WebKit has no redirect flag, so a tap on that URL isn't asked again either; Android skips only redirects.
+    // A URL an `ask` allowed is not asked again until the next main-frame commit (redirect loops). WebKit has no
+    // redirect flag, so a tap on that URL isn't asked again either; Android skips only redirects.
     let decision = NavigationRules.decide(
       navigationRules, request, asked: askedAndAllowed[request.mainFrame] ?? [],
       canAsk: requestHandlers.contains("onNavigationRequest")
@@ -131,10 +130,10 @@ extension MinimalWebView {
 
 private let askTimeout: TimeInterval = 1
 
-/// The window `window.open('')` (or about:blank) opens, which a page navigates later (`w.location = url`), as async
-/// popup payment buttons do. WebKit needs a WKWebView for it, made from the configuration it passes (it requires that
-/// object). This one is never shown: it cancels its first navigation and hands the request on, then goes; one that
-/// hasn't navigated within 5 s, or that the page closes, goes unused.
+/// The throwaway window for `window.open('')` or about:blank, which the page navigates later (`w.location = url`), as
+/// async popup payment buttons do. WebKit needs a WKWebView for it, made from the configuration it passes. It is
+/// never shown: it cancels its first navigation, hands the request on and goes. One that hasn't navigated within 5 s,
+/// or that the page closes, goes unused.
 private final class WindowCatcher: NSObject, WKNavigationDelegate, WKUIDelegate {
   private var child: WKWebView?
   private var caught: ((URLRequest) -> Void)?
@@ -176,18 +175,17 @@ private final class WindowCatcher: NSObject, WKNavigationDelegate, WKUIDelegate 
 
 private let newWindowTimeout: TimeInterval = 5
 
-/// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (iOS 9+), as Firefox for iOS uses it: `.allow`
-/// would hand a tapped link to another host to an installed app that claims it as a universal link, which Android's
-/// WebView never does, so the same rules would split the platforms. Hand-off is an explicit `external` rule. The value
-/// goes to WebKit unchecked on every OS: an NS_ENUM's `init(rawValue:)` accepts any value, so `?? .allow` only
-/// satisfies the type, and nothing falls back if WebKit drops the value; only an app that claims a domain could tell.
+/// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (allow + 2), as Firefox for iOS uses it:
+/// `.allow` would hand a tapped link to another host to an installed app that claims it as a universal link, which
+/// Android's WebView never does. Hand-off is an explicit `external` rule. `init(rawValue:)` accepts any value, so
+/// `?? .allow` only satisfies the type: nothing falls back if WebKit drops the value.
 private let allowInPlace = WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2) ?? .allow
 
-/// When a tap on the WKWebView last ended, for `userInitiated`. It only watches the view's touches: it never
+/// When a tap on the WKWebView last ended, for `userInitiated`. It only watches the view's touches and never
 /// recognizes, so it cancels, delays and prevents nothing (scrolling, links, text selection and the pull-to-refresh
-/// control work as without it), and it fails at each touch's end, or as soon as the touch scrolls.
+/// control work as without it). It fails at each touch's end, or as soon as the touch scrolls.
 final class Taps: UIGestureRecognizer, UIGestureRecognizerDelegate {
-  /// In system uptime, a clock the device time doesn't move.
+  /// System uptime, so a change of the device time doesn't affect it.
   private var lastTap: TimeInterval = -.infinity
 
   override init(target: Any?, action: Selector?) {
@@ -237,8 +235,9 @@ final class Taps: UIGestureRecognizer, UIGestureRecognizerDelegate {
   }
 }
 
-/// WebKit sends a tap's click once the finger lifts, at once on a page sized to the device (`width=device-width`) or
-/// after its double-tap wait (about 350 ms) on one that can zoom, and the link's decision follows from the web content
-/// process. A second covers that on a busy page, and a redirect of the tapped link that answers within it; it leaves a
-/// script little time to ride on an unrelated tap, where Chromium's user activation lasts 5 s.
+/// How long after a tap ends a link activation still counts as user-initiated. WebKit sends the click once the finger
+/// lifts: at once on a page sized to the device (`width=device-width`), after its double-tap wait (about 350 ms) on
+/// one that can zoom. The link's decision then follows from the web content process. The window covers a busy page
+/// and a redirect of the tapped link. It stays short so a script has little time to ride on an unrelated tap;
+/// Chromium's user activation lasts 5 s.
 private let tapWindow: TimeInterval = 1

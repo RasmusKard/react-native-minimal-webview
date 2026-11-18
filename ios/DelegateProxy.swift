@@ -54,8 +54,6 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     uiDelegates.forEach { $0.webViewDidClose?(webView) }
   }
 
-  /// An authentication challenge, offered to each navigation delegate that implements it, in order, until one answers
-  /// other than `.performDefaultHandling`; WebKit's default handling when none does.
   func webView(
     _ webView: WKWebView,
     didReceive challenge: URLAuthenticationChallenge,
@@ -103,8 +101,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private static let actionPolicyWithPreferences =
     NSSelectorFromString("webView:decidePolicyForNavigationAction:preferences:decisionHandler:")
 
-  /// The hook delegates that implement a decision, in order: the first one takes it. Either action policy variant
-  /// counts as the action policy.
+  /// The hook delegates that implement a decision, in order: the first one takes it.
   private func takers(of decision: Selector) -> [NSObject] {
     delegates(for: decision).filter {
       $0.responds(to: decision) || decision == Self.actionPolicy && $0.responds(to: Self.actionPolicyWithPreferences)
@@ -147,8 +144,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   ]
 }
 
-/// `keys` in the order of the `registered` hook keys, then the keys no hook is registered under, sorted: hooks whose keys
-/// turn on together attach in registration order, which orders their delegates.
+/// Hooks whose keys turn on together attach in registration order, which orders their delegates.
 func inRegistrationOrder(_ keys: Set<String>, _ registered: [String]) -> [String] {
   registered.filter(keys.contains) + keys.subtracting(registered).sorted()
 }

@@ -7,7 +7,7 @@ import expo.modules.minimalwebview.MinimalWebView
 
 /** The `onPermissionRequest` prop. */
 internal class Permissions(private val owner: MinimalWebView) {
-  // Asks waiting for JS, by their PermissionRequest or GeolocationPermissions.Callback, for the platform cancels.
+  // Asks still waiting for JS's answer, keyed by their PermissionRequest or GeolocationPermissions.Callback so a platform cancel finds them.
   private val waiting = mutableMapOf<Any, Int>()
 
   /** Returns true when the app's prop takes the request; it is then granted or denied once. */
@@ -34,8 +34,8 @@ internal class Permissions(private val owner: MinimalWebView) {
     waiting.keys.filterIsInstance<GeolocationPermissions.Callback>().forEach { key -> waiting.remove(key)?.let { owner.asks.cancel(it) } }
 
   /**
-   * Asks the app, then runs [grant] or [deny]. False (the core denies) without the prop. Android reports the requesting
-   * frame's origin but not the frame: one that isn't the top-level page's is denied (main frame only).
+   * Asks the app, then runs [grant] or [deny]. Returns false (the caller denies) without the prop. Android reports the
+   * requesting frame's origin but not the frame, so an origin other than the top-level page's is denied.
    */
   private fun decide(key: Any, origin: String, resources: List<String>, deny: () -> Unit, grant: () -> Unit): Boolean {
     if ("onPermissionRequest" !in owner.requestHandlers) return false

@@ -30,7 +30,7 @@ import androidx.webkit.NavigationListener
 import androidx.webkit.Page
 
 // WebView's callbacks, a new set for each WebView. Each one routes by the rule on WebViewContext.clients: a decision
-// callback through `deciding` (with no hook client, the core or WebView's default decides), the rest through `observing`.
+// callback through `deciding`, the rest through `observing`.
 
 internal class Listener(private val owner: MinimalWebView) : NavigationListener {
   /** Pages that fired their load event and are still alive (current or in the back-forward cache). */
@@ -94,8 +94,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebViewClient) -> Unit) =
     owner.clients.forEach { if (it.overrides(name, *types)) block(it) }
 
-  // Without NavigationListener: the last main-frame URL allowed to load (a page's navigation or a redirect), which
-  // onReceivedSslError can't otherwise tell from a subresource.
+  // Without NavigationListener: the last main-frame URL allowed to load (a page's navigation or a redirect), for
+  // onReceivedSslError.
   private var allowedMainFrameUrl: String? = null
 
   // Not called for POST, the initial loadUrl, or reissued loads; called again for their redirects.
@@ -139,7 +139,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
     deciding("shouldInterceptRequest", WEB_VIEW, WebResourceRequest::class.java)?.shouldInterceptRequest(view, request)
 
-  // Main frame only: subresource failures (an ad's 404) are the page's business.
+  // Main frame only: a subresource that fails to load (an ad) is the page's business.
   override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
     val description = error.description.toString()
     if (request.isForMainFrame && !description.contains("ERR_ABORTED")) {
@@ -158,7 +158,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     if (hook != null) hook.onFormResubmission(view, dontResend, resend) else super.onFormResubmission(view, dontResend, resend)
   }
 
-  // Best-effort URL tracking when WebView updates are disabled and NAVIGATION_LISTENER is missing.
+  // Without NavigationListener (WebView older than 146): best-effort URL tracking.
   override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
     if (!owner.hasNavigationListener && url != null) {
       owner.url = url
@@ -238,7 +238,6 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
     )?.onCreateWindow(view, isDialog, isUserGesture, resultMsg)
       ?: navigation.createWindow(isUserGesture, resultMsg)
 
-  // A hook client, else the app's prop (onFileRequest), else the system chooser (its intent ignores `capture`).
   override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
     val once = owner.fileUpload.hold(callback) // before the hook branch: a hook's chooser is held too
     val hook = deciding(

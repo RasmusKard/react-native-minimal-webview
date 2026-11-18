@@ -1007,7 +1007,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   extensions?: readonly (HookExtension | false | null | undefined)[];
   /**
    * Pull down at the top of the page to reload: `UIRefreshControl` on iOS, `SwipeRefreshLayout` on Android, where a
-   * pull inside a scrolled inner scroller (`overflow: auto`) scrolls it instead.
+   * pull inside a scrolled inner scroller (`overflow: auto` or `scroll`) scrolls it instead.
    *
    * It reloads as {@link WebViewRef.reload | reload()} does, a POST `source` included, but leaves the
    * {@link ProcessGoneEvent.recovered | crash recovery} limit in place. A change applies at once.
@@ -1233,7 +1233,7 @@ export type WebViewRef = {
    * @param args The method's arguments: booleans, numbers, strings and `null`. On iOS also the structs as objects, and
    * `{ set: [...] }`, `{ date: seconds }`, `{ data: base64 }` or `{ cookie: properties }` for an `NSSet`, `NSDate`,
    * `NSData` or `NSHTTPCookie`; any other string stays an `NSString`. A cookie's properties are `NSHTTPCookie`'s keys:
-   * `Name`, `Value`, `Domain` and `Path` are required; `Max-Age` (seconds, as a string), `Secure`, `HttpOnly` and
+   * `Name`, `Value` and `Path` are required, and `Domain` unless `OriginURL` is given; `Max-Age` (seconds, as a string), `Secure`, `HttpOnly` and
    * `SameSite` are some of the optional ones. A tag that can't make its object (`{ data }` that isn't base64, a
    * `{ cookie }` without a required key) rejects with `native_error`.
    * @returns The result: primitives, strings, and collections of them; on iOS also the structs as objects, an `NSURL`

@@ -158,16 +158,17 @@ internal class Downloads(private val owner: MinimalWebView) {
     private val PERCENT_ESCAPE = Regex("%[0-9A-Fa-f]{2}")
 
     /**
-     * A failed download's `kind` other than `http`: everything but a [fetched] (http(s)) download's own IOException is
-     * the content's.
+     * The `kind` of a failed download other than `http`: `network` for an IOException from a [fetched] (http(s)) download,
+     * except [TooLarge]; `data` for everything else.
      */
     fun kind(error: Exception, fetched: Boolean) =
       // shortcut: a disk error while an http(s) body streams reads as network; tell them apart if apps need to.
       if (fetched && error is IOException && error !is TooLarge) "network" else "data"
 
     /**
-     * A data: URL's bytes and its MIME type, application/octet-stream when it names none. As in a browser, the body is
-     * percent-decoded to bytes, even when base64 (encodeURIComponent of the base64 text), and `;base64` is in any case.
+     * A data: URL's bytes and its MIME type (application/octet-stream when it names none). As in a browser, the body is
+     * percent-decoded to bytes, base64 bodies too (encodeURIComponent of the base64 text), and `;base64` matches in any
+     * case.
      * Throws IllegalArgumentException for a URL without a comma or with bad base64.
      */
     fun decodeDataUrl(url: String): Pair<ByteArray, String> {
@@ -187,7 +188,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     fun decodeChunk(data: String): Pair<ByteArray, String> =
       if (data == "data:") ByteArray(0) to "application/octet-stream" else decodeDataUrl(data)
 
-    /** [text]'s UTF-8 bytes, each `%` and two hex digits made the byte they name: not decoded as UTF-8 again. */
+    /** [text]'s UTF-8 bytes with each `%XX` replaced by the byte XX. The result is not decoded as UTF-8 again. */
     private fun percentDecode(text: String): ByteArray {
       if ('%' !in text) return text.toByteArray() // a blob's chunks: spares two copies of megabytes
       // Latin-1 maps each byte to one char and back, so the escapes are replaced in a string.

@@ -2,7 +2,7 @@ import ExpoModulesCore
 import WebKit
 
 // swiftlint:disable file_length - because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
-// swiftlint:disable:next type_body_length - because the view is the aggregate root: it holds what has one owner (the Expo surface, the platform WebView's life, crash recovery, the Document scope, the navigation state, the hook plumbing), and a feature with state of its own gets its own class
+// swiftlint:disable:next type_body_length - because the view is the aggregate root, see the file_length reason above
 class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigationState = EventDispatcher()
   let onBridge = EventDispatcher()
@@ -12,7 +12,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onNavigation = EventDispatcher()
 
   // Props, applied together in applyProps(). The bridge, the hooks with a configure step and the `configuration`
-  // settings are fixed at mount: they are read once, when the WKWebView is created.
+  // settings are fixed at mount (see `webView`).
   var source: WebViewSource?
   var bridgeScript: String?
   var bridgeOrigins: [String] = []
@@ -85,7 +85,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var nextEvaluation = 0
 
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
-  // allowed). RN's messages are delivered only while the page still has it.
+  // allowed). JS's messages are delivered only while the page still has it.
   var bridgeOrigin: String?
   // The JS dialog on screen, and how to complete it if it has to go away. WebKit requires exactly one completion.
   // While one is up the page is blocked, and an accessibility query into it (XCTest's) hangs: hide it.
@@ -176,8 +176,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// Loads a request the app started, not the page: it skips the navigation rules. A file URL goes through loadFileURL
-  /// with the source's read root, so the page's own assets load (load(_:) can't read local files).
+  /// Loads a request the app started (see `programmaticUrl`). A file URL goes through loadFileURL with the source's read
+  /// root, so the page's own assets load (load(_:) can't read local files).
   func loadProgrammatic(_ request: URLRequest) {
     programmaticUrl = request.url
     if let url = request.url, url.isFileURL {
@@ -201,10 +201,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if let webView, webView.url != nil, failedUrl == nil, !onPostSource { webView.reload() } else { loadAgain() }
   }
 
-  /// The page on screen loaded again, as crash recovery does: the `source` when that is the page or nothing has
-  /// committed (with its headers, its POST body or its html, which isn't in the history), else the failed URL, else
-  /// the back-forward list's item (a dead web process relaunches with it, so history stays). A `source` being prepared
-  /// loads once it is ready instead.
+  /// Loads the page on screen again, as crash recovery does. In order:
+  /// - the `source`, when it is the page or nothing has committed (so its headers, POST body or html are used);
+  /// - else the failed URL;
+  /// - else the back-forward list's item (a dead web process relaunches with it, so history stays).
+  /// A `source` being prepared loads once it is ready instead.
   private func loadAgain() {
     guard let webView, !preparing else { return }
     if let source, onSource || failedUrl == nil && webView.backForwardList.currentItem == nil {
@@ -216,7 +217,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// The WKWebView, from the first props. `source` loads from applyProps once the load is prepared.
+  /// `source` loads from applyProps once the load is prepared.
   private func createWebView() {
     let configuration = WKWebViewConfiguration()
     // The creation-time settings (`ios.configuration`) and the configure hooks go first and the bridge after them,
@@ -436,12 +437,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// The web content process died. The WKWebView survives it, so reload, unless it keeps crashing.
-  /// WebKit does not say whether it crashed or was killed for memory, so its `cause` is `unknown` on iOS.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource
     endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered { loadAgain() }
+    // WebKit doesn't say whether it crashed or was killed for memory
     onProcessGone(["cause": "unknown", "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }

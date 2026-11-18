@@ -41,9 +41,8 @@ extension MinimalWebView: WKUIDelegate {
     showDialog(alert) { completionHandler(nil) }
   }
 
-  /// Camera and microphone, for the main frame of a page with an origin: a subframe or an opaque page is denied. WebKit
-  /// asks the OS itself, with the app's Info.plist strings; a grant from `onPermissionRequest` skips only WebKit's own
-  /// prompt.
+  /// WebKit asks the OS itself, with the app's Info.plist strings; a grant from `onPermissionRequest` skips only
+  /// WebKit's own prompt.
   func webView(
     _ webView: WKWebView,
     requestMediaCapturePermissionFor origin: WKSecurityOrigin,
@@ -64,8 +63,7 @@ extension MinimalWebView: WKUIDelegate {
     }
   }
 
-  /// The frame's host; one without a host (an opaque origin, such as a `data:` or sandboxed frame's, or `file:`) gets
-  /// "JavaScript", as Android titles a `data:` page's dialogs, so it doesn't look like the app's own alert.
+  /// The frame's host, or "JavaScript" when it has none (an opaque origin or `file:`), as Android titles a `data:` page's dialogs: a dialog must not look like the app's own alert.
   private func dialogTitle(_ frame: WKFrameInfo) -> String {
     let host = frame.securityOrigin.host
     return host.isEmpty ? "JavaScript" : host
@@ -85,8 +83,7 @@ extension MinimalWebView: WKUIDelegate {
     }
   }
 
-  /// From the top of this view's window. A controller still presenting (one being dismissed) or itself being presented
-  /// can't present: UIKit only logs it and the page would stay blocked, so the dialog is cancelled instead.
+  /// Presents from the top of this view's window. If the top controller still has a presented one (one being dismissed) or is itself being presented, UIKit only logs and the page would stay blocked, so the dialog is cancelled instead.
   private func showDialog(_ alert: UIAlertController, cancel: @escaping () -> Void) {
     var top = window?.rootViewController
     while let next = top?.presentedViewController, !next.isBeingDismissed { top = next }
