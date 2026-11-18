@@ -2224,27 +2224,40 @@ async function permissionsSuite(h: Harness) {
     );
   }
 
-  // Another origin's frame, though the iframe allows the camera: denied without asking.
-  await openPage(h, fresh(h, '/device.html'));
-  answer = true;
+  // Another origin's frame and a sandboxed one (an opaque origin), though the iframe allows the camera: denied without
+  // asking.
   let askedBefore = asked.length;
-  const framed =
-    (
-      await pageLog(h, () =>
-        h.ref.current?.evaluate(
-          `document.body.append(Object.assign(document.createElement('iframe'), { allow: 'camera', src: 'http://127.0.0.1:8090/device.html?auto=camera' }))`
+  for (const [name, frame] of [
+    [
+      'a cross-origin frame',
+      `{ allow: 'camera', src: 'http://127.0.0.1:8090/device.html?auto=camera' }`,
+    ],
+    // `camera *`: plain `camera` allows only the src's origin, so the page itself would refuse an opaque one.
+    [
+      'a sandboxed frame',
+      `{ allow: 'camera *', sandbox: 'allow-scripts', src: '/device.html?auto=camera' }`,
+    ],
+  ]) {
+    await openPage(h, fresh(h, '/device.html'));
+    answer = true;
+    askedBefore = asked.length;
+    const framed =
+      (
+        await pageLog(h, () =>
+          h.ref.current?.evaluate(
+            `document.body.append(Object.assign(document.createElement('iframe'), ${frame}))`
+          )
         )
-      )
-    )?.join() ?? '';
-  r.info('the cross-origin frame logged', framed);
-  r.check(
-    'a cross-origin frame is denied without asking',
-    framed.includes('frame camera error') && asked.length === askedBefore,
-    {
-      framed,
-      asked: asked.length - askedBefore,
-    }
-  );
+      )?.join() ?? '';
+    r.check(
+      `${name} is denied without asking`,
+      framed.includes('frame camera error') && asked.length === askedBefore,
+      {
+        framed,
+        asked: asked.length - askedBefore,
+      }
+    );
+  }
 
   // A handler that never settles: the next page cancels its request (deny), aborts its signal and asks the app again.
   await openPage(h, fresh(h, '/device.html'));
