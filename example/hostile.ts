@@ -46,10 +46,7 @@ type FrameReport = {
 const evaluate = async (h: Harness, script: string) =>
   await h.ref.current?.evaluate(script).catch(errorCode);
 
-/**
- * A user gesture on `id` (`tap`; `real` taps for real on iOS too, where a click from script isn't `userInitiated`):
- * whether the page saw the click.
- */
+/** A tap on `id` (`real`: touch): whether the page saw the click. */
 async function gesture({ h, r }: Suite, id: string, real = false) {
   const before = Number(await evaluate(h, 'window.testLog.length'));
   await (real ? touch : tap)(h, r, id);
@@ -211,10 +208,7 @@ async function staleAnswer({ h, r }: Suite) {
   }
 }
 
-/**
- * T5: a new window to an internal scheme or file: never loads, even when a rule allows every new window. The driver
- * taps on Android; iOS clicks from script.
- */
+/** T5: a new window to an internal scheme or file: never loads, even when a rule allows every new window. */
 async function newWindows(suite: Suite) {
   const { h, r, android } = suite;
   const external: string[] = [];
@@ -278,8 +272,7 @@ async function newWindows(suite: Suite) {
 
 /**
  * F1: with no rules, a page that sends the main frame to a custom scheme with no gesture is blocked, from a script and
- * through a link it clicks itself; a tapped link to one goes external, and one through a 302 is recorded. The taps are
- * real on iOS too, where the core counts a link only after a touch.
+ * through a link it clicks itself; a tapped link to one goes external, and one through a 302 is recorded.
  */
 async function defaultScheme(suite: Suite) {
   const { h, r } = suite;

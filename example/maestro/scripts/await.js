@@ -1,5 +1,5 @@
 // Waits up to 60 s for the harness's request number N of SUITE (or its verdict, when it ended first) through the test
-// server, which is much cheaper than reading the screen. output.request is its text: `<suite>#<n> <REQUEST> <detail>`.
+// server. output.request is its text.
 let request = '';
 for (let i = 0; i < 12 && !request; i++) {
   request = http.get(

@@ -3,8 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Perf</title>
 <script>
-  // The perf suite's page (example/perf.ts). Results go to the test server (perfPost), so a host on another WebView
-  // library reads them the same way. The perfCall/perfEmit/perfOn globals let such a host swap in its own bridge.
+  // The perf suite's page (example/perf.ts). Results go to the test server (perfPost).
   window.perfPost = (run, data) =>
     fetch(`/perf/result?run=${encodeURIComponent(run)}`, { method: 'POST', body: JSON.stringify(data) });
   // A navigation loop, ?run=…&i=…&n=…: this first script stamps the document's arrival before anything else runs,
@@ -49,15 +48,12 @@
     const steps = (now) => Array.from({ length: 20 }, () => step(now));
     perfPost(run, { performanceNow: steps(() => performance.now()), dateNow: steps(Date.now) });
   };
-  const call = (method, params) => (window.perfCall ?? nativeBridge.call)(method, params);
-  const emit = (event, payload) => (window.perfEmit ?? nativeBridge.emit)(event, payload);
-  const on = (event, listener) => (window.perfOn ?? nativeBridge.on)(event, listener);
   /** n page -> RN -> page calls one after another (the app's `echo`): each one's ms. */
   window.perfPageCalls = async (run, n) => {
     const ms = [];
     for (let k = 0; k < n; k++) {
       const t = performance.now();
-      await call('echo', k);
+      await nativeBridge.call('echo', k);
       ms.push(performance.now() - t);
     }
     perfPost(run, ms);
@@ -65,13 +61,13 @@
   /** n events in one loop; the harness stamps the last one's arrival. */
   window.perfPageEmit = (run, n) => {
     const t0 = Date.now();
-    for (let k = 0; k < n; k++) emit('perfEvent', k);
+    for (let k = 0; k < n; k++) nativeBridge.emit('perfEvent', k);
     perfPost(run, { t0, loopMs: Date.now() - t0 });
   };
   /** Counts n events from RN, then posts when the last arrived and whether they came in order. */
   window.perfListen = (run, n) => {
     const got = [];
-    const off = on('perfEvent', (k) => {
+    const off = nativeBridge.on('perfEvent', (k) => {
       got.push(k);
       if (got.length < n) return;
       perfPost(run, { t1: Date.now(), n: got.length, inOrder: got.every((v, j) => v === j) });

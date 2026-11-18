@@ -60,11 +60,9 @@ const events: Harness['events'] = {
 const pageEvents: unknown[] = [];
 const webViewOffset: Harness['webViewOffset'] = { x: 0, y: 0, height: 0 };
 
-/** The page counter's events, into the logs. */
 function onPageCounterEvent(event: PageCounterEvent) {
   if (event.name === 'pageLoaded') events.pageCounts.push(event.payload);
   else if (event.name === 'documentEnd') events.documentEnds.push(event.payload);
-  // The hook's ask: the return value is its answer.
   else if (event.name === 'label') return `page ${event.payload.count}`;
   else events.hookEvents.push(`sample.pageCounter.${event.name}`);
   return undefined;
@@ -165,7 +163,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       {/* The error screen is an overlay the app owns, cleared when the next load starts: the recipe in
-          guides/migrating-from-react-native-webview.md#loading-and-error-screens. */}
+          guides/examples.md#loading-and-error-screens. */}
       <View
         ref={webViewBox}
         style={styles.webview}
