@@ -10,7 +10,8 @@ enum Loads {
     canonical(a) == canonical(b)
   }
 
-  private static func canonical(_ url: URL) -> String {
+  /// `url` in the form `sameURL` compares.
+  static func canonical(_ url: URL) -> String {
     guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url.absoluteString }
     components.scheme = components.scheme?.lowercased()
     if let host = components.encodedHost, host != host.lowercased() { components.encodedHost = host.lowercased() }
