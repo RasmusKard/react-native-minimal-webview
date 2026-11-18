@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Symptoms, their usual causes in this package, and the reference entry that has the full rule.
+Symptoms, their usual causes in this package, and the API reference entry that has the full rule.
 
 ## Read the warnings first
 
@@ -18,8 +18,7 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
   shows what the page has.
 - The script runs in an iframe: only the main frame gets the bridge.
 - The WebView has no [`bridge`][bridge] prop.
-- Android System WebView is older than 101, which a warning says:
-  [check the device's version](android-system-webview.md#check-a-devices-webview).
+- Android System WebView is older than 101 (a warning says so): [check the device's version](android-system-webview.md#check-a-devices-webview).
 - The page is open in a browser, not in the app.
 
 ## A link does nothing, or opens outside the app
@@ -32,6 +31,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
   the defaults.
 - A host wildcard skipped the bare domain: list `example.com` and `*.example.com`.
 - A malformed rule blocks every navigation that reaches it. A warning names it in development.
+- A script opened a new window without a user gesture: WebKit and WebView drop it before the rules, and `onNavigation` reports nothing. Set `javaScriptCanOpenWindowsAutomatically` in `ios.preferences` and `android.settings`.
+- An `external` rule matched it first, such as `{ scheme: ['http', 'https'], action: 'external' }` placed before the rule for your own site: `onNavigation` reports `external` and the rule's index.
 - On iOS a tapped universal link loads in place when a rule allows it. An `external` rule for its host opens the app
   that claims it.
 
@@ -45,8 +46,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 
 ## A download does nothing
 
-- Without [`onDownload`][ondownload], an http(s) download opens in the system browser, without the page's session,
-  and a `data:` or `blob:` one is dropped.
+- Without [`onDownload`][ondownload], an http(s) download opens externally ([`onOpenExternal`][onopenexternal], else
+  the system browser) without the page's session, and a `data:` or `blob:` one is dropped.
 - With it, Android fetches the file again, without the request's POST body, `source` headers or HTTP auth: a download
   that needs them fails, or saves the server's login page.
 
@@ -54,6 +55,7 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 
 - The key was skipped, with a warning: its value doesn't fit the property's type, or the device's iOS or WebView lacks
   it.
+- It is `ios.webView.customUserAgent` or `android.settings.userAgentString`, and the [`userAgent`][useragent] prop is set: the prop wins.
 - It is an [`ios.webpagePreferences`][iossettings] key, which applies from the next navigation.
 - UIKit declares the property without runtime metadata, as it does `webView.opaque`: set it with
   [`call`](platform-apis.md#4-call-a-method).
@@ -87,3 +89,5 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 [debugging]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/namespaces/AndroidWebView/functions/setWebContentsDebuggingEnabled/
 [onprocessgone]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onprocessgone
 [injectedscript]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/InjectedScript/
+[onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onopenexternal
+[useragent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#useragent

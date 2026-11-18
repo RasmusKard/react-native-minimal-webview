@@ -1,11 +1,11 @@
 # Examples
 
-Examples of the main interfaces. What each prop, method and type does is in its TSDoc, generated into the
+Examples of the main interfaces. What each prop, method and type does is in the
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/).
 
 ## Navigation state
 
-Show the URL, progress or a back button, and go back on Android's back button.
+Show a back button while the WebView can go back, and go back on Android's back button.
 
 ```tsx
 import { useEffect, useRef } from 'react';
@@ -93,8 +93,8 @@ export function Browser() {
 
 ## Navigation rules
 
-Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs,
-an iframe's to the main frame included, skip the rules:
+Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs
+skip the rules, an iframe's to the main frame too:
 [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
 says where they load.
 
@@ -107,11 +107,12 @@ export function Site() {
       source={{ uri: 'https://example.com' }}
       style={{ flex: 1 }}
       navigationRules={[
+        { query: ['gad_source', 'utm_term=google'], action: 'block' }, // gad_source with any value, utm_term only =google
         { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
         { host: ['example.com', '*.example.com'], action: 'allow' },
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // embedded content stays in the page
         { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
-        { scheme: ['http', 'https'], action: 'external' }, // other sites, and new windows
+        { scheme: ['http', 'https'], action: 'external' }, // other sites, new windows to them too
         ...defaultNavigationRules, // file: blocked, other schemes external from a user gesture
       ]}
       onNavigationRequest={({ url }) =>
@@ -186,7 +187,24 @@ An event reaches one page and is never repeated for a later one. A page that nee
 asks for it with a `call` as it loads, and listens for the changes.
 
 A TypeScript page types `window.nativeBridge` with
-[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/).
+[`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/)
+and the app's schema, shared or copied:
+
+```ts
+import type { PageBridge } from 'react-native-minimal-webview';
+
+type ShopBridge = {
+  reactNative: { share: { params: { url: string }; result: boolean } };
+  page: { getCartCount: { result: number } };
+  events: { themeChanged: 'light' | 'dark' };
+};
+
+declare global {
+  interface Window {
+    nativeBridge?: PageBridge<ShopBridge>;
+  }
+}
+```
 
 ## Platform settings
 
@@ -241,14 +259,14 @@ await ref.current?.call('cookieManager.setCookie', [
 const header = await ref.current?.call('cookieManager.getCookie', ['https://example.com']); // 'session=…; other=…'
 ```
 
-### Before the first page
+### Set a cookie before the first page loads
 
 The calls need a mounted WebView. Mount it with `{ uri: 'about:blank' }`, and set the real `source` once the cookie is
 set.
 
 ## Scripts
 
-Run a script in every page before the page's own scripts and before its DOM exists, or evaluate one in the page that
+Run a script in the pages of the origins you list, before the page's own scripts and before its DOM exists, or evaluate one in the page that
 is open.
 
 ```tsx
@@ -272,9 +290,7 @@ await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })
 
 ## Local files
 
-An HTML string loads with `html`, its relative URLs resolved against `baseUrl`. A bundled file loads from its `file://`
-URI, such as expo-asset's `localUri`. [`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) has each
-platform's file access.
+Load an HTML string with `html`, its relative URLs resolved against `baseUrl`, or a bundled file from its `file://` URI, such as expo-asset's `localUri`. [`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) says which file access each platform needs.
 
 ```tsx
 import { useAssets } from 'expo-asset';
@@ -306,7 +322,7 @@ Answer what the page asks the app for: files, the camera or microphone, fullscre
 
 ### File inputs
 
-Answer an `<input type="file">` with a document picker or the camera.
+On Android, answer an `<input type="file">` with a document picker or the camera.
 
 ```tsx
 import * as DocumentPicker from 'expo-document-picker';
@@ -350,8 +366,9 @@ const askOS: Partial<Record<PermissionResource, () => Promise<{ granted: boolean
   style={{ flex: 1 }}
   onPermissionRequest={async ({ origin, resources }) => {
     if (origin !== 'https://meet.example.com') return false;
+    // a video call asks for both at once
     for (const resource of resources) {
-      if (!(await askOS[resource]?.())?.granted) return false; // a video call asks for both at once
+      if (!(await askOS[resource]?.())?.granted) return false;
     }
     return true;
   }}

@@ -6,12 +6,12 @@ What runs where, and the terms the rest of the docs use: the core, frames, origi
 
 ## The parts
 
-| Part          | What it is                                                                                  | What it does                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| The page      | Your site, in the platform's WebView: `WKWebView` on iOS, Android System WebView on Android | Runs in the WebView's own process, the renderer, apart from the app                              |
-| The core      | This package's Swift and Kotlin around that WebView                                         | Decides navigations, keeps the navigation state, answers the page's requests, carries the bridge |
-| Your app's JS | The `<WebView>` props, its ref and your callbacks                                           | Hands the core its rules and settings, and hears what happened                                   |
-| A native hook | Your own Swift or Kotlin, optional                                                          | Gets the native WebView itself ([native hooks](native-hooks.md))                                 |
+| Part          | What it is                                                                                  | What it does                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| The page      | Your site, in the platform's WebView: `WKWebView` on iOS, Android System WebView on Android | Runs in the WebView's own process, the renderer, apart from the app                                                |
+| The core      | This package's Swift and Kotlin around that WebView                                         | Decides navigations, keeps the navigation state, answers the page's requests, carries the bridge                   |
+| Your app's JS | The `<WebView>` props, its ref and your callbacks                                           | Hands the core its rules and settings, and hears what happened                                                     |
+| A native hook | Your own Swift or Kotlin, optional                                                          | Gets the native WebView itself ([native hooks](native-hooks.md)); its JS side is an entry of the `extensions` prop |
 
 The core decides natively, from what the props gave it, so a busy JS thread doesn't hold the page up. JS is asked only
 where a prop says so: an `ask` rule ([`onNavigationRequest`][onnavigationrequest]), an `external` navigation when you
@@ -21,7 +21,7 @@ pass [`onOpenExternal`][onopenexternal], and the page's requests for files and p
 ## Frames and origins
 
 The **main frame** is the page's top-level document, the one whose URL the navigation state shows. Every `<iframe>` in
-it is a frame of its own, a subframe.
+it is a frame of its own.
 
 An **origin** is a scheme, host and port, as the page's `location.origin` writes it: `https://example.com`. A page from
 a `data:` URL or in a sandboxed iframe has an opaque origin, which only `'*'` matches.
@@ -48,7 +48,7 @@ The core gives the main frame more than it gives iframes, and trusts only the or
 Without the prop, the rules are [`defaultNavigationRules`][defaultnavigationrules]. [`onNavigation`][onnavigation]
 reports every decision with the index of the rule that made it.
 
-## When a prop takes effect
+## Which props recreate the WebView
 
 Only two props recreate the native WebView when they change, which reloads the page: [`bridge`][bridge], compared by
 identity, and [`ios.configuration`][configuration], compared by value. Everything else, callbacks included, can be

@@ -69,15 +69,7 @@ export type NavigationAction = 'allow' | 'block' | 'external';
  *
  * Every field it sets must match; for a list, one matching entry is enough. A field left out matches anything; a flag
  * set to `false` matches only the requests without it.
- * @example
- * ```ts
- * const navigationRules: NavigationRule[] = [
- *   { query: ['gad_source', 'utm_term=google'], action: 'block' }, // gad_source with any value, utm_term only =google
- *   { scheme: ['tel', 'mailto'], action: 'external' },
- *   { host: ['*.example.com'], path: ['/checkout'], action: 'external' }, // shop.example.com/checkouts too
- *   { host: ['example.com', '*.example.com'], action: 'allow' }, // *.example.com alone skips example.com
- * ];
- * ```
+ * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
  * @group Navigation
  */
 export type NavigationRule = {
@@ -198,7 +190,7 @@ export type NavigationState = {
   /**
    * A main-frame load in progress, which may still fail or be blocked.
    *
-   * Iframes never change it. Always null on Android with a WebView older than 146.
+   * Iframes never change it. Always null on Android with an Android System WebView older than 146.
    */
   pendingUrl: string | null;
   title: string;
@@ -273,13 +265,6 @@ export type ProcessGoneEvent = {
 
 /**
  * Runs at document start, before any page script and before the DOM is parsed.
- * @example
- * ```ts
- * const script: InjectedScript = {
- *   code: "addEventListener('DOMContentLoaded', () => document.body.classList.add('in-app'));",
- *   origins: ['https://example.com'],
- * };
- * ```
  * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
  * @group Scripts
  */
@@ -438,16 +423,6 @@ export type Bridge<Schema extends BridgeSchema = BridgeSchema> = {
  * `window.nativeBridge` exists only in the main frame of a page on one of the bridge's `allowedOrigins`, so a page
  * declares it optional. The page's project needs this package as a dev dependency for the type, which is a type-only
  * import and costs nothing at runtime, and must share or copy the schema type.
- * @example
- * ```ts
- * import type { PageBridge } from 'react-native-minimal-webview';
- *
- * declare global {
- *   interface Window {
- *     nativeBridge?: PageBridge<ShopBridge>;
- *   }
- * }
- * ```
  * @see [In the page example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#in-the-page)
  * @group Bridge
  */
@@ -909,8 +884,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Scripts to run at document start, before the page's own, in the frames picked by each script's `allFrames` and
    * `origins`.
    *
-   * A change applies from the next navigation. On Android with a WebView older than 101 they don't run (a warning says
-   * so, once per process).
+   * A change applies from the next navigation. On Android with an Android System WebView older than 101 they don't run
+   * (a warning says so, once per process).
    * @see [Scripts example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#scripts)
    */
   injectedScripts?: InjectedScript[];
@@ -941,14 +916,6 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A native hook can take these decisions, defaults included: see `WebViewContext.clients` (Android) and
    * `navigationDelegates` (iOS).
-   * @example
-   * ```tsx
-   * <WebView
-   *   source={{ uri: 'https://example.com' }}
-   *   // myapp: opens externally even without a user gesture; everything else as by default
-   *   navigationRules={[{ scheme: ['myapp'], action: 'external' }, ...defaultNavigationRules]}
-   * />
-   * ```
    * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
    */
   navigationRules?: readonly NavigationRule[];
@@ -990,8 +957,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A bridge serves one mounted WebView at a time: attaching it to a second throws.
    *
-   * On Android with a WebView older than 101 there is no bridge: calls reject with `unavailable`, and a warning says
-   * so, once per process.
+   * On Android with an Android System WebView older than 101 there is no bridge: calls reject with `unavailable`, and a
+   * warning says so, once per process.
    */
   bridge?: Pick<Bridge, typeof CONNECTION>;
   /**
@@ -1113,7 +1080,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * A main-frame load failed, or got an HTTP error status.
    *
    * After a failed load iOS keeps the page before it on screen, and Android shows WebView's own error page. On Android
-   * with a WebView older than 146, an SSL error on a back/forward load isn't reported.
+   * with an Android System WebView older than 146, an SSL error on a back/forward load isn't reported.
    *
    * A renderer crash isn't reported here: it makes the cut-off load's `outcome` `failed` and calls `onProcessGone`.
    * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
