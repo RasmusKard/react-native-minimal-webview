@@ -942,8 +942,8 @@ export const fresh = (h: Harness, path: string) =>
 
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. With
- * `remount`, for props that don't recreate it (`extensions`, whose keys pick the hooks with configure only when it is
- * created), it remounts too.
+ * `remount`, it remounts too, for props that don't recreate it, such as an `extensions` entry whose hook has a
+ * `configure` step or its own WebView class: that hook attaches only when the WebView is created.
  */
 export async function recreate(h: Harness, props: HarnessProps, remount = false) {
   return await waitForLoad(h, () => {
@@ -1033,7 +1033,7 @@ export async function touch(
 
 /**
  * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
- * (the recipe in guides/migrating-from-react-native-webview.md#loading-and-error-screens), and reload recovering.
+ * (the recipe in guides/examples.md#loading-and-error-screens), and reload recovering.
  */
 async function errors(h: Harness) {
   const r = reporter('errors');
@@ -1618,7 +1618,7 @@ async function settings(h: Harness) {
         playback === IOSConstants.MediaPlaybackState.none,
         playback
       );
-      // iOS 18 selectors: below it they reject with not_found, as the floor should.
+      // iOS 18 selectors: below it the call rejects with not_found, so the checks are skipped.
       if (parseFloat(String(Platform.Version)) >= 18) {
         await page(`sessionStorage.setItem('mrw', '1')`);
         const session = await call('webView.fetchDataOfTypes:completionHandler:', [
@@ -1658,7 +1658,6 @@ async function settings(h: Harness) {
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'native_error'
       );
-      // The migration guide's transparent WebView.
       const transparent = await call('webView.setOpaque:', [false]);
       const opaque = await call('webView.isOpaque', []);
       r.check(
@@ -1757,7 +1756,7 @@ async function settings(h: Harness) {
       );
       r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
       r.check('call rejects an unknown root', (await call('clearCache', [true])) === 'not_found');
-      // The migration guide's transparent WebView. WebView has no getter for it: the check is that it applies.
+      // WebView has no getter for it: the check is that it applies.
       h.setProps({ android: { webView: { other: { backgroundColor: 0 } } } });
       await sleep(500);
       r.check(
@@ -2094,8 +2093,10 @@ const blobLink = (h: Harness, id: string, bytes: number) =>
     `(() => { const a = document.createElement('a'); a.id = '${id}'; a.download = '${id}.bin'; a.href = URL.createObjectURL(new Blob([new Uint8Array(${bytes})])); document.body.append(a); })()`
   );
 
-/** Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
- * on Android a blob above the size cap fails. */
+/**
+ * Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
+ * on Android a blob above the size cap fails.
+ */
 async function downloadsSuite(h: Harness) {
   const r = reporter('downloads');
   await openPage(h, fresh(h, '/media.html'));

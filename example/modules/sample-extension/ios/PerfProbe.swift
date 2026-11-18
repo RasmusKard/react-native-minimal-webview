@@ -2,7 +2,7 @@ import MinimalWebView
 import QuartzCore
 import WebKit
 
-/// The `perf` suite's probe (example/perf.ts), in its own file, apart from the extension's sample hooks. It only
+/// The `perf` suite's probe (example/perf.ts). It only
 /// observes: `perfMark(i)` from the page stamps the moment before the page navigates to `…&i=<i>`, and
 /// `didStartProvisionalNavigation` (which every hook delegate gets) the moment that navigation starts. It implements no
 /// decision callback, so the core still decides every navigation. `ref.hook('sample.perf', 'drain')` hands the stamps
@@ -46,8 +46,7 @@ private final class Probe: NSObject, WKScriptMessageHandler, WKNavigationDelegat
 /// A monotonic clock in ns, as a Double (exact below 2^53 ns, 104 days of uptime) so it crosses to JS as a number.
 private func now() -> Double { Double(DispatchTime.now().uptimeNanoseconds) }
 
-/// Main-thread frame gaps between `start` and `stop`, from a CADisplayLink: a main thread blocked for 300 ms shows as
-/// one gap of about 300 ms.
+/// Main-thread frame gaps between `start` and `stop`, from a CADisplayLink.
 final class Stall: NSObject {
   static let shared = Stall()
   private var link: CADisplayLink?

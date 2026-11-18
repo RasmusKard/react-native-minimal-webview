@@ -2,8 +2,8 @@
 # Usage: maestro/run.sh <android|ios> <device id> [suite...]
 # Runs harness suites in one Maestro session, one flow per suite: <suite>.yaml when the suite needs a driver (gestures,
 # dialogs, renderer kills), else a generated wrapper that runs suite.yaml with SUITE set. One session, because Maestro's
-# start-up (~10 s) otherwise costs more than most suites. Needs Metro, the test pages server (npm run test-pages) and
-# the example app installed on the device. MAESTRO overrides the maestro binary.
+# start-up otherwise repeats for every suite. Needs Metro, the test pages server (npm run test-pages) and the example
+# app installed on the device. MAESTRO overrides the maestro binary.
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
@@ -18,7 +18,7 @@ if [ "$PLATFORM" = android ]; then
   # back key then goes to it instead of the app.
   adb -s "$DEVICE" shell settings put secure immersive_mode_confirmations confirmed
 fi
-# The run's first suite launches the app fresh; later ones reuse it while it passes (subflows/launch.yaml).
+# /harness/fresh makes the run's first suite launch the app fresh.
 curl -sf "http://localhost:8090/harness/fresh?platform=$PLATFORM" >/dev/null || { echo "no test pages server on :8090"; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 flows=()

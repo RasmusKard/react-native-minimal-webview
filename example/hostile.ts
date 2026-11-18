@@ -61,8 +61,7 @@ async function gesture({ h, r }: Suite, id: string, real = false) {
 /**
  * T2, T3: an iframe (same-origin or not) and a main frame outside allowedOrigins get no bridge, and the messages they
  * forge through the platform transport reach no handler. F2: a script scoped to the app's origin doesn't run there.
- * F3: an evaluate a page
- * holds pending.
+ * F3: an evaluate that the page holds pending rejects `navigated` once the page navigates itself.
  */
 async function bridgeGate({ h, r }: Suite) {
   const probes: { params: unknown; sender: BridgeSender }[] = [];
@@ -213,7 +212,8 @@ async function staleAnswer({ h, r }: Suite) {
 }
 
 /**
- * T5: a new window to an internal scheme or file: never loads, even when a rule allows every new window. Android taps.
+ * T5: a new window to an internal scheme or file: never loads, even when a rule allows every new window. The driver
+ * taps on Android; iOS clicks from script.
  */
 async function newWindows(suite: Suite) {
   const { h, r, android } = suite;
