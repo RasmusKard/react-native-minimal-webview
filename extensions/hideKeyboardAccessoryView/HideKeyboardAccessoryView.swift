@@ -7,7 +7,8 @@ import WebKit
 /// when it is switched off or the view goes away. Not the WKWebView's class, which the core observes with KVO.
 enum HideKeyboardAccessoryView {
   static let key = "@react-native-minimal-webview/extensions.hideKeyboardAccessoryView"
-  private static let suffix = "_MinimalWebViewExtensionsNoAccessory"
+  // Objective-C class names are app-wide: the module name keeps a vendored copy's class apart from this one.
+  private static let suffix = "_\(#fileID.prefix { $0 != "/" })NoAccessory"
 
   static func register() {
     MinimalWebViewHooks.register(key) { webView, context in
