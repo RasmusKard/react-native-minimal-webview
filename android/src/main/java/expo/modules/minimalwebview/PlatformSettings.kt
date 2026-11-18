@@ -282,8 +282,8 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     private fun notFound(reason: String) = PlatformException("not_found", reason)
 
     /**
-     * A getter's or method's result as JSON: primitives, strings, lists and maps of them; anything else is null. A
-     * non-finite number throws: JSON has none.
+     * A getter's or method's result as JSON: primitives, strings, collections and maps of them; anything else is null.
+     * A non-finite number throws: JSON has none.
      */
     fun toJson(value: Any?): String = jsonable(value).let { if (it is String) JSONObject.quote(it) else it.toString() }
 
@@ -292,7 +292,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       is Double, is Float -> if ((value as Number).toDouble().isFinite()) value else throw problem("$value is not JSON")
       is Boolean, is Number, is String -> value
       is Map<*, *> -> JSONObject(value.mapKeys { it.key.toString() }.mapValues { jsonable(it.value) })
-      is List<*> -> JSONArray(value.map(::jsonable))
+      is Collection<*> -> JSONArray(value.map(::jsonable))
       is Array<*> -> JSONArray(value.map(::jsonable))
       else -> JSONObject.NULL
     }
