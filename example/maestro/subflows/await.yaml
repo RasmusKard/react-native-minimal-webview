@@ -1,5 +1,5 @@
 appId: expo.modules.minimalwebview.example
 ---
-# Waits for the harness's request number ${N}: `<suite>#<N> <REQUEST> …` (output.request).
+# Waits for the harness's request number ${N} (output.request).
 - runScript: ../scripts/await.js
 - assertTrue: ${output.request.startsWith(SUITE + '#' + N + ' ')}

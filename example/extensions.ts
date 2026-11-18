@@ -70,9 +70,7 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 
 /**
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press (maestro/extensions.yaml). Left to a person: what shows only on screen (the keyboard accessory
- * bar, the refresh spinner's color, Android's transparent background, the Download Manager's file and toast) and
- * nested scrolling.
+ * driver's long press (maestro/extensions.yaml).
  */
 export async function extensions(h: Harness) {
   const r = reporter('extensions');
@@ -204,7 +202,6 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
       lines
     );
   }
-  // Only a prompt has a defaultValue, and only iOS says the frame.
   const got = seen.map((dialog) => [
     dialog.type,
     dialog.message,

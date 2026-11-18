@@ -46,7 +46,7 @@ const log = (/** @type {string} */ line) =>
 /**
  * What the harness is doing on a platform, so the driver can wait on it here instead of reading the screen (a UI
  * hierarchy query costs Maestro seconds): the suite it took, the driver requests it made in that suite
- * (`<suite>#<n> <REQUEST> <detail>`), its verdict (`<suite>#done pass=… fail=…`), and when the app last polled.
+ * and its verdict (formats: harness.ts onDriverRequest), and when the app last polled.
  * `fresh` makes the next idle check say no, so a run starts with a fresh launch.
  * `failures` are the run's failed checks, for run.sh to print.
  * @typedef {{ requests: string[], verdict: string, handed: boolean, polledAt: number, fresh: boolean, failures: string[] }} HarnessState
@@ -114,7 +114,7 @@ function selfSigned() {
     );
     return { key: fs.readFileSync(key), cert: fs.readFileSync(cert) };
   } catch {
-    console.warn("no openssl: the https port (the errors suite's SSL check) is off");
+    console.warn('no openssl: the https port (the SSL checks) is off');
     return null;
   }
 }
@@ -186,6 +186,7 @@ function handle(req, res) {
     );
   } else if (url.pathname === '/driver/kill') {
     // For the crash suite's UI-test driver (Maestro has no shell): kill the page's renderer process.
+    // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView doesn't report it.)
     // Android needs `adb root`. iOS: the WebContent processes whose parent is the simulator's launchd_sim, whose
     // command line names `Devices/<udid>` (WebContent's own doesn't).
     const device = q.get('device') ?? '';

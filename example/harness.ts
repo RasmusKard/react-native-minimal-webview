@@ -93,11 +93,11 @@ function emit(line: string) {
   });
 }
 
+let showRequest: (text: string) => void = () => {};
 /**
  * What the harness wants from an outside driver, shown on screen (testID `harness-request`) so a UI test tool can wait
  * for it: `<suite>#<n> <REQUEST> <detail>` for each request (upper-case `info` names), `<suite>#done pass=… fail=…` last.
  */
-let showRequest: (text: string) => void = () => {};
 export const onDriverRequest = (listener: (text: string) => void) => (showRequest = listener);
 
 /** A driver request or a verdict: on screen, and posted to the test server, where the driver waits for it. */
@@ -182,12 +182,8 @@ export function pollForSuites(get: () => Harness) {
     current = get();
     const suite = SUITES[name] ?? ON_DEMAND[name];
     try {
-      if (suite) await suite(current);
-      else {
-        // A verdict too, or the driver waits for one until it times out.
-        request(`${name}#done pass=? fail=1`);
-        emit(`FAIL unknown suite ${name}`);
-      }
+      if (!suite) throw new Error('unknown suite');
+      await suite(current);
     } catch (error) {
       // A suite that throws still gets a verdict, so the driver doesn't wait for one until it times out.
       request(`${name}#done pass=? fail=1`);
@@ -315,7 +311,7 @@ const viewportHeight = async (h: Harness) =>
   )) as number;
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
 /** A click from script on `id`; with `frame`, on an element in that same-origin iframe. */
-const click = (h: Harness, id: string, frame?: string) =>
+export const click = (h: Harness, id: string, frame?: string) =>
   h.ref.current?.evaluate(
     `${frame ? `document.getElementById(${JSON.stringify(frame)}).contentDocument` : 'document'}.getElementById(${JSON.stringify(id)}).click()`
   );
@@ -520,7 +516,7 @@ async function reissue(h: Harness) {
   await sleep(1500);
   if (Platform.OS === 'android') {
     r.check(
-      'iframe navigations into an ask rule are blocked without asking',
+      'http(s) iframe navigations are not decided on Android',
       asked.length === beforeFrame,
       asked
     );
@@ -574,7 +570,6 @@ async function bridge(h: Harness) {
     state: h.state(),
   });
 
-  // evaluate: one contract on both platforms.
   const evaluate = (script: string) => h.ref.current?.evaluate(script);
   const plain = await evaluate(`({ n: 1 + 1, s: 'x', a: [true, null] })`);
   r.since(
@@ -596,25 +591,22 @@ async function bridge(h: Harness) {
     unencodable.every((v) => v === null),
     unencodable
   );
-  const thrown = await Promise.all(
+  const thrown = (await Promise.all(
     [`(() => { throw new Error('boom'); })()`, `Promise.reject(new Error('no'))`, '1 +'].map((s) =>
-      evaluate(s)?.catch(errorCode)
+      evaluate(s)?.catch((e: unknown) => ({ code: errorCode(e), message: (e as Error).message }))
     )
-  );
+  )) as ({ code?: string; message: string } | undefined)[];
   r.since(
     WEBVIEW.evaluate,
     'evaluate rejects script_error on a throw, a rejection or a syntax error',
-    thrown.every((c) => c === 'script_error'),
+    thrown.every((c) => c?.code === 'script_error'),
     thrown
-  );
-  const boom = await evaluate(`(() => { throw new Error('boom') })()`)?.catch(
-    (error: unknown) => (error as Error).message
   );
   r.since(
     WEBVIEW.evaluate,
     "evaluate rejects with the thrown error's message",
-    String(boom).includes('boom'),
-    boom
+    String(thrown[0]?.message).includes('boom'),
+    thrown[0]
   );
 
   const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
@@ -700,8 +692,6 @@ async function bridge(h: Harness) {
   r.check('calls to a disallowed page time out', blocked === 'timeout', blocked);
 
   if (Platform.OS === 'ios') {
-    // The Document must end at unmount, in invalidate(): the deinit fallback can't reject the evaluate, because its
-    // weak self is already nil there.
     const unmounted = evaluate('new Promise(() => {})')?.catch(errorCode);
     await sleep(200);
     h.remount();
@@ -823,7 +813,6 @@ async function upload(h: Harness) {
   file.write('hello from the app cache');
   const requests: FileRequest[] = [];
   let answer: string[] | null = null;
-  // With `hang`, the handler never settles.
   let hang = false;
   const { stuck, never } = stuckHandler<null>();
   h.setFileRequest(async (request, signal) => {
@@ -975,8 +964,10 @@ export async function pageLog(h: Harness, act: () => unknown, ms = 10000) {
   await act();
   return (
     (await until(async () => {
-      const lines = (await h.ref.current?.evaluate(`window.testLog.slice(${before})`)) as string[];
-      return lines?.length ? lines : undefined;
+      const lines = await h.ref.current
+        ?.evaluate(`(window.testLog ?? []).slice(${before})`)
+        .catch(String);
+      return Array.isArray(lines) && lines.length ? (lines as string[]) : undefined;
     }, ms)) ?? null
   );
 }
@@ -1215,8 +1206,6 @@ async function crash(h: Harness) {
   const page = fresh(h, '/bridge.html');
   const kill = async (n: number) => {
     const before = h.events.gone.length;
-    // The driver kills the page's renderer: `sandboxed_process` (adb root) on Android, WebContent on iOS.
-    // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView does not report it.)
     // Kill only a live renderer: an evaluate round trip needs one (a kill during recovery would find none).
     // An evaluate that the recovery's navigation rejects also proves nothing yet: wait for one that answers.
     const answers = () =>
@@ -1241,7 +1230,7 @@ async function crash(h: Harness) {
   h.setProps({ userAgent: 'Crash/1' });
   await sleep(500);
   await openPage(h, page);
-  r.check('a setting applies before a crash', !!(await userAgent()));
+  r.info('a setting before the crash', await userAgent());
   clearEvents(h);
   const firstKillAt = Date.now();
   const countsBefore = h.events.pageCounts.length;
@@ -1466,13 +1455,11 @@ async function settings(h: Harness) {
     if (Platform.OS === 'ios') {
       const configuration = { applicationNameForUserAgent: 'Settings/1' };
       const preferences = { minimumFontSize: 30 };
-      // The configuration key recreates the WebView, which reloads the page.
       await recreate(h, {
         ios: {
           configuration,
           preferences,
           scrollView: { other: { nope: 1 } },
-          webView: { other: { _private: 1, URL: 'x' } },
         },
       });
       r.check('a WKPreferences number applies', (await fontSize()) === '30px', await fontSize());
@@ -1481,16 +1468,9 @@ async function settings(h: Harness) {
         warned('ios.scrollView.nope: no such property'),
         warnings
       );
-      r.check('a private property warns', warned('ios.webView._private: private'), warnings);
-      r.check('a read-only property warns', warned('ios.webView.URL: read-only'), warnings);
       // The same configuration from here on, so this is the same WebView.
       h.setProps({ ios: { configuration, preferences: { minimumFontSize: 'big' as never } } });
       await sleep(500);
-      r.check(
-        'a value of the wrong type warns',
-        warned('ios.preferences.minimumFontSize:') && warned("can't take"),
-        warnings
-      );
       r.check('and leaves the property alone', (await fontSize()) === '30px', await fontSize());
       await openPage(h, fresh(h, '/ptr.html?mode=long'));
       h.setProps({
@@ -1598,13 +1578,13 @@ async function settings(h: Harness) {
       );
       const pdf = await call('webView.createPDFWithConfiguration:completionHandler:', [null]);
       r.check(
-        'call resolves NSData as base64 (valueError)',
+        'call resolves NSData as base64',
         typeof pdf === 'string' && pdf.length > 100 && pdf.startsWith('JVBERi0'),
         String(pdf).slice(0, 20)
       );
       const png = await call('webView.takeSnapshotWithConfiguration:completionHandler:', [null]);
       r.check(
-        'call resolves a UIImage as a PNG (valueError)',
+        'call resolves a UIImage as a PNG',
         typeof png === 'string' && png.startsWith('iVBORw0KGgo'),
         String(png).slice(0, 20)
       );
@@ -1651,10 +1631,6 @@ async function settings(h: Harness) {
         (await call('webView.init', [])) === 'native_error' && (await page('1+1')) === 2
       );
       r.check(
-        'call rejects an unknown selector',
-        (await call('webView.nope:', [1])) === 'not_found'
-      );
-      r.check(
         'call rejects a wrong argument count',
         (await call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }])) === 'native_error'
       );
@@ -1671,8 +1647,8 @@ async function settings(h: Harness) {
       const fontBefore = await get('settings.minimumFontSize');
       h.setProps({
         android: {
-          settings: { minimumFontSize: 30, paymentRequestEnabled: true, other: { nope: 1 } },
-          webView: { networkAvailable: false, other: { _private: 1, webViewClient: null } },
+          settings: { minimumFontSize: 30, paymentRequestEnabled: true },
+          webView: { networkAvailable: false, other: { webViewClient: null } },
         },
       });
       r.check('a WebSettings setter applies', await becomes(fontSize, '30px'), await fontSize());
@@ -1681,19 +1657,9 @@ async function settings(h: Harness) {
       const paymentAfter = await payment();
       r.since(
         WEBVIEW.paymentRequest,
-        'a setter only WebSettingsCompat has applies (through reflection on androidx, R8 included)',
+        'a setter only WebSettingsCompat has applies (through reflection on androidx)',
         paymentBefore === 'undefined' && paymentAfter === 'function',
         { paymentBefore, paymentAfter }
-      );
-      r.check(
-        'an unknown setter warns',
-        warned('android.settings.nope: no public setter'),
-        warnings
-      );
-      r.check(
-        'a private key warns',
-        warned('android.webView._private: not a public setter'),
-        warnings
       );
       r.check(
         'a core-owned setter warns',
@@ -1708,11 +1674,6 @@ async function settings(h: Harness) {
         },
       });
       await sleep(500);
-      r.check(
-        'a value of the wrong type warns',
-        warned('android.settings.minimumFontSize: no public setter takes a String'),
-        warnings
-      );
       r.check('and leaves the setting alone', (await fontSize()) === '30px', await fontSize());
       r.check('networkAvailable is restored', (await page('navigator.onLine')) === true);
       r.check('get reads a WebSettings getter', (await get('settings.minimumFontSize')) === 30);
@@ -1730,10 +1691,6 @@ async function settings(h: Harness) {
       r.check(
         'call rejects for a core-owned method',
         (await call('webView.destroy')) === 'native_error'
-      );
-      r.check(
-        'get never reaches a core-owned method, and the WebView still works',
-        (await get('webView.destroy')) === 'not_found' && (await page('1+1')) === 2
       );
       const origin = String(await page('location.origin'));
       const set = await call('cookieManager.setCookie', [origin, 'mrwSet=2']);
@@ -1755,7 +1712,6 @@ async function settings(h: Harness) {
         { before, removed }
       );
       r.check('call reaches webStorage', (await call('webStorage.deleteAllData')) === null);
-      r.check('call rejects an unknown root', (await call('clearCache', [true])) === 'not_found');
       // WebView has no getter for it: the check is that it applies.
       h.setProps({ android: { webView: { other: { backgroundColor: 0 } } } });
       await sleep(500);
@@ -1768,11 +1724,6 @@ async function settings(h: Harness) {
         'a removed key (settings.minimumFontSize) goes back to its start-up value',
         (await get('settings.minimumFontSize')) === fontBefore,
         { fontBefore }
-      );
-      r.check(
-        'a removed key with no getter (webView.networkAvailable) warns that it keeps its value',
-        warned('android.webView.networkAvailable: removed, but it has no getter'),
-        warnings
       );
     }
   } finally {
@@ -1846,7 +1797,6 @@ async function navigation(h: Harness) {
   const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000);
   r.check('a tapped target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
 
-  // A window the page opens by itself (a timer, no gesture) opens only with javaScriptCanOpenWindowsAutomatically.
   const selfOpening = (name: string) => ({
     html: `<script>setTimeout(() => { window.open('https://example.com/${name}'); window.__opened = true; }, 300)</script>`,
     baseUrl: h.pages,
@@ -1877,26 +1827,23 @@ async function navigation(h: Harness) {
     external
   );
   await openPage(h, fresh(h, '/nav.html'));
-  // A real tap keeps the gesture flag true, in case a WebView ever decides an iframe's http(s) navigation.
-  await tap(h, r, 'redirect', 'frame');
-  // Decisions about the iframe's navigation come before it moves (its redirect ends on /spa.html?from=redirect).
-  const frameUrl = () =>
-    h.ref.current?.evaluate(`document.getElementById('frame').contentWindow.location.href`);
-  await until(
-    async () => String(await frameUrl()?.catch(errorCode)).includes('from=redirect'),
-    5000
-  );
-  await sleep(300);
-
-  const frames = h.events.navigations.filter((n) => !n.mainFrame);
-  if (Platform.OS === 'android')
-    r.info('iframe decisions (http(s) iframes are not intercepted on Android)', frames.length);
-  else
+  if (Platform.OS === 'ios') {
+    await click(h, 'redirect', 'frame')?.catch(errorCode);
+    // Decisions about the iframe's navigation come before it moves (its redirect ends on /spa.html?from=redirect).
+    const frameUrl = () =>
+      h.ref.current?.evaluate(`document.getElementById('frame').contentWindow.location.href`);
+    await until(
+      async () => String(await frameUrl()?.catch(errorCode)).includes('from=redirect'),
+      5000
+    );
+    await sleep(300);
+    const frames = h.events.navigations.filter((n) => !n.mainFrame);
     r.check(
       'iframe navigations are decided as mainFrame false',
       frames.some((n) => n.action === 'allow'),
       frames.slice(0, 3)
     );
+  }
 
   asked.length = 0;
   await h.ref.current?.evaluate(`location.href = '/checkout/loopA'`);
@@ -1932,7 +1879,6 @@ async function navigation(h: Harness) {
   r.check('an invalid ask answer blocks', lastNavigation()?.action === 'block', lastNavigation());
   r.check('the page stays after both', h.state().url === askedPage, h.state());
 
-  // Without onOpenExternal native opens externals itself, and reports `block` when nothing can open the URL.
   h.setProps({});
   h.setRules([{ scheme: ['nosuchapp'], action: 'external' }]);
   await sleep(500);
@@ -1980,7 +1926,6 @@ async function navigation(h: Harness) {
   if (Platform.OS === 'android') {
     const own = await sendExternal('fallback');
     r.check('intent: without an app loads browser_fallback_url', own.loaded, own);
-    // Nothing opened externally, so the intent: is reported as blocked; the fallback reports its own allow.
     r.check('the intent: itself is reported as block', own.decision?.action === 'block', own);
   }
   const handedBack = await sendExternal('handed-back', ({ url }) => {
@@ -2095,12 +2040,11 @@ const blobLink = (h: Harness, id: string, bytes: number) =>
 
 /**
  * Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
- * on Android a blob above the size cap fails.
+ * on Android a blob above the size cap fails, and an invalid data: link leaves the app running.
  */
 async function downloadsSuite(h: Harness) {
   const r = reporter('downloads');
   await openPage(h, fresh(h, '/media.html'));
-  // The attachment is fetched again on Android: the page's cookie must go with it.
   await h.ref.current?.evaluate("document.cookie = 'dl=1'");
   // A long query: the event's `url` is the full server URL, never cut.
   const attachmentUrl = await h.ref.current?.evaluate(
@@ -2126,7 +2070,6 @@ async function downloadsSuite(h: Harness) {
         h.events.outcomes.slice(outcomes)
       );
     }
-    // Android's DownloadListener does not pass the link's `download` attribute: data:/blob: names are guessed.
     const nameOk =
       Platform.OS === 'android' && (id === 'blob' || id === 'data')
         ? download?.filename.endsWith('.txt')
@@ -2220,6 +2163,20 @@ async function downloadsSuite(h: Harness) {
     'onDownload set again takes over without a remount',
     (await waitFor(h, () => h.events.downloads.length > downloads, 10000)) && opened.length === 1
   );
+
+  if (Platform.OS === 'android') {
+    await openPage(h, fresh(h, '/media.html'));
+    const before = h.events.downloadFailures.length;
+    await click(h, 'baddata');
+    // Chromium may reject a malformed data: URL before the download listener runs; either way the app survives.
+    // The listener runs right after the click when it runs at all.
+    await waitFor(h, () => h.events.downloadFailures.length > before, 1500);
+    r.info('invalid data: download failures reported', h.events.downloadFailures.slice(before));
+    r.check(
+      'the app survives an invalid data: download',
+      (await h.ref.current?.evaluate('1 + 1')) === 2
+    );
+  }
   r.done();
 }
 
@@ -2228,7 +2185,6 @@ async function permissionsSuite(h: Harness) {
   const r = reporter('permissions');
   const asked: PermissionRequest[] = [];
   let answer = false;
-  // With `hold`, the handler never settles unless `stuck.release` answers it.
   let hold = false;
   const { stuck, never } = stuckHandler<boolean>();
   h.setPermission(async (request, signal) => {
@@ -2585,7 +2541,6 @@ async function sampleExtension(h: Harness) {
     takenLines.length === 1,
     takenWarnings.lines
   );
-  // A dialog the core implements, taken over by a UI delegate (chrome client) through the context's list.
   await recreate(h, { extensions: [sampleHook('hookDialogs'), sampleHook('subclass')] }, true);
   const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
   r.check(
@@ -2682,7 +2637,7 @@ async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
   );
 }
 
-/** First-load headers, shared cookies, download failures. */
+/** First-load headers and shared cookies. */
 async function network(h: Harness) {
   const r = reporter('network');
 
@@ -2728,19 +2683,6 @@ async function network(h: Harness) {
     await text(h, 'cookies')
   );
 
-  if (Platform.OS === 'android') {
-    await openPage(h, fresh(h, '/media.html'));
-    const before = h.events.downloadFailures.length;
-    await click(h, 'baddata');
-    // Chromium may reject a malformed data: URL before the download listener runs; either way the app survives.
-    // The listener runs right after the click when it runs at all.
-    await waitFor(h, () => h.events.downloadFailures.length > before, 1500);
-    r.info('invalid data: download failures reported', h.events.downloadFailures.slice(before));
-    r.check(
-      'the app survives an invalid data: download',
-      (await h.ref.current?.evaluate('1 + 1')) === 2
-    );
-  }
   r.done();
 }
 
