@@ -44,10 +44,8 @@ object MinimalWebViewHooks {
    *
    * Call it from your module's `OnCreate`, before the first WebView.
    *
-   * The same `register` call running again replaces its hook: a JS reload creates the modules anew and runs their
-   * `OnCreate` again. The call is told apart by where its [attach] lambda is written, so a helper that wraps its
-   * caller's `attach` in a lambda of its own is one call, and a second hook through it replaces the first silently; a
-   * helper that passes the caller's lambda on keeps them apart.
+   * A hook under a key that is taken already replaces that hook in its place, with a warning, so a key collision
+   * doesn't stop the app.
    *
    * The hook attaches to each WebView whose `extensions` prop has an extension with [key] that is on;
    * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
@@ -71,8 +69,6 @@ object MinimalWebViewHooks {
    *   sets wins over those settings. Register what to run when that WebView goes away with
    *   [WebViewContext.onDestroyed]. Document-start scripts you add here run before the package's, so
    *   `window.nativeBridge` and `injectedScripts` aren't there yet (on iOS yours run after them).
-   * @throws IllegalStateException when a different hook is registered under [key] already. Don't rely on it: a minified
-   *   build can't tell the two apart and may replace the first hook instead, so give each hook its own key.
    */
   fun register(
     key: String,
@@ -84,21 +80,21 @@ object MinimalWebViewHooks {
       Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
       return
     }
-    val hook = Hook(key, webViewFactory, configure, attach)
-    val index = hooks.indexOfFirst { it.key == key }
-    if (index < 0) {
-      hooks += hook
-      return
+    if (putHook(hooks, Hook(key, webViewFactory, configure, attach))) {
+      Log.w(
+        TAG,
+        "a hook under `$key` replaces the one registered before: a JS reload registers every hook again; " +
+          "otherwise two hooks share the key and the last one wins, so prefix yours with your package's name"
+      )
     }
-    // Each lambda in the source compiles to a class of its own: the same class is the same call running again.
-    // shortcut: R8 can merge two lambdas' classes in a minified build; upgrade if a duplicate must throw there too.
-    val first = hooks[index].attach.javaClass
-    check(first == attach.javaClass) {
-      "two hooks are registered under `$key` (${first.name} and ${attach.javaClass.name}): " +
-        "prefix yours with your package's name"
-    }
-    hooks[index] = hook
   }
+}
+
+/** Adds [hook] to [hooks], or replaces the one under its key in place; returns whether it replaced one. */
+internal fun putHook(hooks: MutableList<MinimalWebViewHooks.Hook>, hook: MinimalWebViewHooks.Hook): Boolean {
+  val index = hooks.indexOfFirst { it.key == hook.key }
+  if (index < 0) hooks += hook else hooks[index] = hook
+  return index >= 0
 }
 
 /** Splits [keys] into the [hooks] registered under them, in registration order, and the keys no hook is registered under. */

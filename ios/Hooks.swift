@@ -15,8 +15,6 @@ import WebKit
 public enum MinimalWebViewHooks {
   struct Hook {
     let key: String
-    /// Where it was registered, `#fileID:#line`: the same place again is a JS reload, not a second hook.
-    let site: String
     let webViewClass: WKWebView.Type?
     let configure: ((WKWebViewConfiguration, WebViewContext) -> Void)?
     let attach: (WKWebView, WebViewContext) -> Void
@@ -28,12 +26,8 @@ public enum MinimalWebViewHooks {
   ///
   /// Call it from your module's `OnCreate`, before the first WebView.
   ///
-  /// A second hook under a key stops the app with `fatalError`, naming the key and both call sites. A hook under `core`
-  /// is logged and not registered.
-  ///
-  /// The same call running again replaces its hook: a JS reload creates the modules anew and runs their `OnCreate`
-  /// again. A helper that calls `register` for other code is one call site, so a second hook through it replaces the
-  /// first silently, unless the helper passes its caller's `file` and `line` on.
+  /// A hook under a key that is taken already replaces that hook in its place, with a warning, so a key collision
+  /// doesn't stop the app. A hook under `core` is logged and not registered.
   ///
   /// Hooks are configured and attached in registration order, which across packages is autolinking's: packages sorted
   /// by name. A hook whose key turns on after the WebView was created attaches after the hooks attached already.
@@ -55,8 +49,8 @@ public enum MinimalWebViewHooks {
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Register
   ///     what to run when the view goes away with ``WebViewContext/onDestroyed(_:)``. A renderer crash
   ///     reloads the same WKWebView, so nothing attaches again (see ``DocumentEnd/crashed``).
-  ///   - file: With `line`, the call site that tells a reload from a second hook; leave both to their defaults.
-  ///   - line: The call site's line, with `file`.
+  ///   - file: Ignored.
+  ///   - line: Ignored.
   public static func register(
     _ key: String,
     webViewClass: WKWebView.Type? = nil,
@@ -66,14 +60,13 @@ public enum MinimalWebViewHooks {
     line: Int = #line
   ) {
     guard key != "core" else { return NSLog("[react-native-minimal-webview] the hook key `core` is reserved: the hook is not registered") }
-    let hook = Hook(key: key, site: "\(file):\(line)", webViewClass: webViewClass, configure: configure, attach: attach)
+    let hook = Hook(key: key, webViewClass: webViewClass, configure: configure, attach: attach)
     guard let index = hooks.firstIndex(where: { $0.key == key }) else { return hooks.append(hook) }
-    guard hooks[index].site == hook.site else {
-      fatalError(
-        "[react-native-minimal-webview] two hooks are registered under `\(key)`, at \(hooks[index].site) and \(hook.site): "
-          + "prefix yours with your package's name"
-      )
-    }
+    NSLog(
+      "%@",
+      "[react-native-minimal-webview] a hook under `\(key)` replaces the one registered before: a JS reload registers "
+        + "every hook again; otherwise two hooks share the key and the last one wins, so prefix yours with your package's name"
+    )
     hooks[index] = hook
   }
 }
