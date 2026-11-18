@@ -108,7 +108,17 @@ jobs:
           # Trusted publishing needs npm 11.5.1 or later.
           node-version: 24
           package-manager-cache: false
-      - uses: actions/download-artifact@v8.0.2
+      # By name, so each tarball lands in its tag's folder: downloading all puts a lone artifact in the workspace root.
+      - if: needs.release-please.outputs.core-tag
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ${{ needs.release-please.outputs.core-tag }}
+          path: ${{ needs.release-please.outputs.core-tag }}
+      - if: needs.release-please.outputs.extensions-tag
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: ${{ needs.release-please.outputs.extensions-tag }}
+          path: ${{ needs.release-please.outputs.extensions-tag }}
       # The core goes first: the extensions package takes it as a peer. Only a core release is "Latest", since the docs
       # site shows that release's tag as the version. A tarball runs no lifecycle scripts.
       # shortcut: a re-run fails on a package that is already published, skip those once a release stops halfway
