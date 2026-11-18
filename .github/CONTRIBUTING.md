@@ -54,6 +54,14 @@ example/maestro/run.sh ios <simulator udid> bridge network   # only the named on
 
 Run the app on one device per platform at a time: every instance of a platform takes its suites from the same queue.
 
+The suites run a debug build, which R8 doesn't shrink, so they don't check `android/consumer-rules.pro`. After a change
+to it, or to what `PlatformSettings.kt` finds by reflection, run the settings suite on a release build:
+
+```sh
+(cd example/android && ./gradlew app:installRelease)
+example/maestro/run.sh android <adb serial> settings
+```
+
 Android emulators need a Google APIs system image:
 [guides/android-system-webview.md](../guides/android-system-webview.md#test-the-oldest-versions) says why. Start them
 with `-gpu host`, or they may render in software.
