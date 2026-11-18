@@ -2,16 +2,31 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Calls `selector` on `target` with the JSON `args` set by the method signature's type encodings (booleans, numbers,
-/// strings, the four structs from objects, nil from null; `{ set: [] }`, `{ date: seconds }`, `{ data: base64 }` and
-/// `{ cookie: properties }` for an NSSet, NSDate, NSData or NSHTTPCookie, any other object as is), and resolves with
-/// the result as `MRWJsonable` makes it, or with why it couldn't. A selector whose last argument is a block gets one of
-/// the shape `completion` names: `void` `(void)`, `value` `(id)`, `valueError` `(id, NSError *)`, `error`
-/// `(NSError *)` or `number` `(NSInteger)`; the block resolves, with the error's description as the error. Rejects,
-/// never raises, for an unknown selector, a block selector without a `completion`, a wrong argument count, an argument
-/// that doesn't fit (a tagged object that can't be made, such as invalid base64 or a cookie without a name, value,
-/// domain and path) or an exception the method, or making its result JSON, raises. A wrong block shape or an object
-/// argument of the wrong class is undefined behaviour.
+/// Calls `selector` on `target` with the JSON `args` and resolves with the result as `MRWJsonable` makes it, or with
+/// why it couldn't.
+///
+/// `args` are set by the method signature's type encodings:
+/// - booleans, numbers and strings as themselves, and nil from null;
+/// - the four structs (UIEdgeInsets, CGPoint, CGSize, CGRect) from objects;
+/// - `{ set: [] }`, `{ date: seconds }`, `{ data: base64 }` and `{ cookie: properties }` for an NSSet, NSDate, NSData
+///   or NSHTTPCookie;
+/// - any other object as is.
+///
+/// A selector whose last argument is a block gets the shape `completion` names, and the block resolves, with the
+/// error's description as the error:
+/// - `void`: `(void)`
+/// - `value`: `(id)`
+/// - `valueError`: `(id, NSError *)`
+/// - `error`: `(NSError *)`
+/// - `number`: `(NSInteger)`
+///
+/// Rejects, never raises, for:
+/// - an unknown selector, a block selector without a `completion`, or a wrong argument count;
+/// - an argument that doesn't fit, such as a tagged object that can't be made (invalid base64, a cookie without a name,
+///   value, path, and domain or origin URL);
+/// - an exception the method, or making its result JSON, raises.
+///
+/// A wrong block shape or an object argument of the wrong class is undefined behavior.
 FOUNDATION_EXPORT void MRWInvoke(id target, SEL selector, NSArray *args, NSString *_Nullable completion,
                                  void (^resolve)(id _Nullable result, NSString *_Nullable error)) NS_REFINED_FOR_SWIFT;
 

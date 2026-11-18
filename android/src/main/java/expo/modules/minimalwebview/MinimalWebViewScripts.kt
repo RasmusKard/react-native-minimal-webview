@@ -45,7 +45,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     // JS learns of it: calls reject with `unavailable`.
     try {
       WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, sourceOrigin, isMainFrame, proxy ->
-        // Main frame only, like iOS. The origin rules already filtered the sender; its origin goes to the handlers.
+        // Main frame only, like iOS. The origin rules already filtered the sender.
         if (!isMainFrame) return@addWebMessageListener
         // An ArrayBuffer has no string data (`data` throws); iOS drops a non-string message too.
         if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
@@ -81,8 +81,10 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     replyProxy?.postMessage(message)
   }
 
-  /** The Document ended: its evaluations fail and its reply proxy is gone. JS queues bridge messages until the next
-   * page is ready; at unmount it rejects what is in flight itself. */
+  /**
+   * The Document ended: its evaluations fail and its reply proxy is gone. JS queues bridge messages until the next
+   * page is ready; at unmount it rejects what is in flight itself.
+   */
   fun documentEnded(reason: DocumentEnd) {
     evaluations.failAll()
     // At a commit this runs one main-thread hop after Chromium's (the NavigationListener's executor posts it), and
@@ -91,18 +93,22 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     if (reason != DocumentEnd.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
   }
 
-  /** `evaluate` results come back through one global in every frame (`*`, before the first document); only the main
-   * frame's replies count. A page can forge them, as it can already shape any value its own world returns. */
+  /**
+   * `evaluate` results come back through one global in every frame (`*`, before the first document). A page can forge
+   * them, as it can already shape any value its own world returns.
+   */
   private fun installEvaluate() {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
     WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
-      // An ArrayBuffer has no string data (`data` throws).
+      // As in installBridge: only string messages.
       if (message.type == WebMessageCompat.TYPE_STRING) evaluations.settle(message.data, isMainFrame)
     }
   }
 
-  /** The `evaluate` ref method. A new document rejects what is still waiting: WebView drops the callback when the
-   * document is replaced first. */
+  /**
+   * The `evaluate` ref method. A new Document rejects what is still waiting: WebView drops the callback when the
+   * document is replaced first.
+   */
   fun evaluate(script: String, onResult: (Result<String>) -> Unit) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
       return onResult(failure("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView"))

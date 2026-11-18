@@ -11,9 +11,9 @@ enum Recovery {
     return trimmed(uri) == trimmed(url)
   }
 
-  /// Records a web content process death at `now`, in seconds of a clock the device time doesn't move
-  /// (`ProcessInfo.systemUptime`), in `times` and says whether to reload after it: not after more than 3 in 60 s, a
-  /// crash exactly 60 s back included.
+  /// Records a web content process death at `now` in `times`, and says whether to reload after it: not after more than
+  /// `maxCrashesPerWindow` in `crashWindow`, a death exactly `crashWindow` back included. `now` is in seconds of
+  /// `ProcessInfo.systemUptime`, which a change of device time doesn't move.
   static func crashAllowsReload(_ times: inout [TimeInterval], now: TimeInterval) -> Bool {
     times = times.filter { now - $0 <= crashWindow } + [now]
     return times.count <= maxCrashesPerWindow

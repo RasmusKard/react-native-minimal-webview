@@ -8,12 +8,18 @@ import WebKit
 /// is created; the other roots apply live, to `webView.configuration.preferences`,
 /// `webView.configuration.defaultWebpagePreferences`, the WKWebView and its scroll view.
 ///
-/// A value must fit the property's type: BOOL; integers, enums and option sets by raw value; floats; NSString; NSURL
-/// from a string; UIColor from `#rrggbb` or `#rrggbbaa`; UIEdgeInsets, CGPoint, CGSize and CGRect from an object; and
-/// `websiteDataStore` from `"default"` or `"nonPersistent"`. Anything else is rejected before KVC runs: a wrong value
-/// in an object-typed property can take the process down (WebKit asserts), and an unknown key raises an Objective-C
-/// exception Swift can't catch. Underscore (private) properties are refused, and the only private keys accepted are the
-/// two react-native-webview sets by KVC (`privateBools`).
+/// A value must fit the property's type:
+/// - BOOL, floats and NSString as themselves
+/// - integers, enums and option sets by raw value
+/// - NSURL from a string
+/// - UIColor from `#rrggbb` or `#rrggbbaa`
+/// - UIEdgeInsets, CGPoint, CGSize and CGRect from an object
+/// - `websiteDataStore` from `"default"` or `"nonPersistent"`
+///
+/// Anything else is rejected before KVC runs: a wrong value in an object-typed property can take the process down
+/// (WebKit asserts), and an unknown key raises an Objective-C exception Swift can't catch. Underscore (private)
+/// properties are refused, and the only private keys accepted are the two react-native-webview sets by KVC
+/// (`privateBools`).
 ///
 /// `get` reads a property of a root and `call` invokes a method on one by selector, through MRWInvoke (MRWInvoke.h),
 /// which sets the arguments by the method's signature. For those two, `websiteDataStore` and `httpCookieStore` are
@@ -176,8 +182,8 @@ final class PlatformSettings {
     return String(cString: property_getAttributes(property)!).split(separator: ",")
   }
 
-  /// The private BOOLs react-native-webview sets by KVC, which reaches WebKit's `_set…` accessors: they declare no
-  /// property by these names. They widen what `file:` pages read: other `file:` URLs, and any URL.
+  /// KVC reaches these through WebKit's `_set…` accessors: WebKit declares no property by these names. They widen what
+  /// `file:` pages read: other `file:` URLs, and any URL.
   private static let privateBools: [String: AnyClass] = [
     "allowFileAccessFromFileURLs": WKPreferences.self,
     "allowUniversalAccessFromFileURLs": WKWebViewConfiguration.self,
@@ -226,7 +232,6 @@ final class PlatformSettings {
     }
   }
 
-  /// `#rrggbb` or `#rrggbbaa`.
   private static func color(_ text: String) -> UIColor? {
     let hex = text.hasPrefix("#") ? String(text.dropFirst()) : text
     guard hex.count == 6 || hex.count == 8, let bits = UInt32(hex, radix: 16) else { return nil }

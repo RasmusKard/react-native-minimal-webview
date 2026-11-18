@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Native hooks: Kotlin in an app's or a package's own Expo module that gets the real [WebView] behind this package's
  * WebViews and chains its own clients to it, with no protocol to implement.
  *
- * Leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
+ * **Important:** leave alone what the core owns: the WebView's own client slots (add to [WebViewContext.clients] and
  * [WebViewContext.chromeClients] instead), its touch and scroll-change listeners ([WebViewContext.touchListeners] and
  * [WebViewContext.scrollListeners]), the bridge's web message listener and document-start scripts, and the download
  * listener ([WebViewContext.onDownloadStart]).
@@ -40,11 +40,14 @@ object MinimalWebViewHooks {
   internal val hooks = mutableListOf<Hook>()
 
   /**
-   * Registers the hook for [key]. Call it from your module's `OnCreate`, before the first WebView.
+   * Registers the hook for [key].
+   *
+   * Call it from your module's `OnCreate`, before the first WebView.
    *
    * The same `register` call running again replaces its hook: a JS reload creates the modules anew and runs their
-   * `OnCreate` again. A helper that calls `register` for other code is one call, so a second hook through it replaces
-   * the first silently.
+   * `OnCreate` again. The call is told apart by where its [attach] lambda is written, so a helper that wraps its
+   * caller's `attach` in a lambda of its own is one call, and a second hook through it replaces the first silently; a
+   * helper that passes the caller's lambda on keeps them apart.
    *
    * The hook attaches to each WebView whose `extensions` prop has an extension with [key] that is on;
    * [HookExtension.options](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/#options)
@@ -98,10 +101,7 @@ object MinimalWebViewHooks {
   }
 }
 
-/**
- * Which [hooks] attach to a WebView created with the enabled `hookOptions` [keys]: the ones registered under them, in
- * registration order. Second, the keys no hook is registered under.
- */
+/** Splits [keys] into the [hooks] registered under them, in registration order, and the keys no hook is registered under. */
 internal fun selectHooks(
   hooks: List<MinimalWebViewHooks.Hook>,
   keys: Set<String>
@@ -110,14 +110,11 @@ internal fun selectHooks(
   return attaching to keys - attaching.map { it.key }.toSet()
 }
 
-/** [keys] in the order of the [registered] hook keys, then the keys no hook is registered under, sorted. */
+/** Hooks whose keys turn on together attach in registration order, which orders their clients. */
 internal fun inRegistrationOrder(keys: Set<String>, registered: List<String>) =
   registered.filter { it in keys } + (keys - registered.toSet()).sorted()
 
-/**
- * Which of [attaching] makes the WebView: the first with a factory, or null for a plain WebView. Second, the keys of the
- * others whose factory is a different object.
- */
+/** Picks the hook that makes the WebView from [attaching] (the first with a factory, null for a plain WebView), and the keys of the others whose factory is a different object. */
 internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<MinimalWebViewHooks.Hook?, List<String>> {
   val named = attaching.filter { it.webViewFactory != null }
   val maker = named.firstOrNull()
@@ -125,10 +122,9 @@ internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<Minima
 }
 
 /**
- * Picks the hook client that gets a decision callback: the first of the clients that override it. It calls [warn] with
- * a warning naming the callback, once per callback and reason: when more than one client overrides it,
- * and, when the caller passes `lost` (what stops applying once a client takes the decision: the app's props or their
- * defaults that would decide it otherwise), when one client takes it.
+ * Picks the first of the clients that override a decision callback, or null. Calls [warn] once per callback and reason:
+ * - more than one client overrides the callback;
+ * - a client takes it, when the caller passes `lost`: what stops applying, the app's props or their defaults that would decide it otherwise.
  */
 internal class Deciders(private val warn: (String) -> Unit) {
   // Concurrent: shouldInterceptRequest decides on Chromium's IO thread.
@@ -184,13 +180,15 @@ interface WebViewContext {
   val url: String
 
   /**
-   * The hook clients, in order; add yours in `attach`. While the hook is off, none of them gets a callback.
+   * Your clients, in order; add them in `attach`. While the hook is off, none of them gets a callback.
    *
    * Each callback reaches the clients by one of these rules:
    * - A callback that decides something, by its return value or through the handler, request or callback it gets
    *   (`onReceivedSslError`, `onReceivedHttpAuthRequest`, `onReceivedClientCertRequest`), goes to the first client
    *   that overrides it, instead of the core and the app's props.
    * - Every other callback reaches the core first, then each client that overrides it.
+   * - `onRenderProcessGone` is the exception: it reaches every client that overrides it, and the core returns true and
+   *   replaces the WebView, so a client's return value is ignored.
    *
    * Taking a decision the core makes from the app's props or their defaults switches them off, the default navigation
    * rules' security checks included, and a warning names the callback and what stops applying.
@@ -202,17 +200,16 @@ interface WebViewContext {
    * A decision more than one client overrides still goes only to the first, and a warning names it. Each warning
    * comes once per WebView, when its decision first comes.
    *
-   * Overriding a variant the base class forwards to counts as overriding the callback: [WebViewClientCompat]'s
-   * `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`, and the platform's
-   * deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument
-   * `onReceivedError`.
+   * Overriding a variant the base class forwards to counts as overriding the callback. The variants are:
+   * - [WebViewClientCompat]'s `onReceivedError`, `onSafeBrowsingHit` and `shouldOverrideUrlLoading(WebView, String)`.
+   * - The platform's deprecated `shouldOverrideUrlLoading(WebView, String)`, `shouldInterceptRequest(WebView, String)` and 4-argument `onReceivedError`.
    *
    * `shouldInterceptRequest` runs on a background thread.
    */
   val clients: MutableList<WebViewClient>
 
   /**
-   * The hook chrome clients, routed as [clients] are.
+   * Your chrome clients, routed as [clients] are.
    *
    * Overriding the deprecated `onConsoleMessage(String, Int, String)` counts as overriding `onConsoleMessage`.
    * Favicon downloads are off, so `onReceivedIcon` gets no icon until the hook's `attach` turns `downloadFaviconsEnabled`
@@ -221,12 +218,12 @@ interface WebViewContext {
   val chromeClients: MutableList<WebChromeClient>
 
   /**
-   * The hooks' touch listeners, in order, called until one returns true: that one consumes the touch, which neither the
+   * Your touch listeners, in order, called until one returns true: that one consumes the touch, which neither the
    * later listeners nor the WebView get.
    */
   val touchListeners: MutableList<View.OnTouchListener>
 
-  /** The hooks' scroll listeners: each one gets every scroll change, in order. */
+  /** Your scroll listeners: each one gets every scroll change, in order. */
   val scrollListeners: MutableList<View.OnScrollChangeListener>
 
   /**
@@ -274,8 +271,8 @@ interface WebViewContext {
    * arguments (an unknown disposition or MIME type is empty), before the `onDownload` prop and the core's opening it
    * externally.
    *
-   * Return true to take it: neither of those gets it then. The hooks that are on are offered it in registration order,
-   * and the first that takes it ends the round.
+   * Return true to take it: neither of those gets it then. The hooks that are on are offered it in the order they
+   * attached (registration order, then those attached later), and the first that takes it ends the round.
    */
   fun onDownloadStart(
     handler: (url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) -> Boolean
@@ -306,7 +303,7 @@ class HookReply internal constructor(
 ) : (Any?) -> Unit {
   private val settled = AtomicBoolean()
 
-  /** Resolves the JS call with [value]. A value JSON can't encode rejects it with `native_error` instead. */
+  /** Resolves the JS call with [value]: strings, booleans, numbers, and `Map`s, `List`s and `Array`s of them cross as JSON; any other object, a primitive array such as `IntArray` included, arrives as null, and a non-finite number rejects the call with `native_error` instead. */
   override fun invoke(value: Any?) {
     if (settled.compareAndSet(false, true)) resolve(value)
   }
@@ -320,7 +317,7 @@ class HookReply internal constructor(
 /**
  * [HookContext]'s base: the hook's `hookOptions` value (null while its key is absent), its lists, and whether the core
  * routes them. Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach
- * are volatile; the rest is main thread only. [detach] empties the lists and drops the handlers.
+ * are volatile; the rest is main thread only.
  */
 internal open class Attachment(value: Any?) {
   @Volatile var options: Any? = value
@@ -340,7 +337,6 @@ internal open class Attachment(value: Any?) {
   /** Whether the hook is on and the attach is still there: the core routes the lists and passes events and asks. */
   val routed get() = options != null && !detached
 
-  /** Runs [handler] with the options now and after each change; never once detached. */
   fun onOptions(handler: (Any?) -> Unit) {
     if (detached) return
     optionsHandlers += handler
@@ -368,7 +364,6 @@ internal open class Attachment(value: Any?) {
     downloadHandlers += handler
   }
 
-  /** Whether one of the download handlers took the download; none is offered it while the hook is off or detached. */
   fun downloadStarted(url: String, userAgent: String, contentDisposition: String, mimeType: String, contentLength: Long) =
     routed && downloadHandlers.any { it(url, userAgent, contentDisposition, mimeType, contentLength) }
 
@@ -381,7 +376,6 @@ internal open class Attachment(value: Any?) {
   }
 }
 
-/** The lists [pick] takes from the [attachments] that are [routed][Attachment.routed], one after the other. */
 internal fun <T> routed(attachments: List<Attachment>, pick: (Attachment) -> List<T>) =
   attachments.filter { it.routed }.flatMap(pick)
 
@@ -428,7 +422,6 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebV
 
   fun documentEnded(reason: DocumentEnd) = documentEndHandlers.forEach { it(reason) }
 
-  /** The attach's WebView is destroyed: the handlers run once, and the context drops them. */
   fun destroyed(reason: DocumentEnd) {
     val handlers = destroyedHandlers.toList()
     destroyedHandlers.clear()

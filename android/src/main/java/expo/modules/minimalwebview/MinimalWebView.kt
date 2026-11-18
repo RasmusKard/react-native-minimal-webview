@@ -41,7 +41,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
-  /** Set by the first prop batch and replaced after a renderer crash; while [recovering] it is the destroyed one. */
+  /** Set by the first prop batch and replaced after a renderer crash; see [recovering]. */
   internal lateinit var webView: WebView
     private set
   private val hasWebView get() = ::webView.isInitialized
@@ -79,7 +79,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   private val downloads = Downloads(this)
-  /** The keys of the extensions that are on (`hookOptions`) the first WebView was made with, and those attached later: they pick the hooks, also for one after a crash. */
+  /** Keys of the extensions that are on in `hookOptions` when the first WebView is made, plus those attached later. They pick the hooks again for the WebView built after a crash. */
   private var hookKeys: Set<String> = emptySet()
   /** The hooks' contexts for the current WebView, in attach order. Chromium's IO thread reads it (shouldInterceptRequest). */
   @Volatile private var hookContexts: List<HookContext> = emptyList()
@@ -98,7 +98,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
 
-  /** From a render process death until [recover] builds the new WebView: whether it loads, and the dead one's history. */
+  /** From a renderer death until [recover] builds the new WebView: whether it loads, and the dead one's history. */
   private var pendingRecovery: Recovery? = null
   private class Recovery(val reload: Boolean, val history: Bundle?)
   private var destroyed = false
@@ -333,7 +333,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (recovering) onResult(Result.failure(EvaluateError("unavailable", RECOVERING))) else scripts.evaluate(script, onResult)
 
   /**
-   * The render process died. The WebView can't be reused: it goes now, after saving its history. The new one is built
+   * The renderer died. The WebView can't be reused: it goes now, after saving its history. The new one is built
    * at once if the view can be seen, else once it can (Android's guidance: not in the background).
    */
   internal fun processGone(cause: String, at: Long) {
@@ -395,10 +395,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     tearDown(DocumentEnd.CLOSING)
   }
 
-  /**
-   * Ends the Document with [reason] and destroys the WebView: the hooks detach, the WebView leaves the layout and is
-   * destroyed, and then the detached hooks' onDestroyed handlers run.
-   */
+  /** Ends the Document with [reason] and destroys the WebView. The detached hooks' onDestroyed handlers run after it is destroyed. */
   private fun tearDown(reason: DocumentEnd) {
     endDocument(reason)
     val detached = hookContexts
@@ -462,7 +459,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 internal const val TAG = "MinimalWebView"
 internal const val RECOVERING = "the WebView is being rebuilt after its renderer died"
 
-/** Whether this process has made a WebView, so WebView is started. */
+/** Whether this process has made a WebView; until then WebView isn't started. */
 @Volatile internal var webViewCreated = false
 
 /** What `setWebContentsDebuggingEnabled` set; null until it is called. */
@@ -493,7 +490,7 @@ internal fun showsSource(source: WebViewSource?, url: String): Boolean {
 }
 
 /**
- * Records a render process death at [now] in [times] and says whether to reload after it: not after more than
+ * Records a renderer death at [now] in [times] and says whether to reload after it: not after more than
  * [MAX_CRASHES_PER_WINDOW] in [CRASH_WINDOW_MS]. Every WebView on the renderer hears of its death, so one within
  * [SAME_CRASH_MS] of the last is that same death.
  */

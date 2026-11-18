@@ -3,8 +3,8 @@ package expo.modules.minimalwebview
 /**
  * Why a Document ended, as [WebViewContext.onDocumentEnd] and [WebViewContext.onDestroyed] report it.
  *
- * A Document is the main-frame page a WebView shows now: from a navigation's commit, a back-forward-cache restore or a
- * failed load's error page included, to the next commit, a renderer crash or the view closing.
+ * A Document is the main-frame page a WebView shows now: from a navigation's commit to the next commit, a renderer
+ * crash or the view closing.
  *
  * The first commit after a WebView is made, at mount or after a crash, opens one and ends nothing.
  *
@@ -22,7 +22,7 @@ enum class DocumentEnd {
 
   /**
    * The renderer died: this WebView goes, its hooks detach (their [WebViewContext.onDestroyed] handlers run), and
-   * they attach again to the one that replaces it, with a new context. Its first commit opens the next Document.
+   * they attach again to the one that replaces it, with a new context.
    */
   CRASHED,
 

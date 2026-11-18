@@ -40,9 +40,9 @@ class MinimalWebViewModule : Module() {
   private var chooserOpen = false
 
   /**
-   * The system file chooser (ChromeClient.onShowFileChooser), one at a time app-wide: the launcher keeps one callback,
-   * so a request while one is open gets null at once, as does one before the launcher is registered or without an
-   * activity. Otherwise [onResult] gets the picked URIs, or null on cancel.
+   * Opens the system file chooser (from ChromeClient.onShowFileChooser) and calls [onResult] with the picked URIs, or
+   * null on cancel. One chooser is open app-wide: the launcher keeps one callback, so [onResult] gets null at once
+   * while one is open, before the launcher is registered, or without an activity.
    */
   internal fun openFileChooser(intent: Intent, onResult: (Array<Uri>?) -> Unit) {
     val launcher = fileChooser
@@ -154,7 +154,7 @@ private fun flushCookies() {
   store.allProfileNames.forEach { store.getProfile(it)?.cookieManager?.flush() }
 }
 
-/** Before the first WebView only stored, for each new WebView to apply: setting it now would start WebView. */
+/** Before the first WebView exists, only stores `enabled` for each new WebView to apply: setting it now would start WebView. */
 private fun setWebContentsDebugging(enabled: Boolean) {
   webContentsDebugging = enabled
   if (webViewCreated) WebView.setWebContentsDebuggingEnabled(enabled)

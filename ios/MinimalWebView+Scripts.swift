@@ -1,8 +1,8 @@
 import ExpoModulesCore
 import WebKit
 
-/// The scripts the view runs in the page: the injected scripts, `evaluate`, and the bridge transport (page -> RN through a
-/// WKScriptMessageHandler, RN -> page through callAsyncJavaScript). The bridge moves only the text, with the sender's
+/// The scripts the view runs in the page: the injected scripts, `evaluate`, and the bridge transport (page -> JS through a
+/// WKScriptMessageHandler, JS -> page through callAsyncJavaScript). The bridge moves only the text, with the sender's
 /// verified origin; the protocol (calls, results, events) is the page client's and createBridge's.
 extension MinimalWebView {
   /// The bridge's page client first, then the app's scripts in order, then the hooks' own. Changes take effect from the
@@ -60,7 +60,7 @@ extension MinimalWebView {
     onBridge(["message": text, "origin": origin])
   }
 
-  /// Delivers a message from RN to the page. Only to the allowed document that last posted (its page client says
+  /// Delivers a message from JS to the page. Only to the allowed document that last posted (its page client says
   /// `ready` first). The page checks its origin again at delivery time: the document may have changed since the post
   /// was queued. A message for a page that is gone is dropped.
   func bridgePost(_ text: String) {

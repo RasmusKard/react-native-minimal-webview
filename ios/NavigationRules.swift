@@ -66,7 +66,7 @@ enum NavigationRules {
   }
 
   private static func urlParts(_ scheme: String, _ url: String) -> Parts {
-    // shortcut: an unparseable URL has no host and path "/", so only host-less rules match, parse it if one must
+    // shortcut: an unparseable URL has no host and path "/", so only host-less rules match; parse it by hand when a rule must match such URLs
     let components = URLComponents(string: url)
     let rawPath = components?.percentEncodedPath ?? ""
     // No authority (`myapp:/abs`, `myapp:open`): the path is "/", as in Kotlin. `file:///x` has an empty one, not none.

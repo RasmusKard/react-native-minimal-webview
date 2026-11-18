@@ -53,7 +53,7 @@ public enum MinimalWebViewHooks {
   ///     user scripts run in it and your script message handlers get its messages, so compare `message.webView` with
   ///     the WKWebView `attach` gets.
   ///   - attach: Runs once the WKWebView exists and its settings are applied, so what it sets wins over them. Register
-  ///     what to run when the view goes away with ``WebViewContext/onDestroyed(_:)``. A web content process crash
+  ///     what to run when the view goes away with ``WebViewContext/onDestroyed(_:)``. A renderer crash
   ///     reloads the same WKWebView, so nothing attaches again (see ``DocumentEnd/crashed``).
   ///   - file: With `line`, the call site that tells a reload from a second hook; leave both to their defaults.
   ///   - line: The call site's line, with `file`.
@@ -90,8 +90,9 @@ public enum MinimalWebViewHooks {
 /// says what off means. ``onOptions(_:)`` runs when the hook turns off, so it can undo what it set up, and again when
 /// it turns on.
 ///
-/// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, null as nil
-/// (`NSNull` inside an array).
+/// Values from JS arrive as Foundation's JSON types: a number as `NSNumber`, an object as `NSDictionary`, an array as
+/// `NSArray`. In an ask's answer and a ``handle(_:_:)`` handler's arguments, null is nil at the top level and `NSNull`
+/// inside an array or object.
 ///
 /// ## See Also
 /// - [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
@@ -105,7 +106,7 @@ public protocol WebViewContext: AnyObject {
   /// Your navigation delegates, in order. While the hook is off, none of them gets a callback.
   ///
   /// WebKit reads which callbacks a delegate implements when it is assigned, so a delegate must implement what it
-  /// handles by the time you add it. The core assigns itself again after each change to the list.
+  /// handles by the time you add it.
   ///
   /// Each callback reaches the delegates by one of these rules:
   /// - A decision, the action or the response policy, goes to the first delegate that implements it, instead of the
@@ -114,14 +115,16 @@ public protocol WebViewContext: AnyObject {
   /// - The authentication challenge goes to each delegate that implements it, in order, until one answers other than
   ///   `.performDefaultHandling`; when none does, WebKit's default handling. Each must call its completion handler
   ///   exactly once, and the next delegate gets the challenge only after that.
-  /// - Every other callback the core implements reaches the core, then each delegate that implements it. So do
-  ///   `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation`.
+  /// - Every other callback the core implements reaches the core, then each delegate that implements it.
+  /// - `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation` reach each delegate that
+  ///   implements them.
   /// - Any other callback goes only to the first delegate that implements it.
   ///
   /// Taking a decision switches off what the core decides from the app's props or their defaults, the default
   /// navigation rules' security checks included, and a warning names the callback and what stops applying. A
   /// delegate that takes the action policy decides navigations instead of the navigation rules, which still decide new
-  /// windows unless a UI delegate takes `createWebViewWith`.
+  /// windows unless a UI delegate takes `createWebViewWith`. A new window the rules allow loads in place, and that load
+  /// reaches the delegate that takes the action policy.
   ///
   /// A decision more than one delegate implements still goes only to the first, and a warning names it. Each
   /// warning comes once per WebView, when the delegate is added.
@@ -165,7 +168,8 @@ public protocol WebViewContext: AnyObject {
   /// Runs `handler` once this view closes, with ``DocumentEnd/closing``, the only reason it gets on iOS.
   ///
   /// It comes after the ``onDocumentEnd(_:)`` handlers that get `closing`. The WKWebView has stopped loading, paused
-  /// its media and left the view by then, but is still alive, and the context does nothing.
+  /// its media, lost every script message handler (yours too) and left the view by then, but is still alive, and the
+  /// context does nothing.
   ///
   /// Clean up here: what `attach` set up on the WKWebView, such as an observation or a swapped class.
   func onDestroyed(_ handler: @escaping (DocumentEnd) -> Void)
@@ -192,8 +196,9 @@ public final class HookReply {
     self.reject = reject
   }
 
-  /// Resolves the JS call with `value`, which crosses as JSON: a value JSON can't encode rejects it with
-  /// `native_error` instead.
+  /// Resolves the JS call with `value`, converted as `ref.call`'s results are: JSON types, and also an `NSURL`, `NSDate`,
+  /// `NSData`, `UIImage`, `NSHTTPCookie`, `NSSet` or geometry struct; any other object arrives as null, and a non-finite
+  /// number rejects the call with `native_error` instead.
   public func callAsFunction(_ value: Any?) {
     if first() { resolve(value) }
   }
@@ -212,13 +217,10 @@ public final class HookReply {
   }
 }
 
-/// A hook's view of the WebView: the core's context with the hook's key on its events. The view owns it. A hook can
-/// outlive the view (an async callback): then the context is detached and does nothing.
-/// The view routes the delegates of the contexts that are on.
+/// A hook's view of the WebView: the core's context with the hook's key on its events. The view owns it and routes the delegates of the contexts that are on.
 final class HookContext: WebViewContext {
   let hook: MinimalWebViewHooks.Hook
   private weak var view: MinimalWebView?
-  /// The `hookOptions` value while the hook is on, nil while it is off.
   private(set) var options: Any?
   private var optionsHandlers: [(Any?) -> Void] = []
   private var documentEndHandlers: [(DocumentEnd) -> Void] = []
@@ -231,7 +233,6 @@ final class HookContext: WebViewContext {
     options = view.hookOptions[hook.key]
   }
 
-  /// The view closed: the context keeps nothing of it and nothing the hook gave it, and nothing routes it.
   func detach() {
     view = nil
     navigationDelegates = []
@@ -296,7 +297,6 @@ final class HookContext: WebViewContext {
     documentEndHandlers.forEach { $0(reason) }
   }
 
-  /// The view closed, and its WKWebView is torn down: the handlers run once, and the context drops them.
   func destroyed() {
     let handlers = destroyedHandlers
     destroyedHandlers = []

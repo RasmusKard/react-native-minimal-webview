@@ -22,9 +22,9 @@ import kotlin.math.truncate
  * `CookieManager.set…(webView, …)`. [get] reads through the matching getter and [call] invokes a method; for those two,
  * `cookieManager` and `webStorage`, the WebView profile's, are roots as well.
  *
- * Only public SDK methods: `getMethods()` returns nothing else, and reflection on them is allowed. A key with no public
- * setter for the value's type, a feature this device's WebView lacks (`UnsupportedOperationException`) or a method the
- * core owns is reported and skipped; nothing here throws at the caller except [get] and [call], which reject.
+ * Only public SDK methods are reached: `getMethods()` returns nothing else. A key that can't be applied (no public
+ * setter for the value's type, a feature this device's WebView lacks, a method the core owns) is skipped and returned
+ * by [apply].
  */
 internal class PlatformSettings(private val targets: (root: String) -> List<Target>?) {
   /** `root.key` -> the last value applied or rejected, so an unchanged value is neither applied nor reported again. */
@@ -108,10 +108,10 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   }
 
   /**
-   * `root.method` with [args], a public method the core doesn't own. [reply] gets the result as JSON: the method's
-   * return value, or, when no overload takes just [args], the value that the first overload with a trailing
-   * `ValueCallback` reports later. [reply] gets the JSON as a function that throws a [PlatformException] for a value
-   * JSON can't carry. Throws a [PlatformException].
+   * `root.method` with [args], a public method the core doesn't own. [reply] gets a function that returns the result as
+   * JSON, or throws a [PlatformException] for a value JSON can't carry. The result is the method's return value or, when
+   * no overload takes just [args], the value that the first overload with a trailing `ValueCallback` reports later.
+   * Throws a [PlatformException].
    */
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
@@ -134,10 +134,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   internal companion object {
     private val NONE = Any()
 
-    /**
-     * The targets of [root] on [webView], or null for an unknown root. `cookieManager` and `webStorage` are the WebView
-     * profile's ([profileOf]).
-     */
+    /** The targets of [root] on [webView], or null for an unknown root. */
     fun targets(webView: WebView, root: String): List<Target>? = when (root) {
       "settings" -> listOf(
         Target(WebSettings::class.java, webView.settings, null),
@@ -211,7 +208,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
     }
 
-    /** [key]'s getter value (`getKey`, `isKey` or a non-void `key()`) on the first target that has one, or [NONE]. */
+    /** The value of [key]'s getter on the first target that has one, or [NONE]. */
     private fun read(targets: List<Target>, key: String): Any? {
       val capital = key.replaceFirstChar { it.uppercaseChar() }
       for (target in targets) {
@@ -302,5 +299,5 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   }
 }
 
-/** Why [PlatformSettings.get] or [PlatformSettings.call] failed; [code] is the JS error code. */
+/** Why [PlatformSettings.get] or [PlatformSettings.call] failed; [code] is the JS error code (`not_found`, `native_error` or `unavailable`). */
 internal class PlatformException(val code: String, message: String) : IllegalArgumentException(message)
