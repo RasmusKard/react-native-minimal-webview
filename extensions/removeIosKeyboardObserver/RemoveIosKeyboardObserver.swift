@@ -2,9 +2,8 @@ import MinimalWebView
 import UIKit
 import WebKit
 
-/// The hook behind `removeIosKeyboardObserver()`: as react-native-webview does, the WKWebView stops observing the
-/// keyboard's will-show, will-hide and will-change-frame notifications. WebKit adds them only when it creates the view,
-/// so nothing adds them back.
+/// The hook behind `removeIosKeyboardObserver()`, as react-native-webview does.
+/// WebKit adds the observers only when it creates the view, so nothing adds them back.
 enum RemoveIosKeyboardObserver {
   static let key = "@react-native-minimal-webview/extensions.removeIosKeyboardObserver"
 

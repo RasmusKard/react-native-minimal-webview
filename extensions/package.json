@@ -1,7 +1,7 @@
 {
   "name": "@react-native-minimal-webview/extensions",
   "version": "1.0.0",
-  "description": "react-native-webview props for react-native-minimal-webview, as native hooks for its extensions prop",
+  "description": "Native hooks for react-native-minimal-webview that bring back react-native-webview props, such as onScroll and basicAuthCredential, and add JS-answered dialogs",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "exports": {

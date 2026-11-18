@@ -173,7 +173,7 @@ export type NavigationEvent = NavigationRequest & {
 };
 
 /**
- * A WebView's navigation state, as native reports it: from `useWebViewState` and `onNavigationStateChange`.
+ * A WebView's navigation state, as the core reports it: from `useWebViewState` and `onNavigationStateChange`.
  *
  * While no WebView is mounted it is the initial state: `url` and `title` empty, `pendingUrl` and `outcome` null,
  * `loading`, `canGoBack` and `canGoForward` false, `progress` 0.
@@ -838,7 +838,7 @@ export type CodedError = Error & { code: ErrorCode };
  * - `onPermissionRequest`: deny
  * - an extension's `onEvent`: null
  *
- * The `signal` such a callback gets aborts when native stops waiting for its answer (the page moved on, crashed or
+ * The `signal` such a callback gets aborts when the core stops waiting for its answer (the page moved on, crashed or
  * unmounted), and a late answer is dropped.
  *
  * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop.

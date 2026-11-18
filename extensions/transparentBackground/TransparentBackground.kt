@@ -3,7 +3,7 @@ package expo.modules.minimalwebviewextensions
 import android.graphics.Color
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/** The hook behind `transparentBackground()`: the WebView's background color is transparent, and white when it is off. */
+/** The hook behind `transparentBackground()`. */
 internal object TransparentBackground {
   const val KEY = "@react-native-minimal-webview/extensions.transparentBackground"
 

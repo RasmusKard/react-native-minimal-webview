@@ -106,22 +106,22 @@ These props are functions of [@react-native-minimal-webview/extensions][extensio
 one in the `extensions` prop. A callback gets the event itself, without react-native-webview's `nativeEvent` around
 it:
 
-| react-native-webview                                      | Here                                                                     |
-| --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `basicAuthCredential`                                     | [`basicAuthCredential`][basicauthcredential]                             |
-| `incognito`                                               | [`incognito`][incognito]                                                 |
-| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems]                                                 |
-| `onScroll`                                                | [`onScroll`][onscroll]                                                   |
-| `style={{ backgroundColor: 'transparent' }}`              | [`transparentBackground`][transparentbackground]                         |
-| `hideKeyboardAccessoryView`                               | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview]                 |
-| `keyboardDisplayRequiresUserAction`                       | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction] |
-| `refreshControlLightMode`                                 | [`refreshControlLightMode`][refreshcontrollightmode]                     |
-| `removeIosKeyboardObserver`                               | [`removeIosKeyboardObserver`][removeioskeyboardobserver]                 |
-| `nestedScrollEnabled`                                     | [`nestedScrollEnabled`][nestedscrollenabled]                             |
-| `androidLayerType`                                        | [`androidLayerType`][androidlayertype]                                   |
-| Android downloads, `downloadingMessage`                   | [`downloadManager`][downloadmanager]                                     |
-| `onLoadSubResourceError`                                  | [`onLoadSubResourceError`][onloadsubresourceerror]                       |
-| JS dialogs (no prop)                                      | [`dialogs`][dialogs]                                                     |
+| react-native-webview                                      | Here                                                                                                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `basicAuthCredential`                                     | [`basicAuthCredential`][basicauthcredential]                                                                                        |
+| `incognito`                                               | [`incognito`][incognito]                                                                                                            |
+| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems]                                                                                                            |
+| `onScroll`                                                | [`onScroll`][onscroll]                                                                                                              |
+| `style={{ backgroundColor: 'transparent' }}`              | [`transparentBackground`][transparentbackground]                                                                                    |
+| `hideKeyboardAccessoryView`                               | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview]                                                                            |
+| `keyboardDisplayRequiresUserAction`                       | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction]                                                            |
+| `refreshControlLightMode`                                 | [`refreshControlLightMode`][refreshcontrollightmode]                                                                                |
+| `removeIosKeyboardObserver`                               | [`removeIosKeyboardObserver`][removeioskeyboardobserver]                                                                            |
+| `nestedScrollEnabled`                                     | [`nestedScrollEnabled`][nestedscrollenabled]                                                                                        |
+| `androidLayerType`                                        | [`androidLayerType`][androidlayertype]                                                                                              |
+| Android downloads, `downloadingMessage`                   | [`downloadManager`][downloadmanager]                                                                                                |
+| `onLoadSubResourceError`                                  | [`onLoadSubResourceError`][onloadsubresourceerror], which reports network errors, not the SSL errors react-native-webview's reports |
+| JS dialogs (no prop)                                      | [`dialogs`][dialogs]                                                                                                                |
 
 ### Settings with another name
 
