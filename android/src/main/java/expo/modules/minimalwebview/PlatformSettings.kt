@@ -15,16 +15,9 @@ import java.lang.reflect.Modifier
 import kotlin.math.truncate
 
 /**
- * The `android` settings prop, `{ settings: {…}, webView: {…} }`, applied by name through reflection, so a public
- * setter this package doesn't know (one a newer SDK or androidx.webkit adds) needs no code here.
- * `settings.textZoom: 120` calls `WebSettings.setTextZoom(120)`, else `WebSettingsCompat.setTextZoom(settings, 120)`.
- * `webView.acceptThirdPartyCookies: true` calls `WebView.set…`, else `WebViewCompat.set…(webView, …)`, else
- * `CookieManager.set…(webView, …)`. [get] reads through the matching getter and [call] invokes a method; for those two,
- * `cookieManager` and `webStorage`, the WebView profile's, are roots as well.
- *
- * Only public SDK methods are reached: `getMethods()` returns nothing else. A key that can't be applied (no public
- * setter for the value's type, a feature this device's WebView lacks, a method the core owns) is skipped and returned
- * by [apply].
+ * The `android` settings prop, `get` and `call`, by name through reflection over public SDK methods only
+ * (`getMethods()`), so a setter a newer SDK or androidx.webkit adds needs no code here. The roots and their order:
+ * [Companion.targets].
  */
 internal class PlatformSettings(private val targets: (root: String) -> List<Target>?) {
   /** `root.key` -> the last value applied or rejected, so an unchanged value is neither applied nor reported again. */

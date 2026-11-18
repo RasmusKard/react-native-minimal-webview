@@ -1,5 +1,3 @@
-// The ref store: each ref object's navigation state and the WebView handle attached to it, behind createWebViewRef,
-// useWebViewState and WebView's `ref`.
 import {
   type Ref,
   type RefObject,

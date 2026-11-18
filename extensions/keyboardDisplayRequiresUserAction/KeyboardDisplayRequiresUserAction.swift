@@ -8,7 +8,6 @@ import WebKit
 /// hideKeyboardAccessoryView swaps for a runtime subclass of it.
 enum KeyboardDisplayRequiresUserAction {
   static let key = "@react-native-minimal-webview/extensions.keyboardDisplayRequiresUserAction"
-  /// The WebViews the hook is on for.
   private static let views = NSHashTable<WKWebView>.weakObjects()
   private static let replaced = replaceFocus()
 

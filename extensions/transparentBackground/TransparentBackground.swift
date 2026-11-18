@@ -1,7 +1,6 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind `transparentBackground()`.
 /// WebKit clears its scroll view's background itself while the WKWebView isn't opaque.
 enum TransparentBackground {
   static let key = "@react-native-minimal-webview/extensions.transparentBackground"

@@ -1,7 +1,6 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind `onScroll()`.
 enum OnScroll {
   static let key = "@react-native-minimal-webview/extensions.onScroll"
 

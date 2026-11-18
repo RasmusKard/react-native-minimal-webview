@@ -37,8 +37,7 @@ extension MinimalWebView {
   /// Whether a user gesture started `action`: a link activation right after a tap on this view (`Taps`). WebKit
   /// reports every navigation with a triggering event as `.linkActivated` (NavigationAction.cpp's navigationType),
   /// including a link a script clicks (`element.click()`), and no public WKNavigationAction property tells a real one
-  /// apart. VoiceOver and Switch Control activate a link with no touch, so while either runs, a link activation counts
-  /// on its own. A hardware keyboard's activation doesn't.
+  /// apart.
   private func userInitiated(_ action: WKNavigationAction) -> Bool {
     action.navigationType == .linkActivated
       && (taps.recent || UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning)

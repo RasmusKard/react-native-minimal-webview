@@ -46,7 +46,7 @@ enum Dialogs {
       ask(webView, "prompt", (prompt, defaultText), frame) { completionHandler($0 as? String) }
     }
 
-    /// The payload is the JS `Dialog`: only a prompt has a `defaultValue`.
+    /// The payload is the JS `Dialog`.
     private func ask(
       _ webView: WKWebView, _ type: String, _ text: (message: String, defaultValue: String?), _ frame: WKFrameInfo,
       _ onAnswer: @escaping (Any?) -> Void

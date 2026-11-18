@@ -87,7 +87,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // The origin of the document whose page client last posted, as `location.origin` writes it (`*` when every origin is
   // allowed). JS's messages are delivered only while the page still has it.
   var bridgeOrigin: String?
-  // The JS dialog on screen, and how to complete it if it has to go away. WebKit requires exactly one completion.
+  // The JS dialog on screen, and how to complete it if it has to go away.
   // While one is up the page is blocked, and an accessibility query into it (XCTest's) hangs: hide it.
   var dialog: (controller: UIAlertController, cancel: () -> Void)? {
     didSet { webView?.accessibilityElementsHidden = dialog != nil }
@@ -103,7 +103,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var documentOpen = false
 
   private func endDocument(_ reason: DocumentEnd) {
-    // The first commit after mount or a crash opens a Document and ends none: the asks and hooks don't hear it.
     let opening = reason == .committed && !documentOpen
     documentOpen = reason == .committed
     if !opening { asks.documentEnded(reason) }
@@ -271,7 +270,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     unsafeBitCast(inherited, to: Invalidate.self)(self, selector)
   }
 
-  /// Once: from invalidate, or from deinit if that never ran.
+  /// Once: from invalidate, or from deinit if that never ran (there weak self is nil, so in-flight evaluates can't be
+  /// rejected).
   private func tearDown() {
     guard let webView else { return }
     endDocument(.closing)
@@ -379,7 +379,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   ) {
     if Downloads.isDownload(navigationResponse) {
       if requestHandlers.contains("onDownload") { return decisionHandler(.download) }
-      // A file no hook takes (no onDownload).
       if let url = navigationResponse.response.url {
         openDownload(url)
         return decisionHandler(.cancel)
@@ -442,14 +441,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
     if recovered { loadAgain() }
-    // WebKit doesn't say whether it crashed or was killed for memory
     onProcessGone(["cause": "unknown", "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }
 }
 
-/// What the hooks see of this view, through a HookContext per attached hook. The proxy gets the delegates of the
-/// contexts that are on; WebKit reads what a delegate responds to when it is assigned, so each change re-assigns it.
+/// What the hooks see of this view, through a HookContext per attached hook.
 extension MinimalWebView {
   /// Tells each attached hook whose value changed, and attaches a hook without `configure` or `webViewClass` whose key turns on.
   private func optionsChanged(from old: [String: Any]) {
@@ -487,6 +484,7 @@ extension MinimalWebView {
     let on = hookContexts.filter(\.isOn)
     proxy.navigationDelegates = on.flatMap(\.navigationDelegates)
     proxy.uiDelegates = on.flatMap(\.uiDelegates)
+    // WebKit reads responds(to:) only when the delegate is set: unset first so it reads it again.
     webView?.navigationDelegate = nil
     webView?.navigationDelegate = proxy
     webView?.uiDelegate = nil

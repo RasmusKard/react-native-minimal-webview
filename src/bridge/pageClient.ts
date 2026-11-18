@@ -1,9 +1,6 @@
-// The page side of the bridge: installs `window.nativeBridge`. It runs inside the web page, so
-// .github/scripts/build-page-client.mts compiles it, with ./endpoint.ts, into the PAGE_CLIENT string that native
-// injects at document start. Each direction is a plain pipe: page -> native through `postMessage` (iOS
-// WKScriptMessageHandler at `webkit.messageHandlers.nativeBridge`, Android addWebMessageListener at
-// `window.nativeBridgeTransport`), native -> page through `__receive` (iOS callAsyncJavaScript) or the transport's
-// `onmessage` (Android). Messages follow ./protocol.ts; answers to either side's calls travel as ordinary messages.
+// The page side of the bridge: installs `window.nativeBridge`. It runs in the page, compiled into PAGE_CLIENT by
+// .github/scripts/build-page-client.mts. Page -> native: iOS WKScriptMessageHandler, Android addWebMessageListener;
+// native -> page: `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android).
 import type { PageBridge } from '../types';
 import { createEndpoint } from './endpoint';
 import type { BridgeMessage as Message } from './protocol';
@@ -49,7 +46,6 @@ export function installPageClient(w: PageWindow, timeoutMs: number) {
     /** iOS's entry point, origin-checked there. */
     __receive: receive,
   });
-  // `ready` (protocol.ts) waits for DOMContentLoaded: a call delivered earlier would get `not_found`.
   if (w.document.readyState === 'loading') {
     w.document.addEventListener('DOMContentLoaded', () => send({ kind: 'ready' }), {
       once: true,

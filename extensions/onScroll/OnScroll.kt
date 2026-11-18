@@ -3,7 +3,6 @@ package expo.modules.minimalwebviewextensions
 import android.view.View
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/** The hook behind `onScroll()`. */
 internal object OnScroll {
   const val KEY = "@react-native-minimal-webview/extensions.onScroll"
 

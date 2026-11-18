@@ -11,8 +11,8 @@ class MinimalWebViewExtensionsModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MinimalWebViewExtensions")
     OnCreate {
-      // Hooks run in registration order. It matters only between hooks that share a deciding callback, the touch
-      // listeners, a webViewFactory or a setting, and none of these do: this is the README's order.
+      // Order matters only between hooks that share a deciding callback, the touch listeners, a webViewFactory or a
+      // setting; none of these do, so this is the README's order.
       BasicAuthCredential.register()
       Dialogs.register()
       Incognito.register()

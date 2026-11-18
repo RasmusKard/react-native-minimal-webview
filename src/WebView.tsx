@@ -22,7 +22,6 @@ import type {
 import { DEFAULTS } from './types.defaults';
 
 type Native<T> = { nativeEvent: T };
-/** The native view's event props, by name and payload. */
 type NativeHandlers<E> = { [K in keyof E]: (event: Native<E[K]>) => void };
 
 /** The event without the `target` (the view's tag) React Native adds to every native event. */
@@ -90,7 +89,6 @@ type NativeProps = ViewProps &
     /** With each script's `origins` in its code (`nativeScripts`). */
     injectedScripts: Omit<InjectedScript, 'origins'>[] | undefined;
     ref: Ref<NativeMethods>;
-    /** iOS only: Android's CookieManager is already shared. */
     sharedCookies: boolean | undefined;
     /**
      * The platform's settings by root and name, as JSON: `ios` or `android` with the cross-platform props on top. A
@@ -161,10 +159,6 @@ export function WebView(props: WebViewProps) {
   return <WebViewInstance key={creationKey(props)} {...props} />;
 }
 
-/**
- * Warns in development, once per WebView, when another bridge replaces its bridge, which recreated it: a bridge made
- * in render (`bridge={createBridge(…)}`) would reload the page at every render.
- */
 function useBridgeChangeWarning(bridge: WebViewProps['bridge']) {
   const last = useRef(bridge);
   const warned = useRef(false);
@@ -196,8 +190,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     [inFlight]
   );
 
-  // A handle can outlive its native view (one captured before an unmount): navigation is then a no-op, and what
-  // answers rejects with `unavailable`.
   const [handle] = useState((): WebViewRef => {
     const gone = (): never => {
       throw codedError({ code: 'unavailable', message: 'the WebView is gone' });
@@ -243,7 +235,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   });
   const publish = useAttach(ref, handle);
 
-  // onLoadStart and onLoadEnd are the edges of `loading`; native sets the ended load's `outcome`.
   const onNavigationState = ({ nativeEvent }: Native<NavigationState>) => {
     const state = own(nativeEvent);
     const was = publish(state);
