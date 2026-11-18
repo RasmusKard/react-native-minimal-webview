@@ -303,7 +303,7 @@ class HookReply internal constructor(
 ) : (Any?) -> Unit {
   private val settled = AtomicBoolean()
 
-  /** Resolves the JS call with [value]: strings, booleans, numbers, and `Map`s, `List`s and `Array`s of them cross as JSON; any other object, a primitive array such as `IntArray` included, arrives as null, and a non-finite number rejects the call with `native_error` instead. */
+  /** Resolves the JS call with [value]: strings, booleans, numbers, and `Map`s, `Collection`s and `Array`s of them cross as JSON; any other object, a primitive array such as `IntArray` included, arrives as null, and a non-finite number rejects the call with `native_error` instead. */
   override fun invoke(value: Any?) {
     if (settled.compareAndSet(false, true)) resolve(value)
   }

@@ -160,6 +160,7 @@ class PlatformSettingsTest {
     assertEquals("native_error", code { PlatformSettings.toJson(listOf(1, Double.NaN)) })
     assertEquals("native_error", code { PlatformSettings.toJson(mapOf("a" to listOf(Float.POSITIVE_INFINITY))) })
     assertEquals("""["a",[1,"b"],null]""", PlatformSettings.toJson(listOf("a", arrayOf(1, "b"), Any())))
+    assertEquals("""[["x"]]""", PlatformSettings.toJson(listOf(setOf("x"))))
     assertEquals("\"quoted\\\"\"", PlatformSettings.toJson("quoted\""))
     assertEquals("null", PlatformSettings.toJson(null))
   }
