@@ -1,7 +1,6 @@
 // Compiles src/bridge/pageClient.ts, with the endpoint.ts it imports, into src/bridge/pageClient.generated.ts: the page
 // client as one function expression in a string, so native can inject `(<PAGE_CLIENT>)(window, <timeoutMs>)`
-// at document start, and origins.ts's matchesOrigin on its own. The files import only types otherwise, so the build
-// only drops imports and exports.
+// at document start, and origins.ts's matchesOrigin on its own.
 // Run after editing any of them: node .github/scripts/build-page-client.mts (`--check` fails if the output is stale).
 import { readFileSync, writeFileSync } from 'node:fs';
 import ts from 'typescript';
@@ -18,7 +17,7 @@ const compile = (file: string) => {
     }
   );
   return outputText
-    .replace(/^import .*;\n/gm, '')
+    .replace(/^import \{ createEndpoint \} from '\.\/endpoint';\n/m, '')
     .replace(/^export /gm, '')
     .trim();
 };

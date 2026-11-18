@@ -42,18 +42,5 @@ module.exports = defineConfig([
     files: ['example/*.js', 'example/test-pages/*.js'],
     languageOptions: { globals: globals.node },
   },
-  {
-    // Maestro runScript scripts: Maestro's globals (example/maestro/scripts/maestro.d.ts).
-    files: ['example/maestro/scripts/*.js'],
-    languageOptions: {
-      globals: {
-        http: 'readonly',
-        output: 'writable',
-        PLATFORM: 'readonly',
-        DEVICE: 'readonly',
-        SUITE: 'readonly',
-        N: 'readonly',
-      },
-    },
-  },
+  { files: ['example/maestro/scripts/*.js'], rules: { 'no-undef': 'off' } }, // tsc checks them against maestro.d.ts
 ]);

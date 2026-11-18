@@ -1,4 +1,4 @@
-// The bridge wire format. The RN side parses with it; the page client imports only its types.
+// The bridge wire format. The RN side parses with it.
 import type { ErrorCode } from '../types';
 
 /** The codes a bridge call rejects with: the page may send only these. */

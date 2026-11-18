@@ -1,5 +1,4 @@
 {
-  "// ": "For editors and agent-guard only: Node types for the scripts here. Node runs the .mts as is; nothing runs tsc on them.",
   "compilerOptions": {
     "module": "nodenext",
     "target": "es2023",

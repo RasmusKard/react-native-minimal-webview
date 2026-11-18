@@ -1,6 +1,6 @@
 // One side of the bridge, the same in RN (createBridge.ts) and in the page (pageClient.ts): calls with timeouts,
 // handlers and events. The transport, the `ready` handshake and the document tokens are each side's own. The page
-// client is compiled with this file into one script (.github/scripts/build-page-client.mts), so it imports only types.
+// client is compiled with this file into one script (.github/scripts/build-page-client.mts).
 import type { ErrorCode } from '../types';
 import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
