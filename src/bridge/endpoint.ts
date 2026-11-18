@@ -69,7 +69,6 @@ export function createEndpoint<Sender = void>(
       listeners.set(event, set.add(listener));
       return () => set.delete(listener);
     },
-    /** Rejects the calls in flight, or only those `only` picks. */
     rejectPending(code: BridgeErrorCode, message: string, only?: (call: Pending) => boolean) {
       for (const [id, call] of pending) {
         if (only && !only(call)) continue;
@@ -78,7 +77,6 @@ export function createEndpoint<Sender = void>(
         pending.delete(id);
       }
     },
-    /** A message from the other side: settles a call, fires an event, or answers a call through `reply`. */
     async receive(message: BridgeMessage, reply: (message: BridgeMessage) => void, sender: Sender) {
       switch (message.kind) {
         case 'call': {

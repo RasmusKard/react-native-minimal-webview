@@ -37,7 +37,6 @@ export const originForms = (rules: string[]): OriginForms => {
   return forms;
 };
 
-/** Whether `text` holds `part` at index `at`, compared character by character. */
 function hasAt(text: string, part: string, at: number) {
   for (let k = 0; k < part.length; k++) if (text[at + k] !== part[k]) return false;
   return true;

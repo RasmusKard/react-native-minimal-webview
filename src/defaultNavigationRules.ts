@@ -9,12 +9,12 @@ const freeze = <T extends object>(value: T): T => {
  * The rules `navigationRules` has when it is unset: `file:` is blocked, http(s) loads in place, and any other scheme
  * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
  *
- * Anything else, a subframe's or one without a gesture, is blocked, so a page opens an app only right after the user's
- * tap, click or key press. A page's script or timer can't on its own, a link it clicks included; on iOS neither can a
- * click handler's `location.href`, a link activated from a hardware keyboard, or a redirect after a form POST (an OAuth
- * `myapp://callback`).
+ * Anything else, an iframe's or one without a gesture, is blocked, so a page opens an app only right after the user's
+ * tap, click or key press, as each platform counts them. On iOS that leaves out the redirect after a form POST, such
+ * as an OAuth `myapp://callback`: an `external` rule for its scheme before these opens it.
  *
  * Frozen; spread it after your own rules to keep it.
+ * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
  * @group Navigation
  */
 export const defaultNavigationRules: readonly NavigationRule[] = freeze<NavigationRule[]>([

@@ -202,6 +202,13 @@ const STRUCTS: Record<string, string> = {
   CGSize: '{ width: number; height: number }',
   CGRect: '{ x: number; y: number; width: number; height: number }',
 };
+const STRUCT_DOCS: Record<string, string> = {
+  UIEdgeInsets: 'Insets from each edge, in points, as in `scrollView.contentInset`.',
+  CGPoint: 'A point, as in `scrollView.contentOffset`.',
+  CGSize: 'A size, as in `scrollView.contentSize`.',
+  CGRect:
+    'A rectangle. No generated key takes one; it fits a setting under `other` and a `call` argument.',
+};
 /** The object types PlatformSettings.swift coerces from JSON. */
 const OBJECTS: Record<string, string> = {
   NSString: 'string',
@@ -481,15 +488,13 @@ async function generate() {
 ${Object.entries(STRUCTS)
   .map(
     ([name, shape]) =>
-      `/**\n * An iOS struct the settings channel carries as an object.\n * @group Platform settings\n * @ios\n */\nexport type ${name} = ${shape};`
+      `/**\n * ${STRUCT_DOCS[name]}\n * @group Platform settings\n * @ios\n */\nexport type ${name} = ${shape};`
   )
   .join('\n\n')}
 
 /**
- * The iOS settings keys by root: the writable WebKit and UIScrollView properties the settings channel can carry, from
- * the SDK headers.
- *
- * A key a newer SDK adds goes under the root's \`other\`.
+ * The iOS settings keys by root: the writable WebKit and UIScrollView properties from the SDK headers whose type is a
+ * \`SettingValue\`.
  * @group Platform settings
  * @ios
  */
@@ -503,10 +508,9 @@ export type IOSSettingKeys = ${object(
   )};
 
 /**
- * The Android settings keys by root: the one-argument \`WebSettings\`, \`WebView\` and \`CookieManager\` setters, then
- * \`WebSettingsCompat\`'s and \`WebViewCompat\`'s statics, then the scroll setters \`WebView\` inherits from \`View\`.
- *
- * A key a newer SDK or androidx.webkit adds goes under the root's \`other\`.
+ * The Android settings keys by root: the one-argument setters of \`WebSettings\` and \`WebView\`, \`CookieManager\`'s
+ * \`(WebView, value)\` setter, the \`WebSettingsCompat\` and \`WebViewCompat\` statics, and the scroll setters \`WebView\`
+ * inherits from \`View\`.
  * @group Platform settings
  * @android
  */
@@ -533,9 +537,11 @@ export type AndroidSettingKeys = ${object({
  * \`configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }\`.
  *
  * An option set's \`all\` is the OR of its listed bits, not \`NSUIntegerMax\`, which JSON can't carry.
- * \`WebsiteDataType\` has the data type names the \`websiteDataStore\` methods take, for \`call\`; \`WebViewDataType\` is
- * the option set \`webView.fetchDataOfTypes:\` takes, and \`CookiePolicy\` the value
- * \`httpCookieStore.setCookiePolicy:completionHandler:\` takes.
+ * These three are for \`call\`, not for keys:
+ *
+ * - \`WebsiteDataType\`: the data type names the \`websiteDataStore\` methods take.
+ * - \`WebViewDataType\`: the option set \`webView.fetchDataOfTypes:\` takes.
+ * - \`CookiePolicy\`: the value \`httpCookieStore.setCookiePolicy:completionHandler:\` takes.
  * @group Platform settings
  * @ios
  * @namespace

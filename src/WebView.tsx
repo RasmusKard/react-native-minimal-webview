@@ -110,7 +110,6 @@ type NativeProps = ViewProps &
     onProcessGone: ProcessGoneEvent;
   }>;
 
-/** The native view's methods, on its ref. */
 export type NativeMethods = {
   goBack(): Promise<void>;
   goForward(): Promise<void>;
@@ -413,7 +412,6 @@ const FIELD_KINDS = {
   action: { takes: `one of ${shown(ACTIONS)}`, ok: (value: unknown) => ACTIONS.includes(value) },
 };
 
-/** What is wrong with a rule, if anything. */
 function ruleProblem(rule: unknown) {
   if (typeof rule !== 'object' || rule === null) return `must be an object, not ${shown(rule)}`;
   // A missing action is checked as an undefined one; any other field may be undefined (unset).
@@ -427,9 +425,8 @@ function ruleProblem(rule: unknown) {
 }
 
 /**
- * The rules as native gets them. Native skips an unknown key and a flag that isn't a boolean, which would widen a rule
- * (`hosts` would match every host), so a malformed rule becomes one that blocks whatever reaches it, never more than
- * the rule meant, and a development warning names it. The same array when no rule is malformed.
+ * The rules as the core gets them. The core skips an unknown key and a non-boolean flag, which would widen a rule
+ * (`hosts` would match every host), so a malformed rule becomes a `block` one. The same array when none is malformed.
  */
 function useNavigationRules(rules: WebViewProps['navigationRules']) {
   const given: unknown = rules ?? defaultNavigationRules;
@@ -468,9 +465,9 @@ function useRequestHandlers(props: WebViewProps) {
 }
 
 /**
- * Native's `hookOptions`: each extension's `options` by its key, the later of two extensions with one key winning (a
- * development warning). An off `options` leaves the key out. The same object while the JSON is the same, so a render
- * with new handlers sends native nothing.
+ * The core's `hookOptions`: each extension's `options` by its key, the later of two extensions with one key winning (a
+ * development warning). The same object while the JSON is the same, so a render with new handlers sends the core
+ * nothing.
  */
 function useHookOptions(extensions: WebViewProps['extensions']) {
   const on = (extensions ?? []).filter((extension) => !!extension);
@@ -588,20 +585,17 @@ export const AndroidWebView = {
    * Starts WebView before any WebView mounts, so the first WebView mounts sooner.
    *
    * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
-   * pushed. Calling it at mount gains nothing. WebView starts once per app, and React Native's first `fetch` starts
-   * it too.
+   * pushed. WebView starts once per app, and React Native's first `fetch` starts it too.
    * @android
    */
   warmUp(): void {
     if (Platform.OS === 'android') nativeModule().warmUp();
   },
   /**
-   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load that comes
-   * later.
+   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load.
    *
-   * Use it for a load that hasn't started yet: as the screen with the WebView is pushed, or for the next page a
-   * mounted WebView will go to. A WebView connects to its `source` itself as it mounts, so preconnecting `source` at
-   * mount gains nothing.
+   * Call it before the load starts: as the screen with the WebView is pushed, or for the next page a mounted WebView
+   * will go to. A WebView connects to its `source` itself as it mounts.
    *
    * It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a WebView is
    * mounted.
@@ -620,7 +614,7 @@ export const AndroidWebView = {
    * WebView exists, it applies when the first one is made, so it doesn't start WebView. On iOS,
    * `ios.webView.inspectable` sets it per WebView.
    * @android
-   * @see [Debugging the page](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#debugging-the-page)
+   * @see [Debugging the page example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#debugging-the-page)
    */
   setWebContentsDebuggingEnabled(enabled: boolean): void {
     if (Platform.OS === 'android')
