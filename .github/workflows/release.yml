@@ -1,7 +1,7 @@
 name: Release
 
-# Merging release-please's PR creates a draft release with an attested tarball for each released package; a maintainer
-# publishes each to npm with 2FA by running .github/scripts/publish.sh <tag> locally.
+# Merging release-please's PR creates a draft release per released package, attests its tarball, publishes it to npm with
+# trusted publishing and un-drafts the release.
 on:
   push:
     branches: [main]
@@ -92,3 +92,33 @@ jobs:
       - run: gh release upload "$TAG" react-native-minimal-webview-*.tgz -R "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ github.token }}
+
+  # Holds the npm OIDC token, so it runs no repository or dependency code.
+  publish:
+    needs: [release-please, attest]
+    runs-on: ubuntu-latest
+    # npm's trusted publisher entries name this environment.
+    environment: release
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/setup-node@v7.1.0
+        with:
+          # Trusted publishing needs npm 11.5.1 or later.
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8.0.2
+      # The core goes first: the extensions package takes it as a peer. Only a core release is "Latest", since the docs
+      # site shows that release's tag as the version. A tarball runs no lifecycle scripts.
+      # shortcut: a re-run fails on a package that is already published, skip those once a release stops halfway
+      - run: |
+          for tag in $CORE_TAG $EXTENSIONS_TAG; do
+            npm publish "$tag"/*.tgz
+            gh release edit "$tag" --draft=false --latest="$([ "$tag" = "$CORE_TAG" ] && echo true || echo false)" \
+              -R "$GITHUB_REPOSITORY"
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORE_TAG: ${{ needs.release-please.outputs.core-tag }}
+          EXTENSIONS_TAG: ${{ needs.release-please.outputs.extensions-tag }}
