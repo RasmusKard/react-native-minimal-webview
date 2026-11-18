@@ -14,6 +14,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   docs:
-    uses: RasmusKard/rn-cross-platform-docs/.github/workflows/deploy-zensical.yml@v1
+    uses: RasmusKard/rn-cross-platform-docs/.github/workflows/deploy-zensical.yml@v2
     with:
       prepare: cd example && npx expo prebuild
