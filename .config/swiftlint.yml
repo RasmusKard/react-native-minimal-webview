@@ -1,4 +1,4 @@
-# Complexity rules only; ios/Tests is the Swift rule tests' main.swift.
+# Complexity rules only; ios/Tests, the Swift tests, is not linted.
 included: [../ios, ../extensions]
 excluded: [../ios/Tests]
 strict: true # a warning fails too

@@ -1,4 +1,4 @@
-# Complexity and unused-private-code rules only (run without --build-upon-default-config, so nothing else is active).
+# Complexity and unused-code rules only (run without --build-upon-default-config, so nothing else is active).
 complexity:
   active: true
   CyclomaticComplexMethod: { active: true, threshold: 15, ignoreSimpleWhenEntries: true }

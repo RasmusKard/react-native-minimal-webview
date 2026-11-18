@@ -20,6 +20,22 @@
   "sortEntryPoints": false,
   "pageTitleTemplates": { "index": "TypeScript API" },
   "validation": { "notExported": false },
+  "notRenderedTags": [
+    "@showCategories",
+    "@showGroups",
+    "@hideCategories",
+    "@hideGroups",
+    "@disableGroups",
+    "@expand",
+    "@preventExpand",
+    "@expandType",
+    "@summary",
+    "@group",
+    "@groupDescription",
+    "@category",
+    "@categoryDescription",
+    "@sortStrategy"
+  ],
   "groupOrder": [
     "Extensions",
     "Values",

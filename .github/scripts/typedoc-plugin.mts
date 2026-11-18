@@ -3,8 +3,7 @@
 import { Application, Converter, PageEvent, ReflectionFlag, ReflectionKind } from 'typedoc';
 
 export function load(app: Application) {
-  // Const: whether an export is a `const` doesn't matter to its users. A const type parameter keeps its flag, since its
-  // `const` changes inference.
+  // A const type parameter keeps its flag, since its `const` changes inference.
   app.converter.on(Converter.EVENT_RESOLVE_BEGIN, (context) => {
     for (const variable of context.project.getReflectionsByKind(ReflectionKind.Variable))
       variable.setFlag(ReflectionFlag.Const, false);
