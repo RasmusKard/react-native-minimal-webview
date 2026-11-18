@@ -2822,23 +2822,39 @@ async function bfcache(h: Harness) {
 async function sources(h: Harness) {
   const r = reporter('sources');
 
-  const post = fresh(h, '/post');
   const body = `amount=9.99&t=${Date.now()}`;
-  await openPage(h, { uri: post, body }, 10000);
-  r.check(
-    'source.body is sent as a form POST',
-    (await text(h, 'body')) === body,
-    await text(h, 'body')
-  );
-  await h.ref.current?.evaluate(`document.getElementById('body').textContent = 'stale'`);
-  await waitForLoad(
-    h,
-    () => h.ref.current?.reload(),
-    () => true,
-    10000
-  );
-  await sleep(300);
-  r.check('reload sends the POST again', (await text(h, 'body')) === body, await text(h, 'body'));
+  // The WebView commits the second form with its host lowercase.
+  for (const [form, host] of [
+    ['', 'localhost'],
+    [' when the source URL has an uppercase host', 'LOCALHOST'],
+  ]) {
+    const post = fresh(h, '/post');
+    await waitForLoad(
+      h,
+      () => h.loadSource({ uri: post.replace('localhost', host), body }),
+      (s) => s.url === post && idle(s),
+      10000
+    );
+    if (!form)
+      r.check(
+        'source.body is sent as a form POST',
+        (await text(h, 'body')) === body,
+        await text(h, 'body')
+      );
+    await h.ref.current?.evaluate(`document.getElementById('body').textContent = 'stale'`);
+    await waitForLoad(
+      h,
+      () => h.ref.current?.reload(),
+      () => true,
+      10000
+    );
+    await sleep(300);
+    r.check(
+      `reload sends the POST again${form}`,
+      (await text(h, 'body')) === body,
+      await text(h, 'body')
+    );
+  }
 
   const dir = new Directory(Paths.cache, `site-${Date.now()}`);
   dir.create();

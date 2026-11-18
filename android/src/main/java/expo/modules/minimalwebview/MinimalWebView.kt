@@ -479,15 +479,32 @@ internal fun profileOf(webView: WebView): Profile? =
   if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) WebViewCompat.getProfile(webView) else null
 
 /**
- * Whether the committed [url] is the [source]'s page (or nothing has committed yet). An html source's page is its
- * baseUrl or about:blank. Chromium canonicalizes (`https://example.com` commits as `https://example.com/`).
+ * Whether the committed [url] is the [source]'s page (or nothing has committed yet): the same [canonicalUrl] up to
+ * trailing slashes. An html source's page is its baseUrl or about:blank.
  */
 internal fun showsSource(source: WebViewSource?, url: String): Boolean {
   if (source == null) return false
   if (url.isEmpty()) return true
   val page = source.uri ?: source.baseUrl ?: "about:blank"
-  return page.trimEnd('/') == url.trimEnd('/')
+  return canonicalUrl(page).trimEnd('/') == canonicalUrl(url).trimEnd('/')
 }
+
+/**
+ * [url] as Chromium commits it: the scheme and host lowercase, the scheme's default port dropped and an empty path
+ * `/`; the rest as it is. A URL with no `//` authority is returned unchanged.
+ */
+private fun canonicalUrl(url: String): String {
+  val (scheme, userinfo, host, port, rest) = urlAuthority.find(url)?.destructured ?: return url
+  val lower = scheme.lowercase()
+  val portPart = port.toIntOrNull()?.takeIf { it != defaultPorts[lower] }?.let { ":$it" }.orEmpty()
+  return "$lower://$userinfo${host.lowercase()}$portPart${if (rest.startsWith('/')) rest else "/$rest"}"
+}
+
+// scheme "://" [userinfo "@"] host [":" port] rest
+private val urlAuthority = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#@]*@)?(\\[[^\\]/?#]*]|[^/?#:]*)(?::(\\d*))?(.*)$")
+
+/** The special schemes' default ports (the WHATWG URL Standard's), as on iOS (Loads.swift). */
+private val defaultPorts = mapOf("http" to 80, "https" to 443, "ws" to 80, "wss" to 443, "ftp" to 21)
 
 /**
  * Records a renderer death at [now] in [times] and says whether to reload after it: not after more than
