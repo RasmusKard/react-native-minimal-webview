@@ -121,10 +121,11 @@ jobs:
           path: ${{ needs.release-please.outputs.extensions-tag }}
       # The core goes first: the extensions package takes it as a peer. Only a core release is "Latest", since the docs
       # site shows that release's tag as the version. A tarball runs no lifecycle scripts.
+      # The ./ keeps npm from reading <tag>/<file>.tgz as a GitHub owner/repo.
       # shortcut: a re-run fails on a package that is already published, skip those once a release stops halfway
       - run: |
           for tag in $CORE_TAG $EXTENSIONS_TAG; do
-            npm publish "$tag"/*.tgz
+            npm publish ./"$tag"/*.tgz
             gh release edit "$tag" --draft=false --latest="$([ "$tag" = "$CORE_TAG" ] && echo true || echo false)" \
               -R "$GITHUB_REPOSITORY"
           done
