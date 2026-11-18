@@ -21,10 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The Kotlin unit tests, the navigation rule matcher among them against the shared cases in src/__tests__/vectors/,
-  # and the Kotlin of extensions/ and the example's sample-extension, compiled. There is no Kotlin origin matcher:
-  # Android matches origins itself (addWebMessageListener).
-  kotlin-rules:
+  kotlin-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1

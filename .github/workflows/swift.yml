@@ -10,9 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The Swift tests (ios/Tests/main.swift says what they cover) and the PlatformSettings tests as Mac Catalyst.
   # macOS: DelegateProxy.swift needs WebKit.
-  swift-rules:
+  swift-tests:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7.0.1
