@@ -10,11 +10,11 @@ import android.webkit.WebViewClient
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /**
- * The `perf` suite's probe (example/perf.ts), in its own file, apart from the extension's sample hooks. It only
+ * The `perf` suite's probe (example/perf.ts). It only
  * observes: `perfMark.mark(i)` from the page stamps the moment before the page navigates to `…&i=<i>` (on the
  * JavaBridge thread, synchronously), and the first main-frame `shouldInterceptRequest` for that URL the moment its
- * request starts (on Chromium's IO thread). It returns null there, which is what the core answers without a hook (it
- * has no `shouldInterceptRequest` of its own), so the core still decides every navigation.
+ * request starts (on Chromium's IO thread). It returns null there, as the core does without a hook, so every request
+ * still loads as it would without the hook.
  * `ref.hook('sample.perf', 'drain')` hands the stamps to JS and clears them.
  */
 internal object PerfProbe {
@@ -54,10 +54,7 @@ private class Probe {
 /** A monotonic clock in ns, as a Double (exact below 2^53 ns, 104 days of uptime) so it crosses to JS as a number. */
 private fun now() = SystemClock.elapsedRealtimeNanos().toDouble()
 
-/**
- * Main-thread frame gaps between [start] and [stop], from Choreographer: a UI thread blocked for 300 ms shows as one
- * gap of about 300 ms.
- */
+/** Main-thread frame gaps between [start] and [stop], from Choreographer. */
 internal object Stall : Choreographer.FrameCallback {
   private var running = false
   private var last = 0L

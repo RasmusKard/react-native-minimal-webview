@@ -38,7 +38,7 @@
     });
   })();
 
-  /** The smallest steps of performance.now() and Date.now(): spin until the value changes, 20 times. */
+  /** The clock resolution of performance.now() and Date.now(). */
   window.perfClock = (run) => {
     const step = (now) => {
       const a = now();

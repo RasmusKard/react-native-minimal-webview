@@ -56,7 +56,8 @@ public class SampleExtensionModule: Module {
         context.onDestroyed { reason in if reason == .closing { Seams.closed += 1 } }
       }
     }
-    // The perf suite's frame-gap probe (PerfProbe.swift): module functions, so they work without a hook too.
+    // closedViews is sample.seams' counter; stallStart and stallStop are the perf suite's frame-gap probe
+    // (PerfProbe.swift). Module functions, so they work without a hook too.
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(.main)
     AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
     AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
@@ -74,8 +75,8 @@ private final class SampleWKWebView: WKWebView {}
 /// The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx).
 private let authHosts: Set<String> = ["localhost"]
 
-/// Answers HTTP basic or digest challenges from authHosts itself, and cancels the rest. Sends `challenge` for each
-/// challenge it gets.
+/// Answers HTTP basic and digest challenges from authHosts itself and cancels those from other hosts; any other
+/// challenge gets the default handling. Sends `challenge` for each challenge it gets.
 private final class HookAuth: NSObject, WKNavigationDelegate {
   private let context: WebViewContext
 
@@ -132,9 +133,9 @@ private final class HookDialogs: NSObject, WKUIDelegate {
   }
 }
 
-/// Counts page loads through two delegate callbacks: `didFinish`, which the core implements and fans out, and
-/// `didReceiveServerRedirect`, which it doesn't and forwards. Its option, `true` or `{ global: name }`, names the
-/// page's global that gets the count (`__pageCount` by default).
+/// Counts page loads in `didFinish`, which the core implements and fans out, and reports `didReceiveServerRedirect`,
+/// which the core doesn't implement but passes to every hook delegate. Its option, `true` or `{ global: name }`, names
+/// the page's global that gets the count (`__pageCount` by default).
 private final class PageCounter: NSObject, WKNavigationDelegate {
   private let context: WebViewContext
   private(set) var count = 0

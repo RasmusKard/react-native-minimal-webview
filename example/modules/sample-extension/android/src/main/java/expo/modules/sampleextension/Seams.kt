@@ -8,7 +8,7 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 
 /** `sample.seams`: the context's seams other than clients, one small use of each. */
 internal object Seams {
-  /** How many of its WebViews were destroyed at unmount. */
+  /** How many of its WebViews were closed at unmount. */
   var closed = 0
     private set
 

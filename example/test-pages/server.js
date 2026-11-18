@@ -1,7 +1,7 @@
 /// <reference types="node" />
-// Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse tcp:8090 tcp:8090`, on the
-// Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests, and
-// https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
+// Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse` of ports 8090 and 8443, on
+// the Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests,
+// and https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
 // The harness runs through it too: the app polls /harness/next for the suite /harness/run queued and posts its results
 // to /harness/log, which this server prints, and the driver (Maestro) waits on /harness/await, /harness/verdict and
 // /harness/idle instead of reading the screen (see harnessState).

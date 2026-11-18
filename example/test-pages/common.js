@@ -1,4 +1,4 @@
-// Shared by every test page: shows location.href live and a log the harness can read back (window.testLog).
+// Loaded by most test pages: shows location.href live and a log the harness can read back (window.testLog).
 window.testLog = [];
 window.log = (...args) => {
   const line = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
