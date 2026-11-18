@@ -80,6 +80,8 @@ export function createBridge<Schema extends BridgeSchema = BridgeSchema>(
     (message) => {
       if (post && phase === 'ready') deliver(message);
       else {
+        // Throws now, at the caller, for what JSON can't encode, rather than in the flush, losing the rest of the queue.
+        JSON.stringify(message);
         queue.push(message);
         const dropped = queue.length > MAX_QUEUE ? queue.shift() : undefined;
         if (dropped?.kind === 'call') {
