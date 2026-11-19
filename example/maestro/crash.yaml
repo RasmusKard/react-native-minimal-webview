@@ -3,7 +3,8 @@ name: crash
 env:
   SUITE: crash
 ---
-# Thirteen renderer kills; the harness asks for each once the page answers an evaluate (a live renderer).
+# Thirteen renderer kills, fourteen on iOS; the harness asks for each once the page answers an evaluate (a live
+# renderer).
 - runFlow: subflows/launch.yaml
 - repeat:
     times: 11
@@ -25,4 +26,11 @@ env:
 - runScript: scripts/kill.js
 - evalScript: ${http.get('http://localhost:8090/slow?ms=5000')}
 - launchApp: { stopApp: false }
+# iOS's 14th under a full-screen modal the harness shows.
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - runFlow: { file: subflows/await.yaml, env: { N: '${output.n}' } }
+      - runScript: scripts/kill.js
 - runFlow: subflows/finish.yaml

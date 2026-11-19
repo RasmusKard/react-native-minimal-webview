@@ -2,6 +2,7 @@ import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from '
 import {
   Button,
   type HostInstance,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -91,6 +92,7 @@ function Remountable({ children }: { children: ReactNode }) {
 export default function App() {
   launchMarks.render ??= performance.now();
   const [extraWebViews, setExtraWebViews] = useState(0);
+  const [covered, setCovered] = useState(false);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
   const [rules, setRules] = useState<NavigationRule[] | undefined>();
   const [extraProps, setProps] = useState<HarnessProps>({});
@@ -146,6 +148,7 @@ export default function App() {
     setPermission: (handler) => (permissionRef.current = handler),
     setProps,
     setExtraWebViews,
+    setCovered,
     events,
     setAsk: (ask) => (askRef.current = ask),
   };
@@ -228,6 +231,10 @@ export default function App() {
           ))}
         </View>
       ) : null}
+      {/* Full screen: iOS takes the views under it out of the window. */}
+      <Modal visible={covered} animationType="none" presentationStyle="fullScreen">
+        <View />
+      </Modal>
       <Text testID="harness-request" style={styles.state}>
         {driverRequest}
       </Text>

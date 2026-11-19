@@ -54,6 +54,8 @@ export type Harness = {
   setProps: (props: HarnessProps) => void;
   /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
   setExtraWebViews: (n: number) => void;
+  /** Shows a full-screen modal over the app, or hides it. */
+  setCovered: (covered: boolean) => void;
   /** What the WebView reported, in order. Suites clear what they read. */
   events: {
     errors: LoadErrorEvent[];
@@ -206,6 +208,7 @@ export function pollForSuites(get: () => Harness) {
 async function reset(h: Harness) {
   h.setProps({});
   h.setExtraWebViews(0);
+  h.setCovered(false);
   h.setRules(undefined);
   h.setAsk(undefined);
   h.setPermission(undefined);
@@ -1503,6 +1506,30 @@ async function crash(h: Harness) {
     loadedOnTop && (await waitFor(h, (s) => s.url === away && idle(s), 15000)),
     h.state()
   );
+  h.setProps({ userAgent: 'Crash/1' }); // the next kill's onProcessGone loads nothing
+
+  // A crash while the view is out of its window (under a full-screen modal) reloads once it is back in one. Android
+  // keeps the window of a view under a modal, so this is iOS's case.
+  if (Platform.OS === 'ios') {
+    const under = fresh(h, '/bridge.html');
+    await openPage(h, under);
+    h.setCovered(true);
+    await sleep(1000); // the presentation
+    const starts = h.events.loads.length;
+    const coveredGone = await kill(14);
+    await sleep(2000);
+    const whileCovered = h.events.loads.slice(starts);
+    const uncovered = await waitForLoad(
+      h,
+      () => h.setCovered(false),
+      (s) => s.url === under && idle(s)
+    );
+    r.check(
+      'a crash out of the window reloads once the view is back in one',
+      coveredGone?.recovered === true && whileCovered.length === 0 && uncovered,
+      { coveredGone, whileCovered, state: h.state() }
+    );
+  }
   r.done();
 }
 
