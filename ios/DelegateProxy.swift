@@ -8,6 +8,8 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private weak var core: NSObject?
   var navigationDelegates: [WKNavigationDelegate] = []
   var uiDelegates: [WKUIDelegate] = []
+  /// Hears each action policy check a hook delegate takes: the core's own bookkeeping still needs it.
+  var hookDecides: (WKNavigationAction) -> Void = { _ in }
 
   init(core: NSObject) {
     self.core = core
@@ -88,6 +90,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy, WKWebpagePreferences) -> Void
   ) {
     let owner = takers(of: Self.actionPolicy).first
+    if owner != nil { hookDecides(navigationAction) }
     if let owner, owner.responds(to: Self.actionPolicyWithPreferences) {
       (owner as? WKNavigationDelegate)?.webView?(
         webView, decidePolicyFor: navigationAction, preferences: preferences, decisionHandler: decisionHandler)
