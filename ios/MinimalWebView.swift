@@ -107,7 +107,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     failEvaluations()
     bridgeOrigin = nil
     // JS queues bridge messages until the next page is ready; at unmount it rejects what is in flight itself.
-    if reason != .closing, bridgeScript != nil { onBridge(["navigated": true]) }
+    if reason == .committed, bridgeScript != nil { onBridge(["navigated": true]) }
+    if reason == .crashed, bridgeScript != nil { onBridge(["crashed": true]) }
     askedAndAllowed.removeAll()
     dismissDialog()
     // The spinner belongs to a load, and a crash ends the load without a delegate callback.

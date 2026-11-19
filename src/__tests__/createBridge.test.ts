@@ -284,6 +284,22 @@ describe('createBridge', () => {
     expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'fresh', params: 2 }]);
   });
 
+  it('sends messages made between a crash and the reload to the reloaded page', async () => {
+    const { bridge, connection, sent, fromPage } = setup();
+    fromPage({ kind: 'ready' });
+    connection.receive({ crashed: true });
+    bridge.emit('after', 1);
+    const call = bridge.call('after');
+    connection.receive({ navigated: true }); // the reload commits
+    fromPage({ kind: 'ready' });
+    expect(sent).toMatchObject([
+      { kind: 'event', method: 'after' },
+      { kind: 'call', method: 'after' },
+    ]);
+    fromPage({ id: sent[1]?.id, kind: 'result', value: 1 });
+    await expect(call).resolves.toBe(1);
+  });
+
   it('does not send a queued call that already timed out', async () => {
     jest.useFakeTimers();
     const { bridge, sent, fromPage } = setup();

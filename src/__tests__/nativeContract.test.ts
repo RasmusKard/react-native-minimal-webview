@@ -126,6 +126,7 @@ const navigated = { navigated: 1 } satisfies Record<
   keyof Extract<BridgeEvent, { navigated: true }>,
   1
 >;
+const crashed = { crashed: 1 } satisfies Record<keyof Extract<BridgeEvent, { crashed: true }>, 1>;
 const unavailable = { unavailable: 1 } satisfies Record<
   keyof Extract<BridgeEvent, { unavailable: true }>,
   1
@@ -192,7 +193,7 @@ const PAYLOADS: Record<Platform, Row[]> = {
       event: 'onBridge',
       file: 'MinimalWebViewScripts.kt',
       emitSite: /onBridge\(/g,
-      keys: [message, navigated, unavailable],
+      keys: [message, navigated, crashed, unavailable],
     },
     // Not `Asks { onHookEvent(it) }`: its literals are in Asks.kt.
     {
@@ -284,7 +285,12 @@ const PAYLOADS: Record<Platform, Row[]> = {
       emitSite: /onBridge\(/g,
       keys: message,
     },
-    { event: 'onBridge', file: 'MinimalWebView.swift', emitSite: /onBridge\(/g, keys: navigated },
+    {
+      event: 'onBridge',
+      file: 'MinimalWebView.swift',
+      emitSite: /onBridge\(/g,
+      keys: [navigated, crashed],
+    },
     // Not `Asks { [weak self] in self?.onHookEvent($0) }`: its literals are in Asks.swift.
     {
       event: 'onHookEvent',

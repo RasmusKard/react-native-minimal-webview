@@ -154,14 +154,14 @@ Timeout ==
     /\ UNCHANGED <<nativeVars, pageVars>>
     /\ UNCHANGED <<posted, navRejected, runs, rnSaw, wrongPage, carriedOver>>
 
-\* createBridge.ts receive({ navigated })
+\* createBridge.ts receive({ navigated }) and receive({ crashed })
 OnNavigated(e) ==
   LET sent == RejectSent
       stale == IF NeverSaidReady THEN pending \ sent ELSE {}
   IN /\ Reject(sent \cup stale)
      /\ navRejected' = navRejected \cup sent
      /\ queue' = IF NeverSaidReady THEN <<>> ELSE ForPage(queue, e.doc)
-     /\ phase' = "loading"
+     /\ phase' = IF e.type = "crashed" THEN "idle" ELSE "loading"
      /\ rnSaw' = e.doc
      /\ UNCHANGED <<attached, doc, unavailable, answering, nextMsg>>
      /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage>>
@@ -212,7 +212,7 @@ RNReceive ==
   /\ toRN # <<>>
   /\ toRN' = Tail(toRN)
   /\ LET e == Head(toRN) IN
-     CASE e.type = "navigated" -> OnNavigated(e)
+     CASE e.type \in {"navigated", "crashed"} -> OnNavigated(e)
        [] e.type = "unavailable" -> OnUnavailable
        [] e.type = "ready" -> OnReady(e)
        [] e.type = "call" -> OnPageCall(e)
@@ -240,11 +240,11 @@ Commit ==
   /\ UNCHANGED <<rnVars, capable, crashes, mounts, toNative, toPage>>
   /\ UNCHANGED <<saidReady, pageCall, running, ghostVars>>
 
-\* The renderer dies: endDocument(.crashed) / tearDown(CRASHED) emits `navigated`; a reload commits later
+\* The renderer dies: endDocument(.crashed) / tearDown(CRASHED) emits `crashed`; a reload commits later
 Crash ==
   /\ attached /\ crashes < MaxCrashes
   /\ current' = None /\ canPost' = FALSE /\ crashes' = crashes + 1
-  /\ toRN' = Append(toRN, Event("navigated", None, 0))
+  /\ toRN' = Append(toRN, Event("crashed", None, 0))
   /\ UNCHANGED <<rnVars, capable, nextDoc, mounts, toNative, toPage>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 

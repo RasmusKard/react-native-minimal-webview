@@ -87,7 +87,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     // At a commit this runs one main-thread hop after Chromium's (the NavigationListener's executor posts it), and
     // relies on landing before the new page's first message sets replyProxy (the bridge suite's head-script call).
     replyProxy = null
-    if (reason != DocumentEnd.CLOSING && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
+    if (reason == DocumentEnd.COMMITTED && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
+    if (reason == DocumentEnd.CRASHED && owner.bridgeScript != null) onBridge(mapOf("crashed" to true))
   }
 
   /**
