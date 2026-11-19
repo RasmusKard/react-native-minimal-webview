@@ -5,8 +5,8 @@ Symptoms, their usual causes in this package, and the API reference entry that h
 ## Read the warnings first
 
 The core skips what it can't apply and says so, instead of failing. Its warnings are `console.warn` messages that start
-with `[react-native-minimal-webview]`, so they show wherever your app's JS logs do. A few go to the device log only, on
-Android under the logcat tag `MinimalWebView`.
+with `[react-native-minimal-webview]`, so they show wherever your app's JS logs do. A few go to the device log only: on
+Android under the logcat tag `MinimalWebView`, on iOS to Xcode's console and the Console app.
 
 For a navigation, [`onNavigation`][onnavigation] reports each decision and the index of the rule that made it:
 `onNavigation={({ url, action, rule }) => console.log(action, url, rule)}`.
@@ -16,14 +16,15 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 - The page's origin isn't in the bridge's [`allowedOrigins`][allowedorigins]. `https://*.example.com` matches subdomains
   only, not `https://example.com`, and a port is part of the origin. `await ref.current?.evaluate('location.origin')`
   shows what the page has.
+- The page is an `html` source without `baseUrl`: its origin is opaque, which only `'*'` matches. Give it a `baseUrl`
+  on an allowed origin.
 - The script runs in an iframe: only the main frame gets the bridge.
 - The WebView has no [`bridge`][bridge] prop.
 - Android System WebView is older than 101 (a warning says so): [check the device's version](android-system-webview.md#check-a-devices-webview).
-- The page is open in a browser, not in the app.
 
 ## A link does nothing, or opens outside the app
 
-- No rule matched it, so it was blocked: `onNavigation` reports `rule: null`. Your
+- No rule matched it, so it was blocked: `onNavigation` reports `block` with [`rule: null`][rule]. Your
   [`navigationRules`][navigationrules] replace [`defaultNavigationRules`][defaultnavigationrules] unless you spread
   them in.
 - It goes to another scheme (`myapp:`, `tel:`) without a user gesture, which the default rules block. A redirect to
@@ -39,7 +40,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 ## The camera, microphone or location is denied
 
 - Android denies every request without [`onPermissionRequest`][onpermissionrequest].
-- The OS permission is missing: answering true doesn't grant it, so ask the OS first.
+- The OS permission is missing: answering true doesn't grant it, so ask the OS first:
+  [`onPermissionRequest`][onpermissionrequest] lists the Info.plist keys and Android permissions each request needs.
 - The request comes from an iframe (on Android, one of another origin than the main frame's), or from a page with an
   opaque origin: those are denied without asking.
 - On iOS, location never reaches `onPermissionRequest`: WebKit shows its own prompt.
@@ -58,7 +60,7 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 - It is `ios.webView.customUserAgent` or `android.settings.userAgentString`, and the [`userAgent`][useragent] prop is set: the prop wins.
 - It is an [`ios.webpagePreferences`][iossettings] key, which applies from the next navigation.
 - UIKit declares the property without runtime metadata, as it does `webView.opaque`: set it with
-  [`call`](platform-apis.md#4-call-a-method).
+  [`call`](platform-apis.md#4-call-a-method), `call('webView.setOpaque:', [false])`.
 - It is Android's `webContentsDebuggingEnabled`, which is process-wide: use
   [`AndroidWebView.setWebContentsDebuggingEnabled`][debugging].
 
@@ -68,6 +70,13 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
   `useMemo`. A warning says so in development.
 - A value in [`ios.configuration`][iossettings] changed.
 - The renderer crashed and the core reloaded the page: [`onProcessGone`][onprocessgone] reports it.
+
+## A bridge call or `evaluate` rejects during a load
+
+A bridge call or `evaluate` still pending when the page navigates rejects with `navigated`, one made before the
+WebView is mounted with `unavailable`, and on Android an `evaluate` that ran before the core was ready for the page with
+`script_error`. Call once the load ends ([`onLoadEnd`][onloadend]); [`ErrorCode`][errorcode] says what each code means
+and when a retry is safe.
 
 ## An injected script doesn't run, or fails
 
@@ -91,3 +100,6 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 [injectedscript]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/InjectedScript/
 [onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onopenexternal
 [useragent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#useragent
+[rule]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationEvent/
+[onloadend]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onloadend
+[errorcode]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/ErrorCode/

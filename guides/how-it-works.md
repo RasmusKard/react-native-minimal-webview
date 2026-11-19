@@ -6,17 +6,20 @@ What runs where, and the terms the rest of the docs use: the core, frames, origi
 
 ## The parts
 
-| Part          | What it is                                                                                  | What it does                                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| The page      | Your site, in the platform's WebView: `WKWebView` on iOS, Android System WebView on Android | Runs in the WebView's own process, the renderer, apart from the app                                                |
-| The core      | This package's Swift and Kotlin around that WebView                                         | Decides navigations, keeps the navigation state, answers the page's requests, carries the bridge                   |
-| Your app's JS | The `<WebView>` props, its ref and your callbacks                                           | Hands the core its rules and settings, and hears what happened                                                     |
-| A native hook | Your own Swift or Kotlin, optional                                                          | Gets the native WebView itself ([native hooks](native-hooks.md)); its JS side is an entry of the `extensions` prop |
+| Part          | What it is                                                                                  | What it does                                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The page      | Your site, in the platform's WebView: `WKWebView` on iOS, Android System WebView on Android | Runs in the WebView's own process, the renderer, apart from the app                                                                                             |
+| The core      | This package's Swift and Kotlin around that WebView                                         | Decides navigations, keeps the navigation state, answers the page's requests, carries the bridge                                                                |
+| Your app's JS | The `<WebView>` props, its ref and your callbacks                                           | Hands the core its rules and settings, and hears what happened                                                                                                  |
+| A native hook | Your own Swift or Kotlin, optional                                                          | Gets the native WebView itself ([native hooks](native-hooks.md)); its JS side goes in the [`extensions` prop][extensions], as the extensions package's hooks do |
 
 The core decides natively, from what the props gave it, so a busy JS thread doesn't hold the page up. JS is asked only
 where a prop says so: an `ask` rule ([`onNavigationRequest`][onnavigationrequest]), an `external` navigation when you
 pass [`onOpenExternal`][onopenexternal], and the page's requests for files and permissions
 ([page requests](examples.md#page-requests)).
+
+The **bridge** carries calls between your app's JS and the page's: the page has `window.nativeBridge`, and the app has
+the object [`createBridge`][createbridge] makes, passed as the [`bridge`][bridge] prop.
 
 ## Frames and origins
 
@@ -24,7 +27,7 @@ The **main frame** is the page's top-level document, the one whose URL the navig
 it is a frame of its own.
 
 An **origin** is a scheme, host and port, as the page's `location.origin` writes it: `https://example.com`. A page from
-a `data:` URL or in a sandboxed iframe has an opaque origin, which only `'*'` matches.
+an `html` source without `baseUrl`, a `data:` URL or a sandboxed iframe has an opaque origin, which only `'*'` matches.
 
 The core gives the main frame more than it gives iframes, and trusts only the origins you name:
 
@@ -39,8 +42,9 @@ The core gives the main frame more than it gives iframes, and trusts only the or
 
 ## How a navigation is decided
 
-1. The `source` load, [`load(url)`][load], a reload and back or forward load without asking the rules. So do a form
-   POST and, outside a new window, an `about:`, `data:` or `javascript:` URL.
+1. These load in place without the rules: the `source` load, [`load(url)`][load], reloads, back and forward, form
+   POSTs, and `about:`, `data:` and `javascript:` URLs unless they open a [new window][newwindow]. A redirect of the
+   `source` load or a `load` goes to the rules; [`navigationRules`][navigationrules] lists each case per platform.
 2. Any other navigation goes down [`navigationRules`][navigationrules], and the first rule that matches decides:
    `allow`, `block`, `external` or `ask`.
 3. A navigation no rule matches is blocked.
@@ -51,8 +55,8 @@ reports every decision with the index of the rule that made it.
 ## Which props recreate the WebView
 
 Only two props recreate the native WebView when they change, which reloads the page: [`bridge`][bridge], compared by
-identity, and [`ios.configuration`][configuration], compared by value. Everything else, callbacks included, can be
-written inline.
+identity ([keep it stable](troubleshooting.md#the-page-reloads-or-the-navigation-state-starts-over)), and
+[`ios.configuration`][configuration], compared by value. Everything else, callbacks included, can be written inline.
 
 [onopenexternal]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onopenexternal
 [onnavigationrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onnavigationrequest
@@ -68,3 +72,6 @@ written inline.
 [load]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#load
 [bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
 [configuration]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/#configuration
+[extensions]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#extensions
+[createbridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/createBridge/
+[newwindow]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#newwindow

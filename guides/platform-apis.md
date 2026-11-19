@@ -18,12 +18,15 @@ which one.
 | `websiteDataStore`   | [`WKWebsiteDataStore`][wkwebsitedatastore]         | `get`, `call`           |
 | `httpCookieStore`    | [`WKHTTPCookieStore`][wkhttpcookiestore]           | `get`, `call`           |
 
-| Root            | Android class                                                                                                 | Takes                   |
-| --------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `settings`      | [`WebSettings`][websettings], then [`WebSettingsCompat`][websettingscompat]                                   | settings, `get`, `call` |
-| `webView`       | [`WebView`][webview], then [`WebViewCompat`][webviewcompat], then `CookieManager`'s `acceptThirdPartyCookies` | settings, `get`, `call` |
-| `cookieManager` | [`CookieManager`][cookiemanager]                                                                              | `get`, `call`           |
-| `webStorage`    | [`WebStorage`][webstorage]                                                                                    | `get`, `call`           |
+`configuration` is read once, when the WebView is created: a change [recreates the WebView][configuration], and a
+`call` on it changes nothing.
+
+| Root            | Android class                                                                                                                                  | Takes                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `settings`      | [`WebSettings`][websettings], then [`WebSettingsCompat`][websettingscompat]                                                                    | settings, `get`, `call` |
+| `webView`       | [`WebView`][webview] and its inherited `View` setters, then [`WebViewCompat`][webviewcompat], then `CookieManager`'s `acceptThirdPartyCookies` | settings, `get`, `call` |
+| `cookieManager` | [`CookieManager`][cookiemanager]                                                                                                               | `get`, `call`           |
+| `webStorage`    | [`WebStorage`][webstorage]                                                                                                                     | `get`, `call`           |
 
 ## 2. Write a setting
 
@@ -38,7 +41,8 @@ On iOS the key is the property's name. On Android it is the setter's name withou
 | `WebSettings`, `setTextZoom(int)`                | `android={{ settings: { textZoom: 130 } }}`                |
 
 Keys the SDKs list appear in autocomplete, so a misspelled one doesn't compile. A key they lack, such as one a newer SDK
-added, goes under the root's `other`.
+added, goes under the root's `other`: `webView: { other: { someNewerProperty: true } }`, with the property's real
+name in place of `someNewerProperty`.
 
 A boolean, number or string is passed as it is. An enum or option set is a number. [`IOSConstants`][iosconstants] and [`AndroidConstants`][androidconstants] name the values of the classes they list; for another class's, such as `View`'s `overScrollMode`, use the number the platform's documentation gives. [`IOSSettings`][iossettings] and
 [`AndroidSettings`][androidsettings] list the other value types, the package's defaults for each root, and when a
@@ -55,8 +59,6 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
     configuration: {
       mediaTypesRequiringUserActionForPlayback: IOSConstants.AudiovisualMediaTypes.none,
     },
-    // a property the generated keys don't list: a made-up name here
-    webView: { other: { someNewerProperty: true } },
   }}
   android={{
     // WebSettings.setMixedContentMode(int)
@@ -66,6 +68,9 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
 ```
 
 ## 3. Read a value
+
+A `get` or `call` string names one platform's member. Both platforms have a `webView` root, with different properties
+and methods, so pick the string by `Platform.OS`.
 
 [`get`][get] takes `root.key`. On iOS the key is the property's name, on Android the getter's name without `get` or
 `is`: `WebSettings.getTextZoom()` is `get('settings.textZoom')`.
@@ -88,7 +93,8 @@ Objective-C. The selector is every argument label of the declaration, each with 
 
 A method with no argument has no colon. A trailing completion handler keeps its label in the selector but has no entry
 in the arguments: the call resolves with what it reports, for the WebKit methods whose handlers [`call`][call] can
-await. On Android a trailing `ValueCallback` works the same way.
+await (one in the package's SDK headers that reports an object, an error or an integer). On Android a trailing
+`ValueCallback` works the same way.
 
 The Swift name doesn't work, and often differs: Swift's `takeSnapshot(with:completionHandler:)` is the selector
 `takeSnapshotWithConfiguration:completionHandler:`.
@@ -120,3 +126,4 @@ A method that takes another object, a delegate or client callback, and anything 
 [androidsettings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/AndroidSettings/
 [get]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#get
 [call]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call
+[configuration]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/#configuration
