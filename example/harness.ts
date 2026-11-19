@@ -2881,6 +2881,18 @@ async function sources(h: Harness) {
     );
   }
 
+  // The source load skips the rules: WebKit puts an html source through them at its baseUrl.
+  h.setRules([]);
+  await waitForLoad(h, () =>
+    h.loadSource({ html: '<p id="html">html source</p>', baseUrl: `${h.pages}/base/` })
+  );
+  r.check(
+    'an html source loads when the rules block every navigation',
+    (await text(h, 'html')) === 'html source',
+    await text(h, 'html')
+  );
+  h.setRules(undefined);
+
   const dir = new Directory(Paths.cache, `site-${Date.now()}`);
   dir.create();
   await new File(dir, 'style.css').write('body { color: rgb(1, 2, 3) }');
