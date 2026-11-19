@@ -3247,7 +3247,13 @@ async function refLoadHistory(h: Harness, r: ReturnType<typeof reporter>) {
       false
     );
     const pushed = await backAfterPushState(h, a, b);
-    r.info(`${way}: goBack after the page's pushState without a gesture lands on`, pushed);
+    const lands =
+      Platform.OS === 'android' ? 'the page before it (its entry skipped)' : 'the page itself';
+    r.check(
+      `${way}: goBack after the page's pushState without a gesture lands on ${lands}`,
+      pushed === lands,
+      pushed
+    );
     ways[way] = { back, forward, pushed };
     const headers = fresh(h, '/headers');
     await waitForLoad(
