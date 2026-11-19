@@ -109,12 +109,17 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")
-    val result = invokeFirst(targets, name, args) { true }
-    if (result !== NONE) return reply { toJson(result) }
+    val direct = find(targets, args) { it.name == name }
+    if (direct != null) {
+      val result = direct()
+      return reply { toJson(result) }
+    }
     // The callback runs later, outside the caller's try: the receiver converts, so it can reject instead of crashing.
     val callback = ValueCallback<Any?> { value -> reply { toJson(value) } }
-    val awaiting = invokeFirst(targets, name, args + callback) { it.parameterTypes.lastOrNull() == ValueCallback::class.java }
-    if (awaiting === NONE) throw notFound("no public method $path takes these arguments")
+    val awaiting = find(targets, args + callback) {
+      it.name == name && it.parameterTypes.lastOrNull() == ValueCallback::class.java
+    } ?: throw notFound("no public method $path takes these arguments")
+    awaiting()
   }
 
   /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
@@ -156,16 +161,16 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       "setWebContentsDebuggingEnabled", "setOnTouchListener", "setOnScrollChangeListener", "addNavigationListener"
     )
 
-    /** The result of the first method [name] of [targets] that [accepts] and takes [values], or [NONE] when none does. */
-    private fun invokeFirst(targets: List<Target>, name: String, values: List<Any?>, accepts: (Method) -> Boolean): Any? {
+    /** The first method of [targets], target by target, that [accepts] and takes [values], bound to them; or null. */
+    private fun find(targets: List<Target>, values: List<Any?>, accepts: (Method) -> Boolean): (() -> Any?)? {
       for (target in targets) {
         for (method in target.cls.methods) {
-          if (method.name != name || !accepts(method)) continue
-          val arguments = arguments(method, target, values) ?: continue
-          return invoke(method, target, arguments)
+          if (!accepts(method)) continue
+          val args = arguments(method, target, values) ?: continue
+          return { invoke(method, target, args) }
         }
       }
-      return NONE
+      return null
     }
 
     private fun owned(name: String) =
@@ -183,36 +188,26 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
       if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
       val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
       if (setter in OWNED) return owned(setter)
-      var seen = false
-      for (target in targets) {
-        for (method in target.cls.methods) {
-          if (method.name != setter) continue
-          seen = true
-          val args = arguments(method, target, listOf(value)) ?: continue
-          return try {
-            before()
-            invoke(method, target, args)
-            null
-          } catch (e: IllegalArgumentException) { // a PlatformException from invoke is one, so its reason is the message
-            e.message
-          }
-        }
+      val apply = find(targets, listOf(value)) { it.name == setter } ?: return when {
+        targets.none { t -> t.cls.methods.any { it.name == setter } } -> "no public setter"
+        else -> "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}"
       }
-      return if (seen) "no public setter takes a ${value?.javaClass?.simpleName ?: "null"}" else "no public setter"
+      return try {
+        before()
+        apply()
+        null
+      } catch (e: IllegalArgumentException) { // a PlatformException from invoke is one, so its reason is the message
+        e.message
+      }
     }
 
     /** The value of [key]'s getter on the first target that has one, or [NONE]. */
     private fun read(targets: List<Target>, key: String): Any? {
       val capital = key.replaceFirstChar { it.uppercaseChar() }
-      for (target in targets) {
-        for (method in target.cls.methods) {
-          val getter = method.name == "get$capital" || method.name == "is$capital"
-          if (!getter && (method.name != key || method.returnType == Void.TYPE)) continue
-          val args = arguments(method, target, emptyList()) ?: continue
-          return invoke(method, target, args)
-        }
-      }
-      return NONE
+      val getter = find(targets, emptyList()) {
+        it.name == "get$capital" || it.name == "is$capital" || (it.name == key && it.returnType != Void.TYPE)
+      } ?: return NONE
+      return getter()
     }
 
     /** The method's arguments for [values], with the target's leading object first, or null when they don't fit. */

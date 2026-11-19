@@ -6,6 +6,7 @@ import android.webkit.CookieManager
 import androidx.webkit.URLUtilCompat
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.TAG
+import expo.modules.minimalwebview.mainHandler
 import expo.modules.minimalwebview.profileOf
 import org.json.JSONArray
 import org.json.JSONObject
@@ -50,15 +51,13 @@ internal class Downloads(private val owner: MinimalWebView) {
     when {
       download.url.startsWith("blob:") -> readBlob(download.url, name)
       download.url.startsWith("data:") -> save(name, download.url) { file -> append(file, decodeDataUrl(download.url)) }
-      download.url.startsWith("http:") || download.url.startsWith("https:") -> fetch(download, name)
+      download.url.startsWith("http:") || download.url.startsWith("https:") -> {
+        val cookies = profileOf(owner.webView)?.cookieManager ?: CookieManager.getInstance()
+        save(name, download.url) { file -> fetchTo(download, file, cookies::getCookie, cookies::setCookie) }
+      }
       else -> failed(name, download.url, IOException("unsupported URL scheme"))
     }
     return true
-  }
-
-  private fun fetch(download: DownloadInfo, name: String) {
-    val cookies = profileOf(owner.webView)?.cookieManager ?: CookieManager.getInstance()
-    save(name, download.url) { file -> fetchTo(download, file, cookies::getCookie, cookies::setCookie) }
   }
 
   /** Appends a decoded data: URL's bytes to [file], creating it, and returns its MIME type. */
@@ -83,7 +82,7 @@ internal class Downloads(private val owner: MinimalWebView) {
         e
       }
       if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
-      owner.mainHandler.post {
+      mainHandler.post {
         when (result) {
           is String -> owner.emit(
             "core", "onDownload",
@@ -122,7 +121,7 @@ internal class Downloads(private val owner: MinimalWebView) {
       }))
     """.trimIndent()
     val reply = ArrayBlockingQueue<Result<String>>(1)
-    owner.mainHandler.post { owner.evaluate(script) { reply.offer(it) } }
+    mainHandler.post { owner.evaluate(script) { reply.offer(it) } }
     val result = reply.poll(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS) ?: throw IOException("the page did not read the blob in time")
     val json = result.getOrElse { throw IOException("could not read the blob: ${it.message}") }
     // A reply far longer than a chunk's data: URL is forged: refuse it before it is copied twice more.

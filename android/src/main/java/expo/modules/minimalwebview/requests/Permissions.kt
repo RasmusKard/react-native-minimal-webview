@@ -4,6 +4,7 @@ import android.net.Uri
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import expo.modules.minimalwebview.MinimalWebView
+import expo.modules.minimalwebview.defaultPorts
 
 /** The `onPermissionRequest` prop. */
 internal class Permissions(private val owner: MinimalWebView) {
@@ -69,9 +70,7 @@ internal class Permissions(private val owner: MinimalWebView) {
     }
 
     /** [originOf] from the scheme, host and port (-1 for none) that `Uri` parses. */
-    fun origin(scheme: String?, host: String?, port: Int): String {
-      val defaultPort = if (scheme == "https") 443 else 80
-      return "$scheme://$host" + if (port == -1 || port == defaultPort) "" else ":$port"
-    }
+    fun origin(scheme: String?, host: String?, port: Int) =
+      "$scheme://$host" + if (port == -1 || port == defaultPorts[scheme]) "" else ":$port"
   }
 }
