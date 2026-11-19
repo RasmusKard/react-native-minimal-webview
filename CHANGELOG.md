@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.1.0...react-native-minimal-webview-v1.2.0) (2026-11-19)
+
+
+### Features
+
+* Add WebViewRef.load to load a URL in place ([#204](https://github.com/RasmusKard/react-native-minimal-webview/issues/204)) ([2c98388](https://github.com/RasmusKard/react-native-minimal-webview/commit/2c98388daa9009ae99020b79c8c2a3d27e3175ab))
+
+
+### Bug Fixes
+
+* Check an Android permission request against the committed page's origin, not a pending load's ([#198](https://github.com/RasmusKard/react-native-minimal-webview/issues/198)) ([f64b5b0](https://github.com/RasmusKard/react-native-minimal-webview/commit/f64b5b0738413e901dbc66ad9a3a00ee41104bf9))
+* Deliver bridge calls and emits made after a renderer crash to the reloaded page ([#196](https://github.com/RasmusKard/react-native-minimal-webview/issues/196)) ([3658d2b](https://github.com/RasmusKard/react-native-minimal-webview/commit/3658d2b1731466bfe51b8dc6cc2434909b5625ce))
+* Keep an Android load going when the page being left fires its load event ([#201](https://github.com/RasmusKard/react-native-minimal-webview/issues/201)) ([c4cb7ed](https://github.com/RasmusKard/react-native-minimal-webview/commit/c4cb7edf71f84bc7dbffdeb303a8be560df5a392))
+* Load an iOS html source without putting it through the navigation rules ([#199](https://github.com/RasmusKard/react-native-minimal-webview/issues/199)) ([a55d4f4](https://github.com/RasmusKard/react-native-minimal-webview/commit/a55d4f4c6ddba7e34aa33eff7d162a62cc70b9ca))
+* Reject bridge calls that never reached a page with unavailable, not navigated ([#197](https://github.com/RasmusKard/react-native-minimal-webview/issues/197)) ([0ed8e1b](https://github.com/RasmusKard/react-native-minimal-webview/commit/0ed8e1b868277ca3049592ff7e0633a956bf8750))
+* Reload an iOS html source as html, not by fetching its baseUrl ([#200](https://github.com/RasmusKard/react-native-minimal-webview/issues/200)) ([d75c4b4](https://github.com/RasmusKard/react-native-minimal-webview/commit/d75c4b40459a56109eeeca788a562c206c825373))
+* Reload an iOS page after a web process crash only once the app is back in the foreground ([#206](https://github.com/RasmusKard/react-native-minimal-webview/issues/206)) ([59c596a](https://github.com/RasmusKard/react-native-minimal-webview/commit/59c596acefdbfc9aec6dc1dbd9139bd3b590b63f))
+
 ## [1.1.0](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.0.1...react-native-minimal-webview-v1.1.0) (2026-11-18)
 
 
