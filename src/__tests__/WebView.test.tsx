@@ -48,6 +48,7 @@ jest.mock('expo', () => {
           answer: mockAnswer,
           goBack: () => mockNavigate('back'),
           goForward: () => mockNavigate('forward'),
+          load: (url: string) => mockNavigate(`load ${url}`),
           reload: () => mockNavigate('reload'),
           stopLoading: () => mockNavigate('stop'),
           bridgePost: mockBridgePost,
@@ -626,7 +627,14 @@ describe('ref', () => {
     ref.current?.goForward();
     ref.current?.reload();
     ref.current?.stopLoading();
-    expect(mockNavigate.mock.calls).toEqual([['back'], ['forward'], ['reload'], ['stop']]);
+    ref.current?.load('https://example.com/');
+    expect(mockNavigate.mock.calls).toEqual([
+      ['back'],
+      ['forward'],
+      ['reload'],
+      ['stop'],
+      ['load https://example.com/'],
+    ]);
     expect(await ref.current?.evaluate('1')).toEqual({ a: 1 });
     expect(await ref.current?.get('scrollView.bounces')).toEqual({ get: 'scrollView.bounces' });
     expect(await ref.current?.call('clearCache', [true])).toEqual({
@@ -639,6 +647,8 @@ describe('ref', () => {
     expect(ref.current).toBeNull();
     for (const navigate of [stale?.goBack, stale?.goForward, stale?.reload, stale?.stopLoading])
       expect(navigate).not.toThrow();
+    stale?.load('https://example.com/');
+    expect(mockNavigate).toHaveBeenCalledTimes(5);
     for (const call of [
       () => stale?.evaluate('1'),
       () => stale?.get('scrollView.bounces'),
@@ -677,6 +687,44 @@ describe('ref', () => {
       expect(frames).toHaveBeenCalledTimes(2);
     });
 
+    it('load waits for the view instead of doing nothing', async () => {
+      mockNavigate.mockImplementationOnce(fail('ERR_VIEW_NOT_FOUND'));
+      ref.current?.load('https://example.com/');
+      await act(() => new Promise<void>((resolve) => setImmediate(resolve)));
+      expect(mockNavigate.mock.calls).toEqual([
+        ['load https://example.com/'],
+        ['load https://example.com/'],
+      ]);
+    });
+
+    it('load does nothing, quietly, when the view never comes or unmounts while it waits', async () => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const flush = () => act(() => new Promise<void>((resolve) => setImmediate(resolve)));
+      mockNavigate.mockImplementation(fail('ERR_VIEW_NOT_FOUND'));
+      ref.current?.load('https://example.com/');
+      await flush();
+      Object.assign(AppState, { currentState: 'background' });
+      ref.current?.load('https://example.com/');
+      await flush();
+      mockNavigate.mockImplementation(() => new Promise(() => {}));
+      ref.current?.load('https://example.com/');
+      await act(async () => root.unmount());
+      await flush();
+      expect(error).not.toHaveBeenCalled();
+      mockNavigate.mockImplementation(async () => {});
+    });
+
+    it('load logs any other error', async () => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockNavigate.mockImplementationOnce(fail('load_failed'));
+      ref.current?.load('https://example.com/');
+      await act(() => new Promise<void>((resolve) => setImmediate(resolve)));
+      expect(error).toHaveBeenCalledWith(
+        '[react-native-minimal-webview] load failed',
+        expect.objectContaining({ code: 'load_failed' })
+      );
+    });
+
     it('rejects with unavailable after the frame budget', async () => {
       mockEvaluate.mockImplementation(fail('ERR_VIEW_NOT_FOUND'));
       await expect(ref.current?.evaluate('1')).rejects.toMatchObject({ code: 'unavailable' });
@@ -709,6 +757,22 @@ describe('ref', () => {
       await unmounted;
       expect(mockEvaluate).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('load loads no javascript: URL, however a URL parser would still read it as one, and warns', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const ref = createWebViewRef();
+    await mount({ ref });
+    /* eslint-disable no-script-url -- because these are the URLs load must refuse */
+    const refused = ['javascript:alert(1)', 'JavaScript:alert(1)', ' \u0001java\tscript:alert(1)'];
+    /* eslint-enable no-script-url */
+    for (const url of refused) ref.current?.load(url);
+    ref.current?.load('https://example.com/?next=javascript:alert(1)');
+    expect(mockNavigate.mock.calls).toEqual([
+      ['load https://example.com/?next=javascript:alert(1)'],
+    ]);
+    expect(warn).toHaveBeenCalledTimes(3);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('load: a javascript: URL'));
   });
 
   it('rejects a ref call still pending at unmount with navigated', async () => {

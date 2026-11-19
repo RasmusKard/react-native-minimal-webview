@@ -252,10 +252,10 @@ export type ProcessGoneEvent = {
    *
    * - a POST `source` is on screen: as in a browser, it isn't sent again unasked;
    * - more than 3 crashes happened in 60 s (counted for the whole app on Android), until the next
-   *   {@link WebViewRef.reload | reload()} (on iOS also a `source` change).
+   *   {@link WebViewRef.reload | reload()} or {@link WebViewRef.load | load()} (on iOS also a `source` change).
    *
-   * While false the view is blank. Leave `reload()` to the user, as a retry button: called from `onProcessGone` it
-   * sends the POST again, or starts the crash loop over.
+   * While false the view is blank. Leave `reload()` and `load()` to the user, as a retry button: called from
+   * `onProcessGone`, `reload()` sends the POST again, and either starts the crash loop over.
    * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
    */
   recovered: boolean;
@@ -901,8 +901,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * These skip the rules:
    *
-   * - the `source` load, reloads and back/forward; a redirect of the `source` load goes to the rules, and on Android so
-   *   does a redirect of a reload or back/forward;
+   * - the `source` load, {@link WebViewRef.load | load}, reloads and back/forward; a redirect of the `source` load or
+   *   a `load` goes to the rules, and on Android so does a redirect of a reload or back/forward;
    * - a form POST, on either platform, an iframe's to the main frame (`target=_top`) included: it loads in place; one
    *   to a new window loads in place on iOS and isn't shown on Android (the request may still reach the server);
    * - `about:`, `data:` and `javascript:`, which load in place, except as a new window
@@ -987,7 +987,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Syncs cookies between `HTTPCookieStorage`, which holds the cookies of native requests, and the WebView:
    *
-   * - `HTTPCookieStorage` into the WebView before each `source` load, which waits for it;
+   * - `HTTPCookieStorage` into the WebView before each `source` load and {@link WebViewRef.load | load}, which wait
+   *   for it;
    * - the WebView into `HTTPCookieStorage` on every cookie change, deletions included, as it happens.
    *
    * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background. A
@@ -1068,7 +1069,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * Every navigation the rules, or their defaults, decided.
    *
-   * Not reported: the `source` load, reloads, back/forward, a form POST, and a navigation a native hook decides.
+   * Not reported: the `source` load, {@link WebViewRef.load | load}, reloads, back/forward, a form POST, and a
+   * navigation a native hook decides.
    * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
    */
   onNavigation?: (event: NavigationEvent) => void;
@@ -1115,9 +1117,10 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
  * return a promise:
  *
  * - After an unmount: the navigation methods do nothing and the four promise methods reject with `unavailable`.
- * - Pending when the WebView unmounts: the four reject with `navigated`.
- * - Just mounted: the four wait up to about a second for the view (on Android, a call from the parent's first effect
- *   can come before the view exists), then reject with `unavailable`. In the background they don't wait.
+ * - Pending when the WebView unmounts: the four reject with `navigated`, and a waiting `load` does nothing.
+ * - Just mounted: the four and `load` wait up to about a second for the view (on Android, a call from the parent's
+ *   first effect can come before the view exists), then the four reject with `unavailable` and `load` does nothing. In
+ *   the background they don't wait.
  * @sortStrategy source-order
  * @group WebView
  */
@@ -1131,6 +1134,22 @@ export type WebViewRef = {
   goBack(): void;
   /** Goes forward one page; does nothing unless `canGoForward`. */
   goForward(): void;
+  /**
+   * Loads `url` in place, as a navigation the app started, in a new history entry; the page on screen loads again in
+   * its own. It leaves `source` as it is: a re-render with the same `source` still loads nothing. Together with a
+   * `source` change, which of the two ends on screen depends on the platform and on timing: do one or the other.
+   *
+   * It starts the {@link ProcessGoneEvent.recovered | crash recovery} limit over. A `javascript:` URL loads nothing
+   * (in development, with a warning): run a script with {@link WebViewRef.evaluate | evaluate}. Any other URL goes to
+   * the platform, and one it can't load, such as an unknown scheme, ends with `outcome` `failed`; on iOS a string that
+   * isn't a URL loads nothing, with a warning.
+   *
+   * A `file://` URL:
+   *
+   * - iOS: reads only within its directory.
+   * - Android: needs `android.settings.allowFileAccess`, which lets a `file:` page read any file the app can.
+   */
+  load(url: string): void;
   /**
    * Reloads the page; after a failed load, retries it (the `source` again, with its headers, when that failed), and
    * loads the `source` when nothing is loaded.

@@ -39,8 +39,8 @@ The core gives the main frame more than it gives iframes, and trusts only the or
 
 ## How a navigation is decided
 
-1. The `source` load, a reload and back or forward load without asking the rules. So do a form POST and, outside a new
-   window, an `about:`, `data:` or `javascript:` URL.
+1. The `source` load, [`load(url)`][load], a reload and back or forward load without asking the rules. So do a form
+   POST and, outside a new window, an `about:`, `data:` or `javascript:` URL.
 2. Any other navigation goes down [`navigationRules`][navigationrules], and the first rule that matches decides:
    `allow`, `block`, `external` or `ask`.
 3. A navigation no rule matches is blocked.
@@ -65,5 +65,6 @@ written inline.
 [navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules
 [defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/defaultNavigationRules/
 [onnavigation]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onnavigation
+[load]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#load
 [bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
 [configuration]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/#configuration

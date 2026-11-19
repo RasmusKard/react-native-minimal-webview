@@ -1,0 +1,15 @@
+appId: expo.modules.minimalwebview.example
+name: refLoad
+env:
+  SUITE: refLoad
+---
+# Android: real taps on the links the harness adds, to compare a load with a tapped link (iOS clicks from script).
+- runFlow: subflows/launch.yaml
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - runFlow: { file: subflows/await.yaml, env: { N: 1 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 2 } }
+      - runFlow: subflows/tap-request-point.yaml
+- runFlow: subflows/finish.yaml

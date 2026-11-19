@@ -103,6 +103,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** From a renderer death until [recover] builds the new WebView: whether it loads, and the dead one's history. */
   private var pendingRecovery: Recovery? = null
   private class Recovery(val reload: Boolean, val history: Bundle?)
+  /** The ref's `load` while a recovery waits: [recover] loads it instead of the dead WebView's page. */
+  private var pendingLoad: String? = null
   private var destroyed = false
 
   init {
@@ -222,14 +224,20 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     }
   }
 
+  /** The ref's `load`: like [retry], the app's own action starts the crash-loop guard over. */
+  internal fun load(url: String) {
+    crashTimes.clear()
+    if (recovering) pendingLoad = url else webView.loadUrl(url)
+  }
+
   /** Loads the page on screen again: the `source` when that is the page (its headers, html or POST), else its URL. */
   private fun loadAgain() {
     if (showsSource(source, url)) source?.let(::load) else if (url.isNotEmpty()) webView.loadUrl(url)
   }
 
   /**
-   * The ref's reload: the app's retry starts the crash-loop guard over. Only this clears it: the guard counts the
-   * process's renderer deaths, so another view's new source or pull-to-refresh mustn't end a crash loop's count.
+   * The ref's reload: the app's retry starts the crash-loop guard over. Only this and [load] clear it: the guard counts
+   * the process's renderer deaths, so another view's new source or pull-to-refresh mustn't end a crash loop's count.
    */
   internal fun retry() {
     crashTimes.clear()
@@ -370,8 +378,11 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingRecovery = null
     webView = createWebView()
     setUp()
-    // A source the app set while this waited loads instead of the old page.
-    if (!loadNewSource()) {
+    // A source the app set or a `load` it asked for while this waited loads instead of the old page.
+    val loaded = loadNewSource()
+    val asked = pendingLoad?.also(webView::loadUrl)
+    pendingLoad = null
+    if (!loaded && asked == null) {
       val restored = recovery.history?.let { webView.restoreState(it) } != null
       if (!restored && (recovery.reload || reload)) loadAgain()
     }

@@ -244,6 +244,8 @@ let sameURLCases: [(String, String, Bool)] = [
   ("http://example.com:80", "http://example.com/", true),
   ("https://Example.com:443", "https://example.com/", true),
   ("file:///a/index.html", "file:///a/index.html", true),
+  ("https://example.com/a/../b", "https://example.com/b", true),
+  ("https://example.com/a/./b", "https://example.com/a/b", true),
   ("https://example.com:8443/", "https://example.com/", false),
   ("http://example.com:443/", "http://example.com/", false),
   ("https://example.com/X", "https://example.com/x", false),

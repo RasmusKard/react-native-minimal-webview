@@ -107,6 +107,7 @@ type NativeProps = ViewProps &
 export type NativeMethods = {
   goBack(): Promise<void>;
   goForward(): Promise<void>;
+  load(url: string): Promise<void>;
   reload(): Promise<void>;
   stopLoading(): Promise<void>;
   bridgePost(message: string): Promise<void>;
@@ -144,6 +145,12 @@ const unawaited = (call: Promise<unknown> | undefined, name: string) =>
     if (!notRegistered(error))
       console.error(`[react-native-minimal-webview] ${name} failed`, error);
   });
+
+/**
+ * Whether `url` is a `javascript:` URL as a URL parser reads it (leading controls and spaces skipped, tabs and newlines
+ * dropped): Android's loadUrl would run its script.
+ */
+const isJavaScriptUrl = (url: string) => /^[\0- ]*javascript:/i.test(url.replace(/[\t\n\r]/g, ''));
 
 /**
  * A WebView whose core decides navigations and owns the navigation state: see {@link WebViewProps} and
@@ -219,6 +226,24 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     return {
       goBack: () => unawaited(native.current?.goBack(), 'goBack'),
       goForward: () => unawaited(native.current?.goForward(), 'goForward'),
+      load: (url) => {
+        if (isJavaScriptUrl(url)) {
+          if (__DEV__)
+            console.warn(
+              '[react-native-minimal-webview] load: a javascript: URL loads nothing; run a script with evaluate'
+            );
+          return;
+        }
+        // mounted() parses a JSON result, and load has none. A view that went away or never came loads nothing, as
+        // a navigation method does after an unmount.
+        unawaited(
+          mounted(() => native.current?.load(url).then(() => 'null')).catch((error: unknown) => {
+            const code = (error as { code?: string } | null)?.code;
+            if (code !== 'unavailable' && code !== 'navigated') throw error;
+          }),
+          'load'
+        );
+      },
       reload: () => unawaited(native.current?.reload(), 'reload'),
       stopLoading: () => unawaited(native.current?.stopLoading(), 'stopLoading'),
       evaluate: (script) => mounted(() => native.current?.evaluate(script)),
