@@ -278,7 +278,7 @@ describe('createBridge', () => {
     bridge.emit('stale', 1);
     const call = bridge.call('stale');
     connection.receive({ navigated: true }); // back to an allowed page
-    await expect(call).rejects.toMatchObject({ code: 'navigated' });
+    await expect(call).rejects.toMatchObject({ code: 'unavailable' });
     bridge.emit('fresh', 2);
     fromPage({ kind: 'ready' });
     expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'fresh', params: 2 }]);

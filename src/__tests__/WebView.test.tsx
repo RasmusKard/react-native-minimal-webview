@@ -501,11 +501,20 @@ describe('bridge', () => {
 
   it('detaches at unmount, so the bridge can go in the next WebView', async () => {
     const bridge = newBridge();
-    const { root } = await mount({ bridge });
-    const pending = bridge.call('x');
-    await act(async () => root.unmount());
-    await expect(pending).rejects.toMatchObject({ code: 'navigated' });
-    await mount({ bridge });
+    const first = await mount({ bridge });
+    await first.fire('onBridge', {
+      message: JSON.stringify({ doc: 'd1', kind: 'ready' }),
+      origin: page,
+    });
+    const sent = bridge.call('sent');
+    const sentError = sent.catch((error: unknown) => error);
+    await act(async () => first.root.unmount());
+    expect(await sentError).toMatchObject({ code: 'navigated' });
+    const second = await mount({ bridge });
+    const queued = bridge.call('queued'); // no page has said ready
+    const queuedError = queued.catch((error: unknown) => error);
+    await act(async () => second.root.unmount());
+    expect(await queuedError).toMatchObject({ code: 'unavailable' });
   });
 
   it('recreates the native view for another bridge, not for the same one', async () => {

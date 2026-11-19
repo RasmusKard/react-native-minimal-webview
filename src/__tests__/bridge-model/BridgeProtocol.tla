@@ -109,11 +109,12 @@ Detach ==
   /\ attached
   /\ attached' = FALSE /\ phase' = "idle" /\ queue' = <<>>
   /\ Reject(pending)
+  /\ navRejected' = navRejected \cup RejectSent \* rejectSent, then the queued ones with `unavailable`
   /\ answering' = {}
   /\ current' = None /\ canPost' = FALSE /\ toRN' = <<>> /\ toNative' = <<>> /\ toPage' = <<>>
   /\ rnSaw' = None
   /\ UNCHANGED <<doc, unavailable, nextMsg, capable, nextDoc, crashes, mounts>>
-  /\ UNCHANGED <<pageVars, posted, navRejected, runs, wrongPage, carriedOver>>
+  /\ UNCHANGED <<pageVars, posted, runs, wrongPage, carriedOver>>
 
 \* bridge.call or bridge.emit: endpoint.ts call/emit and createBridge's send
 AppSend(kind) ==

@@ -132,8 +132,9 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     detach() {
       post = null;
       phase = 'idle';
+      rejectSent('the WebView went away');
       queue = [];
-      endpoint.rejectPending('navigated', 'the WebView went away');
+      endpoint.rejectPending('unavailable', 'the WebView went away');
     },
     receive(event) {
       if ('message' in event) receiveMessage(event.message, event.origin);
@@ -146,7 +147,7 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
         // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
         // carry over to an unrelated next one.
         if (phase === 'loading') {
-          endpoint.rejectPending('navigated', 'the page navigated before the bridge was ready');
+          endpoint.rejectPending('unavailable', 'the page navigated before the bridge was ready');
           queue = [];
         }
         // What is queued after a crash is for the reload.
