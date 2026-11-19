@@ -19,6 +19,7 @@ import {
   until,
   waitFor,
 } from './harness';
+import { OTHER, PAGES } from './pages';
 
 // A click on a page that went away shows in the check that follows, so the suite goes on.
 const click = (h: Harness, id: string) => scriptClick(h, id)?.catch(String);
@@ -34,10 +35,6 @@ type Shape = {
   /** Since the last `clear`: what an `ask` rule asked. */
   asked: string[];
 };
-
-const PAGES = 'http://localhost:8090';
-/** Another site: the IdP, the bank, an app-link host. */
-const OTHER = 'http://127.0.0.1:8090';
 
 const RULES: Record<Policy, NavigationRule[] | undefined> = {
   hybrid: [

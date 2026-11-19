@@ -1,6 +1,6 @@
 // The `hostile` suite: the package's security boundaries against a hostile page, each check asserting that a boundary
-// holds. The page is test-pages/hostile.html, on the allowed origin (localhost:8090), on another one (127.0.0.1:8090),
-// and over https with a self-signed certificate (localhost:8443).
+// holds. The page is test-pages/hostile.html, on the allowed origin (PAGES), on another one (OTHER), and over https with
+// a self-signed certificate (HTTPS).
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 import type {
@@ -27,10 +27,8 @@ import {
   waitFor,
   waitForLoad,
 } from './harness';
+import { HTTPS, OTHER } from './pages';
 import { all } from './shapes';
-
-const OTHER = 'http://127.0.0.1:8090';
-const HTTPS = 'https://localhost:8443';
 
 type Suite = { h: Harness; r: ReturnType<typeof reporter>; android: boolean };
 /** What a probe frame of hostile.html reports to its parent. */

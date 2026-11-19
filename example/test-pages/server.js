@@ -1,6 +1,6 @@
 /// <reference types="node" />
 // Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse` of ports 8090 and 8443, on
-// the Android emulator. http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests,
+// the Android emulator (other ports: ../pages.ts). http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests,
 // and https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
 // The harness runs through it too: the app polls /harness/next for the suite /harness/run queued and posts its results
 // to /harness/log, which this server prints, and the driver (Maestro) waits on /harness/await, /harness/verdict and
@@ -13,8 +13,8 @@ const https = require('https');
 const os = require('os');
 const path = require('path');
 
-const PORT = Number(process.env.PORT ?? 8090);
-const HTTPS_PORT = Number(process.env.HTTPS_PORT ?? 8443);
+const PORT = Number(process.env.EXPO_PUBLIC_PAGES_PORT ?? 8090);
+const HTTPS_PORT = Number(process.env.EXPO_PUBLIC_PAGES_HTTPS_PORT ?? 8443);
 const ROOT = __dirname;
 /** @type {Record<string, string>} */
 const TYPES = {
@@ -34,7 +34,10 @@ function serveFile(res, pathname) {
     return;
   }
   res.writeHead(200, { 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
+  if (path.extname(file) !== '.html') return void fs.createReadStream(file).pipe(res);
+  // The pages name the default ports.
+  const html = fs.readFileSync(file, 'utf8');
+  res.end(html.replace(/(:|%3A)8090\b/g, `$1${PORT}`).replace(/:8443\b/g, `:${HTTPS_PORT}`));
 }
 
 /** @type {Map<string, string>} platform (ios | android) -> suite name */

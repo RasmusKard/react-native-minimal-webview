@@ -3,7 +3,7 @@
 let request = '';
 for (let i = 0; i < 12 && !request; i++) {
   request = http.get(
-    `http://localhost:8090/harness/await?platform=${PLATFORM}&suite=${SUITE}&n=${N}&ms=5000`
+    `${PAGES}/harness/await?platform=${PLATFORM}&suite=${SUITE}&n=${N}&ms=5000`
   ).body;
 }
 output.request = request;

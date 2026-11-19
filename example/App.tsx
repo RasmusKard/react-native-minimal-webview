@@ -32,8 +32,8 @@ import {
   type Harness,
   type HarnessProps,
 } from './harness';
+import { PAGES } from './pages';
 
-const PAGES = 'http://localhost:8090';
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
 type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
 /**

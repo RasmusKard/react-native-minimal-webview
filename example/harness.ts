@@ -23,6 +23,7 @@ import { pageCounter, sampleHook, seams } from 'sample-extension';
 
 import { extensions } from './extensions';
 import { hostile } from './hostile';
+import { HTTPS, OTHER } from './pages';
 import { perf, perfCold } from './perf';
 import { shapes } from './shapes';
 
@@ -167,7 +168,7 @@ export function reporter(suite: string, floor = 0) {
   };
 }
 
-/** Runs suites queued with `curl 'localhost:8090/harness/run?platform=ios&suite=<name>'`. */
+/** Runs suites queued with `/harness/run?platform=ios&suite=<name>` on the test pages server. */
 export function pollForSuites(get: () => Harness) {
   let busy = false;
   const timer = setInterval(async () => {
@@ -556,7 +557,7 @@ async function reissue(h: Harness) {
   };
   const same = await referrerTo(`${h.pages}/headers?r=same`);
   r.check('an allowed navigation keeps the referrer', same.referer === same.from, same);
-  const cross = await referrerTo('http://127.0.0.1:8090/headers?r=cross');
+  const cross = await referrerTo(`${OTHER}/headers?r=cross`);
   r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
 
   // An unmount while an ask waits for JS: the late answer comes after the WebView it was for is gone.
@@ -731,7 +732,7 @@ async function bridge(h: Harness) {
   );
   await waitFor(h, idle);
 
-  const other = fresh(h, 'http://127.0.0.1:8090/bridge.html');
+  const other = fresh(h, `${OTHER}/bridge.html`);
   await openPage(h, other);
   r.check(
     'no bridge for an origin outside allowedOrigins',
@@ -1231,12 +1232,8 @@ async function errors(h: Harness) {
 
   // Page-initiated, then through a redirect: on Android these reach the SSL check through shouldOverrideUrlLoading.
   for (const [name, to, failed] of [
-    ['ssl error from the page', `'https://localhost:8443/link'`, 'https://localhost:8443/link'],
-    [
-      'ssl error after a redirect',
-      `'/redirect?to=https://localhost:8443/redirected'`,
-      'https://localhost:8443/redirected',
-    ],
+    ['ssl error from the page', `'${HTTPS}/link'`, `${HTTPS}/link`],
+    ['ssl error after a redirect', `'/redirect?to=${HTTPS}/redirected'`, `${HTTPS}/redirected`],
   ]) {
     await openPage(h, fresh(h, '/'));
     clearEvents(h);
@@ -2583,14 +2580,11 @@ async function permissionsSuite(h: Harness) {
   // asking.
   let askedBefore = asked.length;
   for (const [name, frame] of [
-    [
-      'a cross-origin frame',
-      `{ allow: 'camera', src: 'http://127.0.0.1:8090/device.html?auto=camera' }`,
-    ],
+    ['a cross-origin frame', `{ allow: 'camera', src: '${OTHER}/device.html?auto=camera' }`],
     // `camera *`: plain `camera` allows only the src's origin, so the page itself would refuse an opaque one.
     [
       'a sandboxed frame',
-      `{ allow: 'camera *', sandbox: 'allow-scripts', src: '/device.html?auto=camera' }`,
+      `{ allow: 'camera *', sandbox: 'allow-scripts', src: '${OTHER}/device.html?auto=camera' }`,
     ],
   ]) {
     await openPage(h, fresh(h, '/device.html'));

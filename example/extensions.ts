@@ -37,6 +37,7 @@ import {
   until,
   waitForLoad,
 } from './harness';
+import { HTTPS, OTHER, PAGES_PORT } from './pages';
 
 type Reporter = ReturnType<typeof reporter>;
 
@@ -101,8 +102,8 @@ export async function extensions(h: Harness) {
 
 // Browsers reuse an origin's credentials for any realm, and other suites sign in on localhost: the declines use an origin
 // nobody signs in on, and the sign-in one of its own (the emulator's host alias, the simulator's IPv6 loopback).
-const DECLINED = 'http://127.0.0.1:8090';
-const SIGNED_IN = ios ? 'http://[::1]:8090' : 'http://10.0.2.2:8090';
+const DECLINED = OTHER;
+const SIGNED_IN = `http://${ios ? '[::1]' : '10.0.2.2'}:${PAGES_PORT}`;
 
 async function inert(h: Harness, r: Reporter) {
   await recreate(h, {}, true);
@@ -515,7 +516,7 @@ async function android(h: Harness, r: Reporter) {
   const image = 'http://127.0.0.1:1/x.png';
   await loadHtml(
     h,
-    `<img src="${image}"><img src="https://localhost:8443/x.png" onerror="window.sslFailed = true">`
+    `<img src="${image}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
   const reported = await until(() => failed.find(({ url }) => url === image), 5000);
   const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');

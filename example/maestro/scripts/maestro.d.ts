@@ -9,6 +9,8 @@ declare const output: {
   y?: string;
   n?: number;
 };
+/** The test pages server's origin. */
+declare const PAGES: string;
 declare const PLATFORM: string;
 declare const DEVICE: string;
 declare const SUITE: string;
