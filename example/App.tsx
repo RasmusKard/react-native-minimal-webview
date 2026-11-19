@@ -234,7 +234,7 @@ export default function App() {
       <StateLine />
       <ScrollView horizontal style={styles.buttons}>
         <Button title="back" onPress={() => ref.current?.goBack()} />
-        <Button title="home" onPress={() => setSource({ uri: `${PAGES}/?t=${Date.now()}` })} />
+        <Button title="home" onPress={() => ref.current?.load(`${PAGES}/`)} />
         {Object.keys(SUITES).map((name) => (
           <Button key={name} title={name} onPress={() => run(name)} />
         ))}
