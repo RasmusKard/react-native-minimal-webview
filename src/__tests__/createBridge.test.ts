@@ -305,14 +305,15 @@ describe('createBridge', () => {
     expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'good', params: 1 }]);
   });
 
-  it('rejects the oldest queued call with unavailable when the queue is full', async () => {
+  it('rejects only the oldest queued call with unavailable when the queue is full', async () => {
     const { bridge, sent, fromPage } = setup(0);
     const first = bridge.call('first');
-    for (let i = 0; i < 1000; i++) bridge.emit('event', i);
+    for (let i = 0; i < 999; i++) bridge.emit('event', i);
+    void bridge.call('second');
     await expect(first).rejects.toMatchObject({ code: 'unavailable' });
     fromPage({ kind: 'ready' });
     expect(sent).toHaveLength(1000);
-    expect(sent.some((m) => m.kind === 'call')).toBe(false);
+    expect(sent.filter((m) => m.kind === 'call').map((m) => m.method)).toEqual(['second']);
   });
 });
 
