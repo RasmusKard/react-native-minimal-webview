@@ -6,7 +6,7 @@ import type {
   WebViewSource,
 } from 'react-native-minimal-webview';
 
-import { WEBVIEW, reporter, type Harness, type HarnessProps } from './runner';
+import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from './runner';
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -79,6 +79,16 @@ export function stuckHandler<T>() {
     return new Promise<T>((resolve) => (stuck.release = resolve));
   };
   return { stuck, never };
+}
+
+/** Checks that a request whose handler never settles reached JS: one more than `before`, by what `seen` counts. */
+export async function reachesJs(r: Reporter, seen: () => number, before: number) {
+  await until(() => seen() > before, 10000, 200);
+  r.check(
+    'a request whose handler never settles reaches JS',
+    seen() === before + 1,
+    seen() - before
+  );
 }
 
 /** An `onOpenExternal` that records each URL in `into` and answers that the app opened it. */
@@ -196,7 +206,7 @@ export const text = async (h: Harness, id: string) =>
   )) as string;
 
 /**
- * The screen point of an element's centre, `x y`, for a driver's TAP: pixels on Android, points on iOS; with `frame`,
+ * The screen point of an element's centre, `x, y`, for a driver's tap: pixels on Android, points on iOS; with `frame`,
  * of an element inside that same-origin iframe. On iOS WebKit starts the page below the part of the WebView that is
  * under the status bar, so innerHeight falls short of the WebView's height by that much (nothing covers its bottom).
  */
@@ -214,29 +224,24 @@ export const tapPoint = async (h: Harness, id: string, frame?: string) =>
       Math.round((${h.webViewOffset.y} + top + y + b.top + b.height / 2) * d),
     ];
   })()`)) as [number, number]
-  ).join(' ');
+  ).join(', ');
 
 /**
  * A user gesture on `id` (with `frame`, on an element in that same-origin iframe): the driver's real tap on Android,
- * asked for with a `TAP` request; a click from script on iOS, which WebKit runs as a gesture but the core doesn't count
+ * asked for with a `tap` request; a click from script on iOS, which WebKit runs as a gesture but the core doesn't count
  * as `userInitiated`. A click on a page that went away shows in the check that follows.
  */
-export async function tap(h: Harness, r: ReturnType<typeof reporter>, id: string, frame?: string) {
-  if (Platform.OS === 'android') r.info('TAP', await tapPoint(h, id, frame));
+export async function tap(h: Harness, r: Reporter, id: string, frame?: string) {
+  if (Platform.OS === 'android') r.drive({ action: 'tap', point: await tapPoint(h, id, frame) });
   else await click(h, id, frame)?.catch(errorCode);
 }
 
 /**
- * The driver's real tap on `id` (with `frame`, on an element in that same-origin iframe), asked for with a `TAP`
+ * The driver's real tap on `id` (with `frame`, on an element in that same-origin iframe), asked for with a `tap`
  * request. A check that needs `userInitiated` uses it on iOS too, where the core counts a link only after a touch.
  */
-export async function touch(
-  h: Harness,
-  r: ReturnType<typeof reporter>,
-  id: string,
-  frame?: string
-) {
-  r.info('TAP', await tapPoint(h, id, frame));
+export async function touch(h: Harness, r: Reporter, id: string, frame?: string) {
+  r.drive({ action: 'tap', point: await tapPoint(h, id, frame) });
 }
 
 /**
@@ -245,7 +250,7 @@ export async function touch(
  */
 export async function travel(
   h: Harness,
-  r: ReturnType<typeof reporter>,
+  r: Reporter,
   name: string,
   go: () => void,
   url: string,

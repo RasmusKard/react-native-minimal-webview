@@ -7,29 +7,27 @@ import { errors } from './errors';
 import { extensions } from './extensions';
 import { fullscreen } from './fullscreen';
 import { hostile } from './hostile';
-import { urlTracking } from './urlTracking';
-import { navigation } from './navigation';
-import { reissue } from './reissue';
 import { injection } from './injection';
 import { mountSettings } from './mountSettings';
-import { settings } from './settings';
-import { upload } from './upload';
-import { permissionsSuite } from './permissions';
-import { ua } from './ua';
-import { sampleExtension } from './sampleExtension';
-import { ptr } from './ptr';
+import { SUITE_NAMES } from './names';
+import { navigation } from './navigation';
 import { network } from './network';
 import { perf, perfCold } from './perf';
-import { sources } from './sources';
+import { permissionsSuite } from './permissions';
+import { ptr } from './ptr';
 import { refLoad } from './refLoad';
+import { reissue } from './reissue';
+import { sampleExtension } from './sampleExtension';
+import { settings } from './settings';
 import { shapes } from './shapes';
-import { type Harness } from '../harness/runner';
+import { sources } from './sources';
+import { ua } from './ua';
+import { upload } from './upload';
+import { urlTracking } from './urlTracking';
+import { type Suite } from '../harness/runner';
 
-/**
- * In run order: `maestro/run.sh` runs these keys when it is given no suites. A suite reports `skipped` on a platform it
- * doesn't apply to, leaves nothing behind that `reset()` doesn't undo, and needs no site but the test pages server.
- */
-export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
+/** Every name in `SUITE_NAMES` has its suite here, and the compiler checks it. */
+export const SUITES: Record<(typeof SUITE_NAMES)[number], Suite> = {
   urlTracking,
   navigation,
   reissue,
@@ -57,4 +55,4 @@ export const SUITES: Record<string, (h: Harness) => Promise<void>> = {
 };
 
 /** Timings, run only when named (`maestro/run.sh <platform> <device> perfCold perf`): a full run leaves them out. */
-export const ON_DEMAND: Record<string, (h: Harness) => Promise<void>> = { perf, perfCold };
+export const ON_DEMAND: Record<string, Suite> = { perf, perfCold };

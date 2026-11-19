@@ -1,12 +1,12 @@
 import { fresh, openPage, sleep, text, until } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter, withFloor } from '../harness/runner';
 
 /**
  * The `injectedScripts` prop: when its scripts run, in which frames and on which origins, and that a change applies
  * from the next load.
  */
-export async function injection(h: Harness) {
-  const r = reporter('injection', WEBVIEW.injectedScripts);
+export async function injection(h: Harness, all: Reporter) {
+  const r = withFloor(all, WEBVIEW.injectedScripts);
   h.setProps({
     injectedScripts: [
       {
@@ -74,5 +74,4 @@ export async function injection(h: Harness) {
     'the bridge page client still installs',
     (await h.ref.current?.evaluate('typeof window.nativeBridge')) === 'object'
   );
-  r.done();
 }

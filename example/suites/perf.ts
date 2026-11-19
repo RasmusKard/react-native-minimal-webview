@@ -8,12 +8,11 @@ import type { NavigationRule } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
 import { openPage, sleep, until, waitForLoad } from '../harness/helpers';
-import { launchMarks, reporter, type Harness } from '../harness/runner';
+import { launchMarks, type Harness, type Reporter } from '../harness/runner';
 
 type Policy = 'default' | 'rule' | 'ask';
 /** A native stamp pair from the sample.perf probe: the page asked to go to `i`, and that navigation started (ns). */
 type Mark = { i: string; markNs: number; goNs?: number };
-type Report = ReturnType<typeof reporter>;
 
 /** The sample extension's frame-gap probe (PerfProbe.swift, PerfProbe.kt): module functions, which need no hook. */
 type Gaps = { maxGapMs: number; medianGapMs: number; frames: number };
@@ -211,7 +210,7 @@ async function memory(h: Harness) {
 }
 
 /** Every measurement, each under its id. */
-async function measure(h: Harness, r: Report) {
+async function measure(h: Harness, r: Reporter) {
   const count = (id: string, values: unknown[] | undefined, n: number) =>
     r.check(`${id}: all ${n} samples`, values?.length === n, { got: values?.length });
 
@@ -346,22 +345,18 @@ function loopInfo(h: Harness) {
   return outcomes;
 }
 
-export async function perf(h: Harness) {
-  const r = reporter('perf');
+export async function perf(h: Harness, r: Reporter) {
   await setUp(h);
   await measure(h, r);
-  r.done();
 }
 
 /**
  * The cold mount: from App's first render to its first onLoadEnd, recorded at launch (launchMarks). Run it as the first
  * suite of a run, which launches the app fresh: `maestro/run.sh <platform> <device> perfCold`, once per sample.
  */
-export async function perfCold(h: Harness) {
-  const r = reporter('perfCold');
+export async function perfCold(h: Harness, r: Reporter) {
   const marks = await until(() => (launchMarks.loadEnd === undefined ? undefined : launchMarks));
   r.check('the first load ended', marks !== undefined, launchMarks);
   if (marks?.render !== undefined && marks.loadEnd !== undefined)
     r.info('mount.cold', { ms: round(marks.loadEnd - marks.render), platform: h.platform });
-  r.done();
 }

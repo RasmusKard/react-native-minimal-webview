@@ -10,11 +10,10 @@ import {
   sleep,
   until,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 /** `ios` / `android` settings by name: applied live, seen by the page, rejected with a warning when wrong; get and call. */
-export async function settings(h: Harness) {
-  const r = reporter('settings');
+export async function settings(h: Harness, r: Reporter) {
   const { lines: warnings, warned, stop } = captureWarnings();
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
@@ -310,5 +309,4 @@ export async function settings(h: Harness) {
   } finally {
     stop();
   }
-  r.done();
 }

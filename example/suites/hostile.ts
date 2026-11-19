@@ -24,11 +24,11 @@ import {
   waitFor,
   waitForLoad,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER } from '../pages';
 import { all } from './shapes';
 
-type Suite = { h: Harness; r: ReturnType<typeof reporter>; android: boolean };
+type Suite = { h: Harness; r: Reporter; android: boolean };
 /** What a probe frame of hostile.html reports to its parent. */
 type FrameReport = {
   from: string;
@@ -623,9 +623,7 @@ const BLOCKS = [
   fileScope,
 ];
 
-export async function hostile(h: Harness) {
-  const r = reporter('hostile');
+export async function hostile(h: Harness, r: Reporter) {
   const suite: Suite = { h, r, android: Platform.OS === 'android' };
   for (const block of BLOCKS) await block(suite);
-  r.done();
 }

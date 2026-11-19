@@ -35,10 +35,8 @@ import {
   until,
   waitForLoad,
 } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER, PAGES_PORT } from '../pages';
-
-type Reporter = ReturnType<typeof reporter>;
 
 const KEY = '@react-native-minimal-webview/extensions';
 const ios = Platform.OS === 'ios';
@@ -73,8 +71,7 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
  * driver's long press (maestro/extensions.yaml).
  */
-export async function extensions(h: Harness) {
-  const r = reporter('extensions');
+export async function extensions(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   try {
     await inert(h, r);
@@ -96,7 +93,6 @@ export async function extensions(h: Harness) {
   } finally {
     warnings.stop();
   }
-  r.done();
 }
 
 // Browsers reuse an origin's credentials for any realm, and other suites sign in on localhost: the declines use an origin
@@ -317,7 +313,8 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     h,
     `<p style="font: 48px/1.2 system-ui; word-break: break-all; margin: 0">${'a'.repeat(3000)}</p>`
   );
-  r.info('LONGPRESS', 'then Highlight');
+  r.drive({ action: 'longPress', point: '50%, 30%' });
+  r.drive({ action: 'press', text: 'Highlight' });
   const selection = await until(() => chosen[0], 30000);
   r.check(
     'a long press shows the item, and choosing it calls onSelect with the selected text',

@@ -32,7 +32,7 @@ import {
   type HarnessProps,
 } from './harness/runner';
 import { PAGES } from './pages';
-import { SUITES } from './suites/index';
+import { ON_DEMAND, SUITES } from './suites/index';
 
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
 type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
@@ -161,7 +161,7 @@ export default function App() {
     void fetch(`${PAGES}/harness/run?platform=${Platform.OS}&suite=${name}`);
   };
 
-  useEffect(() => pollForSuites(() => harnessRef.current), []);
+  useEffect(() => pollForSuites(() => harnessRef.current, { ...SUITES, ...ON_DEMAND }), []);
 
   return (
     <View style={styles.container}>

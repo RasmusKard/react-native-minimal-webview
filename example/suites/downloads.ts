@@ -2,7 +2,7 @@ import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { click, fresh, openPage, recordExternal, sleep, waitFor } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 /** Adds a download link to a blob of `bytes` zero bytes. */
 const blobLink = (h: Harness, id: string, bytes: number) =>
@@ -14,8 +14,7 @@ const blobLink = (h: Harness, id: string, bytes: number) =>
  * Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
  * on Android a blob above the size cap fails, and an invalid data: link leaves the app running.
  */
-export async function downloadsSuite(h: Harness) {
-  const r = reporter('downloads');
+export async function downloadsSuite(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/media.html'));
   await h.ref.current?.evaluate("document.cookie = 'dl=1'");
   // A long query: the event's `url` is the full server URL, never cut.
@@ -149,5 +148,4 @@ export async function downloadsSuite(h: Harness) {
       (await h.ref.current?.evaluate('1 + 1')) === 2
     );
   }
-  r.done();
 }

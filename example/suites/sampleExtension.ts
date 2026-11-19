@@ -15,11 +15,10 @@ import {
   waitFor,
   waitForLoad,
 } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
-export async function sampleExtension(h: Harness) {
-  const r = reporter('sampleExtension');
+export async function sampleExtension(h: Harness, r: Reporter) {
   const mountEnds = h.events.documentEnds.length;
   await recreate(h, {}, true);
   const phantom = h.events.documentEnds.slice(mountEnds).filter((end) => end.url === '');
@@ -243,11 +242,10 @@ export async function sampleExtension(h: Harness) {
     );
   }
   await hookSeams(h, r);
-  r.done();
 }
 
 /** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
-async function hookSeams(h: Harness, r: ReturnType<typeof reporter>) {
+async function hookSeams(h: Harness, r: Reporter) {
   await recreate(h, { extensions: [sampleHook('seams')] }, true);
   const twice = await h.ref.current?.hook('sample.seams', 'twice', [21]).catch(errorCode);
   r.check('its handle handler reads a whole JS number as a Double', twice === 42, twice);

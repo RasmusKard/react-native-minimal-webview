@@ -1,10 +1,8 @@
 import { fresh, openPage, text, until } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /** First-load headers and shared cookies. */
-export async function network(h: Harness) {
-  const r = reporter('network');
-
+export async function network(h: Harness, r: Reporter) {
   const headersPage = fresh(h, '/headers');
   await openPage(h, { uri: headersPage, headers: { 'X-Test-Header': 'hello' } }, 10000);
   r.check(
@@ -46,6 +44,4 @@ export async function network(h: Harness) {
     !(await text(h, 'cookies')).includes('fromPage='),
     await text(h, 'cookies')
   );
-
-  r.done();
 }

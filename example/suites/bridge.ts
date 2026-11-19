@@ -10,11 +10,11 @@ import {
   until,
   waitFor,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter, withFloor } from '../harness/runner';
 import { OTHER } from '../pages';
 
-export async function bridge(h: Harness) {
-  const r = reporter('bridge', WEBVIEW.bridge);
+export async function bridge(h: Harness, all: Reporter) {
+  const r = withFloor(all, WEBVIEW.bridge);
   const page = fresh(h, '/bridge.html');
   await openPage(h, page);
   const bridgeType = await h.ref.current?.evaluate(
@@ -153,5 +153,4 @@ export async function bridge(h: Harness) {
     const closed = await Promise.race([unmounted, sleep(3000).then(() => 'still pending')]);
     r.check('unmount rejects an evaluate in flight', closed === 'navigated', closed);
   }
-  r.done();
 }

@@ -2,12 +2,10 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { errorCode, fresh, idle, recreate, text, until, waitForLoad } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /** `source.body` (a form POST, sent again by reload) and a `file://` source with its own assets. */
-export async function sources(h: Harness) {
-  const r = reporter('sources');
-
+export async function sources(h: Harness, r: Reporter) {
   const body = `amount=9.99&t=${Date.now()}`;
   // The WebView commits the second form with its host lowercase.
   for (const [form, host] of [
@@ -129,5 +127,4 @@ export async function sources(h: Harness) {
       page,
     });
   }
-  r.done();
 }

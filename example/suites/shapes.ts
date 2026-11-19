@@ -16,7 +16,7 @@ import {
   until,
   waitFor,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { OTHER, PAGES } from '../pages';
 
 // A click on a page that went away shows in the check that follows, so the suite goes on.
@@ -26,7 +26,7 @@ type Policy = 'hybrid' | 'oauth' | 'checkout' | 'windows' | 'schemes' | 'none';
 
 type Shape = {
   h: Harness;
-  r: ReturnType<typeof reporter>;
+  r: Reporter;
   android: boolean;
   /** Since the last `clear`: what reached onOpenExternal. */
   external: string[];
@@ -718,7 +718,7 @@ async function backButton(s: Shape) {
   });
   try {
     await waitFor(h, (st) => st.canGoBack, 3000);
-    r.info('BACK', 'the BackHandler recipe');
+    r.drive({ action: 'back' }, 'the BackHandler recipe');
     r.check(
       'H4 android back: the BackHandler recipe goes back one page',
       await waitFor(h, (st) => st.url === first && idle(st)),
@@ -749,9 +749,7 @@ const BLOCKS = [
   backButton,
 ];
 
-export async function shapes(h: Harness) {
-  const r = reporter('shapes');
+export async function shapes(h: Harness, r: Reporter) {
   const shape: Shape = { h, r, android: Platform.OS === 'android', external: [], asked: [] };
   for (const block of BLOCKS) await block(shape);
-  r.done();
 }

@@ -1,12 +1,12 @@
 import type { NavigationState } from 'react-native-minimal-webview';
 
 import { click, errorCode, fresh, idle, sleep, text, until, waitFor } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
 
 /** Committed url and the page's location.href agree, once the coalesced state event has arrived. */
-async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
+async function agree(h: Harness, r: Reporter, name: string) {
   let seen = {};
   const agreed = await until(
     async () => {
@@ -21,8 +21,7 @@ async function agree(h: Harness, r: ReturnType<typeof reporter>, name: string) {
   r.check(name, agreed === true, seen);
 }
 
-export async function urlTracking(h: Harness) {
-  const r = reporter('urlTracking');
+export async function urlTracking(h: Harness, r: Reporter) {
   // An app-started load is pending until it commits: never reported as the loaded, idle page before it starts. The
   // gap is widest right after launch (the web process is still starting), which is when this suite's first load runs.
   const first = fresh(h, '/spa.html');
@@ -131,5 +130,4 @@ export async function urlTracking(h: Harness) {
   );
   r.check('getState() is the same state', h.ref.getState() === h.state(), h.ref.getState());
   await agree(h, r, 'remounted WebView agrees');
-  r.done();
 }

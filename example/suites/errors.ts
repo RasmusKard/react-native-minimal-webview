@@ -1,15 +1,14 @@
 import { Platform } from 'react-native';
 
 import { clearEvents, fresh, idle, openPage, sleep, until, waitFor } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { HTTPS } from '../pages';
 
 /**
  * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
  * (the recipe in guides/examples.md#loading-and-error-screens), and reload recovering.
  */
-export async function errors(h: Harness) {
-  const r = reporter('errors');
+export async function errors(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/'));
   /** Runs `act`, then waits for the next load to end: its outcome, or 'no end' after `ms`. */
   const outcomeOf = async (act: () => unknown, ms = 10000) => {
@@ -177,5 +176,4 @@ export async function errors(h: Harness) {
       h.events.errors[0]
     );
   }
-  r.done();
 }

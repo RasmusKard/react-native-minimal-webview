@@ -11,18 +11,19 @@ import {
   waitFor,
   waitForLoad,
 } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /**
  * Android fullscreen: the page's fullscreen view shows, back leaves it. iOS: an unmount while a video is in fullscreen.
  * The driver taps and presses back.
  */
-export async function fullscreen(h: Harness) {
-  const r = reporter('fullscreen');
+export async function fullscreen(h: Harness, r: Reporter) {
   if (Platform.OS !== 'android') {
     // WebKit shows the video fullscreen itself, as an iPhone plays no video inline by default.
     await openPage(h, fresh(h, '/media.html'));
-    const lines = await pageLog(h, async () => r.info('TAP', await tapPoint(h, 'play')));
+    const lines = await pageLog(h, async () =>
+      r.drive({ action: 'tap', point: await tapPoint(h, 'play') })
+    );
     await sleep(1000); // the presentation
     const remounted = await waitForLoad(h, () => h.remount());
     r.check(
@@ -30,12 +31,11 @@ export async function fullscreen(h: Harness) {
       lines?.includes('video fullscreen') === true && remounted,
       { lines, remounted }
     );
-    r.done();
     return;
   }
   await openPage(h, fresh(h, '/media.html'));
   h.events.fullscreen.length = 0;
-  r.info('TAP', await tapPoint(h, 'fullscreen'));
+  r.drive({ action: 'tap', point: await tapPoint(h, 'fullscreen') });
   r.check(
     'entering fullscreen is reported',
     await waitFor(h, () => h.events.fullscreen.includes(true), 10000),
@@ -43,10 +43,9 @@ export async function fullscreen(h: Harness) {
   );
   // BACK on the root screen would background the app: only send it when fullscreen is on.
   if (!h.events.fullscreen.includes(true)) {
-    r.done();
     return;
   }
-  r.info('BACK', 'leave');
+  r.drive({ action: 'back' });
   r.check(
     'back leaves fullscreen',
     await waitFor(h, () => h.events.fullscreen.at(-1) === false, 10000),
@@ -60,11 +59,13 @@ export async function fullscreen(h: Harness) {
   const active = async () =>
     (await h.ref.current?.evaluate('document.fullscreenElement !== null')) === true;
   const becomes = async (want: boolean) => !!(await until(async () => (await active()) === want));
-  const lines = await pageLog(h, async () => r.info('TAP', await tapPoint(h, 'fullscreen')));
+  const lines = await pageLog(h, async () =>
+    r.drive({ action: 'tap', point: await tapPoint(h, 'fullscreen') })
+  );
   const entered = await becomes(true);
   r.check('fullscreen works without onFullscreenChange', entered, lines);
   if (entered) {
-    r.info('BACK', 'leave');
+    r.drive({ action: 'back' });
     r.check('back leaves it', await becomes(false));
   }
 
@@ -72,14 +73,14 @@ export async function fullscreen(h: Harness) {
   // Chromium's onHideCustomView, which a dead renderer never sends. Last, because recovery replaces the WebView.
   h.setProps({});
   await sleep(300);
-  r.info('TAP', await tapPoint(h, 'fullscreen'));
+  r.drive({ action: 'tap', point: await tapPoint(h, 'fullscreen') });
   await waitFor(h, () => h.events.fullscreen.at(-1) === true, 10000);
   // The kill in fullscreen, then the recovery load.
   await waitForLoad(
     h,
     async () => {
       const gone = h.events.gone.length;
-      r.info('KILL', 'in fullscreen');
+      r.drive({ action: 'kill' }, 'in fullscreen');
       await waitFor(h, () => h.events.gone.length > gone, 15000);
       r.check(
         'a crash leaves fullscreen',
@@ -89,5 +90,4 @@ export async function fullscreen(h: Harness) {
     },
     (s) => s.url.includes('/media.html') && idle(s)
   );
-  r.done();
 }

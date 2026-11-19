@@ -2,14 +2,13 @@ import { Platform } from 'react-native';
 import { seams } from 'sample-extension';
 
 import { fresh, openPage, pageLog, sleep, waitForLoad } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /**
  * alert, confirm and prompt reach the user and their answers reach the page, and an unmount completes the dialog on
  * screen. The driver presses OK.
  */
-export async function dialogs(h: Harness) {
-  const r = reporter('dialogs');
+export async function dialogs(h: Harness, r: Reporter) {
   const alertUp = async () => {
     await openPage(h, fresh(h, '/dialogs.html'));
     void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('alert').click(), 0)`);
@@ -32,7 +31,7 @@ export async function dialogs(h: Harness) {
       h,
       () => {
         // Ask for the press first and do not await: on iOS evaluate does not return while a dialog blocks the page.
-        r.info('PRESS', 'OK');
+        r.drive({ action: 'press', text: 'OK' });
         void h.ref.current?.evaluate(
           `setTimeout(() => document.getElementById('${id}').click(), 0)`
         );
@@ -59,5 +58,4 @@ export async function dialogs(h: Harness) {
       { pressed, remounted, lines }
     );
   }
-  r.done();
 }

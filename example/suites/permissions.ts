@@ -1,13 +1,23 @@
 import { Platform } from 'react-native';
 import type { PermissionRequest } from 'react-native-minimal-webview';
 
-import { click, fresh, openPage, pageLog, sleep, stuckHandler, until } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import {
+  click,
+  fresh,
+  openPage,
+  pageLog,
+  sleep,
+  stuckHandler,
+  until,
+  reachesJs,
+} from '../harness/helpers';
+import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
 
 /** Camera and location reach the page only when onPermissionRequest says yes, main frame only; the OS allows it here. */
-export async function permissionsSuite(h: Harness) {
-  const r = reporter('permissions');
+export async function permissionsSuite(h: Harness, r: Reporter) {
+  // A fix for the geolocation checks.
+  r.drive({ action: 'location' });
   const asked: PermissionRequest[] = [];
   let answer = false;
   let hold = false;
@@ -86,12 +96,7 @@ export async function permissionsSuite(h: Harness) {
   hold = true;
   askedBefore = asked.length;
   await click(h, 'camera');
-  await until(() => asked.length > askedBefore, 10000, 200);
-  r.check(
-    'a request whose handler never settles reaches JS',
-    asked.length === askedBefore + 1,
-    asked.length - askedBefore
-  );
+  await reachesJs(r, () => asked.length, askedBefore);
   hold = false;
   const navigatedAt = Date.now();
   await openPage(h, fresh(h, '/device.html'));
@@ -135,5 +140,4 @@ export async function permissionsSuite(h: Harness) {
       restored
     );
   }
-  r.done();
 }

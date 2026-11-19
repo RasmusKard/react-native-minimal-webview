@@ -13,14 +13,13 @@ import {
   viewportHeight,
   waitFor,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 /**
  * A creation-time setting changed while mounted recreates the WebView (iOS: an `ios.configuration` key; Android has
  * none, so a remount stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
  */
-export async function mountSettings(h: Harness) {
-  const r = reporter('mountSettings');
+export async function mountSettings(h: Harness, r: Reporter) {
   const uaOf = async () => {
     await openPage(h, fresh(h, '/ua'));
     return await text(h, 'ua');
@@ -57,5 +56,4 @@ export async function mountSettings(h: Harness) {
   await click(h, 'checkout');
   const reached = await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000);
   r.check('ask works after the remount', reached && asked.length > 0, { reached, asked });
-  r.done();
 }

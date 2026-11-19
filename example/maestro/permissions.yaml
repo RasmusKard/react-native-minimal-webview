@@ -1,9 +1,0 @@
-appId: expo.modules.minimalwebview.example
-name: permissions
-env:
-  SUITE: permissions
----
-# The OS permissions come from launchApp (subflows/launch.yaml); setLocation gives the geo check a fix.
-- runFlow: subflows/launch.yaml
-- setLocation: { latitude: 59.43, longitude: 24.75 }
-- runFlow: subflows/finish.yaml

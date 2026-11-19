@@ -8,26 +8,27 @@ import {
   until,
   waitFor,
 } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /**
- * The `pullToRefresh` prop. The gesture comes from outside the app: the suite asks for `SWIPE "<kind>"` and the driver
- * (maestro/ptr.yaml) performs it.
+ * The `pullToRefresh` prop. The gesture comes from outside the app: the suite asks the driver for each swipe.
  */
-export async function ptr(h: Harness) {
-  const r = reporter('ptr');
+export async function ptr(h: Harness, r: Reporter) {
   // The evaluate rejects with `navigated` when the pull's reload replaces the page mid-call; the next poll retries.
   const loadedAt = async () =>
     (await h.ref.current
       ?.evaluate(`document.getElementById('loaded').textContent`)
-      .catch(() => null)) as string | null;
+      .catch((error: unknown) => {
+        r.info('the page gave no load time', errorCode(error));
+        return null;
+      })) as string | null;
   const open = async (mode: string) => {
     await openPage(h, fresh(h, `/ptr.html?mode=${mode}`));
     await sleep(200);
   };
-  const pull = async (kind: string) => {
+  const pull = async (kind: 'full' | 'short' | 'inner') => {
     const before = await loadedAt();
-    r.info('SWIPE', kind);
+    r.drive({ action: 'swipe', kind });
     return !!(await until(
       async () => idle(h.state()) && (await loadedAt()) !== before,
       10000,
@@ -39,7 +40,7 @@ export async function ptr(h: Harness) {
    * 30 px (a pull moves it 90 px or more), and a reload it wrongly started would follow within a second (the release,
    * then the refresh). Waiting from the landing rather than from the request also fails a pull that never came.
    */
-  const pullStays = async (kind: string, position: string) => {
+  const pullStays = async (kind: 'short' | 'inner', position: string) => {
     const at = async () => (await h.ref.current?.evaluate(position)) as number;
     // iOS keeps moving the page for a moment after a scrollTo while the last pull's refresh control hides: start from
     // where it holds still.
@@ -58,7 +59,7 @@ export async function ptr(h: Harness) {
       const now = await h.ref.current?.evaluate(position).catch(errorCode);
       return typeof now === 'number' && now < top - 30;
     };
-    r.info('SWIPE', kind);
+    r.drive({ action: 'swipe', kind });
     const landed = await until(async () => (await reloaded()) || (await scrolled()), 15000);
     if (landed) await until(reloaded, 3000);
     return (await reloaded()) ? 'reloaded' : landed ? 'stayed' : 'the pull never came';
@@ -93,7 +94,7 @@ export async function ptr(h: Harness) {
   clearEvents(h);
   await fetch(`${h.pages}/drop/set?key=${key}&fail=1`);
   // Wait for the error, not for a new page: iOS keeps the old one when the reload fails.
-  r.info('SWIPE', 'full');
+  r.drive({ action: 'swipe', kind: 'full' });
   r.check(
     'a pull whose reload fails reports the error',
     await waitFor(h, () => h.events.errors.some((e) => e.kind === 'network'), 15000),
@@ -103,5 +104,4 @@ export async function ptr(h: Harness) {
   await fetch(`${h.pages}/drop/set?key=${key}&fail=0`);
   await sleep(1000);
   r.check('the next pull after a failed reload works', await pull('full'));
-  r.done();
 }

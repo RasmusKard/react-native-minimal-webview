@@ -15,14 +15,13 @@ import {
   waitFor,
   waitForLoad,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 /** Kill the web content process: the core reloads, the bridge works again, and a crash loop stops reloading. */
-export async function crash(h: Harness) {
-  const r = reporter('crash');
+export async function crash(h: Harness, r: Reporter) {
   const page = fresh(h, '/bridge.html');
-  /** Asks the driver for kill `n` (`request`: what it does around the kill) and waits for its onProcessGone. */
-  const kill = async (n: number, request = 'KILL') => {
+  /** Asks the driver for kill `n` (`action`: with the app in front, or away) and waits for its onProcessGone. */
+  const kill = async (n: number, action: 'kill' | 'killInBackground' = 'kill') => {
     const before = h.events.gone.length;
     // Kill only a live renderer: an evaluate round trip needs one (a kill during recovery would find none).
     // An evaluate that the recovery's navigation rejects also proves nothing yet: wait for one that answers.
@@ -37,7 +36,7 @@ export async function crash(h: Harness) {
     await until(answers);
     // Android counts renderer deaths within 100 ms as one crash (SAME_CRASH_MS); a fast recovery gets there first.
     await sleep(150);
-    r.info(request, n);
+    r.drive({ action }, n);
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
   };
@@ -214,7 +213,7 @@ export async function crash(h: Harness) {
   let backgroundGone: ProcessGoneEvent | undefined;
   const recovered = await waitForLoad(
     h,
-    async () => (backgroundGone = await kill(12, 'BACKGROUND')),
+    async () => (backgroundGone = await kill(12, 'killInBackground')),
     (s) => s.url === away && idle(s),
     30000
   );
@@ -250,7 +249,7 @@ export async function crash(h: Harness) {
   });
   const loadedOnTop = await waitForLoad(
     h,
-    () => kill(13, 'BACKGROUND'),
+    () => kill(13, 'killInBackground'),
     (s) => s.url === asked && idle(s),
     30000
   );
@@ -284,5 +283,4 @@ export async function crash(h: Harness) {
       { coveredGone, whileCovered, state: h.state() }
     );
   }
-  r.done();
 }

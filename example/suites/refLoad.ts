@@ -14,7 +14,7 @@ import {
   waitFor,
   waitForLoad,
 } from '../harness/helpers';
-import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 /**
  * The ref's `load`: in place (same handle, the bridge carries on), a history entry that back, forward and the
@@ -22,8 +22,7 @@ import { WEBVIEW, reporter, type Harness } from '../harness/runner';
  * goes to them) also when a load or a source change came in the same tick, `source` and reload left as they were, and a
  * load from the moment a remounted WebView attaches its ref (on iOS while its `source` waits for the shared cookies).
  */
-export async function refLoad(h: Harness) {
-  const r = reporter('refLoad');
+export async function refLoad(h: Harness, r: Reporter) {
   const home = fresh(h, '/');
   await openPage(h, home);
   const handle = h.ref.current;
@@ -112,15 +111,14 @@ export async function refLoad(h: Harness) {
   await refLoadRaces(h, r);
   h.setRules(undefined);
   await refLoadEdges(h, r);
-  r.done();
 }
 
 /** Two ways to go to `url` from a page: the app's load, and a tap on a link (a click from script on iOS, see `tap`). */
 const NAVIGATIONS = [
-  ['load', (h: Harness, _r: ReturnType<typeof reporter>, url: string) => h.ref.current?.load(url)],
+  ['load', (h: Harness, _r: Reporter, url: string) => h.ref.current?.load(url)],
   [
     'link',
-    async (h: Harness, r: ReturnType<typeof reporter>, url: string) => {
+    async (h: Harness, r: Reporter, url: string) => {
       await h.ref.current?.evaluate(`(() => {
         document.getElementById('link')?.remove();
         const a = Object.assign(document.createElement('a'), { id: 'link', href: ${JSON.stringify(url)}, textContent: 'link' });
@@ -137,7 +135,7 @@ const NAVIGATIONS = [
  * and `goBack` lands alike after the page's `pushState` without a gesture (Android skips such an entry). The referrer
  * and the headers a load sends instead of a link's are only logged.
  */
-async function refLoadHistory(h: Harness, r: ReturnType<typeof reporter>) {
+async function refLoadHistory(h: Harness, r: Reporter) {
   const ways: Record<string, unknown> = {};
   for (const [way, go] of NAVIGATIONS) {
     const a = fresh(h, `/back-forward.html?title=${way}A`);
@@ -221,7 +219,7 @@ const FIRST_LOADS = [
  * first while that is prepared. In the same tick as a source change, which one ends on screen is only logged: the
  * TSDoc leaves it open.
  */
-async function refLoadRaces(h: Harness, r: ReturnType<typeof reporter>) {
+async function refLoadRaces(h: Harness, r: Reporter) {
   for (const sharedCookies of [false, true]) {
     h.setProps({ sharedCookies });
     await sleep(300);
@@ -275,7 +273,7 @@ async function loadAfter(
 }
 
 /** What `load` refuses or can't load, and a load as a remounted WebView attaches its ref. */
-async function refLoadEdges(h: Harness, r: ReturnType<typeof reporter>) {
+async function refLoadEdges(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   const quiet = h.events.loads.length;
   // eslint-disable-next-line no-script-url -- because load must refuse it

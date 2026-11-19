@@ -1,9 +1,8 @@
 import { USER_AGENT_KEY, errorCode, fresh, openPage, text, until } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /** The app name appended through the platform keys (the example's `ios` and `android` props) reaches the server; userAgent replaces it. */
-export async function ua(h: Harness) {
-  const r = reporter('ua');
+export async function ua(h: Harness, r: Reporter) {
   const read = async () => {
     await openPage(h, fresh(h, '/ua'));
     return {
@@ -39,5 +38,4 @@ export async function ua(h: Harness) {
     back.header.endsWith(' MinimalWebViewExample/1.0'),
     back
   );
-  r.done();
 }

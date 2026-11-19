@@ -3,8 +3,8 @@
 // the Android emulator (other ports: ../pages.ts). http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests,
 // and https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
 // The harness runs through it too: the app polls /harness/next for the suite /harness/run queued and posts its results
-// to /harness/log, which this server prints, and the driver (Maestro) waits on /harness/await, /harness/verdict and
-// /harness/idle instead of reading the screen (see harnessState).
+// to /harness/log, which this server prints, and the driver (Maestro) waits on /harness/step and /harness/idle instead
+// of reading the screen (see harnessState).
 const { Buffer } = require('buffer');
 const { execFile, execFileSync } = require('child_process');
 const fs = require('fs');
@@ -49,10 +49,11 @@ const log = (/** @type {string} */ line) =>
 /**
  * What the harness is doing on a platform, so the driver can wait on it here instead of reading the screen (a UI
  * hierarchy query costs Maestro seconds): the suite it took, the driver requests it made in that suite
- * and its verdict (formats: harness/runner.ts onDriverRequest), and when the app last polled.
+ * and its verdict (`DriverAction` in harness/runner.ts, with the suite's name), and when the app last polled.
  * `fresh` makes the next idle check say no, so a run starts with a fresh launch.
  * `failures` are the run's failed checks, for run.sh to print.
- * @typedef {{ requests: string[], verdict: string, handed: boolean, polledAt: number, fresh: boolean, failures: string[] }} HarnessState
+ * @typedef {{ suite: string, action: string, fail?: number }} Request
+ * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, failures: string[] }} HarnessState
  */
 /** @type {Map<string, HarnessState>} */
 const harnessStates = new Map();
@@ -60,7 +61,7 @@ const harnessStates = new Map();
 function harnessState(platform) {
   let state = harnessStates.get(platform);
   if (!state) {
-    state = { requests: [], verdict: '', handed: false, polledAt: 0, fresh: true, failures: [] };
+    state = { requests: [], verdict: null, handed: false, polledAt: 0, fresh: true, failures: [] };
     harnessStates.set(platform, state);
   }
   return state;
@@ -137,7 +138,7 @@ function handle(req, res) {
   const platform = q.get('platform') ?? '';
   if (url.pathname === '/harness/run') {
     queued.set(platform, q.get('suite') ?? '');
-    Object.assign(harnessState(platform), { requests: [], verdict: '', handed: false });
+    Object.assign(harnessState(platform), { requests: [], verdict: null, handed: false });
     log(`[server] queued ${platform} ${q.get('suite')}`);
     res.end('queued');
   } else if (url.pathname === '/harness/request') {
@@ -146,31 +147,31 @@ function handle(req, res) {
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
       const state = harnessState(platform);
-      if (/^\w+#done /.test(body)) state.verdict = body;
-      else state.requests.push(body);
+      /** @type {Request} */
+      let request;
+      try {
+        request = /** @type {Request} */ (JSON.parse(body));
+      } catch {
+        return res.writeHead(400).end('not JSON');
+      }
+      if (request.action === 'done') state.verdict = request;
+      else state.requests.push(request);
       harnessChanged();
       res.end();
     });
-  } else if (url.pathname === '/harness/await') {
-    // Request `n` of the suite, or its verdict when it ended first.
-    const [suite, n, state] = [q.get('suite') ?? '', Number(q.get('n')), harnessState(platform)];
-    const get = () =>
-      (state.requests[n - 1]?.startsWith(`${suite}#${n} `) && state.requests[n - 1]) ||
-      (state.verdict.startsWith(`${suite}#`) && state.verdict) ||
-      '';
+  } else if (url.pathname === '/harness/step') {
+    // The suite's driver request after its first `after`, or its verdict once it has no more.
+    const [suite, after, state] = [q.get('suite'), Number(q.get('after')), harnessState(platform)];
+    const get = () => {
+      const step = state.requests[after] ?? state.verdict;
+      return step?.suite === suite ? JSON.stringify(step) : '';
+    };
     answerWhen(res, get, Number(q.get('ms') ?? 5000));
-  } else if (url.pathname === '/harness/verdict') {
-    const [suite, state] = [q.get('suite') ?? '', harnessState(platform)];
-    answerWhen(
-      res,
-      () => (state.verdict.startsWith(`${suite}#done `) ? state.verdict : ''),
-      Number(q.get('ms') ?? 5000)
-    );
   } else if (url.pathname === '/harness/idle') {
     // `yes` when the app can take the next suite as it is: it polls (after its reset), and its last suite passed. Else
     // the driver launches it fresh: the first suite of a run, after a failure, a crash or a suite cut off midway.
     const state = harnessState(platform);
-    const passed = !state.handed || / fail=0$/.test(state.verdict);
+    const passed = !state.handed || state.verdict?.fail === 0;
     if (state.fresh || !passed) {
       state.fresh = false;
       res.end('no');
@@ -254,7 +255,7 @@ function handle(req, res) {
     const state = harnessState(platform);
     state.polledAt = Date.now();
     if (suite) {
-      Object.assign(state, { requests: [], verdict: '', handed: true });
+      Object.assign(state, { requests: [], verdict: null, handed: true });
       log(`[server] handed ${platform} ${suite}`);
     }
     harnessChanged();

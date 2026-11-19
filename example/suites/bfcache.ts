@@ -13,15 +13,14 @@ import {
   travel,
   waitFor,
 } from '../harness/helpers';
-import { WEBVIEW, androidWebView, reporter, type Harness } from '../harness/runner';
+import { WEBVIEW, androidWebView, type Harness, type Reporter } from '../harness/runner';
 
 /**
  * Back and forward restored from the back-forward cache (WebKit always, Android by default): the restore itself, the
  * navigation state, one onLoadStart/onLoadEnd per restore, the bridge both ways, and the rules on the restored
  * page.
  */
-export async function bfcache(h: Harness) {
-  const r = reporter('bfcache');
+export async function bfcache(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/')); // so the first page has one before it
   const first = fresh(h, '/back-forward.html?title=first');
   await openPage(h, first);
@@ -118,5 +117,4 @@ export async function bfcache(h: Harness) {
     );
     h.setProps({});
   }
-  r.done();
 }

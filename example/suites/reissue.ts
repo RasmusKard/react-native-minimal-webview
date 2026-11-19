@@ -11,12 +11,11 @@ import {
   waitFor,
   waitForLoad,
 } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
 
 // The `ask` rule (NavigationRule.action).
-export async function reissue(h: Harness) {
-  const r = reporter('reissue');
+export async function reissue(h: Harness, r: Reporter) {
   const asked: string[] = [];
   let answer: 'allow' | 'block' | 'late' = 'allow';
   const ask = async (url: string): Promise<'allow' | 'block'> => {
@@ -139,5 +138,4 @@ export async function reissue(h: Harness) {
       asked.length === pending + 2,
     { asked: asked.slice(pending), state: h.state() }
   );
-  r.done();
 }

@@ -13,11 +13,10 @@ import {
   until,
   waitFor,
 } from '../harness/helpers';
-import { reporter, type Harness } from '../harness/runner';
+import { type Harness, type Reporter } from '../harness/runner';
 
 /** Rules, new windows, external links handed to JS, iframes, intent fallbacks and the ask redirect-loop guard. */
-export async function navigation(h: Harness) {
-  const r = reporter('navigation');
+export async function navigation(h: Harness, r: Reporter) {
   const external: string[] = [];
   const asked: string[] = [];
   const newWindowAsks: string[] = [];
@@ -357,5 +356,4 @@ export async function navigation(h: Harness) {
   );
   // A same-origin blob: is decided as its origin, which no rule allows here.
   await internalFrames('with navigationRules={[]}', [], ['about:blank', 'srcdoc', 'data:']);
-  r.done();
 }
