@@ -7,11 +7,15 @@ import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
 /**
  * What native reports to the bridge: a page's message with its origin as native verified it (`location.origin` form);
- * a new document committed, so messages queue until its page client says `ready`; or the platform lacks the WebView
- * features the bridge needs, so calls reject with `unavailable`.
+ * a new document committed, so messages queue until its page client says `ready`; the renderer crashed, so no document
+ * is shown until the next commit; or the platform lacks the WebView features the bridge needs, so calls reject with
+ * `unavailable`.
  */
 export type BridgeEvent =
-  { message: string; origin: string } | { navigated: true } | { unavailable: true };
+  | { message: string; origin: string }
+  | { navigated: true }
+  | { crashed: true }
+  | { unavailable: true };
 
 /** What `<WebView>` needs from a bridge: `Bridge`'s `[CONNECTION]`, a key the package doesn't export. */
 export type BridgeConnection = {
@@ -48,7 +52,7 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     );
   }
   let post: ((message: string) => void) | null = null;
-  // idle: no document committed since attach. loading: one committed and hasn't said `ready` yet.
+  // idle: no document shown (none committed since attach, or it crashed). loading: one committed and hasn't said `ready` yet.
   let phase: 'idle' | 'loading' | 'ready' = 'idle';
   // The token of the document that last said `ready` (protocol.ts `doc`).
   let doc: string | undefined;
@@ -145,7 +149,8 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
           endpoint.rejectPending('navigated', 'the page navigated before the bridge was ready');
           queue = [];
         }
-        phase = 'loading';
+        // What is queued after a crash is for the reload.
+        phase = 'crashed' in event ? 'idle' : 'loading';
       }
     },
   };
