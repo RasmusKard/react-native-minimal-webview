@@ -5,17 +5,19 @@ Examples of the main interfaces. What each prop, method and type does is in the
 
 ## Navigation state
 
-Show a back button while the WebView can go back, and go back on Android's back button.
+Show the page's title and back and forward buttons, and go back on Android's back button.
 
 ```tsx
 import { useEffect, useRef } from 'react';
-import { BackHandler, Button } from 'react-native';
+import { BackHandler, Button, Text } from 'react-native';
 import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-webview';
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  // Only canGoBack: Browser doesn't re-render as a page loads
+  // One field per selector: Browser doesn't re-render on each progress change
+  const title = useWebViewState(ref, (state) => state.title);
   const canGoBack = useWebViewState(ref, (state) => state.canGoBack);
+  const canGoForward = useWebViewState(ref, (state) => state.canGoForward);
 
   // Android's back button is the app's to handle
   useEffect(() => {
@@ -29,7 +31,9 @@ export function Browser() {
 
   return (
     <>
+      <Text>{title}</Text>
       <Button title="Back" disabled={!canGoBack} onPress={() => ref.current?.goBack()} />
+      <Button title="Forward" disabled={!canGoForward} onPress={() => ref.current?.goForward()} />
       <WebView ref={ref} source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />
     </>
   );

@@ -6,7 +6,7 @@
  * {@include ../README.md#setup}
  *
  * Each extension's platforms, and how to vendor one to change it, are in the package's
- * [README](https://github.com/RasmusKard/react-native-minimal-webview/tree/main/extensions#readme).
+ * [README](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/extensions/README.md).
  *
  * @groupDescription Extensions
  * One function per extension, whose result goes into the core's `extensions` prop.
