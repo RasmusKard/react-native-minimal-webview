@@ -4,22 +4,20 @@ import { BackHandler, Platform } from 'react-native';
 import type { FileRequest, NavigationRule, PermissionRequest } from 'react-native-minimal-webview';
 
 import {
-  type Harness,
-  WEBVIEW,
   click as scriptClick,
   fresh,
   idle,
   openPage,
   pageLog,
   recordExternal,
-  reporter,
   sleep,
   tap,
   touch,
   until,
   waitFor,
-} from './harness';
-import { OTHER, PAGES } from './pages';
+} from '../harness/helpers';
+import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { OTHER, PAGES } from '../pages';
 
 // A click on a page that went away shows in the check that follows, so the suite goes on.
 const click = (h: Harness, id: string) => scriptClick(h, id)?.catch(String);

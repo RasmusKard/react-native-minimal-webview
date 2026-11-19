@@ -24,20 +24,19 @@ import { AndroidConstants, IOSConstants } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
 import {
-  type Harness,
   captureWarnings,
   errorCode,
   fresh,
   openPage,
   pageLog,
   recreate,
-  reporter,
   sleep,
   text,
   until,
   waitForLoad,
-} from './harness';
-import { HTTPS, OTHER, PAGES_PORT } from './pages';
+} from '../harness/helpers';
+import { reporter, type Harness } from '../harness/runner';
+import { HTTPS, OTHER, PAGES_PORT } from '../pages';
 
 type Reporter = ReturnType<typeof reporter>;
 

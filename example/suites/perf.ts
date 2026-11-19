@@ -7,15 +7,8 @@ import { Platform } from 'react-native';
 import type { NavigationRule } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
-import {
-  type Harness,
-  launchMarks,
-  openPage,
-  reporter,
-  sleep,
-  until,
-  waitForLoad,
-} from './harness';
+import { openPage, sleep, until, waitForLoad } from '../harness/helpers';
+import { launchMarks, reporter, type Harness } from '../harness/runner';
 
 type Policy = 'default' | 'rule' | 'ask';
 /** A native stamp pair from the sample.perf probe: the page asked to go to `i`, and that navigation started (ns). */

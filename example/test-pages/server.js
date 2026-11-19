@@ -49,7 +49,7 @@ const log = (/** @type {string} */ line) =>
 /**
  * What the harness is doing on a platform, so the driver can wait on it here instead of reading the screen (a UI
  * hierarchy query costs Maestro seconds): the suite it took, the driver requests it made in that suite
- * and its verdict (formats: harness.ts onDriverRequest), and when the app last polled.
+ * and its verdict (formats: harness/runner.ts onDriverRequest), and when the app last polled.
  * `fresh` makes the next idle check say no, so a run starts with a fresh launch.
  * `failures` are the run's failed checks, for run.sh to print.
  * @typedef {{ requests: string[], verdict: string, handed: boolean, polledAt: number, fresh: boolean, failures: string[] }} HarnessState

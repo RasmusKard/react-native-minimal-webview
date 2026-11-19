@@ -11,23 +11,21 @@ import type {
 } from 'react-native-minimal-webview';
 
 import {
-  type Harness,
-  WEBVIEW,
   captureWarnings,
   errorCode,
   fresh,
   idle,
   openPage,
   recordExternal,
-  reporter,
   sleep,
   tap,
   touch,
   until,
   waitFor,
   waitForLoad,
-} from './harness';
-import { HTTPS, OTHER } from './pages';
+} from '../harness/helpers';
+import { WEBVIEW, reporter, type Harness } from '../harness/runner';
+import { HTTPS, OTHER } from '../pages';
 import { all } from './shapes';
 
 type Suite = { h: Harness; r: ReturnType<typeof reporter>; android: boolean };

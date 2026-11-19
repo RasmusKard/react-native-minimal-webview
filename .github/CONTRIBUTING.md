@@ -44,7 +44,7 @@ Kotlin and Swift build the library, so it needs `example/android` and `example/i
 
 ## On-device suites
 
-The suites (`SUITES` in `example/harness.ts`) run inside the example app, and Maestro drives them. In `example/`, start
+The suites (`SUITES` in `example/suites/index.ts`) run inside the example app, and Maestro drives them. In `example/`, start
 the test pages server (`npm run test-pages`) and Metro (`npx expo start`), install the app, then:
 
 ```sh

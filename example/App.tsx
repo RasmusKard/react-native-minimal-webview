@@ -25,14 +25,14 @@ import {
 import { type PageCounterEvent, pageCounter } from 'sample-extension';
 
 import {
-  SUITES,
   launchMarks,
   onDriverRequest,
   pollForSuites,
   type Harness,
   type HarnessProps,
-} from './harness';
+} from './harness/runner';
 import { PAGES } from './pages';
+import { SUITES } from './suites/index';
 
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
 type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
