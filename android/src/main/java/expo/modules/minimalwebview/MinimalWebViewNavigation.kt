@@ -79,7 +79,7 @@ internal class MinimalWebViewNavigation(
       if (action == "external") openExternal(request, rule) else notifyNavigation(request, action, rule)
     }
     // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
-    owner.mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
+    mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
   }
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the Referer, trimmed by WebView's
@@ -171,7 +171,7 @@ internal class MinimalWebViewNavigation(
     // Destroyed later: this may run inside the child's own callback.
     fun finish(): Boolean {
       val wasPending = children.remove(child)
-      if (wasPending) owner.mainHandler.post { child.destroy() }
+      if (wasPending) mainHandler.post { child.destroy() }
       return wasPending
     }
     child.webViewClient = object : WebViewClient() {
@@ -188,7 +188,7 @@ internal class MinimalWebViewNavigation(
       }
     }
     // window.open('') or about:blank never navigates: give up on it.
-    owner.mainHandler.postDelayed({ finish() }, NEW_WINDOW_TIMEOUT_MS)
+    mainHandler.postDelayed({ finish() }, NEW_WINDOW_TIMEOUT_MS)
     (resultMsg.obj as WebView.WebViewTransport).webView = child
     resultMsg.sendToTarget()
     return true

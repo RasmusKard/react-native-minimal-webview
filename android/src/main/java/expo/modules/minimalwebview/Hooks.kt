@@ -1,7 +1,6 @@
 package expo.modules.minimalwebview
 
 import android.content.Context
-import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
@@ -422,11 +421,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebV
 
   // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
   private fun onMain(block: () -> Unit) {
-    if (Looper.myLooper() == Looper.getMainLooper()) block() else main.post { block() }
-  }
-
-  private companion object {
-    val main = Handler(Looper.getMainLooper())
+    if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post { block() }
   }
 }
 

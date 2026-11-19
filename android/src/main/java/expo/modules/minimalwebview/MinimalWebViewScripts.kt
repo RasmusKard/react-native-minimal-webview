@@ -27,11 +27,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     scriptHandlers.clear()
     installEvaluate()
     installBridge()
-    installScripts(force = true)
+    update(force = true)
   }
-
-  /** A later prop batch: only `injectedScripts` can change. */
-  fun update() = installScripts()
 
   private fun installBridge() {
     val script = owner.bridgeScript ?: return
@@ -60,8 +57,8 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     }
   }
 
-  /** Changed scripts take effect from the next navigation. */
-  private fun installScripts(force: Boolean = false) {
+  /** Installs `injectedScripts` if they changed, or with [force] always. They take effect from the next navigation. */
+  fun update(force: Boolean = false) {
     val scripts = owner.injectedScripts.orEmpty()
     if (!force && scripts == installedScripts) return
     installedScripts = scripts

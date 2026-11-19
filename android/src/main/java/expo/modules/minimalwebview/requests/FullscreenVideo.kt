@@ -33,7 +33,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
       window.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
     shownCallback = callback
-    backCallback = (owner.activity as? ComponentActivity)?.let { component ->
+    backCallback = (owner.appContext.currentActivity as? ComponentActivity)?.let { component ->
       object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() = exit()
       }.also { component.onBackPressedDispatcher.addCallback(it) }
@@ -78,7 +78,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
     if ("onFullscreenChange" in owner.requestHandlers) owner.emit("core", "onFullscreenChange", mapOf("active" to active))
   }
 
-  private fun controller() = owner.activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+  private fun controller() = owner.appContext.currentActivity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
   /** The Document ended: removes its fullscreen view. Only CLOSING (unmount) also tells WebView via `onCustomViewHidden`; after a crash no renderer is left to tell. */
   fun documentEnded(reason: DocumentEnd) {

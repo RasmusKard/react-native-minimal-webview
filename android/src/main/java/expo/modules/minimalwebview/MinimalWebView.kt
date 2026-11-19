@@ -1,7 +1,6 @@
 package expo.modules.minimalwebview
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
@@ -39,7 +38,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
-  private val scripts = MinimalWebViewScripts(this) { onBridge(it) }
+  internal val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
   /** Set by the first prop batch and replaced after a renderer crash; see [recovering]. */
   internal lateinit var webView: WebView
@@ -62,8 +61,12 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
   internal var settings: Map<String, Any?>? = null
   internal val platformSettings = PlatformSettings { PlatformSettings.targets(webView, it) }
-  internal var pullToRefresh = false
   private val refresher = PullToRefresh(this)
+  internal var pullToRefresh = false
+    set(value) {
+      field = value
+      refresher.layout.isEnabled = value
+    }
   /**
    * The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), and `onNavigation`, read when a
    * request comes or a decision is reported.
@@ -74,7 +77,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   // The hooks' lists: each context owns its own, and the core routes those of the hooks that are on, in attach order.
   val clients: List<WebViewClient> get() = routed(hookContexts) { it.clients }
   val chromeClients: List<WebChromeClient> get() = routed(hookContexts) { it.chromeClients }
-  val activity: Activity? get() = appContext.currentActivity
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
@@ -102,10 +104,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private var pendingRecovery: Recovery? = null
   private class Recovery(val reload: Boolean, val history: Bundle?)
   private var destroyed = false
-
-  // The core's deferred work. Not View.post: a detached view (unmounted, or a covered screen) holds that until it is
-  // attached again.
-  internal val mainHandler = Handler(Looper.getMainLooper())
 
   init {
     // The WebView goes into the layout in setUp(); the prop only turns the pull on and off.
@@ -191,7 +189,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       webView = createWebView()
       setUp()
     }
-    refresher.layout.isEnabled = pullToRefresh
     loadNewSource()
   }
 
@@ -243,13 +240,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     when {
       // The renderer died and the new WebView isn't built yet: build it now, and load.
       recovering -> recover(reload = true)
-      // Nothing loaded: the crash-loop guard gave up (processGone), and this is the app's retry.
-      webView.url == null -> loadAgain()
-      // WebView's reload declines a POST's form resubmission: send the source again.
-      source?.body != null && showsSource(source, url) -> source?.let(::load)
+      // Nothing loaded: the crash-loop guard gave up (processGone), and this is the app's retry. Or a POST source:
+      // WebView's reload declines its form resubmission.
+      webView.url == null || showingPost -> loadAgain()
       else -> webView.reload()
     }
   }
+
+  private val showingPost get() = source?.body != null && showsSource(source, url)
 
   /**
    * The `android` settings, applied from each prop batch (only the keys that changed) and all again to a new WebView
@@ -327,8 +325,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     stateChanged()
   }
 
-  internal fun bridgePost(message: String) = scripts.post(message)
-
   internal fun evaluate(script: String, onResult: (Result<String>) -> Unit) =
     if (recovering) onResult(Result.failure(EvaluateError("unavailable", RECOVERING))) else scripts.evaluate(script, onResult)
 
@@ -338,7 +334,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
    */
   internal fun processGone(cause: String, at: Long) {
     if (destroyed) return
-    val reload = crashAllowsReload(crashTimes, at) && !(source?.body != null && showsSource(source, url))
+    val reload = crashAllowsReload(crashTimes, at) && !showingPost
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
     val restorable = !showsSource(source, url)
     val history = Bundle().takeIf { reload && restorable && webView.saveState(it) != null }
@@ -374,7 +370,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingRecovery = null
     webView = createWebView()
     setUp()
-    refresher.layout.isEnabled = pullToRefresh
     // A source the app set while this waited loads instead of the old page.
     if (!loadNewSource()) {
       val restored = recovery.history?.let { webView.restoreState(it) } != null
@@ -457,6 +452,12 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 }
 
 internal const val TAG = "MinimalWebView"
+
+/**
+ * The core's deferred work. Not View.post: a detached view (unmounted, or a covered screen) holds that until it is
+ * attached again. Lazy: the JVM tests load this file, and Handler's constructor throws there.
+ */
+internal val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 internal const val RECOVERING = "the WebView is being rebuilt after its renderer died"
 
 /** Whether this process has made a WebView. */
@@ -504,7 +505,7 @@ private fun canonicalUrl(url: String): String {
 private val urlAuthority = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#@]*@)?(\\[[^\\]/?#]*]|[^/?#:]*)(?::(\\d*))?(.*)$")
 
 /** The special schemes' default ports (the WHATWG URL Standard's), as on iOS (Loads.swift). */
-private val defaultPorts = mapOf("http" to 80, "https" to 443, "ws" to 80, "wss" to 443, "ftp" to 21)
+internal val defaultPorts = mapOf("http" to 80, "https" to 443, "ws" to 80, "wss" to 443, "ftp" to 21)
 
 /**
  * Records a renderer death at [now] in [times] and says whether to reload after it: not after more than

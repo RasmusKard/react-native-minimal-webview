@@ -20,7 +20,7 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
   /** Holds the WebView. SwipeRefreshLayout keeps its first child as its target for good, so a crash swaps the WebView here. */
   val content = FrameLayout(owner.context)
 
-  /** Always around [content]; off until the first prop batch, then the prop sets `isEnabled`. */
+  /** Always around [content]; off until the prop sets `isEnabled`. */
   val layout: SwipeRefreshLayout = Layout(owner.context).apply {
     isEnabled = false
     addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -35,7 +35,7 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
       if (touch == touches) innerScrolled = result == "true"
     }
     // A busy page answers late: don't hold the pull off for longer than this.
-    owner.mainHandler.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
+    mainHandler.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
   }
 
   /** A load ended: the spinner stops, or it would ignore the next pull. */

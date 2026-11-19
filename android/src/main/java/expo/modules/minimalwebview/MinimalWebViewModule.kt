@@ -118,7 +118,7 @@ class MinimalWebViewModule : Module() {
         // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
-      AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.bridgePost(message) }.runOnQueue(Queues.MAIN)
+      AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.scripts.post(message) }.runOnQueue(Queues.MAIN)
       AsyncFunction("answer") { view: MinimalWebView, askId: Int, json: String ->
         view.asks.answer(askId, fromJson(JSONTokener(json).nextValue()))
       }.runOnQueue(Queues.MAIN)
