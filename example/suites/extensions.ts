@@ -69,7 +69,7 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 
 /**
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press (maestro/extensions.yaml).
+ * driver's long press.
  */
 export async function extensions(h: Harness, r: Reporter) {
   const warnings = captureWarnings();

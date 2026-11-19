@@ -16,9 +16,9 @@ const log = (/** @type {string} */ line) =>
  * and its verdict (`DriverAction` in harness/runner.ts, with the suite's name), and when the app last polled.
  * `fresh` makes the next idle check say no, so a run starts with a fresh launch, and `device` is the run's device id
  * (an adb serial or a simulator's UDID), for /driver.
- * `failures` are the run's failed checks, for run.sh to print.
+ * `log` is what the app logged in the run, for run.sh.
  * @typedef {{ suite: string, action: string, fail?: number }} Request
- * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, device: string, failures: string[] }} HarnessState
+ * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, device: string, log: string[] }} HarnessState
  */
 /** @type {Map<string, HarnessState>} */
 const harnessStates = new Map();
@@ -26,7 +26,7 @@ const harnessStates = new Map();
 function harnessState(platform) {
   let state = harnessStates.get(platform);
   if (!state) {
-    state = { requests: [], verdict: null, handed: false, polledAt: 0, fresh: true, device: '', failures: [] };
+    state = { requests: [], verdict: null, handed: false, polledAt: 0, fresh: true, device: '', log: [] };
     harnessStates.set(platform, state);
   }
   return state;
@@ -119,15 +119,8 @@ const ROUTES = {
   '/harness/fresh'(req, res, q, platform) {
     const device = q.get('device') ?? '';
     if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
-    Object.assign(harnessState(platform), { fresh: true, device, failures: [] });
+    Object.assign(harnessState(platform), { fresh: true, device, log: [] });
     res.end('ok');
-  },
-  '/harness/failures'(req, res, q, platform) {
-    res.end(
-      harnessState(platform)
-        .failures.map((line) => `${line}\n`)
-        .join('')
-    );
   },
   '/driver/kill'(req, res, q, platform) {
     // For the crash suite's UI-test driver (Maestro has no shell): kill the page's renderer process.
@@ -207,11 +200,18 @@ const ROUTES = {
     queued.delete(platform);
   },
   '/harness/log'(req, res, q, platform) {
+    // The app posts a line; run.sh gets the run's lines.
+    if (req.method !== 'POST')
+      return res.end(
+        harnessState(platform)
+          .log.map((line) => `${line}\n`)
+          .join('')
+      );
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
       log(body);
-      if (/^\[harness \S+ [^\]]*\] FAIL /.test(body)) harnessState(platform).failures.push(body);
+      harnessState(platform).log.push(body);
       res.end();
     });
   },

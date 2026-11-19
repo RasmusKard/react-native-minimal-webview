@@ -27,7 +27,7 @@ export type Harness = {
   pages: string;
   platform: string;
   ref: WebViewRefObject;
-  /** Where the WebView sits in the window and its height, in dp, for a driver's TAP; kept current by App's onLayout. */
+  /** Where the WebView sits in the window and its height, in dp, for a driver's tap; kept current by App's onLayout. */
   webViewOffset: { x: number; y: number; height: number };
   state: () => NavigationState;
   /** Remounts the WebView (a new `key`) without re-rendering App. */

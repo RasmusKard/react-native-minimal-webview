@@ -32,6 +32,10 @@ done
 status=$?
 # Per-suite results and the summary; Maestro's own error if it never got to run a flow.
 grep -E '^\[(Passed|Failed)\]|Flows? (Passed|Failed)' "$tmp/out" || tail -20 "$tmp/out"
-curl -s "$PAGES/harness/failures?platform=$PLATFORM"
+# The app's log of the run: its failed checks here, all of it in a file.
+log=${TMPDIR:-/tmp}; log=${log%/}/harness-$PLATFORM-$DEVICE.log
+curl -s "$PAGES/harness/log?platform=$PLATFORM" > "$log"
+grep ' FAIL ' "$log"
+echo "$(grep -c ' PASS ' "$log") checks passed, $(grep -c ' FAIL ' "$log") failed: $log"
 [ $status -eq 0 ] || echo "debug output in ~/.maestro/tests"
 exit $status
