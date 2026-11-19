@@ -316,6 +316,63 @@ export function LocalPages() {
 }
 ```
 
+### Load a bundled page folder
+
+expo-asset stores each bundled file under a name of its own, so a page's relative URLs to its stylesheet and images find nothing. Copy the files into one folder at launch and load its `index.html`. Metro bundles `.css` as code, so make it an asset in `metro.config.js`:
+
+```js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+config.resolver.sourceExts = config.resolver.sourceExts.filter((ext) => ext !== 'css');
+config.resolver.assetExts.push('css');
+
+module.exports = config;
+```
+
+```tsx
+import { Asset } from 'expo-asset';
+import { Directory, File, Paths } from 'expo-file-system';
+import { useEffect, useState } from 'react';
+import { WebView } from 'react-native-minimal-webview';
+
+// Each file by its path relative to index.html
+const files = {
+  'index.html': require('./page/index.html'),
+  'style.css': require('./page/style.css'),
+  'images/logo.png': require('./page/images/logo.png'),
+};
+
+async function copyPage() {
+  const dir = new Directory(Paths.cache, 'page');
+  if (dir.exists) dir.delete(); // drops the files of an older app version
+  dir.create();
+  const assets = await Asset.loadAsync(Object.values(files));
+  await Promise.all(
+    Object.keys(files).map((path, i) => {
+      const file = new File(dir, path);
+      file.parentDirectory.create({ intermediates: true, idempotent: true });
+      return new File(assets[i].localUri!).copy(file);
+    })
+  );
+  return new File(dir, 'index.html').uri;
+}
+
+export function BundledPage() {
+  const [uri, setUri] = useState<string>();
+  useEffect(() => {
+    copyPage().then(setUri, console.error);
+  }, []);
+  return uri ? (
+    <WebView
+      source={{ uri }}
+      style={{ flex: 1 }}
+      android={{ settings: { allowFileAccess: true } }}
+    />
+  ) : null;
+}
+```
+
 ## Page requests
 
 Answer what the page asks the app for: files, the camera or microphone, fullscreen and downloads.

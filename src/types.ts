@@ -14,6 +14,7 @@ import type {
 /**
  * What the WebView loads: a URL, or an HTML string.
  * @see [Local files example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#local-files)
+ * @see [Bundled page folder example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#load-a-bundled-page-folder)
  * @group WebView
  */
 export type WebViewSource =
