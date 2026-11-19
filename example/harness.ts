@@ -1277,6 +1277,8 @@ async function crash(h: Harness) {
         sleep(1000).then(() => false),
       ]);
     await until(answers);
+    // Android counts renderer deaths within 100 ms as one crash (SAME_CRASH_MS); a fast recovery gets there first.
+    await sleep(150);
     r.info(request, n);
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
