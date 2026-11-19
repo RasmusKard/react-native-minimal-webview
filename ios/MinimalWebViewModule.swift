@@ -29,6 +29,7 @@ public class MinimalWebViewModule: Module {
 
       AsyncFunction("goBack") { (view: MinimalWebView) in view.webView?.goBack() }
       AsyncFunction("goForward") { (view: MinimalWebView) in view.webView?.goForward() }
+      AsyncFunction("load") { (view: MinimalWebView, url: String) in view.load(url: url) }
       AsyncFunction("reload") { (view: MinimalWebView) in view.retry() }
       AsyncFunction("stopLoading") { (view: MinimalWebView) in view.webView?.stopLoading() }
       AsyncFunction("get") { (view: MinimalWebView, path: String, promise: Promise) in

@@ -3,14 +3,14 @@ import Foundation
 /// The main-frame loads' choices that need no WebView.
 enum Loads {
   /// Whether `a` and `b` are the same URL as WebKit reports one: with the scheme and host lowercase, the scheme's
-  /// default port dropped and an empty path `/`. The rest (userinfo, path, query, fragment) compares exactly. It picks
-  /// out our own loads (`programmaticUrl`), which skip the navigation rules: WebKit reports the load of a `source.uri`
+  /// default port dropped, dot segments removed and an empty path `/`. The rest (userinfo, path, query, fragment) compares exactly. It picks
+  /// out our own loads (`ownLoads`), which skip the navigation rules: WebKit reports the load of a `source.uri`
   /// of `https://Example.com:443` as `https://example.com/`.
   static func sameURL(_ a: URL, _ b: URL) -> Bool {
-    canonical(a) == canonical(b)
+    canonical(a.standardized) == canonical(b.standardized)
   }
 
-  /// `url` in the form `sameURL` compares.
+  /// `url` in the form `sameURL` compares, dot segments aside (Recovery compares them as Android does).
   static func canonical(_ url: URL) -> String {
     guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url.absoluteString }
     components.scheme = components.scheme?.lowercased()

@@ -106,6 +106,7 @@ class MinimalWebViewModule : Module() {
 
       AsyncFunction("goBack") { view: MinimalWebView -> live(view) { it.goBack() } }.runOnQueue(Queues.MAIN)
       AsyncFunction("goForward") { view: MinimalWebView -> live(view) { it.goForward() } }.runOnQueue(Queues.MAIN)
+      AsyncFunction("load") { view: MinimalWebView, url: String -> view.load(url) }.runOnQueue(Queues.MAIN)
       AsyncFunction("reload") { view: MinimalWebView -> view.retry() }.runOnQueue(Queues.MAIN)
       AsyncFunction("stopLoading") { view: MinimalWebView -> live(view) { it.stopLoading() } }.runOnQueue(Queues.MAIN)
       AsyncFunction("get") { view: MinimalWebView, path: String, promise: Promise ->

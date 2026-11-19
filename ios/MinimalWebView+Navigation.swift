@@ -11,10 +11,11 @@ extension MinimalWebView {
     // rules, as on Android (shouldOverrideUrlLoading is not called for them).
     guard let targetFrame = action.targetFrame else { return decide(allowInPlace) }
     let mainFrame = targetFrame.isMainFrame
-    let own = mainFrame && programmaticUrl.map { Loads.sameURL($0, target) } == true
-    if own || action.navigationType == .backForward || action.navigationType == .reload
+    if mainFrame { mainFrameChecks += 1 }
+    let own = mainFrame ? ownLoads.firstIndex { Loads.sameURL($0.url, target) } : nil
+    if own != nil || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
-      if own { programmaticUrl = nil }
+      if let own { ownLoads.remove(at: own) }
       return decide(allowInPlace)
     }
     let request = NavigationRules.Request(

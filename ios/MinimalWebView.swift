@@ -61,15 +61,21 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// while the item that was current at its commit stays current, the html page is what is on screen.
   private var htmlNavigation: WKNavigation?
   private var htmlCommit: (url: String, item: WKBackForwardListItem?)?
-  /// The URL this view loads itself (source, reload after an error, an allowed new window): it skips the rules.
-  var programmaticUrl: URL?
+  /// The loads this view starts itself (source, `load`, reload after an error, an allowed new window), each until its
+  /// main-frame policy check, which skips the rules, with `mainFrameChecks` at its start. A list: a load can start
+  /// before the previous one's check, and the page being left can commit after it. A commit drops the loads a later
+  /// check passed (cut off before their own), so a page can't later skip the rules by navigating to one.
+  var ownLoads: [(url: URL, checks: Int)] = []
+  var mainFrameChecks = 0
   private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
   /// The attached hooks' contexts in attach order, for the life of the WKWebView: a hook may keep its own.
   var hookContexts: [HookContext] = []
   /// URLs an `ask` allowed in this Document, keyed by mainFrame: a subframe's answer doesn't decide the main frame's.
   var askedAndAllowed: [Bool: Set<String>] = [:]
-  /// A `source` load is being prepared (shared cookies): loads wait until it is done.
+  /// A `source` or `load` load is being prepared (shared cookies): loads wait until it is done.
   private var preparing = false
+  /// The ref's `load` while it is prepared: it loads instead of the `source` being prepared, if any.
+  private var queuedUrl: URL?
   /// After a failed main-frame load `url` is the failed URL (as on Android, which commits an error page);
   /// WKWebView itself keeps the previous page, so `url` and reload() use this.
   private(set) var failedUrl: String?
@@ -129,11 +135,31 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     loadedSource = next.toDictionary() as NSDictionary
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes = []
+    prepare(next)
+  }
+
+  /// The ref's `load`. It is prepared as a `source` load is, and a later call replaces one still waiting.
+  func load(url: String) {
+    guard let target = URL(string: url) else { return warn("load: \(url) is not a URL") }
+    guard webView != nil else { return }
+    crashTimes = []
+    queuedUrl = target
+    if !preparing { prepare(nil) }
+  }
+
+  private func prepare(_ source: WebViewSource?) {
     preparing = true
     cookies.prepare { [weak self, weak webView] in
       guard let self, let webView, webView === self.webView else { return }
       preparing = false
-      load(next)
+      // A load asked for while the source was prepared replaces it: started first, the source's request (a POST
+      // included) would be sent only to be cut off.
+      if let queuedUrl {
+        self.queuedUrl = nil
+        loadProgrammatic(URLRequest(url: queuedUrl), inSourceRoot: false)
+      } else if let source {
+        load(source)
+      }
       // Props that changed while preparing (a newer source) apply now.
       applyProps()
     }
@@ -154,7 +180,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     } else {
       let baseURL = source.baseUrl.flatMap(URL.init)
       // WebKit puts the html load through decidePolicyFor at its base URL, about:blank without one.
-      programmaticUrl = baseURL ?? URL(string: "about:blank")
+      if let own = baseURL ?? URL(string: "about:blank") { ownLoads.append((own, mainFrameChecks)) }
       htmlNavigation = webView?.loadHTMLString(source.html ?? "", baseURL: baseURL)
     }
   }
@@ -177,12 +203,12 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  /// Loads a request the app started (see `programmaticUrl`). A file URL goes through loadFileURL with the source's read
-  /// root, so the page's own assets load (load(_:) can't read local files).
-  func loadProgrammatic(_ request: URLRequest) {
-    programmaticUrl = request.url
+  /// Loads a request the app started (see `ownLoads`). A file URL goes through loadFileURL, so the page's own assets
+  /// load (load(_:) can't read local files), with the source's read root or, outside it, the file's directory.
+  func loadProgrammatic(_ request: URLRequest, inSourceRoot: Bool = true) {
+    if let url = request.url { ownLoads.append((url, mainFrameChecks)) }
     if let url = request.url, url.isFileURL {
-      let access = ReadAccess.root(for: url, source?.readAccessRoot)
+      let access = ReadAccess.root(for: url, inSourceRoot ? source?.readAccessRoot : nil)
       if let warning = access.warning { warn(warning) }
       webView?.loadFileURL(url, allowingReadAccessTo: access.root)
     } else {
@@ -409,7 +435,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     endDocument(.committed)
-    programmaticUrl = nil
+    ownLoads.removeAll { $0.checks < mainFrameChecks }
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
