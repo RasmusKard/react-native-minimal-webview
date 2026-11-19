@@ -75,7 +75,8 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
 
   override fun onPageLoadEvent(page: Page) {
     loadedPages += page
-    owner.loadEnded()
+    // The page being left still fires its load event while the next one is pending: that load isn't over.
+    if (owner.pendingUrl == null) owner.loadEnded()
   }
 }
 

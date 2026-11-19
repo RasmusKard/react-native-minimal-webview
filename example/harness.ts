@@ -420,6 +420,19 @@ async function urlTracking(h: Harness) {
   );
   await agree(h, r, 'slow load agrees');
 
+  // The page being left fires its load event (its slow image is done) while the next page is still pending.
+  await h.ref.current?.evaluate(`location.href = '/slow-image.html?t=${Date.now()}'`);
+  await until(async () => (await text(h, 'old').catch(errorCode)) === 'old', 5000);
+  const leaving = h.events.loads.length;
+  await h.ref.current?.evaluate(`location.href = '/slow?ms=3000'`);
+  await sleep(2500);
+  r.check(
+    "the page being left doesn't end the pending load",
+    h.state().loading && !h.events.loads.slice(leaving).includes('end'),
+    { state: h.state(), loads: h.events.loads.slice(leaving) }
+  );
+  await waitFor(h, (s) => s.url.includes('/slow') && idle(s));
+
   // After a remount that doesn't re-render App, useWebViewState and getState() follow the new WebView, which loads the
   // source again, instead of keeping the old one's /slow page.
   const beforeRemount = h.state().url;
