@@ -9,27 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Skips `check` for a PR of only Markdown other than the pages whose samples .github/scripts/check-doc-samples.mts
-  # type-checks. A job, not a `paths` filter, so the required `check` reports skipped (passing) instead of pending.
-  changes:
-    runs-on: ubuntu-latest
-    permissions: { pull-requests: read }
-    outputs: { run: '${{ steps.files.outputs.run }}' }
-    steps:
-      - id: files
-        env: { GH_TOKEN: '${{ github.token }}', PR: '${{ github.event.pull_request.number }}' }
-        run: |
-          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, .previous_filename // empty')
-          if grep -qv '\.md$' <<<"$files" || grep -qxE 'README\.md|extensions/README\.md|guides/[^/]*\.md' <<<"$files"; then
-            echo run=true >>"$GITHUB_OUTPUT"
-          else
-            echo run=false >>"$GITHUB_OUTPUT"
-          fi
-
   check:
-    needs: changes
-    # A failed `changes` still runs the check.
-    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1

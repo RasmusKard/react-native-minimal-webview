@@ -20,24 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Skips `kotlin-tests` for a PR of only Markdown. A job, not a `paths-ignore` filter, so the required `kotlin-tests`
-  # reports skipped (passing) instead of pending.
-  changes:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions: { pull-requests: read }
-    outputs: { run: '${{ steps.files.outputs.run }}' }
-    steps:
-      - id: files
-        env: { GH_TOKEN: '${{ github.token }}', PR: '${{ github.event.pull_request.number }}' }
-        run: |
-          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, .previous_filename // empty')
-          if grep -qv '\.md$' <<<"$files"; then echo run=true >>"$GITHUB_OUTPUT"; else echo run=false >>"$GITHUB_OUTPUT"; fi
-
   kotlin-tests:
-    needs: changes
-    # A failed `changes` still runs the tests, and so does `push`, which skips `changes`.
-    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
