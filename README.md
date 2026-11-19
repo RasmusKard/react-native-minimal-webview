@@ -4,6 +4,7 @@ A React Native WebView that hands you the iOS and Android WebView APIs, instead 
 
 It runs on iOS and Android as an Expo module.
 
+[Get started](guides/getting-started.md) ·
 [Install](#install) ·
 [npm](https://www.npmjs.com/package/react-native-minimal-webview) ·
 [API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) ·
@@ -78,13 +79,34 @@ The [migration guide](guides/migrating-from-react-native-webview.md) covers each
 
 ## Install
 
+[Get started](guides/getting-started.md) walks you through a new Expo app with a WebView on screen.
+
+In an Expo app, install the package and expo-build-properties:
+
 ```sh
-npx expo install react-native-minimal-webview
+npx expo install react-native-minimal-webview expo-build-properties
+```
+
+Set the iOS and Android [minimums](#requirements) in `app.json`, before you rebuild: below iOS 17.0, the build leaves
+the package's native module out.
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        { "ios": { "deploymentTarget": "17.0" }, "android": { "minSdkVersion": 29 } }
+      ]
+    ]
+  }
+}
 ```
 
 Then rebuild the app (`npx expo run:ios`, `npx expo run:android`).
 
-A bare React Native app adds Expo modules first, then installs with its package manager:
+A bare React Native app adds Expo modules first, then installs with its package manager. It sets the minimums in
+`ios/Podfile` (`platform :ios, '17.0'`) and `android/build.gradle` (`minSdkVersion = 29`) before `pod-install`:
 
 ```sh
 npx install-expo-modules@latest
@@ -101,34 +123,11 @@ npx pod-install
 | Expo SDK     | 53 (React Native 0.79, React 19)                                           |
 | Architecture | [New architecture](https://reactnative.dev/architecture/landing-page) only |
 
-An Expo app sets the two minimums with expo-build-properties (`npx expo install expo-build-properties`) in `app.json`:
-
-```json
-{
-  "expo": {
-    "plugins": [
-      [
-        "expo-build-properties",
-        { "ios": { "deploymentTarget": "17.0" }, "android": { "minSdkVersion": 29 } }
-      ]
-    ]
-  }
-}
-```
-
 Some features need a newer Android System WebView: [which ones](guides/android-system-webview.md).
 
 ## Usage
 
-```tsx
-import { WebView } from 'react-native-minimal-webview';
-
-export function Browser() {
-  return <WebView source={{ uri: 'https://example.com' }} style={{ flex: 1 }} />;
-}
-```
-
-Then pick what you need:
+Pick what you need:
 
 | To                                                                                | See                                                                                                                          |
 | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
