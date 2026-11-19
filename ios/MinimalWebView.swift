@@ -84,6 +84,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var lastEmitted: NSDictionary?
   private var updateScheduled = false
   private var crashTimes: [TimeInterval] = []
+  /// A web-process death whose reload waits until the view can be seen; a `load`, reload or new `source` replaces it.
+  private var recoveryPending = false
   /// `evaluate` calls waiting for their result, by id, until a new document or a dead web process rejects them.
   var evaluations: [Int: Promise] = [:]
   var nextEvaluation = 0
@@ -102,6 +104,21 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     clipsToBounds = true
     // Made here, not lazily in the deinit fallback's endDocument(.closing), where its closure can't form a weak self.
     _ = asks
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(recoverIfVisible), name: UIApplication.didBecomeActiveNotification, object: nil)
+  }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    recoverIfVisible()
+  }
+
+  /// Crash recovery reloads only in a window of an app not in the background, as on Android: there the reload
+  /// could die the same way, unseen.
+  @objc private func recoverIfVisible() {
+    guard recoveryPending, window != nil, UIApplication.shared.applicationState != .background else { return }
+    recoveryPending = false
+    loadAgain()
   }
 
   private var documentOpen = false
@@ -135,6 +152,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     loadedSource = next.toDictionary() as NSDictionary
     // New content from the app: the crash-loop guard starts over (recovery reloads don't come through here).
     crashTimes = []
+    recoveryPending = false
     prepare(next)
   }
 
@@ -143,6 +161,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     guard let target = URL(string: url) else { return warn("load: \(url) is not a URL") }
     guard webView != nil else { return }
     crashTimes = []
+    recoveryPending = false
     queuedUrl = target
     if !preparing { prepare(nil) }
   }
@@ -224,6 +243,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func reload() {
+    recoveryPending = false
     // WebKit's reload redoes no failed load, POST or html source (it fetches the base URL), and loads nothing while `url`
     // is nil (no commit, a dead process).
     let onHtmlSource = onSource && source?.uri == nil
@@ -470,7 +490,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource
     endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = "failed" } // the load the crash cut off
-    if recovered { loadAgain() }
+    if recovered {
+      recoveryPending = true
+      recoverIfVisible()
+    }
     onProcessGone(["cause": "unknown", "recovered": recovered])
     forward { $0.webViewWebContentProcessDidTerminate?(webView) }
   }

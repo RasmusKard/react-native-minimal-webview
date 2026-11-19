@@ -1222,7 +1222,8 @@ async function ua(h: Harness) {
 async function crash(h: Harness) {
   const r = reporter('crash');
   const page = fresh(h, '/bridge.html');
-  const kill = async (n: number) => {
+  /** Asks the driver for kill `n` (`request`: what it does around the kill) and waits for its onProcessGone. */
+  const kill = async (n: number, request = 'KILL') => {
     const before = h.events.gone.length;
     // Kill only a live renderer: an evaluate round trip needs one (a kill during recovery would find none).
     // An evaluate that the recovery's navigation rejects also proves nothing yet: wait for one that answers.
@@ -1235,7 +1236,7 @@ async function crash(h: Harness) {
         sleep(1000).then(() => false),
       ]);
     await until(answers);
-    r.info('KILL', n);
+    r.info(request, n);
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
   };
@@ -1399,6 +1400,41 @@ async function crash(h: Harness) {
     'reload() sends the POST source after a crash',
     (await text(h, 'body')) === body,
     h.state()
+  );
+
+  // A crash in the background reloads once the app is back: there the reload could die the same way, unseen. The
+  // driver sends the app to the background, kills the renderer and brings the app back 5 s later.
+  const away = fresh(h, '/bridge.html');
+  await openPage(h, away);
+  const states: { state: string; at: number }[] = [];
+  const appState = AppState.addEventListener('change', (state) =>
+    states.push({ state, at: Date.now() })
+  );
+  let backgroundGone: ProcessGoneEvent | undefined;
+  const recovered = await waitForLoad(
+    h,
+    async () => (backgroundGone = await kill(12, 'BACKGROUND')),
+    (s) => s.url === away && idle(s),
+    30000
+  );
+  appState.remove();
+  const activeAt = states.find((s) => s.state === 'active')?.at ?? Infinity;
+  // The reloaded document's start, on the same clock as Date.now(). The reload may start shortly before JS sees
+  // `active` (Android's window is visible before onResume).
+  const loadedAt = await h.ref.current?.evaluate('performance.timeOrigin').catch(errorCode);
+  r.check(
+    'a crash in the background reloads once the app is active',
+    backgroundGone?.recovered === true &&
+      recovered &&
+      typeof loadedAt === 'number' &&
+      loadedAt > activeAt - 1500,
+    {
+      backgroundGone,
+      recovered,
+      states,
+      loadedAt,
+      startedBeforeActive: activeAt - Number(loadedAt),
+    }
   );
   r.done();
 }
