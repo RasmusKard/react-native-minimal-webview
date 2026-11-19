@@ -2891,6 +2891,15 @@ async function sources(h: Harness) {
     (await text(h, 'html')) === 'html source',
     await text(h, 'html')
   );
+  // WebKit's reload fetches an html source's baseUrl instead.
+  await h.ref.current?.evaluate(`document.getElementById('html').textContent = 'stale'`);
+  await waitForLoad(h, () => h.ref.current?.reload());
+  await until(async () => (await text(h, 'html').catch(() => 'stale')) !== 'stale', 3000);
+  r.check(
+    'reload shows the html source again',
+    (await text(h, 'html')) === 'html source',
+    await text(h, 'html')
+  );
   h.setRules(undefined);
 
   const dir = new Directory(Paths.cache, `site-${Date.now()}`);
