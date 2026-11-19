@@ -248,8 +248,8 @@ export type ProcessGoneEvent = {
    * the app is not in the background; a `load()`, `reload()` or new `source` meanwhile loads instead.
    *
    * - iOS: in place.
-   * - Android: in a new WebView. The history is restored unless the `source` page was on screen. The props are
-   *   applied again, but not what `call` set.
+   * - Android: in a new WebView. The history is restored, unless the `source` page was on screen and reloads. The
+   *   props are applied again, but not what `call` set.
    *
    * It is false when:
    *
