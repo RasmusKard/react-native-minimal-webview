@@ -31,3 +31,7 @@ example/test-pages/
 !/README.md
 !/extensions/README.md
 !/guides/*.md
+
+# Native projects that expo prebuild generates locally; example/.gitignore keeps them out of git, which Prettier doesn't read
+example/ios/
+example/android/
