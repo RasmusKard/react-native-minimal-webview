@@ -242,11 +242,12 @@ export type ProcessGoneEvent = {
    */
   cause: 'crash' | 'memory' | 'unknown';
   /**
-   * Whether the core reloads the page after the crash.
+   * Whether the core reloads the page after the crash. The reload waits until the view is in a visible window and
+   * the app is not in the background; a `load()`, `reload()` or new `source` meanwhile loads instead.
    *
    * - iOS: in place.
-   * - Android: in a new WebView, once the view's window is visible. The history is restored unless the `source` page
-   *   was on screen. The props are applied again, but not what `call` set.
+   * - Android: in a new WebView. The history is restored unless the `source` page was on screen. The props are
+   *   applied again, but not what `call` set.
    *
    * It is false when:
    *
