@@ -995,8 +995,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *   for it;
    * - the WebView into `HTTPCookieStorage` on every cookie change, deletions included, as it happens.
    *
-   * Android needs nothing: `CookieManager` is shared app-wide, and flushed when the app goes to the background. A
-   * WebView on another `android.webView.profile` has that profile's cookies instead.
+   * Android needs nothing: `CookieManager` is shared app-wide, React Native's `fetch` uses it too, and it is flushed
+   * when the app goes to the background. A WebView on another `android.webView.profile` has that profile's cookies
+   * instead.
    * @default `false`
    * @ios
    * @see [Cookies example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#cookies)

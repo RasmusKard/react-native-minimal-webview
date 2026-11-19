@@ -91,6 +91,7 @@ Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries
 | `onContentProcessDidTerminate`, `onRenderProcessGone`                                          | `onProcessGone`, whose `cause` is `'crash'`, `'memory'` or, on iOS, `'unknown'`                                                 |
 | `renderLoading`, `renderError`, `startInLoadingState`                                          | [Your own views](examples.md#loading-and-error-screens), shown on every load                                                    |
 | `onContentSizeChange`                                                                          | An injected script, as for the [scroll position](#scroll-position)                                                              |
+| `ignoreSilentHardwareSwitch`                                                                   | An injected script that sets `navigator.audioSession.type = 'playback'`                                                         |
 | `source={require('./page.html')}`                                                              | A `file://` URI from expo-asset ([local files](examples.md#local-files))                                                        |
 | `allowingReadAccessToURL`                                                                      | `source.readAccessRoot`                                                                                                         |
 | `source.method`, `source.body`                                                                 | `source.body`, which makes the request a POST                                                                                   |
@@ -160,7 +161,6 @@ A value keeps its form unless its key takes a constant:
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `autoManageStatusBarEnabled`      | iOS shows WebKit's own fullscreen                                                                                            |
 | `useSharedProcessPool`            | `WKProcessPool` has had no effect since iOS 15                                                                               |
-| `ignoreSilentHardwareSwitch`      | react-native-webview keeps a silent `<audio>` playing in the page for it                                                     |
 | `enableApplePay`                  | Apple Pay works with injected scripts since iOS 16                                                                           |
 | `lackPermissionToDownloadMessage` | `onDownload` saves into the app's cache, and [`downloadManager`][downloadmanager] into Downloads: neither needs a permission |
 
