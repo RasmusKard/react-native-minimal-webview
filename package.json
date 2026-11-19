@@ -21,7 +21,8 @@
     "android/build.gradle",
     "android/consumer-rules.pro",
     "android/src/main",
-    "expo-module.config.json"
+    "expo-module.config.json",
+    "mocks"
   ],
   "scripts": {
     "build": "tsc && tsc -p extensions",

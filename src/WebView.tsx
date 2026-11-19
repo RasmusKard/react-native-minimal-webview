@@ -1,4 +1,4 @@
-import { requireNativeModule, requireNativeView } from 'expo';
+import { requireNativeModule, requireNativeView, requireOptionalNativeModule } from 'expo';
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, type ViewProps } from 'react-native';
 
@@ -135,6 +135,18 @@ const nativeModule = () =>
     setWebContentsDebuggingEnabled(enabled: boolean): Promise<void>;
   }>('MinimalWebView');
 
+let linked = false;
+// pod install leaves the pod out below the iOS floor with only a warning, which `expo run:ios` hides; without this the
+// view renders as React Native's "Unimplemented component".
+function assertLinked() {
+  linked ||= requireOptionalNativeModule('MinimalWebView') != null;
+  if (!linked)
+    throw new Error(
+      '[react-native-minimal-webview] this build has no MinimalWebView native module. On iOS, pod install leaves ' +
+        'it out below the deployment target 17.0: set it to 17.0 or later, then rebuild. Otherwise, rebuild the app.'
+    );
+}
+
 /** Android rejects a view function with this until Expo has registered the view. */
 const notRegistered = (error: unknown) =>
   (error as { code?: string } | null)?.code === 'ERR_VIEW_NOT_FOUND';
@@ -155,9 +167,12 @@ const isJavaScriptUrl = (url: string) => /^[\0- ]*javascript:/i.test(url.replace
 /**
  * A WebView whose core decides navigations and owns the navigation state: see {@link WebViewProps} and
  * {@link WebViewRef}.
+ * @throws An `Error` as it renders when the app was built without the package's native module: on iOS, below the
+ * deployment target 17.0.
  * @group WebView
  */
 export function WebView(props: WebViewProps) {
+  assertLinked();
   useBridgeChangeWarning(props.bridge);
   return <WebViewInstance key={creationKey(props)} {...props} />;
 }
