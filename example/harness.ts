@@ -1802,9 +1802,23 @@ async function navigation(h: Harness) {
   const page = fresh(h, '/nav.html');
   await openPage(h, page);
   h.events.navigations.length = 0;
+  /** A main-frame navigation that doesn't load in place: no load start after `act`, and `outcome` is unchanged. */
+  const noLoad = async (name: string, act: () => Promise<unknown>) => {
+    const [loads, outcome] = [h.events.loads.length, h.state().outcome];
+    await act();
+    await sleep(500);
+    const added = h.events.loads.slice(loads);
+    r.check(`${name} reports no load`, !added.includes('start') && h.state().outcome === outcome, {
+      added,
+      outcome: h.state().outcome,
+      was: outcome,
+    });
+  };
 
-  await click(h, 'tel');
-  await waitFor(h, () => lastNavigation() !== undefined, 3000);
+  await noLoad('a tapped tel: link', async () => {
+    await click(h, 'tel');
+    await waitFor(h, () => lastNavigation() !== undefined, 3000);
+  });
   r.check('tel: goes to onOpenExternal', external[0] === 'tel:+3725551234', external);
   r.check(
     'onNavigation reports the external decision and rule',
@@ -1813,8 +1827,10 @@ async function navigation(h: Harness) {
   );
   r.check('the page stays', h.state().url === page, h.state());
 
-  await click(h, 'external');
-  await waitFor(h, () => external.length > 1, 3000);
+  await noLoad('an external link', async () => {
+    await click(h, 'external');
+    await waitFor(h, () => external.length > 1, 3000);
+  });
   r.check(
     'an outside main-frame link goes external',
     external[1] === 'https://example.com/',
@@ -1908,8 +1924,10 @@ async function navigation(h: Harness) {
   const decided = (path: string) =>
     waitFor(h, () => lastNavigation()?.url.endsWith(path) === true, 3000);
   h.setAsk(() => 'external');
-  await h.ref.current?.evaluate(`location.href = '/checkout/external'`);
-  await decided('/checkout/external');
+  await noLoad('an ask answered external', async () => {
+    await h.ref.current?.evaluate(`location.href = '/checkout/external'`);
+    await decided('/checkout/external');
+  });
   r.check(
     'an ask answered external goes to onOpenExternal',
     lastNavigation()?.action === 'external' &&
@@ -1917,8 +1935,10 @@ async function navigation(h: Harness) {
     { navigation: lastNavigation(), external }
   );
   h.setAsk(() => 'deny' as unknown as 'block');
-  await h.ref.current?.evaluate(`location.href = '/checkout/invalid'`);
-  await decided('/checkout/invalid');
+  await noLoad('a blocked location.href', async () => {
+    await h.ref.current?.evaluate(`location.href = '/checkout/invalid'`);
+    await decided('/checkout/invalid');
+  });
   r.check('an invalid ask answer blocks', lastNavigation()?.action === 'block', lastNavigation());
   r.check('the page stays after both', h.state().url === askedPage, h.state());
 
