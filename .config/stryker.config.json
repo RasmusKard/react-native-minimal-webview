@@ -11,6 +11,7 @@
     "src/bridge/protocol.ts",
     "src/bridge/pageClient.ts",
     "src/WebView.tsx",
+    "src/navigationRules.ts",
     "src/refStore.ts"
   ],
   "reporters": ["clear-text"],

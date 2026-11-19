@@ -1,7 +1,7 @@
 name: mutation
 on:
   pull_request:
-    paths: ['src/bridge/**', 'src/WebView.tsx', 'src/refStore.ts', 'src/__tests__/**', '.config/stryker.config.json']
+    paths: ['src/bridge/**', 'src/WebView.tsx', 'src/navigationRules.ts', 'src/refStore.ts', 'src/__tests__/**', '.config/stryker.config.json']
 
 permissions: { contents: read }
 

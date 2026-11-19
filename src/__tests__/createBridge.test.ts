@@ -9,7 +9,10 @@ function setup(timeoutMs = 1000) {
   const sent: (BridgeMessage & { id?: string })[] = [];
   connection.attach((text) => sent.push(JSON.parse(text) as BridgeMessage & { id?: string }));
   const fromPage = (message: object) =>
-    connection.receive(JSON.stringify({ doc: 'd1', ...message }), 'https://example.com');
+    connection.receive({
+      message: JSON.stringify({ doc: 'd1', ...message }),
+      origin: 'https://example.com',
+    });
   return { bridge, connection, sent, fromPage };
 }
 
@@ -80,11 +83,11 @@ describe('createBridge', () => {
     bridge.handle('who', (_, sender) => senders.push(sender));
     bridge.on('hi', (_, sender) => senders.push(sender));
     const call = { id: 'p1', doc: 'd1', kind: 'call', method: 'who', origin: 'https://evil.test' };
-    connection.receive(JSON.stringify(call), 'https://example.com:8443');
-    connection.receive(
-      JSON.stringify({ doc: 'd1', kind: 'event', method: 'hi' }),
-      'https://a.example.com'
-    );
+    connection.receive({ message: JSON.stringify(call), origin: 'https://example.com:8443' });
+    connection.receive({
+      message: JSON.stringify({ doc: 'd1', kind: 'event', method: 'hi' }),
+      origin: 'https://a.example.com',
+    });
     await flush();
     expect(senders).toEqual([
       { origin: 'https://example.com:8443' },
@@ -254,7 +257,7 @@ describe('createBridge', () => {
   it('rejects calls immediately once native reports the bridge unavailable', async () => {
     const { bridge, connection } = setup();
     const inFlight = bridge.call('queued');
-    connection.markUnavailable();
+    connection.receive({ unavailable: true });
     await expect(inFlight).rejects.toMatchObject({ code: 'unavailable' });
     await expect(bridge.call('later')).rejects.toMatchObject({ code: 'unavailable' });
   });
@@ -271,10 +274,10 @@ describe('createBridge', () => {
   it('does not carry messages queued for a page that never became ready to the next one', async () => {
     const { bridge, connection, sent, fromPage } = setup();
     fromPage({ kind: 'ready' });
-    connection.navigated(); // to a page outside allowedOrigins
+    connection.receive({ navigated: true }); // to a page outside allowedOrigins
     bridge.emit('stale', 1);
     const call = bridge.call('stale');
-    connection.navigated(); // back to an allowed page
+    connection.receive({ navigated: true }); // back to an allowed page
     await expect(call).rejects.toMatchObject({ code: 'navigated' });
     bridge.emit('fresh', 2);
     fromPage({ kind: 'ready' });
@@ -321,7 +324,7 @@ describe('createBridge document token', () => {
     await flush();
     bridge.emit('queued', 1);
     fromPage({ doc: 'first', kind: 'ready' });
-    connection.navigated();
+    connection.receive({ navigated: true });
     bridge.emit('next', 2);
     fromPage({ doc: 'second', kind: 'ready' });
     expect(sent.map((m) => [m.kind, m.doc])).toEqual([
@@ -337,8 +340,14 @@ describe('createBridge document token', () => {
     const seen: unknown[] = [];
     bridge.emit('hello');
     bridge.on('x', (payload) => seen.push(payload));
-    connection.receive(JSON.stringify({ kind: 'ready' }), 'https://example.com');
-    connection.receive(JSON.stringify({ kind: 'event', method: 'x' }), 'https://example.com');
+    connection.receive({
+      message: JSON.stringify({ kind: 'ready' }),
+      origin: 'https://example.com',
+    });
+    connection.receive({
+      message: JSON.stringify({ kind: 'event', method: 'x' }),
+      origin: 'https://example.com',
+    });
     expect(sent).toEqual([]);
     expect(seen).toEqual([]);
     expect(warn).toHaveBeenCalled();

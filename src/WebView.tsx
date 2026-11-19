@@ -2,9 +2,10 @@ import { requireNativeModule, requireNativeView } from 'expo';
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, type ViewProps } from 'react-native';
 
-import { CONNECTION, originGuard } from './bridge/createBridge';
+import { type BridgeEvent, CONNECTION } from './bridge/createBridge';
 import { codedError } from './bridge/endpoint';
-import { defaultNavigationRules } from './defaultNavigationRules';
+import { originGuard } from './bridge/origins';
+import { checkNavigationRules, defaultNavigationRules } from './navigationRules';
 import { REACT_NATIVE_WEBVIEW_DEFAULTS } from './reactNativeWebViewDefaults';
 import { useAttach } from './refStore';
 import type {
@@ -12,7 +13,6 @@ import type {
   InjectedScript,
   LoadErrorEvent,
   NavigationEvent,
-  NavigationRule,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
@@ -26,10 +26,6 @@ type NativeHandlers<E> = { [K in keyof E]: (event: Native<E[K]>) => void };
 
 /** The event without the `target` (the view's tag) React Native adds to every native event. */
 const own = <T,>({ target: _, ...event }: T & { target?: unknown }) => event as T;
-
-/** A page's message comes with its origin, as native verified it (`location.origin` form). */
-export type BridgeEvent =
-  { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
 /**
  * An event as native sends it: `key` is the hook's key, `core` for the core's own. `askId` is set when native waits for
@@ -256,12 +252,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     return () => connection.detach();
   }, [connection]);
 
-  const onBridge = ({ nativeEvent }: Native<BridgeEvent>) => {
-    if ('message' in nativeEvent) connection?.receive(nativeEvent.message, nativeEvent.origin);
-    else if ('navigated' in nativeEvent) connection?.navigated();
-    else connection?.markUnavailable();
-  };
-
   const requestHandlers = useRequestHandlers(props);
   const hookOptions = useHookOptions(props.extensions);
   const navigationRules = useNavigationRules(props.navigationRules);
@@ -270,20 +260,14 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const [asks] = useState(() => new Map<number, AbortController>());
   useEffect(() => () => asks.forEach((controller) => controller.abort()), [asks]);
 
-  // The core's own events: a warning for the developer, and an ask native stopped waiting for.
-  const onCoreEvent = (name: string, payload: Record<string, unknown>) => {
-    if (name === 'warning')
-      console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
-    else if (name === 'askCancelled') asks.get(payload['askId'] as number)?.abort();
-    else return false;
-    return true;
-  };
-
   const onHookEvent = async ({
     nativeEvent: { key, name, payload, askId },
   }: Native<AskableEvent>) => {
     const core = key === 'core';
-    if (core && onCoreEvent(name, payload)) return;
+    // The core's own events: a warning for the developer, and an ask native stopped waiting for.
+    if (core && name === 'warning')
+      return console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
+    if (core && name === 'askCancelled') return asks.get(payload['askId'] as number)?.abort();
     const request = REQUESTS.find((prop) => core && prop === name);
     // The later of two extensions with one key, as in useHookOptions. No hook is registered under `core`.
     const owner = props.extensions?.findLast((e): e is HookExtension => !!e && e.key === key);
@@ -326,7 +310,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       requestHandlers={requestHandlers}
       onNavigation={({ nativeEvent }) => props.onNavigation?.(own(nativeEvent))}
       onNavigationState={onNavigationState}
-      onBridge={onBridge}
+      onBridge={({ nativeEvent }) => connection?.receive(nativeEvent)}
       onHookEvent={onHookEvent}
       onError={({ nativeEvent }) => props.onError?.(own(nativeEvent))}
       onProcessGone={({ nativeEvent }) => props.onProcessGone?.(own(nativeEvent))}
@@ -356,97 +340,27 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
   });
 }
 
-/** Each rule field's kind, from its type, so that a field missing here, or not in the type, fails to compile. */
-const RULE_FIELDS = new Map(
-  Object.entries({
-    scheme: 'list',
-    host: 'list',
-    path: 'list',
-    query: 'list',
-    mainFrame: 'flag',
-    newWindow: 'flag',
-    userInitiated: 'flag',
-    action: 'action',
-  } satisfies {
-    [K in keyof NavigationRule]-?: NonNullable<NavigationRule[K]> extends readonly string[]
-      ? 'list'
-      : NonNullable<NavigationRule[K]> extends boolean
-        ? 'flag'
-        : 'action';
-  })
-);
-const ACTIONS: unknown[] = Object.keys({
-  allow: 0,
-  block: 0,
-  external: 0,
-  ask: 0,
-} satisfies Record<NavigationRule['action'], 0>);
-
-/** A value as a warning shows it. */
-const shown = (value: unknown) => {
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    // A BigInt, a circular value or a throwing toJSON: the message runs in production too, so it must not throw.
-    return typeof value === 'bigint' ? String(value) : Object.prototype.toString.call(value);
-  }
-};
-
-/** What a field of each kind takes, as a warning says it, and the check. */
-const FIELD_KINDS = {
-  list: {
-    takes: 'an array of strings',
-    ok: (value: unknown) =>
-      Array.isArray(value) && value.every((entry) => typeof entry === 'string'),
-  },
-  flag: { takes: 'true or false', ok: (value: unknown) => typeof value === 'boolean' },
-  action: { takes: `one of ${shown(ACTIONS)}`, ok: (value: unknown) => ACTIONS.includes(value) },
-};
-
-function ruleProblem(rule: unknown) {
-  if (typeof rule !== 'object' || rule === null) return `must be an object, not ${shown(rule)}`;
-  // A missing action is checked as an undefined one; any other field may be undefined (unset).
-  for (const [key, value] of Object.entries({ action: undefined, ...rule })) {
-    const kind = RULE_FIELDS.get(key);
-    if (!kind) return `unknown key ${shown(key)}`;
-    if ((value !== undefined || kind === 'action') && !FIELD_KINDS[kind].ok(value))
-      return `${key} must be ${FIELD_KINDS[kind].takes}, not ${shown(value)}`;
-  }
-  return undefined;
-}
-
 /**
- * The rules as the core gets them. The core skips an unknown key and a non-boolean flag, which would widen a rule
- * (`hosts` would match every host), so a malformed rule becomes a `block` one. The same array when none is malformed.
+ * The rules as the core gets them (`checkNavigationRules`), and a development warning for each malformed one. The same
+ * array when none is malformed.
  */
 function useNavigationRules(rules: WebViewProps['navigationRules']) {
-  const given: unknown = rules ?? defaultNavigationRules;
-  const { checked, warnings } = useMemo(() => {
-    if (!Array.isArray(given))
-      return {
-        checked: [],
-        warnings: [`navigationRules: must be an array, not ${shown(given)}; treated as []`],
-      };
-    // Array.from, not map: map skips a sparse array's holes, which would reach native unchecked.
-    const problems = Array.from(given, ruleProblem);
-    return {
-      checked: problems.some(Boolean)
-        ? Array.from(given, (rule: unknown, i) => (problems[i] ? { action: 'block' } : rule))
-        : given,
-      warnings: problems.flatMap((problem, i) =>
-        problem
-          ? [`navigationRules[${i}]: ${problem}; it blocks every navigation that reaches it`]
-          : []
-      ),
-    };
-  }, [given]);
+  const { checked, warnings } = useMemo(
+    () => checkNavigationRules(rules ?? defaultNavigationRules),
+    [rules]
+  );
+  useDevWarnings(warnings);
+  return checked;
+}
+
+/** Logs each warning in development, again only when the list changes. */
+function useDevWarnings(warnings: string[]) {
   const json = JSON.stringify(warnings);
   useEffect(() => {
     if (!__DEV__) return;
     for (const warning of JSON.parse(json) as string[])
       console.warn(`[react-native-minimal-webview] ${warning}`);
   }, [json]);
-  return checked as NavigationRule[];
 }
 
 /** The `REQUESTS` with a prop set, as a new array only when that set changes. */
@@ -463,14 +377,11 @@ function useRequestHandlers(props: WebViewProps) {
 function useHookOptions(extensions: WebViewProps['extensions']) {
   const on = (extensions ?? []).filter((extension) => !!extension);
   const keys = on.map(({ key }) => key);
-  const repeated = JSON.stringify([...new Set(keys.filter((key, i) => keys.indexOf(key) !== i))]);
-  useEffect(() => {
-    if (!__DEV__) return;
-    for (const key of JSON.parse(repeated) as string[])
-      console.warn(
-        `[react-native-minimal-webview] extensions: two extensions have the key ${key}; the later one wins`
-      );
-  }, [repeated]);
+  useDevWarnings(
+    [...new Set(keys.filter((key, i) => keys.indexOf(key) !== i))].map(
+      (key) => `extensions: two extensions have the key ${key}; the later one wins`
+    )
+  );
   const json = JSON.stringify(
     withoutOff(
       Object.fromEntries(

@@ -4,7 +4,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { AskableEvent, BridgeEvent } from '../WebView';
+import type { AskableEvent } from '../WebView';
+import type { BridgeEvent } from '../bridge/createBridge';
 import type {
   AndroidSettings,
   Download,

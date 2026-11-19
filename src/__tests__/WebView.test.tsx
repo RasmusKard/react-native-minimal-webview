@@ -5,7 +5,7 @@ import { createRoot } from 'test-renderer';
 
 import { AndroidWebView, WebView } from '../WebView';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
-import { defaultNavigationRules } from '../defaultNavigationRules';
+import { defaultNavigationRules } from '../navigationRules';
 import { createWebViewRef, useWebViewState } from '../refStore';
 import type {
   AndroidSettings,
