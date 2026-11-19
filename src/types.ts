@@ -880,7 +880,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * it, those keys apply; unset, they are the platform's own user agent.
    *
    * To append to the default one instead, set `ios.configuration.applicationNameForUserAgent` and, on Android,
-   * `android.settings.userAgentString` to `AndroidWebView.defaultUserAgent` plus your suffix.
+   * `android.settings.userAgentString` to `AndroidWebView.defaultUserAgent` plus your suffix. A change to
+   * {@link IOSSettings.configuration | ios.configuration} recreates the WebView: for a suffix that changes, read
+   * `navigator.userAgent` once with {@link WebViewRef.evaluate | evaluate()} and set `userAgent` to it plus the suffix.
    *
    * A change applies from the next navigation.
    */
