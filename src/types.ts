@@ -827,15 +827,14 @@ export type ErrorCode =
 export type CodedError = Error & { code: ErrorCode };
 
 /**
- * What the WebView loads, its settings, and the callbacks for its events and the page's requests.
+ * The props of `<WebView>`, of which only `source` is required.
  *
- * The ones from React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch
- * events) go to the native view.
+ * React Native's `ViewProps` (`style`, `testID`, `nativeID`, the accessibility props, layout and touch events) go to
+ * the native view.
  *
  * Every `on…` callback is read when its event or request comes, so adding, changing or removing one applies to the
- * next, and a request without one gets the default described on its prop.
- *
- * One that answers a request and throws (or rejects) is logged with `console.error` and gives the refusing answer:
+ * next. A request without its callback gets the default its prop describes; one whose callback throws or rejects is
+ * logged with `console.error` and gets the refusing answer:
  *
  * - `onNavigationRequest`: `block`
  * - `onOpenExternal`: null (the core opens nothing)
@@ -846,16 +845,14 @@ export type CodedError = Error & { code: ErrorCode };
  * The `signal` such a callback gets aborts when the core stops waiting for its answer (the page moved on, crashed or
  * unmounted), and a late answer is dropped.
  *
- * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop.
+ * JS dialogs (`alert`, `confirm`, `prompt`) and HTTP auth have no prop: `dialogs` and `basicAuthCredential` of
+ * `@react-native-minimal-webview/extensions` take them over, or a native hook does. Without one:
  *
  * - iOS dialogs: a `UIAlertController` titled with the frame's host, or `JavaScript` for a frame without one
  *   (`data:`, sandboxed, `file:`). One shows at a time; one that comes while another shows is cancelled.
  * - Android dialogs: WebView's own.
  * - HTTP auth: cancelled on Android. On iOS WebKit's default handling applies, so without a stored credential the
  *   site's 401 page shows.
- *
- * `dialogs` and `basicAuthCredential` of `@react-native-minimal-webview/extensions` take them over, or a native hook
- * does.
  * @sortStrategy source-order
  * @group WebView
  */
@@ -1191,13 +1188,14 @@ export type WebViewRef = {
    */
   get(key: string): Promise<unknown>;
   /**
-   * Calls a platform method, `root.method`, and resolves with its result through JSON. It acts on the WebView as it is
-   * when the call arrives: a navigation doesn't reject it.
+   * Calls a platform method, `root.method`, with `args`, and resolves with its result through JSON.
    *
-   * The roots are those of {@link WebViewRef.get | get}. On Android `method` is a public method of the root's object;
-   * on iOS an Objective-C selector.
+   * The roots are those of {@link WebViewRef.get | get}. On iOS `method` is an Objective-C selector; on Android a
+   * public method of the root's object. Leave a trailing completion handler (iOS) or `ValueCallback` (Android) out of
+   * `args`: the call resolves with what it reports, or on iOS rejects with its error.
    *
-   * Rejects with a {@link CodedError}: `not_found`, `unavailable` or `native_error`.
+   * It acts on the WebView as it is when the call arrives: a navigation doesn't reject it. Rejects with a
+   * {@link CodedError}: `not_found`, `unavailable` or `native_error`.
    *
    * The core owns, and so rejects:
    *
@@ -1209,11 +1207,9 @@ export type WebViewRef = {
    *   `resumeTimers`, `evaluateJavascript` and remote debugging
    *   ({@link AndroidWebView.setWebContentsDebuggingEnabled}).
    *
-   * A trailing completion handler (iOS) or `ValueCallback` (Android) is left out of `args`: the call resolves with what
-   * it reports, or on iOS rejects with its error. On iOS, a selector whose completion handler isn't in this package's
-   * SDK headers, or reports something other than an object, an error or an integer, rejects with `native_error`. On
-   * Android, a method that takes `args` as they are wins over one that also takes a callback, and a `null` in the
-   * callback's place passes none.
+   * On iOS, a selector whose completion handler isn't in this package's SDK headers, or reports something other than
+   * an object, an error or an integer, rejects with `native_error`. On Android, a method that takes `args` as they are
+   * wins over one that also takes a callback, and a `null` in the callback's place passes none.
    *
    * One mistake the signature can't catch crashes the app: on iOS an object argument of the wrong class, and on Android
    * a `null` listener or callback other than the trailing `ValueCallback`, once WebView calls it. For a method that
