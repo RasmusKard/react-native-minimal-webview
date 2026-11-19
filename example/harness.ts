@@ -1110,6 +1110,25 @@ async function errors(h: Harness) {
     stopped === 'cancelled',
     stopped
   );
+  // A load replaced before it commits: iOS keeps loading into the newer one.
+  clearEvents(h);
+  h.load(fresh(h, '/slow?ms=3000'));
+  await waitFor(h, (s) => s.loading, 3000);
+  const newer = fresh(h, '/');
+  h.load(newer);
+  await waitFor(h, (s) => s.url === newer && idle(s), 10000);
+  await sleep(500);
+  const replaced = JSON.stringify({ loads: h.events.loads, outcomes: h.events.outcomes });
+  const expectedReplaced =
+    Platform.OS === 'ios'
+      ? '{"loads":["start","end"],"outcomes":["finished"]}'
+      : '{"loads":["start","end","start","end"],"outcomes":["cancelled","finished"]}';
+  r.since(
+    WEBVIEW.navigationListener,
+    'a load replaced before it commits',
+    replaced === expectedReplaced,
+    replaced
+  );
   const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
   const expected204 =
     Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 18 ? 'finished' : 'cancelled';
