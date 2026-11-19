@@ -152,7 +152,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       }
       loadProgrammatic(request)
     } else {
-      htmlNavigation = webView?.loadHTMLString(source.html ?? "", baseURL: source.baseUrl.flatMap(URL.init))
+      let baseURL = source.baseUrl.flatMap(URL.init)
+      // WebKit puts the html load through decidePolicyFor at its base URL, about:blank without one.
+      programmaticUrl = baseURL ?? URL(string: "about:blank")
+      htmlNavigation = webView?.loadHTMLString(source.html ?? "", baseURL: baseURL)
     }
   }
 
