@@ -11,11 +11,9 @@ extension MinimalWebView {
     // rules, as on Android (shouldOverrideUrlLoading is not called for them).
     guard let targetFrame = action.targetFrame else { return decide(allowInPlace) }
     let mainFrame = targetFrame.isMainFrame
-    if mainFrame { mainFrameChecks += 1 }
-    let own = mainFrame ? ownLoads.firstIndex { Loads.sameURL($0.url, target) } : nil
-    if own != nil || action.navigationType == .backForward || action.navigationType == .reload
+    let own = takeOwnLoad(action)
+    if own || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
-      if let own { ownLoads.remove(at: own) }
       return decide(allowInPlace)
     }
     let request = NavigationRules.Request(
@@ -33,6 +31,15 @@ extension MinimalWebView {
       }
       decide(download ? .download : allowInPlace)
     }
+  }
+
+  /// Counts a main-frame policy check, whoever decides it, and takes the own load (`ownLoads`) it is for: whether it is one.
+  func takeOwnLoad(_ action: WKNavigationAction) -> Bool {
+    guard action.targetFrame?.isMainFrame == true, let target = action.request.url else { return false }
+    mainFrameChecks += 1
+    guard let own = ownLoads.firstIndex(where: { Loads.sameURL($0.url, target) }) else { return false }
+    ownLoads.remove(at: own)
+    return true
   }
 
   /// Whether a user gesture started `action`: a link activation right after a tap on this view (`Taps`). WebKit

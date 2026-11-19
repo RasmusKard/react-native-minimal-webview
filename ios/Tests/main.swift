@@ -164,6 +164,13 @@ check("proxy no hook: the core decides", decided(proxy([])) == .download)
 check("proxy plain before preferences: plain decides", decided(proxy([plain, preferring])) == .cancel)
 check("proxy preferences before plain: preferences decides", decided(proxy([preferring, plain])) == .allow)
 check("proxy a UI delegate's action policy is ignored", decided(proxy([], [UIWithAlertAndPolicy()])) == .download)
+var hookDecided = 0
+for delegates in [[plain], []] {
+  let watched = proxy(delegates)
+  watched.hookDecides = { _ in hookDecided += 1 }
+  _ = decided(watched)
+}
+check("proxy the core hears of a hook's action policy check only: \(hookDecided)", hookDecided == 1)
 check("proxy the proxy answers the preferences variant", proxy([]).responds(to: #selector(DelegateProxy.webView(_:decidePolicyFor:preferences:decisionHandler:))))
 let uiAlert = UIWithAlertAndPolicy()
 check("proxy an earlier UI delegate's alert beats a navigation delegate's", proxy([NavigationWithAlert()], [uiAlert]).forwardingTarget(for: alertPanel) as AnyObject? === uiAlert)

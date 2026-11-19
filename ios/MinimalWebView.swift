@@ -289,6 +289,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
     let webView = webViewClass.init(frame: bounds, configuration: configuration)
     webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    proxy.hookDecides = { [weak self] in _ = self?.takeOwnLoad($0) }
     webView.navigationDelegate = proxy
     webView.uiDelegate = proxy
     webView.addGestureRecognizer(taps)
