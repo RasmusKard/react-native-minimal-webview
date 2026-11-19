@@ -1479,6 +1479,29 @@ async function crash(h: Harness) {
       startedBeforeActive: activeAt - Number(loadedAt),
     }
   );
+
+  // A load() while the recovery waits (the app in the background) loads on top of the history, as without a crash:
+  // back goes to the page on screen at the crash. The driver backgrounds the app around the kill as above.
+  const asked = fresh(h, '/bridge.html');
+  h.setProps({
+    userAgent: 'Crash/1',
+    onProcessGone: (event) => {
+      h.events.gone.push(event);
+      h.ref.current?.load(asked);
+    },
+  });
+  const loadedOnTop = await waitForLoad(
+    h,
+    () => kill(13, 'BACKGROUND'),
+    (s) => s.url === asked && idle(s),
+    30000
+  );
+  h.ref.current?.goBack();
+  r.check(
+    'a load() while the recovery waits keeps the history',
+    loadedOnTop && (await waitFor(h, (s) => s.url === away && idle(s), 15000)),
+    h.state()
+  );
   r.done();
 }
 
