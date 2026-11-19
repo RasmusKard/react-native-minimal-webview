@@ -1155,6 +1155,28 @@ async function errors(h: Harness) {
   });
   r.check('the reload reports no new error', h.events.errors.length === 1, h.events.errors);
 
+  // An app's retry button: reload() after a network failure fetches the failed URL again.
+  clearEvents(h);
+  const key = `retry${Date.now()}`;
+  const dropping = `${h.pages}/drop?key=${key}`;
+  await fetch(`${h.pages}/drop/set?key=${key}&fail=1`);
+  h.load(dropping);
+  await waitFor(h, (s) => h.events.errors.length > 0 && s.url === dropping && idle(s), 10000);
+  const dropped = h.events.errors[0];
+  r.check(
+    'a dropped connection is a network error',
+    dropped?.kind === 'network' && h.state().outcome === 'failed',
+    { dropped, state: h.state() }
+  );
+  await fetch(`${h.pages}/drop/set?key=${key}&fail=0`);
+  const retried = await outcomeOf(() => h.ref.current?.reload());
+  await waitFor(h, idle, 5000);
+  r.check(
+    'reload() after a network error loads the failed url',
+    retried === 'finished' && h.state().url === dropping && h.events.errors.length === 1,
+    { retried, state: h.state(), errors: h.events.errors }
+  );
+
   // Page-initiated, then through a redirect: on Android these reach the SSL check through shouldOverrideUrlLoading.
   for (const [name, to, failed] of [
     ['ssl error from the page', `'https://localhost:8443/link'`, 'https://localhost:8443/link'],
