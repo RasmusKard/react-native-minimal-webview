@@ -44,7 +44,8 @@ Kotlin and Swift build the library, so it needs `example/android` and `example/i
 
 ## On-device suites
 
-The suites (`SUITES` in `example/suites/index.ts`) run inside the example app, and Maestro drives them. In `example/`, start
+The suites (one file each in `example/suites/`, listed in `names.ts`) run inside the example app, and Maestro drives
+them: one flow, `example/maestro/suite.yaml`, does on the device what a suite asks for. In `example/`, start
 the test pages server (`npm run test-pages`) and Metro (`npx expo start`), install the app, then:
 
 ```sh
@@ -53,6 +54,8 @@ example/maestro/run.sh ios <simulator udid> bridge network   # only the named on
 ```
 
 Run the app on one device per platform at a time: every instance of a platform takes its suites from the same queue.
+A second checkout runs its suites beside the first with a test pages server of its own: set `EXPO_PUBLIC_PAGES_PORT`
+and `EXPO_PUBLIC_PAGES_HTTPS_PORT` for the server, Metro and `run.sh`.
 
 The suites run a debug build, which R8 doesn't shrink, so they don't check `android/consumer-rules.pro`. After a change
 to it, or to what `PlatformSettings.kt` finds by reflection, run the settings suite on a release build:

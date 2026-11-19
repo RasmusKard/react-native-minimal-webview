@@ -238,7 +238,8 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
 
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
- * props, the event logs, and a new WebView (an Android settings key with no getter is not reset by its absence).
+ * props, the event logs, and a new WebView on the home page (an Android settings key with no getter is not reset by its
+ * absence). Throws when that page doesn't load.
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -248,11 +249,16 @@ async function reset(h: Harness) {
   h.setAsk(undefined);
   h.setPermission(undefined);
   h.setFileRequest(undefined);
-  await waitForLoad(
+  const home = `${PAGES}/`;
+  const loaded = await waitForLoad(
     h,
-    () => h.remount(),
-    (s) => s.url !== '' && idle(s),
+    () => {
+      h.loadSource({ uri: home });
+      h.remount();
+    },
+    (s) => s.url === home && idle(s),
     10000
   );
   clearEvents(h);
+  if (!loaded) throw new Error(`the home page didn't load: ${JSON.stringify(h.state())}`);
 }

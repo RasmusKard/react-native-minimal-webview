@@ -14,5 +14,4 @@ declare const output: {
 /** The test pages server's origin. */
 declare const PAGES: string;
 declare const PLATFORM: string;
-declare const DEVICE: string;
 declare const SUITE: string;

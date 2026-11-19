@@ -20,7 +20,7 @@ if [ "$PLATFORM" = android ]; then
   adb -s "$DEVICE" shell settings put secure immersive_mode_confirmations confirmed
 fi
 # /harness/fresh makes the run's first suite launch the app fresh.
-curl -sf "$PAGES/harness/fresh?platform=$PLATFORM" >/dev/null || { echo "no test pages server on :$PORT"; exit 1; }
+curl -sf "$PAGES/harness/fresh?platform=$PLATFORM&device=$DEVICE" >/dev/null || { echo "no test pages server on :$PORT"; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 flows=()
 for suite in "$@"; do
@@ -28,7 +28,7 @@ for suite in "$@"; do
     "$suite" "$PWD" "$suite" > "$tmp/$suite.yaml"
   flows+=("$tmp/$suite.yaml")
 done
-"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" -e DEVICE="$DEVICE" "${flows[@]}" > "$tmp/out" 2>&1
+"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" "${flows[@]}" > "$tmp/out" 2>&1
 status=$?
 # Per-suite results and the summary; Maestro's own error if it never got to run a flow.
 grep -E '^\[(Passed|Failed)\]|Flows? (Passed|Failed)' "$tmp/out" || tail -20 "$tmp/out"

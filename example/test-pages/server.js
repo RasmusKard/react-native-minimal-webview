@@ -1,17 +1,17 @@
 /// <reference types="node" />
 // Serves the test pages on http://localhost:8090 (iOS simulator) and, after `adb reverse` of ports 8090 and 8443, on
-// the Android emulator (other ports: ../pages.ts). http://127.0.0.1:8090 is a second origin for cross-origin and bridge origin-rejection tests,
-// and https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error on both platforms.
-// The harness runs through it too: the app polls /harness/next for the suite /harness/run queued and posts its results
-// to /harness/log, which this server prints, and the driver (Maestro) waits on /harness/step and /harness/idle instead
-// of reading the screen (see harnessState).
+// the Android emulator (other ports: ../pages.ts). http://127.0.0.1:8090 is a second origin for cross-origin and bridge
+// origin-rejection tests, and https://localhost:8443 serves the same pages with a self-signed certificate: an SSL error
+// on both platforms. The harness runs through it too (harness.js).
 const { Buffer } = require('buffer');
-const { execFile, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
 const os = require('os');
 const path = require('path');
+
+const { handleHarness } = require('./harness');
 
 const PORT = Number(process.env.EXPO_PUBLIC_PAGES_PORT ?? 8090);
 const HTTPS_PORT = Number(process.env.EXPO_PUBLIC_PAGES_HTTPS_PORT ?? 8443);
@@ -40,56 +40,6 @@ function serveFile(res, pathname) {
   res.end(html.replace(/(:|%3A)8090\b/g, `$1${PORT}`).replace(/:8443\b/g, `:${HTTPS_PORT}`));
 }
 
-/** @type {Map<string, string>} platform (ios | android) -> suite name */
-const queued = new Map();
-/** A log line with the time, so a run shows where its time goes. */
-const log = (/** @type {string} */ line) =>
-  console.log(`${new Date().toISOString().slice(11, 23)} ${line}`);
-
-/**
- * What the harness is doing on a platform, so the driver can wait on it here instead of reading the screen (a UI
- * hierarchy query costs Maestro seconds): the suite it took, the driver requests it made in that suite
- * and its verdict (`DriverAction` in harness/runner.ts, with the suite's name), and when the app last polled.
- * `fresh` makes the next idle check say no, so a run starts with a fresh launch.
- * `failures` are the run's failed checks, for run.sh to print.
- * @typedef {{ suite: string, action: string, fail?: number }} Request
- * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, failures: string[] }} HarnessState
- */
-/** @type {Map<string, HarnessState>} */
-const harnessStates = new Map();
-/** @param {string} platform */
-function harnessState(platform) {
-  let state = harnessStates.get(platform);
-  if (!state) {
-    state = { requests: [], verdict: null, handed: false, polledAt: 0, fresh: true, failures: [] };
-    harnessStates.set(platform, state);
-  }
-  return state;
-}
-/** @type {Set<() => void>} */
-const waiters = new Set();
-const harnessChanged = () => waiters.forEach((check) => check());
-/**
- * Answers with what `get` returns once it is a non-empty string (checked now and on every harness change), or with ''
- * after `ms`. Long-polls stay short (Maestro's HTTP client times out), so the driver asks again.
- * @param {import('http').ServerResponse} res @param {() => string} get @param {number} ms
- */
-function answerWhen(res, get, ms) {
-  const check = () => {
-    const value = get();
-    if (!value) return;
-    finish(value);
-  };
-  /** @param {string} value */
-  const finish = (value) => {
-    waiters.delete(check);
-    clearTimeout(timer);
-    res.end(value);
-  };
-  const timer = setTimeout(() => finish(''), Math.min(ms, 8000));
-  waiters.add(check);
-  check();
-}
 
 // A self-signed certificate for the https port, made at start (openssl ships with macOS).
 /** @returns {{ key: Buffer, cert: Buffer } | null} */
@@ -127,149 +77,13 @@ const challenged = new Set();
 const dropping = new Set();
 const flakyKeys = new Set();
 const movedKeys = new Set();
-/** @type {Map<string, string>} the perf suite's page samples, by run */
-const perfResults = new Map();
-const APP_ID = 'expo.modules.minimalwebview.example';
 
 /** @param {import('http').IncomingMessage} req @param {import('http').ServerResponse} res */
 function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const q = url.searchParams;
-  const platform = q.get('platform') ?? '';
-  if (url.pathname === '/harness/run') {
-    queued.set(platform, q.get('suite') ?? '');
-    Object.assign(harnessState(platform), { requests: [], verdict: null, handed: false });
-    log(`[server] queued ${platform} ${q.get('suite')}`);
-    res.end('queued');
-  } else if (url.pathname === '/harness/request') {
-    // The harness's driver requests and verdicts, as it shows them on screen.
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
-      const state = harnessState(platform);
-      /** @type {Request} */
-      let request;
-      try {
-        request = /** @type {Request} */ (JSON.parse(body));
-      } catch {
-        return res.writeHead(400).end('not JSON');
-      }
-      if (request.action === 'done') state.verdict = request;
-      else state.requests.push(request);
-      harnessChanged();
-      res.end();
-    });
-  } else if (url.pathname === '/harness/step') {
-    // The suite's driver request after its first `after`, or its verdict once it has no more.
-    const [suite, after, state] = [q.get('suite'), Number(q.get('after')), harnessState(platform)];
-    const get = () => {
-      const step = state.requests[after] ?? state.verdict;
-      return step?.suite === suite ? JSON.stringify(step) : '';
-    };
-    answerWhen(res, get, Number(q.get('ms') ?? 5000));
-  } else if (url.pathname === '/harness/idle') {
-    // `yes` when the app can take the next suite as it is: it polls (after its reset), and its last suite passed. Else
-    // the driver launches it fresh: the first suite of a run, after a failure, a crash or a suite cut off midway.
-    const state = harnessState(platform);
-    const passed = !state.handed || state.verdict?.fail === 0;
-    if (state.fresh || !passed) {
-      state.fresh = false;
-      res.end('no');
-      return;
-    }
-    const asked = Date.now();
-    answerWhen(res, () => (state.polledAt > asked ? 'yes' : ''), Number(q.get('ms') ?? 5000));
-  } else if (url.pathname === '/harness/fresh') {
-    Object.assign(harnessState(platform), { fresh: true, failures: [] });
-    res.end('ok');
-  } else if (url.pathname === '/harness/failures') {
-    res.end(
-      harnessState(platform)
-        .failures.map((line) => `${line}\n`)
-        .join('')
-    );
-  } else if (url.pathname === '/driver/kill') {
-    // For the crash suite's UI-test driver (Maestro has no shell): kill the page's renderer process.
-    // (chrome://crash crashes a fresh renderer that never hosts the page, so WebView doesn't report it.)
-    // Android needs `adb root`. iOS: the WebContent processes whose parent is the simulator's launchd_sim, whose
-    // command line names `Devices/<udid>` (WebContent's own doesn't).
-    const device = q.get('device') ?? '';
-    if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
-    const launchd = `pgrep -d, -f 'launchd_sim .*/Devices/${device}'`;
-    const [cmd, args] =
-      q.get('platform') === 'android'
-        ? ['adb', [...(device ? ['-s', device] : []), 'shell', 'pkill -9 -f sandboxed_process']]
-        : ['sh', ['-c', `pkill -9 -P "$(${launchd})" -f com.apple.WebKit.WebContent`]];
-    execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
-  } else if (url.pathname === '/perf/result') {
-    // The perf suite's page-side samples: perf.html posts them, the harness reads them back (empty until posted).
-    const run = q.get('run') ?? '';
-    if (req.method !== 'POST') return res.end(perfResults.get(run) ?? '');
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
-      perfResults.set(run, body);
-      log(`[perf] ${run} ${body.length > 200 ? `${body.length} bytes` : body}`);
-      res.end();
-    });
-  } else if (url.pathname === '/driver/memory') {
-    // The perf suite's memory read, in KB: TOTAL PSS of the app and the WebView renderers it bound (Android, `dumpsys
-    // meminfo`), or the footprint of the app and the WebKit processes its simulator's launchd_sim runs (iOS: no other
-    // app there uses WebKit). Lists the processes it summed.
-    const [cmd, args] =
-      platform === 'android'
-        ? [
-            'adb',
-            [
-              'shell',
-              `for p in $(pidof ${APP_ID}) $(dumpsys activity services ${APP_ID} | sed -n 's/.*app=ProcessRecord{[0-9a-f]* \\([0-9]*\\):.*sandboxed.*/\\1/p' | sort -u); do echo "P $p $(tr '\\0' ' ' < /proc/$p/cmdline | cut -c1-90)"; dumpsys meminfo $p | grep -E 'TOTAL PSS:|WebViews:'; done`,
-            ],
-          ]
-        : [
-            'sh',
-            [
-              '-c',
-              `A=$(pgrep -f '/reactnativeminimalwebviewexample.app/reactnativeminimalwebviewexampl[e]' | head -1); footprint --noCategories -f bytes -p $A $(pgrep -P "$(ps -o ppid= -p $A)" -f com.apple.WebKit | sed 's/^/-p /')`,
-            ],
-          ];
-    execFile(cmd, args, (error, stdout) => {
-      if (error) return res.writeHead(500).end(error.message);
-      /** @type {{ pid: number, name: string, kb: number, webViews?: string }[]} */
-      const processes = [];
-      if (platform === 'android') {
-        for (const [, pid, name, kb, webViews] of stdout.matchAll(
-          /^P (\d+) (.*)\n.*TOTAL PSS:\s+(\d+)(?:.*\n.*WebViews:\s+(\d+))?/gm
-        ))
-          processes.push({ pid: Number(pid), name: name.trim(), kb: Number(kb), webViews });
-      } else {
-        for (const [, name, pid, bytes] of stdout.matchAll(
-          /^(\S.*) \[(\d+)\]: \S+\s+Footprint: (\d+) B/gm
-        ))
-          processes.push({ pid: Number(pid), name, kb: Math.round(Number(bytes) / 1024) });
-      }
-      const totalKb = processes.reduce((sum, p) => sum + p.kb, 0);
-      res.end(JSON.stringify({ totalKb, processes }));
-    });
-  } else if (url.pathname === '/harness/next') {
-    const suite = queued.get(platform) ?? '';
-    const state = harnessState(platform);
-    state.polledAt = Date.now();
-    if (suite) {
-      Object.assign(state, { requests: [], verdict: null, handed: true });
-      log(`[server] handed ${platform} ${suite}`);
-    }
-    harnessChanged();
-    res.end(suite);
-    queued.delete(platform);
-  } else if (url.pathname === '/harness/log') {
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
-      log(body);
-      if (/^\[harness \S+ [^\]]*\] FAIL /.test(body)) harnessState(platform).failures.push(body);
-      res.end();
-    });
-  } else if (url.pathname === '/headers') {
+  if (/^\/(harness|driver|perf)\//.test(url.pathname)) return handleHarness(req, res, url);
+  if (url.pathname === '/headers') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(
       `<!doctype html><pre id="headers">${JSON.stringify(req.headers).replace(/</g, '&lt;')}</pre>`
