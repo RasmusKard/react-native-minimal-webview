@@ -2743,6 +2743,68 @@ async function network(h: Harness) {
 }
 
 /**
+ * Goes back or forward (`go`) to `url`, titled `title`, with an entry after it when `back`: checks that it comes from the
+ * back-forward cache with one finished load and a working bridge. Returns what a way to build the history changes.
+ */
+async function travel(
+  h: Harness,
+  r: ReturnType<typeof reporter>,
+  name: string,
+  go: () => void,
+  url: string,
+  title: string,
+  back: boolean
+) {
+  clearEvents(h);
+  go();
+  await waitFor(h, (s) => s.url === url && idle(s));
+  await sleep(500); // a late state or load event would come now
+  const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
+  r.since(
+    WEBVIEW.navigationListener,
+    `${name}: the page is restored from the cache`,
+    shows?.[1] === true,
+    shows
+  );
+  const s = h.state();
+  r.check(
+    `${name}: the state is the restored page's`,
+    s.url === url && s.title === title && s.canGoBack && s.canGoForward === back,
+    s
+  );
+  r.check(
+    `${name}: one load start and end, finished`,
+    JSON.stringify(h.events.loads) === '["start","end"]' &&
+      JSON.stringify(h.events.outcomes) === '["finished"]',
+    { loads: h.events.loads, outcomes: h.events.outcomes }
+  );
+  const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
+  r.since(WEBVIEW.bridge, `${name}: RN -> page call`, sum === 5, sum);
+  h.bridge.emit('nativeEvent', { n: 7 });
+  await until(
+    async () =>
+      ((await h.ref.current?.evaluate('window.lastEvent')) as { n?: number } | null)?.n === 7,
+    3000
+  );
+  const event = await h.ref.current?.evaluate('window.lastEvent');
+  r.since(
+    WEBVIEW.bridge,
+    `${name}: RN -> page event`,
+    (event as { n?: number } | null)?.n === 7,
+    event
+  );
+  await h.ref.current?.evaluate('window.lastEvent = null');
+  const echo = await pageCall(h, 'echo', { url });
+  r.since(
+    WEBVIEW.bridge,
+    `${name}: page -> RN call`,
+    (echo.result as { url?: string } | undefined)?.url === url,
+    echo
+  );
+  return { shows, canGoBack: s.canGoBack, canGoForward: s.canGoForward };
+}
+
+/**
  * Back and forward restored from the back-forward cache (WebKit always, Android by default): the restore itself, the
  * navigation state, one onLoadStart/onLoadEnd per restore, the bridge both ways, and the rules on the restored
  * page.
@@ -2755,62 +2817,8 @@ async function bfcache(h: Harness) {
   const second = fresh(h, '/back-forward.html?title=second');
   await openPage(h, second);
 
-  const travel = async (
-    name: string,
-    go: () => void,
-    url: string,
-    title: string,
-    back: boolean
-  ) => {
-    clearEvents(h);
-    go();
-    await waitFor(h, (s) => s.url === url && idle(s));
-    await sleep(500); // a late state or load event would come now
-    const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
-    r.since(
-      WEBVIEW.navigationListener,
-      `${name}: the page is restored from the cache`,
-      shows?.[1] === true,
-      shows
-    );
-    const s = h.state();
-    r.check(
-      `${name}: the state is the restored page's`,
-      s.url === url && s.title === title && s.canGoBack && s.canGoForward === back,
-      s
-    );
-    r.check(
-      `${name}: one load start and end, finished`,
-      JSON.stringify(h.events.loads) === '["start","end"]' &&
-        JSON.stringify(h.events.outcomes) === '["finished"]',
-      { loads: h.events.loads, outcomes: h.events.outcomes }
-    );
-    const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
-    r.since(WEBVIEW.bridge, `${name}: RN -> page call`, sum === 5, sum);
-    h.bridge.emit('nativeEvent', { n: 7 });
-    await until(
-      async () =>
-        ((await h.ref.current?.evaluate('window.lastEvent')) as { n?: number } | null)?.n === 7,
-      3000
-    );
-    const event = await h.ref.current?.evaluate('window.lastEvent');
-    r.since(
-      WEBVIEW.bridge,
-      `${name}: RN -> page event`,
-      (event as { n?: number } | null)?.n === 7,
-      event
-    );
-    await h.ref.current?.evaluate('window.lastEvent = null');
-    const echo = await pageCall(h, 'echo', { url });
-    r.since(
-      WEBVIEW.bridge,
-      `${name}: page -> RN call`,
-      (echo.result as { url?: string } | undefined)?.url === url,
-      echo
-    );
-  };
-  await travel('back', () => h.ref.current?.goBack(), first, 'first', true);
-  await travel('forward', () => h.ref.current?.goForward(), second, 'second', false);
+  await travel(h, r, 'back', () => h.ref.current?.goBack(), first, 'first', true);
+  await travel(h, r, 'forward', () => h.ref.current?.goForward(), second, 'second', false);
 
   // A call still unanswered when its page goes into the cache rejects at once; the answer the page sends once restored
   // is dropped. Both ways: the page's call to the app's 'slow' (answered after 5 s) rejects in the page.
@@ -2990,10 +2998,10 @@ async function sources(h: Harness) {
 }
 
 /**
- * The ref's `load`: in place (same handle, the bridge carries on), a history entry, no dedupe, past rules that block
- * every navigation (its redirect still goes to them) also when a load or a source change came in the same tick,
- * `source` and reload left as they were, and a load from the moment a remounted WebView attaches its ref (on iOS while
- * its `source` waits for the shared cookies).
+ * The ref's `load`: in place (same handle, the bridge carries on), a history entry that back, forward and the
+ * back-forward cache treat as a tapped link's, no dedupe, past rules that block every navigation (its redirect still
+ * goes to them) also when a load or a source change came in the same tick, `source` and reload left as they were, and a
+ * load from the moment a remounted WebView attaches its ref (on iOS while its `source` waits for the shared cookies).
  */
 async function refLoad(h: Harness) {
   const r = reporter('refLoad');
@@ -3060,6 +3068,8 @@ async function refLoad(h: Harness) {
     h.state()
   );
 
+  await refLoadHistory(h, r);
+
   h.setRules([]);
   await sleep(300);
   h.events.navigations.length = 0;
@@ -3084,6 +3094,94 @@ async function refLoad(h: Harness) {
   h.setRules(undefined);
   await refLoadEdges(h, r);
   r.done();
+}
+
+/** Two ways to go to `url` from a page: the app's load, and a tap on a link (a click from script on iOS, see `tap`). */
+const NAVIGATIONS = [
+  ['load', (h: Harness, _r: ReturnType<typeof reporter>, url: string) => h.ref.current?.load(url)],
+  [
+    'link',
+    async (h: Harness, r: ReturnType<typeof reporter>, url: string) => {
+      await h.ref.current?.evaluate(`(() => {
+        document.getElementById('link')?.remove();
+        const a = Object.assign(document.createElement('a'), { id: 'link', href: ${JSON.stringify(url)}, textContent: 'link' });
+        a.style.cssText = 'display: block; padding: 24px; font-size: 32px';
+        document.body.append(a);
+      })()`);
+      await tap(h, r, 'link');
+    },
+  ],
+] as const;
+
+/**
+ * The same history built with a load and with a tapped link: back and forward come from the back-forward cache alike,
+ * and `goBack` lands alike after the page's `pushState` without a gesture (Android skips such an entry). The referrer
+ * and the headers a load sends instead of a link's are only logged.
+ */
+async function refLoadHistory(h: Harness, r: ReturnType<typeof reporter>) {
+  const ways: Record<string, unknown> = {};
+  for (const [way, go] of NAVIGATIONS) {
+    const a = fresh(h, `/back-forward.html?title=${way}A`);
+    await openPage(h, a);
+    const b = fresh(h, `/back-forward.html?title=${way}B`);
+    const arrived = await waitForLoad(
+      h,
+      () => go(h, r, b),
+      (s) => s.url === b && idle(s)
+    );
+    r.check(`${way}: goes to the page`, arrived && h.state().canGoBack, h.state());
+    const back = await travel(
+      h,
+      r,
+      `${way}: back`,
+      () => h.ref.current?.goBack(),
+      a,
+      `${way}A`,
+      true
+    );
+    const forward = await travel(
+      h,
+      r,
+      `${way}: forward`,
+      () => h.ref.current?.goForward(),
+      b,
+      `${way}B`,
+      false
+    );
+    const pushed = await backAfterPushState(h, a, b);
+    r.info(`${way}: goBack after the page's pushState without a gesture lands on`, pushed);
+    ways[way] = { back, forward, pushed };
+    const headers = fresh(h, '/headers');
+    await waitForLoad(
+      h,
+      () => go(h, r, headers),
+      (s) => s.url === headers && idle(s)
+    );
+    const sent = JSON.parse((await text(h, 'headers')) || '{}') as Record<string, string>;
+    r.info(`${way}: referrer and request headers`, {
+      referrer: await h.ref.current?.evaluate('document.referrer'),
+      referer: sent.referer,
+      secFetchSite: sent['sec-fetch-site'],
+      secFetchUser: sent['sec-fetch-user'],
+    });
+  }
+  r.check(
+    'a load and a tapped link restore, travel and go back alike',
+    JSON.stringify(ways.load) === JSON.stringify(ways.link),
+    ways
+  );
+}
+
+/** On page `b`, after page `a`: pushes an entry without a gesture, goes back, and says where that lands. */
+async function backAfterPushState(h: Harness, a: string, b: string) {
+  await h.ref.current?.evaluate("history.pushState(null, '', '#pushed')");
+  await waitFor(h, (s) => s.url === `${b}#pushed`);
+  h.ref.current?.goBack();
+  await waitFor(h, (s) => s.url !== `${b}#pushed` && idle(s));
+  await sleep(500); // a load the back starts late would show now
+  const { url } = h.state();
+  if (url === a) return 'the page before it (its entry skipped)';
+  return url === b ? 'the page itself' : url;
 }
 
 /** How the first of two app loads in a row starts: a load (the second follows in a 0 ms timeout) or a source change. */
