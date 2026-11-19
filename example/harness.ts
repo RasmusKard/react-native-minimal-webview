@@ -1130,8 +1130,9 @@ async function errors(h: Harness) {
     replaced
   );
   const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
+  // WebKit 298028@main stops a 204 for a policy change instead of finishing it; first in Safari 26.2 (20623.1.14).
   const expected204 =
-    Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 18 ? 'finished' : 'cancelled';
+    Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 26.2 ? 'finished' : 'cancelled';
   r.since(
     WEBVIEW.navigationListener,
     `a 204 ends as ${expected204}`,

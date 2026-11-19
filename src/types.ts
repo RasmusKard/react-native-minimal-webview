@@ -212,7 +212,7 @@ export type NavigationState = {
    * - `failed`: a network or SSL error, or a renderer crash, cut it off.
    * - `cancelled`: it never showed a page (a stop before the response, a download, a 204, a redirect the rules blocked,
    *   a load a newer one replaced); a stop after the page arrived is `cancelled` on iOS but `finished` on Android, and
-   *   a 204 is `finished` on iOS 17. On iOS a load replaced before it commits doesn't end: `loading` stays true and
+   *   a 204 is `finished` below iOS 26.2. On iOS a load replaced before it commits doesn't end: `loading` stays true and
    *   the newer load's outcome ends both.
    *
    * On Android with an Android System WebView older than 146, a load that never commits changes nothing here.
