@@ -76,6 +76,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var preparing = false
   /// The ref's `load` while it is prepared: it loads instead of the `source` being prepared, if any.
   private var queuedUrl: URL?
+  /// The last `load` since the last `source`: a retry of it reads, as it did, only within a file's directory.
+  private var refLoad: URL?
   /// After a failed main-frame load `url` is the failed URL (as on Android, which commits an error page);
   /// WKWebView itself keeps the previous page, so `url` and reload() use this.
   private(set) var failedUrl: String?
@@ -175,8 +177,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       // included) would be sent only to be cut off.
       if let queuedUrl {
         self.queuedUrl = nil
+        refLoad = queuedUrl
         loadProgrammatic(URLRequest(url: queuedUrl), inSourceRoot: false)
       } else if let source {
+        refLoad = nil
         load(source)
       }
       // Props that changed while preparing (a newer source) apply now.
@@ -260,7 +264,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if let source, onSource || failedUrl == nil && webView.backForwardList.currentItem == nil {
       load(source)
     } else if let failedUrl, let target = URL(string: failedUrl) {
-      loadProgrammatic(URLRequest(url: target))
+      loadProgrammatic(URLRequest(url: target), inSourceRoot: !(refLoad.map { Loads.sameURL($0, target) } ?? false))
     } else {
       webView.reload()
     }
