@@ -117,6 +117,26 @@ func invoke(_ selector: Selector, _ completion: String?) -> String? {
 check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")
 check("an error completion rejects with its description", invoke(#selector(Completions.fail(_:)), "error"), "nope")
 check("a block selector without a shape rejects", invoke(#selector(Completions.reportCount(_:)), nil), "the method takes a completion handler this package's SDK headers don't list: write a native hook")
+/// Takes and returns each struct MRWInvoke carries.
+final class Structs: NSObject {
+  @objc func insets(_ value: UIEdgeInsets) -> UIEdgeInsets { value }
+  @objc func point(_ value: CGPoint) -> CGPoint { value }
+  @objc func size(_ value: CGSize) -> CGSize { value }
+  @objc func rect(_ value: CGRect) -> CGRect { value }
+}
+/// What `name:` settled with when given `json` through MRWInvoke: the error, else the result.
+func echoed(_ name: String, _ json: [String: Double]) -> Any? {
+  var settled: Any?
+  __MRWInvoke(Structs(), NSSelectorFromString(name + ":"), [json], nil) { value, error in settled = error ?? value }
+  return settled
+}
+for (name, json) in [
+  ("insets", ["top": 1.0, "left": 2, "bottom": 3, "right": 4]), ("point", ["x": 1, "y": 2]),
+  ("size", ["width": 1, "height": 2]), ("rect", ["x": 1, "y": 2, "width": 3, "height": 4]),
+] {
+  check("\(name) takes and returns its struct", echoed(name, json) as? [String: Double] == json, true)
+}
+check("a struct argument missing a field rejects", (echoed("point", ["x": 1]) as? String)?.hasPrefix("argument 1 of point: ({CGPoint=dd}) can't take"), true)
 var paused: String?
 try! settings.call("webView.pauseAllMediaPlaybackWithCompletionHandler:", args: [], webView: view) { paused = $0 ?? $1 }
 let deadline = Date().addingTimeInterval(5)
