@@ -513,7 +513,12 @@ const VALUES: Record<Platform, ValueRow[]> = {
       site: /let resources: \[String\] = switch type \{[^}]*/g,
       lacks: ['geolocation', 'protectedMedia'],
     },
-    { name: 'rule actions', keys: actions, site: /let actions: Set<String> = \[[^\]]*\]/g },
+    {
+      name: 'rule actions',
+      keys: actions,
+      site: /enum Action: String \{ case [^}]*\}/g,
+      value: /(?:case |, )(\w+)/g,
+    },
     { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
 };

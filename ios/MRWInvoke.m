@@ -1,20 +1,33 @@
 #import "MRWInvoke.h"
-#import "MRWExceptions.h"
 #import <UIKit/UIKit.h>
 
-static NSDictionary *MRWStruct(NSValue *value) {
-  const char *type = value.objCType;
-  if (strcmp(type, @encode(UIEdgeInsets)) == 0) {
-    UIEdgeInsets i = value.UIEdgeInsetsValue;
-    return @{@"top": @(i.top), @"left": @(i.left), @"bottom": @(i.bottom), @"right": @(i.right)};
+NSString *MRWCatchException(void (NS_NOESCAPE ^block)(void)) {
+  @try {
+    block();
+    return nil;
+  } @catch (NSException *exception) {
+    return [NSString stringWithFormat:@"%@: %@", exception.name, exception.reason ?: @""];
   }
-  if (strcmp(type, @encode(CGPoint)) == 0) return @{@"x": @(value.CGPointValue.x), @"y": @(value.CGPointValue.y)};
-  if (strcmp(type, @encode(CGSize)) == 0) return @{@"width": @(value.CGSizeValue.width), @"height": @(value.CGSizeValue.height)};
-  if (strcmp(type, @encode(CGRect)) == 0) {
-    CGRect r = value.CGRectValue;
-    return @{@"x": @(r.origin.x), @"y": @(r.origin.y), @"width": @(r.size.width), @"height": @(r.size.height)};
-  }
+}
+
+/// The JSON keys of a struct `call` and the settings carry, in field order, by its type encoding; nil for any other.
+/// Each one's fields are doubles (CGFloat), so its bytes are the values in that order.
+static NSArray<NSString *> *MRWStructKeys(const char *type) {
+  if (strcmp(type, @encode(UIEdgeInsets)) == 0) return @[@"top", @"left", @"bottom", @"right"];
+  if (strcmp(type, @encode(CGPoint)) == 0) return @[@"x", @"y"];
+  if (strcmp(type, @encode(CGSize)) == 0) return @[@"width", @"height"];
+  if (strcmp(type, @encode(CGRect)) == 0) return @[@"x", @"y", @"width", @"height"];
   return nil;
+}
+
+static NSDictionary *MRWStruct(NSValue *value) {
+  NSArray<NSString *> *keys = MRWStructKeys(value.objCType);
+  if (!keys) return nil;
+  double n[4];
+  [value getValue:n size:keys.count * sizeof(double)];
+  NSMutableDictionary *json = [NSMutableDictionary new];
+  for (NSUInteger i = 0; i < keys.count; i++) json[keys[i]] = @(n[i]);
+  return json;
 }
 
 id MRWJsonable(id value) {
@@ -56,15 +69,20 @@ static id MRWObject(id json) {
   return json;
 }
 
-/// Reads `keys` of `object` as numbers into `out`; NO when one is missing or not a number.
+/// Reads `keys` of `object` as numbers into `out`; NO when `keys` is nil or one is missing or not a number.
 static BOOL MRWNumbers(id object, NSArray<NSString *> *keys, double *out) {
-  if (![object isKindOfClass:NSDictionary.class]) return NO;
+  if (!keys || ![object isKindOfClass:NSDictionary.class]) return NO;
   for (NSUInteger i = 0; i < keys.count; i++) {
     id number = object[keys[i]];
     if (![number isKindOfClass:NSNumber.class]) return NO;
     out[i] = [number doubleValue];
   }
   return YES;
+}
+
+NSValue *MRWStructValue(const char *type, id json) {
+  double n[4];
+  return MRWNumbers(json, MRWStructKeys(type), n) ? [NSValue valueWithBytes:n objCType:type] : nil;
 }
 
 #define MRW_SET(ctype, expr) { ctype v = (expr); [invocation setArgument:&v atIndex:index]; return YES; }
@@ -96,10 +114,7 @@ static BOOL MRWSetArgument(NSInvocation *invocation, NSUInteger index, const cha
       MRW_SET(id, object)
     }
     case '{':
-      if (strcmp(type, @encode(UIEdgeInsets)) == 0 && MRWNumbers(value, @[@"top", @"left", @"bottom", @"right"], n)) MRW_SET(UIEdgeInsets, UIEdgeInsetsMake(n[0], n[1], n[2], n[3]))
-      if (strcmp(type, @encode(CGPoint)) == 0 && MRWNumbers(value, @[@"x", @"y"], n)) MRW_SET(CGPoint, CGPointMake(n[0], n[1]))
-      if (strcmp(type, @encode(CGSize)) == 0 && MRWNumbers(value, @[@"width", @"height"], n)) MRW_SET(CGSize, CGSizeMake(n[0], n[1]))
-      if (strcmp(type, @encode(CGRect)) == 0 && MRWNumbers(value, @[@"x", @"y", @"width", @"height"], n)) MRW_SET(CGRect, CGRectMake(n[0], n[1], n[2], n[3]))
+      if (MRWNumbers(value, MRWStructKeys(type), n)) { [invocation setArgument:n atIndex:index]; return YES; }
       break;
     default: break;
   }
@@ -125,12 +140,12 @@ static id MRWReturnValue(NSInvocation *invocation) {
     case 'f': MRW_GET(float, @(v))
     case 'd': MRW_GET(double, @(v))
     case '@': { __unsafe_unretained id v = nil; [invocation getReturnValue:&v]; return v; }
-    case '{':
-      if (strcmp(type, @encode(UIEdgeInsets)) == 0) MRW_GET(UIEdgeInsets, [NSValue valueWithUIEdgeInsets:v])
-      if (strcmp(type, @encode(CGPoint)) == 0) MRW_GET(CGPoint, [NSValue valueWithCGPoint:v])
-      if (strcmp(type, @encode(CGSize)) == 0) MRW_GET(CGSize, [NSValue valueWithCGSize:v])
-      if (strcmp(type, @encode(CGRect)) == 0) MRW_GET(CGRect, [NSValue valueWithCGRect:v])
-      return NSNull.null;
+    case '{': {
+      if (!MRWStructKeys(type)) return NSNull.null;
+      double n[4];
+      [invocation getReturnValue:n];
+      return [NSValue valueWithBytes:n objCType:type];
+    }
     default: return NSNull.null;
   }
 }

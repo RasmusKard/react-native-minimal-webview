@@ -47,7 +47,7 @@ extension MinimalWebView {
   func openDownload(_ url: URL) {
     guard ["http", "https"].contains(url.scheme?.lowercased()) else { return }
     let request = NavigationRules.Request(url: url.absoluteString, mainFrame: true, newWindow: false, userInitiated: false)
-    finish(request, "external", nil) { _ in }
+    finish(request, .external, nil) { _ in }
   }
 
   /// window.open and target=_blank. Never a second WKWebView: a popup model (presenting and closing a child,
@@ -88,7 +88,7 @@ extension MinimalWebView {
       navigationRules, request, asked: askedAndAllowed[request.mainFrame] ?? [],
       canAsk: requestHandlers.contains("onNavigationRequest")
     )
-    guard decision.action == "ask" else {
+    guard decision.action == .ask else {
       finish(request, decision.action, decision.rule, completion)
       return
     }
@@ -96,7 +96,7 @@ extension MinimalWebView {
       // The view can be gone: the decision handler must still be called.
       guard let self else { return completion(false) }
       let action = NavigationRules.answer(answer)
-      if action == "allow" { self.askedAndAllowed[request.mainFrame, default: []].insert(request.url) }
+      if action == .allow { self.askedAndAllowed[request.mainFrame, default: []].insert(request.url) }
       self.finish(request, action, decision.rule, completion)
     }
     // Unanswered after the timeout: block.
@@ -105,25 +105,27 @@ extension MinimalWebView {
     }
   }
 
-  private func finish(_ request: NavigationRules.Request, _ action: String, _ rule: Int?, _ completion: (Bool) -> Void) {
-    completion(action == "allow")
-    guard action == "external" else { return report(request, action, rule) }
+  private func finish(
+    _ request: NavigationRules.Request, _ action: NavigationRules.Action, _ rule: Int?, _ completion: (Bool) -> Void
+  ) {
+    completion(action == .allow)
+    guard action == .external else { return report(request, action, rule) }
     guard requestHandlers.contains("onOpenExternal") else { return open(request, rule) }
     // A page that moved on first answers nil, which counts as opened. No timeout: nothing waits for the answer.
     asks.ask("core", "onOpenExternal", request.payload) { [weak self] answer in
-      if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, "external", rule) }
+      if answer as? Bool == false { self?.open(request, rule) } else { self?.report(request, .external, rule) }
     }
   }
 
   /// Opens an `external` URL outside the WebView. As on Android, one that nothing opens is reported as blocked.
   private func open(_ request: NavigationRules.Request, _ rule: Int?) {
-    guard let url = URL(string: request.url) else { return report(request, "block", rule) }
-    UIApplication.shared.open(url) { [weak self] opened in self?.report(request, opened ? "external" : "block", rule) }
+    guard let url = URL(string: request.url) else { return report(request, .block, rule) }
+    UIApplication.shared.open(url) { [weak self] opened in self?.report(request, opened ? .external : .block, rule) }
   }
 
-  private func report(_ request: NavigationRules.Request, _ action: String, _ rule: Int?) {
+  private func report(_ request: NavigationRules.Request, _ action: NavigationRules.Action, _ rule: Int?) {
     guard requestHandlers.contains("onNavigation") else { return }
-    onNavigation(request.payload.merging(["action": action, "rule": rule as Any? ?? NSNull()]) { $1 })
+    onNavigation(request.payload.merging(["action": action.rawValue, "rule": rule as Any? ?? NSNull()]) { $1 })
   }
 }
 

@@ -37,7 +37,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
 
   override func forwardingTarget(for aSelector: Selector!) -> Any? {
     let hook = delegates(for: aSelector).first { $0.responds(to: aSelector) }
-    if Self.decisions.contains(aSelector), let hook { return hook }
+    if Self.decisions.contains(where: { $0.selector == aSelector }), let hook { return hook }
     if let core, core.responds(to: aSelector) { return core }
     return hook ?? super.forwardingTarget(for: aSelector)
   }
@@ -108,39 +108,41 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
   }
 
-  /// The decision callbacks more than one hook delegate implements, by selector name: only the first one gets each.
-  var sharedDecisions: [String] {
-    ([Self.actionPolicy] + Self.decisions).filter { takers(of: $0).count > 1 }.map(NSStringFromSelector)
+  /// The warnings about the decisions the hook delegates take that this proxy hasn't given yet: one for a decision
+  /// more than one of them implements, as only the first one gets it, and one for a decision the core makes from the
+  /// app's props or their defaults, naming what stops applying.
+  func newWarnings() -> [String] {
+    Self.decisions.flatMap { decision, lost in
+      let name = NSStringFromSelector(decision)
+      let takers = takers(of: decision).count
+      return [
+        takers > 1 ? "\(name): more than one hook delegate implements it; only the first one gets it" : nil,
+        takers > 0 ? lost.map { "\(name): a hook delegate takes it, so \($0)" } : nil
+      ].compactMap { $0 }.filter { warned.insert($0).inserted }
+    }
   }
 
-  /// The decisions a hook delegate takes that the core makes from the app's props or their defaults: each one's
-  /// selector name and what stops applying.
-  var takenDecisions: [(name: String, lost: String)] {
-    Self.fromProps.filter { !takers(of: $0.0).isEmpty }.map { (NSStringFromSelector($0.0), $0.1) }
-  }
+  private var warned: Set<String> = []
 
-  private static let navigationResponse = NSSelectorFromString("webView:decidePolicyForNavigationResponse:decisionHandler:")
-  private static let newWindow =
-    NSSelectorFromString("webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:")
-  private static let mediaCapture =
-    NSSelectorFromString("webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:")
-
-  private static let fromProps: [(Selector, String)] = [
+  /// The decision callbacks: a hook delegate that implements one owns it, and `lost` is what stops applying when the
+  /// core makes it from the props. WebKit never asks for the plain action policy, as the proxy answers the other variant.
+  private static let decisions: [(selector: Selector, lost: String?)] = [
     (actionPolicy, "navigationRules, their defaults and onNavigationRequest don't apply to navigations"),
-    (navigationResponse, "onDownload, opening downloads externally and onError's http errors don't apply"),
-    (newWindow, "navigationRules, their defaults and onNavigationRequest don't apply to new windows"),
-    (mediaCapture, "onPermissionRequest and the core's subframe deny don't apply")
-  ]
-
-  /// The decision callbacks the core implements: a hook delegate that implements one owns it. The action policy is
-  /// not here: the proxy decides it above.
-  private static let decisions = [
-    navigationResponse,
-    newWindow,
-    NSSelectorFromString("webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:"),
-    NSSelectorFromString("webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:"),
-    NSSelectorFromString("webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:"),
-    mediaCapture
+    (
+      NSSelectorFromString("webView:decidePolicyForNavigationResponse:decisionHandler:"),
+      "onDownload, opening downloads externally and onError's http errors don't apply"
+    ),
+    (
+      NSSelectorFromString("webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:"),
+      "navigationRules, their defaults and onNavigationRequest don't apply to new windows"
+    ),
+    (NSSelectorFromString("webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:"), nil),
+    (NSSelectorFromString("webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:"), nil),
+    (NSSelectorFromString("webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:"), nil),
+    (
+      NSSelectorFromString("webView:requestMediaCapturePermissionForOrigin:initiatedByFrame:type:decisionHandler:"),
+      "onPermissionRequest and the core's subframe deny don't apply"
+    )
   ]
 }
 
