@@ -61,6 +61,8 @@ jest.mock('expo', () => {
       },
     requireNativeModule: (name: string) =>
       name === 'MinimalWebView' ? mockNativeModule : undefined,
+    requireOptionalNativeModule: (name: string) =>
+      name === 'MinimalWebView' ? mockNativeModule : null,
   };
 });
 

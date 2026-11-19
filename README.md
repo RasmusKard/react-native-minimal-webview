@@ -93,7 +93,7 @@ npx expo install react-native-minimal-webview expo-build-properties
 ```
 
 Set the iOS and Android [minimums](#requirements) in `app.json`, before you rebuild: below iOS 17.0, the build leaves
-the package's native module out.
+the package's native module out, and `WebView` throws as it renders.
 
 ```json
 {
