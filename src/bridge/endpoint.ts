@@ -8,8 +8,6 @@ type Pending = {
   resolve(value: unknown): void;
   reject(error: Error): void;
   timer: ReturnType<typeof setTimeout> | undefined;
-  /** Posted to a document, not just queued for the next one (RN). */
-  sent: boolean;
 };
 
 export const codedError = ({ code, message }: { code: ErrorCode; message: string }): CodedError =>
@@ -50,7 +48,7 @@ export function createEndpoint<Sender = void>(
                 Math.min(ms, 2 ** 31 - 1)
               )
             : undefined;
-        pending.set(id, { resolve, reject, timer, sent: false });
+        pending.set(id, { resolve, reject, timer });
         try {
           send({ id, kind: 'call', method, params });
         } catch (error) {
@@ -74,9 +72,9 @@ export function createEndpoint<Sender = void>(
       listeners.set(event, set.add(listener));
       return () => set.delete(listener);
     },
-    rejectPending(code: BridgeErrorCode, message: string, only?: (call: Pending) => boolean) {
+    rejectPending(code: BridgeErrorCode, message: string, only?: (id: string) => boolean) {
       for (const [id, call] of pending) {
-        if (only && !only(call)) continue;
+        if (only && !only(id)) continue;
         clearTimeout(call.timer);
         call.reject(codedError({ code, message }));
         pending.delete(id);

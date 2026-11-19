@@ -22,11 +22,12 @@ const INITIAL_STATE: NavigationState = {
   outcome: null,
 };
 
-/** A mounted WebView's hold on its ref: it passes on the WebView's state, and lets go at unmount. */
-type Attachment = { update(state: NavigationState): void; detach(): void };
+/** A mounted WebView's hold on its ref: `handle` passes on the WebView's state, and lets go at unmount. */
 type Adapter = {
   nav: WebViewRefObject;
-  attach(handle: WebViewRef, state: NavigationState): Attachment;
+  attach(handle: WebViewRef, state: NavigationState): void;
+  update(handle: WebViewRef, state: NavigationState): void;
+  detach(handle: WebViewRef): void;
 };
 
 /** The navigation object behind each ref object: created by createWebViewRef, or made on first use for a plain ref. */
@@ -67,14 +68,14 @@ function createAdapter(): Adapter {
       }
       attached = handle;
       set(initial);
-      return {
-        update: (next) => attached === handle && set(next),
-        detach() {
-          if (attached !== handle) return;
-          attached = null;
-          set(INITIAL_STATE);
-        },
-      };
+    },
+    update(handle, next) {
+      if (attached === handle) set(next);
+    },
+    detach(handle) {
+      if (attached !== handle) return;
+      attached = null;
+      set(INITIAL_STATE);
     },
   };
 }
@@ -101,22 +102,17 @@ export function useAttach(
   handle: WebViewRef
 ): (state: NavigationState) => NavigationState {
   const last = useRef(INITIAL_STATE);
-  const attachment = useRef<Attachment>(undefined);
   const adapter = ref && typeof ref === 'object' ? adapterFor(ref) : undefined;
   useImperativeHandle(adapter?.nav === ref ? undefined : ref, () => handle, [handle]);
   useLayoutEffect(() => {
     if (!adapter) return undefined;
-    const attached = adapter.attach(handle, last.current);
-    attachment.current = attached;
-    return () => {
-      attached.detach();
-      attachment.current = undefined;
-    };
+    adapter.attach(handle, last.current);
+    return () => adapter.detach(handle);
   }, [adapter, handle]);
   return (state) => {
     const was = last.current;
     last.current = state;
-    attachment.current?.update(state);
+    adapter?.update(handle, state);
     return was;
   };
 }

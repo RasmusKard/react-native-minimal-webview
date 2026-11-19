@@ -1,9 +1,17 @@
 import type { Bridge, BridgeOptions, BridgeSchema, BridgeSender, SchemaOf } from '../types';
 import { DEFAULTS } from '../types.defaults';
 import { codedError, createEndpoint } from './endpoint';
-import { invalidOrigins, originForms } from './origins';
-import { MATCHES_ORIGIN, PAGE_CLIENT } from './pageClient.generated';
+import { originGuard } from './origins';
+import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
+
+/**
+ * What native reports to the bridge: a page's message with its origin as native verified it (`location.origin` form);
+ * a new document committed, so messages queue until its page client says `ready`; or the platform lacks the WebView
+ * features the bridge needs, so calls reject with `unavailable`.
+ */
+export type BridgeEvent =
+  { message: string; origin: string } | { navigated: true } | { unavailable: true };
 
 /** What `<WebView>` needs from a bridge: `Bridge`'s `[CONNECTION]`, a key the package doesn't export. */
 export type BridgeConnection = {
@@ -12,30 +20,10 @@ export type BridgeConnection = {
   script: string;
   attach(post: (message: string) => void): void;
   detach(): void;
-  /** A message from the page, and its origin as native verified it. */
-  receive(message: string, origin: string): void;
-  /** The platform lacks the WebView features the bridge needs: calls reject with `unavailable`. */
-  markUnavailable(): void;
-  /** A new document committed: queue messages until its page client says `ready`. */
-  navigated(): void;
+  receive(event: BridgeEvent): void;
 };
 
 export const CONNECTION = Symbol('bridgeConnection');
-
-/**
- * A page-side expression true where `location.origin` matches `origins`, or null when they include `*`. Throws an
- * `Error` starting with `what` for a rule that is neither `*` nor what `parseOrigin` takes.
- */
-export function originGuard(what: string, origins: string[]): string | null {
-  const invalid = invalidOrigins(origins);
-  if (invalid.length) {
-    throw new Error(
-      `${what} ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
-    );
-  }
-  const forms = originForms(origins);
-  return forms.any ? null : `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
-}
 
 const MAX_QUEUE = 1000;
 
@@ -64,17 +52,11 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
   let phase: 'idle' | 'loading' | 'ready' = 'idle';
   // The token of the document that last said `ready` (protocol.ts `doc`).
   let doc: string | undefined;
-  // Messages for the next document that says `ready`. Only the latest document's: see navigated().
+  // Messages for the next document that says `ready`. Only the latest document's: see `receive`.
   let queue: BridgeMessage[] = [];
   let unavailable = false;
 
-  const deliver = (message: BridgeMessage) => {
-    post?.(JSON.stringify({ ...message, doc }));
-    if (message.kind === 'call') {
-      const call = endpoint.pending.get(message.id);
-      if (call) call.sent = true;
-    }
-  };
+  const deliver = (message: BridgeMessage) => post?.(JSON.stringify({ ...message, doc }));
 
   const endpoint = createEndpoint<BridgeSender>(
     (message) => {
@@ -84,26 +66,29 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
         JSON.stringify(message);
         queue.push(message);
         const dropped = queue.length > MAX_QUEUE ? queue.shift() : undefined;
-        if (dropped?.kind === 'call') {
-          const call = endpoint.pending.get(dropped.id);
+        if (dropped?.kind === 'call')
           endpoint.rejectPending(
             'unavailable',
             'the bridge queue was full',
-            (pending) => pending === call
+            (id) => id === dropped.id
           );
-        }
       }
     },
     timeoutMs,
     'n'
   );
 
-  const rejectSent = (message: string) =>
-    endpoint.rejectPending('navigated', message, (call) => call.sent);
+  // A pending call not in the queue was posted to a document.
+  const rejectSent = (message: string) => {
+    const queued = new Set(
+      queue.map((queuedMessage) => queuedMessage.kind === 'call' && queuedMessage.id)
+    );
+    endpoint.rejectPending('navigated', message, (id) => !queued.has(id));
+  };
   const unavailableMessage =
     'this WebView lacks the features the bridge needs; update Android System WebView';
 
-  const receive = (text: string, origin: string) => {
+  const receiveMessage = (text: string, origin: string) => {
     const message = parseBridgeMessage(text);
     if (typeof message === 'string') {
       if (__DEV__)
@@ -146,21 +131,22 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
       queue = [];
       endpoint.rejectPending('navigated', 'the WebView went away');
     },
-    receive,
-    navigated() {
-      rejectSent('the page navigated');
-      // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
-      // carry over to an unrelated next one.
-      if (phase === 'loading') {
-        endpoint.rejectPending('navigated', 'the page navigated before the bridge was ready');
+    receive(event) {
+      if ('message' in event) receiveMessage(event.message, event.origin);
+      else if ('unavailable' in event) {
+        unavailable = true;
         queue = [];
+        endpoint.rejectPending('unavailable', unavailableMessage);
+      } else {
+        rejectSent('the page navigated');
+        // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
+        // carry over to an unrelated next one.
+        if (phase === 'loading') {
+          endpoint.rejectPending('navigated', 'the page navigated before the bridge was ready');
+          queue = [];
+        }
+        phase = 'loading';
       }
-      phase = 'loading';
-    },
-    markUnavailable() {
-      unavailable = true;
-      queue = [];
-      endpoint.rejectPending('unavailable', unavailableMessage);
     },
   };
 

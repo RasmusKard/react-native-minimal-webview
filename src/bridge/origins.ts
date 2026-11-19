@@ -1,5 +1,6 @@
-// The origin rules in RN: parser, validator, and the matcher whose text build-page-client.mts cuts out as MATCHES_ORIGIN
-// for the guards that createBridge and injectedScripts put around page code.
+// The origin rules in RN: parser, the guard that createBridge and injectedScripts put around page code, and the
+// matcher whose text build-page-client.mts cuts out as MATCHES_ORIGIN for that guard.
+import { MATCHES_ORIGIN } from './pageClient.generated';
 
 /**
  * An origin rule (`http(s)://host[:port]`, `http(s)://*.host[:port]`) or a `location.origin`, parsed; null for anything
@@ -17,10 +18,6 @@ export const parseOrigin = (text: string) => {
   const portSuffix = isDefaultPort ? '' : `:${+port!}`;
   return { scheme, wildcard: !!wildcard, hostPort: `${host}${portSuffix}` };
 };
-
-/** The rules that are neither `*` nor what `parseOrigin` takes. */
-export const invalidOrigins = (rules: string[]) =>
-  rules.filter((rule) => rule !== '*' && !parseOrigin(rule));
 
 /** Origin rules in `location.origin` form, for `matchesOrigin`: exact origins, and wildcards as prefix and suffix. */
 export type OriginForms = { any: boolean; exact: string[]; wild: [string, string][] };
@@ -58,4 +55,19 @@ export function matchesOrigin(forms: OriginForms, origin: string) {
       return true;
   }
   return false;
+}
+
+/**
+ * A page-side expression true where `location.origin` matches `origins`, or null when they include `*`. Throws an
+ * `Error` starting with `what` for a rule that is neither `*` nor what `parseOrigin` takes.
+ */
+export function originGuard(what: string, origins: string[]): string | null {
+  const invalid = origins.filter((rule) => rule !== '*' && !parseOrigin(rule));
+  if (invalid.length) {
+    throw new Error(
+      `${what} ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
+    );
+  }
+  const forms = originForms(origins);
+  return forms.any ? null : `(${MATCHES_ORIGIN})(${JSON.stringify(forms)}, location.origin)`;
 }
