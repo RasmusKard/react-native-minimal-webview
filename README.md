@@ -38,6 +38,7 @@ import { WebView, type WebViewRef } from 'react-native-minimal-webview';
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
   const pageDown = () => {
+    // Android's WebView.pageDown(boolean): a method string names one platform's method
     if (Platform.OS === 'android') ref.current?.call('webView.pageDown', [true]);
   };
   return (
@@ -55,7 +56,8 @@ export function Browser() {
 }
 ```
 
-A setting or method a newer SDK adds works without a release of this package: see
+A setting a newer SDK adds goes under its root's `other` key, and `call` takes any public method, so neither waits for a
+release of this package: see
 [`ios`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ios),
 [`android`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#android) and
 [`call`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call).
@@ -64,10 +66,13 @@ A setting or method a newer SDK adds works without a release of this package: se
 
 [How it works](guides/how-it-works.md) explains the parts. The core adds only what the platform APIs lack:
 
-- `navigationRules`: navigations decided natively, with a JS round trip only for an `ask` rule.
-- A typed promise bridge, open only to the bridge's `allowedOrigins`.
-- `useWebViewState(ref)`: the navigation state, kept natively.
-- `onPermissionRequest`: your app answers the page's permission requests (camera, microphone, location).
+- [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules): navigations decided
+  natively, with a JS round trip only where a prop asks for one.
+- A typed promise bridge ([`createBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/createBridge/)): `window.nativeBridge` in
+  the page, open only to the bridge's [`allowedOrigins`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeOptions/#allowedorigins).
+- [`useWebViewState(ref)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/useWebViewState/): the navigation state, kept natively.
+- [`onPermissionRequest`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest): your app answers the
+  page's permission requests (camera, microphone, location).
 
 The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
 
