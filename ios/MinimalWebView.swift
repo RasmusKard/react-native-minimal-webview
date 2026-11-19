@@ -45,12 +45,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   // Created once, from the first props: WebKit reads some WKWebViewConfiguration settings only at creation.
   private(set) var webView: WKWebView?
   private var observations: [NSKeyValueObservation] = []
-  private(set) lazy var downloads = Downloads(view: self)
+  private lazy var downloads = Downloads(view: self)
   private lazy var proxy = DelegateProxy(core: self)
   /// When the user last tapped the WKWebView: a link activation counts as user-initiated only right after a tap.
   let taps = Taps(target: nil, action: nil)
-  /// The decision warnings sent, shared and taken (DelegateProxy): one each per view.
-  private var warnedDecisions: Set<String> = []
 
   // Navigation state, derived from WebKit in refreshUrls(). Native owns the committed URL; JS is told.
   private(set) var url = ""
@@ -489,16 +487,7 @@ extension MinimalWebView {
     webView?.navigationDelegate = proxy
     webView?.uiDelegate = nil
     webView?.uiDelegate = proxy
-    warnDecisions()
-  }
-
-  private func warnDecisions() {
-    for name in proxy.sharedDecisions where warnedDecisions.insert(name).inserted {
-      warn("\(name): more than one hook delegate implements it; only the first one gets it")
-    }
-    for (name, lost) in proxy.takenDecisions where warnedDecisions.insert("\(name) taken").inserted {
-      warn("\(name): a hook delegate takes it, so \(lost)")
-    }
+    proxy.newWarnings().forEach(warn)
   }
 
   func emit(_ key: String, _ name: String, _ payload: [String: Any]) {

@@ -2,6 +2,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// Runs `block` and returns the Objective-C exception it raised as `name: reason`, or nil. Swift can't catch those;
+/// Key-Value Coding raises one for an unknown key or a value a setter rejects.
+FOUNDATION_EXPORT NSString *_Nullable MRWCatchException(void (NS_NOESCAPE ^block)(void)) NS_REFINED_FOR_SWIFT;
+
 /// Calls `selector` on `target` with the JSON `args` and resolves with the result as `MRWJsonable` makes it, or with
 /// why it couldn't.
 ///
@@ -27,5 +31,9 @@ FOUNDATION_EXPORT void MRWInvoke(id target, SEL selector, NSArray *args, NSStrin
 
 /// `value` as JSON, in the forms WebViewRef.call's @returns lists; anything else, and nil, is null.
 FOUNDATION_EXPORT id MRWJsonable(id _Nullable value) NS_REFINED_FOR_SWIFT;
+
+/// `json` as the struct the type encoding `type` names, in the forms WebViewRef.call's @param lists; nil for another
+/// type or a value that doesn't fit.
+FOUNDATION_EXPORT NSValue *_Nullable MRWStructValue(const char *type, id json) NS_REFINED_FOR_SWIFT;
 
 NS_ASSUME_NONNULL_END

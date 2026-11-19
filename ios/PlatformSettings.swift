@@ -186,7 +186,6 @@ final class PlatformSettings {
     let isBool = CFGetTypeID(value as CFTypeRef) == CFBooleanGetTypeID()
     let number = isBool ? nil : value as? NSNumber
     let string = value as? String
-    let object = value as? [String: Any]
     let isNull = value is NSNull
     switch type {
     case "B", "c":
@@ -207,18 +206,8 @@ final class PlatformSettings {
       case "nonPersistent": return WKWebsiteDataStore.nonPersistent()
       default: return nil
       }
-    case "{UIEdgeInsets=dddd}":
-      guard let o = object, let t = o["top"] as? Double, let l = o["left"] as? Double, let b = o["bottom"] as? Double, let r = o["right"] as? Double else { return nil }
-      return NSValue(uiEdgeInsets: UIEdgeInsets(top: t, left: l, bottom: b, right: r))
-    case "{CGPoint=dd}":
-      guard let o = object, let x = o["x"] as? Double, let y = o["y"] as? Double else { return nil }
-      return NSValue(cgPoint: CGPoint(x: x, y: y))
-    case "{CGSize=dd}":
-      guard let o = object, let w = o["width"] as? Double, let h = o["height"] as? Double else { return nil }
-      return NSValue(cgSize: CGSize(width: w, height: h))
-    case "{CGRect={CGPoint=dd}{CGSize=dd}}":
-      guard let o = object, let x = o["x"] as? Double, let y = o["y"] as? Double, let w = o["width"] as? Double, let h = o["height"] as? Double else { return nil }
-      return NSValue(cgRect: CGRect(x: x, y: y, width: w, height: h))
+    case _ where type.hasPrefix("{"):
+      return __MRWStructValue(type, value)
     default:
       return nil
     }

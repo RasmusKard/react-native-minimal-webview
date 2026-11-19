@@ -14,9 +14,11 @@ enum NavigationRules {
     }
   }
 
-  /// `action` is allow, block, external or ask; `rule` is the matching rule's index, nil when a default decided.
+  enum Action: String { case allow, block, external, ask }
+
+  /// `rule` is the matching rule's index, nil when a default decided.
   struct Decision: Equatable {
-    let action: String
+    let action: Action
     let rule: Int?
   }
 
@@ -33,36 +35,34 @@ enum NavigationRules {
   /// Never open as a new window, whatever the rules say: the core loads an allowed new window in the main frame itself,
   /// past the engine's limits on what a page may navigate the top frame to.
   private static let noNewWindowSchemes = internalSchemes.union(["blob", "file"])
-  private static let actions: Set<String> = ["allow", "block", "external", "ask"]
-  private static let answers: Set<String> = ["allow", "block", "external"]
 
   /// The rules' decision, gated for `ask`: blocked when nothing can answer it (`canAsk` false), allowed when its URL is
   /// in `asked` (URLs an `ask` already allowed). An unknown rule action blocks.
   static func decide(_ rules: [[String: Any]]?, _ request: Request, asked: Set<String>, canAsk: Bool) -> Decision {
     let decision = match(rules, request)
-    guard decision.action == "ask" else { return decision }
-    if !canAsk { return Decision(action: "block", rule: decision.rule) }
-    return asked.contains(request.url) ? Decision(action: "allow", rule: decision.rule) : decision
+    guard decision.action == .ask else { return decision }
+    if !canAsk { return Decision(action: .block, rule: decision.rule) }
+    return asked.contains(request.url) ? Decision(action: .allow, rule: decision.rule) : decision
   }
 
   /// An `ask` answer: allow, block or external; anything else (nil on a timeout) blocks.
-  static func answer(_ value: Any?) -> String {
-    (value as? String).flatMap { answers.contains($0) ? $0 : nil } ?? "block"
+  static func answer(_ value: Any?) -> Action {
+    guard let action = (value as? String).flatMap(Action.init), action != .ask else { return .block }
+    return action
   }
 
   private static func match(_ rules: [[String: Any]]?, _ request: Request) -> Decision {
     let scheme = request.url.firstIndex(of: ":").map { request.url[..<$0].lowercased() } ?? ""
-    if request.newWindow, noNewWindowSchemes.contains(scheme) { return Decision(action: "block", rule: nil) }
-    if internalSchemes.contains(scheme) { return Decision(action: "allow", rule: nil) }
+    if request.newWindow, noNewWindowSchemes.contains(scheme) { return Decision(action: .block, rule: nil) }
+    if internalSchemes.contains(scheme) { return Decision(action: .allow, rule: nil) }
     // JS sends defaultNavigationRules when the prop is unset; no rules, nil or empty, match nothing.
     guard let rules, !rules.isEmpty,
       let parts = scheme == "blob" ? blobOrigin(request.url) : urlParts(scheme, request.url)
-    else { return Decision(action: "block", rule: nil) }
+    else { return Decision(action: .block, rule: nil) }
     guard let index = rules.firstIndex(where: { matches($0, parts, request) }) else {
-      return Decision(action: "block", rule: nil)
+      return Decision(action: .block, rule: nil)
     }
-    let action = rules[index]["action"] as? String
-    return Decision(action: action.flatMap { actions.contains($0) ? $0 : nil } ?? "block", rule: index)
+    return Decision(action: (rules[index]["action"] as? String).flatMap(Action.init) ?? .block, rule: index)
   }
 
   private static func urlParts(_ scheme: String, _ url: String) -> Parts {

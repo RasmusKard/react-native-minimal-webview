@@ -30,7 +30,7 @@ for testCase in cases {
     let request = testCase["request"] as? [String: Any],
     let url = request["url"] as? String,
     let expect = testCase["expect"] as? [String: Any],
-    let action = expect["action"] as? String
+    let action = (expect["action"] as? String).flatMap(NavigationRules.Action.init)
   else { fail("malformed case \(testCase)") }
   let decision = NavigationRules.decide(
     (testCase["rules"] as? String).flatMap { rulesets[$0] },
@@ -47,7 +47,7 @@ for testCase in cases {
   check("navigation \(name): expected \(expected), got \(decision)", decision == expected)
 }
 for entry in answers {
-  guard let expected = entry["action"] as? String else { fail("malformed answer \(entry)") }
+  guard let expected = (entry["action"] as? String).flatMap(NavigationRules.Action.init) else { fail("malformed answer \(entry)") }
   let actual = NavigationRules.answer(entry["answer"])
   check("navigation answer \(entry["answer"] ?? "missing"): expected \(expected), got \(actual)", actual == expected)
 }
@@ -189,13 +189,16 @@ check("proxy a default answer passes the challenge on", answered([Challenged(.pe
 let later = Challenged(.useCredential)
 check("proxy any other answer stands", answered([Challenged(.cancelAuthenticationChallenge), later]) == .cancelAuthenticationChallenge && later.calls == 0)
 check("proxy nobody takes it: the default handling", answered([Challenged(.performDefaultHandling)]) == .performDefaultHandling)
-check("proxy a decision two delegates implement is shared", proxy([], [uiAlert, UIWithAlertAndPolicy()]).sharedDecisions == [NSStringFromSelector(alertPanel)])
-check("proxy either action policy variant counts", proxy([plain, preferring]).sharedDecisions == ["webView:decidePolicyForNavigationAction:decisionHandler:"])
-check("proxy one delegate per decision, another list's or a challenge: none shared", proxy([NavigationWithAlert(), plain, Challenged(.useCredential), Challenged(.useCredential)], [uiAlert]).sharedDecisions.isEmpty)
 let actionPolicyName = "webView:decidePolicyForNavigationAction:decisionHandler:"
-check("proxy either action policy variant takes it from the props", [[plain], [preferring], [plain, preferring]].allSatisfy { proxy($0).takenDecisions.map(\.name) == [actionPolicyName] })
-check("proxy it names what stops applying", proxy([plain]).takenDecisions.first?.lost == "navigationRules, their defaults and onNavigationRequest don't apply to navigations")
-check("proxy a decision no prop makes, or a UI delegate's action policy: none taken", proxy([NavigationWithAlert()], [uiAlert]).takenDecisions.isEmpty)
+let shared = { (name: String) in "\(name): more than one hook delegate implements it; only the first one gets it" }
+let takenFromProps = "\(actionPolicyName): a hook delegate takes it, so navigationRules, their defaults and onNavigationRequest don't apply to navigations"
+check("proxy a decision two delegates implement is shared", proxy([], [uiAlert, UIWithAlertAndPolicy()]).newWarnings() == [shared(NSStringFromSelector(alertPanel))])
+check("proxy either action policy variant counts", proxy([plain, preferring]).newWarnings() == [shared(actionPolicyName), takenFromProps])
+check("proxy one delegate per decision, another list's or a challenge: none shared", proxy([NavigationWithAlert(), plain, Challenged(.useCredential), Challenged(.useCredential)], [uiAlert]).newWarnings() == [takenFromProps])
+check("proxy either action policy variant takes it from the props, naming what stops applying", [[plain], [preferring]].allSatisfy { proxy($0).newWarnings() == [takenFromProps] })
+check("proxy a decision no prop makes, or a UI delegate's action policy: none taken", proxy([NavigationWithAlert()], [uiAlert]).newWarnings().isEmpty)
+let warnedProxy = proxy([plain, preferring])
+check("proxy each warning once", !warnedProxy.newWarnings().isEmpty && warnedProxy.newWarnings().isEmpty)
 
 let ordered = inRegistrationOrder(["typo", "c", "a", "b", "other"], ["b", "x", "a", "c"])
 check("hook order: got \(ordered)", ordered == ["b", "a", "c", "other", "typo"])

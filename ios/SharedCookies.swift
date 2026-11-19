@@ -9,10 +9,9 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   /// The WebView's cookies at the last copy: one gone from it since is deleted from native too.
   private var copied: [HTTPCookie] = []
 
-  /// Once: the view's one WKWebView, which a crash keeps.
+  /// Once, before the first `set`: the view's one WKWebView, which a crash keeps.
   func didCreate(_ webView: WKWebView) {
     store = webView.configuration.websiteDataStore.httpCookieStore
-    if enabled { store?.add(self) }
   }
 
   func set(_ enabled: Bool) {
