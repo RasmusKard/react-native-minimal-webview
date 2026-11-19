@@ -38,6 +38,8 @@ extension MinimalWebView {
       case .failure(let error):
         // The thrown error's own text, as on Android; WebKit's localizedDescription is generic.
         let message = (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? error.localizedDescription
+        // WebKit drops the call of a page being left, and (iOS 27) can say so before didCommit.
+        if message == Self.unreachable, self?.webView?.isLoading == true { return promise.reject("navigated", Self.navigated) }
         promise.reject("script_error", message)
       }
     }
@@ -47,8 +49,11 @@ extension MinimalWebView {
   func failEvaluations() {
     let waiting = evaluations.values
     evaluations = [:]
-    waiting.forEach { $0.reject("navigated", "the page navigated before the script finished") }
+    waiting.forEach { $0.reject("navigated", Self.navigated) }
   }
+
+  private static let navigated = "the page navigated before the script finished"
+  private static let unreachable = "Completion handler for function call is no longer reachable"
 
   func bridgeReceive(_ message: WKScriptMessage) {
     let origin = OriginRules.origin(of: message.frameInfo.securityOrigin)
