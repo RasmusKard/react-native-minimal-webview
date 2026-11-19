@@ -198,8 +198,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func reload() {
-    // WebKit's reload redoes no failed load or POST, and loads nothing while `url` is nil (no commit, a dead process).
-    if let webView, webView.url != nil, failedUrl == nil, !onPostSource { webView.reload() } else { loadAgain() }
+    // WebKit's reload redoes no failed load, POST or html source (it fetches the base URL), and loads nothing while `url`
+    // is nil (no commit, a dead process).
+    let onHtmlSource = onSource && source?.uri == nil
+    if let webView, webView.url != nil, failedUrl == nil, !onPostSource, !onHtmlSource { webView.reload() } else { loadAgain() }
   }
 
   /// Loads the page on screen again, as crash recovery does. In order:
