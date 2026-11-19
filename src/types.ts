@@ -371,7 +371,7 @@ type PayloadArg<Payload> = undefined extends Payload ? [payload?: Payload] : [pa
  *   latest 1000 are kept: an older call rejects with `unavailable`.
  *
  * The page's own calls don't wait: one made before React Native has registered its method rejects with `not_found`.
- * Unmounting rejects the calls in flight with `navigated`.
+ * Unmounting rejects the calls the page got with `navigated`, and the queued ones with `unavailable`.
  *
  * The page's `window.nativeBridge` has the same four methods, from its side: {@link PageBridge}.
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)

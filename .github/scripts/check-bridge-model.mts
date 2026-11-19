@@ -40,6 +40,12 @@ const MUTANTS: { code: string; from: string; to: string; breaks: string[] }[] = 
     breaks: ['EverySettles'],
   },
   {
+    code: 'createBridge.ts detach rejects queued calls with `navigated` too',
+    from: "/\\ navRejected' = navRejected \\cup RejectSent \\*",
+    to: "/\\ navRejected' = navRejected \\cup pending \\*",
+    breaks: ['NavigatedOnlyIfPosted'],
+  },
+  {
     code: 'pageClient.ts receive acts on any token (no `message.doc === doc`)',
     from: 'Accepts(d, msg) == msg.doc = d',
     to: 'Accepts(d, msg) == TRUE',
