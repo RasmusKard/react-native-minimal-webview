@@ -383,6 +383,18 @@
       }
     },
     {
+      "name": "internal: data in an iframe skips rules, with no rules",
+      "rules": null,
+      "request": {
+        "url": "data:text/html,<p>x</p>",
+        "mainFrame": false
+      },
+      "expect": {
+        "action": "allow",
+        "rule": null
+      }
+    },
+    {
       "name": "new window: data blocks",
       "rules": "app",
       "request": {
