@@ -7,8 +7,8 @@ import {
   openPage,
   pageCall,
   sleep,
-  until,
   waitFor,
+  poll,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter, withFloor } from '../harness/runner';
 import { OTHER } from '../pages';
@@ -90,7 +90,7 @@ export async function bridge(h: Harness, all: Reporter) {
   );
 
   h.bridge.emit('nativeEvent', { n: 1 });
-  const logged = await until(
+  const logged = await poll(
     () => h.ref.current?.evaluate(`window.testLog.some((line) => line.startsWith('nativeEvent'))`),
     3000
   );
@@ -117,7 +117,7 @@ export async function bridge(h: Harness, all: Reporter) {
   // main-thread hop after the commit: that has to come first, or the answer is lost and JS takes the page as loading.
   const head = `${page}&head=1`;
   await openPage(h, head);
-  const headCall = await until(() => h.ref.current?.evaluate('window.__head'), 5000);
+  const headCall = await poll(() => h.ref.current?.evaluate('window.__head'), 5000);
   r.check(
     "a head script's call at document start is answered",
     (headCall as { result?: { head?: boolean } } | undefined)?.result?.head === true,

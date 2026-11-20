@@ -5,8 +5,9 @@ import {
   idle,
   openPage,
   sleep,
-  until,
   waitFor,
+  poll,
+  happens,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
@@ -29,11 +30,7 @@ export async function ptr(h: Harness, r: Reporter) {
   const pull = async (kind: 'full' | 'short' | 'inner') => {
     const before = await loadedAt();
     r.drive({ action: 'swipe', kind });
-    return !!(await until(
-      async () => idle(h.state()) && (await loadedAt()) !== before,
-      10000,
-      250
-    ));
+    return !!(await poll(async () => idle(h.state()) && (await loadedAt()) !== before, 10000, 250));
   };
   /**
    * A pull that must not reload. It has landed once it scrolls `position` (the page or the inner scroller) up by more than
@@ -60,8 +57,8 @@ export async function ptr(h: Harness, r: Reporter) {
       return typeof now === 'number' && now < top - 30;
     };
     r.drive({ action: 'swipe', kind });
-    const landed = await until(async () => (await reloaded()) || (await scrolled()), 15000);
-    if (landed) await until(reloaded, 3000);
+    const landed = await poll(async () => (await reloaded()) || (await scrolled()), 15000);
+    if (landed) await poll(reloaded, 3000);
     return (await reloaded()) ? 'reloaded' : landed ? 'stayed' : 'the pull never came';
   };
 
@@ -97,7 +94,7 @@ export async function ptr(h: Harness, r: Reporter) {
   r.drive({ action: 'swipe', kind: 'full' });
   r.check(
     'a pull whose reload fails reports the error',
-    await waitFor(h, () => h.events.errors.some((e) => e.kind === 'network'), 15000),
+    await happens(waitFor(h, () => h.events.errors.some((e) => e.kind === 'network'), 15000)),
     h.events.errors
   );
   await waitFor(h, idle, 5000);

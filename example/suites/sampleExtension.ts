@@ -14,6 +14,8 @@ import {
   until,
   waitFor,
   waitForLoad,
+  poll,
+  happens,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
@@ -89,7 +91,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
   h.setProps({ extensions: [pageCounter({ global: '__liveCount' })], withoutPageCounter: true });
-  const live = await until(
+  const live = await poll(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
   );
@@ -108,16 +110,16 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     await waitFor(h, (s) => s.url.includes('from=hook') && idle(s));
     r.check(
       'a callback the core does not implement is forwarded to its delegate (didReceiveServerRedirect)',
-      await waitFor(h, () => h.events.hookEvents.includes('sample.pageCounter.redirect'), 3000),
+      await happens(
+        waitFor(h, () => h.events.hookEvents.includes('sample.pageCounter.redirect'), 3000)
+      ),
       h.events.hookEvents
     );
   } else {
     r.check(
       'a callback the core does not implement is forwarded to its client (onPageCommitVisible)',
-      await waitFor(
-        h,
-        () => h.events.hookEvents.includes('sample.pageCounter.commitVisible'),
-        3000
+      await happens(
+        waitFor(h, () => h.events.hookEvents.includes('sample.pageCounter.commitVisible'), 3000)
       ),
       h.events.hookEvents
     );
@@ -216,7 +218,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
       ? "document.querySelector('#n a[href^=tel]') !== null"
       : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
   const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
-  r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
+  r.check('its configure hook sets the WebView up', !!(await poll(applied, 5000, 250)));
   if (Platform.OS === 'android') {
     await seams.setWebViewMissing(true);
     const errors = h.events.errors.length;
@@ -226,7 +228,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
       h.remount();
       await until(() => h.events.errors.length > errors, 3000);
       await seams.setWebViewMissing(false);
-      reloaded = await waitForLoad(h, () => h.ref.current?.reload(), idle, 10000);
+      reloaded = await happens(waitForLoad(h, () => h.ref.current?.reload(), idle, 10000));
     } finally {
       await seams.setWebViewMissing(false);
     }
@@ -261,12 +263,12 @@ async function hookSeams(h: Harness, r: Reporter) {
     await openPage(h, fresh(h, '/media.html'));
     const [downloads, events] = [h.events.downloads.length, h.events.hookEvents.length];
     await click(h, 'attachment');
-    const taken = await until(
+    const taken = await poll(
       () => h.events.hookEvents.slice(events).includes('sample.seams.download'),
       10000
     );
     await click(h, 'blob');
-    const passed = await waitFor(h, () => h.events.downloads.length > downloads, 20000);
+    const passed = await happens(waitFor(h, () => h.events.downloads.length > downloads, 20000));
     r.check(
       'its onDownloadStart handler takes an http download from onDownload and passes a blob: one on',
       !!taken && passed && h.events.downloads.length === downloads + 1,
@@ -276,11 +278,11 @@ async function hookSeams(h: Harness, r: Reporter) {
     const touches = await h.ref.current?.hook('sample.seams', 'touch').catch(errorCode);
     r.check('its touch listeners share the slot, in order', touches === 2, touches);
     h.loadSource({ html: '<div style="height: 5000px">tall</div>', baseUrl: h.pages });
-    const scrolled = await until(
+    const scrolled = await poll(
       async () => (await h.ref.current?.evaluate('(scrollTo(0, 400), scrollY > 0)')) === true,
       5000
     );
-    const both = await until(
+    const both = await poll(
       () =>
         ['scrollA', 'scrollB'].every((name) =>
           h.events.hookEvents.includes(`sample.seams.${name}`)
@@ -295,7 +297,7 @@ async function hookSeams(h: Harness, r: Reporter) {
   }
   const closed = await seams.closedViews();
   await recreate(h, {}, true);
-  const now = await until(async () => {
+  const now = await poll(async () => {
     const count = await seams.closedViews();
     return count > closed && count;
   }, 3000);

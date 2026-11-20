@@ -1,6 +1,15 @@
 import { Platform } from 'react-native';
 
-import { clearEvents, fresh, idle, openPage, sleep, until, waitFor } from '../harness/helpers';
+import {
+  clearEvents,
+  fresh,
+  idle,
+  openPage,
+  sleep,
+  until,
+  waitFor,
+  happens,
+} from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { HTTPS } from '../pages';
 
@@ -21,7 +30,7 @@ export async function errors(h: Harness, r: Reporter) {
   clearEvents(h);
   const unreachable = 'http://localhost:8099/nothing'; // nothing listens there
   h.load(unreachable);
-  const gotNetwork = await waitFor(h, () => h.events.errors.length > 0, 10000);
+  const gotNetwork = await happens(waitFor(h, () => h.events.errors.length > 0, 10000));
   await waitFor(h, idle, 5000);
   await sleep(500);
   const network = h.events.errors[0];
@@ -34,7 +43,7 @@ export async function errors(h: Harness, r: Reporter) {
   );
   r.check(
     'the error screen is shown after a failure',
-    await waitFor(h, () => h.events.overlay.error, 3000)
+    await happens(waitFor(h, () => h.events.overlay.error, 3000))
   );
 
   clearEvents(h);
@@ -50,7 +59,7 @@ export async function errors(h: Harness, r: Reporter) {
   r.check('a 404 page ends as finished', notFound === 'finished', notFound);
   r.check(
     'the error screen goes away on the next load',
-    await waitFor(h, () => !h.events.overlay.error, 3000)
+    await happens(waitFor(h, () => !h.events.overlay.error, 3000))
   );
 
   clearEvents(h);
@@ -132,7 +141,7 @@ export async function errors(h: Harness, r: Reporter) {
   );
   h.events.outcomes.length = 0;
   h.ref.current?.reload();
-  const reloaded = await waitFor(h, () => h.events.outcomes.includes('finished'), 10000);
+  const reloaded = await happens(waitFor(h, () => h.events.outcomes.includes('finished'), 10000));
   r.check('reload after an error loads the page', reloaded && h.state().url === flaky, {
     outcomes: h.events.outcomes,
     state: h.state(),
@@ -169,7 +178,7 @@ export async function errors(h: Harness, r: Reporter) {
     await openPage(h, fresh(h, '/'));
     clearEvents(h);
     await h.ref.current?.evaluate(`location.href = ${to}`);
-    const got = await waitFor(h, () => h.events.errors.length > 0, 10000);
+    const got = await happens(waitFor(h, () => h.events.errors.length > 0, 10000));
     r.check(
       name,
       got && h.events.errors[0]?.kind === 'ssl' && h.events.errors[0]?.url === failed,

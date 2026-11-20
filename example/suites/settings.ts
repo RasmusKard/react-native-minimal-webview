@@ -8,7 +8,7 @@ import {
   openPage,
   recreate,
   sleep,
-  until,
+  poll,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -19,7 +19,7 @@ export async function settings(h: Harness, r: Reporter) {
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
   /** Whether `read` gives `want` within 3 s: a setting reaches the WebView, and the page, on their own schedule. */
   const becomes = async (read: () => Promise<unknown> | undefined, want: unknown) =>
-    !!(await until(async () => (await read()) === want, 3000));
+    !!(await poll(async () => (await read()) === want, 3000));
   // An 8px span's computed size: the minimum font size setting raises it.
   const fontSize = () =>
     page(`(() => {
@@ -70,7 +70,7 @@ export async function settings(h: Harness, r: Reporter) {
       );
       const width = (await page('innerWidth')) as number;
       h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
-      const zoomedIn = await until(
+      const zoomedIn = await poll(
         async () => Math.abs(((await page('innerWidth')) as number) * 2 - width) <= 2,
         3000
       );

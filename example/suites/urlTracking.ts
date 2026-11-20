@@ -1,6 +1,17 @@
 import type { NavigationState } from 'react-native-minimal-webview';
 
-import { click, errorCode, fresh, idle, sleep, text, until, waitFor } from '../harness/helpers';
+import {
+  click,
+  errorCode,
+  fresh,
+  idle,
+  sleep,
+  text,
+  until,
+  waitFor,
+  poll,
+  happens,
+} from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
@@ -8,7 +19,7 @@ const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href
 /** Committed url and the page's location.href agree, once the coalesced state event has arrived. */
 async function agree(h: Harness, r: Reporter, name: string) {
   let seen = {};
-  const agreed = await until(
+  const agreed = await poll(
     async () => {
       const page = await href(h);
       const { url } = h.state();
@@ -37,7 +48,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
     await sleep(10);
   }
   r.check('a new source is not reported loaded before it starts', early === null, early);
-  r.check('initial load', await waitFor(h, (s) => s.url === first && idle(s)), h.state());
+  r.check('initial load', await happens(waitFor(h, (s) => s.url === first && idle(s))), h.state());
   await agree(h, r, 'initial load agrees');
 
   for (const [id, expected] of [
@@ -48,7 +59,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
     await click(h, id);
     r.check(
       `${id} updates url`,
-      await waitFor(h, (s) => s.url.includes(expected), 3000),
+      await happens(waitFor(h, (s) => s.url.includes(expected), 3000)),
       h.state()
     );
     await agree(h, r, `${id} agrees`);
@@ -57,7 +68,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
   await click(h, 'back');
   r.check(
     'history.back updates url',
-    await waitFor(h, (s) => s.url !== beforeBack, 3000),
+    await happens(waitFor(h, (s) => s.url !== beforeBack, 3000)),
     h.state()
   );
   await agree(h, r, 'history.back agrees');
@@ -75,7 +86,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
     await click(h, id);
     r.check(
       `${id} lands on the final url`,
-      await waitFor(h, (s) => s.url.includes(expected) && idle(s)),
+      await happens(waitFor(h, (s) => s.url.includes(expected) && idle(s))),
       h.state()
     );
     await agree(h, r, `${id} agrees`);
@@ -99,7 +110,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
   );
   r.check(
     'slow load commits',
-    await waitFor(h, (s) => s.url.includes('/slow') && idle(s)),
+    await happens(waitFor(h, (s) => s.url.includes('/slow') && idle(s))),
     h.state()
   );
   await agree(h, r, 'slow load agrees');
@@ -125,7 +136,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
   r.check('a remount resets the state', h.state().url !== beforeRemount, h.state());
   r.check(
     'useWebViewState follows the remounted WebView',
-    await waitFor(h, (s) => s.url === first && idle(s)),
+    await happens(waitFor(h, (s) => s.url === first && idle(s))),
     h.state()
   );
   r.check('getState() is the same state', h.ref.getState() === h.state(), h.ref.getState());

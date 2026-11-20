@@ -250,7 +250,7 @@ async function reset(h: Harness) {
   h.setPermission(undefined);
   h.setFileRequest(undefined);
   const home = `${PAGES}/`;
-  const loaded = await waitForLoad(
+  await waitForLoad(
     h,
     () => {
       h.loadSource({ uri: home });
@@ -260,5 +260,4 @@ async function reset(h: Harness) {
     10000
   );
   clearEvents(h);
-  if (!loaded) throw new Error(`the home page didn't load: ${JSON.stringify(h.state())}`);
 }

@@ -12,6 +12,7 @@ import {
   tap,
   until,
   waitFor,
+  happens,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
@@ -95,7 +96,7 @@ export async function navigation(h: Harness, r: Reporter) {
   );
 
   await tap(h, r, 'blank');
-  const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000);
+  const inPlace = await happens(waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000));
   r.check('a tapped target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
 
   const mailto = 'mailto:test@example.com';
@@ -123,10 +124,8 @@ export async function navigation(h: Harness, r: Reporter) {
   );
 
   await tap(h, r, 'blank-checkout');
-  const askedInPlace = await waitFor(
-    h,
-    (s) => s.url.endsWith('/checkout/window') && idle(s),
-    15000
+  const askedInPlace = await happens(
+    waitFor(h, (s) => s.url.endsWith('/checkout/window') && idle(s), 15000)
   );
   r.check(
     'a new window an ask rule matches is asked with newWindow true, and loads in place when allowed',
@@ -266,10 +265,8 @@ export async function navigation(h: Harness, r: Reporter) {
     const decided = (prefix: string) => h.events.navigations.find((n) => n.url.startsWith(prefix));
     await waitFor(h, () => decided(scheme) !== undefined, 5000);
     // The core decides the fallback before it reports the intent:, so only a decided one gets time to load.
-    const loaded = await waitFor(
-      h,
-      (s) => s.url === fallback && idle(s),
-      decided(fallback) ? 8000 : 1000
+    const loaded = await happens(
+      waitFor(h, (s) => s.url === fallback && idle(s), decided(fallback) ? 8000 : 1000)
     );
     return {
       external: [...external],

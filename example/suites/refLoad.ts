@@ -13,6 +13,7 @@ import {
   travel,
   waitFor,
   waitForLoad,
+  happens,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -28,10 +29,12 @@ export async function refLoad(h: Harness, r: Reporter) {
   const handle = h.ref.current;
   const page = fresh(h, '/bridge.html');
   const loadPage = (url: string) =>
-    waitForLoad(
-      h,
-      () => h.ref.current?.load(url),
-      (s) => s.url === url && idle(s)
+    happens(
+      waitForLoad(
+        h,
+        () => h.ref.current?.load(url),
+        (s) => s.url === url && idle(s)
+      )
     );
   const historyLength = async () => (await h.ref.current?.evaluate('history.length')) as number;
   const entries = await historyLength();
@@ -141,10 +144,12 @@ async function refLoadHistory(h: Harness, r: Reporter) {
     const a = fresh(h, `/back-forward.html?title=${way}A`);
     await openPage(h, a);
     const b = fresh(h, `/back-forward.html?title=${way}B`);
-    const arrived = await waitForLoad(
-      h,
-      () => go(h, r, b),
-      (s) => s.url === b && idle(s)
+    const arrived = await happens(
+      waitForLoad(
+        h,
+        () => go(h, r, b),
+        (s) => s.url === b && idle(s)
+      )
     );
     r.check(`${way}: goes to the page`, arrived && h.state().canGoBack, h.state());
     const back = await travel(
@@ -257,14 +262,16 @@ async function loadAfter(
   h.events.navigations.length = 0;
   const earlier = fresh(h, '/?first');
   const loaded = fresh(h, '/');
-  const ended = await waitForLoad(
-    h,
-    () => {
-      first(h, earlier);
-      if (name === 'a load') setTimeout(() => h.ref.current?.load(loaded), 0);
-      else h.ref.current?.load(loaded);
-    },
-    (s) => [earlier, loaded].includes(s.url) && idle(s)
+  const ended = await happens(
+    waitForLoad(
+      h,
+      () => {
+        first(h, earlier);
+        if (name === 'a load') setTimeout(() => h.ref.current?.load(loaded), 0);
+        else h.ref.current?.load(loaded);
+      },
+      (s) => [earlier, loaded].includes(s.url) && idle(s)
+    )
   );
   await sleep(300);
   const reported = h.events.navigations.filter((n) => n.mainFrame);
@@ -298,18 +305,20 @@ async function refLoadEdges(h: Harness, r: Reporter) {
 
   const early = fresh(h, '/bridge.html');
   const old = h.ref.current;
-  const mounted = await waitForLoad(
-    h,
-    () => {
-      const stop = h.ref.subscribe(() => {
-        const next = h.ref.current;
-        if (!next || next === old) return;
-        stop();
-        next.load(early);
-      });
-      h.remount();
-    },
-    (s) => s.url === early && idle(s)
+  const mounted = await happens(
+    waitForLoad(
+      h,
+      () => {
+        const stop = h.ref.subscribe(() => {
+          const next = h.ref.current;
+          if (!next || next === old) return;
+          stop();
+          next.load(early);
+        });
+        h.remount();
+      },
+      (s) => s.url === early && idle(s)
+    )
   );
   r.check('a load as a remounted WebView attaches its ref waits for the view', mounted, h.state());
 }

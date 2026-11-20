@@ -12,6 +12,7 @@ import {
   sleep,
   travel,
   waitFor,
+  happens,
 } from '../harness/helpers';
 import { WEBVIEW, androidWebView, type Harness, type Reporter } from '../harness/runner';
 
@@ -85,7 +86,7 @@ export async function bfcache(h: Harness, r: Reporter) {
   await h.ref.current?.evaluate(`location.href = '/checkout/pay?bf=1'`);
   r.check(
     'an ask rule asks on the restored page and allow loads it',
-    (await waitFor(h, (s) => s.url.endsWith('/checkout/pay?bf=1') && idle(s), 5000)) &&
+    (await happens(waitFor(h, (s) => s.url.endsWith('/checkout/pay?bf=1') && idle(s), 5000))) &&
       asked.length === 1,
     { asked, state: h.state() }
   );
@@ -99,7 +100,7 @@ export async function bfcache(h: Harness, r: Reporter) {
     await openPage(h, fresh(h, '/back-forward.html?title=two'));
     clearEvents(h);
     h.ref.current?.goBack();
-    const back = await waitFor(h, (s) => s.url === one && idle(s));
+    const back = await happens(waitFor(h, (s) => s.url === one && idle(s)));
     await sleep(500); // a late load event would come now
     warnings.stop();
     r.check(

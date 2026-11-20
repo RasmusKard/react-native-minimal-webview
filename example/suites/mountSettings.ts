@@ -12,6 +12,7 @@ import {
   text,
   viewportHeight,
   waitFor,
+  happens,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -54,6 +55,8 @@ export async function mountSettings(h: Harness, r: Reporter) {
   const asked = await allowAsks(h, [{ path: ['/checkout'], action: 'ask' }]);
   await openPage(h, fresh(h, '/nav.html'));
   await click(h, 'checkout');
-  const reached = await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000);
+  const reached = await happens(
+    waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 8000)
+  );
   r.check('ask works after the remount', reached && asked.length > 0, { reached, asked });
 }

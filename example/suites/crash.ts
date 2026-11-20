@@ -14,6 +14,8 @@ import {
   viewportHeight,
   waitFor,
   waitForLoad,
+  happens,
+  poll,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -42,7 +44,7 @@ export async function crash(h: Harness, r: Reporter) {
   };
   // A setting the page can see, to check after recovery.
   const userAgent = () =>
-    until(
+    poll(
       async () =>
         (await h.ref.current?.evaluate('navigator.userAgent').catch(errorCode)) === 'Crash/1'
     );
@@ -56,10 +58,12 @@ export async function crash(h: Harness, r: Reporter) {
   const firstKillAt = Date.now();
   const countsBefore = h.events.pageCounts.length;
   let first: ProcessGoneEvent | undefined;
-  const reloaded = await waitForLoad(
-    h,
-    async () => (first = await kill(1)),
-    (s) => s.url === page && idle(s)
+  const reloaded = await happens(
+    waitForLoad(
+      h,
+      async () => (first = await kill(1)),
+      (s) => s.url === page && idle(s)
+    )
   );
   r.check('processGone reported and recovered', first?.recovered === true, first);
   r.check('the page reloads', reloaded, h.state());
@@ -73,10 +77,12 @@ export async function crash(h: Harness, r: Reporter) {
     (s) => s.url === second && idle(s)
   );
   let killed: ProcessGoneEvent | undefined;
-  const inPlace = await waitForLoad(
-    h,
-    async () => (killed = await kill(2)),
-    (s) => s.url === second && idle(s) && s.canGoBack
+  const inPlace = await happens(
+    waitForLoad(
+      h,
+      async () => (killed = await kill(2)),
+      (s) => s.url === second && idle(s) && s.canGoBack
+    )
   );
   r.check(
     'a second page reloads in place, canGoBack unchanged',
@@ -86,13 +92,13 @@ export async function crash(h: Harness, r: Reporter) {
   h.ref.current?.goBack();
   r.check(
     'back after recovery goes to the page before it, with forward kept',
-    await waitFor(h, (s) => s.url === page && idle(s) && s.canGoForward, 15000),
+    await happens(waitFor(h, (s) => s.url === page && idle(s) && s.canGoForward, 15000)),
     h.state()
   );
   // Android attaches the hooks to the new WebView; iOS keeps the delegates: the sample's page counter still counts.
   r.check(
     'the hooks are attached after recovery',
-    await waitFor(h, () => h.events.pageCounts.length > countsBefore, 5000),
+    await happens(waitFor(h, () => h.events.pageCounts.length > countsBefore, 5000)),
     h.events.pageCounts.length - countsBefore
   );
   const recoveredVh = await viewportHeight(h);
@@ -132,12 +138,12 @@ export async function crash(h: Harness, r: Reporter) {
   else r.info('crash loop check skipped: the 4 crashes took', elapsed);
   r.check(
     'a crash during a load ends it (loading: false)',
-    await waitFor(h, (s) => !s.loading, 5000),
+    await happens(waitFor(h, (s) => !s.loading, 5000)),
     h.state()
   );
   // The action loads `url`, and the page itself agrees it is there.
   const brings = async (action: () => void, url: string) =>
-    (await waitForLoad(h, action, (s) => s.url === url && idle(s))) &&
+    (await happens(waitForLoad(h, action, (s) => s.url === url && idle(s)))) &&
     (await h.ref.current?.evaluate('location.href').catch(errorCode)) === url;
   r.check(
     'reload() brings the page back after giving up',
@@ -146,7 +152,7 @@ export async function crash(h: Harness, r: Reporter) {
   );
   r.check(
     'loading a new source works after giving up',
-    await openPage(h, fresh(h, '/')),
+    await happens(openPage(h, fresh(h, '/'))),
     h.state()
   );
   const loopAt = Date.now();
@@ -180,7 +186,7 @@ export async function crash(h: Harness, r: Reporter) {
     h.ref.current
       ?.evaluate(`document.getElementById('marker')?.textContent ?? null`)
       .catch(errorCode);
-  const shown = async () => !!(await until(async () => (await marker()) === 'html source'));
+  const shown = async () => !!(await poll(async () => (await marker()) === 'html source'));
   r.check('an html source is shown', await shown(), await marker());
   r.check(
     'processGone reported and recovered (html source)',
@@ -211,11 +217,13 @@ export async function crash(h: Harness, r: Reporter) {
     states.push({ state, at: Date.now() })
   );
   let backgroundGone: ProcessGoneEvent | undefined;
-  const recovered = await waitForLoad(
-    h,
-    async () => (backgroundGone = await kill(12, 'killInBackground')),
-    (s) => s.url === away && idle(s),
-    30000
+  const recovered = await happens(
+    waitForLoad(
+      h,
+      async () => (backgroundGone = await kill(12, 'killInBackground')),
+      (s) => s.url === away && idle(s),
+      30000
+    )
   );
   appState.remove();
   const activeAt = states.find((s) => s.state === 'active')?.at ?? Infinity;
@@ -247,16 +255,18 @@ export async function crash(h: Harness, r: Reporter) {
       h.ref.current?.load(asked);
     },
   });
-  const loadedOnTop = await waitForLoad(
-    h,
-    () => kill(13, 'killInBackground'),
-    (s) => s.url === asked && idle(s),
-    30000
+  const loadedOnTop = await happens(
+    waitForLoad(
+      h,
+      () => kill(13, 'killInBackground'),
+      (s) => s.url === asked && idle(s),
+      30000
+    )
   );
   h.ref.current?.goBack();
   r.check(
     'a load() while the recovery waits keeps the history',
-    loadedOnTop && (await waitFor(h, (s) => s.url === away && idle(s), 15000)),
+    loadedOnTop && (await happens(waitFor(h, (s) => s.url === away && idle(s), 15000))),
     h.state()
   );
   h.setProps({ userAgent: 'Crash/1' }); // the next kill's onProcessGone loads nothing
@@ -272,10 +282,12 @@ export async function crash(h: Harness, r: Reporter) {
     const coveredGone = await kill(14);
     await sleep(2000);
     const whileCovered = h.events.loads.slice(starts);
-    const uncovered = await waitForLoad(
-      h,
-      () => h.setCovered(false),
-      (s) => s.url === under && idle(s)
+    const uncovered = await happens(
+      waitForLoad(
+        h,
+        () => h.setCovered(false),
+        (s) => s.url === under && idle(s)
+      )
     );
     r.check(
       'a crash out of the window reloads once the view is back in one',

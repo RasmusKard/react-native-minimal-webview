@@ -10,8 +10,21 @@ import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from './runne
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** A wait's time ran out. */
+export class Timeout extends Error {}
+
+/** Whether `wait` came in time: false when it threw a Timeout. For a wait whose outcome is the check. */
+export const happens = (wait: Promise<unknown>) =>
+  wait.then(
+    () => true,
+    (error: unknown) => {
+      if (error instanceof Timeout) return false;
+      throw error;
+    }
+  );
+
 /** Polls `fn` until it returns something truthy, and returns that; undefined after `ms`. */
-export async function until<T>(
+export async function poll<T>(
   fn: () => T | Promise<T>,
   ms = 10000,
   step = 100
@@ -40,11 +53,22 @@ export function captureWarnings() {
   };
 }
 
-export const waitFor = async (
+/** As `poll`, but throws a Timeout after `ms`: a suite goes on only once `fn` returned something truthy. */
+export async function until<T>(fn: () => T | Promise<T>, ms = 10000, step = 100) {
+  const value = await poll(fn, ms, step);
+  if (!value) throw new Timeout(`nothing came in ${ms} ms`);
+  return value;
+}
+
+/** Waits until the navigation state passes `predicate`; throws a Timeout, with the state, after `ms`. */
+export async function waitFor(
   h: Pick<Harness, 'state'>,
   predicate: (s: NavigationState) => boolean,
   ms = 10000
-) => (await until(() => predicate(h.state()), ms, 50)) === true;
+) {
+  if (!(await poll(() => predicate(h.state()), ms, 50)))
+    throw new Timeout(`the state after ${ms} ms: ${JSON.stringify(h.state())}`);
+}
 
 export const idle = (s: NavigationState) => !s.loading && s.pendingUrl === null;
 
@@ -53,8 +77,8 @@ export const USER_AGENT_KEY =
   Platform.OS === 'ios' ? 'webView.customUserAgent' : 'settings.userAgentString';
 
 /**
- * Runs `act`, then waits for a load that ends after it (onLoadEnd) and for `done`, by default the idle page: whether
- * both came within `ms`. Until the new load reports, the state can still be the old page's (or the old WebView's), so
+ * Runs `act`, then waits for a load that ends after it (onLoadEnd) and for `done`, by default the idle page: throws a
+ * Timeout unless both came within `ms`. Until the new load reports, the state can still be the old page's (or the old WebView's), so
  * `done` alone could match too early.
  */
 export async function waitForLoad(
@@ -65,7 +89,7 @@ export async function waitForLoad(
 ) {
   const loads = h.events.loads.length;
   await act();
-  return await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && done(s), ms);
+  await waitFor(h, (s) => h.events.loads.slice(loads).includes('end') && done(s), ms);
 }
 
 /**
@@ -83,7 +107,7 @@ export function stuckHandler<T>() {
 
 /** Checks that a request whose handler never settles reached JS: one more than `before`, by what `seen` counts. */
 export async function reachesJs(r: Reporter, seen: () => number, before: number) {
-  await until(() => seen() > before, 10000, 200);
+  await poll(() => seen() > before, 10000, 200);
   r.check(
     'a request whose handler never settles reaches JS',
     seen() === before + 1,
@@ -124,7 +148,7 @@ export const click = (h: Harness, id: string, frame?: string) =>
 export async function nextDecision(h: Harness, act: () => unknown, path: string) {
   const before = h.events.navigations.length;
   await act();
-  return await until(
+  return await poll(
     () => h.events.navigations.slice(before).find((n) => n.url.endsWith(path)),
     3000
   );
@@ -143,7 +167,7 @@ export async function pageCall(h: Harness, method: string, params: unknown) {
   })()`;
   const error = await h.ref.current?.evaluate(start).then(() => undefined, errorCode);
   if (error) return { error };
-  const outcome = await until(() => h.ref.current?.evaluate('window.__call'), 6000, 100);
+  const outcome = await poll(() => h.ref.current?.evaluate('window.__call'), 6000, 100);
   return (outcome ?? { error: 'harness timeout' }) as { result?: unknown; error?: string };
 }
 
@@ -162,7 +186,7 @@ export const fresh = (h: Harness, path: string) =>
  * `configure` step or its own WebView class: that hook attaches only when the WebView is created.
  */
 export async function recreate(h: Harness, props: HarnessProps, remount = false) {
-  return await waitForLoad(h, () => {
+  await waitForLoad(h, () => {
     h.setProps(props);
     if (remount) h.remount();
   });
@@ -175,14 +199,13 @@ export async function openPage(
   ms = 15000
 ) {
   const source = typeof page === 'string' ? { uri: page } : page;
-  const ok = await waitForLoad(
+  await waitForLoad(
     h,
     () => h.loadSource(source),
     (s) => s.url === source.uri && idle(s),
     ms
   );
   await sleep(100); // events the native side sends right after onLoadEnd (onNavigation, an extension's)
-  return ok;
 }
 
 /** Runs `act`, then waits for the lines the page adds to `window.testLog`; null when none come within `ms`. */
@@ -190,7 +213,7 @@ export async function pageLog(h: Harness, act: () => unknown, ms = 10000) {
   const before = ((await h.ref.current?.evaluate('window.testLog.length')) as number) ?? 0;
   await act();
   return (
-    (await until(async () => {
+    (await poll(async () => {
       const lines = await h.ref.current
         ?.evaluate(`(window.testLog ?? []).slice(${before})`)
         .catch(String);
@@ -283,7 +306,7 @@ export async function travel(
   const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
   r.since(WEBVIEW.bridge, `${name}: RN -> page call`, sum === 5, sum);
   h.bridge.emit('nativeEvent', { n: 7 });
-  await until(
+  await poll(
     async () =>
       ((await h.ref.current?.evaluate('window.lastEvent')) as { n?: number } | null)?.n === 7,
     3000

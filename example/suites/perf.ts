@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 import type { NavigationRule } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
-import { openPage, sleep, until, waitForLoad } from '../harness/helpers';
+import { openPage, sleep, until, waitForLoad, poll } from '../harness/helpers';
 import { launchMarks, type Harness, type Reporter } from '../harness/runner';
 
 type Policy = 'default' | 'rule' | 'ask';
@@ -42,7 +42,7 @@ const median = (values: number[]) => stats(values).p50 ?? NaN;
 const runId = (name: string) => `${name}-${Platform.OS}-${Date.now()}`;
 /** What the page posted for `run` (perf.html's perfPost), parsed; undefined after `ms`. */
 async function posted<T>(h: Harness, run: string, ms = 30000): Promise<T | undefined> {
-  const text = await until(
+  const text = await poll(
     async () => await (await fetch(`${h.pages}/perf/result?run=${run}`)).text(),
     ms,
     250
@@ -355,7 +355,7 @@ export async function perf(h: Harness, r: Reporter) {
  * suite of a run, which launches the app fresh: `maestro/run.sh <platform> <device> perfCold`, once per sample.
  */
 export async function perfCold(h: Harness, r: Reporter) {
-  const marks = await until(() => (launchMarks.loadEnd === undefined ? undefined : launchMarks));
+  const marks = await poll(() => (launchMarks.loadEnd === undefined ? undefined : launchMarks));
   r.check('the first load ended', marks !== undefined, launchMarks);
   if (marks?.render !== undefined && marks.loadEnd !== undefined)
     r.info('mount.cold', { ms: round(marks.loadEnd - marks.render), platform: h.platform });

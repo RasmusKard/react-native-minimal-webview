@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { seams } from 'sample-extension';
 
-import { fresh, openPage, pageLog, sleep, waitForLoad } from '../harness/helpers';
+import { fresh, openPage, pageLog, sleep, waitForLoad, happens } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
 /**
@@ -18,7 +18,7 @@ export async function dialogs(h: Harness, r: Reporter) {
   await alertUp();
   r.check(
     'an unmount while an alert is up completes it',
-    await waitForLoad(h, () => h.remount()),
+    await happens(waitForLoad(h, () => h.remount())),
     h.state()
   );
   await openPage(h, fresh(h, '/dialogs.html'));
@@ -44,7 +44,7 @@ export async function dialogs(h: Harness, r: Reporter) {
   if (Platform.OS === 'ios') {
     await alertUp();
     const pressed = await seams.tapAlert('OK');
-    const remounted = await waitForLoad(h, () => h.remount());
+    const remounted = await happens(waitForLoad(h, () => h.remount()));
     await openPage(h, fresh(h, '/dialogs.html'));
     const lines = await pageLog(h, () => {
       void h.ref.current?.evaluate(

@@ -34,6 +34,8 @@ import {
   text,
   until,
   waitForLoad,
+  poll,
+  happens,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER, PAGES_PORT } from '../pages';
@@ -51,7 +53,7 @@ async function loadHtml(h: Harness, body: string) {
     baseUrl: h.pages,
   });
   // A poll in flight when the html commits rejects with `navigated`; the next poll retries.
-  return !!(await until(
+  return !!(await poll(
     async () => (await h.ref.current?.evaluate('document.title').catch(errorCode)) === title,
     10000
   ));
@@ -143,7 +145,7 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
   await sleep(300);
-  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`));
+  await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`))); // on iOS the load is still going at the timeout
   const wrong = await text(h, 'auth');
   r.check(
     'basicAuthCredential with a rejected credential stops: the 401 page shows',
@@ -231,7 +233,7 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
   await openPage(h, fresh(h, '/dialogs.html'));
   void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('alert').click(), 0)`);
   await sleep(1000);
-  const remounted = await waitForLoad(h, () => h.remount());
+  const remounted = await happens(waitForLoad(h, () => h.remount()));
   hold = false;
   await openPage(h, fresh(h, '/dialogs.html'));
   const next = await pageLog(h, () => {
@@ -272,7 +274,7 @@ async function scroll(h: Harness, r: Reporter) {
   });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
   await h.ref.current?.evaluate('scrollTo(0, 400)');
-  const at = await until(
+  const at = await poll(
     () => scrolls.find(({ contentOffset }) => Math.abs(contentOffset.y - 400) < 1),
     3000
   );
@@ -315,7 +317,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   );
   r.drive({ action: 'longPress', point: '50%, 30%' });
   r.drive({ action: 'press', text: 'Highlight' });
-  const selection = await until(() => chosen[0], 30000);
+  const selection = await poll(() => chosen[0], 30000);
   r.check(
     'a long press shows the item, and choosing it calls onSelect with the selected text',
     selection?.key === 'hl' && selection.label === 'Highlight' && selection.selectedText.length > 0,
@@ -347,7 +349,7 @@ async function background(h: Harness, r: Reporter) {
   const states: unknown[] = [];
   for (const on of [true, false]) {
     h.setProps({ extensions: [on && transparentBackground()] });
-    states.push((await until(async () => (await opaque()) === !on, 3000)) ? !on : await opaque());
+    states.push((await poll(async () => (await opaque()) === !on, 3000)) ? !on : await opaque());
   }
   r.check(
     'transparentBackground, set after mount, makes the WebView not opaque; off, opaque again',
@@ -419,7 +421,7 @@ async function keyboard(h: Harness, r: Reporter) {
     await h.ref.current?.evaluate(
       "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
     );
-    return !!(await until(async () => (await viewport()) < height, 2000));
+    return !!(await poll(async () => (await viewport()) < height, 2000));
   };
   // Each WebView is one the keyboard hasn't shown for: WebKit's own rules show it for a later focus in that one.
   await recreate(h, {}, true);
@@ -441,7 +443,7 @@ async function keyboard(h: Harness, r: Reporter) {
     await loadHtml(h, '<input id="i">');
     const height = await viewport();
     await h.ref.current?.evaluate("document.getElementById('i').focus()");
-    await until(async () => (await viewport()) < height, 2000);
+    await poll(async () => (await viewport()) < height, 2000);
     await sleep(300);
     const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
     return (inset as { bottom?: number } | undefined)?.bottom;
@@ -470,7 +472,7 @@ async function android(h: Harness, r: Reporter) {
     h.setProps({ extensions: [type && androidLayerType(type)] });
     const expected = { software: 1, hardware: 2, none: 0 }[type ?? 'none'];
     types.push(
-      (await until(async () => (await layer()) === expected, 3000)) ? expected : await layer()
+      (await poll(async () => (await layer()) === expected, 3000)) ? expected : await layer()
     );
   }
   r.check(
@@ -495,7 +497,7 @@ async function android(h: Harness, r: Reporter) {
   await sleep(3000);
   const taken = handed() === before;
   await h.ref.current?.evaluate("document.getElementById('data').click()");
-  const left = !!(await until(() => handed() > before, 10000));
+  const left = !!(await poll(() => handed() > before, 10000));
   r.check(
     'downloadManager takes an attachment from onDownload, and leaves it a data: download',
     taken && left,
@@ -514,7 +516,7 @@ async function android(h: Harness, r: Reporter) {
     h,
     `<img src="${image}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
-  const reported = await until(() => failed.find(({ url }) => url === image), 5000);
+  const reported = await poll(() => failed.find(({ url }) => url === image), 5000);
   const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
   await openPage(h, 'http://127.0.0.1:1/main');
   await sleep(1000);

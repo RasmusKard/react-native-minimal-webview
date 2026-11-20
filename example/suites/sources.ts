@@ -1,7 +1,16 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
-import { errorCode, fresh, idle, recreate, text, until, waitForLoad } from '../harness/helpers';
+import {
+  errorCode,
+  fresh,
+  idle,
+  recreate,
+  text,
+  until,
+  waitForLoad,
+  happens,
+} from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
 /** `source.body` (a form POST, sent again by reload) and a `file://` source with its own assets. */
@@ -120,7 +129,7 @@ export async function sources(h: Harness, r: Reporter) {
     ['an about:blank', 'about:blank', ''],
     ['a data:', 'data:text/html,<p id="data">data source</p>', 'data source'],
   ]) {
-    const ended = await waitForLoad(h, () => h.loadSource({ uri }), idle, 10000);
+    const ended = await happens(waitForLoad(h, () => h.loadSource({ uri }), idle, 10000));
     const page = await text(h, 'data');
     r.check(`${name} source loads`, ended && h.state().outcome === 'finished' && page === shown, {
       state: h.state(),

@@ -23,6 +23,8 @@ import {
   until,
   waitFor,
   waitForLoad,
+  poll,
+  happens,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER } from '../pages';
@@ -48,7 +50,7 @@ async function gesture({ h, r }: Suite, id: string, real = false) {
   await (real ? touch : tap)(h, r, id);
   const seen = async () =>
     String(await evaluate(h, `window.testLog.slice(${before}).join()`)).includes(`click ${id}`);
-  return (await until(seen, 15000)) === true;
+  return (await poll(seen, 15000)) === true;
 }
 
 /**
@@ -76,7 +78,7 @@ async function bridgeGate({ h, r }: Suite) {
     });
     await sleep(300);
     await openPage(h, fresh(h, '/hostile.html?frames=1'));
-    const reports = await until(async () => {
+    const reports = await poll(async () => {
       const value = (await evaluate(h, 'frameReports')) as FrameReport[] | undefined;
       return Array.isArray(value) && value.length >= 2 ? value : undefined;
     });
@@ -176,7 +178,7 @@ async function staleAnswer({ h, r }: Suite) {
     );
     const rn = await Promise.race([inFlight, sleep(5000).then(() => 'still pending')]);
     await waitFor(h, (s) => s.url === next && idle(s));
-    const stale = (await until(() => evaluate(h, 'window.__stale'), 6000)) as
+    const stale = (await poll(() => evaluate(h, 'window.__stale'), 6000)) as
       { result?: string } | undefined;
     // Only a race: B's call was waiting when A's answer came. (B's 2500 ms ends after A's 1500 ms, within the
     // page's 3 s bridge timeout.)
@@ -236,7 +238,7 @@ async function newWindows(suite: Suite) {
     // A sentinel an earlier window set fails that window's check only.
     const before = await sentinelsNow();
     const clicked = await gesture(suite, id);
-    await until(() => h.events.navigations.length > navigations, 2000);
+    await poll(() => h.events.navigations.length > navigations, 2000);
     await sleep(1000); // a load the core wrongly let in would have started by now
     const decisions = h.events.navigations.slice(navigations);
     const sentinels = await sentinelsNow();
@@ -362,7 +364,7 @@ async function ssl({ h, r, android }: Suite) {
   await openPage(h, fresh(h, '/hostile.html?ssl=after'));
   const errors = h.events.errors.length;
   h.ref.current?.goBack();
-  const back = await waitFor(h, (s) => s.url === before && idle(s), 5000);
+  const back = await happens(waitFor(h, (s) => s.url === before && idle(s), 5000));
   await sleep(500);
   r.check(
     'T9 a failed SSL load leaves no back/forward entry: back returns to the page before it',
