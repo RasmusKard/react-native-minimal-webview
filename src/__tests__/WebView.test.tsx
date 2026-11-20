@@ -197,6 +197,23 @@ describe('WebView', () => {
     expect(mockNativeModule.preconnect).toHaveBeenCalledWith('https://example.com');
     expect(mockNativeModule.setWebContentsDebuggingEnabled).toHaveBeenCalledWith(false);
   });
+
+  it('AndroidWebView.defaultUserAgent is null while no WebView provider is available, then reads again', () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const value = mockNativeModule.defaultUserAgent;
+    Object.defineProperty(mockNativeModule, 'defaultUserAgent', {
+      configurable: true,
+      get: () => {
+        throw new Error('MissingWebViewPackageException');
+      },
+    });
+    try {
+      expect(AndroidWebView.defaultUserAgent).toBeNull();
+    } finally {
+      Object.defineProperty(mockNativeModule, 'defaultUserAgent', { configurable: true, value });
+    }
+    expect(AndroidWebView.defaultUserAgent).toBe(value);
+  });
 });
 
 describe('navigationRules', () => {

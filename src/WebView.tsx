@@ -517,11 +517,17 @@ export const AndroidWebView = {
    * Android's default user agent, for `android.settings.userAgentString` with a suffix.
    *
    * The first read loads WebView's code, on the JS thread: read it once `warmUp()` has had time or a WebView is
-   * mounted.
+   * mounted. It is null while Android System WebView is missing, disabled or updating, and a later read tries again.
    * @android
    */
   get defaultUserAgent(): string | null {
-    return Platform.OS === 'android' ? nativeModule().defaultUserAgent : null;
+    if (Platform.OS !== 'android') return null;
+    try {
+      return nativeModule().defaultUserAgent;
+    } catch {
+      // Caught here, not natively: Expo caches a value the native getter returns, a null too, but not a throw.
+      return null;
+    }
   },
   /**
    * Starts WebView before any WebView mounts, so the first WebView mounts sooner.

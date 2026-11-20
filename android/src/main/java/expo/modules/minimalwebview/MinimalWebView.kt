@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.AndroidRuntimeException
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -36,7 +37,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val onProcessGone by EventDispatcher<Map<String, Any?>>()
   private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
-  internal val hasNavigationListener = WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER)
+  // Lazy: it loads the WebView provider, which throws without one, and createWebView() reports that.
+  internal val hasNavigationListener by lazy { WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER) }
   private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
   internal val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
@@ -191,7 +193,11 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       applySettings()
       scripts.update()
     } else {
-      webView = createWebView()
+      webView = try {
+        createWebView()
+      } catch (e: AndroidRuntimeException) { // no WebView provider: missing, disabled or updating
+        return reportError("network", source?.uri.orEmpty(), WebViewClient.ERROR_UNKNOWN, "Android System WebView is unavailable: ${e.message}")
+      }
       setUp()
     }
     loadNewSource()
@@ -251,6 +257,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     when {
       // The renderer died and the new WebView isn't built yet: build it now, and load.
       recovering -> recover(reload = true)
+      // The first WebView couldn't be made (onError said so): try again.
+      !hasWebView -> applyProps()
       // Nothing loaded: the crash-loop guard gave up (processGone), and this is the app's retry. Or a POST source:
       // WebView's reload declines its form resubmission.
       webView.url == null || showingPost -> loadAgain()

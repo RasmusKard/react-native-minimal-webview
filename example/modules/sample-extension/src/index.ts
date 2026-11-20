@@ -33,8 +33,14 @@ export const pageCounter = (
  * `onEvent` on the result.
  */
 export const sampleHook = (
-  name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf'
+  name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf' | 'noWebView'
 ): HookExtension => ({ key: `sample.${name}` });
 
-/** The `sample.seams` hook's counter: how many of its WebViews were closed at unmount. */
-export const seams = requireNativeModule<{ closedViews(): Promise<number> }>('SampleExtension');
+/**
+ * The `sample.seams` hook's counter: how many of its WebViews were closed at unmount. Android: `setWebViewMissing`
+ * makes the `sample.noWebView` hook's factory throw, as WebView's constructor does without a WebView provider.
+ */
+export const seams = requireNativeModule<{
+  closedViews(): Promise<number>;
+  setWebViewMissing(missing: boolean): Promise<void>;
+}>('SampleExtension');

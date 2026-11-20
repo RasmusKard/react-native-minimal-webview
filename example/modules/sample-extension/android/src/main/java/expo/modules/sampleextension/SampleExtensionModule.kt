@@ -1,6 +1,7 @@
 package expo.modules.sampleextension
 
 import android.content.Context
+import android.util.AndroidRuntimeException
 import android.webkit.HttpAuthHandler
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
@@ -60,15 +61,24 @@ class SampleExtensionModule : Module() {
         val name = webView.javaClass.simpleName
         context.handle("class") { _, reply -> reply(name) }
       }
+      // While setWebViewMissing(true) holds, its WebView can't be made, as when Android System WebView is missing,
+      // disabled or updating.
+      MinimalWebViewHooks.register("sample.noWebView", webViewFactory = { context ->
+        if (webViewMissing) throw AndroidRuntimeException("No WebView installed")
+        WebView(context)
+      }) { _, _ -> }
       PerfProbe.register()
       Seams.register()
     }
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(Queues.MAIN)
+    AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
     // The perf suite's frame-gap probe (PerfProbe.kt): module functions, so they work without a hook too.
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
   }
 }
+
+private var webViewMissing = false
 
 /** The `sample.subclass` hook's WebView: an override of what WebView lets a subclass change would go here. */
 private class SampleWebView(context: Context) : WebView(context)

@@ -2777,6 +2777,30 @@ async function sampleExtension(h: Harness) {
       : "(c => c !== null && getComputedStyle(c).fontSize === '14px')(document.getElementById('c'))";
   const applied = async () => (await h.ref.current?.evaluate(configured)) === true;
   r.check('its configure hook sets the WebView up', !!(await until(applied, 5000, 250)));
+  if (Platform.OS === 'android') {
+    await seams.setWebViewMissing(true);
+    const errors = h.events.errors.length;
+    let reloaded = false;
+    try {
+      h.setProps({ extensions: [sampleHook('noWebView')] });
+      h.remount();
+      await until(() => h.events.errors.length > errors, 3000);
+      await seams.setWebViewMissing(false);
+      reloaded = await waitForLoad(h, () => h.ref.current?.reload(), idle, 10000);
+    } finally {
+      await seams.setWebViewMissing(false);
+    }
+    const reported = h.events.errors.slice(errors);
+    r.check(
+      'a WebView that cannot be made (no WebView provider) reports onError, and reload() makes it and loads',
+      reported.length === 1 &&
+        reported[0]?.kind === 'network' &&
+        reported[0].code === -1 &&
+        reloaded &&
+        h.events.outcomes.at(-1) === 'finished',
+      { reported, reloaded, outcome: h.events.outcomes.at(-1) }
+    );
+  }
   await hookSeams(h, r);
   r.done();
 }

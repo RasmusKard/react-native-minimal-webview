@@ -1091,6 +1091,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * with an Android System WebView older than 146, an SSL error on a back/forward load isn't reported.
    *
    * A renderer crash isn't reported here: it makes the cut-off load's `outcome` `failed` and calls `onProcessGone`.
+   *
+   * On Android it also gets a `network` error with code `-1` when no WebView can be made, because Android System
+   * WebView is missing, disabled or updating; {@link WebViewRef.reload | reload()} tries again.
    * @see [Loading and error screens example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#loading-and-error-screens)
    */
   onError?: (event: LoadErrorEvent) => void;
