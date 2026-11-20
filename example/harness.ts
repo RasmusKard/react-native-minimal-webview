@@ -2542,11 +2542,23 @@ async function permissionsSuite(h: Harness) {
   r.done();
 }
 
-/** Android fullscreen: the page's fullscreen view shows, back leaves it. The driver taps and presses back. */
+/**
+ * Android fullscreen: the page's fullscreen view shows, back leaves it. iOS: an unmount while a video is in fullscreen.
+ * The driver taps and presses back.
+ */
 async function fullscreen(h: Harness) {
   const r = reporter('fullscreen');
   if (Platform.OS !== 'android') {
-    r.info('skipped', 'WebKit provides fullscreen video itself');
+    // WebKit shows the video fullscreen itself, as an iPhone plays no video inline by default.
+    await openPage(h, fresh(h, '/media.html'));
+    const lines = await pageLog(h, async () => r.info('TAP', await tapPoint(h, 'play')));
+    await sleep(1000); // the presentation
+    const remounted = await waitForLoad(h, () => h.remount());
+    r.check(
+      'an unmount while a video is in fullscreen leaves the app running',
+      lines?.includes('video fullscreen') === true && remounted,
+      { lines, remounted }
+    );
     r.done();
     return;
   }
