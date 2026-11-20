@@ -17,7 +17,7 @@ import type {
 import { AndroidWebView, IOSConstants } from 'react-native-minimal-webview';
 
 import { PAGES } from '../pages';
-import { clearEvents, idle, sleep, waitForLoad } from './helpers';
+import { clearEvents, idle, poll, sleep, waitForLoad } from './helpers';
 
 type Kind = 'PASS' | 'FAIL' | 'SKIP' | 'INFO' | 'DONE';
 
@@ -287,7 +287,8 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
  * props, the event logs, a new WebView on the home page (an Android settings key with no getter is not reset by its
- * absence), and every site's cookies and storage (the HTTP cache stays). Throws when that page doesn't load.
+ * absence), and every site's cookies and storage (the HTTP cache stays). Throws when that page doesn't load, and on
+ * Android when another window is still over the app.
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -319,4 +320,10 @@ async function reset(h: Harness) {
         h.ref.current?.call('webStorage.deleteAllData'),
       ]));
   clearEvents(h);
+  // A dialog a suite left up has the window focus, and would take the next suite's touches.
+  if (
+    Platform.OS === 'android' &&
+    !(await poll(() => h.ref.current?.call('webView.hasWindowFocus'), 3000))
+  )
+    throw new Error('a window is left over the app');
 }
