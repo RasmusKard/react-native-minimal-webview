@@ -1,7 +1,18 @@
 name: mutation
 on:
   pull_request:
-    paths: ['src/bridge/**', 'src/WebView.tsx', 'src/navigationRules.ts', 'src/refStore.ts', 'src/__tests__/**', '.config/stryker.config.json']
+    paths: &paths
+      - src/bridge/**
+      - src/WebView.tsx
+      - src/navigationRules.ts
+      - src/refStore.ts
+      - src/__tests__/**
+      - .config/stryker.config.json
+      - .github/workflows/mutation.yml
+  # Only to save the results that every PR starts from (a PR's own cache stays with that PR).
+  push:
+    branches: [main]
+    paths: *paths
 
 permissions: { contents: read }
 
@@ -16,5 +27,20 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with: { node-version-file: .nvmrc, cache: npm }
+      # Stryker reruns the mutants whose file or test files changed since the restored results, and can't see a change
+      # to anything else: that is the key, so such a change starts from no results.
+      - id: unseen
+        run: echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+        env:
+          HASH: >-
+            ${{ hashFiles('package-lock.json', '.config/stryker.config.json', '.github/workflows/mutation.yml',
+            'src/**', '!src/**/*.test.ts', '!src/**/*.test.tsx', '!src/bridge/createBridge.ts', '!src/bridge/endpoint.ts',
+            '!src/bridge/origins.ts', '!src/bridge/protocol.ts', '!src/bridge/pageClient.ts', '!src/WebView.tsx',
+            '!src/navigationRules.ts', '!src/refStore.ts') }}
+      - uses: actions/cache@v6.1.0
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-${{ steps.unseen.outputs.hash }}-${{ github.sha }}
+          restore-keys: stryker-${{ steps.unseen.outputs.hash }}-
       - run: npm ci
-      - run: npm run mutation
+      - run: npm run mutation -- --incremental
