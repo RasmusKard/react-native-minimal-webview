@@ -15,8 +15,9 @@ npm install && (cd example && npm install)
 
 The root `npm install` also sets up `extensions/`, the `@react-native-minimal-webview/extensions` package, as an npm workspace.
 
-In `example/`, `npx expo run:android --no-bundler` or `npx expo run:ios --no-bundler --device <udid>` builds and
-installs the example app, and generates `example/android` or `example/ios` the first time.
+`example/maestro/install.sh android <adb serial>` or `example/maestro/install.sh ios <simulator udid>` builds and
+installs the example app, and generates `example/android` or `example/ios` the first time. The on-device suites run
+only on an app installed this way, and not after a native source or an installed package has changed since.
 
 Dependabot leaves Expo's packages, React and React Native alone: they only work as the set Expo names, and the root and
 `example/` stay on the same one. The `Expo packages` workflow opens a PR that moves both each week. By hand, in the root
@@ -69,7 +70,7 @@ The suites run a debug build, which R8 doesn't shrink, so they don't check `andr
 to it, or to what `PlatformSettings.kt` finds by reflection, run the settings suite on a release build:
 
 ```sh
-(cd example/android && ./gradlew app:installRelease)
+example/maestro/install.sh android <adb serial> --variant release
 example/maestro/run.sh android <adb serial> settings
 ```
 

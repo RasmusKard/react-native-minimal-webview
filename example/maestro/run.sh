@@ -1,13 +1,14 @@
 #!/bin/bash
 # Usage: maestro/run.sh <android|ios> <device id> [suite...]
 # Runs harness suites in one Maestro session, one flow per suite: a generated wrapper that runs suite.yaml with SUITE
-# set. One session, because Maestro's start-up otherwise repeats for every suite. Needs Metro, the test pages server (npm run test-pages) and the example
-# app installed on the device. MAESTRO overrides the maestro binary, and ../pages.ts's variables the server's
-# ports.
+# set. One session, because Maestro's start-up otherwise repeats for every suite. Needs Metro, the test pages server
+# (npm run test-pages) and the example app installed on the device by install.sh. MAESTRO overrides the maestro binary,
+# and ../pages.ts's variables the server's ports.
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
 PORT=${EXPO_PUBLIC_PAGES_PORT:-8090} PAGES=http://localhost:${EXPO_PUBLIC_PAGES_PORT:-8090}
+./install.sh --check "$PLATFORM" "$DEVICE" || exit 1
 # No suites named: a full run (suites that don't apply to a platform skip themselves).
 [ $# -eq 0 ] && set -- $(node --no-warnings -p "require('../suites/names.ts').SUITE_NAMES.join(' ')")
 if [ "$PLATFORM" = android ]; then
