@@ -17,7 +17,7 @@ import type {
 import { AndroidWebView, IOSConstants } from 'react-native-minimal-webview';
 
 import { PAGES } from '../pages';
-import { clearEvents, idle, waitForLoad } from './helpers';
+import { clearEvents, idle, sleep, waitForLoad } from './helpers';
 
 type Kind = 'PASS' | 'FAIL' | 'SKIP' | 'INFO' | 'DONE';
 
@@ -76,16 +76,24 @@ export type Harness = {
 /** `performance.now()` at App's first render and at its first onLoadEnd: the perfCold suite's cold mount. */
 export const launchMarks: { render?: number; loadEnd?: number } = {};
 
+let posted: Promise<unknown> = Promise.resolve();
+/**
+ * Posts `body` to the test pages server after the posts before it, so log lines and driver requests arrive in the
+ * order the suite made them. A failed post surfaces as an unhandled rejection, later posts still go out, and the
+ * driver's wait for a lost request times out.
+ */
+function post(path: string, body: string) {
+  posted = posted.finally(() =>
+    fetch(`${PAGES}/harness/${path}?platform=${Platform.OS}`, { method: 'POST', body })
+  );
+}
+
 /** A line of the log, and for the server's report what it is about: the suite, its block ('' outside one) and the name. */
 function emit(kind: Kind, suite: string, block: string, name: string, detail: string) {
   const where = block ? `${suite} > ${block}` : suite;
   const text = `[harness ${Platform.OS} ${Platform.Version}] ${kind} ${where}${kind === 'DONE' ? '' : ':'} ${name} ${detail}`;
   console.log(text);
-  // A failed post surfaces as an unhandled rejection; the console line above still has the result.
-  void fetch(`${PAGES}/harness/log?platform=${Platform.OS}`, {
-    method: 'POST',
-    body: JSON.stringify({ text, kind, suite, block, name, detail }),
-  });
+  post('log', JSON.stringify({ text, kind, suite, block, name, detail }));
 }
 
 let showRequest: (text: string) => void = () => {};
@@ -123,11 +131,7 @@ function request(
 ) {
   const text = JSON.stringify({ suite, ...message });
   showRequest(text);
-  // As in emit: a failed post surfaces as an unhandled rejection, and the driver's wait for it times out.
-  void fetch(`${PAGES}/harness/request?platform=${Platform.OS}`, {
-    method: 'POST',
-    body: text,
-  });
+  post('request', text);
 }
 
 /** The first Android System WebView with what a check needs, for `reporter`. */
@@ -239,6 +243,14 @@ function reporter(suite: string) {
   };
 }
 
+/** A suite's time. The driver waits 280 s for a suite's next request or verdict (maestro/scripts/next.js). */
+const SUITE_MS = 270_000;
+/** Rejects once a suite has run for `SUITE_MS`, so a wait that never ends still gets it a verdict. */
+const overtime = () =>
+  sleep(SUITE_MS).then(() => {
+    throw new Error(`still running after ${SUITE_MS / 1000} s`);
+  });
+
 /** Runs the `suites` queued by name with `/harness/run?platform=ios&suite=<name>` on the test pages server. */
 export function pollForSuites(get: () => Harness, suites: Record<string, Suite>) {
   let busy = false;
@@ -259,7 +271,7 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
     try {
       const suite = suites[name];
       if (!suite) throw new Error('unknown suite');
-      await suite(h, r);
+      await Promise.race([suite(h, r), overtime()]);
     } catch (error) {
       failed('the suite threw', error);
     }
