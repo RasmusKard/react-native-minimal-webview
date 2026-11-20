@@ -315,19 +315,19 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
 
   override fun onJsAlert(view: WebView, url: String?, message: String?, result: JsResult): Boolean =
     deciding("onJsAlert", WEB_VIEW, STRING, STRING, JsResult::class.java)?.onJsAlert(view, url, message, result)
-      ?: super.onJsAlert(view, url, message, result)
+      ?: owner.dialogs.alert(url, message, result)
 
   override fun onJsConfirm(view: WebView, url: String?, message: String?, result: JsResult): Boolean =
     deciding("onJsConfirm", WEB_VIEW, STRING, STRING, JsResult::class.java)?.onJsConfirm(view, url, message, result)
-      ?: super.onJsConfirm(view, url, message, result)
+      ?: owner.dialogs.confirm(url, message, result)
 
   override fun onJsPrompt(view: WebView, url: String?, message: String?, defaultValue: String?, result: JsPromptResult): Boolean =
     deciding("onJsPrompt", WEB_VIEW, STRING, STRING, STRING, JsPromptResult::class.java)?.onJsPrompt(view, url, message, defaultValue, result)
-      ?: super.onJsPrompt(view, url, message, defaultValue, result)
+      ?: owner.dialogs.prompt(url, message, defaultValue, result)
 
   override fun onJsBeforeUnload(view: WebView, url: String?, message: String?, result: JsResult): Boolean =
     deciding("onJsBeforeUnload", WEB_VIEW, STRING, STRING, JsResult::class.java)?.onJsBeforeUnload(view, url, message, result)
-      ?: super.onJsBeforeUnload(view, url, message, result)
+      ?: owner.dialogs.beforeUnload(message, result)
 
   override fun onGeolocationPermissionsHidePrompt() {
     super.onGeolocationPermissionsHidePrompt()

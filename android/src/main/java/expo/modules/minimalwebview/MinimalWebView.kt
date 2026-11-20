@@ -26,6 +26,7 @@ import expo.modules.minimalwebview.requests.DownloadInfo
 import expo.modules.minimalwebview.requests.Downloads
 import expo.modules.minimalwebview.requests.FileUpload
 import expo.modules.minimalwebview.requests.FullscreenVideo
+import expo.modules.minimalwebview.requests.JsDialogs
 import expo.modules.minimalwebview.requests.Permissions
 
 @Suppress("TooManyFunctions") // because the view is the aggregate root; a feature with state of its own gets its own class
@@ -82,6 +83,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val fileUpload = FileUpload(this)
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
+  internal val dialogs = JsDialogs(this)
   private val downloads = Downloads(this)
   /** Keys of the extensions that are on in `hookOptions` when the first WebView is made, plus those attached later. They pick the hooks again for the WebView built after a crash. */
   private var hookKeys: Set<String> = emptySet()
@@ -421,6 +423,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     detached.forEach { it.detach() }
     hookContexts = emptyList()
     refresher.content.removeView(webView)
+    dialogs.close()
     webView.destroy()
     detached.forEach { it.destroyed(reason) }
   }
