@@ -470,7 +470,7 @@ async function downloadRedirect({ h, r, android }: Suite) {
 /** F3: Android reads a blob: download through the page's own fetch, so the page can keep it from finishing. */
 async function heldBlob({ h, r, android }: Suite) {
   if (!android) {
-    r.info('F3 held blob: skipped', 'iOS reads a blob: download in WebKit, not through the page');
+    r.skip('F3 held blob', 'iOS reads a blob: download in WebKit, not through the page');
     return;
   }
   await openPage(h, fresh(h, '/hostile.html'));
@@ -627,5 +627,5 @@ const BLOCKS = [
 
 export async function hostile(h: Harness, r: Reporter) {
   const suite: Suite = { h, r, android: Platform.OS === 'android' };
-  for (const block of BLOCKS) await block(suite);
+  for (const block of BLOCKS) await r.block(block.name, () => block(suite));
 }

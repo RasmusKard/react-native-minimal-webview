@@ -15,6 +15,7 @@ import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 /** `ios` / `android` settings by name: applied live, seen by the page, rejected with a warning when wrong; get and call. */
 export async function settings(h: Harness, r: Reporter) {
   const { lines: warnings, warned, stop } = captureWarnings();
+  r.cleanup(stop);
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
   /** Whether `read` gives `want` within 3 s: a setting reaches the WebView, and the page, on their own schedule. */
@@ -229,6 +230,11 @@ export async function settings(h: Harness, r: Reporter) {
           settings: { minimumFontSize: 30, paymentRequestEnabled: true },
           webView: { networkAvailable: false, other: { webViewClient: null } },
         },
+      });
+      // The renderer process keeps navigator.onLine for later WebViews: put it back, also when a check below throws.
+      r.cleanup(async () => {
+        h.setProps({ android: { webView: { networkAvailable: true } } });
+        await sleep(300);
       });
       r.check('a WebSettings setter applies', await becomes(fontSize, '30px'), await fontSize());
       r.check('a WebView setter applies', await becomes(() => page('navigator.onLine'), false));

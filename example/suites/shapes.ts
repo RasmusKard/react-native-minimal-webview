@@ -600,7 +600,7 @@ async function devices(s: Shape) {
       ),
       requests
     );
-  } else r.info('G1 upload: skipped', "iOS shows WebKit's own picker");
+  } else r.skip('G1 upload', "iOS shows WebKit's own picker");
   const permissions: PermissionRequest[] = [];
   h.setPermission(async (request) => {
     permissions.push(request);
@@ -708,7 +708,7 @@ async function offline(s: Shape) {
 async function backButton(s: Shape) {
   const { h, r, android } = s;
   if (!android) {
-    r.info('H4 android back: skipped', 'iOS has no back button');
+    r.skip('H4 android back', 'iOS has no back button');
     return;
   }
   const first = await open(h, '/spa.html?from=first');
@@ -753,5 +753,5 @@ const BLOCKS = [
 
 export async function shapes(h: Harness, r: Reporter) {
   const shape: Shape = { h, r, android: Platform.OS === 'android', external: [], asked: [] };
-  for (const block of BLOCKS) await block(shape);
+  for (const block of BLOCKS) await r.block(block.name, () => block(shape));
 }

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 // The harness's side of the test pages server (server.js). The app polls /harness/next for the suite /harness/run
-// queued and posts its results to /harness/log, which this prints. The driver (Maestro) waits on /harness/step and
+// queued and posts its results to /harness/log, which this prints and /harness/junit reports. The driver (Maestro) waits on /harness/step and
 // /harness/idle instead of reading the screen (see harnessState), and reaches the device through /driver.
 const { execFile } = require('child_process');
 
@@ -16,9 +16,10 @@ const log = (/** @type {string} */ line) =>
  * and its verdict (`DriverAction` in harness/runner.ts, with the suite's name), and when the app last polled.
  * `fresh` makes the next idle check say no, so a run starts with a fresh launch, and `device` is the run's device id
  * (an adb serial or a simulator's UDID), for /driver.
- * `log` is what the app logged in the run, for run.sh.
+ * `log` is what the app logged in the run and `results` its checks, for run.sh.
  * @typedef {{ suite: string, action: string, fail?: number }} Request
- * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, device: string, log: string[] }} HarnessState
+ * @typedef {{ text: string, kind: string, suite: string, block: string, name: string, detail: string }} Line
+ * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, device: string, log: string[], results: Line[] }} HarnessState
  */
 /** @type {Map<string, HarnessState>} */
 const harnessStates = new Map();
@@ -26,7 +27,16 @@ const harnessStates = new Map();
 function harnessState(platform) {
   let state = harnessStates.get(platform);
   if (!state) {
-    state = { requests: [], verdict: null, handed: false, polledAt: 0, fresh: true, device: '', log: [] };
+    state = {
+      requests: [],
+      verdict: null,
+      handed: false,
+      polledAt: 0,
+      fresh: true,
+      device: '',
+      log: [],
+      results: [],
+    };
     harnessStates.set(platform, state);
   }
   return state;
@@ -65,6 +75,50 @@ const perfResults = new Map();
 const APP_ID = 'expo.modules.minimalwebview.example';
 
 /**
+ * Gives `then` the request's JSON body and ends the response; a body that isn't JSON gets a 400.
+ * @template T
+ * @param {import('http').IncomingMessage} req @param {import('http').ServerResponse} res @param {(body: T) => void} then
+ */
+function readJson(req, res, then) {
+  let body = '';
+  req.on('data', (chunk) => (body += chunk));
+  req.on('end', () => {
+    /** @type {T} */
+    let parsed;
+    try {
+      parsed = /** @type {T} */ (JSON.parse(body));
+    } catch {
+      return res.writeHead(400).end('not JSON');
+    }
+    then(parsed);
+    res.end();
+  });
+}
+
+/** Text for an XML attribute, without the control characters XML has no form for. */
+const xml = (/** @type {string} */ text) =>
+  text
+    .replace(/[^\t\n\r\x20-\uFFFD]/g, '')
+    .replace(/[<>&"\n\r\t]/g, (c) => `&#${c.charCodeAt(0)};`);
+/**
+ * The run's checks as a JUnit report: a testsuite per suite, a testcase per check (its block in `classname`).
+ * @param {Line[]} results
+ */
+function junit(results) {
+  const suites = [...Map.groupBy(results, (line) => line.suite)].map(([suite, lines]) => {
+    const count = (/** @type {string} */ kind) => lines.filter((line) => line.kind === kind).length;
+    const cases = lines.map((line) => {
+      const open = `<testcase classname="${xml(line.block ? `${suite}.${line.block}` : suite)}" name="${xml(line.name)}"`;
+      if (line.kind === 'PASS') return `${open}/>`;
+      const tag = line.kind === 'FAIL' ? 'failure' : 'skipped';
+      return `${open}><${tag} message="${xml(line.detail)}"/></testcase>`;
+    });
+    return `<testsuite name="${xml(suite)}" tests="${lines.length}" failures="${count('FAIL')}" skipped="${count('SKIP')}">\n${cases.join('\n')}\n</testsuite>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuites>\n${suites.join('\n')}\n</testsuites>\n`;
+}
+
+/**
  * The /harness, /driver and /perf requests, by path: the request, the response, the URL's parameters and its `platform`.
  * @type {Record<string, (req: import('http').IncomingMessage, res: import('http').ServerResponse, q: URLSearchParams, platform: string) => void>}
  */
@@ -77,21 +131,11 @@ const ROUTES = {
   },
   '/harness/request'(req, res, q, platform) {
     // The harness's driver requests and verdicts, as it shows them on screen.
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
+    readJson(req, res, (/** @type {Request} */ request) => {
       const state = harnessState(platform);
-      /** @type {Request} */
-      let request;
-      try {
-        request = /** @type {Request} */ (JSON.parse(body));
-      } catch {
-        return res.writeHead(400).end('not JSON');
-      }
       if (request.action === 'done') state.verdict = request;
       else state.requests.push(request);
       harnessChanged();
-      res.end();
     });
   },
   '/harness/step'(req, res, q, platform) {
@@ -119,7 +163,7 @@ const ROUTES = {
   '/harness/fresh'(req, res, q, platform) {
     const device = q.get('device') ?? '';
     if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
-    Object.assign(harnessState(platform), { fresh: true, device, log: [] });
+    Object.assign(harnessState(platform), { fresh: true, device, log: [], results: [] });
     res.end('ok');
   },
   '/driver/kill'(req, res, q, platform) {
@@ -207,13 +251,15 @@ const ROUTES = {
           .log.map((line) => `${line}\n`)
           .join('')
       );
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
-      log(body);
-      harnessState(platform).log.push(body);
-      res.end();
+    readJson(req, res, (/** @type {Line} */ line) => {
+      const state = harnessState(platform);
+      log(line.text);
+      state.log.push(line.text);
+      if (['PASS', 'FAIL', 'SKIP'].includes(line.kind)) state.results.push(line);
     });
+  },
+  '/harness/junit'(req, res, q, platform) {
+    res.end(junit(harnessState(platform).results));
   },
 };
 

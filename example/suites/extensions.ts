@@ -76,14 +76,16 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 export async function extensions(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   try {
-    await inert(h, r);
-    await auth(h, r);
-    await dialogs(h, r, warnings);
-    await scroll(h, r);
-    await menu(h, r, warnings);
-    await background(h, r);
-    await privacy(h, r);
-    await (ios ? keyboard(h, r) : android(h, r));
+    await r.block('inert', () => inert(h, r));
+    await r.block('auth', () => auth(h, r));
+    await r.block('dialogs', () => dialogs(h, r, warnings));
+    await r.block('scroll', () => scroll(h, r));
+    await r.block('menu', () => menu(h, r, warnings));
+    await r.block('background', () => background(h, r));
+    await r.block('privacy', () => privacy(h, r));
+    await (ios
+      ? r.block('keyboard', () => keyboard(h, r))
+      : r.block('android', () => android(h, r)));
     const stray = warnings.lines.filter(
       (line) => line.includes(`extension ${KEY}.`) && !line.includes(`${KEY}.menuItems`)
     );

@@ -20,7 +20,7 @@ import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
  */
 export async function upload(h: Harness, r: Reporter) {
   if (Platform.OS !== 'android') {
-    r.info('skipped', 'onFileRequest is Android only');
+    r.skip('the suite', 'onFileRequest is Android only');
     return;
   }
   const file = new File(Paths.cache, 'upload-test.txt');
@@ -106,6 +106,7 @@ export async function upload(h: Harness, r: Reporter) {
   h.setProps({ onFileRequest: undefined });
   const states: string[] = [];
   const subscription = AppState.addEventListener('change', (state) => states.push(state));
+  r.cleanup(() => subscription.remove());
   for (const label of ['system chooser', 'system chooser again']) {
     states.length = 0;
     const logged = await tapAndRead(label, 'tapThenBack');

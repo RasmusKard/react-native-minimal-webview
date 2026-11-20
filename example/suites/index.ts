@@ -9,6 +9,7 @@ import { fullscreen } from './fullscreen';
 import { hostile } from './hostile';
 import { injection } from './injection';
 import { mountSettings } from './mountSettings';
+import { mustFail } from './mustFail';
 import { SUITE_NAMES } from './names';
 import { navigation } from './navigation';
 import { network } from './network';
@@ -54,5 +55,8 @@ export const SUITES: Record<(typeof SUITE_NAMES)[number], Suite> = {
   hostile,
 };
 
-/** Timings, run only when named (`maestro/run.sh <platform> <device> perfCold perf`): a full run leaves them out. */
-export const ON_DEMAND: Record<string, Suite> = { perf, perfCold };
+/**
+ * Run only when named, a full run leaves them out: the timings (`maestro/run.sh <platform> <device> perfCold perf`), and
+ * the suite `maestro/self-test.sh` runs.
+ */
+export const ON_DEMAND: Record<string, Suite> = { perf, perfCold, mustFail };

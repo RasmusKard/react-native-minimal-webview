@@ -243,7 +243,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
       { reported, reloaded, outcome: h.events.outcomes.at(-1) }
     );
   }
-  await hookSeams(h, r);
+  await r.block('hookSeams', () => hookSeams(h, r));
 }
 
 /** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */

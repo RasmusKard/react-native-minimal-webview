@@ -135,7 +135,8 @@ export async function crash(h: Harness, r: Reporter) {
       fourth?.recovered === false,
       fourth
     );
-  else r.info('crash loop check skipped: the 4 crashes took', elapsed);
+  else
+    r.skip('a crash loop stops reloading (4th crash in 60 s)', `the 4 crashes took ${elapsed} ms`);
   r.check(
     'a crash during a load ends it (loading: false)',
     await happens(waitFor(h, (s) => !s.loading, 5000)),
@@ -166,7 +167,7 @@ export async function crash(h: Harness, r: Reporter) {
   const eighth = await kill(8);
   if (Date.now() - loopAt < 55000)
     r.check('a crash loop stops reloading again', eighth?.recovered === false, eighth);
-  else r.info('second crash loop check skipped: the 4 crashes took', Date.now() - loopAt);
+  else r.skip('a crash loop stops reloading again', `the 4 crashes took ${Date.now() - loopAt} ms`);
   const loaded = fresh(h, '/bridge.html');
   r.check(
     'load() loads after giving up',
@@ -216,6 +217,7 @@ export async function crash(h: Harness, r: Reporter) {
   const appState = AppState.addEventListener('change', (state) =>
     states.push({ state, at: Date.now() })
   );
+  r.cleanup(() => appState.remove());
   let backgroundGone: ProcessGoneEvent | undefined;
   const recovered = await happens(
     waitForLoad(

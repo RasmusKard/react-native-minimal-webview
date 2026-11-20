@@ -1,3 +1,5 @@
+// Runs the on-device suites (suites/index.ts) inside the example app. Each result is logged as
+// `[harness <platform>] PASS|FAIL|SKIP|INFO ...` to the JS console and to the test pages server, which prints it.
 import { Platform } from 'react-native';
 import type {
   Bridge,
@@ -12,10 +14,12 @@ import type {
   WebViewRefObject,
   WebViewSource,
 } from 'react-native-minimal-webview';
-import { AndroidWebView } from 'react-native-minimal-webview';
+import { AndroidWebView, IOSConstants } from 'react-native-minimal-webview';
 
 import { PAGES } from '../pages';
 import { clearEvents, idle, waitForLoad } from './helpers';
+
+type Kind = 'PASS' | 'FAIL' | 'SKIP' | 'INFO' | 'DONE';
 
 /**
  * Extra WebView props for a suite. Its `extensions` come after App's own, the page counter, which `withoutPageCounter`
@@ -72,13 +76,15 @@ export type Harness = {
 /** `performance.now()` at App's first render and at its first onLoadEnd: the perfCold suite's cold mount. */
 export const launchMarks: { render?: number; loadEnd?: number } = {};
 
-function emit(line: string) {
-  const text = `[harness ${Platform.OS} ${Platform.Version}] ${line}`;
+/** A line of the log, and for the server's report what it is about: the suite, its block ('' outside one) and the name. */
+function emit(kind: Kind, suite: string, block: string, name: string, detail: string) {
+  const where = block ? `${suite} > ${block}` : suite;
+  const text = `[harness ${Platform.OS} ${Platform.Version}] ${kind} ${where}${kind === 'DONE' ? '' : ':'} ${name} ${detail}`;
   console.log(text);
   // A failed post surfaces as an unhandled rejection; the console line above still has the result.
   void fetch(`${PAGES}/harness/log?platform=${Platform.OS}`, {
     method: 'POST',
-    body: text,
+    body: JSON.stringify({ text, kind, suite, block, name, detail }),
   });
 }
 
@@ -112,7 +118,7 @@ export type DriverAction =
  * waits for it.
  */
 function request(
-  message: DriverAction | { action: 'done'; pass: number; fail: number },
+  message: DriverAction | { action: 'done'; pass: number; fail: number; skip: number },
   suite: string
 ) {
   const text = JSON.stringify({ suite, ...message });
@@ -149,17 +155,23 @@ export const androidWebView = () =>
 export type Reporter = {
   check(name: string, ok: boolean, detail?: unknown): void;
   /**
-   * A check, or on an Android System WebView older than `version` (a `WEBVIEW` value) the INFO line
-   * `known limit (WebView <version>): <name>`: that WebView lacks what the check needs.
+   * A check, or a skip on an Android System WebView older than `version` (a `WEBVIEW` value): that WebView lacks what
+   * the check needs.
    */
   since(version: number, name: string, ok: boolean, detail?: unknown): void;
+  /** A check, a block or the suite that doesn't apply here (the platform, the device), and `why`: a SKIP line. */
+  skip(name: string, why: unknown): void;
   info(name: string, detail: unknown): void;
+  /** Runs a named part of the suite: its lines carry `name`, a throw in it too. */
+  block(name: string, run: () => Promise<void>): Promise<void>;
+  /** Runs `undo` when the suite ends, also after it threw, last added first. A throw from it fails the suite. */
+  cleanup(undo: () => unknown): void;
   /** Asks the driver for `action`; `why` is for the log. The suite then waits for what the action causes. */
   drive(action: DriverAction, why?: unknown): void;
 };
 /**
- * A suite: it reports `skipped` on a platform it doesn't apply to, leaves nothing behind that `reset()` doesn't undo,
- * and needs no site but the test pages server. The runner gives it its reporter and sends its verdict.
+ * A suite: it reports a `skip` on a platform it doesn't apply to, leaves nothing behind that `reset()` or its own
+ * `cleanup`s don't undo, and needs no site but the test pages server. The runner gives it its reporter and sends its verdict.
  */
 export type Suite = (h: Harness, r: Reporter) => Promise<void>;
 
@@ -169,37 +181,60 @@ export const withFloor = (r: Reporter, floor: number): Reporter => ({
   check: (name, ok, detail) => r.since(floor, name, ok, detail),
 });
 
-/** A suite's reporter, and what the runner ends it with: a failure of the run itself, and the verdict. */
+/**
+ * A suite's reporter, and what the runner ends it with: a failure of the run itself, the suite's cleanups, and the
+ * verdict.
+ */
 function reporter(suite: string) {
-  let pass = 0;
-  let fail = 0;
-  const info = (name: string, detail: unknown) =>
-    emit(`INFO ${suite}: ${name} ${JSON.stringify(detail)}`);
-  const check = (name: string, ok: boolean, detail: unknown = '') => {
-    if (ok) pass++;
-    else fail++;
-    emit(`${ok ? 'PASS' : 'FAIL'} ${suite}: ${name} ${ok ? '' : JSON.stringify(detail)}`);
+  const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
+  const cleanups: (() => unknown)[] = [];
+  let block = '';
+  let last = 'its start';
+  const line = (kind: 'PASS' | 'FAIL' | 'SKIP' | 'INFO', name: string, detail: unknown) => {
+    if (kind !== 'INFO') counts[kind]++;
+    last = name;
+    emit(kind, suite, block, name, kind === 'PASS' ? '' : JSON.stringify(detail));
+  };
+  const check = (name: string, ok: boolean, detail: unknown = '') =>
+    line(ok ? 'PASS' : 'FAIL', name, detail);
+  // A throw has no line of its own to point at: `last` says how far the suite got.
+  const failed = (what: string, error: unknown) => {
+    line('FAIL', what, `${String(error)} (after: ${last})`);
   };
   const r: Reporter = {
     check,
-    info,
+    info: (name, detail) => line('INFO', name, detail),
+    skip: (name, why) => line('SKIP', name, why),
     since(version, name, ok, detail = '') {
       const major = androidWebView();
       if (major > 0 && major < version)
-        info(`known limit (WebView <${version}): ${name}`, { major, ok, detail });
+        line('SKIP', name, { needs: `WebView ${version}`, major, ok, detail });
       else check(name, ok, detail);
     },
     drive(action, why = '') {
       request(action, suite);
-      info('drive', [action, why]);
+      line('INFO', 'drive', [action, why]);
     },
+    async block(name, run) {
+      block = name;
+      await run();
+      block = '';
+    },
+    cleanup: (undo) => void cleanups.push(undo),
   };
   return {
     r,
-    failed: (what: string, error: unknown) => check(what, false, String(error)),
+    failed,
+    async cleanUp() {
+      for (const undo of cleanups.reverse())
+        await Promise.resolve()
+          .then(undo)
+          .catch((error: unknown) => failed('a cleanup threw', error));
+    },
     done() {
-      request({ action: 'done', pass, fail }, suite);
-      emit(`DONE ${suite} pass=${pass} fail=${fail}`);
+      const [pass, fail, skip] = [counts.PASS, counts.FAIL, counts.SKIP];
+      request({ action: 'done', pass, fail, skip }, suite);
+      emit('DONE', suite, '', `pass=${pass} fail=${fail} skip=${skip}`, '');
     },
   };
 }
@@ -219,7 +254,7 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
     if (!name) return;
     busy = true;
     const h = get();
-    const { r, failed, done } = reporter(name);
+    const { r, failed, cleanUp, done } = reporter(name);
     // Whatever happens the suite gets one verdict, so the driver doesn't wait for one until it times out.
     try {
       const suite = suites[name];
@@ -229,6 +264,7 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
       failed('the suite threw', error);
     }
     // Before the verdict: what a suite leaves behind fails it, and makes the driver launch the app fresh.
+    await cleanUp();
     await reset(h).catch((error: unknown) => failed('the reset after it threw', error));
     done();
     busy = false;
@@ -238,8 +274,8 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
 
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
- * props, the event logs, and a new WebView on the home page (an Android settings key with no getter is not reset by its
- * absence). Throws when that page doesn't load.
+ * props, the event logs, a new WebView on the home page (an Android settings key with no getter is not reset by its
+ * absence), and every site's cookies and storage (the HTTP cache stays). Throws when that page doesn't load.
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -259,5 +295,16 @@ async function reset(h: Harness) {
     (s) => s.url === home && idle(s),
     10000
   );
+  const { cookies, sessionStorage, localStorage, indexedDBDatabases } =
+    IOSConstants.WebsiteDataType;
+  await (Platform.OS === 'ios'
+    ? h.ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
+        { set: [cookies, sessionStorage, localStorage, indexedDBDatabases] },
+        { date: 0 },
+      ])
+    : Promise.all([
+        h.ref.current?.call('cookieManager.removeAllCookies'),
+        h.ref.current?.call('webStorage.deleteAllData'),
+      ]));
   clearEvents(h);
 }

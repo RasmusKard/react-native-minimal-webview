@@ -89,7 +89,7 @@ export async function refLoad(h: Harness, r: Reporter) {
     h.state()
   );
 
-  await refLoadHistory(h, r);
+  await r.block('history', () => refLoadHistory(h, r));
 
   h.setRules([]);
   await sleep(300);
@@ -111,9 +111,9 @@ export async function refLoad(h: Harness, r: Reporter) {
       h.state().url === allowed,
     { navigations: h.events.navigations, state: h.state() }
   );
-  await refLoadRaces(h, r);
+  await r.block('races', () => refLoadRaces(h, r));
   h.setRules(undefined);
-  await refLoadEdges(h, r);
+  await r.block('edges', () => refLoadEdges(h, r));
 }
 
 /** Two ways to go to `url` from a page: the app's load, and a tap on a link (a click from script on iOS, see `tap`). */
@@ -282,6 +282,7 @@ async function loadAfter(
 /** What `load` refuses or can't load, and a load as a remounted WebView attaches its ref. */
 async function refLoadEdges(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
+  r.cleanup(warnings.stop);
   const quiet = h.events.loads.length;
   // eslint-disable-next-line no-script-url -- because load must refuse it
   h.ref.current?.load(`javascript:document.title = 'ran'`);
