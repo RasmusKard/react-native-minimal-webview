@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.1](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.2.0...react-native-minimal-webview-v1.2.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* Complete an iOS alert once when the WebView unmounts or crashes between the OK press and its handler ([#233](https://github.com/RasmusKard/react-native-minimal-webview/issues/233)) ([79d8808](https://github.com/RasmusKard/react-native-minimal-webview/commit/79d8808c493a667674e886d0976d601c40d9c7a8))
+* Keep the history on Android when load() or a new source replaces a waiting crash recovery ([#229](https://github.com/RasmusKard/react-native-minimal-webview/issues/229)) ([c88fc19](https://github.com/RasmusKard/react-native-minimal-webview/commit/c88fc19cbefe876458b691e6b30017ebe96c73e1))
+* Refuse turning the Android back-forward cache on below WebView 146, where a restored page reports no load end ([#236](https://github.com/RasmusKard/react-native-minimal-webview/issues/236)) ([307758a](https://github.com/RasmusKard/react-native-minimal-webview/commit/307758a3fe352ed829e3fb899a4a4648792e2328))
+* Reject an iOS evaluate with navigated when WebKit drops it before the commit ([#225](https://github.com/RasmusKard/react-native-minimal-webview/issues/225)) ([dc635fe](https://github.com/RasmusKard/react-native-minimal-webview/commit/dc635fe8b48dc8136cdf993e55ab6be0f851148a))
+* Report a missing Android System WebView through onError instead of a blank view or a crash ([#232](https://github.com/RasmusKard/react-native-minimal-webview/issues/232)) ([5b074cd](https://github.com/RasmusKard/react-native-minimal-webview/commit/5b074cd95be062851e5688d2891083ff583f89e0))
+* Retry a failed iOS load() of a file within its directory, as it loaded ([#223](https://github.com/RasmusKard/react-native-minimal-webview/issues/223)) ([3ff26a9](https://github.com/RasmusKard/react-native-minimal-webview/commit/3ff26a944d067621b859338966fe83146122a3ad))
+* Stop collecting the iOS own-load entries while a hook delegate decides navigations ([#222](https://github.com/RasmusKard/react-native-minimal-webview/issues/222)) ([b09b27a](https://github.com/RasmusKard/react-native-minimal-webview/commit/b09b27a1ef31728fe2a544b359671176bf43e39c))
+* Throw as WebView renders in an app built without its native module, as below iOS 17.0 ([#220](https://github.com/RasmusKard/react-native-minimal-webview/issues/220)) ([1382bf1](https://github.com/RasmusKard/react-native-minimal-webview/commit/1382bf1f28e7d8d35dca4c5be36e73dbdbf64379))
+
 ## [1.2.0](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.1.0...react-native-minimal-webview-v1.2.0) (2026-11-19)
 
 
