@@ -1,6 +1,9 @@
 name: ios
 on:
   pull_request:
+  # Only to save the result that every PR starts from (a PR's own cache stays with that PR).
+  push:
+    branches: [main]
 
 permissions: { contents: read }
 
@@ -17,11 +20,24 @@ jobs:
       APP: expo.modules.minimalwebview.example
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.1.0
+      # The key covers what the build reads, and the entry is saved only when the job passes: on a hit, this app has
+      # launched before, and the job builds nothing.
+      - id: launched
+        uses: actions/cache@v6.1.0
+        with:
+          path: .launched
+          key: >-
+            ios-launch-${{ hashFiles('ios/**', 'extensions/**', 'example/modules/**', 'example/*.json',
+            'expo-module.config.json', 'package.json', '.github/workflows/ios.yml') }}
+      - if: steps.launched.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v7.1.0
         with: { node-version-file: .nvmrc, cache: npm }
-      - run: npm ci && (cd example && npm ci)
-      - run: cd example && npx expo run:ios --no-bundler
-      - run: |
+      - if: steps.launched.outputs.cache-hit != 'true'
+        run: time pod --version && time xcrun simctl list devices >/dev/null
+      - if: steps.launched.outputs.cache-hit != 'true'
+        run: |
+          npm ci && (cd example && npm ci && npx expo run:ios --no-bundler)
           pid=$(xcrun simctl launch --terminate-running-process booted "$APP" | awk '{ print $2 }')
           sleep 15
           kill -0 "$pid" || { grep -ho '"reasons":[^]]*' ~/Library/Logs/DiagnosticReports/*.ips; exit 1; }
+          touch .launched
