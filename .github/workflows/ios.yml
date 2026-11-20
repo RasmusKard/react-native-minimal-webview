@@ -1,0 +1,44 @@
+name: ios
+on:
+  pull_request:
+  # Only to save the result that every PR starts from (a PR's own cache stays with that PR).
+  push:
+    branches: [main]
+
+permissions: { contents: read }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Expo's packages ship precompiled iOS frameworks, which dyld links at launch: a set whose versions don't match builds,
+  # and only fails to start.
+  ios-launch:
+    runs-on: macos-latest
+    env:
+      APP: expo.modules.minimalwebview.example
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # The key covers what the build reads, and the entry is saved only when the job passes: on a hit, this app has
+      # launched before, and the job builds nothing.
+      - id: launched
+        uses: actions/cache@v6.1.0
+        with:
+          path: .launched
+          key: >-
+            ios-launch-${{ hashFiles('ios/**', 'extensions/**', 'example/modules/**', 'example/*.json',
+            'expo-module.config.json', 'package.json', '.github/workflows/ios.yml') }}
+      - if: steps.launched.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v7.1.0
+        with: { node-version-file: .nvmrc, cache: npm }
+      - if: steps.launched.outputs.cache-hit != 'true'
+        run: |
+          npm ci && (cd example && npm ci)
+          # expo run's own launch can time out on a simulator that is still starting: the launch below decides.
+          (cd example && npx expo run:ios --no-bundler) || true
+          xcrun simctl bootstatus booted
+          pid=$(xcrun simctl launch --terminate-running-process booted "$APP" | awk '{ print $2 }')
+          sleep 15
+          kill -0 "$pid" || { grep -ho '"reasons":[^]]*' ~/Library/Logs/DiagnosticReports/*.ips; exit 1; }
+          touch .launched
