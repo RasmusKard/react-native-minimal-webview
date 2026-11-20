@@ -34,7 +34,10 @@ jobs:
         with: { node-version-file: .nvmrc, cache: npm }
       - if: steps.launched.outputs.cache-hit != 'true'
         run: |
-          npm ci && (cd example && npm ci && npx expo run:ios --no-bundler)
+          npm ci && (cd example && npm ci)
+          # expo run's own launch can time out on a simulator that is still starting: the launch below decides.
+          (cd example && npx expo run:ios --no-bundler) || true
+          xcrun simctl bootstatus booted
           pid=$(xcrun simctl launch --terminate-running-process booted "$APP" | awk '{ print $2 }')
           sleep 15
           kill -0 "$pid" || { grep -ho '"reasons":[^]]*' ~/Library/Logs/DiagnosticReports/*.ips; exit 1; }
