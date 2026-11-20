@@ -1,6 +1,6 @@
 // The `hostile` suite: the package's security boundaries against a hostile page, each check asserting that a boundary
-// holds. The page is test-pages/hostile.html, on the allowed origin (localhost:8090), on another one (127.0.0.1:8090),
-// and over https with a self-signed certificate (localhost:8443).
+// holds. The page is test-pages/hostile.html, on the allowed origin (PAGES), on another one (OTHER), and over https with
+// a self-signed certificate (HTTPS).
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 import type {
@@ -11,28 +11,26 @@ import type {
 } from 'react-native-minimal-webview';
 
 import {
-  type Harness,
-  WEBVIEW,
   captureWarnings,
   errorCode,
   fresh,
   idle,
   openPage,
   recordExternal,
-  reporter,
   sleep,
   tap,
   touch,
   until,
   waitFor,
   waitForLoad,
-} from './harness';
+  poll,
+  happens,
+} from '../harness/helpers';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
+import { HTTPS, OTHER } from '../pages';
 import { all } from './shapes';
 
-const OTHER = 'http://127.0.0.1:8090';
-const HTTPS = 'https://localhost:8443';
-
-type Suite = { h: Harness; r: ReturnType<typeof reporter>; android: boolean };
+type Suite = { h: Harness; r: Reporter; android: boolean };
 /** What a probe frame of hostile.html reports to its parent. */
 type FrameReport = {
   from: string;
@@ -52,7 +50,7 @@ async function gesture({ h, r }: Suite, id: string, real = false) {
   await (real ? touch : tap)(h, r, id);
   const seen = async () =>
     String(await evaluate(h, `window.testLog.slice(${before}).join()`)).includes(`click ${id}`);
-  return (await until(seen, 15000)) === true;
+  return (await poll(seen, 15000)) === true;
 }
 
 /**
@@ -80,7 +78,7 @@ async function bridgeGate({ h, r }: Suite) {
     });
     await sleep(300);
     await openPage(h, fresh(h, '/hostile.html?frames=1'));
-    const reports = await until(async () => {
+    const reports = await poll(async () => {
       const value = (await evaluate(h, 'frameReports')) as FrameReport[] | undefined;
       return Array.isArray(value) && value.length >= 2 ? value : undefined;
     });
@@ -180,7 +178,7 @@ async function staleAnswer({ h, r }: Suite) {
     );
     const rn = await Promise.race([inFlight, sleep(5000).then(() => 'still pending')]);
     await waitFor(h, (s) => s.url === next && idle(s));
-    const stale = (await until(() => evaluate(h, 'window.__stale'), 6000)) as
+    const stale = (await poll(() => evaluate(h, 'window.__stale'), 6000)) as
       { result?: string } | undefined;
     // Only a race: B's call was waiting when A's answer came. (B's 2500 ms ends after A's 1500 ms, within the
     // page's 3 s bridge timeout.)
@@ -240,7 +238,7 @@ async function newWindows(suite: Suite) {
     // A sentinel an earlier window set fails that window's check only.
     const before = await sentinelsNow();
     const clicked = await gesture(suite, id);
-    await until(() => h.events.navigations.length > navigations, 2000);
+    await poll(() => h.events.navigations.length > navigations, 2000);
     await sleep(1000); // a load the core wrongly let in would have started by now
     const decisions = h.events.navigations.slice(navigations);
     const sentinels = await sentinelsNow();
@@ -366,7 +364,7 @@ async function ssl({ h, r, android }: Suite) {
   await openPage(h, fresh(h, '/hostile.html?ssl=after'));
   const errors = h.events.errors.length;
   h.ref.current?.goBack();
-  const back = await waitFor(h, (s) => s.url === before && idle(s), 5000);
+  const back = await happens(waitFor(h, (s) => s.url === before && idle(s), 5000));
   await sleep(500);
   r.check(
     'T9 a failed SSL load leaves no back/forward entry: back returns to the page before it',
@@ -472,7 +470,7 @@ async function downloadRedirect({ h, r, android }: Suite) {
 /** F3: Android reads a blob: download through the page's own fetch, so the page can keep it from finishing. */
 async function heldBlob({ h, r, android }: Suite) {
   if (!android) {
-    r.info('F3 held blob: skipped', 'iOS reads a blob: download in WebKit, not through the page');
+    r.skip('F3 held blob', 'iOS reads a blob: download in WebKit, not through the page');
     return;
   }
   await openPage(h, fresh(h, '/hostile.html'));
@@ -627,9 +625,7 @@ const BLOCKS = [
   fileScope,
 ];
 
-export async function hostile(h: Harness) {
-  const r = reporter('hostile');
+export async function hostile(h: Harness, r: Reporter) {
   const suite: Suite = { h, r, android: Platform.OS === 'android' };
-  for (const block of BLOCKS) await block(suite);
-  r.done();
+  for (const block of BLOCKS) await r.block(block.name, () => block(suite));
 }

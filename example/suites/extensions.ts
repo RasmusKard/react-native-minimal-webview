@@ -24,21 +24,21 @@ import { AndroidConstants, IOSConstants } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
 import {
-  type Harness,
   captureWarnings,
   errorCode,
   fresh,
   openPage,
   pageLog,
   recreate,
-  reporter,
   sleep,
   text,
   until,
   waitForLoad,
-} from './harness';
-
-type Reporter = ReturnType<typeof reporter>;
+  poll,
+  happens,
+} from '../harness/helpers';
+import { type Harness, type Reporter } from '../harness/runner';
+import { HTTPS, OTHER, PAGES_PORT } from '../pages';
 
 const KEY = '@react-native-minimal-webview/extensions';
 const ios = Platform.OS === 'ios';
@@ -53,7 +53,7 @@ async function loadHtml(h: Harness, body: string) {
     baseUrl: h.pages,
   });
   // A poll in flight when the html commits rejects with `navigated`; the next poll retries.
-  return !!(await until(
+  return !!(await poll(
     async () => (await h.ref.current?.evaluate('document.title').catch(errorCode)) === title,
     10000
   ));
@@ -71,20 +71,21 @@ const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.st
 
 /**
  * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press (maestro/extensions.yaml).
+ * driver's long press.
  */
-export async function extensions(h: Harness) {
-  const r = reporter('extensions');
+export async function extensions(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   try {
-    await inert(h, r);
-    await auth(h, r);
-    await dialogs(h, r, warnings);
-    await scroll(h, r);
-    await menu(h, r, warnings);
-    await background(h, r);
-    await privacy(h, r);
-    await (ios ? keyboard(h, r) : android(h, r));
+    await r.block('inert', () => inert(h, r));
+    await r.block('auth', () => auth(h, r));
+    await r.block('dialogs', () => dialogs(h, r, warnings));
+    await r.block('scroll', () => scroll(h, r));
+    await r.block('menu', () => menu(h, r, warnings));
+    await r.block('background', () => background(h, r));
+    await r.block('privacy', () => privacy(h, r));
+    await (ios
+      ? r.block('keyboard', () => keyboard(h, r))
+      : r.block('android', () => android(h, r)));
     const stray = warnings.lines.filter(
       (line) => line.includes(`extension ${KEY}.`) && !line.includes(`${KEY}.menuItems`)
     );
@@ -96,13 +97,12 @@ export async function extensions(h: Harness) {
   } finally {
     warnings.stop();
   }
-  r.done();
 }
 
 // Browsers reuse an origin's credentials for any realm, and other suites sign in on localhost: the declines use an origin
 // nobody signs in on, and the sign-in one of its own (the emulator's host alias, the simulator's IPv6 loopback).
-const DECLINED = 'http://127.0.0.1:8090';
-const SIGNED_IN = ios ? 'http://[::1]:8090' : 'http://10.0.2.2:8090';
+const DECLINED = OTHER;
+const SIGNED_IN = `http://${ios ? '[::1]' : '10.0.2.2'}:${PAGES_PORT}`;
 
 async function inert(h: Harness, r: Reporter) {
   await recreate(h, {}, true);
@@ -147,7 +147,7 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
   await sleep(300);
-  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`));
+  await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`))); // on iOS the load is still going at the timeout
   const wrong = await text(h, 'auth');
   r.check(
     'basicAuthCredential with a rejected credential stops: the 401 page shows',
@@ -235,7 +235,7 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
   await openPage(h, fresh(h, '/dialogs.html'));
   void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('alert').click(), 0)`);
   await sleep(1000);
-  const remounted = await waitForLoad(h, () => h.remount());
+  const remounted = await happens(waitForLoad(h, () => h.remount()));
   hold = false;
   await openPage(h, fresh(h, '/dialogs.html'));
   const next = await pageLog(h, () => {
@@ -276,7 +276,7 @@ async function scroll(h: Harness, r: Reporter) {
   });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
   await h.ref.current?.evaluate('scrollTo(0, 400)');
-  const at = await until(
+  const at = await poll(
     () => scrolls.find(({ contentOffset }) => Math.abs(contentOffset.y - 400) < 1),
     3000
   );
@@ -317,8 +317,9 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     h,
     `<p style="font: 48px/1.2 system-ui; word-break: break-all; margin: 0">${'a'.repeat(3000)}</p>`
   );
-  r.info('LONGPRESS', 'then Highlight');
-  const selection = await until(() => chosen[0], 30000);
+  r.drive({ action: 'longPress', point: '50%, 30%' });
+  r.drive({ action: 'press', text: 'Highlight' });
+  const selection = await poll(() => chosen[0], 30000);
   r.check(
     'a long press shows the item, and choosing it calls onSelect with the selected text',
     selection?.key === 'hl' && selection.label === 'Highlight' && selection.selectedText.length > 0,
@@ -350,7 +351,7 @@ async function background(h: Harness, r: Reporter) {
   const states: unknown[] = [];
   for (const on of [true, false]) {
     h.setProps({ extensions: [on && transparentBackground()] });
-    states.push((await until(async () => (await opaque()) === !on, 3000)) ? !on : await opaque());
+    states.push((await poll(async () => (await opaque()) === !on, 3000)) ? !on : await opaque());
   }
   r.check(
     'transparentBackground, set after mount, makes the WebView not opaque; off, opaque again',
@@ -422,7 +423,7 @@ async function keyboard(h: Harness, r: Reporter) {
     await h.ref.current?.evaluate(
       "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
     );
-    return !!(await until(async () => (await viewport()) < height, 2000));
+    return !!(await poll(async () => (await viewport()) < height, 2000));
   };
   // Each WebView is one the keyboard hasn't shown for: WebKit's own rules show it for a later focus in that one.
   await recreate(h, {}, true);
@@ -444,7 +445,7 @@ async function keyboard(h: Harness, r: Reporter) {
     await loadHtml(h, '<input id="i">');
     const height = await viewport();
     await h.ref.current?.evaluate("document.getElementById('i').focus()");
-    await until(async () => (await viewport()) < height, 2000);
+    await poll(async () => (await viewport()) < height, 2000);
     await sleep(300);
     const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
     return (inset as { bottom?: number } | undefined)?.bottom;
@@ -473,7 +474,7 @@ async function android(h: Harness, r: Reporter) {
     h.setProps({ extensions: [type && androidLayerType(type)] });
     const expected = { software: 1, hardware: 2, none: 0 }[type ?? 'none'];
     types.push(
-      (await until(async () => (await layer()) === expected, 3000)) ? expected : await layer()
+      (await poll(async () => (await layer()) === expected, 3000)) ? expected : await layer()
     );
   }
   r.check(
@@ -498,7 +499,7 @@ async function android(h: Harness, r: Reporter) {
   await sleep(3000);
   const taken = handed() === before;
   await h.ref.current?.evaluate("document.getElementById('data').click()");
-  const left = !!(await until(() => handed() > before, 10000));
+  const left = !!(await poll(() => handed() > before, 10000));
   r.check(
     'downloadManager takes an attachment from onDownload, and leaves it a data: download',
     taken && left,
@@ -515,9 +516,9 @@ async function android(h: Harness, r: Reporter) {
   const image = 'http://127.0.0.1:1/x.png';
   await loadHtml(
     h,
-    `<img src="${image}"><img src="https://localhost:8443/x.png" onerror="window.sslFailed = true">`
+    `<img src="${image}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
-  const reported = await until(() => failed.find(({ url }) => url === image), 5000);
+  const reported = await poll(() => failed.find(({ url }) => url === image), 5000);
   const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
   await openPage(h, 'http://127.0.0.1:1/main');
   await sleep(1000);

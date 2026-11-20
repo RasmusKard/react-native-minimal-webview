@@ -25,15 +25,15 @@ import {
 import { type PageCounterEvent, pageCounter } from 'sample-extension';
 
 import {
-  SUITES,
   launchMarks,
   onDriverRequest,
   pollForSuites,
   type Harness,
   type HarnessProps,
-} from './harness';
+} from './harness/runner';
+import { PAGES } from './pages';
+import { ON_DEMAND, SUITES } from './suites/index';
 
-const PAGES = 'http://localhost:8090';
 /** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
 type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
 /**
@@ -161,7 +161,7 @@ export default function App() {
     void fetch(`${PAGES}/harness/run?platform=${Platform.OS}&suite=${name}`);
   };
 
-  useEffect(() => pollForSuites(() => harnessRef.current), []);
+  useEffect(() => pollForSuites(() => harnessRef.current, { ...SUITES, ...ON_DEMAND }), []);
 
   return (
     <View style={styles.container}>

@@ -4,21 +4,22 @@ import { BackHandler, Platform } from 'react-native';
 import type { FileRequest, NavigationRule, PermissionRequest } from 'react-native-minimal-webview';
 
 import {
-  type Harness,
-  WEBVIEW,
   click as scriptClick,
   fresh,
   idle,
   openPage,
   pageLog,
   recordExternal,
-  reporter,
   sleep,
   tap,
   touch,
   until,
   waitFor,
-} from './harness';
+  poll,
+  happens,
+} from '../harness/helpers';
+import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
+import { OTHER, PAGES } from '../pages';
 
 // A click on a page that went away shows in the check that follows, so the suite goes on.
 const click = (h: Harness, id: string) => scriptClick(h, id)?.catch(String);
@@ -27,17 +28,13 @@ type Policy = 'hybrid' | 'oauth' | 'checkout' | 'windows' | 'schemes' | 'none';
 
 type Shape = {
   h: Harness;
-  r: ReturnType<typeof reporter>;
+  r: Reporter;
   android: boolean;
   /** Since the last `clear`: what reached onOpenExternal. */
   external: string[];
   /** Since the last `clear`: what an `ask` rule asked. */
   asked: string[];
 };
-
-const PAGES = 'http://localhost:8090';
-/** Another site: the IdP, the bank, an app-link host. */
-const OTHER = 'http://127.0.0.1:8090';
 
 const RULES: Record<Policy, NavigationRule[] | undefined> = {
   hybrid: [
@@ -140,7 +137,7 @@ async function askAfter(s: Shape, act: () => unknown) {
   await sleep(500);
 }
 const agrees = async (h: Harness) =>
-  (await until(
+  (await poll(
     async () => (await h.ref.current?.evaluate('location.href').catch(String)) === h.state().url,
     2000
   )) === true;
@@ -176,7 +173,9 @@ async function hybrid(s: Shape) {
   await applyPolicy(s, 'hybrid');
   await hub(s);
   await click(h, 'own');
-  const own = await waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=own` && idle(st));
+  const own = await happens(
+    waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=own` && idle(st))
+  );
   r.check(
     'A1 hybrid: an own-site link loads in place',
     all(own, has(decision(h, 'from=own'), { action: 'allow', rule: 0 })),
@@ -219,7 +218,7 @@ async function frames(s: Shape) {
   const frameLoads = async () => Number(await h.ref.current?.evaluate('window.frameLoads'));
   const loadsBefore = await frameLoads();
   await tap(h, r, 'frame-other', 'frame');
-  const moved = (await until(async () => (await frameLoads()) > loadsBefore, 15000)) === true;
+  const moved = (await poll(async () => (await frameLoads()) > loadsBefore, 15000)) === true;
   await sleep(500);
   const other = decision(h, 'from=frame');
   if (android) r.info('A4 Android decision for the tapped http(s) iframe link', other ?? 'none');
@@ -262,7 +261,7 @@ async function oauth(s: Shape) {
   await click(h, 'login');
   r.check(
     'B1 oauth: the IdP page on another origin loads',
-    await waitFor(h, (st) => st.url === idp && idle(st)),
+    await happens(waitFor(h, (st) => st.url === idp && idle(st))),
     h.state()
   );
   await askAfter(s, () => click(h, 'signin'));
@@ -301,7 +300,7 @@ async function oauth(s: Shape) {
   await hub(s);
   await tap(h, r, 'login-popup');
   const popup = `${OTHER}/shapes-idp.html?popup=1`;
-  const popped = await waitFor(h, (st) => st.url === popup && idle(st), 15000);
+  const popped = await happens(waitFor(h, (st) => st.url === popup && idle(st), 15000));
   const noOpener = await h.ref.current?.evaluate('window.opener === null').catch(String);
   r.check(
     'B6 oauth: a popup login loads in place with no window.opener',
@@ -320,7 +319,9 @@ async function checkout(s: Shape) {
   await applyPolicy(s, 'checkout');
   clear(s);
   await open(h, '/shapes-pay.html?mode=frame');
-  const paid = await waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=paid` && idle(st));
+  const paid = await happens(
+    waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=paid` && idle(st))
+  );
   r.check(
     'C1 checkout: the 3-D Secure iframe completes and the page moves on',
     all(paid, s.asked.length === 0),
@@ -344,7 +345,7 @@ async function checkout(s: Shape) {
   await applyPolicy(s, 'checkout', { inCheckout: true });
   clear(s);
   await open(h, '/shapes-pay.html?mode=top');
-  const posted = await waitFor(h, (st) => st.url === term && idle(st));
+  const posted = await happens(waitFor(h, (st) => st.url === term && idle(st)));
   const paRes = await body(h);
   r.check(
     'C3 checkout: a full-page POST to an unlisted bank loads while in checkout',
@@ -371,14 +372,12 @@ async function windows(s: Shape) {
   await applyPolicy(s, 'windows');
   let page = await hub(s);
   await tap(h, r, 'blank-own');
-  const blank = await waitFor(
-    h,
-    (st) => st.url === `${PAGES}/spa.html?from=blank` && idle(st),
-    15000
+  const blank = await happens(
+    waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=blank` && idle(st), 15000)
   );
   const blankOwn = decision(h, 'from=blank');
   h.ref.current?.goBack();
-  const returned = await waitFor(h, (st) => st.url === page && idle(st), 5000);
+  const returned = await happens(waitFor(h, (st) => st.url === page && idle(st), 5000));
   r.check(
     'D1 windows: a same-site target=_blank loads in place, goBack returns to the opener page',
     all(blank, has(blankOwn, { newWindow: true, action: 'allow', rule: 0 }), returned),
@@ -401,10 +400,8 @@ async function windows(s: Shape) {
 
   await hub(s);
   await tap(h, r, 'open-own');
-  const opened = await waitFor(
-    h,
-    (st) => st.url === `${PAGES}/spa.html?from=open` && idle(st),
-    15000
+  const opened = await happens(
+    waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=open` && idle(st), 15000)
   );
   const noOpener = await h.ref.current?.evaluate('window.opener === null').catch(String);
   r.check(
@@ -447,7 +444,9 @@ async function deferredWindows(s: Shape) {
     return;
   }
   await tap(h, r, 'post-blank-submit');
-  const posted = await waitFor(h, (st) => st.url === `${PAGES}/post?from=blank` && idle(st));
+  const posted = await happens(
+    waitFor(h, (st) => st.url === `${PAGES}/post?from=blank` && idle(st))
+  );
   r.check(
     'D5 windows: a form POST to a new window',
     all(posted, !h.events.navigations.some((n) => n.url.includes('/post'))),
@@ -547,9 +546,8 @@ async function documents(s: Shape) {
       ? 'F1 docs: a PDF link shows inline on iOS, arrives in onDownload on Android'
       : 'F2 docs: without onDownload a PDF opens externally on Android';
     if (!android) {
-      const inline = await waitFor(
-        h,
-        (st) => st.url === pdf && idle(st) && st.outcome === 'finished'
+      const inline = await happens(
+        waitFor(h, (st) => st.url === pdf && idle(st) && st.outcome === 'finished')
       );
       await sleep(500);
       r.check(name, all(inline, h.events.downloads.length === before), {
@@ -602,7 +600,7 @@ async function devices(s: Shape) {
       ),
       requests
     );
-  } else r.info('G1 upload: skipped', "iOS shows WebKit's own picker");
+  } else r.skip('G1 upload', "iOS shows WebKit's own picker");
   const permissions: PermissionRequest[] = [];
   h.setPermission(async (request) => {
     permissions.push(request);
@@ -651,7 +649,7 @@ async function spa(s: Shape) {
   h.ref.current?.reload();
   const fresh = `window.__beforeReload === undefined && document.querySelector('h1')?.textContent === 'SPA'`;
   const reloaded =
-    (await until(
+    (await poll(
       async () =>
         idle(h.state()) &&
         h.state().outcome === 'finished' &&
@@ -676,20 +674,19 @@ async function offline(s: Shape) {
     const failedUrl = `${PAGES}/drop?key=${key}&p=2`;
     const errors = h.events.errors.length;
     await h.ref.current?.evaluate(`location.href = '/drop?key=${key}&p=2'`);
-    const failed = await waitFor(h, (st) => st.outcome === 'failed' && idle(st));
+    const failed = await happens(waitFor(h, (st) => st.outcome === 'failed' && idle(st)));
     const failure = {
       failed,
       error: h.events.errors[errors],
       url: h.state().url,
-      screen: (await until(() => h.events.overlay.error, 3000)) === true,
+      screen: (await poll(() => h.events.overlay.error, 3000)) === true,
     };
     await drop(0);
     h.ref.current?.reload();
-    const recovered = await waitFor(
-      h,
-      (st) => st.url === failedUrl && idle(st) && st.outcome === 'finished'
+    const recovered = await happens(
+      waitFor(h, (st) => st.url === failedUrl && idle(st) && st.outcome === 'finished')
     );
-    const screenGone = (await until(() => !h.events.overlay.error, 3000)) === true;
+    const screenGone = (await poll(() => !h.events.overlay.error, 3000)) === true;
     r.check(
       'H3 offline: a failed link shows the error, reload() recovers',
       all(
@@ -711,7 +708,7 @@ async function offline(s: Shape) {
 async function backButton(s: Shape) {
   const { h, r, android } = s;
   if (!android) {
-    r.info('H4 android back: skipped', 'iOS has no back button');
+    r.skip('H4 android back', 'iOS has no back button');
     return;
   }
   const first = await open(h, '/spa.html?from=first');
@@ -723,10 +720,10 @@ async function backButton(s: Shape) {
   });
   try {
     await waitFor(h, (st) => st.canGoBack, 3000);
-    r.info('BACK', 'the BackHandler recipe');
+    r.drive({ action: 'back' }, 'the BackHandler recipe');
     r.check(
       'H4 android back: the BackHandler recipe goes back one page',
-      await waitFor(h, (st) => st.url === first && idle(st)),
+      await happens(waitFor(h, (st) => st.url === first && idle(st))),
       h.state()
     );
   } finally {
@@ -754,9 +751,7 @@ const BLOCKS = [
   backButton,
 ];
 
-export async function shapes(h: Harness) {
-  const r = reporter('shapes');
+export async function shapes(h: Harness, r: Reporter) {
   const shape: Shape = { h, r, android: Platform.OS === 'android', external: [], asked: [] };
-  for (const block of BLOCKS) await block(shape);
-  r.done();
+  for (const block of BLOCKS) await r.block(block.name, () => block(shape));
 }
