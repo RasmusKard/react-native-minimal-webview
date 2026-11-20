@@ -16,7 +16,10 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     # Holds the App key; limited to main.
-    environment: release
+    environment:
+      name: release
+      # This job runs on every push; only publish is a deployment.
+      deployment: false
     outputs:
       created: ${{ steps.release.outputs.releases_created }}
       paths: ${{ steps.release.outputs.paths_released }}
