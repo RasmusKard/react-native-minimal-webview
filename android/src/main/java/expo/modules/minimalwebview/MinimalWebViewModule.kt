@@ -3,6 +3,7 @@ package expo.modules.minimalwebview
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.AndroidRuntimeException
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient.FileChooserParams
@@ -162,14 +163,24 @@ private fun setWebContentsDebugging(enabled: Boolean) {
 }
 
 private fun warmUp(context: Context) {
-  val config = WebViewStartUpConfig.Builder { Thread(it, "WebViewWarmUp").start() }.build()
-  WebViewCompat.startUpWebView(context, config, object : WebViewOutcomeReceiver<WebViewStartUpResult, WebViewStartupException> {
+  val outcome = object : WebViewOutcomeReceiver<WebViewStartUpResult, WebViewStartupException> {
     override fun onResult(result: WebViewStartUpResult) = Unit
 
     override fun onError(error: WebViewStartupException) {
       Log.w(TAG, "WebView warm-up failed", error)
     }
-  })
+  }
+  // startUpWebView doesn't catch its task's throw, which on this thread would crash the app without a WebView provider.
+  val config = WebViewStartUpConfig.Builder { task ->
+    Thread({
+      try {
+        task.run()
+      } catch (e: AndroidRuntimeException) {
+        outcome.onError(WebViewStartupException("no WebView provider").apply { initCause(e) })
+      }
+    }, "WebViewWarmUp").start()
+  }.build()
+  WebViewCompat.startUpWebView(context, config, outcome)
 }
 
 /** Runs [action] on the WebView, unless it's recovering: `webView` is then the destroyed one, and only reload acts, by building the new one. */
