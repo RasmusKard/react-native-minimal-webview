@@ -708,7 +708,8 @@ export type AndroidSettings = {
    *
    * - On: `javaScriptEnabled`, `domStorageEnabled`, `supportMultipleWindows`, `builtInZoomControls`,
    *   `useWideViewPort`, `loadWithOverviewMode` and, with Android System WebView 146 and newer,
-   *   `backForwardCacheEnabled`.
+   *   `backForwardCacheEnabled`. Older ones refuse `backForwardCacheEnabled: true`, in this prop and in `call`:
+   *   a page restored from the cache there reports no load end.
    * - Off: `allowFileAccess`, `allowContentAccess`, `displayZoomControls` and `downloadFaviconsEnabled`.
    * - `mixedContentMode`: `MIXED_CONTENT_NEVER_ALLOW`.
    *

@@ -3227,6 +3227,34 @@ async function bfcache(h: Harness) {
       asked.length === 1,
     { asked, state: h.state() }
   );
+
+  if (Platform.OS === 'android') {
+    // The app turns the cache on itself: below WebView 146 a restored page reports no load end, so it's refused there.
+    const warnings = captureWarnings();
+    h.setProps({ android: { settings: { backForwardCacheEnabled: true } } });
+    const one = fresh(h, '/back-forward.html?title=one');
+    await openPage(h, one);
+    await openPage(h, fresh(h, '/back-forward.html?title=two'));
+    clearEvents(h);
+    h.ref.current?.goBack();
+    const back = await waitFor(h, (s) => s.url === one && idle(s));
+    await sleep(500); // a late load event would come now
+    warnings.stop();
+    r.check(
+      'back with backForwardCacheEnabled set: one load start and end, finished',
+      back &&
+        JSON.stringify(h.events.loads) === '["start","end"]' &&
+        JSON.stringify(h.events.outcomes) === '["finished"]',
+      { loads: h.events.loads, outcomes: h.events.outcomes, state: h.state() }
+    );
+    r.check(
+      'backForwardCacheEnabled: true warns only below WebView 146',
+      warnings.warned('android.settings.backForwardCacheEnabled') ===
+        androidWebView() < WEBVIEW.navigationListener,
+      warnings.lines
+    );
+    h.setProps({});
+  }
   r.done();
 }
 

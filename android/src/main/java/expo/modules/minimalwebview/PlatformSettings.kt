@@ -19,7 +19,10 @@ import kotlin.math.truncate
  * (`getMethods()`), so a setter a newer SDK or androidx.webkit adds needs no code here. The roots and their order:
  * [Companion.targets].
  */
-internal class PlatformSettings(private val targets: (root: String) -> List<Target>?) {
+internal class PlatformSettings(
+  private val hasNavigationListener: () -> Boolean = { true },
+  private val targets: (root: String) -> List<Target>?
+) {
   /** `root.key` -> the last value applied or rejected, so an unchanged value is neither applied nor reported again. */
   private val applied = mutableMapOf<String, Any?>()
 
@@ -65,6 +68,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
 
   /** [set], keeping the value it replaces the first time under [id]; returns the problem, or null when it was set. */
   private fun write(targets: List<Target>, id: String, key: String, value: Any?): String? {
+    refusal(setterOf(key), listOf(value))?.let { return it }
     if (id in originals) return set(targets, key, value)
     return set(targets, key, value) {
       originals[id] = runCatching { read(targets, key) }.getOrDefault(NONE)
@@ -109,6 +113,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")
+    refusal(name, args)?.let { throw PlatformException("unavailable", it) }
     val direct = find(targets, args) { it.name == name }
     if (direct != null) {
       val result = direct()
@@ -129,8 +134,19 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
     return (targets(parts[0]) ?: throw notFound("unknown root: use settings, webView, cookieManager or webStorage")) to parts[1]
   }
 
+  /** Why [method] can't take [args] on this WebView, or null. */
+  private fun refusal(method: String, args: List<Any?>) =
+    // Without NavigationListener the clients end a load at onPageFinished, which WebView 133 skips for a restored page.
+    if (method == "setBackForwardCacheEnabled" && args == listOf(true) && !hasNavigationListener()) {
+      "not supported by this WebView: below Android System WebView 146 a page restored from the cache reports no load end"
+    } else {
+      null
+    }
+
   internal companion object {
     private val NONE = Any()
+
+    private fun setterOf(key: String) = "set" + key.replaceFirstChar { it.uppercaseChar() }
 
     /** The targets of [root] on [webView], or null for an unknown root. */
     fun targets(webView: WebView, root: String): List<Target>? = when (root) {
@@ -186,7 +202,7 @@ internal class PlatformSettings(private val targets: (root: String) -> List<Targ
      */
     private fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
       if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
-      val setter = "set" + key.replaceFirstChar { it.uppercaseChar() }
+      val setter = setterOf(key)
       if (setter in OWNED) return owned(setter)
       val apply = find(targets, listOf(value)) { it.name == setter } ?: return when {
         targets.none { t -> t.cls.methods.any { it.name == setter } } -> "no public setter"
