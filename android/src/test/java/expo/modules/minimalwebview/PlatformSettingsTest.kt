@@ -14,6 +14,7 @@ class PlatformSettingsTest {
     fun setFloat(v: Float) { values += v }
     fun setDouble(v: Double) { values += v }
     fun setFlag(v: Boolean) { values += v }
+    fun setBackForwardCacheEnabled(v: Boolean) { values += v }
     fun setText(v: CharSequence?) { values += v }
     fun setTag(v: Any) { values += v }
     fun setUnsupported(v: Int): Unit = throw UnsupportedOperationException("$v")
@@ -64,6 +65,21 @@ class PlatformSettingsTest {
     val fake = Fake()
     call(fake, "setInt", 4280295456.0)
     assertEquals(listOf<Any?>(-14671840), fake.values)
+  }
+
+  @Test
+  fun refusesTurningTheBackForwardCacheOnWithoutNavigationListener() {
+    val fake = Fake()
+    val settings = PlatformSettings({ false }) { if (it == "settings") listOf(Target(Fake::class.java, fake, null)) else null }
+    val rejected = settings.apply(mapOf("settings" to mapOf("backForwardCacheEnabled" to true)))
+    assertEquals(listOf("settings.backForwardCacheEnabled"), rejected.map { it["key"] })
+    settings.apply(mapOf("settings" to mapOf("backForwardCacheEnabled" to false)))
+    assertEquals(listOf<Any?>(false), fake.values)
+    val error = assertThrows(PlatformException::class.java) {
+      settings.call("settings.setBackForwardCacheEnabled", listOf(true)) {}
+    }
+    assertEquals("unavailable", error.code)
+    assertEquals(null to listOf(true), set("backForwardCacheEnabled", true)) // with NavigationListener
   }
 
   /** A `settings` root over [fake]. */

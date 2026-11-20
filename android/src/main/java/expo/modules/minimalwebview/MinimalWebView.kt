@@ -62,7 +62,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var injectedScripts: List<InjectedScript>? = null
   /** The `android` prop: WebSettings and WebView setters by name, applied by [PlatformSettings]. */
   internal var settings: Map<String, Any?>? = null
-  internal val platformSettings = PlatformSettings { PlatformSettings.targets(webView, it) }
+  internal val platformSettings = PlatformSettings({ hasNavigationListener }) { PlatformSettings.targets(webView, it) }
   private val refresher = PullToRefresh(this)
   internal var pullToRefresh = false
     set(value) {
