@@ -35,6 +35,7 @@ import {
   sleep,
   text,
   until,
+  waitForLoad,
 } from './harness';
 
 type Reporter = ReturnType<typeof reporter>;
@@ -218,6 +219,32 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
         ['prompt', 'name?', 'default', frame],
       ]),
     seen
+  );
+  // An unmount while onDialog has not answered ends the ask; the remounted WebView's dialogs are answered.
+  let hold = true;
+  let aborted = false;
+  h.setProps({
+    extensions: [
+      dialogsExtension((_, signal) => {
+        if (!hold) return true;
+        signal.addEventListener('abort', () => (aborted = true));
+        return new Promise(() => {});
+      }),
+    ],
+  });
+  await openPage(h, fresh(h, '/dialogs.html'));
+  void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('alert').click(), 0)`);
+  await sleep(1000);
+  const remounted = await waitForLoad(h, () => h.remount());
+  hold = false;
+  await openPage(h, fresh(h, '/dialogs.html'));
+  const next = await pageLog(h, () => {
+    void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('confirm').click(), 0)`);
+  });
+  r.check(
+    "an unmount while onDialog hasn't answered aborts its signal, and the next dialog is answered",
+    remounted && aborted && next?.join() === 'confirm true',
+    { remounted, aborted, next }
   );
   // Android checks when the callback comes, iOS when the delegates are set.
   h.setProps({ extensions: [dialogsExtension(() => true), sampleHook('hookDialogs')] });
