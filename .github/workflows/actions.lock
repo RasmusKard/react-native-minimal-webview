@@ -4,6 +4,10 @@
 version: 'v0.0.3'
 workflows:
     '.github/workflows/docs.yml': []
+    '.github/workflows/expo-packages.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/create-github-app-token@v3.3.0'
+        - 'actions/setup-node@v7.1.0'
     '.github/workflows/ios.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-node@v7.1.0'

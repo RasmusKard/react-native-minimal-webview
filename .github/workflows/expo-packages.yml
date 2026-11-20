@@ -1,0 +1,53 @@
+name: Expo packages
+
+# Dependabot can't run `expo install`, and Expo's packages, React and React Native only work as the set Expo names
+# (dependabot.yml ignores them). Monthly, this moves the root and the example to that set and opens or updates one PR.
+on:
+  schedule:
+    - cron: '0 5 1 * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: expo-packages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Holds the App key; limited to main.
+    environment: release
+    env:
+      BRANCH: deps/expo-packages
+      TITLE: 'chore: Update the Expo packages of the root and the example app'
+    steps:
+      # A PR opened with GITHUB_TOKEN would not trigger CI.
+      - id: app-token
+        uses: actions/create-github-app-token@v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: actions/checkout@v7.0.1
+        with: { token: '${{ steps.app-token.outputs.token }}' }
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version-file: .nvmrc }
+      # npm 11 for the lockfile: npm 10 strips its libc fields.
+      - run: |
+          for dir in . example; do
+            (cd $dir && npm ci --ignore-scripts && npx expo install --fix && npx -y npm@11 install --ignore-scripts)
+          done
+      - env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git diff --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C "$BRANCH"
+          git commit -am "$TITLE"
+          git push --force origin "$BRANCH"
+          [ "$(gh pr list --head "$BRANCH" --state open --json number --jq length)" != 0 ] ||
+            gh pr create --head "$BRANCH" --title "$TITLE" \
+              --body 'What `npx expo install --fix` changes in the root and in `example/`.'
