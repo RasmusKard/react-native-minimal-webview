@@ -57,11 +57,27 @@ public class SampleExtensionModule: Module {
       }
     }
     // closedViews is sample.seams' counter; stallStart and stallStop are the perf suite's frame-gap probe
-    // (PerfProbe.swift). Module functions, so they work without a hook too.
+    // (PerfProbe.swift); tapAlert is the dialogs suite's press. Module functions, so they work without a hook too.
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(.main)
     AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
     AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
+    AsyncFunction("tapAlert") { (title: String) in tapAlert(title) }.runOnQueue(.main)
   }
+}
+
+/// Presses the button `title` of the alert on screen as a tap does, so UIKit runs its handler once the dismissal
+/// animation ends. False when no such alert is up.
+private func tapAlert(_ title: String) -> Bool {
+  let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
+  var top = window?.rootViewController
+  while let next = top?.presentedViewController { top = next }
+  // UIKit has no public way to press an alert's button, and the app has no XCTest.
+  let selector = NSSelectorFromString("_dismissAnimated:triggeringAction:triggeredByPopoverDimmingView:dismissCompletion:")
+  guard let alert = top as? UIAlertController, let action = alert.actions.first(where: { $0.title == title }),
+    alert.responds(to: selector) else { return false }
+  typealias Dismiss = @convention(c) (AnyObject, Selector, Bool, UIAlertAction, Bool, AnyObject?) -> Void
+  unsafeBitCast(alert.method(for: selector), to: Dismiss.self)(alert, selector, true, action, false, nil)
+  return true
 }
 
 /// `sample.seams`: how many of its views were closed at unmount.

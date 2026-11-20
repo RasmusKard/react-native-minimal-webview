@@ -77,8 +77,10 @@ extension MinimalWebView: WKUIDelegate {
   }
 
   private func action(_ title: String, _ style: UIAlertAction.Style, _ complete: @escaping () -> Void) -> UIAlertAction {
-    UIAlertAction(title: title, style: style) { [weak self] _ in
-      self?.dialog = nil
+    UIAlertAction(title: title, style: style) { [weak self] action in
+      // UIKit runs this after the dismissal animation: an unmount or a crash meanwhile has completed the dialog.
+      guard let self, dialog?.controller.actions.contains(action) == true else { return }
+      dialog = nil
       complete()
     }
   }
