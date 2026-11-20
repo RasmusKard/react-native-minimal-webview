@@ -19,7 +19,7 @@ In `example/`, `npx expo run:android --no-bundler` or `npx expo run:ios --no-bun
 installs the example app, and generates `example/android` or `example/ios` the first time.
 
 Dependabot leaves Expo's packages, React and React Native alone: they only work as the set Expo names, and the root and
-`example/` stay on the same one. The `Expo packages` workflow opens a PR that moves both each month. By hand, in the root
+`example/` stay on the same one. The `Expo packages` workflow opens a PR that moves both each week. By hand, in the root
 and in `example/`: `npx expo install --fix`, then `npx -y npm@11 install` for the lockfile.
 
 ## Checks
