@@ -6,6 +6,7 @@ import {
   happens,
   openPage,
   pageLog,
+  poll,
   sleep,
   touch,
   waitFor,
@@ -30,8 +31,7 @@ export async function dialogs(h: Harness, r: Reporter) {
     await openPage(h, fresh(h, '/dialogs.html'));
     return await pageLog(h, () => touch(h, r, 'tap'), 5000);
   };
-  for (const id of ['alert', 'confirm', 'prompt']) {
-    await up(id);
+  const unmountCloses = async (id: string) => {
     const remounted = await happens(waitForLoad(h, () => h.remount()));
     const lines = await tapReaches();
     r.check(
@@ -39,6 +39,26 @@ export async function dialogs(h: Harness, r: Reporter) {
       remounted && lines?.join() === 'tapped',
       { remounted, lines }
     );
+  };
+  for (const id of ['alert', 'confirm', 'prompt']) {
+    await up(id);
+    await unmountCloses(id);
+  }
+  // WebKit has no beforeunload dialog.
+  if (Platform.OS === 'android') {
+    const leave = async () => {
+      await openPage(h, fresh(h, '/dialogs.html'));
+      await pageLog(h, () => touch(h, r, 'beforeunload'), 5000);
+      void h.ref.current?.evaluate('setTimeout(() => location.reload(), 0)');
+    };
+    await leave();
+    r.drive({ action: 'press', text: 'Stay.*' });
+    const log = await poll(() => h.ref.current?.evaluate('window.testLog.join()'), 15000);
+    r.check('beforeunload answered with Stay keeps the page', log === 'beforeunload armed', log);
+    await h.ref.current?.evaluate('onbeforeunload = null');
+    await leave();
+    await sleep(1000);
+    await unmountCloses('beforeunload dialog');
   }
   await up('alert');
   const gone = h.events.gone.length;
