@@ -558,6 +558,35 @@ async function reissue(h: Harness) {
   r.check('an allowed navigation keeps the referrer', same.referer === same.from, same);
   const cross = await referrerTo('http://127.0.0.1:8090/headers?r=cross');
   r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
+
+  // An unmount while an ask waits for JS: the late answer comes after the WebView it was for is gone.
+  const beforeUnmount = fresh(h, '/nav.html');
+  await openPage(h, beforeUnmount);
+  answer = 'late';
+  const pending = asked.length;
+  await click(h, 'checkout');
+  await until(() => asked.length > pending, 900);
+  const remounted = await waitForLoad(
+    h,
+    () => h.remount(),
+    (s) => s.url === beforeUnmount && idle(s),
+    10000
+  );
+  await answered;
+  await sleep(1000); // a load the late allow wrongly started would have committed by now
+  r.check(
+    'an unmount while a navigation ask waits: the remounted WebView loads its source and stays',
+    asked.length === pending + 1 && remounted && h.state().url === beforeUnmount,
+    { asked: asked.slice(pending), remounted, state: h.state() }
+  );
+  answer = 'allow';
+  await click(h, 'checkout');
+  r.check(
+    'after that unmount, an ask is answered and its page loads',
+    (await waitFor(h, (s) => s.url.endsWith('/checkout/pay') && idle(s), 5000)) &&
+      asked.length === pending + 2,
+    { asked: asked.slice(pending), state: h.state() }
+  );
   r.done();
 }
 
@@ -1942,13 +1971,16 @@ async function navigation(h: Harness) {
   const r = reporter('navigation');
   const external: string[] = [];
   const asked: string[] = [];
+  const newWindowAsks: string[] = [];
   let lastAskAt = 0;
   const lastNavigation = () => h.events.navigations[h.events.navigations.length - 1];
+  const decisionOf = (url: string) => h.events.navigations.find((n) => n.url === url);
   h.setProps({
     onOpenExternal: recordExternal(external),
   });
   h.setAsk((request) => {
     asked.push(request.url);
+    if (request.newWindow) newWindowAsks.push(request.url);
     lastAskAt = Date.now();
     return 'allow';
   });
@@ -2018,6 +2050,42 @@ async function navigation(h: Harness) {
   const inPlace = await waitFor(h, (s) => s.url.endsWith('/spa.html') && idle(s), 15000);
   r.check('a tapped target=_blank allowed by a newWindow rule loads in place', inPlace, h.state());
 
+  const mailto = 'mailto:test@example.com';
+  await openPage(h, fresh(h, '/nav.html'));
+  h.events.navigations.length = 0;
+  external.length = 0;
+  await click(h, 'mailto');
+  await waitFor(h, () => decisionOf(mailto) !== undefined, 3000);
+  const sameWindow = decisionOf(mailto);
+  h.events.navigations.length = 0;
+  await noLoad('a tapped target=_blank mailto:', async () => {
+    await tap(h, r, 'blank-mailto');
+    await waitFor(h, () => decisionOf(mailto) !== undefined, 15000);
+  });
+  const newWindow = decisionOf(mailto);
+  r.check(
+    'a tapped target=_blank mailto: goes to onOpenExternal as a new window, as a same-window one does',
+    external.length === 2 &&
+      external.every((url) => url === mailto) &&
+      sameWindow?.action === 'external' &&
+      newWindow?.action === 'external' &&
+      newWindow.rule === sameWindow.rule &&
+      newWindow.newWindow,
+    { external, sameWindow, newWindow }
+  );
+
+  await tap(h, r, 'blank-checkout');
+  const askedInPlace = await waitFor(
+    h,
+    (s) => s.url.endsWith('/checkout/window') && idle(s),
+    15000
+  );
+  r.check(
+    'a new window an ask rule matches is asked with newWindow true, and loads in place when allowed',
+    askedInPlace && newWindowAsks.some((url) => url.endsWith('/checkout/window')),
+    { state: h.state(), newWindowAsks }
+  );
+
   const selfOpening = (name: string) => ({
     html: `<script>setTimeout(() => { window.open('https://example.com/${name}'); window.__opened = true; }, 300)</script>`,
     baseUrl: h.pages,
@@ -2047,6 +2115,19 @@ async function navigation(h: Harness) {
     'javaScriptCanOpenWindowsAutomatically lets it, through the newWindow rules',
     external.includes('https://example.com/opted-in'),
     external
+  );
+  const deferred = 'https://example.com/deferred';
+  h.loadSource({
+    html: `<script>setTimeout(() => { const w = window.open(''); setTimeout(() => { w.location.href = '${deferred}'; }, 300); }, 300)</script>`,
+    baseUrl: h.pages,
+  });
+  await waitFor(h, () => decisionOf(deferred) !== undefined, 8000);
+  r.check(
+    "window.open('') then a location the rules send external goes to onOpenExternal as a new window",
+    external.includes(deferred) &&
+      decisionOf(deferred)?.action === 'external' &&
+      decisionOf(deferred)?.newWindow === true,
+    { external, decision: decisionOf(deferred) }
   );
   await openPage(h, fresh(h, '/nav.html'));
   if (Platform.OS === 'ios') {
@@ -2179,6 +2260,54 @@ async function navigation(h: Harness) {
       !handled.loaded,
     handled
   );
+
+  // Frames a page makes for itself (a challenge or a widget) still load when the rules send everything else out.
+  const internalFrames = async (label: string, rules: NavigationRule[], kinds: string[]) => {
+    h.setProps({ onOpenExternal: recordExternal(external) });
+    h.setRules(rules);
+    await sleep(500);
+    const top = fresh(h, '/nav.html');
+    await openPage(h, top);
+    external.length = 0;
+    h.events.navigations.length = 0;
+    await h.ref.current?.evaluate(`(() => {
+      window.__frames = [];
+      addEventListener('message', (e) => window.__frames.push(e.data));
+      const run = (name) => '<script>parent.postMessage(' + JSON.stringify(name) + ', "*")</' + 'script>';
+      const add = (set) => { const f = document.createElement('iframe'); set(f); document.body.append(f); };
+      add((f) => { f.src = 'about:blank'; f.onload = () => f.contentWindow.eval(\`parent.postMessage('about:blank', '*')\`); });
+      add((f) => { f.srcdoc = run('srcdoc'); });
+      add((f) => { f.src = 'data:text/html,' + encodeURIComponent(run('data:')); });
+      if (${kinds.includes('blob:')}) add((f) => { f.src = URL.createObjectURL(new Blob([run('blob:')], { type: 'text/html' })); });
+    })()`);
+    const ran = async () => (await h.ref.current?.evaluate('window.__frames')) as string[];
+    await until(async () => {
+      const seen = await ran();
+      return kinds.every((kind) => seen.includes(kind));
+    }, 5000);
+    await sleep(500); // a decision that comes after the frame ran
+    const seen = await ran();
+    r.check(
+      `${label}: ${kinds.join(', ')} iframes load and run`,
+      kinds.every((kind) => seen.includes(kind)),
+      seen
+    );
+    const refused = h.events.navigations.filter(
+      (n) => !/^https?:/.test(n.url) && n.action !== 'allow'
+    );
+    r.check(
+      `${label}: none of them is opened externally or blocked, and the page stays`,
+      external.length === 0 && refused.length === 0 && h.state().url === top,
+      { external, refused, url: h.state().url }
+    );
+  };
+  await internalFrames(
+    'under a catch-all external rule',
+    [{ host: ['localhost', '127.0.0.1'], action: 'allow' }, { action: 'external' }],
+    ['about:blank', 'srcdoc', 'data:', 'blob:']
+  );
+  // A same-origin blob: is decided as its origin, which no rule allows here.
+  await internalFrames('with navigationRules={[]}', [], ['about:blank', 'srcdoc', 'data:']);
   r.done();
 }
 
@@ -3213,6 +3342,19 @@ async function sources(h: Harness) {
     );
   }
   dir.delete();
+
+  // Hostless source URLs, which crashed react-native-webview on iOS.
+  for (const [name, uri, shown] of [
+    ['an about:blank', 'about:blank', ''],
+    ['a data:', 'data:text/html,<p id="data">data source</p>', 'data source'],
+  ]) {
+    const ended = await waitForLoad(h, () => h.loadSource({ uri }), idle, 10000);
+    const page = await text(h, 'data');
+    r.check(`${name} source loads`, ended && h.state().outcome === 'finished' && page === shown, {
+      state: h.state(),
+      page,
+    });
+  }
   r.done();
 }
 

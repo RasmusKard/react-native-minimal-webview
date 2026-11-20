@@ -3,8 +3,8 @@ name: navigation
 env:
   SUITE: navigation
 ---
-# Android: real taps where the harness says (iOS clicks from script): the window.open button, then the target=_blank
-# link.
+# Android: real taps where the harness says (iOS clicks from script): the window.open button, the target=_blank
+# link, the target=_blank mailto: link and the target=_blank link an ask rule matches.
 - runFlow: subflows/launch.yaml
 - runFlow:
     when: { platform: Android }
@@ -12,5 +12,9 @@ env:
       - runFlow: { file: subflows/await.yaml, env: { N: 1 } }
       - runFlow: subflows/tap-request-point.yaml
       - runFlow: { file: subflows/await.yaml, env: { N: 2 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 3 } }
+      - runFlow: subflows/tap-request-point.yaml
+      - runFlow: { file: subflows/await.yaml, env: { N: 4 } }
       - runFlow: subflows/tap-request-point.yaml
 - runFlow: subflows/finish.yaml
