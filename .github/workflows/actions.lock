@@ -4,6 +4,9 @@
 version: 'v0.0.3'
 workflows:
     '.github/workflows/docs.yml': []
+    '.github/workflows/ios.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/setup-node@v7.1.0'
     '.github/workflows/kotlin.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-java@v6.3.0'

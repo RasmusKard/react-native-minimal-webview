@@ -1,0 +1,27 @@
+name: ios
+on:
+  pull_request:
+
+permissions: { contents: read }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Expo's packages ship precompiled iOS frameworks, which dyld links at launch: a set whose versions don't match builds,
+  # and only fails to start.
+  ios-launch:
+    runs-on: macos-latest
+    env:
+      APP: expo.modules.minimalwebview.example
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci && (cd example && npm ci)
+      - run: cd example && npx expo run:ios --no-bundler
+      - run: |
+          pid=$(xcrun simctl launch --terminate-running-process booted "$APP" | awk '{ print $2 }')
+          sleep 15
+          kill -0 "$pid" || { grep -ho '"reasons":[^]]*' ~/Library/Logs/DiagnosticReports/*.ips; exit 1; }
