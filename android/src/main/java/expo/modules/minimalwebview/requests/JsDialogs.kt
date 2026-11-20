@@ -52,7 +52,8 @@ internal class JsDialogs(private val owner: MinimalWebView) {
     val closing = open.toMap()
     open.clear()
     closing.forEach { (dialog, result) ->
-      dialog.dismiss()
+      // An Activity that was destroyed took the dialog's window with it, and dismiss() throws without one.
+      if (dialog.window?.decorView?.isAttachedToWindow == true) dialog.dismiss()
       result.cancel()
     }
   }
