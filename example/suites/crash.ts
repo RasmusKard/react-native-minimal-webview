@@ -128,7 +128,8 @@ export async function crash(h: Harness, r: Reporter) {
     );
   else
     r.skip('a crash loop stops reloading (4th crash in 60 s)', `the 4 crashes took ${elapsed} ms`);
-  r.check(
+  r.since(
+    WEBVIEW.navigationListener,
     'a crash during a load before it commits ends it as failed',
     (await happens(waitFor(h, (s) => !s.loading, 5000))) && h.state().outcome === 'failed',
     h.state()
