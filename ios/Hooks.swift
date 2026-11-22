@@ -217,7 +217,6 @@ public final class HookReply {
   }
 }
 
-/// A hook's view of the WebView: the core's context with the hook's key on its events. The view owns it and routes the delegates of the contexts that are on.
 final class HookContext: WebViewContext {
   let hook: MinimalWebViewHooks.Hook
   private weak var view: MinimalWebView?
@@ -303,7 +302,6 @@ final class HookContext: WebViewContext {
     handlers.forEach { $0(.closing) }
   }
 
-  // A hook's own background work (a URLSession completion) may emit or ask; the view's asks are main-thread state.
   private func onMain(_ block: @escaping () -> Void) {
     if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
   }

@@ -1,6 +1,5 @@
 import Foundation
 
-/// The structured navigation rules. Semantics and cases: src/__tests__/vectors/navigation-rules.json (shared with Kotlin).
 enum NavigationRules {
   struct Request {
     let url: String
@@ -8,7 +7,6 @@ enum NavigationRules {
     let newWindow: Bool
     let userInitiated: Bool
 
-    /// The fields JS events carry.
     var payload: [String: Any] {
       ["url": url, "mainFrame": mainFrame, "newWindow": newWindow, "userInitiated": userInitiated]
     }
@@ -22,7 +20,6 @@ enum NavigationRules {
     let rule: Int?
   }
 
-  /// What rules match; `params` are the query's `&`-separated parameters.
   private struct Parts {
     let scheme: String
     let host: String?
@@ -30,10 +27,8 @@ enum NavigationRules {
     let params: [String]
   }
 
-  /// Load in place without the rules.
   private static let internalSchemes: Set<String> = ["about", "data", "javascript"]
-  /// Never open as a new window, whatever the rules say: the core loads an allowed new window in the main frame itself,
-  /// past the engine's limits on what a page may navigate the top frame to.
+  /// The core loads an allowed new window itself, past WebKit's limits on what a page may navigate the top frame to.
   private static let noNewWindowSchemes = internalSchemes.union(["blob", "file"])
 
   /// The rules' decision, gated for `ask`: blocked when nothing can answer it (`canAsk` false), allowed when its URL is
@@ -55,7 +50,6 @@ enum NavigationRules {
     let scheme = request.url.firstIndex(of: ":").map { request.url[..<$0].lowercased() } ?? ""
     if request.newWindow, noNewWindowSchemes.contains(scheme) { return Decision(action: .block, rule: nil) }
     if internalSchemes.contains(scheme) { return Decision(action: .allow, rule: nil) }
-    // JS sends defaultNavigationRules when the prop is unset; no rules, nil or empty, match nothing.
     guard let rules, !rules.isEmpty,
       let parts = scheme == "blob" ? blobOrigin(request.url) : urlParts(scheme, request.url)
     else { return Decision(action: .block, rule: nil) }
@@ -66,10 +60,9 @@ enum NavigationRules {
   }
 
   private static func urlParts(_ scheme: String, _ url: String) -> Parts {
-    // shortcut: an unparseable URL has no host and path "/", so only host-less rules match; parse it by hand when a rule must match such URLs
     let components = URLComponents(string: url)
     let rawPath = components?.percentEncodedPath ?? ""
-    // No authority (`myapp:/abs`, `myapp:open`): the path is "/", as in Kotlin. `file:///x` has an empty one, not none.
+    // URLComponents gives `file:///x` an empty host, not none.
     let path = rawPath.isEmpty || components?.host == nil ? "/" : rawPath
     let params = components?.percentEncodedQuery?.split(separator: "&").map(String.init) ?? []
     return Parts(scheme: scheme, host: host(components), path: path, params: params)

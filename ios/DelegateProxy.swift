@@ -1,22 +1,15 @@
 import WebKit
 
-/// The WKWebView's navigation and UI delegate. It implements the observation callbacks the core doesn't, to give them
-/// to every hook delegate, and the authentication challenge, to offer it to each in turn; every other callback is
-/// forwarded to the core (MinimalWebView) or to a hook delegate, by the rule in `WebViewContext`. `responds(to:)` says
-/// yes for whatever any of them implements, which WebKit reads once, when the proxy is assigned as the delegate.
 final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private weak var core: NSObject?
   var navigationDelegates: [WKNavigationDelegate] = []
   var uiDelegates: [WKUIDelegate] = []
-  /// Hears each action policy check a hook delegate takes: the core's own bookkeeping still needs it.
   var hookDecides: (WKNavigationAction) -> Void = { _ in }
 
   init(core: NSObject) {
     self.core = core
   }
 
-  /// The hook delegates for a callback: the list of the protocol that declares it. A selector neither protocol declares
-  /// (a private one) goes to both lists.
   private func delegates(for selector: Selector) -> [NSObject] {
     let navigation = Self.declares(WKNavigationDelegate.self, selector)
     let ui = Self.declares(WKUIDelegate.self, selector)
@@ -80,9 +73,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
 
   private static let challenge = NSSelectorFromString("webView:didReceiveAuthenticationChallenge:completionHandler:")
 
-  /// The action policy, a decision the first navigation delegate that implements either variant owns, else the core.
-  /// WebKit calls only this variant once the delegate answers it, so the proxy answers it always and calls the owner's
-  /// own variant, which makes the order of the list decide whichever variants the delegates implement.
+  /// WebKit calls only this variant when the delegate implements it: the proxy always does, and calls the owner's own.
   func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,
@@ -104,16 +95,12 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   private static let actionPolicyWithPreferences =
     NSSelectorFromString("webView:decidePolicyForNavigationAction:preferences:decisionHandler:")
 
-  /// The hook delegates that implement a decision, in order: the first one takes it.
   private func takers(of decision: Selector) -> [NSObject] {
     delegates(for: decision).filter {
       $0.responds(to: decision) || decision == Self.actionPolicy && $0.responds(to: Self.actionPolicyWithPreferences)
     }
   }
 
-  /// The warnings about the decisions the hook delegates take that this proxy hasn't given yet: one for a decision
-  /// more than one of them implements, as only the first one gets it, and one for a decision the core makes from the
-  /// app's props or their defaults, naming what stops applying.
   func newWarnings() -> [String] {
     Self.decisions.flatMap { decision, lost in
       let name = NSStringFromSelector(decision)
@@ -127,8 +114,6 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
 
   private var warned: Set<String> = []
 
-  /// The decision callbacks: a hook delegate that implements one owns it, and `lost` is what stops applying when the
-  /// core makes it from the props. WebKit never asks for the plain action policy, as the proxy answers the other variant.
   private static let decisions: [(selector: Selector, lost: String?)] = [
     (actionPolicy, "navigationRules, their defaults and onNavigationRequest don't apply to navigations"),
     (
@@ -149,13 +134,11 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
   ]
 }
 
-/// Hooks whose keys turn on together attach in registration order, which orders their delegates.
 func inRegistrationOrder(_ keys: Set<String>, _ registered: [String]) -> [String] {
   registered.filter(keys.contains) + keys.subtracting(registered).sorted()
 }
 
-/// Whether a `hookOptions` change leaves the hook on with the same value, so its hook has nothing to hear. Both values
-/// must be on, and equal as JSON: `NSNumber(false).isEqual(NSNumber(0))` is true, at any depth, as Android's isn't.
+/// `NSNumber(false).isEqual(NSNumber(0))` is true, so the values compare as JSON.
 func staysOn(_ was: Any?, _ value: Any?) -> Bool {
   guard let was, let value else { return false }
   let json = { (value: Any) in try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys]) }

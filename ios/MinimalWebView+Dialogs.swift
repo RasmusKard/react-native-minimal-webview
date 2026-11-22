@@ -1,7 +1,6 @@
 import UIKit
 import WebKit
 
-/// JS alert, confirm and prompt as UIAlertControllers. Android's WebChromeClient shows them by default.
 /// WebKit requires each completion handler to be called exactly once, including when no dialog can be shown.
 extension MinimalWebView: WKUIDelegate {
   func webView(
@@ -41,8 +40,6 @@ extension MinimalWebView: WKUIDelegate {
     showDialog(alert) { completionHandler(nil) }
   }
 
-  /// WebKit asks the OS itself, with the app's Info.plist strings; a grant from `onPermissionRequest` skips only
-  /// WebKit's own prompt.
   func webView(
     _ webView: WKWebView,
     requestMediaCapturePermissionFor origin: WKSecurityOrigin,
@@ -63,7 +60,6 @@ extension MinimalWebView: WKUIDelegate {
     }
   }
 
-  /// The frame's host, or "JavaScript" when it has none (an opaque origin or `file:`), as Android titles a `data:` page's dialogs: a dialog must not look like the app's own alert.
   private func dialogTitle(_ frame: WKFrameInfo) -> String {
     let host = frame.securityOrigin.host
     return host.isEmpty ? "JavaScript" : host
@@ -78,14 +74,14 @@ extension MinimalWebView: WKUIDelegate {
 
   private func action(_ title: String, _ style: UIAlertAction.Style, _ complete: @escaping () -> Void) -> UIAlertAction {
     UIAlertAction(title: title, style: style) { [weak self] action in
-      // UIKit runs this after the dismissal animation: an unmount or a crash meanwhile has completed the dialog.
+      // UIKit runs this after the dismissal animation, by when an unmount or a crash may have completed the dialog.
       guard let self, dialog?.controller.actions.contains(action) == true else { return }
       dialog = nil
       complete()
     }
   }
 
-  /// Presents from the top of this view's window. If the top controller still has a presented one (one being dismissed) or is itself being presented, UIKit only logs and the page would stay blocked, so the dialog is cancelled instead.
+  /// UIKit only logs a present from a controller that has a presented one or is being presented.
   private func showDialog(_ alert: UIAlertController, cancel: @escaping () -> Void) {
     var top = window?.rootViewController
     while let next = top?.presentedViewController, !next.isBeingDismissed { top = next }

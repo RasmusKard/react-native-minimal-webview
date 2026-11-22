@@ -1,5 +1,3 @@
-// Tests of the iOS logic that runs without a WKWebView. Not part of the pod (see the podspec).
-// ios/Tests/run.sh builds and runs it.
 import Foundation
 import WebKit
 
@@ -124,8 +122,6 @@ for testCase in guardCases {
   check("recovery \(name): expected reloads \(expected), got \(reloads)", reloads == expected)
 }
 
-// DelegateProxy routing: each callback goes to the list of the protocol that declares it, and the action policy to the
-// first navigation delegate with either variant. The WebKit objects are never touched by the fakes.
 final class Core: NSObject, WKNavigationDelegate {
   @objc func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) { decisionHandler(.download) }
   @objc func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {}
@@ -219,7 +215,6 @@ let changeCases: [(String, Any?, Any?, Bool)] = [
 ]
 for (name, was, value, same) in changeCases { check("hookOptions change \(name)", staysOn(was, value) == same) }
 
-// (name, file, readAccessRoot, the expected root, whether a warning)
 let readCases: [(String, String, String?, String, Bool)] = [
   ("no root: the file's directory", "file:///a/site/index.html", nil, "file:///a/site/", false),
   ("the file's own directory", "file:///a/site/index.html", "file:///a/site/", "file:///a/site/", false),
@@ -240,7 +235,6 @@ for (name, file, root, expected, warns) in readCases {
     access.root.isFileURL && access.root.standardizedFileURL == URL(string: expected)!.standardizedFileURL
       && (access.warning != nil) == warns)
 }
-// (a, b, whether they are the same URL as WebKit reports it): our own load is the navigation to its URL.
 let sameURLCases: [(String, String, Bool)] = [
   ("https://example.com/x", "https://example.com/x", true),
   ("https://example.com", "https://example.com/", true),
@@ -268,15 +262,14 @@ for (a, b, same) in sameURLCases {
   check("same URL, \(a) and \(b): expected \(same)", Loads.sameURL(first, second) == same && Loads.sameURL(second, first) == same)
 }
 
-// (domain, code, outcome, onError kind) of a main-frame load WebKit ends with an error.
 let webKit = "WebKitErrorDomain"
 func failed(_ codes: [Int], _ kind: String) -> [(String, Int, String, String?)] {
   codes.map { (NSURLErrorDomain, $0, "failed", kind) }
 }
 let endCases: [(String, Int, String, String?)] = [
   (NSURLErrorDomain, NSURLErrorCancelled, "cancelled", nil),
-  (webKit, 102, "cancelled", nil), // frame load interrupted by a policy change
-  (webKit, 204, "finished", nil), // plug-in will handle load: a media document
+  (webKit, 102, "cancelled", nil),
+  (webKit, 204, "finished", nil),
 ] + failed([
   NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateUntrusted,
   NSURLErrorServerCertificateHasUnknownRoot, NSURLErrorServerCertificateNotYetValid,
@@ -295,7 +288,6 @@ for (domain, code, outcome, kind) in endCases {
   let end = Loads.ended(by: NSError(domain: domain, code: code))
   check("load end, \(domain) \(code): expected \(outcome) \(kind ?? "nil"), got \(end.outcome) \(end.kind ?? "nil")", end.outcome == outcome && end.kind == kind)
 }
-// (suggested name, the name saved): Android's DownloadsTest cases, and the `/` that guessFileName replaces there.
 let nameCases: [(String, String)] = [
   (".", "download"), ("..", "download"), ("", "download"), ("...", "..."), ("a.txt", "a.txt"),
   ("a/b.txt", "a_b.txt"), ("../x", ".._x"), ("/", "_"), ("../..", ".._.."),

@@ -2,33 +2,17 @@ import ObjectiveC
 import UIKit
 import WebKit
 
-/// The `ios` settings prop, `{ configuration: {…}, preferences: {…}, webpagePreferences: {…}, webView: {…},
-/// scrollView: {…} }`, applied by Objective-C property name through Key-Value Coding, so a public property this
-/// package doesn't know (one a newer WebKit adds) needs no code here. `configuration` is read once, when the WKWebView
-/// is created; the other roots apply live, to `webView.configuration.preferences`,
-/// `webView.configuration.defaultWebpagePreferences`, the WKWebView and its scroll view.
-///
-/// A value must fit the property's type (coerce); anything else is rejected before KVC runs: a wrong value in an object-typed property can take the process down
-/// (WebKit asserts), and an unknown key raises an Objective-C exception Swift can't catch. Underscore (private)
-/// properties are refused, and the only private keys accepted are the two react-native-webview sets by KVC
-/// (`privateBools`).
-///
-/// `get` reads a property of a root and `call` invokes a method on one by selector, through MRWInvoke (MRWInvoke.h),
-/// which sets the arguments by the method's signature. For those two, `websiteDataStore` and `httpCookieStore` are
-/// roots as well.
 final class PlatformSettings {
-  /// "root.key" -> the last value applied or rejected, so an unchanged value is neither applied nor reported again.
   private var applied: [String: NSObject] = [:]
-  /// "root.key" of a live root -> its value before the first write (NSNull for nil), set back when the key is removed.
   private var originals: [String: Any] = [:]
 
   /// Applies `settings`. While creating (`configuration` given, no WebView yet) only the `configuration` root applies;
-  /// live, every other root does (JS remounts the view for a new `configuration`), and a key applied before and missing
-  /// now goes back to its value before the first write. Returns the rejected keys.
+  /// live, every other root does, and a key applied before and missing now goes back to its value before the first
+  /// write. Returns the rejected keys.
   func apply(_ settings: [String: Any], webView: WKWebView?, configuration: WKWebViewConfiguration? = nil) -> [[String: String]] {
     var rejected: [[String: String]] = []
     let creating = configuration != nil
-    // Before the new values, so restoring one (a scroll view's inset) can't undo another (its offset).
+    // Restoring a scroll view's inset can move its offset.
     if !creating { rejected += restore(removedFrom: settings, webView: webView) }
     for (rootName, entries) in settings {
       guard let entries = entries as? [String: Any] else {
@@ -67,8 +51,6 @@ final class PlatformSettings {
       guard let original = originals.removeValue(forKey: id), let dot = id.firstIndex(of: "."),
         let object = root(String(id[..<dot]), webView: webView, configuration: nil) else { continue }
       let key = String(id[id.index(after: dot)...])
-      // shortcut: a null_resettable property (underPageBackgroundColor) comes back as the value read, not as "follow the
-      // default"; set nil for those if one matters.
       if let reason = __MRWCatchException({ object.setValue(original is NSNull ? nil : original, forKey: key) }) {
         failed.append(["key": id, "reason": "removed, but restoring it failed: \(reason)"])
       }
@@ -126,10 +108,8 @@ final class PlatformSettings {
     return String(decoding: data, as: UTF8.self)
   }
 
-  /// Selector prefixes `call` refuses: what the ref and the core own (every load, navigation, script, download and
-  /// delegate selector), private API, the plumbing that would reach either (KVC, KVO's willChange/didChange,
-  /// performSelector), object lifecycle (init, copy, new: a re-initialized live object, or a +1 result MRWInvoke would
-  /// leak) and reference counting. `mutable` covers `mutableCopy` and KVC's `mutableArrayValueForKey:` and its kin.
+  /// KVC, KVO and performSelector reach any selector; `init`, `copy`, `new` and `mutableCopy` return a +1 object
+  /// MRWInvoke would leak.
   private static let refused = [
     "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
     "setInteractionState", "setNavigationDelegate", "setUIDelegate", "setDelegate", "setValue", "setValuesForKeys", "valueForKey",
@@ -152,8 +132,7 @@ final class PlatformSettings {
   }
 
   /// Sets one property, or returns why not; with `original`, first keeps the value it replaces under that id unless one
-  /// is kept already. The property's type encoding (`TB`, `TQ`, `T@"NSString"`, `T{UIEdgeInsets=dddd}`, …) decides what
-  /// the value may be.
+  /// is kept already.
   private func set(_ object: NSObject, _ key: String, _ value: Any, original id: String?) -> String? {
     guard !key.hasPrefix("_"), !key.contains(".") else { return "private and nested keys are not allowed" }
     guard let attributes = Self.attributes(object, key) else { return "no such property" }
@@ -174,14 +153,14 @@ final class PlatformSettings {
     return String(cString: property_getAttributes(property)!).split(separator: ",")
   }
 
-  /// KVC reaches these through WebKit's `_set…` accessors: WebKit declares no property by these names. They widen what
-  /// `file:` pages read: other `file:` URLs, and any URL.
+  /// KVC reaches these through WebKit's `_set…` accessors: WebKit declares no property by these names.
   private static let privateBools: [String: AnyClass] = [
     "allowFileAccessFromFileURLs": WKPreferences.self,
     "allowUniversalAccessFromFileURLs": WKWebViewConfiguration.self,
   ]
 
-  /// `value` as KVC must get it for a property of type encoding `type`; NSNull stands for nil. Nil: doesn't fit.
+  /// `value` as KVC must get it for a property of type encoding `type`; NSNull stands for nil. Nil: doesn't fit. A value
+  /// of the wrong class in an object-typed property can take the process down (WebKit asserts).
   private static func coerce(_ value: Any, _ type: String) -> Any? {
     let isBool = CFGetTypeID(value as CFTypeRef) == CFBooleanGetTypeID()
     let number = isBool ? nil : value as? NSNumber

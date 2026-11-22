@@ -1,14 +1,8 @@
 import Foundation
 import WebKit
 
-/// Origin rules in Android's format (the bridge's `allowedOrigins`):
-/// `*`, an exact http(s) origin such as `https://example.com:8443`, or `https://*.example.com` for subdomains.
-/// Compared case-insensitively, a missing port is the scheme's default, and a malformed rule matches nothing.
-/// createBridge validates the rules on the JS side. Cases: src/__tests__/vectors/origin-rules.json.
 enum OriginRules {
-  /// The origin string of a frame, `scheme://host[:port]`, or `null` for an opaque origin (no scheme: an html source
-  /// without `baseUrl`, a sandboxed page). The default port is left out (WebKit reports it as 0) and an IPv6 host is
-  /// bracketed.
+  /// The origin as `location.origin` writes it: `null` for an opaque one (no scheme). WebKit reports a default port as 0.
   static func origin(_ scheme: String, _ host: String, _ port: Int) -> String {
     guard !scheme.isEmpty else { return "null" }
     let defaultPort = scheme == "https" ? 443 : scheme == "http" ? 80 : nil
@@ -16,7 +10,6 @@ enum OriginRules {
     return "\(scheme)://\(host)" + (port == 0 || port == defaultPort ? "" : ":\(port)")
   }
 
-  /// The origin as `location.origin` writes it, so the bridge can compare the two exactly.
   static func origin(of security: WKSecurityOrigin) -> String {
     origin(security.protocol, security.host, security.port)
   }
@@ -29,8 +22,6 @@ enum OriginRules {
     }
   }
 
-  // Built once: a regex literal in the function body is compiled again on every call. Regex isn't Sendable; every
-  // caller is a WebKit delegate callback on the main thread.
   nonisolated(unsafe) private static let pattern = #/(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?/#
 
   private struct Parsed { let scheme: Substring, wildcard: Bool, host: Substring, port: Int }
