@@ -14,14 +14,12 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
  */
 internal object DownloadManager {
   const val KEY = "@react-native-minimal-webview/extensions.downloadManager"
-  /** react-native-webview's: characters a file name can't have. */
-  private val INVALID = Regex("[\\\\/%\"]")
+  private val FILE_NAME_FORBIDDEN_CHARS = Regex("[\\\\/%\"]")
 
   fun register() = MinimalWebViewHooks.register(KEY) { webView, context ->
     context.onDownloadStart { url, userAgent, contentDisposition, mimeType, _ ->
-      // blob: and data: URLs are the page's own: the Download Manager can't fetch them.
       if (!url.startsWith("http:") && !url.startsWith("https:")) return@onDownloadStart false
-      val name = URLUtilCompat.guessFileName(url, contentDisposition.ifEmpty { null }, mimeType).replace(INVALID, "_")
+      val name = URLUtilCompat.guessFileName(url, contentDisposition.ifEmpty { null }, mimeType).replace(FILE_NAME_FORBIDDEN_CHARS, "_")
       try {
         val request = SystemDownloadManager.Request(Uri.parse(url))
           .setTitle(name)
