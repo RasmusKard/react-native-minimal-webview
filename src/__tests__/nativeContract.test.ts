@@ -470,7 +470,12 @@ const VALUES: Record<Platform, ValueRow[]> = {
     { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
   ios: [
-    { name: 'outcome', keys: outcome, site: /outcome = [^\n/]*|(?<=outcome: )"\w+"/g },
+    {
+      name: 'outcome',
+      keys: outcome,
+      site: /enum Outcome: String \{[^}]*\}/g,
+      value: /(?:case |, )(\w+)/g,
+    },
     {
       name: 'error kind',
       keys: kind,

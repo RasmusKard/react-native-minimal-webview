@@ -1,12 +1,7 @@
 import ExpoModulesCore
 import WebKit
 
-/// The scripts the view runs in the page: the injected scripts, `evaluate`, and the bridge transport (page -> JS through a
-/// WKScriptMessageHandler, JS -> page through callAsyncJavaScript). The bridge moves only the text, with the sender's
-/// verified origin; the protocol (calls, results, events) is the page client's and createBridge's.
 extension MinimalWebView {
-  /// The bridge's page client first, then the app's scripts in order, then the hooks' own. Changes take effect from the
-  /// next navigation.
   func installScripts(_ controller: WKUserContentController) {
     // WebKit can only remove every script: take the hooks' out and add them back after the core's.
     let hooks = controller.userScripts.filter { script in !ownScripts.contains { $0 === script } }
@@ -22,8 +17,7 @@ extension MinimalWebView {
     (ownScripts + hooks).forEach { controller.addUserScript($0) }
   }
 
-  /// The `evaluate` ref method. A new document rejects what is still waiting: WebKit settles a call whose page went
-  /// away seconds later or never.
+  /// WebKit settles a call whose page went away seconds later or never.
   func evaluate(_ script: String, _ promise: Promise) {
     guard let webView else { return promise.reject("unavailable", "No WebView") }
     let id = nextEvaluation
@@ -31,12 +25,11 @@ extension MinimalWebView {
     evaluations[id] = promise
     let body = "return ((v) => { try { return JSON.stringify(v) ?? 'null' } catch { return 'null' } })(await (\n\(script)\n))"
     webView.callAsyncJavaScript(body, arguments: [:], in: nil, in: .page) { [weak self] result in
-      // Already rejected when its page went away.
       guard let promise = self?.evaluations.removeValue(forKey: id) else { return }
       switch result {
       case .success(let value): promise.resolve(value as? String ?? "null")
       case .failure(let error):
-        // The thrown error's own text, as on Android; WebKit's localizedDescription is generic.
+        // WebKit's localizedDescription is generic.
         let message = (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? error.localizedDescription
         // WebKit drops the call of a page being left, and (iOS 27) can say so before didCommit.
         if message == Self.unreachable, self?.webView?.isLoading == true { return promise.reject("navigated", Self.navigated) }
@@ -45,7 +38,6 @@ extension MinimalWebView {
     }
   }
 
-  /// The page the waiting `evaluate` calls run in is gone.
   func failEvaluations() {
     let waiting = evaluations.values
     evaluations = [:]
@@ -57,17 +49,13 @@ extension MinimalWebView {
 
   func bridgeReceive(_ message: WKScriptMessage) {
     let origin = OriginRules.origin(of: message.frameInfo.securityOrigin)
-    // This view's main frame only: a window.open('') view (WindowCatcher) shares the content controller.
+    // A window.open('') view (WindowCatcher) shares the content controller.
     guard message.webView === webView, message.frameInfo.isMainFrame, OriginRules.allows(bridgeOrigins, origin),
       let text = message.body as? String else { return }
-    // `*` allows every document, opaque ones too (whose location.origin is "null"): nothing to compare.
     bridgeOrigin = bridgeOrigins.contains("*") ? "*" : origin
     onBridge(["message": text, "origin": origin])
   }
 
-  /// Delivers a message from JS to the page. Only to the allowed document that last posted (its page client says
-  /// `ready` first). The page checks its origin again at delivery time: the document may have changed since the post
-  /// was queued. A message for a page that is gone is dropped.
   func bridgePost(_ text: String) {
     guard let bridgeOrigin else { return }
     let deliver = "if (origin === '*' || location.origin === origin) window.nativeBridge?.__receive(message)"
@@ -75,7 +63,7 @@ extension MinimalWebView {
   }
 }
 
-/// Holds the view weakly: WKUserContentController retains its handlers.
+/// WKUserContentController retains its handlers.
 final class WeakBridgeHandler: NSObject, WKScriptMessageHandler {
   weak var view: MinimalWebView?
 

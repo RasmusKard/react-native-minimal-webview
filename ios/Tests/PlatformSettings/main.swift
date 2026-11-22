@@ -1,6 +1,4 @@
-// PlatformSettings.swift on a real WKWebView: each coercion, the rejections and their reasons, the KVC guard, and
-// get/call path resolution. Built as Mac Catalyst, so it runs on the Mac with no simulator (ios/Tests/run.sh).
-// Not part of the pod (see the podspec). Catalyst's roots have no writable NSURL or NSNumber property to try.
+// Catalyst's roots have no writable NSURL or NSNumber property to try.
 import WebKit
 
 var failures = 0
@@ -16,8 +14,6 @@ func code(_ body: () throws -> Any) -> String? { do { _ = try body(); return nil
 let settings = PlatformSettings()
 let configuration = WKWebViewConfiguration()
 var webView: WKWebView?
-/// Why `apply` rejects `root.key: value`, or nil: creating until `webView` is set, then live. A number meant to fit is
-/// a Double, as the prop's JSONSerialization NSNumbers cast (a Swift Int in an Any doesn't cast to Double).
 func reason(_ root: String, _ key: String, _ value: Any) -> String? {
   settings.apply([root: [key: value]], webView: webView, configuration: webView == nil ? configuration : nil).first?["reason"]
 }
@@ -33,7 +29,6 @@ sets("configuration", "websiteDataStore", "nonPersistent", configuration.website
 rejects("configuration", "websiteDataStore", "temporary", "a @\"WKWebsiteDataStore\" property can't take temporary")
 rejects("configuration", "allowsInlineMediaPlayback", 1, "a B property can't take 1")
 check("a live root while creating is skipped", reason("preferences", "minimumFontSize", 12.0), nil)
-// react-native-webview's private key, by KVC as it sets it (no declared property).
 sets("configuration", "allowUniversalAccessFromFileURLs", true, configuration.value(forKey: "allowUniversalAccessFromFileURLs") as? Bool, true)
 
 let view = WKWebView(frame: .zero, configuration: configuration)
@@ -53,7 +48,6 @@ sets("scrollView", "contentSize", ["width": 10.0, "height": 20], view.scrollView
 sets("webView", "accessibilityFrame", ["x": 1.0, "y": 2, "width": 3, "height": 4], view.accessibilityFrame, CGRect(x: 1, y: 2, width: 3, height: 4))
 check("KVC guard: a setter's exception is the reason", reason("scrollView", "contentOffset", ["x": Double.nan, "y": 0])?.hasPrefix("CALayerInvalidGeometry:"), true)
 rejects("preferences", "missing", 1, "no such property")
-// The other private key, read back with get; the allowlist names a root's own keys, and no other private one.
 sets("preferences", "allowFileAccessFromFileURLs", true, thrown { try settings.get("preferences.allowFileAccessFromFileURLs", webView: view) }, "true")
 check("get reads the private configuration key", thrown { try settings.get("configuration.allowUniversalAccessFromFileURLs", webView: view) }, "true")
 rejects("preferences", "allowUniversalAccessFromFileURLs", true, "no such property")
@@ -68,8 +62,6 @@ check("the configuration root live is skipped", reason("configuration", "suppres
 rejects("preferences", "minimumFontSize", "1", "a d property can't take 1")
 check("a rejection is reported once", reason("preferences", "minimumFontSize", "1"), nil)
 
-// A removed key goes back to its value before the first write; a configuration key stays (removing it recreates the
-// WebView).
 let removal = PlatformSettings()
 let created = WKWebViewConfiguration()
 _ = removal.apply(["configuration": ["suppressesIncrementalRendering": true]], webView: nil, configuration: created)
@@ -103,12 +95,10 @@ check("call set", view.configuration.preferences.minimumFontSize, 14.0)
 check("call refused", thrown { try settings.call("webView.reload", args: [], webView: view) { _, _ in } }, "reload is owned by the core, or private")
 check("a refused selector is native_error", code { try settings.call("webView.reload", args: [], webView: view) { _, _ in } }, "native_error")
 check("call refuses a history restore", thrown { try settings.call("webView.setInteractionState:", args: [NSNull()], webView: view) { _, _ in } }, "setInteractionState: is owned by the core, or private")
-/// A method per completion-handler shape the Swift tests can't get from WebKit without a page load.
 final class Completions: NSObject {
   @objc func reportCount(_ handler: @escaping (Int) -> Void) { handler(3) }
   @objc func fail(_ handler: @escaping (NSError?) -> Void) { handler(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "nope"])) }
 }
-/// What MRWInvoke settled with: the error, else the result.
 func invoke(_ selector: Selector, _ completion: String?) -> String? {
   var settled: String?
   __MRWInvoke(Completions(), selector, [], completion) { value, error in settled = error ?? value.map { "\($0)" } }
@@ -117,14 +107,12 @@ func invoke(_ selector: Selector, _ completion: String?) -> String? {
 check("a number completion resolves the integer", invoke(#selector(Completions.reportCount(_:)), "number"), "3")
 check("an error completion rejects with its description", invoke(#selector(Completions.fail(_:)), "error"), "nope")
 check("a block selector without a shape rejects", invoke(#selector(Completions.reportCount(_:)), nil), "the method takes a completion handler this package's SDK headers don't list: write a native hook")
-/// Takes and returns each struct MRWInvoke carries.
 final class Structs: NSObject {
   @objc func insets(_ value: UIEdgeInsets) -> UIEdgeInsets { value }
   @objc func point(_ value: CGPoint) -> CGPoint { value }
   @objc func size(_ value: CGSize) -> CGSize { value }
   @objc func rect(_ value: CGRect) -> CGRect { value }
 }
-/// What `name:` settled with when given `json` through MRWInvoke: the error, else the result.
 func echoed(_ name: String, _ json: [String: Double]) -> Any? {
   var settled: Any?
   __MRWInvoke(Structs(), NSSelectorFromString(name + ":"), [json], nil) { value, error in settled = error ?? value }

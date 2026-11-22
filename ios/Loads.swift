@@ -1,16 +1,13 @@
 import Foundation
 
-/// The main-frame loads' choices that need no WebView.
 enum Loads {
-  /// Whether `a` and `b` are the same URL as WebKit reports one: with the scheme and host lowercase, the scheme's
-  /// default port dropped, dot segments removed and an empty path `/`. The rest (userinfo, path, query, fragment) compares exactly. It picks
-  /// out our own loads (`ownLoads`), which skip the navigation rules: WebKit reports the load of a `source.uri`
-  /// of `https://Example.com:443` as `https://example.com/`.
+  /// Whether `a` and `b` are the same URL as WebKit reports one: WebKit reports a load of `https://Example.com:443` as
+  /// `https://example.com/`.
   static func sameURL(_ a: URL, _ b: URL) -> Bool {
     canonical(a.standardized) == canonical(b.standardized)
   }
 
-  /// `url` in the form `sameURL` compares, dot segments aside (Recovery compares them as Android does).
+  /// `url` in the form `sameURL` compares, dot segments aside.
   static func canonical(_ url: URL) -> String {
     guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url.absoluteString }
     components.scheme = components.scheme?.lowercased()
@@ -20,26 +17,47 @@ enum Loads {
     return components.string ?? url.absoluteString
   }
 
-  /// How a main-frame load WebKit ended with `error` went: its outcome, and the `onError` kind when it failed.
-  static func ended(by error: NSError) -> (outcome: String, kind: String?) {
+  enum Outcome: String {
+    case finished, failed, cancelled
+  }
+
+  static func ended(by error: NSError) -> (outcome: Outcome, kind: String?) {
     switch (error.domain, error.code) {
-    // Superseded or stopped (NSURLErrorCancelled), or a policy cancel (WebKitErrorFrameLoadInterruptedByPolicyChange:
-    // a download, a 204, a blocked redirect): not an error.
+    // WebKitErrorFrameLoadInterruptedByPolicyChange: a download, a 204, a blocked redirect.
     case (NSURLErrorDomain, NSURLErrorCancelled), ("WebKitErrorDomain", 102):
-      return (outcome: "cancelled", kind: nil)
-    // WebKitErrorPlugInWillHandleLoad: a media file. WebKit ends the load once its media document has committed, and
-    // the document's video loads the file itself (WebLocalFrameLoaderClient::committedLoad): the page shows, as on
-    // Android.
+      return (outcome: .cancelled, kind: nil)
+    // WebKitErrorPlugInWillHandleLoad: WebKit ends the load once a media document has committed, and its video loads the file.
     case ("WebKitErrorDomain", 204):
-      return (outcome: "finished", kind: nil)
-    // The TLS handshake and certificate errors.
+      return (outcome: .finished, kind: nil)
     case (NSURLErrorDomain, NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed):
-      return (outcome: "failed", kind: "ssl")
+      return (outcome: .failed, kind: "ssl")
     default:
-      return (outcome: "failed", kind: "network")
+      return (outcome: .failed, kind: "network")
     }
   }
 }
 
-/// The special schemes' default ports, which WebKit drops from a URL (the WHATWG URL Standard's).
+/// The loads the view starts itself, which skip the navigation rules at their own main-frame policy check.
+struct OwnLoads {
+  private var loads: [(url: URL, checksBefore: Int)] = []
+  private var checks = 0
+
+  mutating func started(_ url: URL) {
+    loads.append((url, checks))
+  }
+
+  /// Counts a main-frame policy check for `target`, and reports whether it is an own load's, which it uses up.
+  mutating func check(_ target: URL) -> Bool {
+    checks += 1
+    guard let own = loads.firstIndex(where: { Loads.sameURL($0.url, target) }) else { return false }
+    loads.remove(at: own)
+    return true
+  }
+
+  /// Drops each load that a check for another URL has passed over since it started.
+  mutating func committed() {
+    loads.removeAll { $0.checksBefore < checks }
+  }
+}
+
 private let defaultPorts = ["http": 80, "https": 443, "ws": 80, "wss": 443, "ftp": 21]

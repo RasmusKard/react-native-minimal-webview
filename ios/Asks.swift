@@ -1,23 +1,20 @@
-/// Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until JS answers it through
-/// `answer` or native gives up (nil, and the core's `askCancelled` to JS): a Document end or a timeout. `send` puts an event
-/// on the view's `onHookEvent`, which reaches the app's extensions' `onEvent`. Main thread only.
+@MainActor
 final class Asks {
   private let send: ([String: Any]) -> Void
   private var pending: [Int: (Any?) -> Void] = [:]
   private var nextId = 0
-  /// The view closed: JS is unmounted, and a hook may still hold its context.
   private var closed = false
 
   init(send: @escaping ([String: Any]) -> Void) {
     self.send = send
   }
 
-  /// Sends the ask to JS and returns its id, for `cancel`. Once the view closed it answers nil at once.
+  /// Sends the ask to JS and returns its id, for `cancel`. Once the view closed it answers nil at once and returns nil.
   @discardableResult
-  func ask(_ key: String, _ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) -> Int {
+  func ask(_ key: String, _ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) -> Int? {
     guard !closed else {
       onAnswer(nil)
-      return 0 // no ask: cancel(0) finds nothing
+      return nil
     }
     nextId += 1
     pending[nextId] = onAnswer
@@ -25,7 +22,7 @@ final class Asks {
     return nextId
   }
 
-  /// JS's answer. One for an ask that was answered or cancelled already is dropped.
+  /// An answer for an ask that was answered or cancelled already is dropped.
   func answer(_ id: Int, _ value: Any?) {
     pending.removeValue(forKey: id)?(value)
   }
@@ -37,7 +34,7 @@ final class Asks {
     onAnswer(nil)
   }
 
-  /// Cancels every pending ask. At closing JS isn't told: it aborts its own handlers at unmount.
+  /// Cancels every pending ask, telling JS unless the view is closing.
   func documentEnded(_ reason: DocumentEnd) {
     if reason == .closing { closed = true }
     pending.keys.forEach { cancel($0, tell: reason != .closing) }

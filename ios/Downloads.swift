@@ -1,6 +1,5 @@
 import WebKit
 
-/// The `onDownload` prop, through WKDownload. Without the prop, `openDownload` takes the URL.
 final class Downloads: NSObject, WKDownloadDelegate {
   private weak var view: MinimalWebView?
   private var files: [ObjectIdentifier: (url: URL, mimeType: String)] = [:]
@@ -9,7 +8,6 @@ final class Downloads: NSObject, WKDownloadDelegate {
     self.view = view
   }
 
-  /// A main-frame response that is a file, not a page.
   static func isDownload(_ response: WKNavigationResponse) -> Bool {
     let disposition = (response.response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
     return response.isForMainFrame && (disposition.lowercased().hasPrefix("attachment") || !response.canShowMIMEType)

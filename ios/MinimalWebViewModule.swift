@@ -41,7 +41,7 @@ public class MinimalWebViewModule: Module {
       AsyncFunction("bridgePost") { (view: MinimalWebView, message: String) in view.bridgePost(message) }
       AsyncFunction("answer") { (view: MinimalWebView, askId: Int, json: String) in
         let value = try? JSONSerialization.jsonObject(with: Data(json.utf8), options: .fragmentsAllowed)
-        view.asks.answer(askId, value is NSNull ? nil : value)
+        MainActor.assumeIsolated { view.asks.answer(askId, value is NSNull ? nil : value) }
       }
       AsyncFunction("hook") { (view: MinimalWebView, name: String, method: String, args: String, promise: Promise) in
         hook(view, name, method, args, promise)

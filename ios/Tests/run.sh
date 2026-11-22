@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# The Swift tests, on macOS. Run from anywhere.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 out="$(mktemp -d)"
@@ -9,7 +8,6 @@ xcrun swiftc ios/NavigationRules.swift ios/OriginRules.swift ios/DocumentEnd.swi
   ios/DelegateProxy.swift ios/ReadAccess.swift ios/Loads.swift ios/DownloadName.swift ios/Tests/main.swift -o "$out/rules"
 "$out/rules"
 
-# The PlatformSettings tests, as Mac Catalyst.
 F="$(xcrun --sdk macosx --show-sdk-path)/System/iOSSupport/System/Library/Frameworks"
 T=arm64-apple-ios17.0-macabi
 xcrun clang -target $T -iframework "$F" -fobjc-arc -r -nostdlib ios/MRWInvoke.m -o "$out/mrw.o"

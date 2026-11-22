@@ -1,15 +1,11 @@
 import WebKit
 
-/// The `sharedCookies` prop. In the core, not a hook: the copy before the first `source` load is something nothing
-/// outside the core can hold.
 final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
   private weak var store: WKHTTPCookieStore?
   private var enabled = false
   private var copyScheduled = false
-  /// The WebView's cookies at the last copy: one gone from it since is deleted from native too.
   private var copied: [HTTPCookie] = []
 
-  /// Once, before the first `set`: the view's one WKWebView, which a crash keeps.
   func didCreate(_ webView: WKWebView) {
     store = webView.configuration.websiteDataStore.httpCookieStore
   }
@@ -20,11 +16,10 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
     if enabled { store?.add(self) } else { store?.remove(self) }
   }
 
-  /// Work that must finish before a `source` load: calls `done` once the native cookies are in the WebView.
+  /// Calls `done` once the native cookies are in the WebView.
   func prepare(done: @escaping () -> Void) {
     guard enabled, let store else { return done() }
     let group = DispatchGroup()
-    // shortcut: one setCookie per cookie, use iOS 26's batch setCookies once the minimum allows
     for cookie in HTTPCookieStorage.shared.cookies ?? [] {
       group.enter()
       store.setCookie(cookie) { group.leave() }
@@ -32,19 +27,16 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
     group.notify(queue: .main, execute: done)
   }
 
-  /// One copy per main-queue turn: `prepare`'s setCookie calls, or a page setting many cookies, each fire this.
   func cookiesDidChange(in cookieStore: WKHTTPCookieStore) {
     guard !copyScheduled else { return }
     copyScheduled = true
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      // Cleared before the read: a change after it schedules the next copy.
       self.copyScheduled = false
       self.store?.getAllCookies { [weak self] cookies in
         guard let self else { return }
         let key = { (cookie: HTTPCookie) in [cookie.name, cookie.domain, cookie.path] }
         let present = Set(cookies.map(key))
-        // Deleted or expired in the WebView (a logout): native drops it too. Cookies only native set stay.
         self.copied.filter { !present.contains(key($0)) }.forEach(HTTPCookieStorage.shared.deleteCookie)
         cookies.forEach(HTTPCookieStorage.shared.setCookie)
         self.copied = cookies
