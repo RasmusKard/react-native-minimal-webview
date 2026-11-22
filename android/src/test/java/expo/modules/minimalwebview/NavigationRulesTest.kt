@@ -19,7 +19,7 @@ class NavigationRulesTest {
 
   private fun toMap(value: JSONObject): Map<String, Any?> = value.keys().asSequence().associateWith { toKotlin(value.get(it)) }
 
-  private fun action(name: String) = NavigationRules.Action.entries.single { it.js == name }
+  private fun action(name: String) = NavigationRules.Action.entries.single { it.jsName == name }
 
   @Test
   fun sharedVectors() {

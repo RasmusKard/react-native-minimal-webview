@@ -12,8 +12,7 @@ internal object NavigationRules {
   enum class Action {
     ALLOW, BLOCK, EXTERNAL, ASK;
 
-    /** The name JS uses. */
-    val js get() = name.lowercase()
+    val jsName get() = name.lowercase()
   }
 
   /** [rule] is the index of the rule that decided, null when a default did. */
@@ -27,7 +26,7 @@ internal object NavigationRules {
    */
   private val noNewWindowSchemes = schemesAllowedWithoutRules + setOf("blob", "file")
 
-  private fun actionOf(value: Any?) = Action.entries.find { it.js == value }
+  private fun actionOf(value: Any?) = Action.entries.find { it.jsName == value }
 
   /**
    * The rules' decision, gated for `ask`: blocked when nothing can answer it ([canAsk] false), allowed when its URL is

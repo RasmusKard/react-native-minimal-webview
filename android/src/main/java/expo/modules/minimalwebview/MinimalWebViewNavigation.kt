@@ -60,7 +60,7 @@ internal class MinimalWebViewNavigation(
   )
 
   private fun notifyNavigation(request: NavigationRules.Request, action: NavigationRules.Action, rule: Int?) {
-    if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action.js, "rule" to rule))
+    if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action.jsName, "rule" to rule))
   }
 
   private fun ask(request: NavigationRules.Request, rule: Int?) {
