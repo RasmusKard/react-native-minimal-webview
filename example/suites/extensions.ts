@@ -553,7 +553,11 @@ async function android(h: Harness, r: Reporter) {
     `<img src="${unreachableImage}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
   const reported = await poll(() => failed.find(({ url }) => url === unreachableImage), 5000);
-  const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
+  const sslFailed = await poll(
+    async () =>
+      (await h.ref.current?.evaluate('window.sslFailed === true').catch(errorCode)) === true,
+    5000
+  );
   await openPage(h, 'http://127.0.0.1:1/main');
   await sleep(1000);
   r.check(
