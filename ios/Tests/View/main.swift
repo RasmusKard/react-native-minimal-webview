@@ -95,6 +95,15 @@ MainActor.assumeIsolated {
   let second = webView()
   cookies.set(true, for: second.configuration.websiteDataStore.httpCookieStore)
   check("shared cookies: turned on again for another WebView, its cookies reach the native store", copiedToNative(second))
+  let third = webView().configuration.websiteDataStore.httpCookieStore
+  let native = HTTPCookie(properties: [.name: "\(cookieName)-native", .value: "1", .domain: "example.com", .path: "/"])!
+  HTTPCookieStorage.shared.setCookie(native)
+  cookies.set(true, for: third)
+  var inWebView = false
+  cookies.prepare { third.getAllCookies { inWebView = $0.contains { $0.name == native.name } } }
+  check("shared cookies: prepare puts the native store's cookies into the WebView", spin { inWebView })
+  cookies.set(false, for: third)
+  HTTPCookieStorage.shared.deleteCookie(native)
 }
 
 print("\(total - failed)/\(total) view cases pass")
