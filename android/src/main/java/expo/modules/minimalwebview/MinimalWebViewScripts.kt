@@ -173,8 +173,12 @@ internal class EvaluateError(code: String, message: String) : CodedException(cod
 private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
 private val webViewCallsListenersDirectly by lazy {
-  val major = WebView.getCurrentWebViewPackage()?.versionName?.substringBefore('.')?.toIntOrNull()
-  major != null && major < FIRST_WEBVIEW_POSTING_LISTENER_CALLS
+  callsListenersDirectly(WebView.getCurrentWebViewPackage()?.versionName, null)
+}
+
+internal fun callsListenersDirectly(packageVersion: String?, defaultUserAgent: String?): Boolean {
+  val major = packageVersion?.substringBefore('.')?.toIntOrNull()
+  return major != null && major < FIRST_WEBVIEW_POSTING_LISTENER_CALLS
 }
 
 private const val FIRST_WEBVIEW_POSTING_LISTENER_CALLS = 119
