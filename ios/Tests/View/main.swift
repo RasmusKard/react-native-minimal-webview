@@ -20,5 +20,58 @@ MainActor.assumeIsolated {
 }
 check("a view released without invalidate tears down: \(destroyed)", destroyed == [.closing])
 
+final class ReadRoots: WKWebView {
+  nonisolated(unsafe) static var granted: [URL] = []
+
+  override func loadFileURL(_ url: URL, allowingReadAccessTo readAccessURL: URL) -> WKNavigation? {
+    Self.granted.append(readAccessURL)
+    return super.loadFileURL(url, allowingReadAccessTo: readAccessURL)
+  }
+}
+
+func spin(until done: () -> Bool) -> Bool {
+  let end = Date().addingTimeInterval(10)
+  while !done(), Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+  return done()
+}
+
+let site = FileManager.default.temporaryDirectory.appendingPathComponent("mrw-view-\(getpid())/site/", isDirectory: true)
+try FileManager.default.createDirectory(at: site.appendingPathComponent("sub"), withIntermediateDirectories: true)
+try "<p>index</p>".write(to: site.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
+let missing = site.appendingPathComponent("sub/missing.html")
+MainActor.assumeIsolated {
+  MinimalWebViewHooks.register("readRoots", webViewClass: ReadRoots.self) { _, _ in }
+  var errors = 0
+  var loading = true
+  let view = MinimalWebView()
+  view.onError.onEventSent = { _ in errors += 1 }
+  view.onNavigationState.onEventSent = { loading = $0["loading"] as? Bool ?? true }
+  view.hookOptions = ["readRoots": true]
+  view.navigationRules = [["action": "allow"]]
+  var source = WebViewSource()
+  (source.uri, source.readAccessRoot) = (site.appendingPathComponent("index.html").absoluteString, site.absoluteString)
+  view.source = source
+  view.applyProps()
+  func failure(_ start: () -> Void) -> Bool {
+    let before = errors
+    start()
+    return spin { errors > before && !loading }
+  }
+  func retryRoot() -> URL? {
+    ReadRoots.granted = []
+    let ended = failure { view.retry() }
+    return ended ? ReadRoots.granted.last : nil
+  }
+  check("read root: the source loads", spin { !loading && view.url.hasSuffix("index.html") })
+  check("read root: load() of a missing file fails", failure { view.load(url: missing.absoluteString) })
+  let ownRoot = retryRoot()
+  check("read root: a retry of a failed load() reads within its directory: \(ownRoot as Any)", ownRoot == missing.deletingLastPathComponent())
+  check("read root: the page's own load of that URL fails", failure { view.webView?.evaluateJavaScript("location.href = 'sub/missing.html'") })
+  let pageRoot = retryRoot()
+  check("read root: a retry of the page's failed load reads within the source's root: \(pageRoot as Any)", pageRoot == site)
+  view.invalidate()
+}
+try FileManager.default.removeItem(at: site.deletingLastPathComponent())
+
 print("\(total - failed)/\(total) view cases pass")
 exit(failed == 0 ? 0 : 1)
