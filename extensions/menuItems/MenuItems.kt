@@ -19,13 +19,11 @@ internal object MenuItems {
   private val factory: (Context) -> WebView = ::MenuWebView
 
   fun register() = MinimalWebViewHooks.register(KEY, webViewFactory = factory) { webView, context ->
-    // Another hook's factory won (the core warns): no menu.
     val view = webView as? MenuWebView ?: return@register
     context.onOptions { options ->
       view.menuItems = ((options as? Map<*, *>)?.get("items") as? List<*>)?.filterIsInstance<Map<*, *>>()
     }
     view.onMenuItem = { item, done ->
-      // As react-native-webview: the main frame's selection.
       view.evaluateJavascript("window.getSelection().toString()") { json ->
         val text = runCatching { JSONArray("[$json]").getString(0) }.getOrDefault("")
         context.emit("selection", mapOf("key" to item["key"], "label" to item["label"], "selectedText" to text))

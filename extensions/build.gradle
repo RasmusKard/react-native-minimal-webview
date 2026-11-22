@@ -4,10 +4,8 @@ plugins {
 }
 
 group = 'expo.modules.minimalwebviewextensions'
-version = '0.1.0' // expo-autolinking requires it
+version = '0.1.0' // expo-module-gradle-plugin requires it
 
-// The project is the package folder itself (expo-module.config.json's android.path): keep Gradle's output apart from
-// tsc's build/ output.
 layout.buildDirectory = file('build/gradle')
 
 android {
@@ -18,7 +16,6 @@ android {
   }
   sourceSets {
     main {
-      // The module, then each extension folder that has Kotlin.
       java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'incognito', 'menuItems', 'onScroll', 'transparentBackground', 'nestedScrollEnabled', 'androidLayerType', 'downloadManager', 'onLoadSubResourceError']
     }
   }

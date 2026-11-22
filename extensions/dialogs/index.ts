@@ -49,8 +49,6 @@ export const dialogs = (
   onDialog: (dialog: Dialog, signal: AbortSignal) => unknown
 ): HookExtension<HookEvent<Dialog['type'], Dialog>> => ({
   key: '@react-native-minimal-webview/extensions.dialogs',
-  // Each dialog is an ask, so it has a signal. The answer is checked here, once for both platforms: iOS would take a
-  // numeric 1 as true.
   onEvent: async ({ payload }, signal) => {
     const answer = await onDialog(payload, signal as AbortSignal);
     if (payload.type === 'confirm') return answer === true;

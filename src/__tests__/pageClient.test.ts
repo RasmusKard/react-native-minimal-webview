@@ -8,10 +8,6 @@ type NativeBridge = {
   __receive(text: string): Promise<void>;
 };
 
-/**
- * A page with the Android transport, the top window or an iframe of another: records what the page sends and its
- * pageshow listener.
- */
 function page(readyState = 'complete', { inFrame = false } = {}) {
   const sent: { kind: string; id?: string; doc?: string; value?: unknown }[] = [];
   let onDomReady: (() => void) | undefined;
@@ -37,7 +33,6 @@ function page(readyState = 'complete', { inFrame = false } = {}) {
   return {
     sent,
     bridge,
-    /** Native's side of the Android transport: a message to the page. */
     deliver: (message: object) =>
       w.nativeBridgeTransport!.onmessage!({ data: JSON.stringify(message) }),
     domReady: () => onDomReady?.(),
@@ -64,7 +59,7 @@ describe('page client ready', () => {
     expect(sent.map((m) => m.kind)).toEqual(['call']);
     domReady();
     expect(sent.map((m) => m.kind)).toEqual(['call', 'ready']);
-    show(true); // settles the call, which nothing answers here
+    show(true);
     await expect(call).rejects.toMatchObject({ code: 'navigated' });
   });
 });
@@ -83,7 +78,7 @@ describe('page client after the back-forward cache', () => {
     const call = bridge.call('echo');
     show(false);
     expect(sent.map((m) => m.kind)).toEqual(['ready', 'call']);
-    show(true); // settles the call, which the first show left pending
+    show(true);
     await expect(call).rejects.toMatchObject({ code: 'navigated' });
   });
 });
@@ -116,7 +111,7 @@ describe('page client messages from native', () => {
     const { sent, bridge } = page();
     const seen: unknown[] = [];
     bridge.on('tick', (payload) => seen.push(payload));
-    const event = { doc: sent[0]!.doc, kind: 'event', method: 'tick', params: 1 };
+    const event = { doc: sent[0]!.doc, kind: 'event', event: 'tick', params: 1 };
     await bridge.__receive(JSON.stringify(event));
     expect(seen).toEqual([1]);
   });
@@ -136,7 +131,7 @@ describe('page client messages from native', () => {
       ['ready', doc],
       ['call', doc],
     ]);
-    show(true); // settles the call, which only a message for another document answered
+    show(true);
     await expect(call).rejects.toMatchObject({ code: 'navigated' });
   });
 });

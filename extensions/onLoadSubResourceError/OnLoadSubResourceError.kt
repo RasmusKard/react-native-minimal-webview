@@ -14,7 +14,6 @@ internal object OnLoadSubResourceError {
     context.clients += Client(context)
   }
 
-  // Not onReceivedSslError, as react-native-webview has: a hook client that overrides it takes the core's SSL decision.
   private class Client(private val context: WebViewContext) : WebViewClient() {
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
       if (request.isForMainFrame) return

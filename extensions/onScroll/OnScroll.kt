@@ -6,8 +6,6 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 internal object OnScroll {
   const val KEY = "@react-native-minimal-webview/extensions.onScroll"
 
-  // The content size is View's protected scroll range: a subclass could read it too, but a hook with a webViewFactory
-  // can't attach to a WebView that exists already.
   private val ranges by lazy {
     listOf("computeHorizontalScrollRange", "computeVerticalScrollRange").map {
       View::class.java.getDeclaredMethod(it).apply { isAccessible = true }

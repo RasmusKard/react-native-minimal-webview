@@ -8,10 +8,9 @@ updates:
       actions: { patterns: ['*'] }
   # Expo's packages, React and React Native move as one set, in the root and in example/ at once, with
   # `expo install --fix` (workflows/expo-packages.yml): each Expo package's precompiled iOS framework is built against one
-  # version of the others, and one bumped alone crashes the app at launch. The rest comes grouped, once a month. Majors
-  # held until what blocks them moves: TypeScript 7 (typedoc and typescript-eslint stop at 6.0), ESLint 10
-  # (eslint-plugin-react, in eslint-config-universe, calls APIs it removed), Babel 8 (babel-preset-expo is on 7) and
-  # @types/node (.nvmrc's Node 22).
+  # version of the others, and one bumped alone crashes the app at launch. Majors held until what blocks them moves:
+  # TypeScript 7 (typedoc and typescript-eslint stop at 6.0), ESLint 10 (eslint-plugin-react, in eslint-config-universe,
+  # calls APIs it removed), Babel 8 (babel-preset-expo is on 7) and @types/node (.nvmrc's Node 22).
   - package-ecosystem: npm
     directory: /
     schedule: { interval: monthly }

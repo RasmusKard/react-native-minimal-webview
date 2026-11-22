@@ -11,7 +11,7 @@
     for (const message of [
       { kind: 'ready', doc },
       { kind: 'call', id: doc, method: 'hostileProbe', params: { from }, doc },
-      { kind: 'event', method: 'hostileEvent', params: { from }, doc },
+      { kind: 'event', event: 'hostileEvent', params: { from }, doc },
     ]) {
       for (const t of [transport, webkit]) {
         try {

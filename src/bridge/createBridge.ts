@@ -7,9 +7,7 @@ import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
 /**
  * What native reports to the bridge: a page's message with its origin as native verified it (`location.origin` form);
- * a new document committed, so messages queue until its page client says `ready`; the renderer crashed, so no document
- * is shown until the next commit; or the platform lacks the WebView features the bridge needs, so calls reject with
- * `unavailable`.
+ * a new document committed; the renderer crashed; or the platform lacks the WebView features the bridge needs.
  */
 export type BridgeEvent =
   | { message: string; origin: string }
@@ -17,10 +15,8 @@ export type BridgeEvent =
   | { crashed: true }
   | { unavailable: true };
 
-/** What `<WebView>` needs from a bridge: `Bridge`'s `[CONNECTION]`, a key the package doesn't export. */
 export type BridgeConnection = {
   allowedOrigins: string[];
-  /** The page client to inject at document start. */
   script: string;
   attach(post: (message: string) => void): void;
   detach(): void;
@@ -30,6 +26,8 @@ export type BridgeConnection = {
 export const CONNECTION = Symbol('bridgeConnection');
 
 const MAX_QUEUE = 1000;
+
+const throwIfNotJson = (message: BridgeMessage) => void JSON.stringify(message);
 
 /**
  * Creates a {@link Bridge} to the pages of `allowedOrigins`, for one WebView's `bridge` prop.
@@ -52,11 +50,8 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     );
   }
   let post: ((message: string) => void) | null = null;
-  // idle: no document shown (none committed since attach, or it crashed). loading: one committed and hasn't said `ready` yet.
   let phase: 'idle' | 'loading' | 'ready' = 'idle';
-  // The token of the document that last said `ready` (protocol.ts `doc`).
   let doc: string | undefined;
-  // Messages for the next document that says `ready`. Only the latest document's: see `receive`.
   let queue: BridgeMessage[] = [];
   let unavailable = false;
 
@@ -66,8 +61,7 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     (message) => {
       if (post && phase === 'ready') deliver(message);
       else {
-        // Throws now, at the caller, for what JSON can't encode, rather than in the flush, losing the rest of the queue.
-        JSON.stringify(message);
+        throwIfNotJson(message);
         queue.push(message);
         const dropped = queue.length > MAX_QUEUE ? queue.shift() : undefined;
         if (dropped?.kind === 'call')
@@ -82,7 +76,6 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     'n'
   );
 
-  // A pending call not in the queue was posted to a document.
   const rejectSent = (message: string) => {
     const queued = new Set(
       queue.map((queuedMessage) => queuedMessage.kind === 'call' && queuedMessage.id)
@@ -100,20 +93,16 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
       return;
     }
     if (message.kind !== 'ready') {
-      // Answers skip the ready queue: a module script may await one before DOMContentLoaded, and native can deliver
-      // it, as the page has posted.
       const reply = (answer: BridgeMessage) =>
         post?.(JSON.stringify({ ...answer, doc: message.doc }));
       void endpoint.receive(message, reply, { origin });
       return;
     }
-    // A new document: calls posted to the previous one can no longer be answered. Queued ones are for this one.
     rejectSent('the page navigated');
     phase = 'ready';
     doc = message.doc;
     const flushing = queue;
     queue = [];
-    // A queued call that already timed out is not sent: nobody waits for its answer.
     for (const queued of flushing)
       if (queued.kind !== 'call' || endpoint.pending.has(queued.id)) deliver(queued);
   };
@@ -122,7 +111,6 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     allowedOrigins: options.allowedOrigins,
     script: `${guard ? `if (${guard}) ` : ''}(${PAGE_CLIENT})(window, ${Number(timeoutMs)});`,
     attach(next) {
-      // Two WebViews would steal each other's replies, and either one's detach would cut off the other.
       if (post)
         throw new Error(
           'createBridge: this bridge is already attached to a mounted WebView; give each WebView its own bridge'
@@ -144,13 +132,10 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
         endpoint.rejectPending('unavailable', unavailableMessage);
       } else {
         rejectSent('the page navigated');
-        // The previous document never said `ready` (a page outside allowedOrigins): what was queued for it does not
-        // carry over to an unrelated next one.
         if (phase === 'loading') {
           endpoint.rejectPending('unavailable', 'the page navigated before the bridge was ready');
           queue = [];
         }
-        // What is queued after a crash is for the reload.
         phase = 'crashed' in event ? 'idle' : 'loading';
       }
     },
@@ -166,5 +151,5 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     emit: endpoint.emit,
     on: endpoint.on,
     [CONNECTION]: connection,
-  } as Bridge as unknown as Bridge<Schema>; // the schema types only what callers pass
+  } satisfies Bridge as Bridge<Schema>;
 }

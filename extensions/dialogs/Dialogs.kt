@@ -25,7 +25,6 @@ internal object Dialogs {
     override fun onJsPrompt(view: WebView, url: String?, message: String?, defaultValue: String?, result: JsPromptResult) =
       ask("prompt", url, message, defaultValue) { answer -> (answer as? String)?.let(result::confirm) ?: result.cancel() }
 
-    /** The payload is the JS `Dialog`. */
     private fun ask(type: String, url: String?, message: String?, defaultValue: String?, onAnswer: (Any?) -> Unit): Boolean {
       val dialog = mapOf("type" to type, "message" to message.orEmpty(), "url" to url.orEmpty())
       context.ask(type, if (type == "prompt") dialog + ("defaultValue" to defaultValue) else dialog, onAnswer)

@@ -22,8 +22,7 @@ import {
 const K = '@react-native-minimal-webview/extensions';
 const MENU = [{ label: 'Highlight', key: 'hl' }];
 
-/** The descriptor without its handler, which `toEqual` can't compare. */
-const plain = (extension: HookExtension | null) =>
+const withoutHandler = (extension: HookExtension | null) =>
   extension && { key: extension.key, options: extension.options };
 
 describe('the extensions', () => {
@@ -67,26 +66,28 @@ describe('the extensions', () => {
       undefined,
     ],
   ])('%s has its key and options on iOS', (_, extension, name, options) => {
-    expect(plain(extension)).toEqual({ key: `${K}.${name}`, options });
+    expect(withoutHandler(extension)).toEqual({ key: `${K}.${name}`, options });
   });
 
   it('gives the Android ones their key on Android, and null for the iOS ones and suppress alone', () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    expect(plain(nestedScrollEnabled())).toEqual({ key: `${K}.nestedScrollEnabled` });
-    expect(plain(androidLayerType('software'))).toEqual({
+    expect(withoutHandler(nestedScrollEnabled())).toEqual({ key: `${K}.nestedScrollEnabled` });
+    expect(withoutHandler(androidLayerType('software'))).toEqual({
       key: `${K}.androidLayerType`,
       options: 'software',
     });
-    expect(plain(menuItems({ items: MENU }))).toEqual({
+    expect(withoutHandler(menuItems({ items: MENU }))).toEqual({
       key: `${K}.menuItems`,
       options: { items: MENU },
     });
-    expect(plain(downloadManager())).toEqual({ key: `${K}.downloadManager` });
-    expect(plain(downloadManager({ downloadingMessage: 'Saving' }))).toEqual({
+    expect(withoutHandler(downloadManager())).toEqual({ key: `${K}.downloadManager` });
+    expect(withoutHandler(downloadManager({ downloadingMessage: 'Saving' }))).toEqual({
       key: `${K}.downloadManager`,
       options: { downloadingMessage: 'Saving' },
     });
-    expect(plain(onLoadSubResourceError(() => {}))).toEqual({ key: `${K}.onLoadSubResourceError` });
+    expect(withoutHandler(onLoadSubResourceError(() => {}))).toEqual({
+      key: `${K}.onLoadSubResourceError`,
+    });
     expect(hideKeyboardAccessoryView()).toBeNull();
     expect(keyboardDisplayRequiresUserAction(false)).toBeNull();
     expect(refreshControlLightMode()).toBeNull();
