@@ -5,6 +5,7 @@ import {
   click,
   fresh,
   openPage,
+  poll,
   recordExternal,
   sleep,
   waitFor,
@@ -34,7 +35,7 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
     const done = await happens(waitFor(h, () => h.events.downloads.length > before, 20000));
     const download = h.events.downloads[before];
     if (id === 'attachment') {
-      await waitFor(h, () => h.events.outcomes.length > outcomes, 2000);
+      await poll(() => h.events.outcomes.length > outcomes, 2000);
       r.since(
         WEBVIEW.navigationListener,
         'the attachment load ends as cancelled',
