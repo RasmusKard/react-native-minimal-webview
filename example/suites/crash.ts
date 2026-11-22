@@ -256,7 +256,7 @@ export async function crash(h: Harness, r: Reporter) {
   if (Platform.OS === 'android') {
     await openPage(h, fresh(h, '/bridge.html'));
     const target = fresh(h, '/bridge.html');
-    const refusedBefore = await seams.destroyedWebViewCalls();
+    const since = Date.now();
     const settles = (call: Promise<unknown> | undefined) =>
       Promise.race([
         Promise.resolve(call).then(() => 'resolved', errorCode),
@@ -295,7 +295,7 @@ export async function crash(h: Harness, r: Reporter) {
         30000
       )
     );
-    const refused = (await seams.destroyedWebViewCalls()) - refusedBefore;
+    const refused = await seams.destroyedWebViewCalls(since);
     const settled = await answers;
     r.check(
       'calls while the recovery waits reach no destroyed WebView, and each rejects unavailable',
