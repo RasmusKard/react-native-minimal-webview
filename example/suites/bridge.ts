@@ -126,7 +126,7 @@ export async function bridge(h: Harness, all: Reporter) {
   r.check("RN -> page calls work after a head script's call", afterHead === 4, afterHead);
 
   if (Platform.OS === 'android') {
-    await seams.busyMain(3000);
+    await seams.busyMainInSlices(3000);
     await openPage(h, `${page}&callFromHead=1&busy=1`);
     const busyHead = await poll(() => h.ref.current?.evaluate('window.__head'), 5000);
     r.check(
@@ -140,6 +140,34 @@ export async function bridge(h: Harness, all: Reporter) {
       afterBusy === 6,
       afterBusy
     );
+  }
+
+  if (Platform.OS === 'android') {
+    await openPage(h, `${page}&answerOnHide=1`);
+    const untilHide = h.bridge.call('untilHide', undefined, { timeoutMs: 8000 }).catch(errorCode);
+    await sleep(300);
+    h.load(`${page}&left=1`);
+    const hidden = await untilHide;
+    r.check('an answer the page sends as it is left settles the call', hidden === 'hidden', hidden);
+    await waitFor(h, (s) => s.url.includes('left=1') && idle(s));
+
+    for (let i = 0; i < 3; i++) {
+      const target = `${OTHER}/bridge.html?redirected=${i}&t=${Date.now()}`;
+      h.load(`${page}&redirectTo=${encodeURIComponent(target)}&holdMs=1500&i=${i}`);
+      await sleep(700);
+      await seams.busyMainAhead(2500);
+      await waitFor(h, (s) => s.url === target && idle(s), 15000);
+      const queued = h.bridge.call('sum', { a: 1, b: 1 }, { timeoutMs: 20000 }).catch(errorCode);
+      await sleep(300);
+      h.load(`${page}&after=${i}`);
+      const got = await queued;
+      r.check(
+        `a call after a ready page redirects outside allowedOrigins waits for a page (${i})`,
+        got === 'unavailable',
+        got
+      );
+      await waitFor(h, (s) => s.url.includes(`after=${i}`) && idle(s));
+    }
   }
 
   const lateHandler = `${page}&lateHandler=1`;

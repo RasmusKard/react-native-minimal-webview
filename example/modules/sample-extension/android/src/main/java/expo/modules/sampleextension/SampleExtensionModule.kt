@@ -70,14 +70,15 @@ class SampleExtensionModule : Module() {
     AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
-    AsyncFunction("busyMain") { ms: Long -> busyMain(ms) }.runOnQueue(Queues.MAIN)
+    AsyncFunction("busyMainInSlices") { ms: Long -> busyMainInSlices(ms) }.runOnQueue(Queues.MAIN)
+    AsyncFunction("busyMainAhead") { ms: Long -> busyMainAhead(ms) }.runOnQueue(Queues.MAIN)
     AsyncFunction("destroyedWebViewCalls") { since: Long -> destroyedWebViewCalls(since) }
   }
 }
 
 private const val BUSY_SLICE_MS = 20L
 
-private fun busyMain(ms: Long) {
+private fun busyMainInSlices(ms: Long) {
   val main = Handler(Looper.getMainLooper())
   val until = SystemClock.uptimeMillis() + ms
   lateinit var slice: Runnable
@@ -86,6 +87,11 @@ private fun busyMain(ms: Long) {
     if (SystemClock.uptimeMillis() < until) main.post(slice)
   }
   main.post(slice)
+}
+
+private fun busyMainAhead(ms: Long) {
+  val main = Handler(Looper.getMainLooper())
+  repeat((ms / BUSY_SLICE_MS).toInt()) { main.post { SystemClock.sleep(BUSY_SLICE_MS) } }
 }
 
 private fun destroyedWebViewCalls(since: Long): Int {
