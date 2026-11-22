@@ -5,7 +5,7 @@ import org.junit.Test
 
 class DocumentsTest {
   private val heard = mutableListOf<String>()
-  private val documents = Documents(core = { heard += "core $it" }, outsiders = { heard += "outsiders $it" })
+  private val documents = Documents(core = { heard += "core $it" }, asksAndHooks = { heard += "asksAndHooks $it" })
 
   @Test
   fun theCoreHearsAnEndBeforeTheAsksAndHooks() {
@@ -13,12 +13,12 @@ class DocumentsTest {
     heard.clear()
     documents.end(DocumentEnd.COMMITTED)
     documents.end(DocumentEnd.CLOSING)
-    assertEquals(listOf("core COMMITTED", "outsiders COMMITTED", "core CLOSING", "outsiders CLOSING"), heard)
+    assertEquals(listOf("core COMMITTED", "asksAndHooks COMMITTED", "core CLOSING", "asksAndHooks CLOSING"), heard)
   }
 
   @Test
   fun aThrowingHookDoesNotSkipTheCoresResets() {
-    val throwing = Documents(core = { heard += "core $it" }, outsiders = { error("hook") })
+    val throwing = Documents(core = { heard += "core $it" }, asksAndHooks = { error("hook") })
     runCatching { throwing.end(DocumentEnd.CRASHED) }
     assertEquals(listOf("core CRASHED"), heard)
   }
@@ -28,12 +28,6 @@ class DocumentsTest {
     documents.end(DocumentEnd.COMMITTED)
     documents.end(DocumentEnd.CRASHED)
     documents.end(DocumentEnd.COMMITTED)
-    assertEquals(listOf("core COMMITTED", "core CRASHED", "outsiders CRASHED", "core COMMITTED"), heard)
-  }
-
-  @Test
-  fun jsHearsOfACrashBeforeTheStateThatEndsTheCutOffLoad() {
-    reportCrash(gone = { heard += "gone" }, recover = { heard += "recover" }, stateChanged = { heard += "state" })
-    assertEquals(listOf("gone", "recover", "state"), heard)
+    assertEquals(listOf("core COMMITTED", "core CRASHED", "asksAndHooks CRASHED", "core COMMITTED"), heard)
   }
 }

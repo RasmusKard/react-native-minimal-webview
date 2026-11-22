@@ -274,7 +274,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       scripts.documentEnded(reason)
       fullscreen.documentEnded(reason)
     },
-    outsiders = { reason ->
+    asksAndHooks = { reason ->
       asks.documentEnded(reason)
       hookContexts.forEach { it.documentEnded(reason) }
     }
@@ -312,12 +312,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     pendingUrl = null
     progress = 0.0
     refresher.pageFinished()
-    reportCrash(
-      gone = { onProcessGone(mapOf("cause" to cause, "recovered" to reload)) },
-      // A detached view's window reports GONE: onWindowVisibilityChanged recovers once it is shown.
-      recover = { if (windowVisibility == View.VISIBLE) recover() },
-      stateChanged = ::stateChanged
-    )
+    onProcessGone(mapOf("cause" to cause, "recovered" to reload))
+    // A detached view's window reports GONE.
+    if (windowVisibility == View.VISIBLE) recover()
+    stateChanged()
   }
 
   internal val recovering get() = pendingRecovery != null
@@ -470,29 +468,16 @@ private val urlAuthority = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#@]*@)?(\\[[
 /** The special schemes' default ports (the WHATWG URL Standard's). */
 internal val defaultPorts = mapOf("http" to 80, "https" to 443, "ws" to 80, "wss" to 443, "ftp" to 21)
 
-/**
- * Tells a Document's end to the core ([core]) before the asks and hooks ([outsiders]), so a throw in a hook can't skip
- * the core's resets. The first commit after mount or a crash opens a Document and ends none: only [core] hears it.
- */
-internal class Documents(private val core: (DocumentEnd) -> Unit, private val outsiders: (DocumentEnd) -> Unit) {
+/** The first commit after mount or a crash opens a Document and ends none: only [core] hears it. */
+internal class Documents(private val core: (DocumentEnd) -> Unit, private val asksAndHooks: (DocumentEnd) -> Unit) {
   private var open = false
 
   fun end(reason: DocumentEnd) {
     val opening = reason == DocumentEnd.COMMITTED && !open
     open = reason == DocumentEnd.COMMITTED
     core(reason)
-    if (!opening) outsiders(reason)
+    if (!opening) asksAndHooks(reason)
   }
-}
-
-/**
- * After a renderer death, JS hears of it ([gone], `onProcessGone`) before the state that ends the load it cut off as
- * failed, which [recover] and [stateChanged] emit.
- */
-internal inline fun reportCrash(gone: () -> Unit, recover: () -> Unit, stateChanged: () -> Unit) {
-  gone()
-  recover()
-  stateChanged()
 }
 
 /**
