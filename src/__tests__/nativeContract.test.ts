@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { AskableEvent } from '../WebView';
+import type { AskableEvent, CoreEventPayloads } from '../WebView';
 import type { BridgeEvent } from '../bridge/createBridge';
 import type {
   AndroidSettings,
@@ -72,8 +72,14 @@ test('the native view gets exactly the native props and events, and JS calls exa
 });
 
 test('the page requests JS routes are the ones native asks for, and each platform gates the ones it has', () => {
-  const requests = names(ts.match(/const REQUESTS = \[([^\]]*)\]/)?.[1] ?? '', /'(\w+)'/g);
-  const told = ['warning', 'askCancelled'];
+  const requests = names(
+    ts.match(/const REQUEST_HANDLER_PROPS = \[([^\]]*)\]/)?.[1] ?? '',
+    /'(\w+)'/g
+  );
+  const told = Object.keys({ warning, askCancelled } satisfies Record<
+    keyof CoreEventPayloads,
+    Keys
+  >);
   const asked = names(natives, CORE_EVENT).filter((name) => !told.includes(name));
   const gated = (platform: Platform, gate: RegExp) =>
     names(sources(platform).map(read).join('\n'), gate);
@@ -146,8 +152,8 @@ const httpFailure = { ok: 1, kind: 1, filename: 1, url: 1, statusCode: 1 } satis
 const permission = { origin: 1, resources: 1 } satisfies Record<keyof PermissionRequest, 1>;
 const file = { accept: 1, multiple: 1, capture: 1 } satisfies Record<keyof FileRequest, 1>;
 const fullscreen = { active: 1 } satisfies Record<keyof FullscreenChangeEvent, 1>;
-const warning = { message: 1 };
-const askCancelled = { askId: 1 };
+const warning = { message: 1 } satisfies Record<keyof CoreEventPayloads['warning'], 1>;
+const askCancelled = { askId: 1 } satisfies Record<keyof CoreEventPayloads['askCancelled'], 1>;
 const decision = Object.fromEntries(
   Object.keys(navigation)
     .filter((key) => !(key in request))

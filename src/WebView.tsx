@@ -38,7 +38,9 @@ export type AskableEvent = {
   askId?: number;
 };
 
-const REQUESTS = [
+export type CoreEventPayloads = { warning: { message: string }; askCancelled: { askId: number } };
+
+const REQUEST_HANDLER_PROPS = [
   'onNavigationRequest',
   'onOpenExternal',
   'onFileRequest',
@@ -64,7 +66,7 @@ const OWN = [
   'onProcessGone',
   'onLoadStart',
   'onLoadEnd',
-  ...REQUESTS,
+  ...REQUEST_HANDLER_PROPS,
   'ref',
   'children',
 ] as const satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
@@ -199,8 +201,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const gone = (): never => {
       throw codedError({ code: 'unavailable', message: 'the WebView is gone' });
     };
-    const settled = (promise: Promise<string>) =>
-      new Promise<string>((resolve, reject) => {
+    const settled = <T,>(promise: Promise<T>) =>
+      new Promise<T>((resolve, reject) => {
         inFlight.add(reject);
         promise.then(
           (value) => {
@@ -213,10 +215,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
           }
         );
       });
-    const mounted = async (call: () => Promise<string> | undefined) => {
+    const retriedUntilViewRegistered = async <T,>(call: () => Promise<T> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
-          return JSON.parse(await settled(call() ?? gone())) as unknown;
+          return await settled(call() ?? gone());
         } catch (error) {
           if (!notRegistered(error)) throw error;
           if (frame === 60 || AppState.currentState === 'background') gone();
@@ -224,6 +226,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
         }
       }
     };
+    const jsonResultOf = async (call: () => Promise<string> | undefined) =>
+      JSON.parse(await retriedUntilViewRegistered(call)) as unknown;
     return {
       goBack: () => unawaited(native.current?.goBack(), 'goBack'),
       goForward: () => unawaited(native.current?.goForward(), 'goForward'),
@@ -236,7 +240,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
           return;
         }
         unawaited(
-          mounted(() => native.current?.load(url).then(() => 'null')).catch((error: unknown) => {
+          retriedUntilViewRegistered(() => native.current?.load(url)).catch((error: unknown) => {
             const code = (error as { code?: string } | null)?.code;
             if (code !== 'unavailable' && code !== 'navigated') throw error;
           }),
@@ -245,12 +249,12 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       },
       reload: () => unawaited(native.current?.reload(), 'reload'),
       stopLoading: () => unawaited(native.current?.stopLoading(), 'stopLoading'),
-      evaluate: (script) => mounted(() => native.current?.evaluate(script)),
-      get: (key) => mounted(() => native.current?.get(key)),
+      evaluate: (script) => jsonResultOf(() => native.current?.evaluate(script)),
+      get: (key) => jsonResultOf(() => native.current?.get(key)),
       call: (method, args = []) =>
-        mounted(() => native.current?.call(method, JSON.stringify(args))),
+        jsonResultOf(() => native.current?.call(method, JSON.stringify(args))),
       hook: (name, method, args = []) =>
-        mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
+        jsonResultOf(() => native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
   const publish = useAttach(ref, handle);
@@ -287,9 +291,12 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   }: Native<AskableEvent>) => {
     const core = key === 'core';
     if (core && name === 'warning')
-      return console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
-    if (core && name === 'askCancelled') return asks.get(payload['askId'] as number)?.abort();
-    const request = REQUESTS.find((prop) => core && prop === name);
+      return console.warn(
+        `[react-native-minimal-webview] ${(payload as CoreEventPayloads['warning']).message}`
+      );
+    if (core && name === 'askCancelled')
+      return asks.get((payload as CoreEventPayloads['askCancelled']).askId)?.abort();
+    const request = REQUEST_HANDLER_PROPS.find((prop) => core && prop === name);
     const owner = props.extensions?.findLast((e): e is HookExtension => !!e && e.key === key);
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
@@ -371,7 +378,7 @@ function useDevWarnings(warnings: string[]) {
 }
 
 function useRequestHandlers(props: WebViewProps) {
-  const key = REQUESTS.filter((prop) => props[prop]).join();
+  const key = REQUEST_HANDLER_PROPS.filter((prop) => props[prop]).join();
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
