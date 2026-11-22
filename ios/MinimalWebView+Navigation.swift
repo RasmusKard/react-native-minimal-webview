@@ -3,18 +3,19 @@ import UIKit.UIGestureRecognizerSubclass
 import WebKit
 
 extension MinimalWebView {
-  func decideNavigation(_ action: WKNavigationAction, decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
-    guard let target = action.request.url else { return decide(allowInPlace) }
+  func webView(
+    _ webView: WKWebView,
+    decidePolicyFor action: WKNavigationAction,
+    decisionHandler decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void
+  ) {
     // A new window (no target frame) is decided in createWebViewWith.
-    guard let targetFrame = action.targetFrame else { return decide(allowInPlace) }
-    let mainFrame = targetFrame.isMainFrame
-    let own = takeOwnLoad(action)
-    if own || action.navigationType == .backForward || action.navigationType == .reload
+    guard let target = action.request.url, let targetFrame = action.targetFrame else { return decide(allowInPlace) }
+    if takeOwnLoad(action) || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
       return decide(allowInPlace)
     }
     let request = NavigationRules.Request(
-      url: target.absoluteString, mainFrame: mainFrame, newWindow: false, userInitiated: userInitiated(action)
+      url: target.absoluteString, mainFrame: targetFrame.isMainFrame, newWindow: false, userInitiated: userInitiated(action)
     )
     // `.allow` would show a navigation WebKit marks as a download (`<a download>`, blob:) as a page.
     let download = action.shouldPerformDownload && requestHandlers.contains("onDownload")

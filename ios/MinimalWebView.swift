@@ -335,14 +335,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(
     _ webView: WKWebView,
-    decidePolicyFor navigationAction: WKNavigationAction,
-    decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
-  ) {
-    decideNavigation(navigationAction, decide: decisionHandler)
-  }
-
-  func webView(
-    _ webView: WKWebView,
     decidePolicyFor navigationResponse: WKNavigationResponse,
     decisionHandler: @escaping @MainActor (WKNavigationResponsePolicy) -> Void
   ) {
@@ -389,14 +381,14 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadFailed(webView, navigation, error, provisional: false)
+    loadFailed(navigation, error) { $0.webView?(webView, didFail: navigation, withError: error) }
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadFailed(webView, navigation, error, provisional: true)
+    loadFailed(navigation, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
   }
 
-  private func loadFailed(_ webView: WKWebView, _ navigation: WKNavigation?, _ error: Error, provisional: Bool) {
+  private func loadFailed(_ navigation: WKNavigation?, _ error: Error, _ callback: (WKNavigationDelegate) -> Void) {
     let nsError = error as NSError
     let end = Loads.ended(by: nsError)
     if let kind = end.kind {
@@ -405,13 +397,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       failedLoad = (failing, inSourceRoot: navigation == nil || navigation !== directoryOnlyNavigation)
       onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
     }
-    loadEnded(end.outcome) {
-      if provisional {
-        $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
-      } else {
-        $0.webView?(webView, didFail: navigation, withError: error)
-      }
-    }
+    loadEnded(end.outcome, callback)
   }
 
   private func loadEnded(_ outcome: Loads.Outcome, _ callback: (WKNavigationDelegate) -> Void) {
