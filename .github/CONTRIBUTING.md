@@ -63,7 +63,9 @@ example/maestro/run.sh ios <simulator udid> bridge network   # only the named on
 
 `run.sh` prints the failed checks and saves the run to `$TMPDIR`: its log as `harness-<platform>-<device>.log` and its
 checks as a JUnit report, the same name with `.xml`. `example/maestro/self-test.sh <platform> <device>` checks that a
-failing suite fails a run.
+failing suite fails a run. To tell a flaky check from a regression, run `example/maestro/repeat.sh` on the commits
+before and after a change: it runs suites a given number of times on a commit and counts how many runs passed each
+check.
 
 Run the app on one device per platform at a time: every instance of a platform takes its suites from the same queue.
 A second checkout runs its suites beside the first with a test pages server of its own: set `EXPO_PUBLIC_PAGES_PORT`
