@@ -4,8 +4,11 @@ declare function json(text: string): Record<string, unknown>;
 declare const output: {
   launch?: boolean;
   requestsDone: number;
-  action: string;
-  fail?: number | string;
+  action:
+    | import('../../harness/driver').DriverAction['action']
+    | import('../../harness/driver').Verdict['action']
+    | '';
+  fail?: import('../../harness/driver').Verdict['fail'] | 'no verdict';
 };
 declare const PAGES: string;
 declare const PLATFORM: string;
