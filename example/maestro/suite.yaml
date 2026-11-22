@@ -45,7 +45,7 @@ name: ${SUITE}
             - evalScript: ${http.get(PAGES + '/slow?ms=5000')}
             - launchApp: { stopApp: false }
       - runFlow:
-          when: { true: "${output.action == 'location'}" }
+          when: { true: "${output.action == 'setGpsFix'}" }
           commands:
             - setLocation: { latitude: 59.43, longitude: 24.75 }
       - runFlow:

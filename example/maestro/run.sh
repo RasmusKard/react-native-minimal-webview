@@ -7,6 +7,7 @@ cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
 PORT=${EXPO_PUBLIC_PAGES_PORT:-8090} PAGES=http://localhost:${EXPO_PUBLIC_PAGES_PORT:-8090}
 ./install.sh --check "$PLATFORM" "$DEVICE" || exit 1
+SUITE_MS=$(node --no-warnings -p "require('../suites/names.ts').SUITE_MS")
 [ $# -eq 0 ] && set -- $(node --no-warnings -p "require('../suites/names.ts').SUITE_NAMES.join(' ')")
 if [ "$PLATFORM" = android ]; then
   # Root for the crash suite's renderer kills (it restarts adbd, so before the reverses).
@@ -24,7 +25,7 @@ for suite in "$@"; do
     "$suite" "$PWD" "$suite" > "$tmp/$suite.yaml"
   flows+=("$tmp/$suite.yaml")
 done
-"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" "${flows[@]}" > "$tmp/out" 2>&1
+"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" -e SUITE_MS="$SUITE_MS" "${flows[@]}" > "$tmp/out" 2>&1
 status=$?
 grep -E '^\[(Passed|Failed)\]|Flows? (Passed|Failed)' "$tmp/out" || tail -20 "$tmp/out"
 log=${TMPDIR:-/tmp}; log=${log%/}/harness-$PLATFORM-$DEVICE.log

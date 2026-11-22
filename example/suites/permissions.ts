@@ -15,7 +15,7 @@ import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
 
 export async function permissionsSuite(h: Harness, r: Reporter) {
-  r.drive({ action: 'location' });
+  r.drive({ action: 'setGpsFix' });
   const asked: PermissionRequest[] = [];
   let answer = false;
   let hold = false;

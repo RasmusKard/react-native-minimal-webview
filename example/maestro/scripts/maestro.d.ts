@@ -10,3 +10,4 @@ declare const output: {
 declare const PAGES: string;
 declare const PLATFORM: string;
 declare const SUITE: string;
+declare const SUITE_MS: string;

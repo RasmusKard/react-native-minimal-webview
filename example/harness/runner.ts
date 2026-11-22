@@ -13,11 +13,17 @@ import type {
   WebViewSource,
 } from 'react-native-minimal-webview';
 import { AndroidWebView, IOSConstants } from 'react-native-minimal-webview';
+import type { PageCounterEvent } from 'sample-extension';
 
 import { PAGES } from '../pages';
 import { clearEvents, idle, poll, sleep, waitForLoad } from './helpers';
+import { SUITE_MS } from '../suites/names';
 
 type Kind = 'PASS' | 'FAIL' | 'SKIP' | 'INFO' | 'DONE';
+type PageCounterPayload<N extends PageCounterEvent['name']> = Extract<
+  PageCounterEvent,
+  { name: N }
+>['payload'];
 
 /**
  * Extra WebView props for a suite. Its `extensions` come after App's own, the page counter, which `withoutPageCounter`
@@ -52,14 +58,14 @@ export type Harness = {
   events: {
     errors: LoadErrorEvent[];
     gone: ProcessGoneEvent[];
-    loads: string[];
+    loads: ('start' | 'end')[];
     outcomes: NavigationState['outcome'][];
     navigations: NavigationEvent[];
     downloads: Download[];
     downloadFailures: DownloadFailure[];
     fullscreen: boolean[];
-    pageCounts: { url: string; count: number }[];
-    documentEnds: { reason: string; url: string }[];
+    pageCounts: PageCounterPayload<'pageLoaded'>[];
+    documentEnds: PageCounterPayload<'documentEnd'>[];
     hookEvents: string[];
     /** Whether the example's error screen is mounted. */
     overlay: { error: boolean };
@@ -69,14 +75,17 @@ export type Harness = {
 /** `performance.now()` at App's first render and at its first onLoadEnd. */
 export const launchMarks: { render?: number; loadEnd?: number } = {};
 
-let posted: Promise<unknown> = Promise.resolve();
+let posted: Promise<void> = Promise.resolve();
 /**
  * Posts `body` to the test pages server after the posts before it, so log lines and driver requests arrive in the
  * order the suite made them.
  */
 function post(path: string, body: string) {
-  posted = posted.finally(() =>
-    fetch(`${PAGES}/harness/${path}?platform=${Platform.OS}`, { method: 'POST', body })
+  posted = posted.then(() =>
+    fetch(`${PAGES}/harness/${path}?platform=${Platform.OS}`, { method: 'POST', body }).then(
+      () => undefined,
+      (error: unknown) => console.warn('[harness] post failed', error)
+    )
   );
 }
 
@@ -108,8 +117,7 @@ export type DriverAction =
   | { action: 'kill' }
   /** The same with the app in the background: home, the kill, and the app again 5 s later. */
   | { action: 'killInBackground' }
-  /** Gives the device a location fix. */
-  | { action: 'location' };
+  | { action: 'setGpsFix' };
 
 function request(
   message: DriverAction | { action: 'done'; pass: number; fail: number; skip: number },
@@ -174,16 +182,16 @@ function reporter(suite: string) {
   const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
   const cleanups: (() => unknown)[] = [];
   let block = '';
-  let last = 'its start';
+  let lastLineName = 'its start';
   const line = (kind: 'PASS' | 'FAIL' | 'SKIP' | 'INFO', name: string, detail: unknown) => {
     if (kind !== 'INFO') counts[kind]++;
-    last = name;
+    lastLineName = name;
     emit(kind, suite, block, name, kind === 'PASS' ? '' : JSON.stringify(detail));
   };
   const check = (name: string, ok: boolean, detail: unknown = '') =>
     line(ok ? 'PASS' : 'FAIL', name, detail);
   const failed = (what: string, error: unknown) => {
-    line('FAIL', what, `${String(error)} (after: ${last})`);
+    line('FAIL', what, `${String(error)} (after: ${lastLineName})`);
   };
   const r: Reporter = {
     check,
@@ -223,7 +231,6 @@ function reporter(suite: string) {
   };
 }
 
-const SUITE_MS = 270_000;
 const overtime = () =>
   sleep(SUITE_MS).then(() => {
     throw new Error(`still running after ${SUITE_MS / 1000} s`);
