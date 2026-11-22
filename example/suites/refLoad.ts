@@ -14,15 +14,10 @@ import {
   waitFor,
   waitForLoad,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
-/**
- * The ref's `load`: in place (same handle, the bridge carries on), a history entry that back, forward and the
- * back-forward cache treat as a tapped link's, no dedupe, past rules that block every navigation (its redirect still
- * goes to them) also when a load or a source change came in the same tick, `source` and reload left as they were, and a
- * load from the moment a remounted WebView attaches its ref (on iOS while its `source` waits for the shared cookies).
- */
 export async function refLoad(h: Harness, r: Reporter) {
   const home = fresh(h, '/');
   await openPage(h, home);
@@ -71,7 +66,6 @@ export async function refLoad(h: Harness, r: Reporter) {
     (await inFlight) === 'navigated'
   );
 
-  // App's `source` is still `home`: the same one again loads nothing, and reload reloads the loaded page.
   const shown = h.state().url;
   const before = h.events.loads.length;
   h.loadSource({ uri: home });
@@ -116,7 +110,6 @@ export async function refLoad(h: Harness, r: Reporter) {
   await r.block('edges', () => refLoadEdges(h, r));
 }
 
-/** Two ways to go to `url` from a page: the app's load, and a tap on a link (a click from script on iOS, see `tap`). */
 const NAVIGATIONS = [
   ['load', (h: Harness, _r: Reporter, url: string) => h.ref.current?.load(url)],
   [
@@ -133,11 +126,6 @@ const NAVIGATIONS = [
   ],
 ] as const;
 
-/**
- * The same history built with a load and with a tapped link: back and forward come from the back-forward cache alike,
- * and `goBack` lands alike after the page's `pushState` without a gesture (Android skips such an entry). The referrer
- * and the headers a load sends instead of a link's are only logged.
- */
 async function refLoadHistory(h: Harness, r: Reporter) {
   const ways: Record<string, unknown> = {};
   for (const [way, go] of NAVIGATIONS) {
@@ -200,30 +188,22 @@ async function refLoadHistory(h: Harness, r: Reporter) {
   );
 }
 
-/** On page `b`, after page `a`: pushes an entry without a gesture, goes back, and says where that lands. */
 async function backAfterPushState(h: Harness, a: string, b: string) {
   await h.ref.current?.evaluate("history.pushState(null, '', '#pushed')");
   await waitFor(h, (s) => s.url === `${b}#pushed`);
   h.ref.current?.goBack();
   await waitFor(h, (s) => s.url !== `${b}#pushed` && idle(s));
-  await sleep(500); // a load the back starts late would show now
+  await quietFor(500);
   const { url } = h.state();
   if (url === a) return 'the page before it (its entry skipped)';
   return url === b ? 'the page itself' : url;
 }
 
-/** How the first of two app loads in a row starts: a load (the second follows in a 0 ms timeout) or a source change. */
 const FIRST_LOADS = [
   ['a load', (h: Harness, url: string) => h.ref.current?.load(url)],
   ['a source change', (h: Harness, url: string) => h.loadSource({ uri: url })],
 ] as const;
 
-/**
- * A load right after another load or a source change: on iOS without sharedCookies it starts before the first one's
- * policy check (a single own-load slot let that check go to the rules); with them it replaces the
- * first while that is prepared. In the same tick as a source change, which one ends on screen is only logged: the
- * TSDoc leaves it open.
- */
 async function refLoadRaces(h: Harness, r: Reporter) {
   for (const sharedCookies of [false, true]) {
     h.setProps({ sharedCookies });
@@ -232,8 +212,8 @@ async function refLoadRaces(h: Harness, r: Reporter) {
       const reported: unknown[] = [];
       let wrong: NavigationState | undefined;
       let run: Awaited<ReturnType<typeof loadAfter>> | undefined;
-      const tries = name === 'a load' && !sharedCookies ? 5 : 1;
-      for (let i = 0; i < tries; i++) {
+      const loadBeforeFirstPolicyCheckSamples = name === 'a load' && !sharedCookies ? 5 : 1;
+      for (let i = 0; i < loadBeforeFirstPolicyCheckSamples; i++) {
         run = await loadAfter(h, name, first);
         reported.push(...run.reported);
         wrong ??= run.wrong;
@@ -253,7 +233,6 @@ async function refLoadRaces(h: Harness, r: Reporter) {
   h.setProps({});
 }
 
-/** Starts `first`, then a load right after it: the main-frame navigations reported, and the state if it went wrong. */
 async function loadAfter(
   h: Harness,
   name: (typeof FIRST_LOADS)[number][0],
@@ -279,7 +258,6 @@ async function loadAfter(
   return { reported, wrong, onLoad: h.state().url === loaded };
 }
 
-/** What `load` refuses or can't load, and a load as a remounted WebView attaches its ref. */
 async function refLoadEdges(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   r.cleanup(warnings.stop);

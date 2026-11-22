@@ -27,7 +27,6 @@ import { upload } from './upload';
 import { urlTracking } from './urlTracking';
 import { type Suite } from '../harness/runner';
 
-/** Every name in `SUITE_NAMES` has its suite here, and the compiler checks it. */
 export const SUITES: Record<(typeof SUITE_NAMES)[number], Suite> = {
   urlTracking,
   navigation,

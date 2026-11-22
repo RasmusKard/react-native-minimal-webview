@@ -12,20 +12,14 @@ import {
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
-/** Adds a download link to a blob of `bytes` zero bytes. */
 const blobLink = (h: Harness, id: string, bytes: number) =>
   h.ref.current?.evaluate(
     `(() => { const a = document.createElement('a'); a.id = '${id}'; a.download = '${id}.bin'; a.href = URL.createObjectURL(new Blob([new Uint8Array(${bytes})])); document.body.append(a); })()`
   );
 
-/**
- * Downloads: an attachment, a blob: and a data: link all end in onDownload with a cache file and a sanitised filename;
- * on Android a blob above the size cap fails, and an invalid data: link leaves the app running.
- */
 export async function downloadsSuite(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/media.html'));
   await h.ref.current?.evaluate("document.cookie = 'dl=1'");
-  // A long query: the event's `url` is the full server URL, never cut.
   const attachmentUrl = await h.ref.current?.evaluate(
     "(() => { const a = document.getElementById('attachment'); a.href += '&pad=' + 'x'.repeat(200); return a.href; })()"
   );
@@ -33,7 +27,6 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
     ['attachment', 'report.txt', 'downloaded report.txt'],
     ['blob', 'blob.txt', 'blob body'],
     ['data', 'data.txt', 'data body'],
-    // Android fetches it again and the server then redirects to another host; iOS keeps WebKit's first response.
     ['moved', 'moved.txt', Platform.OS === 'android' ? 'downloaded moved.txt' : 'first response'],
   ] as const) {
     const [before, outcomes] = [h.events.downloads.length, h.events.outcomes.length];
@@ -53,7 +46,6 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
       Platform.OS === 'android' && (id === 'blob' || id === 'data')
         ? download?.filename.endsWith('.txt')
         : download?.filename === filename;
-    // Android reads a blob: download through the page (evaluate).
     const floor = id === 'blob' ? WEBVIEW.evaluate : 0;
     r.since(floor, `${id} download reaches onDownload`, done && nameOk === true, download);
     const text = download?.uri.startsWith('file:') ? await new File(download.uri).text() : null;
@@ -84,7 +76,6 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
   }
 
   if (Platform.OS === 'android') {
-    // Above Android's 100 MB cap a blob: download fails before the page reads it. The blobs are made only here.
     const failures = h.events.downloadFailures.length;
     await blobLink(h, 'bigblob', 101 * 1024 * 1024);
     await click(h, 'bigblob');
@@ -97,7 +88,6 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
       failed && failure?.kind === 'data' && failure.description.includes('larger than'),
       failure
     );
-    // Far more than one reply can carry: the page reads it in chunks.
     const big = h.events.downloads.length;
     await blobLink(h, 'bigok', 40 * 1024 * 1024);
     await click(h, 'bigok');
@@ -150,8 +140,6 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
     await openPage(h, fresh(h, '/media.html'));
     const before = h.events.downloadFailures.length;
     await click(h, 'baddata');
-    // Chromium may reject a malformed data: URL before the download listener runs; either way the app survives.
-    // The listener runs right after the click when it runs at all.
     await happens(waitFor(h, () => h.events.downloadFailures.length > before, 1500));
     r.info('invalid data: download failures reported', h.events.downloadFailures.slice(before));
     r.check(

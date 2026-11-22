@@ -22,13 +22,10 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** The server answered [code], not 2xx. */
 internal class HttpStatus(val code: Int) : IOException("HTTP $code")
 
-/** The file is above [Downloads.MAX_BYTES]. */
 internal class TooLarge : IOException(Downloads.TOO_LARGE)
 
-/** What WebView's DownloadListener reports. */
 internal data class DownloadInfo(
   val url: String,
   val userAgent: String,
@@ -37,9 +34,8 @@ internal data class DownloadInfo(
 )
 
 /**
- * The `onDownload` prop. WebView hands over only the URL, so http(s) is fetched again, through `HttpURLConnection` and
- * the WebView profile's `CookieManager` rather than React Native's OkHttp, so the package builds without
- * `react-android`. Nothing here may crash the app: the page controls the URL.
+ * WebView hands over only the URL, so http(s) is fetched again, through `HttpURLConnection` and the WebView profile's
+ * `CookieManager` rather than React Native's OkHttp, so the package builds without `react-android`.
  */
 internal class Downloads(private val owner: MinimalWebView) {
   private val io = Executors.newSingleThreadExecutor()
@@ -66,11 +62,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     return data.second
   }
 
-  /**
-   * Runs [write] off the main thread (a download can be megabytes); it fills the file and returns its MIME type. One
-   * directory per download, so the same guessed name never overwrites a file already handed to the app. The event goes
-   * back on the main thread. [url] is the download's own URL, for the event.
-   */
+  /** Runs [write] off the main thread; it fills the file and returns its MIME type. */
   private fun save(name: String, url: String, write: (File) -> String) {
     val file = File(owner.webView.context.cacheDir, "downloads/${System.nanoTime()}/$name")
     io.execute {
@@ -78,10 +70,9 @@ internal class Downloads(private val owner: MinimalWebView) {
         file.parentFile?.mkdirs()
         write(file)
       } catch (e: Exception) {
-        // a malformed data: URL or forged JSON from the page: no failure may reach the io thread
         e
       }
-      if (result is Exception) file.parentFile?.deleteRecursively() // no partial file stays in the cache
+      if (result is Exception) file.parentFile?.deleteRecursively()
       mainHandler.post {
         when (result) {
           is String -> owner.emit(
@@ -106,7 +97,7 @@ internal class Downloads(private val owner: MinimalWebView) {
       val (size, data) = readChunk(url, offset)
       type = append(file, decodeChunk(data))
       offset += CHUNK_BYTES
-      if (offset > MAX_BYTES) throw TooLarge() // the page's own size check can be forged
+      if (offset > MAX_BYTES) throw TooLarge()
     } while (offset < size)
     type
   }
@@ -124,8 +115,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     mainHandler.post { owner.evaluate(script) { reply.offer(it) } }
     val result = reply.poll(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS) ?: throw IOException("the page did not read the blob in time")
     val json = result.getOrElse { throw IOException("could not read the blob: ${it.message}") }
-    // A reply far longer than a chunk's data: URL is forged: refuse it before it is copied twice more.
-    if (json.length > CHUNK_BYTES / 3 * 4 + 1024) throw TooLarge()
+    if (json.length > MAX_CHUNK_REPLY_CHARS) throw TooLarge()
     val chunk = JSONTokener(json).nextValue() as? JSONArray ?: throw IOException("could not read the blob")
     return chunk.getLong(0) to chunk.getString(1)
   }
@@ -148,11 +138,11 @@ internal class Downloads(private val owner: MinimalWebView) {
   }
 
   internal companion object {
-    // The page picks the file, and an http(s) one fills the cache: above this a download fails instead.
     const val MAX_BYTES = 100L * 1024 * 1024
     const val TOO_LARGE = "larger than 100 MB"
     const val CHUNK_BYTES = 4L * 1024 * 1024
-    const val MAX_REDIRECTS = 20 // OkHttp's, which React Native's fetch uses
+    private const val MAX_CHUNK_REPLY_CHARS = CHUNK_BYTES / 3 * 4 + 1024
+    const val MAX_REDIRECTS = 20 // OkHttp's limit, which React Native's fetch uses
     const val TIMEOUT_MS = 30_000
     private val PERCENT_ESCAPE = Regex("%[0-9A-Fa-f]{2}")
 
@@ -161,7 +151,6 @@ internal class Downloads(private val owner: MinimalWebView) {
      * except [TooLarge]; `data` for everything else.
      */
     fun kind(error: Exception, fetched: Boolean) =
-      // shortcut: a disk error while an http(s) body streams reads as network; tell them apart if apps need to.
       if (fetched && error is IOException && error !is TooLarge) "network" else "data"
 
     /**
@@ -189,8 +178,7 @@ internal class Downloads(private val owner: MinimalWebView) {
 
     /** [text]'s UTF-8 bytes with each `%XX` replaced by the byte XX. The result is not decoded as UTF-8 again. */
     private fun percentDecode(text: String): ByteArray {
-      if ('%' !in text) return text.toByteArray() // a blob's chunks: spares two copies of megabytes
-      // Latin-1 maps each byte to one char and back, so the escapes are replaced in a string.
+      if ('%' !in text) return text.toByteArray()
       val latin1 = String(text.toByteArray(), Charsets.ISO_8859_1)
       return PERCENT_ESCAPE.replace(latin1) { it.value.substring(1).toInt(16).toChar().toString() }.toByteArray(Charsets.ISO_8859_1)
     }

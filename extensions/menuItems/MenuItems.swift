@@ -9,7 +9,6 @@ enum MenuItems {
 
   static func register() {
     MinimalWebViewHooks.register(key, webViewClass: MenuWKWebView.self) { webView, context in
-      // Another hook's class won (the core warns): no menu.
       guard let view = webView as? MenuWKWebView else { return }
       context.onOptions { [weak view] options in
         let options = options as? [String: Any]
@@ -19,7 +18,6 @@ enum MenuItems {
       view.onMenuItem = { [weak view] key in
         guard let view else { return }
         let label = view.menuItems?.first { $0["key"] as? String == key }?["label"] ?? ""
-        // As react-native-webview: the main frame's selection.
         view.evaluateJavaScript("window.getSelection().toString()") { result, _ in
           context.emit("selection", ["key": key, "label": label, "selectedText": result as? String ?? ""])
         }
@@ -39,7 +37,7 @@ final class MenuWKWebView: WKWebView {
   override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
     if action == #selector(minimalWebViewExtensionsMenuItem(_:)) { return menuItems != nil }
     let name = NSStringFromSelector(action)
-    if suppressMenuItems.contains(Self.names[name] ?? name) { return false }
+    if suppressMenuItems.contains(Self.suppressNameBySelector[name] ?? name) { return false }
     return menuItems == nil && super.canPerformAction(action, withSender: sender)
   }
 
@@ -60,8 +58,7 @@ final class MenuWKWebView: WKWebView {
     onMenuItem?(sender.propertyList as? String ?? "")
   }
 
-  /// react-native-webview's `suppressMenuItems` names, by the system item's selector.
-  private static let names = [
+  private static let suppressNameBySelector = [
     "cut:": "cut", "copy:": "copy", "paste:": "paste", "select:": "select", "selectAll:": "selectAll",
     "_promptForReplace:": "replace", "_define:": "lookup", "_translate:": "translate", "toggleBoldface:": "bold",
     "toggleItalics:": "italic", "toggleUnderline:": "underline", "_share:": "share"

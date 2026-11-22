@@ -2,9 +2,9 @@ package expo.modules.minimalwebview
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
-/** What crash recovery and reload() load again: the source when it is the page on screen, else the page's URL. */
 class ShowsSourceTest {
   private val vectors = JSONObject(
     checkNotNull(javaClass.getResource("/vectors/recovery.json")) { "test resource vectors/recovery.json missing" }.readText()
@@ -27,12 +27,18 @@ class ShowsSourceTest {
     val cases = listOf(
       Triple(null, "", false),
       Triple(null, "https://example.com/", false),
-      Triple(page, "", true), // nothing committed yet
+      Triple(page, "", true),
       Triple(html, "https://example.com/", true), // Chromium canonicalizes the baseUrl
       Triple(html, "https://example.com/other", false),
       Triple(WebViewSource(html = "<p>"), "about:blank", true),
       Triple(WebViewSource(html = "<p>"), "https://example.com/", false)
     )
     for ((source, url, expected) in cases) assertEquals("$source at $url", expected, showsSource(source, url))
+  }
+
+  @Test
+  fun `a source that differs only in readAccessRoot is a new source, which loads again as on iOS`() {
+    val page = WebViewSource(uri = "file:///data/page.html")
+    assertNotEquals(page, page.copy(readAccessRoot = "file:///data/"))
   }
 }

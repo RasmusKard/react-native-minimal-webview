@@ -20,20 +20,16 @@ class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      // The app's `android.settings` apply after configure and win.
       MinimalWebViewHooks.register("sample.pageCounter", configure = { webView, _ ->
         webView.settings.defaultFixedFontSize = 14
       }) { webView, context ->
         val counter = PageCounter(context)
         context.clients += counter
-        // The extension's `options` arrive at once, then live on each change, with no reload.
         context.onOptions { options ->
           counter.global = (options as? Map<*, *>)?.get("global") as? String ?: "__pageCount"
           counter.stamp(webView)
         }
-        // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply -> reply(counter.count) }
-        // A handler can reply later, here with the app's answer to an ask, and fail the JS call when there is none.
         context.handle("label") { _, reply ->
           context.ask("label", mapOf("count" to counter.count)) { answer ->
             if (answer != null) reply(answer) else reply.fail("the app gave no label")
@@ -45,24 +41,19 @@ class SampleExtensionModule : Module() {
           }
         }
       }
-      // A client that overrides a decision callback (HTTP auth, a JS alert) takes it from the core.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context ->
         context.clients += HookAuth()
       }
       MinimalWebViewHooks.register("sample.hookDialogs") { _, context ->
         context.chromeClients += HookDialogs(context)
       }
-      // Takes the navigation decision from the app's navigationRules, which a `core.warning` says.
       MinimalWebViewHooks.register("sample.hookNavigation") { _, context ->
         context.clients += HookNavigation()
       }
-      // Each WebView that enables this hook is made by its factory, a crash's replacement too; others stay plain.
       MinimalWebViewHooks.register("sample.subclass", webViewFactory = ::SampleWebView) { webView, context ->
         val name = webView.javaClass.simpleName
         context.handle("class") { _, reply -> reply(name) }
       }
-      // While setWebViewMissing(true) holds, its WebView can't be made, as when Android System WebView is missing,
-      // disabled or updating.
       MinimalWebViewHooks.register("sample.noWebView", webViewFactory = { context ->
         if (webViewMissing) throw AndroidRuntimeException("No WebView installed")
         WebView(context)
@@ -72,7 +63,6 @@ class SampleExtensionModule : Module() {
     }
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(Queues.MAIN)
     AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
-    // The perf suite's frame-gap probe (PerfProbe.kt): module functions, so they work without a hook too.
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
   }
@@ -80,10 +70,8 @@ class SampleExtensionModule : Module() {
 
 private var webViewMissing = false
 
-/** The `sample.subclass` hook's WebView: an override of what WebView lets a subclass change would go here. */
 private class SampleWebView(context: Context) : WebView(context)
 
-/** The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx, through `adb reverse`). */
 private val AUTH_HOSTS = setOf("localhost")
 
 private class HookAuth : WebViewClient() {
@@ -91,7 +79,6 @@ private class HookAuth : WebViewClient() {
     if (host in AUTH_HOSTS) handler.proceed("u", "p") else handler.cancel()
 }
 
-/** Loads every navigation in place. */
 private class HookNavigation : WebViewClient() {
   override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = false
 }
@@ -104,7 +91,6 @@ private class HookDialogs(private val context: WebViewContext) : WebChromeClient
   }
 }
 
-/** Counts page loads and stamps the count into the page; reports commit-visible. */
 private class PageCounter(private val context: WebViewContext) : WebViewClient() {
   var count = 0
     private set

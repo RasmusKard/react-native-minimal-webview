@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
@@ -29,11 +28,7 @@ import androidx.webkit.Navigation
 import androidx.webkit.NavigationListener
 import androidx.webkit.Page
 
-// WebView's callbacks, a new set for each WebView. Each one routes by the rule on WebViewContext.clients: a decision
-// callback through `deciding`, the rest through `observing`.
-
 internal class Listener(private val owner: MinimalWebView) : NavigationListener {
-  /** Pages that fired their load event and are still alive (current or in the back-forward cache). */
   private val loadedPages = mutableSetOf<Page>()
 
   override fun onPageDeleted(page: Page) {
@@ -52,21 +47,20 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
     owner.stateChanged()
   }
 
-  // A failed main-frame load commits an error page at the failed URL: `url` becomes that URL, as on iOS.
   override fun onNavigationCompleted(navigation: Navigation) {
-    // The Document ends before `url` moves on, so its handlers see the page that ended: as on iOS, and before 146,
-    // where onPageStarted comes ahead of doUpdateVisitedHistory.
     if (navigation.didCommit() && !navigation.isSameDocument) owner.endDocument(DocumentEnd.COMMITTED)
     if (navigation.didCommit()) owner.url = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
-      // A reported network or SSL error already made it "failed". Chromium's error page for an HTTP status (a 404 with
-      // an empty body) is the server's answer: "finished", as on iOS.
-      owner.outcome = owner.outcome ?: when {
-        !navigation.didCommit() -> "cancelled" // a stop, a download, a 204, a blocked redirect, a newer load
-        navigation.didCommitErrorPage() && navigation.statusCode < 400 -> "failed"
-        else -> "finished"
-      }
+      // Chromium's error page for an HTTP status (a 404 with an empty body) is the server's answer: "finished", as on
+      // iOS.
+      owner.settleOutcome(
+        when {
+          !navigation.didCommit() -> LoadOutcome.CANCELLED
+          navigation.didCommitErrorPage() && navigation.statusCode < 400 -> LoadOutcome.FAILED
+          else -> LoadOutcome.FINISHED
+        }
+      )
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
       if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) owner.loadEnded()
     }
@@ -87,16 +81,12 @@ private val BOOLEAN = java.lang.Boolean.TYPE
 private val FLOAT = java.lang.Float.TYPE
 
 internal class Client(private val owner: MinimalWebView, private val navigation: MinimalWebViewNavigation) : WebViewClient() {
-  /** The first hook client that overrides a decision callback, or null: the core decides. */
   private fun deciding(name: String, vararg types: Class<*>, lost: String? = null) =
     owner.deciders.first(name, owner.clients, lost) { it.overrides(name, *types) }
 
-  /** Every hook client that overrides an observation callback, after the core. */
   private inline fun observing(name: String, vararg types: Class<*>, block: (WebViewClient) -> Unit) =
     owner.clients.forEach { if (it.overrides(name, *types)) block(it) }
 
-  // Without NavigationListener: the last main-frame URL allowed to load (a page's navigation or a redirect), for
-  // onReceivedSslError.
   private var allowedMainFrameUrl: String? = null
 
   // Not called for POST, the initial loadUrl, or reissued loads; called again for their redirects.
@@ -124,7 +114,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onPageFinished(view: WebView, url: String?) {
     if (!owner.hasNavigationListener) {
-      owner.outcome = owner.outcome ?: "finished" // "failed" when a main-frame error came first
+      owner.settleOutcome(LoadOutcome.FINISHED)
       owner.loadEnded()
     }
     observing("onPageFinished", WEB_VIEW, STRING) { it.onPageFinished(view, url) }
@@ -139,7 +129,6 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
     deciding("shouldInterceptRequest", WEB_VIEW, WebResourceRequest::class.java)?.shouldInterceptRequest(view, request)
 
-  // Main frame only: a subresource that fails to load (an ad) is the page's business.
   override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
     val description = error.description.toString()
     if (request.isForMainFrame && !description.contains("ERR_ABORTED")) {
@@ -158,7 +147,6 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     if (hook != null) hook.onFormResubmission(view, dontResend, resend) else super.onFormResubmission(view, dontResend, resend)
   }
 
-  // Without NavigationListener (WebView older than 146): best-effort URL tracking.
   override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
     if (!owner.hasNavigationListener && url != null) {
       owner.url = url
@@ -167,7 +155,6 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     observing("doUpdateVisitedHistory", WEB_VIEW, STRING, BOOLEAN) { it.doUpdateVisitedHistory(view, url, isReload) }
   }
 
-  @SuppressLint("WebViewClientOnReceivedSslError") // because the core always cancels; it only reports the error
   override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, sslError: SslError) {
     val hook = deciding(
       "onReceivedSslError", WEB_VIEW, SslErrorHandler::class.java, SslError::class.java,
@@ -175,8 +162,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     )
     if (hook != null) return hook.onReceivedSslError(view, handler, sslError)
     handler.cancel()
-    // Also called for subresources (an ad image): only the main frame's URL is a page error. Without NavigationListener
-    // there's no pendingUrl: view.url shows a loadUrl in progress (back/forward stays unreported).
+    // Also called for subresources (an ad image): only the main frame's URL is a page error.
+    // Without a NavigationListener there is no pendingUrl: WebView's url shows a loadUrl in progress.
     val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, allowedMainFrameUrl)
     if (sslError.url in mainFrame) {
       owner.reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
@@ -188,7 +175,6 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     if (hook != null) hook.onReceivedClientCertRequest(view, request) else super.onReceivedClientCertRequest(view, request)
   }
 
-  // Basic and digest auth: a hook client, else cancel (the page shows its 401).
   override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
     val hook = deciding("onReceivedHttpAuthRequest", WEB_VIEW, HttpAuthHandler::class.java, STRING, STRING)
     if (hook != null) hook.onReceivedHttpAuthRequest(view, handler, host, realm) else handler.cancel()
@@ -210,7 +196,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     observing("onReceivedLoginRequest", WEB_VIEW, STRING, STRING, STRING) { it.onReceivedLoginRequest(view, realm, account, args) }
 
   override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-    // Returning true keeps the app alive; a stale WebView (already replaced) needs nothing more.
+    // Returning true keeps the app alive.
     // Timed here: every WebView on the renderer hears of its death back to back, before any recovery runs.
     val at = SystemClock.elapsedRealtime()
     if (view === owner.webView) mainHandler.post { owner.processGone(if (detail.didCrash()) "crash" else "memory", at) }
@@ -239,7 +225,7 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
       ?: navigation.createWindow(isUserGesture, resultMsg)
 
   override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-    val once = owner.fileUpload.hold(callback) // before the hook branch: a hook's chooser is held too
+    val once = owner.fileUpload.hold(callback)
     val hook = deciding(
       "onShowFileChooser", WEB_VIEW, ValueCallback::class.java, FileChooserParams::class.java,
       lost = "onFileRequest doesn't apply"
@@ -249,7 +235,6 @@ internal class ChromeClient(private val owner: MinimalWebView, private val navig
     return true
   }
 
-  // Without a hook client or the app's prop: deny (never grant device access by default).
   override fun onPermissionRequest(request: PermissionRequest) {
     val hook = deciding("onPermissionRequest", PermissionRequest::class.java, lost = "onPermissionRequest and the default deny don't apply")
     when {

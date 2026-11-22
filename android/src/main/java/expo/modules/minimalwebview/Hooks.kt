@@ -310,9 +310,8 @@ class HookReply internal constructor(
 }
 
 /**
- * [HookContext]'s base: the hook's `hookOptions` value (null while its key is absent), its lists, and whether the core
- * routes them. Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach
- * are volatile; the rest is main thread only.
+ * Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach are volatile;
+ * the rest is main thread only.
  */
 internal open class Attachment(value: Any?) {
   @Volatile var options: Any? = value
@@ -325,7 +324,6 @@ internal open class Attachment(value: Any?) {
   // own changes write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
-  // Copy-on-write too: the core iterates them live, and a listener may remove itself while it runs.
   val touchListeners: MutableList<View.OnTouchListener> = CopyOnWriteArrayList()
   val scrollListeners: MutableList<View.OnScrollChangeListener> = CopyOnWriteArrayList()
 
@@ -374,10 +372,8 @@ internal open class Attachment(value: Any?) {
 internal fun <T> routed(attachments: List<Attachment>, pick: (Attachment) -> List<T>) =
   attachments.filter { it.routed }.flatMap(pick)
 
-/** The core's [WebViewContext] for one hook's attach: the hook's key goes on its events and asks. */
 internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebView) :
   Attachment(view.hookOptions[hook.key]), WebViewContext {
-  /** Null once the attach ended. Main thread only. */
   private var view: MinimalWebView? = view
   val key get() = hook.key
   override val url get() = view?.url.orEmpty()
@@ -385,7 +381,6 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebV
   private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, HookReply) -> Unit>()
 
-  /** The attach ended: also drops the view and what the hook gave it, bar the [onDestroyed] handlers [destroyed] runs next. */
   override fun detach() {
     super.detach()
     view = null

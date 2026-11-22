@@ -1,6 +1,3 @@
-// One side of the bridge, the same in RN (createBridge.ts) and in the page (pageClient.ts): calls with timeouts,
-// handlers and events. The transport, the `ready` handshake and the document tokens are each side's own. The page
-// client is compiled with this file into one script (.github/scripts/build-page-client.mts).
 import type { CodedError, ErrorCode } from '../types';
 import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
@@ -13,9 +10,10 @@ type Pending = {
 export const codedError = ({ code, message }: { code: ErrorCode; message: string }): CodedError =>
   Object.assign(new Error(message), { code });
 
+const reportUnhandled = (error: unknown) => void Promise.reject(error);
+
 /**
- * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id. `Sender` is
- * what handlers and listeners get beside the params: RN's `{ origin }`, nothing in the page.
+ * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id.
  */
 export function createEndpoint<Sender = void>(
   send: (message: BridgeMessage) => void,
@@ -59,7 +57,7 @@ export function createEndpoint<Sender = void>(
       });
     },
     emit(event: string, payload?: unknown) {
-      send({ kind: 'event', method: event, params: payload });
+      send({ kind: 'event', event, params: payload });
     },
     handle(method: string, handler: (params: unknown, sender: Sender) => unknown) {
       handlers.set(method, handler);
@@ -96,12 +94,11 @@ export function createEndpoint<Sender = void>(
           return;
         }
         case 'event':
-          listeners.get(message.method)?.forEach((listener) => {
-            // An unhandled rejection reports the error without stopping the other listeners.
+          listeners.get(message.event)?.forEach((listener) => {
             try {
               listener(message.params, sender);
             } catch (error) {
-              void Promise.reject(error);
+              reportUnhandled(error);
             }
           });
           return;

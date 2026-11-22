@@ -3,9 +3,8 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// The repo root's node_modules has its own react and react-native (npm installs peer dependencies), expo and
-// expo-modules-core: bundle only the example's. A second react-native is incompatible, and a second expo or
-// expo-modules-core breaks native module setup on Android.
+// The repo root's node_modules has its own react, react-native, expo and expo-modules-core: bundle only the example's.
+// A second react-native is incompatible, and a second expo or expo-modules-core breaks native module setup on Android.
 config.resolver.blockList = [
   ...Array.from(config.resolver.blockList ?? []),
   // Windows paths have `\`, which the RegExp needs escaped.

@@ -3,7 +3,6 @@ package expo.modules.minimalwebview
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The `evaluate` bookkeeping: each evaluation settles once, and only the main frame's replies count. */
 class EvaluationsTest {
   private val evaluations = Evaluations()
   private val results = mutableListOf<String>()

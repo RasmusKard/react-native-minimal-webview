@@ -38,11 +38,9 @@ export type AskableEvent = {
   askId?: number;
 };
 
-/**
- * Page requests the core answers natively, by prop name, and `onNavigation`, for the decisions it reports. Native sends
- * JS each only while its prop is set, and reads the set when it would send one, so a prop can come and go.
- */
-const REQUESTS = [
+export type CoreEventPayloads = { warning: { message: string }; askCancelled: { askId: number } };
+
+const REQUEST_HANDLER_PROPS = [
   'onNavigationRequest',
   'onOpenExternal',
   'onFileRequest',
@@ -52,7 +50,6 @@ const REQUESTS = [
   'onNavigation',
 ] as const;
 
-/** Every prop that is not a `ViewProps` one, so it never reaches the outermost view. */
 const OWN = [
   'source',
   'ios',
@@ -69,12 +66,11 @@ const OWN = [
   'onProcessGone',
   'onLoadStart',
   'onLoadEnd',
-  ...REQUESTS,
+  ...REQUEST_HANDLER_PROPS,
   'ref',
   'children',
 ] as const satisfies (Exclude<keyof WebViewProps, keyof ViewProps> | 'children')[];
 type Unlisted = Exclude<Exclude<keyof WebViewProps, keyof ViewProps>, (typeof OWN)[number]>;
-// A prop missing from OWN fails to compile here, by name.
 const OWN_SET: Set<string> &
   ([Unlisted] extends [never] ? unknown : Record<Unlisted, 'missing from OWN'>) = new Set(OWN);
 
@@ -82,13 +78,11 @@ type NativeSettings = Record<string, Record<string, SettingValue | undefined>>;
 
 type NativeProps = ViewProps &
   Pick<WebViewProps, 'source' | 'navigationRules' | 'pullToRefresh'> & {
-    /** With each script's `origins` in its code (`nativeScripts`). */
     injectedScripts: Omit<InjectedScript, 'origins'>[] | undefined;
     ref: Ref<NativeMethods>;
     sharedCookies: boolean | undefined;
     /**
-     * The platform's settings by root and name, as JSON: `ios` or `android` with the cross-platform props on top. A
-     * string, so that a `null` (reset this key) survives the trip; the native dictionary conversion drops it.
+     * A string, so that a `null` (reset this key) survives the trip; the native dictionary conversion drops it.
      */
     settings: string;
     bridgeScript: string | undefined;
@@ -111,7 +105,6 @@ export type NativeMethods = {
   reload(): Promise<void>;
   stopLoading(): Promise<void>;
   bridgePost(message: string): Promise<void>;
-  /** Answers a native `ask`. `json` is JSON, as for `call`. */
   answer(askId: number, json: string): Promise<void>;
   /** The JSON-encoded result. */
   evaluate(script: string): Promise<string>;
@@ -151,7 +144,6 @@ function assertLinked() {
 const notRegistered = (error: unknown) =>
   (error as { code?: string } | null)?.code === 'ERR_VIEW_NOT_FOUND';
 
-/** A native call nothing awaits: a rejection is logged, bar one for a view not registered yet, where it does nothing. */
 const unawaited = (call: Promise<unknown> | undefined, name: string) =>
   void call?.catch((error: unknown) => {
     if (!notRegistered(error))
@@ -192,12 +184,9 @@ function useBridgeChangeWarning(bridge: WebViewProps['bridge']) {
   }, [bridge]);
 }
 
-/** One native WebView's life: a new creation key remounts it, so its state, ref attachment and bridge start over. */
 function WebViewInstance({ ref, ...props }: WebViewProps) {
   const native = useRef<NativeMethods>(null);
 
-  // The rejecters of native calls not settled yet. An unmount rejects them: native may never answer (a hook handler
-  // that never replies), and a late answer then settles nothing.
   const [inFlight] = useState(() => new Set<(error: Error) => void>());
   useEffect(
     () => () => {
@@ -212,8 +201,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const gone = (): never => {
       throw codedError({ code: 'unavailable', message: 'the WebView is gone' });
     };
-    const settled = (promise: Promise<string>) =>
-      new Promise<string>((resolve, reject) => {
+    const settled = <T,>(promise: Promise<T>) =>
+      new Promise<T>((resolve, reject) => {
         inFlight.add(reject);
         promise.then(
           (value) => {
@@ -226,11 +215,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
           }
         );
       });
-    // Retries each frame until Expo has registered the view.
-    const mounted = async (call: () => Promise<string> | undefined) => {
+    const retriedUntilViewRegistered = async <T,>(call: () => Promise<T> | undefined) => {
       for (let frame = 0; ; frame++) {
         try {
-          return JSON.parse(await settled(call() ?? gone())) as unknown;
+          return await settled(call() ?? gone());
         } catch (error) {
           if (!notRegistered(error)) throw error;
           if (frame === 60 || AppState.currentState === 'background') gone();
@@ -238,6 +226,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
         }
       }
     };
+    const jsonResultOf = async (call: () => Promise<string> | undefined) =>
+      JSON.parse(await retriedUntilViewRegistered(call)) as unknown;
     return {
       goBack: () => unawaited(native.current?.goBack(), 'goBack'),
       goForward: () => unawaited(native.current?.goForward(), 'goForward'),
@@ -249,10 +239,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
             );
           return;
         }
-        // mounted() parses a JSON result, and load has none. A view that went away or never came loads nothing, as
-        // a navigation method does after an unmount.
         unawaited(
-          mounted(() => native.current?.load(url).then(() => 'null')).catch((error: unknown) => {
+          retriedUntilViewRegistered(() => native.current?.load(url)).catch((error: unknown) => {
             const code = (error as { code?: string } | null)?.code;
             if (code !== 'unavailable' && code !== 'navigated') throw error;
           }),
@@ -261,12 +249,12 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       },
       reload: () => unawaited(native.current?.reload(), 'reload'),
       stopLoading: () => unawaited(native.current?.stopLoading(), 'stopLoading'),
-      evaluate: (script) => mounted(() => native.current?.evaluate(script)),
-      get: (key) => mounted(() => native.current?.get(key)),
+      evaluate: (script) => jsonResultOf(() => native.current?.evaluate(script)),
+      get: (key) => jsonResultOf(() => native.current?.get(key)),
       call: (method, args = []) =>
-        mounted(() => native.current?.call(method, JSON.stringify(args))),
+        jsonResultOf(() => native.current?.call(method, JSON.stringify(args))),
       hook: (name, method, args = []) =>
-        mounted(() => native.current?.hook(name, method, JSON.stringify(args))),
+        jsonResultOf(() => native.current?.hook(name, method, JSON.stringify(args))),
     };
   });
   const publish = useAttach(ref, handle);
@@ -279,7 +267,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     if (was.loading && !state.loading) props.onLoadEnd?.(state);
   };
 
-  // The same string while nothing in it changed, so a re-render sends native nothing.
   const settings = JSON.stringify(platformSettings(props));
   const injectedScripts = useMemo(
     () => nativeScripts(props.injectedScripts),
@@ -296,7 +283,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const hookOptions = useHookOptions(props.extensions);
   const navigationRules = useNavigationRules(props.navigationRules);
 
-  // One per ask in flight, by id: aborted when native stops waiting (the core's `askCancelled`) or at unmount.
   const [asks] = useState(() => new Map<number, AbortController>());
   useEffect(() => () => asks.forEach((controller) => controller.abort()), [asks]);
 
@@ -304,17 +290,17 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     nativeEvent: { key, name, payload, askId },
   }: Native<AskableEvent>) => {
     const core = key === 'core';
-    // The core's own events: a warning for the developer, and an ask native stopped waiting for.
     if (core && name === 'warning')
-      return console.warn(`[react-native-minimal-webview] ${String(payload['message'])}`);
-    if (core && name === 'askCancelled') return asks.get(payload['askId'] as number)?.abort();
-    const request = REQUESTS.find((prop) => core && prop === name);
-    // The later of two extensions with one key, as in useHookOptions. No hook is registered under `core`.
+      return console.warn(
+        `[react-native-minimal-webview] ${(payload as CoreEventPayloads['warning']).message}`
+      );
+    if (core && name === 'askCancelled')
+      return asks.get((payload as CoreEventPayloads['askCancelled']).askId)?.abort();
+    const request = REQUEST_HANDLER_PROPS.find((prop) => core && prop === name);
     const owner = props.extensions?.findLast((e): e is HookExtension => !!e && e.key === key);
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
       : (_: unknown, signal?: AbortSignal) => owner?.onEvent?.({ name, payload }, signal);
-    // Only an ask can be cancelled, so only an ask gets a signal.
     let controller: AbortController | undefined;
     if (askId !== undefined) {
       controller = new AbortController();
@@ -325,12 +311,10 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     try {
       value = await handler?.(payload, controller?.signal);
     } catch (error) {
-      // Native waits on this handler: one that throws still answers, with null (native's safe default).
       console.error(`[react-native-minimal-webview] ${failure}`, error);
     }
     if (askId === undefined) return;
     asks.delete(askId);
-    // Native already answered a cancelled ask with null; a late answer would find nothing.
     if (!controller?.signal.aborted) await native.current?.answer(askId, answerJson(value));
   };
 
@@ -358,7 +342,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   );
 }
 
-/** An ask's answer for native: null for one JSON can't encode (a function, a cycle, a BigInt), so the ask settles. */
 function answerJson(value: unknown) {
   try {
     return JSON.stringify(value) ?? 'null';
@@ -367,10 +350,6 @@ function answerJson(value: unknown) {
   }
 }
 
-/**
- * The scripts as native runs them: one whose `origins` lack `*` runs inside a function, so that even its function
- * declarations take effect only where the guard lets it run.
- */
 function nativeScripts(scripts: InjectedScript[] | undefined) {
   return scripts?.map(({ code, allFrames, origins }) => {
     if (!Array.isArray(origins))
@@ -380,10 +359,6 @@ function nativeScripts(scripts: InjectedScript[] | undefined) {
   });
 }
 
-/**
- * The rules as the core gets them (`checkNavigationRules`), and a development warning for each malformed one. The same
- * array when none is malformed.
- */
 function useNavigationRules(rules: WebViewProps['navigationRules']) {
   const { checked, warnings } = useMemo(
     () => checkNavigationRules(rules ?? defaultNavigationRules),
@@ -393,7 +368,6 @@ function useNavigationRules(rules: WebViewProps['navigationRules']) {
   return checked;
 }
 
-/** Logs each warning in development, again only when the list changes. */
 function useDevWarnings(warnings: string[]) {
   const json = JSON.stringify(warnings);
   useEffect(() => {
@@ -403,17 +377,11 @@ function useDevWarnings(warnings: string[]) {
   }, [json]);
 }
 
-/** The `REQUESTS` with a prop set, as a new array only when that set changes. */
 function useRequestHandlers(props: WebViewProps) {
-  const key = REQUESTS.filter((prop) => props[prop]).join();
+  const key = REQUEST_HANDLER_PROPS.filter((prop) => props[prop]).join();
   return useMemo(() => (key ? key.split(',') : []), [key]);
 }
 
-/**
- * The core's `hookOptions`: each extension's `options` by its key, the later of two extensions with one key winning (a
- * development warning). The same object while the JSON is the same, so a render with new handlers sends the core
- * nothing.
- */
 function useHookOptions(extensions: WebViewProps['extensions']) {
   const on = (extensions ?? []).filter((extension) => !!extension);
   const keys = on.map(({ key }) => key);
@@ -423,24 +391,14 @@ function useHookOptions(extensions: WebViewProps['extensions']) {
     )
   );
   const json = JSON.stringify(
-    withoutOff(
-      Object.fromEntries(
-        // An unset `options` is `true` (HookExtension.options).
-        on.map(({ key, options = true }) => [key, options])
-      )
-    )
+    withoutOff(Object.fromEntries(on.map(({ key, options = true }) => [key, options])))
   );
   return useMemo(() => JSON.parse(json) as Record<string, unknown>, [json]);
 }
 
-/** Bridges by identity, for the creation key. */
 const bridgeIds = new WeakMap<object, number>();
 let lastBridgeId = 0;
 
-/**
- * What native sets up once, at creation (the bridge, `ios.configuration`). As WebViewInstance's `key`, a change
- * remounts it.
- */
 function creationKey(props: WebViewProps) {
   const bridge = props.bridge;
   let id = bridge && bridgeIds.get(bridge);
@@ -451,13 +409,11 @@ function creationKey(props: WebViewProps) {
   );
 }
 
-/** A null or false value is off, and its key is left out: native treats a present key as on. */
 const withoutOff = (options: Record<string, unknown>) =>
   Object.fromEntries(
     Object.entries(options).filter(([, value]) => value != null && value !== false)
   );
 
-/** A JSON.stringify replacer: the same options in another key order are the same key. */
 const sortedKeys = (_: string, value: unknown) =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? Object.fromEntries(Object.entries(value).sort())
@@ -467,7 +423,6 @@ function viewPropsOf(props: WebViewProps): ViewProps {
   return Object.fromEntries(Object.entries(props).filter(([key]) => !OWN_SET.has(key)));
 }
 
-/** Each root's keys with its `other` ones among them, as native takes them; a generated key wins. */
 const flattened = (
   roots: Record<string, { other?: NativeSettings[string] } | undefined> = {}
 ): NativeSettings =>
@@ -475,18 +430,12 @@ const flattened = (
     Object.entries(roots).map(([name, { other, ...keys } = {}]) => [name, { ...other, ...keys }])
   );
 
-/** Each layer's roots over the earlier layers', key by key. */
 const layered = (...layers: NativeSettings[]) =>
   layers.reduce<NativeSettings>((out, layer) => {
     for (const [root, keys] of Object.entries(layer)) out[root] = { ...out[root], ...keys };
     return out;
   }, {});
 
-/**
- * The platform's settings for native: the package's defaults, react-native-webview's over them, the app's `ios` or
- * `android` roots over those, and `userAgent` on top. Native restores the key of a removed `userAgent`. Android's
- * own defaults are written natively.
- */
 function platformSettings(props: WebViewProps): NativeSettings {
   const [defaults, rnw, app, userAgent] =
     Platform.OS === 'ios'

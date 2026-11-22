@@ -3,7 +3,6 @@ package expo.modules.minimalwebview
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The ask contract: each ask is answered once, by JS or with null when native gives up. */
 class AsksTest {
   private val sent = mutableListOf<Map<String, Any?>>()
   private val asks = Asks { sent += it }
@@ -11,11 +10,13 @@ class AsksTest {
 
   private fun ask() = asks.ask("hook", "q", mapOf("a" to 1)) { answers += it }
 
+  private fun pendingAsk() = checkNotNull(ask()) { "the ask was answered at once" }
+
   private fun cancelled(id: Int) = mapOf("key" to "core", "name" to "askCancelled", "payload" to mapOf("askId" to id))
 
   @Test
   fun `an ask goes to JS with its id, and its first answer is the only one`() {
-    val id = ask()
+    val id = pendingAsk()
     asks.answer(id, "yes")
     asks.answer(id, "late")
     assertEquals(listOf(mapOf("key" to "hook", "name" to "q", "payload" to mapOf("a" to 1), "askId" to id)), sent)
@@ -24,7 +25,7 @@ class AsksTest {
 
   @Test
   fun `a cancelled ask answers null and tells JS, and a late answer is dropped`() {
-    val id = ask()
+    val id = pendingAsk()
     asks.cancel(id)
     asks.answer(id, "late")
     asks.cancel(id)
@@ -34,9 +35,9 @@ class AsksTest {
 
   @Test
   fun `a Document end answers every ask null, telling JS except at closing`() {
-    val first = ask()
+    val first = pendingAsk()
     asks.documentEnded(DocumentEnd.COMMITTED)
-    val second = ask()
+    val second = pendingAsk()
     asks.documentEnded(DocumentEnd.CLOSING)
     assertEquals(listOf(cancelled(first)), sent.filter { it["key"] == "core" && it["name"] == "askCancelled" })
     assertEquals(listOf<Any?>(null, null), answers)
@@ -47,7 +48,7 @@ class AsksTest {
   @Test
   fun `an ask after closing answers null at once and sends nothing`() {
     asks.documentEnded(DocumentEnd.CLOSING)
-    ask()
+    assertEquals(null, ask())
     assertEquals(listOf<Any?>(null), answers)
     assertEquals(emptyList<Map<String, Any?>>(), sent)
   }

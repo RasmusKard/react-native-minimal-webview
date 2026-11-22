@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-/** The structured navigation rules. Semantics and cases: src/__tests__/vectors/navigation-rules.json (shared with Swift). */
 internal object NavigationRules {
   data class Request(
     val url: String,
@@ -10,19 +9,20 @@ internal object NavigationRules {
     val isRedirect: Boolean = false
   )
 
-  /** [action] is allow, block, external or ask; [rule] is the matching rule's index, null when a default decided. */
-  data class Decision(val action: String, val rule: Int?)
+  enum class Action(val jsName: String) { ALLOW("allow"), BLOCK("block"), EXTERNAL("external"), ASK("ask") }
 
-  /** Load in place without the rules. */
-  private val internalSchemes = setOf("about", "data", "javascript")
+  /** [rule] is the index of the rule that decided, null when a default did. */
+  data class Decision(val action: Action, val rule: Int?)
+
+  private val schemesAllowedWithoutRules = setOf("about", "data", "javascript")
 
   /**
    * Never open as a new window, whatever the rules say: the core loads an allowed new window in the main frame itself,
    * past the engine's limits on what a page may navigate the top frame to.
    */
-  private val noNewWindowSchemes = internalSchemes + setOf("blob", "file")
-  private val actions = setOf("allow", "block", "external", "ask")
-  private val answers = setOf("allow", "block", "external")
+  private val noNewWindowSchemes = schemesAllowedWithoutRules + setOf("blob", "file")
+
+  private fun actionOf(value: Any?) = Action.entries.find { it.jsName == value }
 
   /**
    * The rules' decision, gated for `ask`: blocked when nothing can answer it ([canAsk] false), allowed when its URL is
@@ -31,30 +31,29 @@ internal object NavigationRules {
   fun decide(rules: List<Map<String, Any?>>?, request: Request, asked: Set<String>, canAsk: Boolean): Decision {
     val decision = match(rules, request)
     return when {
-      decision.action != "ask" -> decision
-      !canAsk -> Decision("block", decision.rule)
-      request.url in asked -> Decision("allow", decision.rule)
+      decision.action != Action.ASK -> decision
+      !canAsk -> Decision(Action.BLOCK, decision.rule)
+      request.url in asked -> Decision(Action.ALLOW, decision.rule)
       else -> decision
     }
   }
 
   /** An `ask` answer: allow, block or external; anything else (null on a timeout) blocks. */
-  fun answer(value: Any?): String = (value as? String)?.takeIf { it in answers } ?: "block"
+  fun answer(value: Any?): Action = actionOf(value)?.takeIf { it != Action.ASK } ?: Action.BLOCK
 
   private fun match(rules: List<Map<String, Any?>>?, request: Request): Decision {
     val scheme = request.url.substringBefore(':', "").lowercase()
-    if (request.newWindow && scheme in noNewWindowSchemes) return Decision("block", null)
-    if (scheme in internalSchemes) return Decision("allow", null)
-    // JS sends defaultNavigationRules when the prop is unset; no rules, null or empty, match nothing.
-    if (rules.isNullOrEmpty()) return Decision("block", null)
+    if (request.newWindow && scheme in noNewWindowSchemes) return Decision(Action.BLOCK, null)
+    if (scheme in schemesAllowedWithoutRules) return Decision(Action.ALLOW, null)
+    if (rules.isNullOrEmpty()) return Decision(Action.BLOCK, null)
     val parts = (if (scheme == "blob") blobOrigin(request.url) else parts(scheme, request.url))
-      ?: return Decision("block", null)
+      ?: return Decision(Action.BLOCK, null)
     val index = rules.indexOfFirst { matches(it, parts, request) }
-    return if (index < 0) Decision("block", null) else Decision((rules[index]["action"] as? String)?.takeIf { it in actions } ?: "block", index)
+    return if (index < 0) Decision(Action.BLOCK, null) else Decision(actionOf(rules[index]["action"]) ?: Action.BLOCK, index)
   }
 
-  // scheme ":" ["//" authority] path ["?" query]. java.net.URI rejects URLs Chromium accepts (a raw `|` in the query,
-  // `_` in a host), so the parts are split with a regex.
+  // java.net.URI rejects URLs Chromium accepts (a raw `|` in the query, `_` in a host), so the parts are split with a
+  // regex.
   private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)(?:\\?([^#]*))?")
 
   private data class Parts(val scheme: String, val host: String?, val path: String, val params: List<String>)

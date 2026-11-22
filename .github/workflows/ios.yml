@@ -20,8 +20,6 @@ jobs:
       APP: expo.modules.minimalwebview.example
     steps:
       - uses: actions/checkout@v7.0.1
-      # The key covers what the build reads, and the entry is saved only when the job passes: on a hit, this app has
-      # launched before, and the job builds nothing.
       - id: launched
         uses: actions/cache@v6.1.0
         with:

@@ -1,4 +1,3 @@
-// The extensions suite: @react-native-minimal-webview/extensions' functions, through the WebView's `extensions` prop.
 import {
   type CustomMenuSelectionEvent,
   type Dialog,
@@ -36,6 +35,7 @@ import {
   waitForLoad,
   poll,
   happens,
+  clickWithoutWaiting,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER, PAGES_PORT } from '../pages';
@@ -44,35 +44,26 @@ const KEY = '@react-native-minimal-webview/extensions';
 const ios = Platform.OS === 'ios';
 const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">';
 const MENU = [{ label: 'Highlight', key: 'hl' }];
+const ONE_WORD_OVER_THE_PAGE = `<p style="font: 48px/1.2 system-ui; word-break: break-all; margin: 0">${'a'.repeat(3000)}</p>`;
 
-/** Loads `body` as an html source and waits until it is the page. */
 async function loadHtml(h: Harness, body: string) {
   const title = `ext-${Date.now()}`;
   h.loadSource({
     html: `<!doctype html>${VIEWPORT}<title>${title}</title>${body}`,
     baseUrl: h.pages,
   });
-  // A poll in flight when the html commits rejects with `navigated`; the next poll retries.
   return !!(await poll(
     async () => (await h.ref.current?.evaluate('document.title').catch(errorCode)) === title,
     10000
   ));
 }
 
-/** The WebView's class, from its `description` (iOS) or `toString()` (Android). */
 const webViewClass = async (h: Harness) =>
   await h.ref.current?.call(ios ? 'webView.description' : 'webView.toString').catch(errorCode);
 
-/**
- * This package's hook events App logs: the onScroll hook's that no extension took, and those of an extension without
- * `onEvent`.
- */
+const switchedOffOnScroll = { key: `${KEY}.onScroll`, options: null };
 const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.startsWith(KEY));
 
-/**
- * Each extension's effect, and that a WebView with none of them gets none of the package's hooks. The menu needs the
- * driver's long press.
- */
 export async function extensions(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   try {
@@ -105,7 +96,7 @@ const DECLINED = OTHER;
 const SIGNED_IN = `http://${ios ? '[::1]' : '10.0.2.2'}:${PAGES_PORT}`;
 
 async function inert(h: Harness, r: Reporter) {
-  await recreate(h, {}, true);
+  await recreate(h, { extensions: [switchedOffOnScroll] }, { remount: true });
   const made = await webViewClass(h);
   r.check(
     "with no extension, the WebView isn't made from the menu hook's class",
@@ -147,7 +138,7 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
   await sleep(300);
-  await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`))); // on iOS the load is still going at the timeout
+  await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`)));
   const wrong = await text(h, 'auth');
   r.check(
     'basicAuthCredential with a rejected credential stops: the 401 page shows',
@@ -157,8 +148,6 @@ async function auth(h: Harness, r: Reporter) {
   h.setProps({});
   await sleep(300);
   if (!ios) return;
-  // Its delegate comes first (its package registers first) and passes on the challenge after its credential fails:
-  // the later hook's delegate is asked only then.
   const asked: unknown[] = [];
   h.setProps({
     extensions: [
@@ -193,10 +182,7 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
     ['confirm', 'confirm true'],
     ['prompt', 'prompt typed'],
   ] as const) {
-    const lines = await pageLog(h, () => {
-      // Not awaited: on iOS evaluate doesn't return while a dialog blocks the page.
-      void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('${id}').click(), 0)`);
-    });
+    const lines = await pageLog(h, () => clickWithoutWaiting(h, id));
     r.check(
       `onDialog answers the ${id}, and the page gets the answer`,
       lines?.join() === expected,
@@ -220,7 +206,6 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
       ]),
     seen
   );
-  // An unmount while onDialog has not answered ends the ask; the remounted WebView's dialogs are answered.
   let hold = true;
   let aborted = false;
   h.setProps({
@@ -233,20 +218,17 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
     ],
   });
   await openPage(h, fresh(h, '/dialogs.html'));
-  void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('alert').click(), 0)`);
+  clickWithoutWaiting(h, 'alert');
   await sleep(1000);
   const remounted = await happens(waitForLoad(h, () => h.remount()));
   hold = false;
   await openPage(h, fresh(h, '/dialogs.html'));
-  const next = await pageLog(h, () => {
-    void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('confirm').click(), 0)`);
-  });
+  const next = await pageLog(h, () => clickWithoutWaiting(h, 'confirm'));
   r.check(
     "an unmount while onDialog hasn't answered aborts its signal, and the next dialog is answered",
     remounted && aborted && next?.join() === 'confirm true',
     { remounted, aborted, next }
   );
-  // Android checks when the callback comes, iOS when the delegates are set.
   h.setProps({ extensions: [dialogsExtension(() => true), sampleHook('hookDialogs')] });
   await sleep(300);
   void h.ref.current?.evaluate("setTimeout(() => alert('two hooks'), 0)");
@@ -264,14 +246,13 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
 
 async function scroll(h: Harness, r: Reporter) {
   const scrolls: ScrollEvent[] = [];
-  // react-native-webview's default, so the offsets have no inset in them.
-  const insets = {
+  const noInsetAdjustment = {
     scrollView: {
       contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
     },
   };
   h.setProps({
-    ios: insets,
+    ios: noInsetAdjustment,
     extensions: [onScroll((event) => scrolls.push(event))],
   });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
@@ -285,10 +266,9 @@ async function scroll(h: Harness, r: Reporter) {
     !!at && at.contentSize.height > at.layoutMeasurement.height,
     scrolls.at(-1)
   );
-  h.setProps({ ios: insets });
+  h.setProps({ ios: noInsetAdjustment, extensions: [switchedOffOnScroll] });
   await sleep(300);
   const count = scrolls.length;
-  // A hook switched off earlier in the suite (a dialog's answer) may still send one: only what the scroll sends counts.
   h.events.hookEvents.length = 0;
   await h.ref.current?.evaluate('scrollTo(0, 800)');
   await sleep(1000);
@@ -304,7 +284,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   await recreate(
     h,
     { extensions: [menuItems({ items: MENU, onSelect: (event) => chosen.push(event) })] },
-    true
+    { remount: true }
   );
   const made = await webViewClass(h);
   r.check(
@@ -312,11 +292,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     typeof made === 'string' && made.includes(ios ? 'MenuWKWebView' : 'MenuWebView'),
     made
   );
-  // One long word over the whole page: the driver's long press lands on text wherever it is.
-  await loadHtml(
-    h,
-    `<p style="font: 48px/1.2 system-ui; word-break: break-all; margin: 0">${'a'.repeat(3000)}</p>`
-  );
+  await loadHtml(h, ONE_WORD_OVER_THE_PAGE);
   r.drive({ action: 'longPress', point: '50%, 30%' });
   r.drive({ action: 'press', text: 'Highlight' });
   const selection = await poll(() => chosen[0], 30000);
@@ -325,7 +301,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     selection?.key === 'hl' && selection.label === 'Highlight' && selection.selectedText.length > 0,
     selection
   );
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   h.setProps({ extensions: [menuItems({ items: MENU })] });
   await until(() => warnings.warned(`extension ${KEY}.menuItems`), 3000);
   r.check(
@@ -365,22 +341,22 @@ async function privacy(h: Harness, r: Reporter) {
     const persistent = async () =>
       await h.ref.current?.get('websiteDataStore.persistent').catch(errorCode);
     const before = await persistent();
-    await recreate(h, { extensions: [incognito()] }, true);
+    await recreate(h, { extensions: [incognito()] }, { remount: true });
     const after = await persistent();
     r.check(
       "incognito set at creation gives the WebView a data store that isn't saved",
       before === true && after === false,
       { before, after }
     );
-    await recreate(h, {}, true);
+    await recreate(h, {}, { remount: true });
     return;
   }
   const cookie = async () =>
     await h.ref.current?.call('cookieManager.getCookie', [h.pages]).catch(errorCode);
   await openPage(h, fresh(h, '/setcookie?name=incognito&value=1'));
   const set = await cookie();
-  await openPage(h, fresh(h, '/')); // the source the new WebView loads
-  await recreate(h, { extensions: [incognito()] }, true);
+  await openPage(h, fresh(h, '/'));
+  await recreate(h, { extensions: [incognito()] }, { remount: true });
   const cleared = await cookie();
   const cacheMode = await h.ref.current?.get('settings.cacheMode').catch(errorCode);
   r.check(
@@ -390,7 +366,7 @@ async function privacy(h: Harness, r: Reporter) {
       cacheMode === AndroidConstants.WebSettings.LOAD_NO_CACHE,
     { set, cleared, cacheMode }
   );
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
 }
 
 async function keyboard(h: Harness, r: Reporter) {
@@ -425,13 +401,12 @@ async function keyboard(h: Harness, r: Reporter) {
     );
     return !!(await poll(async () => (await viewport()) < height, 2000));
   };
-  // Each WebView is one the keyboard hasn't shown for: WebKit's own rules show it for a later focus in that one.
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const before = await keyboardShows();
   h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
   await sleep(300);
   const on = await keyboardShows();
-  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, true);
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
   h.setProps({});
   await sleep(300);
   const off = await keyboardShows();
@@ -440,7 +415,6 @@ async function keyboard(h: Harness, r: Reporter) {
     !before && on && !off,
     { before, on, off }
   );
-  // evaluate's user gesture shows the keyboard; its bottom inset comes from the observers the extension removes.
   const keyboardInset = async () => {
     await loadHtml(h, '<input id="i">');
     const height = await viewport();
@@ -450,9 +424,9 @@ async function keyboard(h: Harness, r: Reporter) {
     const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
     return (inset as { bottom?: number } | undefined)?.bottom;
   };
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const observed = await keyboardInset();
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   h.setProps({ extensions: [removeIosKeyboardObserver()] });
   await sleep(300);
   const removed = await keyboardInset();
@@ -488,7 +462,6 @@ async function android(h: Harness, r: Reporter) {
     'nestedScrollEnabled',
     'needs a scrolling parent, which the example has none of: check it by hand'
   );
-  // The Download Manager can't fetch a data: URL: onDownload still gets that one.
   const handed = () => h.events.downloads.length + h.events.downloadFailures.length;
   h.setProps({ extensions: [downloadManager({ downloadingMessage: 'Saving' })] });
   await openPage(h, fresh(h, '/media.html'));
@@ -509,16 +482,15 @@ async function android(h: Harness, r: Reporter) {
     'downloadManager',
     'the file in the Downloads folder, its notification and the toast: check them by hand'
   );
-  // Nothing listens on port 1; the test server's https has a self-signed certificate.
   const failed: SubResourceErrorEvent[] = [];
   h.setProps({ extensions: [onLoadSubResourceError((event) => failed.push(event))] });
   await sleep(300);
-  const image = 'http://127.0.0.1:1/x.png';
+  const unreachableImage = 'http://127.0.0.1:1/x.png';
   await loadHtml(
     h,
-    `<img src="${image}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
+    `<img src="${unreachableImage}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
-  const reported = await poll(() => failed.find(({ url }) => url === image), 5000);
+  const reported = await poll(() => failed.find(({ url }) => url === unreachableImage), 5000);
   const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
   await openPage(h, 'http://127.0.0.1:1/main');
   await sleep(1000);

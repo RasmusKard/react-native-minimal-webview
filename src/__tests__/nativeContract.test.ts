@@ -1,10 +1,7 @@
-// The names and values JS and native agree on, read from the sources: a prop, event, function, page request, payload
-// key or value renamed or added on one side fails here by name. The on-device suites would only show it as a feature
-// that stopped working.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { AskableEvent } from '../WebView';
+import type { AskableEvent, CoreEventPayloads } from '../WebView';
 import type { BridgeEvent } from '../bridge/createBridge';
 import type {
   AndroidSettings,
@@ -46,7 +43,6 @@ const sources = (platform: Platform) =>
 
 const PROP = /\bProp\("(\w+)"\)/g;
 const FUNCTION = /\b(?:AsyncFunction|Function|Constant)\("(\w+)"\)/g;
-// A core event's name: `"core", "<name>"` at an emit or ask, `"key" to "core", "name" to "<name>"` in a literal.
 const CORE_EVENT = /"core",\s*(?:"name"(?: to|:)\s*)?"(\w+)"/g;
 const events = (text: string) => names(text.match(/\bEvents\(([^)]*)\)/)?.[1] ?? '', /"(\w+)"/g);
 
@@ -76,8 +72,14 @@ test('the native view gets exactly the native props and events, and JS calls exa
 });
 
 test('the page requests JS routes are the ones native asks for, and each platform gates the ones it has', () => {
-  const requests = names(ts.match(/const REQUESTS = \[([^\]]*)\]/)?.[1] ?? '', /'(\w+)'/g);
-  const told = ['warning', 'askCancelled'];
+  const requests = names(
+    ts.match(/const REQUEST_HANDLER_PROPS = \[([^\]]*)\]/)?.[1] ?? '',
+    /'(\w+)'/g
+  );
+  const told = Object.keys({ warning, askCancelled } satisfies Record<
+    keyof CoreEventPayloads,
+    Keys
+  >);
   const asked = names(natives, CORE_EVENT).filter((name) => !told.includes(name));
   const gated = (platform: Platform, gate: RegExp) =>
     names(sources(platform).map(read).join('\n'), gate);
@@ -92,7 +94,6 @@ test('the page requests JS routes are the ones native asks for, and each platfor
   told.forEach((name) => expect(ts).toContain(`'${name}'`));
 });
 
-// Payload keys: each type's keys as a `Record`, so a key added to the type and not here fails to compile.
 type Keys = Record<string, unknown>;
 const state = {
   url: 1,
@@ -151,10 +152,8 @@ const httpFailure = { ok: 1, kind: 1, filename: 1, url: 1, statusCode: 1 } satis
 const permission = { origin: 1, resources: 1 } satisfies Record<keyof PermissionRequest, 1>;
 const file = { accept: 1, multiple: 1, capture: 1 } satisfies Record<keyof FileRequest, 1>;
 const fullscreen = { active: 1 } satisfies Record<keyof FullscreenChangeEvent, 1>;
-// No type: JS reads `payload['message']` and `payload['askId']` untyped.
-const warning = { message: 1 };
-const askCancelled = { askId: 1 };
-// onNavigation's payload is the navigation request's (its own row) plus these, added at the emit site.
+const warning = { message: 1 } satisfies Record<keyof CoreEventPayloads['warning'], 1>;
+const askCancelled = { askId: 1 } satisfies Record<keyof CoreEventPayloads['askCancelled'], 1>;
 const decision = Object.fromEntries(
   Object.keys(navigation)
     .filter((key) => !(key in request))
@@ -162,7 +161,6 @@ const decision = Object.fromEntries(
 );
 
 type Row = { event: string; file: string; emitSite: RegExp; keys: Keys | Keys[] };
-// Every literal after each `emitSite` match must have one of `keys`' key sets, and each set must occur.
 const PAYLOADS: Record<Platform, Row[]> = {
   android: [
     {
@@ -195,7 +193,6 @@ const PAYLOADS: Record<Platform, Row[]> = {
       emitSite: /onBridge\(/g,
       keys: [message, navigated, crashed, unavailable],
     },
-    // Not `Asks { onHookEvent(it) }`: its literals are in Asks.kt.
     {
       event: 'onHookEvent',
       file: 'MinimalWebView.kt',
@@ -210,7 +207,6 @@ const PAYLOADS: Record<Platform, Row[]> = {
       keys: request,
     },
     {
-      // Sent as `fields(request)`, like `onNavigationRequest`.
       event: 'onOpenExternal',
       file: 'MinimalWebViewNavigation.kt',
       emitSite: /fun fields\(/g,
@@ -291,7 +287,6 @@ const PAYLOADS: Record<Platform, Row[]> = {
       emitSite: /onBridge\(/g,
       keys: [navigated, crashed],
     },
-    // Not `Asks { [weak self] in self?.onHookEvent($0) }`: its literals are in Asks.swift.
     {
       event: 'onHookEvent',
       file: 'MinimalWebView.swift',
@@ -306,7 +301,6 @@ const PAYLOADS: Record<Platform, Row[]> = {
       keys: request,
     },
     {
-      // Sent as `request.payload`, like `onNavigationRequest`.
       event: 'onOpenExternal',
       file: 'NavigationRules.swift',
       emitSite: /var payload: \[String: Any\] \{/g,
@@ -340,7 +334,6 @@ const PAYLOADS: Record<Platform, Row[]> = {
 };
 const KEY = { android: /"(\w+)" to/g, ios: /"(\w+)":/g };
 
-/** The top level of the first `(…)` or `[…]` from `from` on: a nested literal's keys are not this one's. */
 const literal = (text: string, from: number) => {
   let depth = 0;
   let top = '';
@@ -374,7 +367,6 @@ describe.each(['android', 'ios'] as const)('%s payloads', (platform) => {
   });
 });
 
-// Values: each TS union as a `Record`, so a member added to the type and not here fails to compile.
 /** Every key of a union's members (`keyof` a union is only the keys they share). */
 type AllKeys<T> = T extends unknown ? keyof T : never;
 const outcome = { finished: 1, failed: 1, cancelled: 1 } satisfies Record<
@@ -391,7 +383,6 @@ const source = {
   html: 1,
   baseUrl: 1,
 } satisfies Record<AllKeys<WebViewSource>, 1>;
-// `origins` stays in JS: WebView.tsx folds it into the code.
 const script = { code: 1, allFrames: 1 } satisfies Record<keyof Omit<InjectedScript, 'origins'>, 1>;
 const iosRoots = {
   configuration: 1,
@@ -427,10 +418,8 @@ type ValueRow = {
   site: RegExp;
   /** Default: the quoted words. */
   value?: RegExp;
-  /** The documented values this platform doesn't have. */
   lacks?: string[];
 };
-// The `value` matches inside every `site` match must be exactly `keys`, bar what the platform `lacks`.
 const FIELD = /@Field (?:val|var) (\w+)/g;
 const CODE = /(?:reject\(|failure\(|EvaluateError\(|PlatformException\(|code: )"\w+"/g;
 const VALUES: Record<Platform, ValueRow[]> = {
@@ -438,8 +427,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
     {
       name: 'outcome',
       keys: outcome,
-      files: ['MinimalWebView.kt', 'MinimalWebViewClients.kt'],
-      site: /outcome = [^\n/]*|-> "\w+"/g,
+      site: /enum class LoadOutcome\([^}]*\}/g,
     },
     {
       name: 'error kind',
@@ -478,7 +466,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       files: ['requests/Permissions.kt'],
       site: / to "\w+"|listOf\("\w+"\)/g,
     },
-    { name: 'rule actions', keys: actions, site: /val actions = setOf\([^)]*\)/g },
+    { name: 'rule actions', keys: actions, site: /enum class Action\([^}]*\}/g },
     { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
   ios: [

@@ -4,7 +4,6 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The crash-loop guard (crashAllowsReload): the shared vectors, and Android's counting one death's reports once. */
 class CrashLoopTest {
   private val vectors = JSONObject(
     checkNotNull(javaClass.getResource("/vectors/recovery.json")) { "test resource vectors/recovery.json missing" }.readText()
@@ -30,11 +29,11 @@ class CrashLoopTest {
     val times = ArrayDeque<Long>()
     val cases = listOf(
       0L to true,
-      50L to true, // another WebView's report of the same death
+      50L to true,
       5_000L to true,
       10_000L to true,
-      15_000L to false, // the 4th in 60 s
-      15_050L to false // the same 4th death, reported again
+      15_000L to false,
+      15_050L to false
     )
     for ((now, expected) in cases) assertEquals("at $now", expected, crashAllowsReload(times, now))
   }

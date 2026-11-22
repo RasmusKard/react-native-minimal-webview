@@ -8,20 +8,14 @@ import androidx.webkit.WebViewFeature
 import expo.modules.kotlin.exception.CodedException
 import org.json.JSONArray
 
-/** Scripts in the page: the bridge transport, `injectedScripts` and `evaluate`. */
 internal class MinimalWebViewScripts(private val owner: MinimalWebView, private val onBridge: (Map<String, Any?>) -> Unit) {
   private val webView get() = owner.webView
 
-  // Bridge: the page posts through `window.nativeBridgeTransport`; replies go to the main frame's latest proxy.
   private var replyProxy: JavaScriptReplyProxy? = null
   private var installedScripts: List<InjectedScript>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
   private val evaluations = Evaluations()
 
-  /**
-   * Installs everything into a new WebView, the first or the one after a crash. The evaluate channel and the bridge go
-   * in only here: JS fixes `bridge` at mount.
-   */
   fun install() {
     // After a crash they are the destroyed WebView's: removing them would call into it.
     scriptHandlers.clear()
@@ -38,18 +32,14 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
       return
     }
     val origins = owner.bridgeOrigins.orEmpty().toSet()
-    // A malformed origin rule makes WebView throw; createBridge validates them, so this only guards against misuse.
-    // JS learns of it: calls reject with `unavailable`.
     try {
       WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, sourceOrigin, isMainFrame, proxy ->
-        // Main frame only, like iOS. The origin rules already filtered the sender.
         if (!isMainFrame) return@addWebMessageListener
-        // An ArrayBuffer has no string data (`data` throws); iOS drops a non-string message too.
+        // An ArrayBuffer message has no string data: WebMessageCompat.getData throws for it.
         if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
         replyProxy = proxy
         onBridge(mapOf("message" to message.data, "origin" to sourceOrigin.toString()))
       }
-      // Runs before the page's own scripts, after the transport object exists.
       WebViewCompat.addDocumentStartJavaScript(webView, script, origins)
     } catch (e: IllegalArgumentException) {
       failed("bridge not installed: invalid allowedOrigins $origins", e)
@@ -78,51 +68,35 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     replyProxy?.postMessage(message)
   }
 
-  /**
-   * The Document ended: its evaluations fail and its reply proxy is gone. JS queues bridge messages until the next
-   * page is ready; at unmount it rejects what is in flight itself.
-   */
   fun documentEnded(reason: DocumentEnd) {
     evaluations.failAll()
-    // At a commit this runs one main-thread hop after Chromium's (the NavigationListener's executor posts it), and
-    // relies on landing before the new page's first message sets replyProxy (the bridge suite's head-script call).
     replyProxy = null
     if (reason == DocumentEnd.COMMITTED && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
     if (reason == DocumentEnd.CRASHED && owner.bridgeScript != null) onBridge(mapOf("crashed" to true))
   }
 
-  /**
-   * `evaluate` results come back through one global in every frame (`*`, before the first document). A page can forge
-   * them, as it can already shape any value its own world returns.
-   */
   private fun installEvaluate() {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
     WebViewCompat.addWebMessageListener(webView, EVALUATE, setOf("*")) { _, message, _, isMainFrame, _ ->
-      // As in installBridge: only string messages.
       if (message.type == WebMessageCompat.TYPE_STRING) evaluations.settle(message.data, isMainFrame)
     }
   }
 
-  /**
-   * The `evaluate` ref method. A new Document rejects what is still waiting: WebView drops the callback when the
-   * document is replaced first.
-   */
+  /** A new Document rejects what is still waiting: WebView drops the callback when the document is replaced first. */
   fun evaluate(script: String, onResult: (Result<String>) -> Unit) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
       return onResult(failure("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView"))
     }
     val id = evaluations.add(onResult)
-    // The script sits in a scope of its own (no wrapper names shadow the page's); the sync value is 1 once it started.
     val code = """typeof $EVALUATE === 'object' ? ((t, p) => (p.then(
   (v) => { try { v = JSON.stringify(v) } catch { v = null } t.postMessage(JSON.stringify([$id, v ?? 'null'])) },
   (e) => { try { e = String(e) } catch { e = 'Error' } t.postMessage(JSON.stringify([$id, null, e])) }
-), 1))($EVALUATE, (async () => (
+), $STARTED))($EVALUATE, (async () => (
 $script
-))()) : 0"""
+))()) : $NO_CHANNEL"""
     webView.evaluateJavascript(code) { value ->
-      if (value == "1") return@evaluateJavascript
-      // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
-      evaluations.fail(id, if (value == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)")
+      if (value == STARTED) return@evaluateJavascript
+      evaluations.fail(id, if (value == NO_CHANNEL) "no evaluate channel in this page" else "the script did not run (a syntax error?)")
     }
   }
 
@@ -146,8 +120,7 @@ $script
 }
 
 /**
- * The `evaluate` calls waiting for their result, by id. Each settles once: by the page's reply, a script that didn't
- * run, or the Document's end. Main thread only.
+ * Each evaluation settles once: by the page's reply, a script that didn't run, or the Document's end. Main thread only.
  */
 internal class Evaluations {
   private val waiting = mutableMapOf<Int, (Result<String>) -> Unit>()
@@ -193,3 +166,5 @@ internal class EvaluateError(code: String, message: String) : CodedException(cod
 private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
 private const val EVALUATE = "nativeEvaluateResult"
+private const val STARTED = "1"
+private const val NO_CHANNEL = "0"

@@ -13,10 +13,6 @@ import {
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { HTTPS } from '../pages';
 
-/**
- * Main-frame errors only, the URL after a failure, how each kind of load ends (`outcome`), the example's error screen
- * (the recipe in guides/examples.md#loading-and-error-screens), and reload recovering.
- */
 export async function errors(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/'));
   /** Runs `act`, then waits for the next load to end: its outcome, or 'no end' after `ms`. */
@@ -28,7 +24,7 @@ export async function errors(h: Harness, r: Reporter) {
   };
 
   clearEvents(h);
-  const unreachable = 'http://localhost:8099/nothing'; // nothing listens there
+  const unreachable = 'http://localhost:8099/nothing';
   h.load(unreachable);
   const gotNetwork = await happens(waitFor(h, () => h.events.errors.length > 0, 10000));
   await waitFor(h, idle, 5000);
@@ -83,7 +79,6 @@ export async function errors(h: Harness, r: Reporter) {
     stopped === 'cancelled',
     stopped
   );
-  // A load replaced before it commits: iOS keeps loading into the newer one.
   clearEvents(h);
   h.load(fresh(h, '/slow?ms=3000'));
   await waitFor(h, (s) => s.loading, 3000);
@@ -103,7 +98,6 @@ export async function errors(h: Harness, r: Reporter) {
     replaced
   );
   const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
-  // WebKit 298028@main stops a 204 for a policy change instead of finishing it; first in Safari 26.2 (20623.1.14).
   const expected204 =
     Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 26.2 ? 'finished' : 'cancelled';
   r.since(
@@ -148,7 +142,6 @@ export async function errors(h: Harness, r: Reporter) {
   });
   r.check('the reload reports no new error', h.events.errors.length === 1, h.events.errors);
 
-  // An app's retry button: reload() after a network failure fetches the failed URL again.
   clearEvents(h);
   const key = `retry${Date.now()}`;
   const dropping = `${h.pages}/drop?key=${key}`;
@@ -170,7 +163,6 @@ export async function errors(h: Harness, r: Reporter) {
     { retried, state: h.state(), errors: h.events.errors }
   );
 
-  // Page-initiated, then through a redirect: on Android these reach the SSL check through shouldOverrideUrlLoading.
   for (const [name, to, failed] of [
     ['ssl error from the page', `'${HTTPS}/link'`, `${HTTPS}/link`],
     ['ssl error after a redirect', `'/redirect?to=${HTTPS}/redirected'`, `${HTTPS}/redirected`],

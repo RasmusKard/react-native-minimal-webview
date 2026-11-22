@@ -1,4 +1,3 @@
-// Type-level checks, run by `npx tsc --noEmit -p src/__tests__/tsconfig.json`: each expected error below must occur.
 import { createBridge } from '../bridge/createBridge';
 import { installPageClient } from '../bridge/pageClient';
 import type { Bridge, PageBridge, WebViewProps } from '../types';
@@ -52,12 +51,10 @@ function typed(bridge: Bridge<Shop>) {
   // @ts-expect-error because the event isn't in the schema
   bridge.emit('typo');
 
-  // A bridge of any schema goes in the `bridge` prop.
   const prop: WebViewProps['bridge'] = bridge;
   return [count, wrong, prop];
 }
 
-/** The page's side, as the page's own code declares `window.nativeBridge` with a type-only import. */
 function page(nativeBridge: PageBridge<Shop>) {
   nativeBridge.handle('getCartCount', () => 3);
   nativeBridge.handle('setTheme', (theme) => void (theme satisfies 'light' | 'dark'));
@@ -87,7 +84,6 @@ function page(nativeBridge: PageBridge<Shop>) {
   return shared;
 }
 
-/** The page client's `window.nativeBridge` is a PageBridge. */
 function pageClient(w: Parameters<typeof installPageClient>[0]) {
   const installed: PageBridge | undefined = w.nativeBridge;
   return installed;

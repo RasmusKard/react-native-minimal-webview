@@ -1,7 +1,6 @@
 import { fresh, openPage, text, until } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
-/** First-load headers and shared cookies. */
 export async function network(h: Harness, r: Reporter) {
   const headersPage = fresh(h, '/headers');
   await openPage(h, { uri: headersPage, headers: { 'X-Test-Header': 'hello' } }, 10000);
@@ -18,7 +17,6 @@ export async function network(h: Harness, r: Reporter) {
     await text(h, 'cookies')
   );
   await h.ref.current?.evaluate(`document.cookie = 'fromPage=${Date.now()}; path=/'`);
-  // It reaches the shared store on the platform's schedule: ask until it shows.
   let native = '';
   await until(async () => {
     native = await fetch(`${h.pages}/cookies`).then((res) => res.text());
@@ -29,7 +27,6 @@ export async function network(h: Harness, r: Reporter) {
     native.includes('fromPage='),
     native.slice(0, 200)
   );
-  // A cookie the page deletes (a logout) leaves native too, so the next source load doesn't bring it back.
   await h.ref.current?.evaluate(
     "document.cookie = 'fromPage=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'"
   );

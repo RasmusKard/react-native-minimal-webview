@@ -23,7 +23,6 @@ export const defaultNavigationRules: readonly NavigationRule[] = freeze<Navigati
   { mainFrame: true, userInitiated: true, action: 'external' },
 ]);
 
-/** Each rule field's kind, from its type, so that a field missing here, or not in the type, fails to compile. */
 const RULE_FIELDS = new Map(
   Object.entries({
     scheme: 'list',
@@ -49,17 +48,14 @@ const ACTIONS: unknown[] = Object.keys({
   ask: 0,
 } satisfies Record<NavigationRule['action'], 0>);
 
-/** A value as a warning shows it. */
 const shown = (value: unknown) => {
   try {
     return JSON.stringify(value) ?? String(value);
   } catch {
-    // A BigInt, a circular value or a throwing toJSON: the message runs in production too, so it must not throw.
     return typeof value === 'bigint' ? String(value) : Object.prototype.toString.call(value);
   }
 };
 
-/** What a field of each kind takes, as a warning says it, and the check. */
 const FIELD_KINDS = {
   list: {
     takes: 'an array of strings',
@@ -70,23 +66,21 @@ const FIELD_KINDS = {
   action: { takes: `one of ${shown(ACTIONS)}`, ok: (value: unknown) => ACTIONS.includes(value) },
 };
 
+const REQUIRED_FIELDS_UNSET = { action: undefined } satisfies {
+  [K in keyof NavigationRule as object extends Pick<NavigationRule, K> ? never : K]: undefined;
+};
+
 function ruleProblem(rule: unknown) {
   if (typeof rule !== 'object' || rule === null) return `must be an object, not ${shown(rule)}`;
-  // A missing action is checked as an undefined one; any other field may be undefined (unset).
-  for (const [key, value] of Object.entries({ action: undefined, ...rule })) {
+  for (const [key, value] of Object.entries({ ...REQUIRED_FIELDS_UNSET, ...rule })) {
     const kind = RULE_FIELDS.get(key);
     if (!kind) return `unknown key ${shown(key)}`;
-    if ((value !== undefined || kind === 'action') && !FIELD_KINDS[kind].ok(value))
+    if ((value !== undefined || key in REQUIRED_FIELDS_UNSET) && !FIELD_KINDS[kind].ok(value))
       return `${key} must be ${FIELD_KINDS[kind].takes}, not ${shown(value)}`;
   }
   return undefined;
 }
 
-/**
- * The rules as the core gets them, and a warning for each malformed one. The core skips an unknown key and a
- * non-boolean flag, which would widen a rule (`hosts` would match every host), so a malformed rule becomes a `block`
- * one. The same array when none is malformed.
- */
 export function checkNavigationRules(given: unknown): {
   checked: NavigationRule[];
   warnings: string[];

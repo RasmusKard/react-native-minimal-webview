@@ -558,7 +558,7 @@ export type Download = {
  * - `network`: connecting or reading the response failed, or a redirect was refused.
  * - `http`: the response had an error status (Android only: iOS saves what the server sent).
  * - `data` (the content): a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or
- *   (Android) a file above 100 MB or a `blob:` URL the main frame can't read (a cross-origin iframe's, or one already
+ *   (Android) a file above 100 MiB or a `blob:` URL the main frame can't read (a cross-origin iframe's, or one already
  *   revoked).
  * @group Page requests
  */
