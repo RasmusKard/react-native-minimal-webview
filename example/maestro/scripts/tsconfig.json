@@ -8,5 +8,5 @@
     "lib": ["es2020"],
     "types": []
   },
-  "include": ["*.js", "maestro.d.ts"]
+  "include": ["*.js", "*.ts"]
 }
