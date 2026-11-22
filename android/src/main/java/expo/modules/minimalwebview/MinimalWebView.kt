@@ -88,6 +88,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var loading = false
   internal var progress = 0.0
   private var outcome: LoadOutcome? = null
+  internal var rendererGone = false
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
 
@@ -105,6 +106,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keysToAttach)
     val (maker, unused) = pickFactory(attaching)
     val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
+    rendererGone = false
     hookContexts = attaching.map { HookContext(it, this) }
     if (first) unregistered.forEach { warn("extension $it: no hook is registered under this key") }
     if (first) unused.forEach { warn("extension $it: its webViewFactory is not used, ${maker?.key}'s is") }
