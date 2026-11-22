@@ -18,5 +18,4 @@ export type DriverAction =
   | { action: 'killInBackground' }
   | { action: 'setGpsFix' };
 
-/** The driver's last message for a suite: its counts, after which the flow ends. */
 export type Verdict = { action: 'done'; pass: number; fail: number; skip: number };
