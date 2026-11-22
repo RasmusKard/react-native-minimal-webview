@@ -42,6 +42,7 @@ const events: Harness['events'] = {
   gone: [],
   loads: [],
   outcomes: [],
+  loadEnds: [],
   navigations: [],
   downloads: [],
   downloadFailures: [],
@@ -186,10 +187,11 @@ export default function App() {
               events.loads.push('start');
               setError(null);
             }}
-            onLoadEnd={({ outcome }) => {
+            onLoadEnd={(state) => {
               launchMarks.loadEnd ??= performance.now();
               events.loads.push('end');
-              events.outcomes.push(outcome);
+              events.outcomes.push(state.outcome);
+              events.loadEnds.push(state);
             }}
             {...props}
             ios={{ configuration: IOS_CONFIGURATION, ...props.ios }}
