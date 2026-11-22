@@ -36,8 +36,7 @@ object MinimalWebViewHooks {
     val newWebViewsOnly: Boolean,
     val attach: (WebView, WebViewContext) -> Unit
   ) {
-    /** Why it can't attach to a WebView that exists, or null when it can. */
-    val notLate get() = when {
+    val whyNotLate get() = when {
       configure != null -> "configure"
       webViewFactory != null -> "a webViewFactory"
       newWebViewsOnly -> "newWebViewsOnly"

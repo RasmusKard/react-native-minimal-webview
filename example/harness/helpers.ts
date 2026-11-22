@@ -192,8 +192,8 @@ export const fresh = (h: Harness, path: string) =>
 
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. With
- * `remount`, it remounts too, for props that don't recreate it, such as an `extensions` entry whose hook has a
- * `configure` step or its own WebView class.
+ * `remount`, it remounts too, for props that don't recreate it, such as an `extensions` entry whose hook attaches
+ * only when a WebView is created.
  */
 export async function recreate(
   h: Harness,

@@ -53,8 +53,8 @@ class HooksTest {
 
   @Test
   fun `a hook for new WebViews only says why it doesn't attach late`() {
-    assertEquals("newWebViewsOnly", MinimalWebViewHooks.Hook("a", null, null, true) { _, _ -> }.notLate)
-    assertNull(hook("b").notLate)
+    assertEquals("newWebViewsOnly", MinimalWebViewHooks.Hook("a", null, null, true) { _, _ -> }.whyNotLate)
+    assertNull(hook("b").whyNotLate)
   }
 
   @Test
