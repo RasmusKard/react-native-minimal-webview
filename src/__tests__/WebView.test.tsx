@@ -425,6 +425,17 @@ describe('extensions', () => {
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
 
+  it("an ask goes to the extension's onAsk with a signal, and an emit to its onEvent", async () => {
+    const onAsk = jest.fn(() => 'asked');
+    const onEvent = jest.fn(() => 'emitted');
+    const { fire } = await mount({ extensions: [{ key: 'a', onAsk, onEvent }] });
+    await fire('onHookEvent', event('a', 'x', 7));
+    await fire('onHookEvent', event('a', 'y'));
+    expect(onAsk.mock.calls).toEqual([[{ name: 'x', payload: { n: 1 } }, expect.any(AbortSignal)]]);
+    expect(mockAnswer).toHaveBeenLastCalledWith(7, '"asked"');
+    expect(onEvent.mock.calls).toEqual([[{ name: 'y', payload: { n: 1 } }, undefined]]);
+  });
+
   it('answers null for an ask with no handler, and drops an event no extension owns', async () => {
     const own = jest.fn();
     const { show, fire } = await mount({
