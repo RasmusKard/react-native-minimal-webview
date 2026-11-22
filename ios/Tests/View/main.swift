@@ -44,8 +44,8 @@ final class ReadRoots: WKWebView {
   }
 }
 
-func spin(until done: () -> Bool) -> Bool {
-  let end = Date().addingTimeInterval(10)
+func spin(within seconds: TimeInterval = 10, until done: () -> Bool) -> Bool {
+  let end = Date().addingTimeInterval(seconds)
   while !done(), Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
   return done()
 }
@@ -137,6 +137,40 @@ MainActor.assumeIsolated {
   let committed = failed("mrw-fail://committed")
   check("failure callbacks: a load that fails after it commits reaches a hook's didFail: \(committed)", committed == ["didFail"])
   view.invalidate()
+}
+
+let cookieName = "mrw-view-\(getpid())"
+func copiedToNative(_ webView: WKWebView, within seconds: TimeInterval = 10) -> Bool {
+  let cookie = HTTPCookie(properties: [.name: cookieName, .value: "1", .domain: "example.com", .path: "/"])
+  webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie!)
+  defer { HTTPCookieStorage.shared.cookies?.filter { $0.name == cookieName }.forEach(HTTPCookieStorage.shared.deleteCookie) }
+  return spin(within: seconds) { HTTPCookieStorage.shared.cookies?.contains { $0.name == cookieName } == true }
+}
+MainActor.assumeIsolated {
+  func webView() -> WKWebView {
+    let configuration = WKWebViewConfiguration()
+    configuration.websiteDataStore = .nonPersistent()
+    return WKWebView(frame: .zero, configuration: configuration)
+  }
+  let cookies = SharedCookies()
+  let first = webView()
+  cookies.set(true, for: first.configuration.websiteDataStore.httpCookieStore)
+  check("shared cookies: a cookie the WebView sets reaches the native store", copiedToNative(first))
+  cookies.set(false, for: first.configuration.websiteDataStore.httpCookieStore)
+  check("shared cookies: turned off, a cookie the WebView sets stays in it", !copiedToNative(first, within: 1))
+  let second = webView()
+  cookies.set(true, for: second.configuration.websiteDataStore.httpCookieStore)
+  check("shared cookies: turned on again for another WebView, its cookies reach the native store", copiedToNative(second))
+  let third = webView()
+  let store = third.configuration.websiteDataStore.httpCookieStore
+  let native = HTTPCookie(properties: [.name: "\(cookieName)-native", .value: "1", .domain: "example.com", .path: "/"])!
+  HTTPCookieStorage.shared.setCookie(native)
+  cookies.set(true, for: store)
+  var inWebView = false
+  cookies.prepare { store.getAllCookies { inWebView = $0.contains { $0.name == native.name } } }
+  check("shared cookies: prepare puts the native store's cookies into the WebView", spin { inWebView })
+  cookies.set(false, for: store)
+  HTTPCookieStorage.shared.deleteCookie(native)
 }
 
 print("\(total - failed)/\(total) view cases pass")
