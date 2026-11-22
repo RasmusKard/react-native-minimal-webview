@@ -1,22 +1,16 @@
 package expo.modules.minimalwebview
 
-
-/**
- * Every `ask` (a page request, a navigation request or a hook's) waits here, by id, until JS answers it through [answer]
- * or native gives up (null, and the core's `askCancelled` to JS): a Document end, a timeout or the platform. [send] puts an
- * event on the view's `onHookEvent`, which reaches the app's extensions' `onEvent`. Main thread only.
- */
+/** Main thread only. */
 internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   private val pending = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextId = 0
-  /** The view closed: JS is unmounted, and a hook may still hold its context. */
   private var closed = false
 
-  /** Sends the ask to JS and returns its id, for [cancel]. Once the view closed it answers null at once. */
-  fun ask(key: String, name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
+  /** Sends the ask to JS and returns its id, for [cancel]. Once the view closed it answers null at once and returns null. */
+  fun ask(key: String, name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int? {
     if (closed) {
       onAnswer(null)
-      return 0 // no ask: cancel(0) finds nothing
+      return null
     }
     val id = ++nextId
     pending[id] = onAnswer
@@ -36,7 +30,7 @@ internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
     onAnswer(null)
   }
 
-  /** Cancels every pending ask. At closing JS isn't told: it aborts its own handlers at unmount. */
+  /** Cancels every pending ask. At closing JS isn't told. */
   fun documentEnded(reason: DocumentEnd) {
     if (reason == DocumentEnd.CLOSING) closed = true
     pending.keys.toList().forEach { cancel(it, tell = reason != DocumentEnd.CLOSING) }

@@ -17,17 +17,15 @@ import java.net.URL
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.thread
 
-/** The http(s) download fetch against a local server, with a fake cookie store, and the cap on the streamed body. */
 class DownloadsTest {
-  private val body = ByteArray(3 * DEFAULT_BUFFER_SIZE + 1) { it.toByte() } // more than one read
+  private val body = ByteArray(3 * DEFAULT_BUFFER_SIZE + 1) { it.toByte() }
   private val file = File.createTempFile("download", null)
-  private val received = CopyOnWriteArrayList<String>() // each request's path, Cookie and User-Agent
-  private val stored = mutableListOf<String>() // each Set-Cookie, with the URL it came from
+  private val received = CopyOnWriteArrayList<String>()
+  private val stored = mutableListOf<String>()
 
-  // The JDK's HttpServer isn't on the classpath of Android's unit tests: a server that answers each path with a fixed
-  // head, and the body "done", with its Content-Length unless the head has one.
+  // The JDK's HttpServer isn't on the classpath of Android's unit tests.
   private val routes = mapOf(
-    "/start" to "302 Found\r\nLocation: next?hop=2\r\nSet-Cookie: hop=1", // a relative Location
+    "/start" to "302 Found\r\nLocation: next?hop=2\r\nSet-Cookie: hop=1",
     "/next" to "200 OK\r\nContent-Type: text/plain; charset=utf-8",
     "/untyped" to "200 OK",
     "/huge" to "200 OK\r\nContent-Length: ${Downloads.MAX_BYTES + 1}",
@@ -115,7 +113,7 @@ class DownloadsTest {
     for ((url, bytes, type) in listOf(
       Triple("data:text/plain,hi there", "hi there".toByteArray(), "text/plain"),
       Triple("data:text/plain,a%20b%2C%e2%82%ac 100%", "a b,€ 100%".toByteArray(), "text/plain"),
-      Triple("data:text/plain;charset=iso-8859-1,caf%E9", latin1, "text/plain"), // not UTF-8: the bytes as they are
+      Triple("data:text/plain;charset=iso-8859-1,caf%E9", latin1, "text/plain"),
       Triple("data:image/png;base64,SGVsbG8=", "Hello".toByteArray(), "image/png"),
       Triple("data:application/pdf;base64,%2B%2F8%3D", byteArrayOf(0xFB.toByte(), 0xFF.toByte()), "application/pdf"),
       Triple("data:text/csv;charset=utf-8;base64,YSxi", "a,b".toByteArray(), "text/csv"),

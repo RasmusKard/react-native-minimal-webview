@@ -14,12 +14,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 import expo.modules.minimalwebview.DocumentEnd
 import expo.modules.minimalwebview.MinimalWebView
 
-/** HTML5 fullscreen video, and the `onFullscreenChange` prop. */
 internal class FullscreenVideo(private val owner: MinimalWebView) {
   private var shownCallback: CustomViewCallback? = null
   private var backdrop: FrameLayout? = null
   private var backCallback: OnBackPressedCallback? = null
-  // The app's bars before fullscreen, restored on exit: an immersive app keeps its bars hidden.
   private var barsShownBefore = 0
   private var barsBehaviorBefore: Int? = null
 
@@ -58,7 +56,6 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
     callback.onCustomViewHidden()
   }
 
-  /** Removes the fullscreen view, which WebView hid or we are leaving. */
   fun onHideCustomView() {
     if (shownCallback == null) return
     shownCallback = null
@@ -80,7 +77,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
 
   private fun controller() = owner.appContext.currentActivity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
-  /** The Document ended: removes its fullscreen view. Only CLOSING (unmount) also tells WebView via `onCustomViewHidden`; after a crash no renderer is left to tell. */
+  /** Only CLOSING (unmount) also tells WebView via `onCustomViewHidden`; after a crash no renderer is left to tell. */
   fun documentEnded(reason: DocumentEnd) {
     if (reason == DocumentEnd.CLOSING) exit() else onHideCustomView()
   }

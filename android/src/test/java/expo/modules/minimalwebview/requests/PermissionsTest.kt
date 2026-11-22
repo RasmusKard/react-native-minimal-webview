@@ -4,10 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/**
- * The origin a permission request is matched and reported by. `Uri` is a stub in JVM tests, so a URL comes as the
- * parts it parses: `data:` and `about:` URLs have no host, `file:///x` an empty one, and `""` no scheme either.
- */
+/** `Uri` is a stub in JVM tests, so a URL comes as the parts it parses. */
 class PermissionsTest {
   @Test
   fun `the scheme's default port is left out`() {
