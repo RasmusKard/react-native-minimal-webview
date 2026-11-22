@@ -42,26 +42,25 @@ class PlatformSettingsTest {
 
   @Test
   fun coerces() {
-    assertEquals(null to listOf(1), set("int", 1.5)) // truncated
+    assertEquals(null to listOf(1), set("int", 1.5))
     assertEquals(null to listOf(2L), set("long", 2.0))
     assertEquals(null to listOf(0.5f), set("float", 0.5))
-    assertEquals(null to listOf(3.0), set("double", 3)) // a JS integer can arrive as Int
+    assertEquals(null to listOf(3.0), set("double", 3))
     assertEquals(null to listOf(true), set("flag", true))
     assertEquals(null to listOf("hi"), set("text", "hi"))
     assertEquals(null to listOf(null), set("text", null))
-    assertEquals(null to listOf(listOf(1)), set("tag", listOf(1))) // any other type takes an instance of it
-    assertEquals(null to listOf(2), set("zoom", 2.0)) // a static compat method takes the leading object first
+    assertEquals(null to listOf(listOf(1)), set("tag", listOf(1)))
+    assertEquals(null to listOf(2), set("zoom", 2.0))
   }
 
   @Test
   fun wrapsAnArgbColorIntoAnIntAndRejectsOneOutOfRange() {
-    assertEquals(null to listOf(-16777216), set("int", 4278190080.0)) // 0xFF000000
-    assertEquals(null to listOf(-1), set("int", 4294967295.5)) // 0xFFFFFFFF, truncated
+    assertEquals(null to listOf(-16777216), set("int", 4278190080.0))
+    assertEquals(null to listOf(-1), set("int", 4294967295.5))
     assertEquals(null to listOf(Int.MIN_VALUE), set("int", -2147483648.0))
-    assertEquals(emptyList<Any?>(), set("int", 4294967296.0).second) // 0x100000000
+    assertEquals(emptyList<Any?>(), set("int", 4294967296.0).second)
     assertEquals(emptyList<Any?>(), set("int", -2147483649.0).second)
     assertEquals(emptyList<Any?>(), set("int", Double.NaN).second)
-    // ref.call('settings.setInt', [0xFF202020]), as setBackgroundColor gets it
     val fake = Fake()
     call(fake, "setInt", 4280295456.0)
     assertEquals(listOf<Any?>(-14671840), fake.values)
@@ -79,13 +78,11 @@ class PlatformSettingsTest {
       settings.call("settings.setBackForwardCacheEnabled", listOf(true)) {}
     }
     assertEquals("unavailable", error.code)
-    assertEquals(null to listOf(true), set("backForwardCacheEnabled", true)) // with NavigationListener
+    assertEquals(null to listOf(true), set("backForwardCacheEnabled", true))
   }
 
-  /** A `settings` root over [fake]. */
   private fun rootOf(fake: Fake) = PlatformSettings { if (it == "settings") listOf(Target(Fake::class.java, fake, null)) else null }
 
-  /** What `call` replied with; throws a [PlatformException] when no method fit. */
   private fun call(fake: Fake, name: String, vararg args: Any?): MutableList<String> {
     val replies = mutableListOf<String>()
     rootOf(fake).call("settings.$name", args.toList()) { replies += it() }
@@ -96,7 +93,7 @@ class PlatformSettingsTest {
   fun callPrefersTheOverloadThatTakesTheArgs() {
     val fake = Fake()
     assertEquals(listOf("null"), call(fake, "put", "a", "1"))
-    assertEquals(listOf("null"), call(fake, "put", "b", "2", null)) // null passes no callback
+    assertEquals(listOf("null"), call(fake, "put", "b", "2", null))
     assertEquals(listOf<Any?>("a=1", "b=2 later"), fake.values)
     assertEquals(null, fake.pending)
   }
@@ -105,10 +102,9 @@ class PlatformSettingsTest {
   fun callAwaitsATrailingValueCallbackLeftOutOfTheArgs() {
     val fake = Fake()
     val replies = call(fake, "clear")
-    assertEquals(emptyList<String>(), replies) // not before the callback reports
+    assertEquals(emptyList<String>(), replies)
     checkNotNull(fake.pending) { "call passed clear no callback" }.onReceiveValue(true)
     assertEquals(listOf("true"), replies)
-    // A reported value JSON can't carry rejects in the reply, where the caller can still handle it.
     call(fake, "measure")
     assertEquals("native_error", code { checkNotNull(fake.measured) { "no callback" }.onReceiveValue(Double.NaN) })
   }
@@ -124,7 +120,7 @@ class PlatformSettingsTest {
     val none = emptyList<Any?>()
     assertEquals("no public setter takes a String" to none, set("int", "1"))
     assertEquals("no public setter takes a Boolean" to none, set("int", true))
-    assertEquals("no public setter takes a Boolean" to none, set("tag", false)) // a boolean fits only a boolean
+    assertEquals("no public setter takes a Boolean" to none, set("tag", false))
     assertEquals("no public setter takes a Double" to none, set("flag", 1.0))
     assertEquals("no public setter takes a null" to none, set("int", null))
     assertEquals("no public setter" to none, set("missing", 1))
@@ -140,7 +136,6 @@ class PlatformSettingsTest {
     assertEquals("failed: java.lang.IllegalStateException: boom 1" to none, set("failing", 1))
   }
 
-  /** The JS error code `get`, `call` or `toJson` rejects with. */
   private fun code(body: () -> Unit) = assertThrows(PlatformException::class.java, body).code
 
   @Test
@@ -153,9 +148,9 @@ class PlatformSettingsTest {
     assertEquals(listOf<Any?>(1), fake.values)
     assertEquals("not_found", code { settings.get("settings.missing") })
     assertEquals("not_found", code { settings.call("settings.missing", emptyList()) {} })
-    assertEquals("not_found", code { settings.call("settings.setInt", listOf("1")) {} }) // no overload takes it
+    assertEquals("not_found", code { settings.call("settings.setInt", listOf("1")) {} })
     assertEquals("not_found", code { settings.call("nope.setInt", listOf(1)) {} })
-    assertEquals("not_found", code { settings.get("settings.destroy") }) // owned by the core, so never a getter
+    assertEquals("not_found", code { settings.get("settings.destroy") })
     assertEquals("native_error", code { settings.call("settings.destroy", emptyList()) {} })
     assertEquals("native_error", code { settings.call("settings.addNavigationListener", listOf(null)) {} })
     assertEquals("native_error", code { settings.call("settings.setFailing", listOf(1)) {} })
@@ -177,7 +172,6 @@ class PlatformSettingsTest {
     assertEquals("null", PlatformSettings.toJson(null))
   }
 
-  /** A root whose keys have getters (`getFlag`, `getText`), except `blind`. */
   private class Live {
     var flag = false
     var text: String? = "start"
@@ -199,8 +193,8 @@ class PlatformSettingsTest {
     apply("text" to "b")
     assertEquals(false, live.flag)
     assertEquals("b", live.text)
-    assertEquals(emptyList<Any>(), settings.apply(emptyMap())) // the whole root removed
-    assertEquals("start", live.text) // the value before the first write, not the one before the last
+    assertEquals(emptyList<Any>(), settings.apply(emptyMap()))
+    assertEquals("start", live.text)
   }
 
   @Test

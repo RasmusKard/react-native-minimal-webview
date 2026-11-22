@@ -4,7 +4,6 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** What crash recovery and reload() load again: the source when it is the page on screen, else the page's URL. */
 class ShowsSourceTest {
   private val vectors = JSONObject(
     checkNotNull(javaClass.getResource("/vectors/recovery.json")) { "test resource vectors/recovery.json missing" }.readText()
@@ -27,7 +26,7 @@ class ShowsSourceTest {
     val cases = listOf(
       Triple(null, "", false),
       Triple(null, "https://example.com/", false),
-      Triple(page, "", true), // nothing committed yet
+      Triple(page, "", true),
       Triple(html, "https://example.com/", true), // Chromium canonicalizes the baseUrl
       Triple(html, "https://example.com/other", false),
       Triple(WebViewSource(html = "<p>"), "about:blank", true),

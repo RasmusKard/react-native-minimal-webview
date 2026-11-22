@@ -24,7 +24,6 @@ class NavigationRulesTest {
     for (i in 0 until cases.length()) {
       val case = cases.getJSONObject(i)
       val name = case.optString("rules", "")
-      @Suppress("UNCHECKED_CAST") // because the vector file holds JSON objects only
       val rules = if (case.isNull("rules")) null else toKotlin(rulesets.getJSONArray(name)) as List<Map<String, Any?>>
       val request = case.getJSONObject("request")
       val decision = NavigationRules.decide(

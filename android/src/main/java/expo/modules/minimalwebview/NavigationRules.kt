@@ -1,6 +1,5 @@
 package expo.modules.minimalwebview
 
-/** The structured navigation rules. Semantics and cases: src/__tests__/vectors/navigation-rules.json (shared with Swift). */
 internal object NavigationRules {
   data class Request(
     val url: String,
@@ -10,10 +9,8 @@ internal object NavigationRules {
     val isRedirect: Boolean = false
   )
 
-  /** [action] is allow, block, external or ask; [rule] is the matching rule's index, null when a default decided. */
   data class Decision(val action: String, val rule: Int?)
 
-  /** Load in place without the rules. */
   private val internalSchemes = setOf("about", "data", "javascript")
 
   /**
@@ -45,7 +42,6 @@ internal object NavigationRules {
     val scheme = request.url.substringBefore(':', "").lowercase()
     if (request.newWindow && scheme in noNewWindowSchemes) return Decision("block", null)
     if (scheme in internalSchemes) return Decision("allow", null)
-    // JS sends defaultNavigationRules when the prop is unset; no rules, null or empty, match nothing.
     if (rules.isNullOrEmpty()) return Decision("block", null)
     val parts = (if (scheme == "blob") blobOrigin(request.url) else parts(scheme, request.url))
       ?: return Decision("block", null)
@@ -53,8 +49,8 @@ internal object NavigationRules {
     return if (index < 0) Decision("block", null) else Decision((rules[index]["action"] as? String)?.takeIf { it in actions } ?: "block", index)
   }
 
-  // scheme ":" ["//" authority] path ["?" query]. java.net.URI rejects URLs Chromium accepts (a raw `|` in the query,
-  // `_` in a host), so the parts are split with a regex.
+  // java.net.URI rejects URLs Chromium accepts (a raw `|` in the query, `_` in a host), so the parts are split with a
+  // regex.
   private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)(?:\\?([^#]*))?")
 
   private data class Parts(val scheme: String, val host: String?, val path: String, val params: List<String>)

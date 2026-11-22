@@ -6,9 +6,7 @@ import android.webkit.PermissionRequest
 import expo.modules.minimalwebview.MinimalWebView
 import expo.modules.minimalwebview.defaultPorts
 
-/** The `onPermissionRequest` prop. */
 internal class Permissions(private val owner: MinimalWebView) {
-  // Asks still waiting for JS's answer, keyed by their PermissionRequest or GeolocationPermissions.Callback so a platform cancel finds them.
   private val waiting = mutableMapOf<Any, Int>()
 
   /** Returns true when the app's prop takes the request; it is then granted or denied once. */
@@ -46,7 +44,6 @@ internal class Permissions(private val owner: MinimalWebView) {
       return true
     }
     waiting[key] = owner.asks.ask("core", "onPermissionRequest", mapOf("origin" to value, "resources" to resources)) { answer ->
-      // Not there: Chromium cancelled the request, and it takes no answer.
       if (waiting.remove(key) == null) return@ask
       if (answer == true) grant() else deny()
     }

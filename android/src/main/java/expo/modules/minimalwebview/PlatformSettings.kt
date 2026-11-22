@@ -14,22 +14,14 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import kotlin.math.truncate
 
-/**
- * The `android` settings prop, `get` and `call`, by name through reflection over public SDK methods only
- * (`getMethods()`), so a setter a newer SDK or androidx.webkit adds needs no code here. The roots and their order:
- * [Companion.targets].
- */
 internal class PlatformSettings(
   private val hasNavigationListener: () -> Boolean = { true },
   private val targets: (root: String) -> List<Target>?
 ) {
-  /** `root.key` -> the last value applied or rejected, so an unchanged value is neither applied nor reported again. */
   private val applied = mutableMapOf<String, Any?>()
 
-  /** `root.key` -> its getter's value before the first write ([NONE]: no getter), set back when the key is removed. */
   private val originals = mutableMapOf<String, Any?>()
 
-  /** A receiver (null for statics) and, for compat and CookieManager methods, the root object passed first. */
   internal class Target(val cls: Class<*>, val receiver: Any?, val leading: Any?)
 
   /**
@@ -41,7 +33,6 @@ internal class PlatformSettings(
       applied.clear()
       originals.clear()
     }
-    // Before the new values, so restoring one can't undo another that depends on it.
     val rejected = restore(removedFrom = settings.orEmpty()).toMutableList()
     for ((rootName, entries) in settings.orEmpty()) {
       val targets = settingsTargets(rootName)
@@ -61,7 +52,6 @@ internal class PlatformSettings(
     return rejected
   }
 
-  /** The targets of a root the prop has, `settings` or `webView`; null for another. */
   private fun settingsTargets(rootName: String) =
     // Not targets() first: the other roots are the WebView profile's, which `webView.profile` may not have set yet.
     if (rootName in listOf("settings", "webView")) targets(rootName) else null
@@ -85,8 +75,6 @@ internal class PlatformSettings(
       if (id !in originals) return@mapNotNull null
       val original = originals.remove(id)
       val (rootName, key) = id.split('.', limit = 2)
-      // shortcut: a setter with no getter (geolocationEnabled, initialScale, backgroundColor) can't be restored; add
-      // the platform's defaults for those if one matters.
       val problem = if (original === NONE) {
         "removed, but it has no getter to restore it from: it keeps its value until the WebView is recreated"
       } else {
@@ -119,7 +107,6 @@ internal class PlatformSettings(
       val result = direct()
       return reply { toJson(result) }
     }
-    // The callback runs later, outside the caller's try: the receiver converts, so it can reject instead of crashing.
     val callback = ValueCallback<Any?> { value -> reply { toJson(value) } }
     val awaiting = find(targets, args + callback) {
       it.name == name && it.parameterTypes.lastOrNull() == ValueCallback::class.java
@@ -136,7 +123,6 @@ internal class PlatformSettings(
 
   /** Why [method] can't take [args] on this WebView, or null. */
   private fun refusal(method: String, args: List<Any?>) =
-    // Without NavigationListener the clients end a load at onPageFinished, which WebView 133 skips for a restored page.
     if (method == "setBackForwardCacheEnabled" && args == listOf(true) && !hasNavigationListener()) {
       "not supported by this WebView: below Android System WebView 146 a page restored from the cache reports no load end"
     } else {
@@ -165,10 +151,6 @@ internal class PlatformSettings(
       else -> null
     }
 
-    /**
-     * Methods the core owns: its clients, listeners, scripts, loads and navigations, the WebView's lifetime and timers,
-     * and the process-wide debugging switch; the page's JS goes through `evaluate` and the bridge.
-     */
     val OWNED = setOf(
       "setWebViewClient", "setWebChromeClient", "setDownloadListener", "addJavascriptInterface",
       "removeJavascriptInterface", "addWebMessageListener", "removeWebMessageListener", "addDocumentStartJavaScript",
@@ -212,7 +194,7 @@ internal class PlatformSettings(
         before()
         apply()
         null
-      } catch (e: IllegalArgumentException) { // a PlatformException from invoke is one, so its reason is the message
+      } catch (e: IllegalArgumentException) {
         e.message
       }
     }

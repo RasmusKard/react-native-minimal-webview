@@ -7,20 +7,18 @@ import android.widget.FrameLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
- * The `pullToRefresh` prop. WebView sends no nested-scroll events, so it asks the WebView whether the document can
- * scroll up, and on touch-down asks the page whether the element under the finger is inside an inner scroller
- * (overflow: auto or scroll) that is already scrolled.
+ * WebView sends no nested-scroll events, so it asks the WebView whether the document can scroll up, and on touch-down
+ * asks the page whether the element under the finger is inside an inner scroller (overflow: auto or scroll) that is
+ * already scrolled.
  */
 internal class PullToRefresh(private val owner: MinimalWebView) {
-  // The page's answer for the current touch; null while it is pending, which holds the pull off. The down event itself
-  // must see false: SwipeRefreshLayout only tracks a gesture whose down event it accepted.
+  // The down event itself must see false: SwipeRefreshLayout only tracks a gesture whose down event it accepted.
   private var innerScrolled: Boolean? = false
   private var touches = 0
 
-  /** Holds the WebView. SwipeRefreshLayout keeps its first child as its target for good, so a crash swaps the WebView here. */
+  /** SwipeRefreshLayout keeps its first child as its target for good, so a crash swaps the WebView here. */
   val content = FrameLayout(owner.context)
 
-  /** Always around [content]; off until the prop sets `isEnabled`. */
   val layout: SwipeRefreshLayout = Layout(owner.context).apply {
     isEnabled = false
     addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -34,7 +32,6 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
     owner.webView.evaluateJavascript("($INNER_SCROLLED)(${x / density}, ${y / density})") { result ->
       if (touch == touches) innerScrolled = result == "true"
     }
-    // A busy page answers late: don't hold the pull off for longer than this.
     mainHandler.postDelayed({ if (touch == touches && innerScrolled == null) innerScrolled = false }, ANSWER_TIMEOUT_MS)
   }
 
@@ -46,14 +43,11 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
 
   private inner class Layout(context: Context) : SwipeRefreshLayout(context) {
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-      // Off: no pull, and no question to the page on every touch.
       if (!isEnabled) return false
       if (event.actionMasked != MotionEvent.ACTION_DOWN) return super.onInterceptTouchEvent(event)
       innerScrolled = false
       val intercepted = super.onInterceptTouchEvent(event)
       if (owner.webView.canScrollVertically(-1)) {
-        // A scrolled document already ruled this gesture out, whatever the page says: don't ask it. Dropping the
-        // count makes a late answer or timeout from an earlier touch a no-op.
         touches++
       } else {
         innerScrolled = null

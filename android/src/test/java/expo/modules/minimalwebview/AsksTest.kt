@@ -3,7 +3,6 @@ package expo.modules.minimalwebview
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The ask contract: each ask is answered once, by JS or with null when native gives up. */
 class AsksTest {
   private val sent = mutableListOf<Map<String, Any?>>()
   private val asks = Asks { sent += it }

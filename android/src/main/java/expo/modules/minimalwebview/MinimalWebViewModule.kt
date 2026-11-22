@@ -41,9 +41,9 @@ class MinimalWebViewModule : Module() {
   private var chooserOpen = false
 
   /**
-   * Opens the system file chooser (from ChromeClient.onShowFileChooser) and calls [onResult] with the picked URIs, or
-   * null on cancel. One chooser is open app-wide: the launcher keeps one callback, so [onResult] gets null at once
-   * while one is open, before the launcher is registered, or without an activity.
+   * Opens the system file chooser and calls [onResult] with the picked URIs, or null on cancel. One chooser is open
+   * app-wide: the launcher keeps one callback, so [onResult] gets null at once while one is open, before the launcher
+   * is registered, or without an activity.
    */
   internal fun openFileChooser(intent: Intent, onResult: (Array<Uri>?) -> Unit) {
     val launcher = fileChooser
@@ -65,7 +65,6 @@ class MinimalWebViewModule : Module() {
     Name("MinimalWebView")
 
     // The fallback runs when the result reaches a recreated activity: the WebView that asked is gone.
-    // shortcut: choosers stay cancelled after an activity dies without a result, track the request if apps hit it
     RegisterActivityContracts {
       fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> chooserOpen = false }
     }
@@ -76,7 +75,6 @@ class MinimalWebViewModule : Module() {
       if (webViewCreated) flushCookies()
     }
 
-    // Best effort: an error only means the first WebView starts WebView as before.
     Function("warmUp") { warmUp(appContext.reactContext ?: throw Exceptions.ReactContextLost()) }
 
     // ProfileStore wants the UI thread, and starts WebView there.
@@ -96,7 +94,6 @@ class MinimalWebViewModule : Module() {
       Prop("bridgeScript") { view: MinimalWebView, script: String? -> view.bridgeScript = script }
       Prop("bridgeOrigins") { view: MinimalWebView, origins: List<String>? -> view.bridgeOrigins = origins }
       Prop("hookOptions") { view: MinimalWebView, options: Map<String, Any?>? -> view.hookOptions = options.orEmpty() }
-      // The JSON is always an object (JS builds it).
       Prop("settings") { view: MinimalWebView, json: String? -> view.settings = json?.let { JSONObject(it).toMap() } }
       Prop("pullToRefresh") { view: MinimalWebView, value: Boolean? -> view.pullToRefresh = value ?: false }
       Prop("injectedScripts") { view: MinimalWebView, value: List<InjectedScript>? -> view.injectedScripts = value }
@@ -117,7 +114,6 @@ class MinimalWebViewModule : Module() {
         native(view, promise) {
           view.platformSettings.call(path, fromJson(JSONArray(argsJson)) as List<Any?>) { json -> native(view, promise) { promise.resolve(json()) } }
         }
-        // A call can change what the state shows (clearHistory, canGoBack); an unchanged state isn't sent.
         view.stateChanged()
       }.runOnQueue(Queues.MAIN)
       AsyncFunction("bridgePost") { view: MinimalWebView, message: String -> view.scripts.post(message) }.runOnQueue(Queues.MAIN)
@@ -145,10 +141,6 @@ private fun preconnect(url: String) {
   }
 }
 
-/**
- * Writes the cookies of the default profile and every other one to disk: a WebView on another `android.webView.profile`
- * keeps its own.
- */
 private fun flushCookies() {
   CookieManager.getInstance().flush()
   if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) return
@@ -183,7 +175,6 @@ private fun warmUp(context: Context) {
   WebViewCompat.startUpWebView(context, config, outcome)
 }
 
-/** Runs [action] on the WebView, unless it's recovering: `webView` is then the destroyed one, and only reload acts, by building the new one. */
 private fun live(view: MinimalWebView, action: (WebView) -> Unit) {
   if (!view.recovering) action(view.webView)
 }
@@ -228,7 +219,7 @@ private fun fromJson(value: Any?): Any? = when (value) {
   else -> value
 }
 
-/** The chooser's intent. Serializable because the registry persists launch inputs; it never relaunches a restored one. */
+/** Serializable because the registry persists launch inputs; it never relaunches a restored one. */
 private class ChooserIntent(@Transient val intent: Intent? = null) : Serializable
 
 private object FileChooserContract : AppContextActivityResultContract<ChooserIntent, Array<Uri>?> {
@@ -238,13 +229,10 @@ private object FileChooserContract : AppContextActivityResultContract<ChooserInt
     FileChooserParams.parseResult(resultCode, intent)
 }
 
-// Data classes, so the skip checks in applyProps compare them with ==. Every field is optional, as on iOS.
-
 internal data class WebViewSource(
   @Field val uri: String? = null,
   @Field val headers: Map<String, String>? = null,
   @Field val body: String? = null,
-  // Unused on Android: here so that a change loads the source again, as on iOS.
   @Field val readAccessRoot: String? = null,
   @Field val html: String? = null,
   @Field val baseUrl: String? = null

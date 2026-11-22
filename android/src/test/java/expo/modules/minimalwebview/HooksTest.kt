@@ -77,7 +77,6 @@ class HooksTest {
   fun `the compat class's own forwarders and empty overrides don't count`() {
     assertFalse(PlainCompat::class.java.overrides("onReceivedError", *error))
     assertFalse(PlainCompat::class.java.overrides("onSafeBrowsingHit", *safeBrowsing))
-    // Counting this one would switch the navigation rules off for every WebViewClientCompat hook.
     assertFalse(PlainCompat::class.java.overrides("shouldOverrideUrlLoading", *url))
     assertFalse(PlainCompat::class.java.overrides("onPageCommitVisible", WebView::class.java, String::class.java))
   }
@@ -136,9 +135,7 @@ class HooksTest {
     val lost = "navigationRules, their defaults and onNavigationRequest don't apply to navigations"
     assertNull(deciders.first("shouldOverrideUrlLoading", listOf("plain"), lost, overriding))
     assertTrue(warnings.isEmpty())
-    // The same callback again, as after a crash's recovery attaches the same clients: no second warning.
     repeat(2) { assertEquals("navigation", deciders.first("shouldOverrideUrlLoading", listOf("plain", "navigation"), lost, overriding)) }
-    // Without `lost`, taking a decision warns of nothing.
     assertEquals("navigation", deciders.first("onReceivedHttpAuthRequest", listOf("navigation"), overrides = overriding))
     assertEquals(
       listOf(
@@ -239,7 +236,7 @@ class HooksTest {
     attachment.optionsChanged(null)
     attachment.optionsChanged(true)
     assertFalse(attachment.routed)
-    assertEquals(listOf<Any?>(true), seen) // only the call on registering
+    assertEquals(listOf<Any?>(true), seen)
   }
 
   @Test

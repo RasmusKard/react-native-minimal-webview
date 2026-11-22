@@ -12,22 +12,18 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import java.net.URISyntaxException
 
-/** Navigation decisions: the rules, `ask`, external links and new windows. */
 internal class MinimalWebViewNavigation(
   private val owner: MinimalWebView,
   private val onNavigation: (Map<String, Any?>) -> Unit
 ) {
   private val webView get() = owner.webView
 
-  // URLs an `ask` allowed in this Document: a redirect back to one is not asked again (a later tap on it is).
   private val askedAndAllowed = mutableSetOf<String>()
 
-  // New windows still waiting for their first URL (createWindow).
   private val children = mutableSetOf<WebView>()
 
   fun documentEnded() {
     askedAndAllowed.clear()
-    // Not on a child's stack (a commit, a crash, destroy): destroy them now. Cleared first, so a finish() finds none.
     val ended = children.toList()
     children.clear()
     ended.forEach { it.destroy() }
@@ -67,7 +63,6 @@ internal class MinimalWebViewNavigation(
     if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
   }
 
-  // Cancel now, ask JS, reissue on allow; the redirect chain is lost.
   private fun ask(request: NavigationRules.Request, rule: Int?) {
     val referrer = webView.url
     val id = owner.asks.ask("core", "onNavigationRequest", fields(request)) { answer ->
@@ -78,7 +73,6 @@ internal class MinimalWebViewNavigation(
       }
       if (action == "external") openExternal(request, rule) else notifyNavigation(request, action, rule)
     }
-    // Unanswered after the timeout: block (the answer callback runs with null). A late answer finds nothing.
     mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
   }
 
@@ -87,7 +81,6 @@ internal class MinimalWebViewNavigation(
   // reissued URL isn't asked again (its redirects still go to decide).
   private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
-  /** A download no `onDownload` takes. */
   fun openDownload(url: String) {
     if (url.startsWith("http:") || url.startsWith("https:")) {
       openExternal(NavigationRules.Request(url, true, false, false), null)
@@ -96,23 +89,18 @@ internal class MinimalWebViewNavigation(
     }
   }
 
-  /**
-   * Opens an `external` navigation and reports it (`block` when nothing opened it): the app's `onOpenExternal` if set,
-   * and [open] when it isn't or answers false.
-   */
   private fun openExternal(request: NavigationRules.Request, rule: Int?) {
     val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
     if ("onOpenExternal" !in owner.requestHandlers) return report(open(request.url))
-    // A page that moved on first answers null, which counts as opened. No timeout: nothing waits for the answer.
     owner.asks.ask("core", "onOpenExternal", fields(request)) { answer ->
       report(answer != false || open(request.url))
     }
   }
 
   /**
-   * Opens a URL outside the WebView. Returns false when it could not be opened (the caller reports `block`): a page
-   * controls the URL, so a malformed intent (bad syntax, launchFlags=zz), a refused activity or a `file:` URL (which
-   * Android refuses to hand to another app) must not crash the app.
+   * Returns false when it could not be opened (the caller reports `block`): a page controls the URL, so a malformed
+   * intent (bad syntax, launchFlags=zz), a refused activity or a `file:` URL (which Android refuses to hand to another
+   * app) must not crash the app.
    */
   private fun open(url: String): Boolean {
     val intent = try {
@@ -149,25 +137,20 @@ internal class MinimalWebViewNavigation(
     return intent
   }
 
-  // No app for the link: an intent may name a web fallback, as Chrome supports. It goes through the rules like any
-  // other navigation. Otherwise nothing happens.
+  // No app for the link: an intent may name a web fallback, as Chrome supports.
   private fun openFallback(intent: Intent, url: String, error: ActivityNotFoundException): Boolean {
     val fallback = intent.getStringExtra("browser_fallback_url")?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
       ?: return failed("no app opens $url", error)
     if (!decide(NavigationRules.Request(fallback, true, false, false))) webView.loadUrl(fallback)
-    // Nothing opened externally: the intent is reported as blocked, the fallback by its own decision.
     return false
   }
 
-  // Never a second WebView: a popup model is more than almost any app wants, so a throwaway one only catches the URL.
   fun createWindow(isUserGesture: Boolean, resultMsg: Message): Boolean {
     val child = WebView(owner.context)
-    // It only catches a URL: none of the page's access, and no JS of its own.
     child.settings.allowFileAccess = false
     child.settings.allowContentAccess = false
     child.settings.javaScriptEnabled = false
     children += child
-    // Finishes once, whichever comes first: the first URL, the timeout, a crash, the Document's end (documentEnded).
     // Destroyed later: this may run inside the child's own callback.
     fun finish(): Boolean {
       val wasPending = children.remove(child)
