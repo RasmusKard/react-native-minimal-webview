@@ -400,7 +400,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       "progress" to progress,
       "canGoBack" to back,
       "canGoForward" to forward,
-      "outcome" to if (loading) null else outcome?.name?.lowercase()
+      "outcome" to if (loading) null else outcome?.jsName
     )
     if (state == lastEmitted) return
     lastEmitted = state
@@ -415,7 +415,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
 internal const val TAG = "MinimalWebView"
 
-internal enum class LoadOutcome { FINISHED, FAILED, CANCELLED }
+internal enum class LoadOutcome(val jsName: String) { FINISHED("finished"), FAILED("failed"), CANCELLED("cancelled") }
 
 /**
  * Not View.post: a detached view (unmounted, or a covered screen) holds that until it is attached again. Lazy: the JVM

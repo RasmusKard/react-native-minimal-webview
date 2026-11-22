@@ -9,11 +9,7 @@ internal object NavigationRules {
     val isRedirect: Boolean = false
   )
 
-  enum class Action {
-    ALLOW, BLOCK, EXTERNAL, ASK;
-
-    val jsName get() = name.lowercase()
-  }
+  enum class Action(val jsName: String) { ALLOW("allow"), BLOCK("block"), EXTERNAL("external"), ASK("ask") }
 
   /** [rule] is the index of the rule that decided, null when a default did. */
   data class Decision(val action: Action, val rule: Int?)

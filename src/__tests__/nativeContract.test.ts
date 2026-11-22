@@ -438,8 +438,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
     {
       name: 'outcome',
       keys: outcome,
-      files: ['MinimalWebView.kt', 'MinimalWebViewClients.kt'],
-      site: /outcome = [^\n/]*|-> "\w+"/g,
+      site: /enum class LoadOutcome\([^}]*\}/g,
     },
     {
       name: 'error kind',
@@ -478,7 +477,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       files: ['requests/Permissions.kt'],
       site: / to "\w+"|listOf\("\w+"\)/g,
     },
-    { name: 'rule actions', keys: actions, site: /val actions = setOf\([^)]*\)/g },
+    { name: 'rule actions', keys: actions, site: /enum class Action\([^}]*\}/g },
     { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
   ios: [
