@@ -404,11 +404,21 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadEnded(navigation, error) { $0.webView?(webView, didFail: navigation, withError: error) }
+    loadFailed(webView, navigation, error, provisional: false)
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadEnded(navigation, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    loadFailed(webView, navigation, error, provisional: true)
+  }
+
+  private func loadFailed(_ webView: WKWebView, _ navigation: WKNavigation?, _ error: Error, provisional: Bool) {
+    loadEnded(navigation, error) {
+      if provisional {
+        $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
+      } else {
+        $0.webView?(webView, didFail: navigation, withError: error)
+      }
+    }
   }
 
   private func loadEnded(_ navigation: WKNavigation?, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
