@@ -13,45 +13,45 @@ const SHA256 = '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
 const MODEL = new URL('../../src/__tests__/bridge-model/', import.meta.url);
 const TEMPORAL = ['EverySettles'];
 
-const MUTANTS: { code: string; from: string; to: string; breaks: string[] }[] = [
+const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
   {
-    code: 'createBridge.ts rejectSent rejects every pending call, queued ones too (before 985144a92)',
+    bug: 'createBridge.ts rejectSent rejects every pending call, queued ones too (before 985144a92)',
     from: 'RejectSent == pending \\ QueuedCalls',
     to: 'RejectSent == pending',
     breaks: ['NavigatedOnlyIfPosted'],
   },
   {
-    code: 'createBridge.ts receiveMessage flushes the queue without emptying it (`queue = []`)',
+    bug: 'createBridge.ts receiveMessage flushes the queue without emptying it (`queue = []`)',
     from: "/\\ queue' = <<>> \\* const flushing = queue; queue = []",
     to: "/\\ queue' = queue",
     breaks: ['QueuedOrPosted', 'RunOnce'],
   },
   {
-    code: 'endpoint.ts rejectPending leaves the timer running (no `clearTimeout`)',
+    bug: 'endpoint.ts rejectPending leaves the timer running (no `clearTimeout`)',
     from: 'StopTimers(t, s) == t \\ s',
     to: 'StopTimers(t, s) == t',
     breaks: ['SettledOnce'],
   },
   {
-    code: 'createBridge.ts receive({ navigated }) skips `rejectSent`',
+    bug: 'createBridge.ts receive({ navigated }) skips `rejectSent`',
     from: 'OnNavigated(e) ==\n  LET sent == RejectSent',
     to: 'OnNavigated(e) ==\n  LET sent == {}',
     breaks: ['EverySettles'],
   },
   {
-    code: 'createBridge.ts detach rejects queued calls with `navigated` too',
+    bug: 'createBridge.ts detach rejects queued calls with `navigated` too',
     from: "/\\ navRejected' = navRejected \\cup RejectSent \\*",
     to: "/\\ navRejected' = navRejected \\cup pending \\*",
     breaks: ['NavigatedOnlyIfPosted'],
   },
   {
-    code: 'pageClient.ts receive acts on any token (no `message.doc === doc`)',
+    bug: 'pageClient.ts receive acts on any token (no `message.doc === doc`)',
     from: 'Accepts(d, msg) == msg.doc = d',
     to: 'Accepts(d, msg) == TRUE',
     breaks: ['RightPage'],
   },
   {
-    code: "createBridge.ts receive({ navigated }) without the `phase === 'loading'` branch",
+    bug: "createBridge.ts receive({ navigated }) without the `phase === 'loading'` branch",
     from: 'NeverSaidReady == phase = "loading"',
     to: 'NeverSaidReady == FALSE',
     breaks: ['NotCarriedOver'],
@@ -133,7 +133,7 @@ if (process.argv.includes('--mutants')) {
   for (const [mutant, property] of MUTANTS.flatMap((m) => m.breaks.map((p) => [m, p] as const))) {
     const caught = catches(mutant, property);
     if (!caught) missed++;
-    console.log(`${caught ? 'caught' : 'MISSED'}: ${property} on ${mutant.code}`);
+    console.log(`${caught ? 'caught' : 'MISSED'}: ${property} on ${mutant.bug}`);
   }
   if (missed) {
     console.error(

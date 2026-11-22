@@ -78,12 +78,12 @@ async function importInputs() {
   ];
   for (const path of headers) {
     let inEnum = false;
-    let open = 0;
+    let unresolvedIfs = 0;
     const lines = execFileSync('xcrun', ['unifdef', '-x', '2', ...IOS_DEFINES, path])
       .toString()
       .split('\n')
       .filter((line) => {
-        open += /^\s*#\s*if/.test(line) ? 1 : /^\s*#\s*endif\b/.test(line) ? -1 : 0;
+        unresolvedIfs += /^\s*#\s*if/.test(line) ? 1 : /^\s*#\s*endif\b/.test(line) ? -1 : 0;
         let keep = inEnum;
         if (inEnum) inEnum = !line.startsWith('}');
         else {
@@ -92,7 +92,7 @@ async function importInputs() {
             inEnum ||
             /^@(interface|end)\b|^@property\b|^- \(.*\^|^WK_EXTERN NSString \* const /.test(line);
         }
-        if (keep && open)
+        if (keep && unresolvedIfs)
           throw new Error(
             `${path}: an #if unifdef can't resolve holds \`${line}\`; add its macro to IOS_DEFINES`
           );

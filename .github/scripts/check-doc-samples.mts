@@ -17,12 +17,12 @@ const pages = ['README.md', 'extensions/README.md', ...guides.map((name) => `gui
 const samples = pages.flatMap((page) => {
   const text = readFileSync(join(root, page), 'utf8');
   return [...text.matchAll(/^```(tsx?)\n([\s\S]*?)^```$/gm)].map((match) => {
-    const line = text.slice(0, match.index).split('\n').length + 1;
+    const firstLine = text.slice(0, match.index).split('\n').length + 1;
     return {
       page,
-      line,
+      firstLine,
       code: match[2],
-      file: join(out, `${page.slice(0, -'.md'.length)}-${line}.${match[1]}`),
+      file: join(out, `${page.slice(0, -'.md'.length)}-${firstLine}.${match[1]}`),
     };
   });
 });
@@ -67,7 +67,7 @@ for (const d of diagnostics) {
   let where = d.file?.fileName ?? 'tsc';
   if (sample && d.file && d.start !== undefined) {
     const { line, character } = d.file.getLineAndCharacterOfPosition(d.start);
-    where = `${sample.page}:${sample.line + line}:${character + 1}`;
+    where = `${sample.page}:${sample.firstLine + line}:${character + 1}`;
   }
   console.error(`${where}: ${ts.flattenDiagnosticMessageText(d.messageText, '\n')}`);
 }
