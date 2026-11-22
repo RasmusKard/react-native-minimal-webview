@@ -73,5 +73,31 @@ MainActor.assumeIsolated {
 }
 try FileManager.default.removeItem(at: site.deletingLastPathComponent())
 
+let cookieName = "mrw-view-\(getpid())"
+func copiedToNative(_ webView: WKWebView) -> Bool {
+  let cookie = HTTPCookie(properties: [.name: cookieName, .value: "1", .domain: "example.com", .path: "/"])
+  webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie!)
+  defer { HTTPCookieStorage.shared.cookies?.filter { $0.name == cookieName }.forEach(HTTPCookieStorage.shared.deleteCookie) }
+  return spin { HTTPCookieStorage.shared.cookies?.contains { $0.name == cookieName } == true }
+}
+MainActor.assumeIsolated {
+  func webView() -> WKWebView {
+    let configuration = WKWebViewConfiguration()
+    configuration.websiteDataStore = .nonPersistent()
+    return WKWebView(frame: .zero, configuration: configuration)
+  }
+  let inOrder = SharedCookies()
+  let first = webView()
+  inOrder.didCreate(first)
+  inOrder.set(true)
+  check("shared cookies: a cookie the WebView sets reaches the native store", copiedToNative(first))
+  let early = SharedCookies()
+  early.set(true)
+  let second = webView()
+  early.didCreate(second)
+  early.set(true)
+  check("shared cookies: turned on before the WebView exists, a cookie the WebView sets reaches the native store", copiedToNative(second))
+}
+
 print("\(total - failed)/\(total) view cases pass")
 exit(failed == 0 ? 0 : 1)
