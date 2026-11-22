@@ -159,7 +159,7 @@ async function staleAnswer({ h, r }: Suite) {
     const inFlight = h.bridge.call('slowPage').catch(errorCode);
     await evaluate(
       h,
-      `(nativeBridge.call('hostileSlow', { from: 'A', ms: 1500 }), setTimeout(() => (location.href = ${JSON.stringify(next)}), 100), 1)`
+      `(window.nativeBridge?.call('hostileSlow', { from: 'A', ms: 1500 }), setTimeout(() => (location.href = ${JSON.stringify(next)}), 100), 1)`
     );
     const rn = await Promise.race([inFlight, sleep(5000).then(() => 'still pending')]);
     await waitFor(h, (s) => s.url === next && idle(s));

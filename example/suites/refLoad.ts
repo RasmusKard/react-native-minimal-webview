@@ -7,6 +7,7 @@ import {
   fresh,
   idle,
   openPage,
+  poll,
   sleep,
   tap,
   text,
@@ -97,14 +98,15 @@ export async function refLoad(h: Harness, r: Reporter) {
     h.events.navigations
   );
   const redirected = `${h.pages}/redirect?to=/blocked`;
-  await waitForLoad(h, () => h.ref.current?.load(redirected));
+  const blocked = () =>
+    h.events.navigations.some((n) => n.action === 'block' && n.url.endsWith('/blocked'));
+  h.ref.current?.load(redirected);
+  await poll(blocked, 15000);
   await sleep(300);
-  r.check(
-    "the load's redirect goes to the rules",
-    h.events.navigations.some((n) => n.action === 'block' && n.url.endsWith('/blocked')) &&
-      h.state().url === allowed,
-    { navigations: h.events.navigations, state: h.state() }
-  );
+  r.check("the load's redirect goes to the rules", blocked() && h.state().url === allowed, {
+    navigations: h.events.navigations,
+    state: h.state(),
+  });
   await r.block('races', () => refLoadRaces(h, r));
   h.setRules(undefined);
   await r.block('edges', () => refLoadEdges(h, r));

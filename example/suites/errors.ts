@@ -5,8 +5,8 @@ import {
   fresh,
   idle,
   openPage,
+  poll,
   sleep,
-  until,
   waitFor,
   happens,
 } from '../harness/helpers';
@@ -19,7 +19,7 @@ export async function errors(h: Harness, r: Reporter) {
   const outcomeOf = async (act: () => unknown, ms = 10000) => {
     const n = h.events.outcomes.length;
     await act();
-    await until(() => h.events.outcomes.length > n, ms, 50);
+    await poll(() => h.events.outcomes.length > n, ms, 50);
     return h.events.outcomes.length > n ? h.events.outcomes[n] : 'no end';
   };
 
@@ -70,7 +70,7 @@ export async function errors(h: Harness, r: Reporter) {
 
   const stopped = await outcomeOf(async () => {
     h.load(fresh(h, '/slow?ms=3000'));
-    await waitFor(h, (s) => s.loading, 3000);
+    await poll(() => h.state().loading, 1000, 50);
     h.ref.current?.stopLoading();
   }, 5000);
   r.since(
@@ -81,7 +81,7 @@ export async function errors(h: Harness, r: Reporter) {
   );
   clearEvents(h);
   h.load(fresh(h, '/slow?ms=3000'));
-  await waitFor(h, (s) => s.loading, 3000);
+  await poll(() => h.state().loading, 1000, 50);
   const newer = fresh(h, '/');
   h.load(newer);
   await waitFor(h, (s) => s.url === newer && idle(s), 10000);
