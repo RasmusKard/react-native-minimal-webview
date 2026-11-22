@@ -11,7 +11,7 @@ CONSTANTS
 Docs == 1..NumDocs  \* a document's token (protocol.ts `doc`) is its number: tokens are unique
 Msgs == 1..NumMsgs  \* RN call ids (endpoint.ts `n1`, `n2`, ...); an emit uses one too, as a name for the model
 None == 0
-Direct == NumDocs + 1
+NotQueued == NumDocs + 1
 
 VARIABLES
   \* createBridge.ts
@@ -126,7 +126,7 @@ AppSend(kind) ==
           /\ UNCHANGED <<pending, timers, queue, toNative, posted>>
      ELSE IF attached /\ phase = "ready"
      THEN \* deliver: posted with `doc`
-          /\ toNative' = Append(toNative, [kind |-> kind, id |-> m, doc |-> doc, to |-> doc, for |-> Direct])
+          /\ toNative' = Append(toNative, [kind |-> kind, id |-> m, doc |-> doc, to |-> doc, for |-> NotQueued])
           /\ posted' = posted \cup added
           /\ pending' = pending \cup added
           /\ timers' = timers \cup added
@@ -220,7 +220,7 @@ RNReceive ==
 RNAnswer ==
   \E d \in answering:
     /\ answering' = answering \ {d}
-    /\ toNative' = Append(toNative, [kind |-> "result", id |-> 0, doc |-> d, to |-> d, for |-> Direct])
+    /\ toNative' = Append(toNative, [kind |-> "result", id |-> 0, doc |-> d, to |-> d, for |-> NotQueued])
     /\ UNCHANGED <<attached, phase, doc, queue, unavailable, pending, timers, nextMsg>>
     /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toPage>>
     /\ UNCHANGED <<pageVars, ghostVars>>
@@ -296,7 +296,7 @@ Act(d, msg) ==
        /\ running' = IF msg.kind = "call" THEN [running EXCEPT ![d] = @ \cup {msg.id}] ELSE running
        /\ runs' = IF msg.kind = "call" THEN [runs EXCEPT ![msg.id] = @ + 1] ELSE runs
        /\ wrongPage' = (wrongPage \/ msg.to # d)
-       /\ carriedOver' = (carriedOver \/ msg.for \notin {Direct, d})
+       /\ carriedOver' = (carriedOver \/ msg.for \notin {NotQueued, d})
        /\ UNCHANGED pageCall
 
 PageReceive ==
