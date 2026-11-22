@@ -37,7 +37,7 @@ class PlatformSettingsTest {
     val fake = Fake()
     val targets = listOf(Target(Fake::class.java, fake, null), Target(FakeCompat::class.java, null, fake))
     val rejected = PlatformSettings { if (it == "settings") targets else null }.apply(mapOf("settings" to mapOf(key to value)))
-    return rejected.singleOrNull()?.get("reason") to fake.values
+    return rejected.singleOrNull()?.reason to fake.values
   }
 
   @Test
@@ -71,7 +71,7 @@ class PlatformSettingsTest {
     val fake = Fake()
     val settings = PlatformSettings({ false }) { if (it == "settings") listOf(Target(Fake::class.java, fake, null)) else null }
     val rejected = settings.apply(mapOf("settings" to mapOf("backForwardCacheEnabled" to true)))
-    assertEquals(listOf("settings.backForwardCacheEnabled"), rejected.map { it["key"] })
+    assertEquals(listOf("settings.backForwardCacheEnabled"), rejected.map { it.key })
     settings.apply(mapOf("settings" to mapOf("backForwardCacheEnabled" to false)))
     assertEquals(listOf<Any?>(false), fake.values)
     val error = assertThrows(PlatformException::class.java) {
@@ -230,7 +230,7 @@ class PlatformSettingsTest {
   fun keepsAKeyWithNoGetterAndSaysSo() {
     apply("blind" to 1)
     val reason = "removed, but it has no getter to restore it from: it keeps its value until the WebView is recreated"
-    assertEquals(listOf(mapOf("key" to "settings.blind", "reason" to reason)), apply())
+    assertEquals(listOf(PlatformSettings.Rejected("settings.blind", reason)), apply())
     assertEquals(listOf(1), live.writes)
   }
 

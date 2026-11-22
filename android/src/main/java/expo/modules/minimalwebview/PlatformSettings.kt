@@ -26,13 +26,15 @@ internal class PlatformSettings(
     override fun toString() = "$root.$key"
   }
 
+  data class Rejected(val key: String, val reason: String)
+
   internal class Target(val cls: Class<*>, val receiver: Any?, val firstArgument: Any?)
 
   /**
    * Applies [settings], and sets a key applied before and missing now back to its value before the first write;
    * returns the rejected keys with their reasons. [force] re-applies everything (a new WebView).
    */
-  fun apply(settings: Map<String, Any?>?, force: Boolean = false): List<Map<String, String>> {
+  fun apply(settings: Map<String, Any?>?, force: Boolean = false): List<Rejected> {
     if (force) {
       applied.clear()
       originals.clear()
@@ -41,7 +43,7 @@ internal class PlatformSettings(
     for ((rootName, entries) in settings.orEmpty()) {
       val targets = settingsTargets(rootName)
       if (targets == null || entries !is Map<*, *>) {
-        rejected += mapOf("key" to rootName, "reason" to "unknown root: use settings or webView")
+        rejected += Rejected(rootName, "unknown root: use settings or webView")
         continue
       }
       for ((k, value) in entries) {
@@ -50,7 +52,7 @@ internal class PlatformSettings(
         if (applied.containsKey(id) && applied[id] == value) continue
         applied[id] = value
         val problem = write(targets, id, value) ?: continue
-        rejected += mapOf("key" to id.toString(), "reason" to problem)
+        rejected += Rejected(id.toString(), problem)
       }
     }
     return rejected
@@ -70,7 +72,7 @@ internal class PlatformSettings(
   }
 
   /** Forgets each applied key [removedFrom] no longer has and sets its original value back; returns what failed. */
-  private fun restore(removedFrom: Map<String, Any?>): List<Map<String, String>> {
+  private fun restore(removedFrom: Map<String, Any?>): List<Rejected> {
     val present = removedFrom.flatMap { (rootName, entries) ->
       (entries as? Map<*, *>)?.keys.orEmpty().map { SettingId(rootName, it.toString()) }
     }.toSet()
@@ -84,7 +86,7 @@ internal class PlatformSettings(
       } else {
         set(targets(rootName).orEmpty(), key, original)?.let { "removed, but restoring it failed: $it" }
       }
-      problem?.let { mapOf("key" to id.toString(), "reason" to it) }
+      problem?.let { Rejected(id.toString(), it) }
     }
   }
 
