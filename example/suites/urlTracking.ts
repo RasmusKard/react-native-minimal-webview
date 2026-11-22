@@ -11,6 +11,7 @@ import {
   waitFor,
   poll,
   happens,
+  tap,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -137,7 +138,8 @@ export async function urlTracking(h: Harness, r: Reporter) {
   await agree(h, r, 'remounted WebView agrees');
 
   const backBefore = h.state().canGoBack;
-  await click(h, 'frame-push');
+  // A gesture: Chromium's canGoBack skips an entry that a page added without one.
+  await tap(h, r, 'frame-push');
   r.check(
     'iframe pushState in a new WebView lets it go back',
     !backBefore && (await happens(waitFor(h, (s) => s.canGoBack, 3000))),
