@@ -455,7 +455,6 @@ async function scriptFocus(h: Harness, r: Reporter, viewport: () => Promise<numb
     );
     return !!(await poll(async () => (await viewport()) < height, 2000));
   };
-  // The option's first use in the app, while hideKeyboardAccessoryView has changed the keyboard's view.
   await recreate(
     h,
     { extensions: [hideKeyboardAccessoryView(), keyboardDisplayRequiresUserAction(false)] },
