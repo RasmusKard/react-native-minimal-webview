@@ -20,11 +20,16 @@ import {
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
+const CORE_CRASH_WINDOW_MS = 60_000;
+const ANDROID_SAME_CRASH_MS = 100;
+const WITHIN_CRASH_WINDOW_MS = CORE_CRASH_WINDOW_MS - 5_000;
+const RESUME_SKEW_MS = 1500;
+
 export async function crash(h: Harness, r: Reporter) {
   const page = fresh(h, '/bridge.html');
   const kill = async (n: number, action: 'kill' | 'killInBackground' = 'kill') => {
     const before = h.events.gone.length;
-    const answers = () =>
+    const rendererAnswers = () =>
       Promise.race([
         h.ref.current?.evaluate('1').then(
           () => true,
@@ -32,13 +37,13 @@ export async function crash(h: Harness, r: Reporter) {
         ),
         sleep(1000).then(() => false),
       ]);
-    await until(answers);
-    await sleep(150);
+    await until(rendererAnswers);
+    await sleep(ANDROID_SAME_CRASH_MS + 50);
     r.drive({ action }, n);
     await waitFor(h, () => h.events.gone.length > before, 15000);
     return h.events.gone[before];
   };
-  const userAgent = () =>
+  const pageUserAgent = () =>
     poll(
       async () =>
         (await h.ref.current?.evaluate('navigator.userAgent').catch(errorCode)) === 'Crash/1'
@@ -48,7 +53,7 @@ export async function crash(h: Harness, r: Reporter) {
     async () => (await h.ref.current?.get(USER_AGENT_KEY).catch(errorCode)) === 'Crash/1'
   );
   await openPage(h, page);
-  r.info('a setting before the crash', await userAgent());
+  r.info('a setting before the crash', await pageUserAgent());
   clearEvents(h);
   const firstKillAt = Date.now();
   const countsBefore = h.events.pageCounts.length;
@@ -99,7 +104,7 @@ export async function crash(h: Harness, r: Reporter) {
     'the bridge works after recovery',
     (await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode)) === 4
   );
-  r.check('the setting is still applied after recovery', !!(await userAgent()));
+  r.check('the setting is still applied after recovery', !!(await pageUserAgent()));
 
   await waitForLoad(h, () => kill(3));
   await until(
@@ -114,7 +119,7 @@ export async function crash(h: Harness, r: Reporter) {
   const fourth = await kill(4);
   const onScreen = h.state().url;
   const elapsed = Date.now() - firstKillAt;
-  if (elapsed < 55000)
+  if (elapsed < WITHIN_CRASH_WINDOW_MS)
     r.check(
       'a crash loop stops reloading (4th crash in 60 s)',
       fourth?.recovered === false,
@@ -148,7 +153,7 @@ export async function crash(h: Harness, r: Reporter) {
   );
   for (const n of [6, 7]) await waitForLoad(h, () => kill(n));
   const eighth = await kill(8);
-  if (Date.now() - loopAt < 55000)
+  if (Date.now() - loopAt < WITHIN_CRASH_WINDOW_MS)
     r.check('a crash loop stops reloading again', eighth?.recovered === false, eighth);
   else r.skip('a crash loop stops reloading again', `the 4 crashes took ${Date.now() - loopAt} ms`);
   const loaded = fresh(h, '/bridge.html');
@@ -213,7 +218,7 @@ export async function crash(h: Harness, r: Reporter) {
     backgroundGone?.recovered === true &&
       recovered &&
       typeof loadedAt === 'number' &&
-      loadedAt > activeAt - 1500,
+      loadedAt > activeAt - RESUME_SKEW_MS,
     {
       backgroundGone,
       recovered,

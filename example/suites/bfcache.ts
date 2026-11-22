@@ -32,13 +32,15 @@ export async function bfcache(h: Harness, r: Reporter) {
     nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
   })()`;
   await h.ref.current?.evaluate(straddleCall).catch(errorCode);
-  let left = Date.now();
+  const calledAt = Date.now();
+  let leftAt: number | undefined;
+  const sinceLeftOrCalled = () => Date.now() - (leftAt ?? calledAt);
   const inFlight = h.bridge.call('slow', { ms: 1500 }).then(
-    (value) => ({ value, ms: Date.now() - left }),
-    (error: unknown) => ({ code: errorCode(error), ms: Date.now() - left })
+    (value) => ({ value, ms: sinceLeftOrCalled() }),
+    (error: unknown) => ({ code: errorCode(error), ms: sinceLeftOrCalled() })
   );
   await sleep(200);
-  left = Date.now();
+  leftAt = Date.now();
   h.ref.current?.goBack();
   const settled = await inFlight;
   r.since(

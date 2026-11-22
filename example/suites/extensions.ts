@@ -44,6 +44,7 @@ const KEY = '@react-native-minimal-webview/extensions';
 const ios = Platform.OS === 'ios';
 const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">';
 const MENU = [{ label: 'Highlight', key: 'hl' }];
+const ONE_WORD_OVER_THE_PAGE = `<p style="font: 48px/1.2 system-ui; word-break: break-all; margin: 0">${'a'.repeat(3000)}</p>`;
 
 async function loadHtml(h: Harness, body: string) {
   const title = `ext-${Date.now()}`;
@@ -244,13 +245,13 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
 
 async function scroll(h: Harness, r: Reporter) {
   const scrolls: ScrollEvent[] = [];
-  const insets = {
+  const noInsetAdjustment = {
     scrollView: {
       contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
     },
   };
   h.setProps({
-    ios: insets,
+    ios: noInsetAdjustment,
     extensions: [onScroll((event) => scrolls.push(event))],
   });
   await loadHtml(h, '<div style="height: 5000px">tall</div>');
@@ -264,7 +265,7 @@ async function scroll(h: Harness, r: Reporter) {
     !!at && at.contentSize.height > at.layoutMeasurement.height,
     scrolls.at(-1)
   );
-  h.setProps({ ios: insets });
+  h.setProps({ ios: noInsetAdjustment });
   await sleep(300);
   const count = scrolls.length;
   h.events.hookEvents.length = 0;
@@ -290,10 +291,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     typeof made === 'string' && made.includes(ios ? 'MenuWKWebView' : 'MenuWebView'),
     made
   );
-  await loadHtml(
-    h,
-    `<p style="font: 48px/1.2 system-ui; word-break: break-all; margin: 0">${'a'.repeat(3000)}</p>`
-  );
+  await loadHtml(h, ONE_WORD_OVER_THE_PAGE);
   r.drive({ action: 'longPress', point: '50%, 30%' });
   r.drive({ action: 'press', text: 'Highlight' });
   const selection = await poll(() => chosen[0], 30000);
@@ -486,12 +484,12 @@ async function android(h: Harness, r: Reporter) {
   const failed: SubResourceErrorEvent[] = [];
   h.setProps({ extensions: [onLoadSubResourceError((event) => failed.push(event))] });
   await sleep(300);
-  const image = 'http://127.0.0.1:1/x.png';
+  const unreachableImage = 'http://127.0.0.1:1/x.png';
   await loadHtml(
     h,
-    `<img src="${image}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
+    `<img src="${unreachableImage}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
-  const reported = await poll(() => failed.find(({ url }) => url === image), 5000);
+  const reported = await poll(() => failed.find(({ url }) => url === unreachableImage), 5000);
   const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
   await openPage(h, 'http://127.0.0.1:1/main');
   await sleep(1000);

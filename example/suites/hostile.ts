@@ -41,9 +41,9 @@ type FrameReport = {
 const evaluate = async (h: Harness, script: string) =>
   await h.ref.current?.evaluate(script).catch(errorCode);
 
-async function gesture({ h, r }: Suite, id: string, real = false) {
+async function gesture({ h, r }: Suite, id: string, input: typeof tap | typeof touch = tap) {
   const before = Number(await evaluate(h, 'window.testLog.length'));
-  await (real ? touch : tap)(h, r, id);
+  await input(h, r, id);
   const seen = async () =>
     String(await evaluate(h, `window.testLog.slice(${before}).join()`)).includes(`click ${id}`);
   return (await poll(seen, 15000)) === true;
@@ -298,7 +298,7 @@ async function defaultScheme(suite: Suite) {
   );
   const tapped = async (id: string, target: string) => {
     const before = h.events.navigations.length;
-    const clicked = await gesture(suite, id, true);
+    const clicked = await gesture(suite, id, touch);
     await until(() => h.events.navigations.slice(before).some((n) => n.url === target), 5000);
     return { clicked, decision: h.events.navigations.slice(before).find((n) => n.url === target) };
   };
@@ -382,8 +382,8 @@ const inOwnDirectory = (uri: string) =>
 
 async function savedAs(saved: Download) {
   const name = decodeURIComponent(saved.uri.split('/').at(-1) ?? '');
-  const escaped = new File(`${saved.uri.split('/').slice(0, -3).join('/')}/evil.txt`);
-  return { name, escaped, body: await new File(saved.uri).text() };
+  const traversalTarget = new File(`${saved.uri.split('/').slice(0, -3).join('/')}/evil.txt`);
+  return { name, traversalTarget, body: await new File(saved.uri).text() };
 }
 
 async function traversalName({ h, r }: Suite) {
@@ -396,9 +396,14 @@ async function traversalName({ h, r }: Suite) {
       !!traversal?.ok && inOwnDirectory(traversal.uri),
       saved?.name === traversal?.filename,
       saved?.body.startsWith('downloaded ../../evil.txt') === true,
-      saved?.escaped.exists === false
+      saved?.traversalTarget.exists === false
     ),
-    { traversal, name: saved?.name, escaped: saved?.escaped.uri, body: saved?.body.slice(0, 40) }
+    {
+      traversal,
+      name: saved?.name,
+      traversalTarget: saved?.traversalTarget.uri,
+      body: saved?.body.slice(0, 40),
+    }
   );
   r.info('T7 ../../evil.txt saved as', traversal);
   return traversal?.ok ? traversal : undefined;
