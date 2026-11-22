@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import prettier from 'prettier';
 
+import { coercedObjects, completionShapes } from './native-mirrors.mts';
+
 const inputs = new URL('platform-headers/', import.meta.url);
 const target = new URL('../../src/platform.generated.ts', import.meta.url);
 const swiftTarget = new URL('../../ios/PlatformCompletions.generated.swift', import.meta.url);
@@ -170,12 +172,13 @@ const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase
 const repoFile = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const KOTLIN_SETTINGS = 'android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt';
 
-function assertSameNames(names: readonly string[], file: string, pattern: RegExp) {
+function assertSameNames(
+  names: readonly string[],
+  file: string,
+  read: (source: string) => string[]
+) {
   const ours = [...names].sort().join(', ');
-  const theirs = [...repoFile(file).matchAll(pattern)]
-    .map(([, name]) => name)
-    .sort()
-    .join(', ');
+  const theirs = read(repoFile(file)).join(', ');
   if (ours !== theirs)
     throw new Error(`${file} handles ${theirs}, gen-platform-types.mts expects ${ours}`);
 }
@@ -451,8 +454,8 @@ ${Object.entries(shapes)
 }
 
 async function generate() {
-  assertSameNames(Object.keys(OBJECTS), 'ios/PlatformSettings.swift', /case "@\\"(\w+)\\"":/g);
-  assertSameNames(COMPLETIONS, 'ios/MRWInvoke.m', /isEqualToString:@"(\w+)"/g);
+  assertSameNames(Object.keys(OBJECTS), 'ios/PlatformSettings.swift', coercedObjects);
+  assertSameNames(COMPLETIONS, 'ios/MRWInvoke.m', completionShapes);
   // Sorted, so IOSConstants' member order is the same on every filesystem.
   const ios = readdirSync(inputs)
     .filter((f) => f.endsWith('.h'))
