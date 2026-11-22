@@ -36,9 +36,10 @@ export async function upload(h: Harness, r: Reporter) {
   };
   await open();
   // The taps come from the driver, because WebView only opens choosers on a real gesture.
-  const point = '50%, 49%';
+  const fullPageFileInput = '50%, 49%';
   const tapAndRead = async (label: string, action: 'tap' | 'tapThenBack' = 'tap') =>
-    (await pageLog(h, () => r.drive({ action, point }, label)))?.join(' | ') ?? '';
+    (await pageLog(h, () => r.drive({ action, point: fullPageFileInput }, label)))?.join(' | ') ??
+    '';
 
   answer = [file.uri];
   const fromFileUri = await tapAndRead('file uri');
@@ -78,7 +79,7 @@ export async function upload(h: Harness, r: Reporter) {
 
   hang = true;
   const held = requests.length;
-  r.drive({ action: 'tap', point }, 'never settles');
+  r.drive({ action: 'tap', point: fullPageFileInput }, 'never settles');
   await reachesJs(r, () => requests.length, held);
   hang = false;
   const navigatedAt = Date.now();

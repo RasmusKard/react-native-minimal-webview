@@ -2,7 +2,7 @@ import { BackHandler, Platform } from 'react-native';
 import type { FileRequest, NavigationRule, PermissionRequest } from 'react-native-minimal-webview';
 
 import {
-  click as scriptClick,
+  click,
   fresh,
   idle,
   openPage,
@@ -20,7 +20,7 @@ import {
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { OTHER, PAGES } from '../pages';
 
-const click = (h: Harness, id: string) => scriptClick(h, id)?.catch(String);
+const clickEvenIfGone = (h: Harness, id: string) => click(h, id)?.catch(String);
 
 type Policy = 'hybrid' | 'oauth' | 'checkout' | 'windows' | 'schemes' | 'none';
 
@@ -74,7 +74,7 @@ const RULES: Record<Policy, NavigationRule[] | undefined> = {
 async function applyPolicy(
   s: Shape,
   policy: Policy,
-  { external = true, downloads = true, inCheckout = false } = {}
+  { captureExternal = true, withOnDownload = true, inCheckout = false } = {}
 ) {
   s.h.setRules(RULES[policy]);
   s.h.setAsk((request) => {
@@ -83,8 +83,8 @@ async function applyPolicy(
     return inCheckout ? 'allow' : 'external';
   });
   s.h.setProps({
-    ...(external ? { onOpenExternal: recordExternal(s.external) } : {}),
-    ...(downloads ? {} : { onDownload: undefined }),
+    ...(captureExternal ? { onOpenExternal: recordExternal(s.external) } : {}),
+    ...(withOnDownload ? {} : { onDownload: undefined }),
   });
   await sleep(300);
 }
@@ -128,7 +128,7 @@ const agrees = async (h: Harness) =>
     2000
   )) === true;
 async function push(h: Harness) {
-  await click(h, 'push');
+  await clickEvenIfGone(h, 'push');
   await waitFor(h, (st) => st.url.includes('/spa/pushed'), 3000);
   return h.state().url;
 }
@@ -154,7 +154,7 @@ async function hybrid(s: Shape) {
   const { h, r } = s;
   await applyPolicy(s, 'hybrid');
   await hub(s);
-  await click(h, 'own');
+  await clickEvenIfGone(h, 'own');
   const own = await happens(
     waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=own` && idle(st))
   );
@@ -165,7 +165,7 @@ async function hybrid(s: Shape) {
   );
 
   let page = await hub(s);
-  await click(h, 'other');
+  await clickEvenIfGone(h, 'other');
   await until(() => s.external.length > 0, 3000);
   await sleep(300);
   r.check(
@@ -179,7 +179,7 @@ async function hybrid(s: Shape) {
   );
 
   page = await hub(s);
-  await click(h, 'offsite');
+  await clickEvenIfGone(h, 'offsite');
   await until(() => s.external.length > 0 && h.state().outcome === 'cancelled', 5000);
   r.since(
     WEBVIEW.navigationListener,
@@ -238,13 +238,13 @@ async function oauth(s: Shape) {
   await applyPolicy(s, 'oauth');
   await hub(s);
   const idp = await href(h, 'login');
-  await click(h, 'login');
+  await clickEvenIfGone(h, 'login');
   r.check(
     'B1 oauth: the IdP page on another origin loads',
     await happens(waitFor(h, (st) => st.url === idp && idle(st))),
     h.state()
   );
-  await askAfter(s, () => click(h, 'signin'));
+  await askAfter(s, () => clickEvenIfGone(h, 'signin'));
   r.check(
     'B2 oauth: a 302 to the custom scheme is asked with the code, the IdP page stays',
     all(
@@ -265,7 +265,7 @@ async function oauth(s: Shape) {
     h,
     `${OTHER}/shapes-idp.html?return=${encodeURIComponent(callback)}`
   );
-  await askAfter(s, () => click(h, 'signin'));
+  await askAfter(s, () => clickEvenIfGone(h, 'signin'));
   r.check(
     'B4 oauth: a 302 to the callback path is asked and blocked',
     all(s.asked.join() === `${callback}?code=302`, stays(h, callbackIdp)),
@@ -338,7 +338,7 @@ async function checkout(s: Shape) {
   await waitFor(h, (st) => st.url === term && idle(st));
   await sleep(500);
   r.check(
-    'C4 checkout: the same POST outside checkout',
+    'C4 checkout: the same POST outside checkout loads in place, not externally',
     all(stays(h, term), s.external.length === 0, unruled()),
     { external: s.external, asked: s.asked, decisions: h.events.navigations, url: h.state().url }
   );
@@ -438,7 +438,7 @@ async function schemes(s: Shape) {
   for (const [i, id] of ['tel', 'mailto', 'sms', 'maps', 'market', 'itms', 'intent'].entries()) {
     clear(s);
     const link = await href(h, id);
-    await click(h, id);
+    await clickEvenIfGone(h, id);
     await until(() => s.external.length > 0, 3000);
     await quietFor(id === 'intent' ? 1000 : 200);
     r.check(
@@ -452,7 +452,7 @@ async function schemes(s: Shape) {
     );
   }
   clear(s);
-  await click(h, 'applink');
+  await clickEvenIfGone(h, 'applink');
   await until(() => decision(h, '/applink/') !== undefined, 3000);
   r.check(
     'E8 schemes: an app-link host rule sends https external',
@@ -467,9 +467,9 @@ async function schemes(s: Shape) {
 
 async function schemeDefaults(s: Shape) {
   const { h, r, android } = s;
-  await applyPolicy(s, 'schemes', { external: false });
+  await applyPolicy(s, 'schemes', { captureExternal: false });
   const page = await hub(s);
-  await click(h, 'intent');
+  await clickEvenIfGone(h, 'intent');
   await until(() => decision(h, 'intent:') !== undefined, 5000);
   await sleep(1000);
   const intent = { decision: decision(h, 'intent:'), url: h.state().url };
@@ -508,12 +508,12 @@ async function schemeDefaults(s: Shape) {
 async function documents(s: Shape) {
   const { h, r, android } = s;
   const pdf = `${PAGES}/shapes.pdf`;
-  for (const downloads of [true, false]) {
-    await applyPolicy(s, 'none', { downloads });
+  for (const withOnDownload of [true, false]) {
+    await applyPolicy(s, 'none', { withOnDownload });
     const page = await hub(s);
     const before = h.events.downloads.length;
-    await click(h, 'pdf');
-    const name = downloads
+    await clickEvenIfGone(h, 'pdf');
+    const name = withOnDownload
       ? 'F1 docs: a PDF link shows inline on iOS, arrives in onDownload on Android'
       : 'F2 docs: without onDownload a PDF opens externally on Android';
     if (!android) {
@@ -525,7 +525,7 @@ async function documents(s: Shape) {
         state: h.state(),
         downloads: h.events.downloads.slice(before),
       });
-    } else if (downloads) {
+    } else if (withOnDownload) {
       await until(
         () => h.events.downloads.length > before && h.state().outcome === 'cancelled',
         15000
@@ -577,7 +577,7 @@ async function devices(s: Shape) {
     return false;
   });
   await open(h, '/device.html');
-  const mic = String(await pageLog(h, () => click(h, 'mic'), 15000));
+  const mic = String(await pageLog(h, () => clickEvenIfGone(h, 'mic'), 15000));
   r.check(
     'G2 permissions: a microphone request names microphone',
     all(
@@ -604,7 +604,7 @@ async function spa(s: Shape) {
     ),
     tapped
   );
-  const scripted = await walkBack(h, (id) => click(h, id));
+  const scripted = await walkBack(h, (id) => clickEvenIfGone(h, id));
   r.check(
     'H1b spa: goBack() over entries a script added without a gesture',
     scripted.first.url === (android ? scripted.before : scripted.pushed),
