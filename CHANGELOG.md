@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.2.1...react-native-minimal-webview-v1.3.0) (2026-11-22)
+
+
+### Features
+
+* Add HookExtension.onAsk, which takes a hook's asks with a non-optional signal ([#267](https://github.com/RasmusKard/react-native-minimal-webview/issues/267)) ([1e771ac](https://github.com/RasmusKard/react-native-minimal-webview/commit/1e771ac24149b5ced42c665ada397e5d82eadb20))
+* Add newWebViewsOnly to Android MinimalWebViewHooks.register, and use it for incognito ([#274](https://github.com/RasmusKard/react-native-minimal-webview/issues/274)) ([a7a100f](https://github.com/RasmusKard/react-native-minimal-webview/commit/a7a100f43ea3c2b95c67b58a2e8e6e6dc8ec248e))
+
+
+### Bug Fixes
+
+* Deliver Android bridge messages after the commit's document end on WebView before 119, so a new page's early call is answered ([#281](https://github.com/RasmusKard/react-native-minimal-webview/issues/281)) ([dfd07ff](https://github.com/RasmusKard/react-native-minimal-webview/commit/dfd07ff43275c5f09cce5c65ed7dbe4e64301ce6))
+* Name the Android download size cap in MiB, the unit it counts ([#273](https://github.com/RasmusKard/react-native-minimal-webview/issues/273)) ([4e94459](https://github.com/RasmusKard/react-native-minimal-webview/commit/4e944590e9306899895478f53af827ee10b651aa))
+* Retry a failed iOS load with the read root of the load that failed, not of the last load() at its URL ([#276](https://github.com/RasmusKard/react-native-minimal-webview/issues/276)) ([be65627](https://github.com/RasmusKard/react-native-minimal-webview/commit/be65627d1a67f9bef3e18a5f75091ca92d7d538e))
+
 ## [1.2.1](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.2.0...react-native-minimal-webview-v1.2.1) (2026-11-20)
 
 

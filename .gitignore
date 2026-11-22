@@ -62,6 +62,3 @@ reports/
 
 # Claude Code agent worktrees
 .claude/worktrees/
-
-# Local feature tree: its generator (feature-tree/run.sh) and output (FEATURE_TREE.md)
-/feature-tree/

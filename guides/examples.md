@@ -111,7 +111,7 @@ export function Site() {
       source={{ uri: 'https://example.com' }}
       style={{ flex: 1 }}
       navigationRules={[
-        { query: ['gad_source', 'utm_term=google'], action: 'block' }, // gad_source with any value, utm_term only =google
+        { query: ['external', 'view=browser'], action: 'external' },
         { host: ['pay.example.com'], action: 'ask' }, // onNavigationRequest decides
         { host: ['example.com', '*.example.com'], action: 'allow' },
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // embedded content stays in the page
