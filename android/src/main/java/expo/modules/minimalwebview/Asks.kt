@@ -1,17 +1,16 @@
 package expo.modules.minimalwebview
 
-
 /** Main thread only. */
 internal class Asks(private val send: (Map<String, Any?>) -> Unit) {
   private val pending = mutableMapOf<Int, (Any?) -> Unit>()
   private var nextId = 0
   private var closed = false
 
-  /** Sends the ask to JS and returns its id, for [cancel]. Once the view closed it answers null at once. */
-  fun ask(key: String, name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int {
+  /** Sends the ask to JS and returns its id, for [cancel]. Once the view closed it answers null at once and returns null. */
+  fun ask(key: String, name: String, payload: Map<String, Any?>, onAnswer: (Any?) -> Unit): Int? {
     if (closed) {
       onAnswer(null)
-      return 0
+      return null
     }
     val id = ++nextId
     pending[id] = onAnswer

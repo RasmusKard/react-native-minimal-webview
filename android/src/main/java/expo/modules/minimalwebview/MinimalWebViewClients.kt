@@ -54,11 +54,13 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
       owner.pendingUrl = null
       // Chromium's error page for an HTTP status (a 404 with an empty body) is the server's answer: "finished", as on
       // iOS.
-      owner.outcome = owner.outcome ?: when {
-        !navigation.didCommit() -> "cancelled"
-        navigation.didCommitErrorPage() && navigation.statusCode < 400 -> "failed"
-        else -> "finished"
-      }
+      owner.settleOutcome(
+        when {
+          !navigation.didCommit() -> LoadOutcome.CANCELLED
+          navigation.didCommitErrorPage() && navigation.statusCode < 400 -> LoadOutcome.FAILED
+          else -> LoadOutcome.FINISHED
+        }
+      )
       // A page restored from the back-forward cache (its Page, already loaded) gets no onPageLoadEvent again.
       if (!navigation.didCommit() || navigation.page?.let { it in loadedPages } == true) owner.loadEnded()
     }
@@ -112,7 +114,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onPageFinished(view: WebView, url: String?) {
     if (!owner.hasNavigationListener) {
-      owner.outcome = owner.outcome ?: "finished"
+      owner.settleOutcome(LoadOutcome.FINISHED)
       owner.loadEnded()
     }
     observing("onPageFinished", WEB_VIEW, STRING) { it.onPageFinished(view, url) }

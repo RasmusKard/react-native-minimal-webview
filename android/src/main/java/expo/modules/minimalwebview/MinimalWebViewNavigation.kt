@@ -20,12 +20,12 @@ internal class MinimalWebViewNavigation(
 
   private val askedAndAllowed = mutableSetOf<String>()
 
-  private val children = mutableSetOf<WebView>()
+  private val pendingWindows = mutableSetOf<WebView>()
 
   fun documentEnded() {
     askedAndAllowed.clear()
-    val ended = children.toList()
-    children.clear()
+    val ended = pendingWindows.toList()
+    pendingWindows.clear()
     ended.forEach { it.destroy() }
   }
 
@@ -33,23 +33,23 @@ internal class MinimalWebViewNavigation(
   fun decide(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "onNavigationRequest" in owner.requestHandlers)
-    val action = if (decision.action == "ask" && !request.mainFrame) {
+    val action = if (decision.action == NavigationRules.Action.ASK && !request.mainFrame) {
       // loadUrl reissues only a main-frame navigation.
       Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
-      "block"
+      NavigationRules.Action.BLOCK
     } else {
       decision.action
     }
-    if (action == "ask") {
+    if (action == NavigationRules.Action.ASK) {
       ask(request, decision.rule)
       return true
     }
-    if (action == "external") {
+    if (action == NavigationRules.Action.EXTERNAL) {
       openExternal(request, decision.rule)
       return true
     }
     notifyNavigation(request, action, decision.rule)
-    return action != "allow"
+    return action != NavigationRules.Action.ALLOW
   }
 
   private fun fields(request: NavigationRules.Request) = mapOf(
@@ -59,21 +59,21 @@ internal class MinimalWebViewNavigation(
     "userInitiated" to request.userInitiated
   )
 
-  private fun notifyNavigation(request: NavigationRules.Request, action: String, rule: Int?) {
-    if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action, "rule" to rule))
+  private fun notifyNavigation(request: NavigationRules.Request, action: NavigationRules.Action, rule: Int?) {
+    if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action.js, "rule" to rule))
   }
 
   private fun ask(request: NavigationRules.Request, rule: Int?) {
     val referrer = webView.url
     val id = owner.asks.ask("core", "onNavigationRequest", fields(request)) { answer ->
       val action = NavigationRules.answer(answer)
-      if (action == "allow") {
+      if (action == NavigationRules.Action.ALLOW) {
         askedAndAllowed += request.url
         reissue(request.url, referrer)
       }
-      if (action == "external") openExternal(request, rule) else notifyNavigation(request, action, rule)
+      if (action == NavigationRules.Action.EXTERNAL) openExternal(request, rule) else notifyNavigation(request, action, rule)
     }
-    mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
+    if (id != null) mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
   }
 
   // WebView's request headers on a navigation are empty, so the page's URL goes as the Referer, trimmed by WebView's
@@ -90,10 +90,13 @@ internal class MinimalWebViewNavigation(
   }
 
   private fun openExternal(request: NavigationRules.Request, rule: Int?) {
-    val report = { opened: Boolean -> notifyNavigation(request, if (opened) "external" else "block", rule) }
+    val report = { opened: Boolean ->
+      notifyNavigation(request, if (opened) NavigationRules.Action.EXTERNAL else NavigationRules.Action.BLOCK, rule)
+    }
     if ("onOpenExternal" !in owner.requestHandlers) return report(open(request.url))
     owner.asks.ask("core", "onOpenExternal", fields(request)) { answer ->
-      report(answer != false || open(request.url))
+      val appDeclined = answer == false
+      report(if (appDeclined) open(request.url) else true)
     }
   }
 
@@ -150,10 +153,10 @@ internal class MinimalWebViewNavigation(
     child.settings.allowFileAccess = false
     child.settings.allowContentAccess = false
     child.settings.javaScriptEnabled = false
-    children += child
+    pendingWindows += child
     // Destroyed later: this may run inside the child's own callback.
     fun finish(): Boolean {
-      val wasPending = children.remove(child)
+      val wasPending = pendingWindows.remove(child)
       if (wasPending) mainHandler.post { child.destroy() }
       return wasPending
     }

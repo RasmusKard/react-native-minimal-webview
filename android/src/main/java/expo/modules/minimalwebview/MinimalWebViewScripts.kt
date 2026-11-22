@@ -90,13 +90,12 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     val code = """typeof $EVALUATE === 'object' ? ((t, p) => (p.then(
   (v) => { try { v = JSON.stringify(v) } catch { v = null } t.postMessage(JSON.stringify([$id, v ?? 'null'])) },
   (e) => { try { e = String(e) } catch { e = 'Error' } t.postMessage(JSON.stringify([$id, null, e])) }
-), 1))($EVALUATE, (async () => (
+), $STARTED))($EVALUATE, (async () => (
 $script
-))()) : 0"""
+))()) : $NO_CHANNEL"""
     webView.evaluateJavascript(code) { value ->
-      if (value == "1") return@evaluateJavascript
-      // 0: the page has no channel (it loaded before the listener); null: the script didn't parse.
-      evaluations.fail(id, if (value == "0") "no evaluate channel in this page" else "the script did not run (a syntax error?)")
+      if (value == STARTED) return@evaluateJavascript
+      evaluations.fail(id, if (value == NO_CHANNEL) "no evaluate channel in this page" else "the script did not run (a syntax error?)")
     }
   }
 
@@ -166,3 +165,5 @@ internal class EvaluateError(code: String, message: String) : CodedException(cod
 private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
 private const val EVALUATE = "nativeEvaluateResult"
+private const val STARTED = "1"
+private const val NO_CHANNEL = "0"

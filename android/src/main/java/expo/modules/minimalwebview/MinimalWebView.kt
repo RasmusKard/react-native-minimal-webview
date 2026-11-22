@@ -75,7 +75,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val fullscreen = FullscreenVideo(this)
   internal val permissions = Permissions(this)
   private val downloads = Downloads(this)
-  private var hookKeys: Set<String> = emptySet()
+  private var keysToAttach: Set<String> = emptySet()
   /** Chromium's IO thread reads it (shouldInterceptRequest). */
   @Volatile private var hookContexts: List<HookContext> = emptyList()
 
@@ -87,7 +87,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var title = ""
   internal var loading = false
   internal var progress = 0.0
-  internal var outcome: String? = null
+  private var outcome: LoadOutcome? = null
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
 
@@ -100,10 +100,9 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     addView(refresher.layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 
-  private fun createWebView(): WebView {
-    val first = !hasWebView
-    if (first) hookKeys = hookOptions.keys
-    val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, hookKeys)
+  private fun createWebView(first: Boolean): WebView {
+    if (first) keysToAttach = hookOptions.keys
+    val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keysToAttach)
     val (maker, unused) = pickFactory(attaching)
     val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
     hookContexts = attaching.map { HookContext(it, this) }
@@ -165,7 +164,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       scripts.update()
     } else {
       webView = try {
-        createWebView()
+        createWebView(first = true)
       } catch (e: AndroidRuntimeException) { // no WebView provider: missing, disabled or updating
         return reportError("network", source?.uri.orEmpty(), WebViewClient.ERROR_UNKNOWN, "Android System WebView is unavailable: ${e.message}")
       }
@@ -174,12 +173,11 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     loadNewSource()
   }
 
-  private fun loadNewSource(): Boolean {
-    val next = source ?: return false
-    if (next == loadedSource) return false
+  private fun loadNewSource() {
+    val next = source ?: return
+    if (next == loadedSource) return
     loadedSource = next
     load(next)
-    return true
   }
 
   private fun setUp() {
@@ -220,7 +218,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal fun reload() {
     when {
-      recovering -> recover(reload = true)
+      recovering -> recover(forceLoad = true)
       !hasWebView -> applyProps()
       // A POST source: WebView's reload declines its form resubmission.
       webView.url == null || showingPost -> loadAgain()
@@ -243,7 +241,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       val context = hookContexts.find { it.key == key }
       if (context != null) {
         context.optionsChanged(value)
-      } else if (key !in hookKeys && old[key] == null) {
+      } else if (key !in keysToAttach && old[key] == null) {
         attachLate(key)
       }
     }
@@ -256,7 +254,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       val why = if (hook.configure != null) "configure" else "a webViewFactory"
       return warn("extension $key: its hook has $why, so it attaches only when the WebView is created")
     }
-    hookKeys = hookKeys + key
+    keysToAttach = keysToAttach + key
     if (recovering) return
     val context = HookContext(hook, this)
     hookContexts = hookContexts + context
@@ -289,6 +287,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     stateChanged()
   }
 
+  internal fun settleOutcome(value: LoadOutcome) {
+    outcome = outcome ?: value
+  }
+
   internal fun loadEnded() {
     loading = false
     refresher.pageFinished()
@@ -306,7 +308,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     val history = Bundle().takeIf { reload && webView.saveState(it) != null }
     tearDown(DocumentEnd.CRASHED)
     pendingRecovery = Recovery(reload, history, restorable)
-    if (loading) outcome = "failed"
+    if (loading) outcome = LoadOutcome.FAILED
     loading = false
     pendingUrl = null
     progress = 0.0
@@ -325,10 +327,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (visibility == View.VISIBLE) recover()
   }
 
-  private fun recover(reload: Boolean = false) {
+  private fun recover(forceLoad: Boolean = false) {
     val recovery = pendingRecovery ?: return
     pendingRecovery = null
-    webView = createWebView()
+    webView = createWebView(first = false)
     setUp()
     val replaced = pendingLoad != null || source != null && source != loadedSource
     val restored = (replaced || recovery.restorable) && recovery.history?.let { webView.restoreState(it) } != null
@@ -336,7 +338,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       loadNewSource()
       pendingLoad?.let(webView::loadUrl)
       pendingLoad = null
-    } else if (!restored && (recovery.reload || reload)) {
+    } else if (!restored && (recovery.reload || forceLoad)) {
       loadAgain()
     }
     stateChanged()
@@ -364,7 +366,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   }
 
   internal fun reportError(kind: String, url: String, code: Int, description: String) {
-    if (loading) outcome = "failed"
+    if (loading) outcome = LoadOutcome.FAILED
     onError(mapOf("kind" to kind, "url" to url, "code" to code, "description" to description))
   }
 
@@ -372,7 +374,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     onError(mapOf("kind" to "http", "url" to url, "statusCode" to statusCode))
 
   internal fun stateChanged() {
-    if (loading != lastEmitted?.get("loading")) return emitState()
+    if (loadingFlipped) return emitState()
     if (emitScheduled) return
     emitScheduled = true
     mainHandler.postDelayed({
@@ -380,6 +382,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       emitState()
     }, FRAME_MS)
   }
+
+  private val loadingFlipped get() = loading != lastEmitted?.get("loading")
 
   private fun emitState() {
     if (destroyed) return
@@ -396,7 +400,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       "progress" to progress,
       "canGoBack" to back,
       "canGoForward" to forward,
-      "outcome" to if (loading) null else outcome
+      "outcome" to if (loading) null else outcome?.name?.lowercase()
     )
     if (state == lastEmitted) return
     lastEmitted = state
@@ -410,6 +414,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 }
 
 internal const val TAG = "MinimalWebView"
+
+internal enum class LoadOutcome { FINISHED, FAILED, CANCELLED }
 
 /**
  * Not View.post: a detached view (unmounted, or a covered screen) holds that until it is attached again. Lazy: the JVM
