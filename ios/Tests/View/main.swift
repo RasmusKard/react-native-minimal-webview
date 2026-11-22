@@ -29,8 +29,8 @@ final class ReadRoots: WKWebView {
   }
 }
 
-func spin(until done: () -> Bool) -> Bool {
-  let end = Date().addingTimeInterval(10)
+func spin(within seconds: TimeInterval = 10, until done: () -> Bool) -> Bool {
+  let end = Date().addingTimeInterval(seconds)
   while !done(), Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
   return done()
 }
@@ -74,11 +74,11 @@ MainActor.assumeIsolated {
 try FileManager.default.removeItem(at: site.deletingLastPathComponent())
 
 let cookieName = "mrw-view-\(getpid())"
-func copiedToNative(_ webView: WKWebView) -> Bool {
+func copiedToNative(_ webView: WKWebView, within seconds: TimeInterval = 10) -> Bool {
   let cookie = HTTPCookie(properties: [.name: cookieName, .value: "1", .domain: "example.com", .path: "/"])
   webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie!)
   defer { HTTPCookieStorage.shared.cookies?.filter { $0.name == cookieName }.forEach(HTTPCookieStorage.shared.deleteCookie) }
-  return spin { HTTPCookieStorage.shared.cookies?.contains { $0.name == cookieName } == true }
+  return spin(within: seconds) { HTTPCookieStorage.shared.cookies?.contains { $0.name == cookieName } == true }
 }
 MainActor.assumeIsolated {
   func webView() -> WKWebView {
@@ -86,17 +86,15 @@ MainActor.assumeIsolated {
     configuration.websiteDataStore = .nonPersistent()
     return WKWebView(frame: .zero, configuration: configuration)
   }
-  let inOrder = SharedCookies()
+  let cookies = SharedCookies()
   let first = webView()
-  inOrder.didCreate(first)
-  inOrder.set(true)
+  cookies.set(true, for: first.configuration.websiteDataStore.httpCookieStore)
   check("shared cookies: a cookie the WebView sets reaches the native store", copiedToNative(first))
-  let early = SharedCookies()
-  early.set(true)
+  cookies.set(false, for: first.configuration.websiteDataStore.httpCookieStore)
+  check("shared cookies: turned off, a cookie the WebView sets stays in it", !copiedToNative(first, within: 1))
   let second = webView()
-  early.didCreate(second)
-  early.set(true)
-  check("shared cookies: turned on before the WebView exists, a cookie the WebView sets reaches the native store", copiedToNative(second))
+  cookies.set(true, for: second.configuration.websiteDataStore.httpCookieStore)
+  check("shared cookies: turned on again for another WebView, its cookies reach the native store", copiedToNative(second))
 }
 
 print("\(total - failed)/\(total) view cases pass")

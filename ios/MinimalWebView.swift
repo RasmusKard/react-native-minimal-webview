@@ -113,7 +113,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     report(platformSettings.apply(settings, webView: webView))
     let refresh = pullToRefresh ? refreshControl : nil
     if webView.scrollView.refreshControl !== refresh { webView.scrollView.refreshControl = refresh }
-    cookies.set(sharedCookies)
+    cookies.set(sharedCookies, for: webView.configuration.websiteDataStore.httpCookieStore)
     // Records aren't Equatable: compare their dictionaries.
     guard let next = source, loadedSource != next.toDictionary() as NSDictionary else { return }
     loadedSource = next.toDictionary() as NSDictionary
@@ -247,7 +247,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       webView.observe(\.estimatedProgress) { _, _ in update() }
     ] + [\WKWebView.canGoBack, \.canGoForward].map { webView.observe($0) { _, _ in update() } }
     self.webView = webView
-    cookies.didCreate(webView)
     report(platformSettings.apply(settings, webView: webView))
     hookContexts.forEach { $0.hook.attach(webView, $0) }
   }
@@ -266,7 +265,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func tearDown() {
     guard let webView else { return }
     endDocument(.closing)
-    cookies.detach()
+    cookies.set(false, for: webView.configuration.websiteDataStore.httpCookieStore)
     let closed = hookContexts
     closed.forEach { $0.detach() }
     hookContexts = []
