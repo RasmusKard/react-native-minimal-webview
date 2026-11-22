@@ -7,6 +7,7 @@ import {
   basicAuthCredential,
   dialogs as dialogsExtension,
   downloadManager,
+  googleMobileAds,
   hideKeyboardAccessoryView,
   incognito,
   keyboardDisplayRequiresUserAction,
@@ -20,7 +21,7 @@ import {
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
 import { AndroidConstants, IOSConstants } from 'react-native-minimal-webview';
-import { sampleHook } from 'sample-extension';
+import { sampleHook, seams } from 'sample-extension';
 
 import {
   captureWarnings,
@@ -75,6 +76,7 @@ export async function extensions(h: Harness, r: Reporter) {
     await r.block('menu', () => menu(h, r, warnings));
     await r.block('background', () => background(h, r));
     await r.block('privacy', () => privacy(h, r));
+    await r.block('ads', () => ads(h, r, warnings));
     await (ios
       ? r.block('keyboard', () => keyboard(h, r))
       : r.block('android', () => android(h, r)));
@@ -82,7 +84,8 @@ export async function extensions(h: Harness, r: Reporter) {
       (line) =>
         line.includes(`extension ${KEY}.`) &&
         !line.includes(`${KEY}.menuItems`) &&
-        !line.includes(`${KEY}.incognito: its hook has`)
+        !line.includes(`${KEY}.incognito: its hook has`) &&
+        !line.includes(`${KEY}.googleMobileAds: its hook has`)
     );
     r.check(
       'no extension key warns: each is registered, and sent only on its platforms',
@@ -382,6 +385,28 @@ async function privacy(h: Harness, r: Reporter) {
     { set, cleared, cacheMode }
   );
   await recreate(h, {}, { remount: true });
+}
+
+async function ads(h: Harness, r: Reporter, warnings: ReturnType<typeof captureWarnings>) {
+  const before = (await seams.adsRegisteredAt()).length;
+  const registeredAt = async () => (await seams.adsRegisteredAt()).slice(before);
+  await recreate(h, { extensions: [googleMobileAds()] }, { remount: true });
+  const atCreation = await registeredAt();
+  r.check(
+    'googleMobileAds set at creation registers the WebView with the Google Mobile Ads SDK once, before it loads anything',
+    JSON.stringify(atCreation) === '[""]',
+    atCreation
+  );
+  await recreate(h, {}, { remount: true });
+  h.setProps({ extensions: [googleMobileAds()] });
+  await until(() => warnings.warned(`extension ${KEY}.googleMobileAds`), 3000);
+  const afterCreation = await registeredAt();
+  r.check(
+    'googleMobileAds set after creation warns that its hook attaches only when the WebView is created, and registers nothing',
+    warnings.warned(`${KEY}.googleMobileAds: its hook has`) && afterCreation.length === 1,
+    { lines: warnings.lines, afterCreation }
+  );
+  h.setProps({});
 }
 
 async function keyboard(h: Harness, r: Reporter) {

@@ -21,6 +21,7 @@ export * from '../androidLayerType';
 export * from '../basicAuthCredential';
 export * from '../dialogs';
 export * from '../downloadManager';
+export * from '../googleMobileAds';
 export * from '../hideKeyboardAccessoryView';
 export * from '../incognito';
 export * from '../keyboardDisplayRequiresUserAction';
