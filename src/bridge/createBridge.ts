@@ -27,6 +27,8 @@ export const CONNECTION = Symbol('bridgeConnection');
 
 const MAX_QUEUE = 1000;
 
+const throwIfNotJson = (message: BridgeMessage) => void JSON.stringify(message);
+
 /**
  * Creates a {@link Bridge} to the pages of `allowedOrigins`, for one WebView's `bridge` prop.
  *
@@ -59,7 +61,7 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     (message) => {
       if (post && phase === 'ready') deliver(message);
       else {
-        JSON.stringify(message);
+        throwIfNotJson(message);
         queue.push(message);
         const dropped = queue.length > MAX_QUEUE ? queue.shift() : undefined;
         if (dropped?.kind === 'call')
@@ -149,5 +151,5 @@ export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
     emit: endpoint.emit,
     on: endpoint.on,
     [CONNECTION]: connection,
-  } as Bridge as unknown as Bridge<Schema>;
+  } satisfies Bridge as Bridge<Schema>;
 }

@@ -26,7 +26,7 @@ export type BridgeMessage = { doc?: string } & (
   | { kind: 'call'; id: string; method: string; params?: unknown }
   | { kind: 'result'; id: string; value?: unknown }
   | { kind: 'error'; id: string; error: { code: BridgeErrorCode; message: string } }
-  | { kind: 'event'; method: string; params?: unknown }
+  | { kind: 'event'; event: string; params?: unknown }
 );
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -44,31 +44,33 @@ export function parseBridgeMessage(raw: string): (BridgeMessage & { doc: string 
     return 'not JSON';
   }
   if (!isObject(value) || typeof value['doc'] !== 'string') return 'missing doc';
-  return kindProblem(value) ?? (value as BridgeMessage & { doc: string });
+  const problem = kindProblem(value);
+  if (problem) return problem;
+  const message = value as BridgeMessage & { doc: string };
+  return message.kind === 'error' && !ERROR_CODES.includes(message.error.code)
+    ? { ...message, error: { ...message.error, code: 'handler_error' } }
+    : message;
 }
+
+const isName = (value: unknown) => typeof value === 'string' && value !== '';
 
 function kindProblem(value: Record<string, unknown>): string | null {
   const hasId = typeof value['id'] === 'string';
-  const hasMethod = typeof value['method'] === 'string' && value['method'] !== '';
   switch (value['kind']) {
     case 'ready':
       return null;
     case 'event':
-      return hasMethod ? null : 'missing method';
+      return isName(value['event']) ? null : 'missing event';
     case 'call':
-      return hasId && hasMethod ? null : 'missing id or method';
+      return hasId && isName(value['method']) ? null : 'missing id or method';
     case 'result':
       return hasId ? null : 'missing id';
     case 'error':
-      return !hasId ? 'missing id' : normalizeError(value['error']) ? null : 'malformed error';
+      return !hasId ? 'missing id' : isError(value['error']) ? null : 'malformed error';
     default:
       return 'unknown kind';
   }
 }
 
-function normalizeError(error: unknown) {
-  if (!isObject(error) || typeof error['code'] !== 'string' || typeof error['message'] !== 'string')
-    return false;
-  if (!(ERROR_CODES as readonly string[]).includes(error['code'])) error['code'] = 'handler_error';
-  return true;
-}
+const isError = (error: unknown) =>
+  isObject(error) && typeof error['code'] === 'string' && typeof error['message'] === 'string';

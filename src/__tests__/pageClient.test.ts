@@ -111,7 +111,7 @@ describe('page client messages from native', () => {
     const { sent, bridge } = page();
     const seen: unknown[] = [];
     bridge.on('tick', (payload) => seen.push(payload));
-    const event = { doc: sent[0]!.doc, kind: 'event', method: 'tick', params: 1 };
+    const event = { doc: sent[0]!.doc, kind: 'event', event: 'tick', params: 1 };
     await bridge.__receive(JSON.stringify(event));
     expect(seen).toEqual([1]);
   });

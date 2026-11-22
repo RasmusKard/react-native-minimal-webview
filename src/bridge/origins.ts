@@ -1,3 +1,4 @@
+import type { OriginForms } from './matchesOrigin';
 import { MATCHES_ORIGIN } from './pageClient.generated';
 
 /**
@@ -17,8 +18,6 @@ export const parseOrigin = (text: string) => {
   return { scheme, wildcard: !!wildcard, hostPort: `${host}${portSuffix}` };
 };
 
-export type OriginForms = { any: boolean; exact: string[]; wild: [string, string][] };
-
 export const originForms = (rules: string[]): OriginForms => {
   const forms: OriginForms = { any: rules.includes('*'), exact: [], wild: [] };
   for (const rule of rules) {
@@ -29,28 +28,6 @@ export const originForms = (rules: string[]): OriginForms => {
   }
   return forms;
 };
-
-function hasAt(text: string, part: string, at: number) {
-  for (let k = 0; k < part.length; k++) if (text[at + k] !== part[k]) return false;
-  return true;
-}
-
-/**
- * Whether `origin`, as `location.origin` serializes it, matches `forms`. Only `===`, indexing and `length`, no
- * built-in method: it runs at document start in frames whose built-ins another same-origin frame may have patched.
- */
-export function matchesOrigin(forms: OriginForms, origin: string) {
-  if (forms.any) return true;
-  for (let i = 0; i < forms.exact.length; i++) if (forms.exact[i] === origin) return true;
-  for (let i = 0; i < forms.wild.length; i++) {
-    const prefix = forms.wild[i]![0];
-    const suffix = forms.wild[i]![1];
-    const start = origin.length - suffix.length;
-    if (start > prefix.length && hasAt(origin, prefix, 0) && hasAt(origin, suffix, start))
-      return true;
-  }
-  return false;
-}
 
 /**
  * A page-side expression true where `location.origin` matches `origins`, or null when they include `*`. Throws an

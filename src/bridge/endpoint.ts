@@ -10,6 +10,8 @@ type Pending = {
 export const codedError = ({ code, message }: { code: ErrorCode; message: string }): CodedError =>
   Object.assign(new Error(message), { code });
 
+const reportUnhandled = (error: unknown) => void Promise.reject(error);
+
 /**
  * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id.
  */
@@ -55,7 +57,7 @@ export function createEndpoint<Sender = void>(
       });
     },
     emit(event: string, payload?: unknown) {
-      send({ kind: 'event', method: event, params: payload });
+      send({ kind: 'event', event, params: payload });
     },
     handle(method: string, handler: (params: unknown, sender: Sender) => unknown) {
       handlers.set(method, handler);
@@ -92,11 +94,11 @@ export function createEndpoint<Sender = void>(
           return;
         }
         case 'event':
-          listeners.get(message.method)?.forEach((listener) => {
+          listeners.get(message.event)?.forEach((listener) => {
             try {
               listener(message.params, sender);
             } catch (error) {
-              void Promise.reject(error);
+              reportUnhandled(error);
             }
           });
           return;
