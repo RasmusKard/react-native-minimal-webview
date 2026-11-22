@@ -388,22 +388,24 @@ async function privacy(h: Harness, r: Reporter) {
 }
 
 async function ads(h: Harness, r: Reporter, warnings: ReturnType<typeof captureWarnings>) {
-  const before = (await seams.adsRegisteredAt()).length;
-  const registeredAt = async () => (await seams.adsRegisteredAt()).slice(before);
+  const registrations = async () => (await seams.adsRegisteredAt()).length;
+  const registeredSince = async (count: number) => (await seams.adsRegisteredAt()).slice(count);
+  const beforeCreation = await registrations();
   await recreate(h, { extensions: [googleMobileAds()] }, { remount: true });
-  const atCreation = await registeredAt();
+  const atCreation = await registeredSince(beforeCreation);
   r.check(
     'googleMobileAds set at creation registers the WebView with the Google Mobile Ads SDK once, before it loads anything',
     JSON.stringify(atCreation) === '[""]',
     atCreation
   );
   await recreate(h, {}, { remount: true });
+  const beforeLate = await registrations();
   h.setProps({ extensions: [googleMobileAds()] });
   await until(() => warnings.warned(`extension ${KEY}.googleMobileAds`), 3000);
-  const afterCreation = await registeredAt();
+  const afterCreation = await registeredSince(beforeLate);
   r.check(
     'googleMobileAds set after creation warns that its hook attaches only when the WebView is created, and registers nothing',
-    warnings.warned(`${KEY}.googleMobileAds: its hook has`) && afterCreation.length === 1,
+    warnings.warned(`${KEY}.googleMobileAds: its hook has`) && afterCreation.length === 0,
     { lines: warnings.lines, afterCreation }
   );
   h.setProps({});
