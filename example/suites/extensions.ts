@@ -405,31 +405,9 @@ async function keyboard(h: Harness, r: Reporter) {
     'hideKeyboardAccessoryView',
     'the bar shows only with the software keyboard: check it by hand'
   );
-  // The keyboard shrinks the visual viewport. evaluate's script has a user gesture, which WebKit forwards to a timer but
-  // not to a nested one: this focus is the page's own.
+  // The keyboard shrinks the visual viewport.
   const viewport = async () => (await h.ref.current?.evaluate('visualViewport.height')) as number;
-  const keyboardShows = async () => {
-    await loadHtml(h, '<input id="i">');
-    const height = await viewport();
-    await h.ref.current?.evaluate(
-      "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
-    );
-    return !!(await poll(async () => (await viewport()) < height, 2000));
-  };
-  await recreate(h, {}, { remount: true });
-  const before = await keyboardShows();
-  h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
-  await sleep(300);
-  const on = await keyboardShows();
-  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
-  h.setProps({});
-  await sleep(300);
-  const off = await keyboardShows();
-  r.check(
-    "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not",
-    !before && on && !off,
-    { before, on, off }
-  );
+  await scriptFocus(h, r, viewport);
   const keyboardInset = async () => {
     await loadHtml(h, '<input id="i">');
     const height = await viewport();
@@ -454,6 +432,49 @@ async function keyboard(h: Harness, r: Reporter) {
   await sleep(300);
   r.info('refreshControlLightMode', 'the spinner shows only on a pull: check it by hand');
   h.setProps({});
+}
+
+async function scriptFocus(h: Harness, r: Reporter, viewport: () => Promise<number>) {
+  const withAccessory =
+    "keyboardDisplayRequiresUserAction(false) shows the keyboard for a script's focus() beside hideKeyboardAccessoryView, and in a WebView without it after";
+  const toggled =
+    "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not";
+  if (parseFloat(String(Platform.Version)) >= 27) {
+    const why =
+      "from iOS 27 WebKit tells the app of a script's focus() only while the WebView has focus";
+    r.skip(withAccessory, why);
+    r.skip(toggled, why);
+    return;
+  }
+  // A nested timer's focus() carries no user gesture from evaluate: it is the page's own.
+  const keyboardShows = async () => {
+    await loadHtml(h, '<input id="i">');
+    const height = await viewport();
+    await h.ref.current?.evaluate(
+      "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
+    );
+    return !!(await poll(async () => (await viewport()) < height, 2000));
+  };
+  // The option's first use in the app, while hideKeyboardAccessoryView has changed the keyboard's view.
+  await recreate(
+    h,
+    { extensions: [hideKeyboardAccessoryView(), keyboardDisplayRequiresUserAction(false)] },
+    { remount: true }
+  );
+  const beside = await keyboardShows();
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
+  const after = await keyboardShows();
+  r.check(withAccessory, beside && after, { beside, after });
+  await recreate(h, {}, { remount: true });
+  const before = await keyboardShows();
+  h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
+  await sleep(300);
+  const on = await keyboardShows();
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
+  h.setProps({});
+  await sleep(300);
+  const off = await keyboardShows();
+  r.check(toggled, !before && on && !off, { before, on, off });
 }
 
 async function android(h: Harness, r: Reporter) {
