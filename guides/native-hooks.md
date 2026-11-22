@@ -216,7 +216,7 @@ or a page gets the camera, goes to the first hook that implements it, and switch
 | When                                                             | What the hook gets                                                                                                                         |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | The WebView mounts with the hook's key                           | Its `webViewClass` (iOS) or `webViewFactory` (Android), if the hook has one; then `configure`, if it has one; then `attach`                |
-| The hook's key turns on after mount                              | `attach` runs then, unless the hook has `configure` or its own WebView class                                                               |
+| The hook's key turns on after mount                              | `attach` runs then, unless the hook has `configure` or its own WebView class, or, on Android, is registered with `newWebViewsOnly`         |
 | The hook's `options` change                                      | Its `onOptions` handlers run, without a reload                                                                                             |
 | The hook's key is removed, or its `options` become null or false | `onOptions` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptions` runs with the new options. |
 | The page ends: a navigation commits, a crash, or unmount         | Its `onDocumentEnd` handlers run. Reset per-page state there.                                                                              |

@@ -33,8 +33,17 @@ object MinimalWebViewHooks {
     val key: String,
     val webViewFactory: ((Context) -> WebView)?,
     val configure: ((WebView, WebViewContext) -> Unit)?,
+    val newWebViewsOnly: Boolean,
     val attach: (WebView, WebViewContext) -> Unit
-  )
+  ) {
+    /** Why it can't attach to a WebView that exists, or null when it can. */
+    val notLate get() = when {
+      configure != null -> "configure"
+      webViewFactory != null -> "a webViewFactory"
+      newWebViewsOnly -> "newWebViewsOnly"
+      else -> null
+    }
+  }
 
   internal val hooks = mutableListOf<Hook>()
 
@@ -64,6 +73,8 @@ object MinimalWebViewHooks {
    * @param configure runs on the main thread as soon as each WebView this hook is attached to, on or off, is made,
    *   before the package sets it up ([WebViewCompat.setProfile][androidx.webkit.WebViewCompat.setProfile] goes here).
    *   It gets the same context that [attach] gets next for that WebView, so state it makes can be keyed by the context.
+   * @param newWebViewsOnly true attaches the hook only when a WebView is created, never to one whose key turns on
+   *   later, as a hook with [configure] or [webViewFactory] does.
    * @param attach runs on the main thread once the WebView has its settings and is in the view hierarchy, so what it
    *   sets wins over those settings. Register what to run when that WebView goes away with
    *   [WebViewContext.onDestroyed]. Document-start scripts you add here run before the package's, so
@@ -73,13 +84,14 @@ object MinimalWebViewHooks {
     key: String,
     webViewFactory: ((Context) -> WebView)? = null,
     configure: ((WebView, WebViewContext) -> Unit)? = null,
+    newWebViewsOnly: Boolean = false,
     attach: (WebView, WebViewContext) -> Unit
   ) {
     if (key == "core") {
       Log.e(TAG, "the hook key `core` is reserved: the hook is not registered")
       return
     }
-    if (putHook(hooks, Hook(key, webViewFactory, configure, attach))) {
+    if (putHook(hooks, Hook(key, webViewFactory, configure, newWebViewsOnly, attach))) {
       Log.w(
         TAG,
         "a hook under `$key` replaces the one registered before: a JS reload registers every hook again; " +
