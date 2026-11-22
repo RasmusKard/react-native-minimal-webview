@@ -1,7 +1,5 @@
 name: Release
 
-# Merging release-please's PR creates a draft release per released package, attests its tarball, publishes it to npm with
-# trusted publishing and un-drafts the release.
 on:
   push:
     branches: [main]
@@ -26,7 +24,7 @@ jobs:
       core-tag: ${{ steps.release.outputs.tag_name }}
       extensions-tag: ${{ steps.release.outputs['extensions--tag_name'] }}
     steps:
-      # A PR opened with GITHUB_TOKEN would not trigger CI on the release PR, and only the App may create release tags.
+      # A PR opened with GITHUB_TOKEN would not trigger CI on the release PR.
       - id: app-token
         uses: actions/create-github-app-token@v3.3.0
         with:
