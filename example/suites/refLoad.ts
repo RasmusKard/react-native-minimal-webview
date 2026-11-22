@@ -212,8 +212,8 @@ async function refLoadRaces(h: Harness, r: Reporter) {
       const reported: unknown[] = [];
       let wrong: NavigationState | undefined;
       let run: Awaited<ReturnType<typeof loadAfter>> | undefined;
-      const tries = name === 'a load' && !sharedCookies ? 5 : 1;
-      for (let i = 0; i < tries; i++) {
+      const loadBeforeFirstPolicyCheckSamples = name === 'a load' && !sharedCookies ? 5 : 1;
+      for (let i = 0; i < loadBeforeFirstPolicyCheckSamples; i++) {
         run = await loadAfter(h, name, first);
         reported.push(...run.reported);
         wrong ??= run.wrong;

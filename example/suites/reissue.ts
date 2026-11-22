@@ -17,12 +17,15 @@ import {
 import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
 
+const CORE_ASK_TIMEOUT_MS = 1000;
+const PAST_THE_ASK_TIMEOUT_MS = CORE_ASK_TIMEOUT_MS + 500;
+
 export async function reissue(h: Harness, r: Reporter) {
   const asked: string[] = [];
   let answer: 'allow' | 'block' | 'late' = 'allow';
   const ask = async (url: string): Promise<'allow' | 'block'> => {
     asked.push(url);
-    if (answer === 'late') await sleep(1500);
+    if (answer === 'late') await sleep(PAST_THE_ASK_TIMEOUT_MS);
     return answer === 'block' ? 'block' : 'allow';
   };
   let answered: Promise<unknown> = Promise.resolve();

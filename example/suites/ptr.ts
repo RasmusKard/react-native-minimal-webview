@@ -11,6 +11,8 @@ import {
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
+const PULL_LANDED_SCROLL_PX = 30;
+
 export async function ptr(h: Harness, r: Reporter) {
   const loadedAt = async () =>
     (await h.ref.current
@@ -45,7 +47,7 @@ export async function ptr(h: Harness, r: Reporter) {
     const reloaded = async () => h.events.loads.length > loads || (await loadedAt()) !== was;
     const scrolled = async () => {
       const now = await h.ref.current?.evaluate(position).catch(errorCode);
-      return typeof now === 'number' && now < top - 30;
+      return typeof now === 'number' && now < top - PULL_LANDED_SCROLL_PX;
     };
     r.drive({ action: 'swipe', kind });
     const landed = await poll(async () => (await reloaded()) || (await scrolled()), 15000);
@@ -70,7 +72,7 @@ export async function ptr(h: Harness, r: Reporter) {
   await open('long');
   r.check('no pull to refresh while the prop is off', !(await pull('full')));
 
-  h.setProps({ onError: (event) => h.events.errors.push(event) });
+  h.setProps({ pullToRefresh: true, onError: (event) => h.events.errors.push(event) });
   const key = Date.now();
   const dropping = `${h.pages}/drop?key=${key}`;
   await openPage(h, dropping);

@@ -193,11 +193,10 @@ export async function navigation(h: Harness, r: Reporter) {
 
   asked.length = 0;
   await h.ref.current?.evaluate(`location.href = '/checkout/loopA'`);
-  await until(
-    () =>
-      asked.length > 2 || (asked.length > 0 && idle(h.state()) && Date.now() - lastAskAt > 1000),
-    10000
-  );
+  const askedAThirdTime = () => asked.length > 2;
+  const loopEndedWithoutAnotherAsk = () =>
+    asked.length > 0 && idle(h.state()) && Date.now() - lastAskAt > 1000;
+  await until(() => askedAThirdTime() || loopEndedWithoutAnotherAsk(), 10000);
   r.check(
     'an ask redirect loop asks at most once per URL',
     asked.length >= 1 && asked.length <= 2,
@@ -256,8 +255,9 @@ export async function navigation(h: Harness, r: Reporter) {
     await h.ref.current?.evaluate(`location.href = ${JSON.stringify(url)}`);
     const decided = (prefix: string) => h.events.navigations.find((n) => n.url.startsWith(prefix));
     await waitFor(h, () => decided(scheme) !== undefined, 5000);
+    const timeForADecidedFallbackToLoad = decided(fallback) ? 8000 : 1000;
     const loaded = await happens(
-      waitFor(h, (s) => s.url === fallback && idle(s), decided(fallback) ? 8000 : 1000)
+      waitFor(h, (s) => s.url === fallback && idle(s), timeForADecidedFallbackToLoad)
     );
     return {
       external: [...external],

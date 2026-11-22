@@ -10,7 +10,7 @@ import {
   sleep,
   poll,
 } from '../harness/helpers';
-import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
+import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from '../harness/runner';
 
 export async function settings(h: Harness, r: Reporter) {
   const { lines: warnings, warned, stop } = captureWarnings();
@@ -29,6 +29,8 @@ export async function settings(h: Harness, r: Reporter) {
     if (Platform.OS === 'ios') {
       const configuration = { applicationNameForUserAgent: 'Settings/1' };
       const preferences = { minimumFontSize: 30 };
+      const setIos = (ios: Omit<NonNullable<HarnessProps['ios']>, 'configuration'>) =>
+        h.setProps({ ios: { configuration, ...ios } });
       await recreate(h, {
         ios: {
           configuration,
@@ -42,17 +44,14 @@ export async function settings(h: Harness, r: Reporter) {
         warned('ios.scrollView.nope: no such property'),
         warnings
       );
-      h.setProps({ ios: { configuration, preferences: { minimumFontSize: 'big' as never } } });
+      setIos({ preferences: { minimumFontSize: 'big' as never } });
       await sleep(500);
       r.check('and leaves the property alone', (await fontSize()) === '30px', await fontSize());
       await openPage(h, fresh(h, '/ptr.html?mode=long'));
-      h.setProps({
-        ios: {
-          configuration,
-          scrollView: {
-            contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
-            contentOffset: { x: 0, y: 30 },
-          },
+      setIos({
+        scrollView: {
+          contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
+          contentOffset: { x: 0, y: 30 },
         },
       });
       r.check(
@@ -65,7 +64,7 @@ export async function settings(h: Harness, r: Reporter) {
         (await get('preferences.minimumFontSize')) === 0
       );
       const width = (await page('innerWidth')) as number;
-      h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
+      setIos({ webView: { pageZoom: 2 } });
       const zoomedIn = await poll(
         async () => Math.abs(((await page('innerWidth')) as number) * 2 - width) <= 2,
         3000
@@ -74,11 +73,8 @@ export async function settings(h: Harness, r: Reporter) {
         width,
         zoomed: await page('innerWidth'),
       });
-      h.setProps({
-        ios: {
-          configuration,
-          webpagePreferences: { preferredContentMode: IOSConstants.ContentMode.desktop },
-        },
+      setIos({
+        webpagePreferences: { preferredContentMode: IOSConstants.ContentMode.desktop },
       });
       await becomes(
         () => get('webpagePreferences.preferredContentMode'),
@@ -91,11 +87,8 @@ export async function settings(h: Harness, r: Reporter) {
         String(desktop).includes('Macintosh'),
         desktop
       );
-      h.setProps({
-        ios: {
-          configuration,
-          scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
-        },
+      setIos({
+        scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
       });
       r.check('get reads a BOOL', await becomes(() => get('scrollView.bounces'), false));
       const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;

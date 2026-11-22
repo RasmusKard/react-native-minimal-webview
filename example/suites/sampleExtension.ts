@@ -19,6 +19,8 @@ import {
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
+const SAMPLES_PER_NAVIGATION_KIND = 3;
+
 export async function sampleExtension(h: Harness, r: Reporter) {
   const mountEnds = h.events.documentEnds.length;
   await recreate(h, {}, { remount: true });
@@ -32,7 +34,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     const end = h.events.documentEnds.at(-1);
     if (end?.reason !== 'committed' || end.url !== from) misses.push({ from, end });
   };
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < SAMPLES_PER_NAVIGATION_KIND; i++) {
     const [load, own] = [fresh(h, `/spa.html?load=${i}`), fresh(h, `/spa.html?own=${i}`)];
     await ends(() => h.load(load), load);
     await ends(
@@ -86,7 +88,15 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
-  h.setProps({ extensions: [pageCounter({ global: '__liveCount' })], withoutPageCounter: true });
+  h.setProps({
+    extensions: [
+      pageCounter(
+        { global: '__liveCount' },
+        ({ name }) => void h.events.hookEvents.push(`sample.pageCounter.${name}`)
+      ),
+    ],
+    withoutPageCounter: true,
+  });
   const live = await poll(
     async () => (await h.ref.current?.evaluate('window.__liveCount')) === inPage,
     3000
