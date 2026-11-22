@@ -2,6 +2,7 @@ package expo.modules.minimalwebview
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class ShowsSourceTest {
@@ -33,5 +34,11 @@ class ShowsSourceTest {
       Triple(WebViewSource(html = "<p>"), "https://example.com/", false)
     )
     for ((source, url, expected) in cases) assertEquals("$source at $url", expected, showsSource(source, url))
+  }
+
+  @Test
+  fun `a source that differs only in readAccessRoot is a new source, which loads again as on iOS`() {
+    val page = WebViewSource(uri = "file:///data/page.html")
+    assertNotEquals(page, page.copy(readAccessRoot = "file:///data/"))
   }
 }

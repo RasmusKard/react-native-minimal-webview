@@ -18,11 +18,15 @@ internal class PlatformSettings(
   private val hasNavigationListener: () -> Boolean = { true },
   private val targets: (root: String) -> List<Target>?
 ) {
-  private val applied = mutableMapOf<String, Any?>()
+  private val applied = mutableMapOf<SettingId, Any?>()
 
-  private val originals = mutableMapOf<String, Any?>()
+  private val originals = mutableMapOf<SettingId, Any?>()
 
-  internal class Target(val cls: Class<*>, val receiver: Any?, val leading: Any?)
+  private data class SettingId(val root: String, val key: String) {
+    override fun toString() = "$root.$key"
+  }
+
+  internal class Target(val cls: Class<*>, val receiver: Any?, val firstArgument: Any?)
 
   /**
    * Applies [settings], and sets a key applied before and missing now back to its value before the first write;
@@ -42,11 +46,11 @@ internal class PlatformSettings(
       }
       for ((k, value) in entries) {
         val key = k as? String ?: continue
-        val id = "$rootName.$key"
+        val id = SettingId(rootName, key)
         if (applied.containsKey(id) && applied[id] == value) continue
         applied[id] = value
-        val problem = write(targets, id, key, value) ?: continue
-        rejected += mapOf("key" to id, "reason" to problem)
+        val problem = write(targets, id, value) ?: continue
+        rejected += mapOf("key" to id.toString(), "reason" to problem)
       }
     }
     return rejected
@@ -57,30 +61,30 @@ internal class PlatformSettings(
     if (rootName in listOf("settings", "webView")) targets(rootName) else null
 
   /** [set], keeping the value it replaces the first time under [id]; returns the problem, or null when it was set. */
-  private fun write(targets: List<Target>, id: String, key: String, value: Any?): String? {
-    refusal(setterOf(key), listOf(value))?.let { return it }
-    if (id in originals) return set(targets, key, value)
-    return set(targets, key, value) {
-      originals[id] = runCatching { read(targets, key) }.getOrDefault(NONE)
+  private fun write(targets: List<Target>, id: SettingId, value: Any?): String? {
+    refusal(setterOf(id.key), listOf(value))?.let { return it }
+    if (id in originals) return set(targets, id.key, value)
+    return set(targets, id.key, value) {
+      originals[id] = runCatching { read(targets, id.key) }.getOrDefault(NONE)
     }?.also { originals.remove(id) }
   }
 
   /** Forgets each applied key [removedFrom] no longer has and sets its original value back; returns what failed. */
   private fun restore(removedFrom: Map<String, Any?>): List<Map<String, String>> {
     val present = removedFrom.flatMap { (rootName, entries) ->
-      (entries as? Map<*, *>)?.keys.orEmpty().map { "$rootName.$it" }
+      (entries as? Map<*, *>)?.keys.orEmpty().map { SettingId(rootName, it.toString()) }
     }.toSet()
     return (applied.keys - present).mapNotNull { id ->
       applied.remove(id)
       if (id !in originals) return@mapNotNull null
       val original = originals.remove(id)
-      val (rootName, key) = id.split('.', limit = 2)
+      val (rootName, key) = id
       val problem = if (original === NONE) {
         "removed, but it has no getter to restore it from: it keeps its value until the WebView is recreated"
       } else {
         set(targets(rootName).orEmpty(), key, original)?.let { "removed, but restoring it failed: $it" }
       }
-      problem?.let { mapOf("key" to id, "reason" to it) }
+      problem?.let { mapOf("key" to id.toString(), "reason" to it) }
     }
   }
 
@@ -194,6 +198,8 @@ internal class PlatformSettings(
         before()
         apply()
         null
+      } catch (e: PlatformException) {
+        e.message
       } catch (e: IllegalArgumentException) {
         e.message
       }
@@ -208,13 +214,13 @@ internal class PlatformSettings(
       return getter()
     }
 
-    /** The method's arguments for [values], with the target's leading object first, or null when they don't fit. */
+    /** The method's arguments for [values], after the target's [Target.firstArgument], or null when they don't fit. */
     private fun arguments(method: Method, target: Target, values: List<Any?>): Array<Any?>? {
       if (target.receiver == null && !Modifier.isStatic(method.modifiers)) return null
       val types = method.parameterTypes
-      val leading = if (target.leading != null) listOf(target.leading) else emptyList()
+      val leading = if (target.firstArgument != null) listOf(target.firstArgument) else emptyList()
       if (types.size != leading.size + values.size) return null
-      if (leading.isNotEmpty() && !types[0].isInstance(target.leading)) return null
+      if (leading.isNotEmpty() && !types[0].isInstance(target.firstArgument)) return null
       val args = arrayOfNulls<Any?>(types.size)
       leading.forEachIndexed { i, value -> args[i] = value }
       values.forEachIndexed { i, value ->
@@ -286,4 +292,4 @@ internal class PlatformSettings(
 }
 
 /** Why [PlatformSettings.get] or [PlatformSettings.call] failed; [code] is the JS error code (`not_found`, `native_error` or `unavailable`). */
-internal class PlatformException(val code: String, message: String) : IllegalArgumentException(message)
+internal class PlatformException(val code: String, message: String) : RuntimeException(message)

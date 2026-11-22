@@ -240,6 +240,21 @@ class HooksTest {
   }
 
   @Test
+  fun `a touch or scroll listener that removes itself while the listeners run doesn't stop the ones after it`() {
+    val attachment = Attachment(true)
+    val ran = mutableListOf<String>()
+    lateinit var touchOnce: View.OnTouchListener
+    touchOnce = View.OnTouchListener { _, _ -> ran += "touch once"; attachment.touchListeners -= touchOnce; false }
+    attachment.touchListeners += listOf(touchOnce, View.OnTouchListener { _, _ -> ran += "touch"; false })
+    lateinit var scrollOnce: View.OnScrollChangeListener
+    scrollOnce = View.OnScrollChangeListener { _, _, _, _, _ -> ran += "scroll once"; attachment.scrollListeners -= scrollOnce }
+    attachment.scrollListeners += listOf(scrollOnce, View.OnScrollChangeListener { _, _, _, _, _ -> ran += "scroll" })
+    attachment.touchListeners.any { it.onTouch(null, null) }
+    attachment.scrollListeners.forEach { it.onScrollChange(null, 0, 0, 0, 0) }
+    assertEquals(listOf("touch once", "touch", "scroll once", "scroll"), ran)
+  }
+
+  @Test
   fun `a download is offered only to a hook that is on and attached, and the first handler that takes it ends the round`() {
     val offered = mutableListOf<String>()
     fun Attachment.handler(name: String, takes: Boolean) = onDownloadStart { _, _, _, _, _ -> offered += name; takes }

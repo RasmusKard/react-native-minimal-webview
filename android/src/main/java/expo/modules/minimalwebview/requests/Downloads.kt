@@ -115,7 +115,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     mainHandler.post { owner.evaluate(script) { reply.offer(it) } }
     val result = reply.poll(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS) ?: throw IOException("the page did not read the blob in time")
     val json = result.getOrElse { throw IOException("could not read the blob: ${it.message}") }
-    if (json.length > CHUNK_BYTES / 3 * 4 + 1024) throw TooLarge()
+    if (json.length > MAX_CHUNK_REPLY_CHARS) throw TooLarge()
     val chunk = JSONTokener(json).nextValue() as? JSONArray ?: throw IOException("could not read the blob")
     return chunk.getLong(0) to chunk.getString(1)
   }
@@ -141,6 +141,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     const val MAX_BYTES = 100L * 1024 * 1024
     const val TOO_LARGE = "larger than 100 MB"
     const val CHUNK_BYTES = 4L * 1024 * 1024
+    private const val MAX_CHUNK_REPLY_CHARS = CHUNK_BYTES / 3 * 4 + 1024
     const val MAX_REDIRECTS = 20
     const val TIMEOUT_MS = 30_000
     private val PERCENT_ESCAPE = Regex("%[0-9A-Fa-f]{2}")
