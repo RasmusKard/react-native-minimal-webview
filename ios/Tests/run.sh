@@ -15,3 +15,11 @@ xcrun swiftc -target $T -Fsystem "$F" -import-objc-header ios/Tests/PlatformSett
   ios/PlatformSettings.swift ios/PlatformCompletions.generated.swift ios/Tests/PlatformSettings/main.swift "$out/mrw.o" \
   -o "$out/settings"
 "$out/settings"
+
+xcrun swiftc -target $T -Fsystem "$F" -parse-as-library -emit-library -static -module-name ExpoModulesCore \
+  -emit-module-path "$out/ExpoModulesCore.swiftmodule" ios/Tests/View/ExpoModulesCore.swift -o "$out/libExpoModulesCore.a"
+view=()
+for file in ios/*.swift; do [[ $file == ios/MinimalWebViewModule.swift ]] || view+=("$file"); done
+xcrun swiftc -target $T -Fsystem "$F" -I "$out" -L "$out" -lExpoModulesCore -import-objc-header ios/Tests/PlatformSettings/Bridging.h \
+  "${view[@]}" ios/Tests/View/main.swift "$out/mrw.o" -o "$out/view"
+"$out/view"
