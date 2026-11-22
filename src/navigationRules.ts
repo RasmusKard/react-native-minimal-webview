@@ -66,12 +66,16 @@ const FIELD_KINDS = {
   action: { takes: `one of ${shown(ACTIONS)}`, ok: (value: unknown) => ACTIONS.includes(value) },
 };
 
+const REQUIRED_FIELDS_UNSET = { action: undefined } satisfies {
+  [K in keyof NavigationRule as object extends Pick<NavigationRule, K> ? never : K]: undefined;
+};
+
 function ruleProblem(rule: unknown) {
   if (typeof rule !== 'object' || rule === null) return `must be an object, not ${shown(rule)}`;
-  for (const [key, value] of Object.entries({ action: undefined, ...rule })) {
+  for (const [key, value] of Object.entries({ ...REQUIRED_FIELDS_UNSET, ...rule })) {
     const kind = RULE_FIELDS.get(key);
     if (!kind) return `unknown key ${shown(key)}`;
-    if ((value !== undefined || kind === 'action') && !FIELD_KINDS[kind].ok(value))
+    if ((value !== undefined || key in REQUIRED_FIELDS_UNSET) && !FIELD_KINDS[kind].ok(value))
       return `${key} must be ${FIELD_KINDS[kind].takes}, not ${shown(value)}`;
   }
   return undefined;
