@@ -61,6 +61,7 @@ async function loadHtml(h: Harness, body: string) {
 const webViewClass = async (h: Harness) =>
   await h.ref.current?.call(ios ? 'webView.description' : 'webView.toString').catch(errorCode);
 
+const switchedOffOnScroll = { key: `${KEY}.onScroll`, options: null };
 const strayEvents = (h: Harness) => h.events.hookEvents.filter((name) => name.startsWith(KEY));
 
 export async function extensions(h: Harness, r: Reporter) {
@@ -95,7 +96,7 @@ const DECLINED = OTHER;
 const SIGNED_IN = `http://${ios ? '[::1]' : '10.0.2.2'}:${PAGES_PORT}`;
 
 async function inert(h: Harness, r: Reporter) {
-  await recreate(h, {}, { remount: true });
+  await recreate(h, { extensions: [switchedOffOnScroll] }, { remount: true });
   const made = await webViewClass(h);
   r.check(
     "with no extension, the WebView isn't made from the menu hook's class",
@@ -265,7 +266,7 @@ async function scroll(h: Harness, r: Reporter) {
     !!at && at.contentSize.height > at.layoutMeasurement.height,
     scrolls.at(-1)
   );
-  h.setProps({ ios: noInsetAdjustment });
+  h.setProps({ ios: noInsetAdjustment, extensions: [switchedOffOnScroll] });
   await sleep(300);
   const count = scrolls.length;
   h.events.hookEvents.length = 0;

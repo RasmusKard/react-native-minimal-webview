@@ -18,7 +18,6 @@ import {
   WebView,
   createBridge,
   type HookEvent,
-  type HookExtension,
   useWebViewState,
   createWebViewRef,
 } from 'react-native-minimal-webview';
@@ -62,13 +61,6 @@ function onPageCounterEvent(event: PageCounterEvent) {
   else events.hookEvents.push(`sample.pageCounter.${event.name}`);
   return undefined;
 }
-
-const EXTENSIONS_KEY = '@react-native-minimal-webview/extensions';
-const strayEvents: HookExtension = {
-  key: `${EXTENSIONS_KEY}.onScroll`,
-  options: null,
-  onEvent: ({ name }) => void events.hookEvents.push(`${EXTENSIONS_KEY}.onScroll.${name}`),
-};
 
 function Remountable({ children }: { children: ReactNode }) {
   const [key, setKey] = useState(0);
@@ -168,10 +160,7 @@ export default function App() {
             bridge={bridge}
             pullToRefresh
             sharedCookies
-            extensions={[
-              ...logged,
-              ...(logged.some((e) => e && e.key === strayEvents.key) ? [] : [strayEvents]),
-            ]}
+            extensions={logged}
             onNavigationRequest={(request, signal) => askRef.current?.(request, signal) ?? 'block'}
             onFileRequest={(request, signal) => fileRequestRef.current?.(request, signal) ?? null}
             onFullscreenChange={({ active }) => events.fullscreen.push(active)}
