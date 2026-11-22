@@ -5,7 +5,8 @@
 <script>
   window.perfPost = (run, data) =>
     fetch(`/perf/result?run=${encodeURIComponent(run)}`, { method: 'POST', body: JSON.stringify(data) });
-  (() => {
+  const AUTO_NEXT_AFTER_LOAD_MS = 50;
+  function navigationLoopStep() {
     const arrived = Date.now();
     const q = new URLSearchParams(location.search);
     const run = q.get('run');
@@ -13,8 +14,8 @@
     const i = Number(q.get('i')), n = Number(q.get('n'));
     const key = `perf:${run}`;
     const samples = JSON.parse(sessionStorage.getItem(key) ?? '[]');
-    const left = Number(sessionStorage.getItem(`${key}:left`));
-    if (i > 0 && left) samples.push(arrived - left);
+    const leftAt = Number(sessionStorage.getItem(`${key}:leftAt`));
+    if (i > 0 && leftAt) samples.push(arrived - leftAt);
     sessionStorage.setItem(key, JSON.stringify(samples));
     window.perfGo = (auto) => {
       const next = new URL(location.href);
@@ -22,16 +23,17 @@
       if (auto) next.searchParams.set('auto', '1');
       window.perfMark?.mark(String(i + 1));
       window.webkit?.messageHandlers?.perfMark?.postMessage(String(i + 1));
-      sessionStorage.setItem(`${key}:left`, String(Date.now()));
+      sessionStorage.setItem(`${key}:leftAt`, String(Date.now()));
       location.href = next.href;
     };
     addEventListener('load', () => {
       if (i >= n) perfPost(run, samples);
-      else if (q.get('auto') === '1') setTimeout(() => perfGo(true), 50);
+      else if (q.get('auto') === '1') setTimeout(() => perfGo(true), AUTO_NEXT_AFTER_LOAD_MS);
     });
-  })();
+  }
+  navigationLoopStep();
 
-  window.perfClock = (run) => {
+  window.perfClockResolution = (run) => {
     const step = (now) => {
       const a = now();
       let b = a;
@@ -41,7 +43,7 @@
     const steps = (now) => Array.from({ length: 20 }, () => step(now));
     perfPost(run, { performanceNow: steps(() => performance.now()), dateNow: steps(Date.now) });
   };
-  window.perfPageCalls = async (run, n) => {
+  window.perfEchoRoundTrips = async (run, n) => {
     const ms = [];
     for (let k = 0; k < n; k++) {
       const t = performance.now();

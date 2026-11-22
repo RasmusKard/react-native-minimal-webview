@@ -40,10 +40,10 @@ async function posted<T>(h: Harness, run: string, ms = 30000): Promise<T | undef
 }
 const page = (h: Harness, query: string) => `${h.pages}/perf.html?${query}&t=${Date.now()}`;
 
-async function clock(h: Harness) {
+async function clockResolution(h: Harness) {
   const run = runId('clock');
   await openPage(h, page(h, 'clock=1'));
-  await inject(h, `perfClock(${JSON.stringify(run)}), 1`);
+  await inject(h, `perfClockResolution(${JSON.stringify(run)}), 1`);
   type Steps = { performanceNow: number[]; dateNow: number[] };
   const inPage = await posted<Steps>(h, run);
   const step = (now: () => number) => {
@@ -66,15 +66,15 @@ async function navLoop(h: Harness, policy: Policy, n: number) {
   const run = runId(`nav-${policy}`);
   await openPage(h, page(h, `run=${run}&i=0&n=${n}`));
   await drain(h);
-  loopInfo(h);
+  takeLoadOutcomes(h);
   await inject(h, 'setTimeout(() => perfGo(true)), 1');
   const e2e = (await posted<number[]>(h, run, n * 1000)) ?? [];
   const marks = await drain(h);
   const native = marks.flatMap((m) => (m.goNs ? [(m.goNs - m.markNs) / 1e6] : []));
-  return { e2e, native, marks: marks.length, info: loopInfo(h) };
+  return { e2e, native, marks: marks.length, outcomes: takeLoadOutcomes(h) };
 }
 
-const busy = (ms: number) => {
+const blockJsThread = (ms: number) => {
   for (const end = Date.now() + ms; Date.now() < end;);
 };
 
@@ -87,7 +87,7 @@ async function busyJs(h: Harness, policy: Policy, n: number) {
     await openPage(h, page(h, `run=${run}&i=0&n=1`));
     await probe.stallStart();
     await inject(h, 'setTimeout(() => perfGo(), 100), 1');
-    busy(600);
+    blockJsThread(600);
     e2e.push(...((await posted<number[]>(h, run, 10000)) ?? []));
     gaps.push(await probe.stallStop());
   }
@@ -97,7 +97,7 @@ async function busyJs(h: Harness, policy: Policy, n: number) {
 async function pageCalls(h: Harness, n: number) {
   const run = runId('pageCall');
   await openPage(h, page(h, 'calls=1'));
-  await inject(h, `perfPageCalls(${JSON.stringify(run)}, ${n}), 1`);
+  await inject(h, `perfEchoRoundTrips(${JSON.stringify(run)}, ${n}), 1`);
   return (await posted<number[]>(h, run, 60000)) ?? [];
 }
 
@@ -151,7 +151,7 @@ async function mountWarm(h: Harness, n: number) {
   const ms: number[] = [];
   for (let k = 0; k < n; k++) {
     const t = performance.now();
-    await remount(h);
+    await remountUntilLoadEnd(h);
     ms.push(performance.now() - t);
     await sleep(300);
   }
@@ -180,10 +180,7 @@ async function memory(h: Harness) {
   return { perInstanceKb, one, five };
 }
 
-async function measure(h: Harness, r: Reporter) {
-  const count = (id: string, values: unknown[] | undefined, n: number) =>
-    r.check(`${id}: all ${n} samples`, values?.length === n, { got: values?.length });
-
+async function measureMemoryOnCleanHeap(h: Harness, r: Reporter) {
   const mem = await memory(h);
   r.check('memory: read with 1 and 5 WebViews', mem.perInstanceKb !== null, mem);
   r.info('memory', {
@@ -193,8 +190,13 @@ async function measure(h: Harness, r: Reporter) {
     one: mem.one?.processes,
     five: mem.five?.processes,
   });
+}
 
-  r.info('clock', await clock(h));
+async function measureTimings(h: Harness, r: Reporter) {
+  const count = (id: string, values: unknown[] | undefined, n: number) =>
+    r.check(`${id}: all ${n} samples`, values?.length === n, { got: values?.length });
+
+  r.info('clock', await clockResolution(h));
 
   const e2e: Partial<Record<Policy, number[]>> = {};
   for (const policy of ['default', 'rule', 'ask'] as const) {
@@ -206,7 +208,7 @@ async function measure(h: Harness, r: Reporter) {
     r.info(`nav.e2e.${policy}`, stats(loop.e2e));
     count(`nav.native.${policy}`, loop.native, 50);
     r.info(`nav.native.${policy}`, { ...stats(loop.native), marks: loop.marks });
-    r.info(`nav.${policy} outcomes`, loop.info);
+    r.info(`nav.${policy} outcomes`, loop.outcomes);
     r.info(`ui.maxGap nav.e2e.${policy} (whole loop)`, gaps);
   }
 
@@ -277,7 +279,7 @@ async function setUp(h: Harness) {
     () => true
   );
 }
-const remount = (h: Harness) =>
+const remountUntilLoadEnd = (h: Harness) =>
   new Promise<void>((resolve) => {
     loadEnded = resolve;
     h.remount();
@@ -299,7 +301,7 @@ const inject = async (h: Harness, script: string) =>
   await h.ref.current?.evaluate(script).catch(String);
 const drain = async (h: Harness) =>
   ((await h.ref.current?.hook('sample.perf', 'drain')) ?? []) as Mark[];
-function loopInfo(h: Harness) {
+function takeLoadOutcomes(h: Harness) {
   const outcomes: Record<string, number> = {};
   for (const outcome of h.events.outcomes.splice(0))
     outcomes[String(outcome)] = (outcomes[String(outcome)] ?? 0) + 1;
@@ -308,7 +310,8 @@ function loopInfo(h: Harness) {
 
 export async function perf(h: Harness, r: Reporter) {
   await setUp(h);
-  await measure(h, r);
+  await measureMemoryOnCleanHeap(h, r);
+  await measureTimings(h, r);
 }
 
 /**
