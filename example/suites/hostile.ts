@@ -1,6 +1,3 @@
-// The `hostile` suite: the package's security boundaries against a hostile page, each check asserting that a boundary
-// holds. The page is test-pages/hostile.html, on the allowed origin (PAGES), on another one (OTHER), and over https with
-// a self-signed certificate (HTTPS).
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 import type {
@@ -31,7 +28,6 @@ import { HTTPS, OTHER } from '../pages';
 import { all } from './shapes';
 
 type Suite = { h: Harness; r: Reporter; android: boolean };
-/** What a probe frame of hostile.html reports to its parent. */
 type FrameReport = {
   from: string;
   nativeBridge: string;
@@ -44,7 +40,6 @@ type FrameReport = {
 const evaluate = async (h: Harness, script: string) =>
   await h.ref.current?.evaluate(script).catch(errorCode);
 
-/** A tap on `id` (`real`: touch): whether the page saw the click. */
 async function gesture({ h, r }: Suite, id: string, real = false) {
   const before = Number(await evaluate(h, 'window.testLog.length'));
   await (real ? touch : tap)(h, r, id);
@@ -53,11 +48,6 @@ async function gesture({ h, r }: Suite, id: string, real = false) {
   return (await poll(seen, 15000)) === true;
 }
 
-/**
- * T2, T3: an iframe (same-origin or not) and a main frame outside allowedOrigins get no bridge, and the messages they
- * forge through the platform transport reach no handler. F2: a script scoped to the app's origin doesn't run there.
- * F3: an evaluate that the page holds pending rejects `navigated` once the page navigates itself.
- */
 async function bridgeGate({ h, r }: Suite) {
   const probes: { params: unknown; sender: BridgeSender }[] = [];
   const events: unknown[] = [];
@@ -82,7 +72,7 @@ async function bridgeGate({ h, r }: Suite) {
       const value = (await evaluate(h, 'frameReports')) as FrameReport[] | undefined;
       return Array.isArray(value) && value.length >= 2 ? value : undefined;
     });
-    await sleep(1000); // a forged message that got through would have reached a handler by now
+    await sleep(1000);
     const leaked = { probes: probes.splice(0), events: events.splice(0) };
     const frame = (name: string) => reports?.find((report) => report.from === name);
     for (const name of ['cross', 'same']) {
@@ -98,7 +88,6 @@ async function bridgeGate({ h, r }: Suite) {
       );
     }
     r.info('T3 bridge transports the iframes found', reports);
-    // The control: the main frame's own call arrives, with its origin, and the forged `ready`s took nothing over.
     const control = await evaluate(h, "nativeBridge.call('hostileProbe', { from: 'main' })");
     const sum = await h.bridge.call('sum', { a: 2, b: 3 }).catch(errorCode);
     r.since(
@@ -136,7 +125,6 @@ async function bridgeGate({ h, r }: Suite) {
       { injected, cross: frame('cross'), same: frame('same') }
     );
 
-    // A page can hold an evaluate pending: it settles only when the page goes.
     const pending = evaluate(h, 'new Promise(() => {})');
     const early = await Promise.race([pending, sleep(500).then(() => 'pending')]);
     await evaluate(h, "(setTimeout(() => (location.href = '/spa.html?from=hostile'), 100), 1)");
@@ -154,10 +142,6 @@ async function bridgeGate({ h, r }: Suite) {
   }
 }
 
-/**
- * T4: the page's call ids restart with each document (`p1`), so an answer to the previous document's call could
- * settle the next document's: the document token drops it.
- */
 async function staleAnswer({ h, r }: Suite) {
   const calls: Record<string, number> = {};
   const answers: Record<string, number> = {};
@@ -180,8 +164,6 @@ async function staleAnswer({ h, r }: Suite) {
     await waitFor(h, (s) => s.url === next && idle(s));
     const stale = (await poll(() => evaluate(h, 'window.__stale'), 6000)) as
       { result?: string } | undefined;
-    // Only a race: B's call was waiting when A's answer came. (B's 2500 ms ends after A's 1500 ms, within the
-    // page's 3 s bridge timeout.)
     const raced = (calls.B ?? Infinity) < (answers.A ?? 0);
     r.since(
       WEBVIEW.bridge,
@@ -206,7 +188,6 @@ async function staleAnswer({ h, r }: Suite) {
   }
 }
 
-/** T5: a new window to an internal scheme or file: never loads, even when a rule allows every new window. */
 async function newWindows(suite: Suite) {
   const { h, r, android } = suite;
   const external: string[] = [];
@@ -235,11 +216,10 @@ async function newWindows(suite: Suite) {
     ['blank-data', 'target=_blank to data:'],
   ] as const) {
     const [loads, navigations] = [h.events.loads.length, h.events.navigations.length];
-    // A sentinel an earlier window set fails that window's check only.
     const before = await sentinelsNow();
     const clicked = await gesture(suite, id);
     await poll(() => h.events.navigations.length > navigations, 2000);
-    await sleep(1000); // a load the core wrongly let in would have started by now
+    await sleep(1000);
     const decisions = h.events.navigations.slice(navigations);
     const sentinels = await sentinelsNow();
     const scriptMayRun = android && id === 'open-js';
@@ -268,10 +248,6 @@ async function newWindows(suite: Suite) {
   }
 }
 
-/**
- * F1: with no rules, a page that sends the main frame to a custom scheme with no gesture is blocked, from a script and
- * through a link it clicks itself; a tapped link to one goes external, and one through a 302 is recorded.
- */
 async function defaultScheme(suite: Suite) {
   const { h, r } = suite;
   const external: string[] = [];
@@ -282,7 +258,6 @@ async function defaultScheme(suite: Suite) {
   await sleep(300);
   const page = fresh(h, '/hostile.html');
   await openPage(h, page);
-  /** Runs `script` in the page: the decision about `url`, once one came. */
   const scripted = async (script: string, url: string) => {
     const navigations = h.events.navigations.length;
     await evaluate(h, script);
@@ -305,7 +280,6 @@ async function defaultScheme(suite: Suite) {
     blocked(decision),
     { decision, external }
   );
-  // WebKit reports a link that a script clicks as .linkActivated, as it does a tapped one.
   const link = 'mrwhostile://open?from=click';
   const timer = await scripted(
     `(() => {
@@ -339,7 +313,6 @@ async function defaultScheme(suite: Suite) {
   );
 }
 
-/** Runs `act` and waits for the next error: it, and the URL the page then shows. */
 async function nextError(h: Harness, act: () => void) {
   const errors = h.events.errors.length;
   act();
@@ -349,7 +322,6 @@ async function nextError(h: Harness, act: () => void) {
   return { error: h.events.errors[errors], shown: await evaluate(h, 'location.href') };
 }
 
-/** T9: an SSL error is cancelled and reported, on a load and on a back/forward load. */
 async function ssl({ h, r, android }: Suite) {
   const before = fresh(h, '/hostile.html?ssl=before');
   await openPage(h, before);
@@ -371,9 +343,8 @@ async function ssl({ h, r, android }: Suite) {
     all(back, h.events.errors.length === errors),
     { state: h.state(), errors: h.events.errors.slice(errors) }
   );
-  // An entry that loaded and now redirects to the bad certificate: a pushState entry, of a page the back/forward cache
-  // doesn't keep (off here), so going back requests its URL. iOS restores the page from WebKit's cache instead (no
-  // request, no error), and WKWebView has no public switch for that cache.
+  // iOS restores the page from WebKit's cache instead (no request, no error), and WKWebView has no public switch for
+  // that cache.
   if (!android) return;
   h.setProps({ android: { settings: { backForwardCacheEnabled: false } } });
   await sleep(300);
@@ -393,7 +364,6 @@ async function ssl({ h, r, android }: Suite) {
   h.setProps({});
 }
 
-/** Clicks a download link and waits for the download's event: undefined when none came. */
 async function download(h: Harness, id: string) {
   const [ok, failed] = [h.events.downloads.length, h.events.downloadFailures.length];
   await evaluate(h, `(document.getElementById('${id}').click(), 1)`);
@@ -405,19 +375,16 @@ async function download(h: Harness, id: string) {
     DownloadResult | undefined;
 }
 
-/** In a directory of its own (Android's cache/downloads/<n>/, iOS's tmp/<UUID>/), and not named `.` or `..`. */
 const inOwnDirectory = (uri: string) =>
   /\/(downloads\/\d+|tmp\/[0-9A-F-]{36})\/[^/]+$/i.test(uri) &&
   !['.', '..'].includes(decodeURIComponent(uri.split('/').at(-1) ?? ''));
 
-/** A saved download: its file name, its text, and where `<dir>/../../evil.txt` would have landed. */
 async function savedAs(saved: Download) {
   const name = decodeURIComponent(saved.uri.split('/').at(-1) ?? '');
   const escaped = new File(`${saved.uri.split('/').slice(0, -3).join('/')}/evil.txt`);
   return { name, escaped, body: await new File(saved.uri).text() };
 }
 
-/** T7: ../../evil.txt in a download's page-chosen name never leaves its own directory. The saved download, if any. */
 async function traversalName({ h, r }: Suite) {
   await openPage(h, fresh(h, '/hostile.html'));
   const traversal = await download(h, 'dl-traversal');
@@ -436,7 +403,6 @@ async function traversalName({ h, r }: Suite) {
   return traversal?.ok ? traversal : undefined;
 }
 
-/** T7: a download named `..` stays in its own directory or fails, and the earlier download is kept. */
 async function dotdotName({ h, r }: Suite, saved: Download | undefined) {
   const dotdot = await download(h, 'dl-dotdot');
   const kept = saved ? new File(saved.uri).exists : false;
@@ -450,7 +416,6 @@ async function dotdotName({ h, r }: Suite, saved: Download | undefined) {
 
 const downloadNames = async (s: Suite) => await dotdotName(s, await traversalName(s));
 
-/** T7: Android fetches a download again and follows its redirect: each hop gets only its own host's cookies. */
 async function downloadRedirect({ h, r, android }: Suite) {
   await openPage(h, fresh(h, '/hostile.html'));
   const cookie = `hostile${Date.now()}`;
@@ -467,7 +432,6 @@ async function downloadRedirect({ h, r, android }: Suite) {
   else r.info("T7 iOS saves WebKit's first response, with no second fetch", { moved, body });
 }
 
-/** F3: Android reads a blob: download through the page's own fetch, so the page can keep it from finishing. */
 async function heldBlob({ h, r, android }: Suite) {
   if (!android) {
     r.skip('F3 held blob', 'iOS reads a blob: download in WebKit, not through the page');
@@ -494,12 +458,10 @@ async function heldBlob({ h, r, android }: Suite) {
   r.info('F3 the held blob download', { held, failure });
 }
 
-/** T8: a web page can't send the main frame to file:, and a file: source reads only its own directory. */
 async function fileScope({ h, r, android }: Suite) {
   const stamp = Date.now();
   const dir = new Directory(Paths.cache, `hostile-${stamp}`);
   const site = new Directory(dir, 'site');
-  // Far outside the source's directory: the app's Documents, then /etc/hosts.
   const far = new File(Paths.document, `hostile-far-${stamp}.js`);
   site.create({ intermediates: true });
   try {
@@ -544,7 +506,6 @@ async function fileScope({ h, r, android }: Suite) {
     };
     if (!android) {
       const scope = await read(first!);
-      // Without the WebContent sandbox (the simulator) WebKit reads any file: only a device can check the read root.
       if (Array.isArray(scope) && scope[3] === true) {
         r.info(
           'T8 iOS: the file: source read outside its directory, Documents too: no WebContent sandbox',
@@ -563,7 +524,6 @@ async function fileScope({ h, r, android }: Suite) {
         JSON.stringify(wide) === '["local",true,true,false,false]',
         wide
       );
-      // A retry of a failed file: load goes through the core's own load, which must keep the root too.
       const late = new File(site, 'late.html');
       await read(late, dir.uri);
       await late.write(html);
@@ -609,10 +569,6 @@ async function fileScope({ h, r, android }: Suite) {
   }
 }
 
-/**
- * In run order; the Android taps all come from newWindows (five) and defaultScheme (two), the iOS ones from
- * defaultScheme (two).
- */
 const BLOCKS = [
   bridgeGate,
   staleAnswer,

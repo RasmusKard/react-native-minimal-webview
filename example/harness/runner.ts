@@ -1,5 +1,3 @@
-// Runs the on-device suites (suites/index.ts) inside the example app. Each result is logged as
-// `[harness <platform>] PASS|FAIL|SKIP|INFO ...` to the JS console and to the test pages server, which prints it.
 import { Platform } from 'react-native';
 import type {
   Bridge,
@@ -31,10 +29,9 @@ export type Harness = {
   pages: string;
   platform: string;
   ref: WebViewRefObject;
-  /** Where the WebView sits in the window and its height, in dp, for a driver's tap; kept current by App's onLayout. */
+  /** Where the WebView sits in the window and its height, in dp, for a driver's tap. */
   webViewOffset: { x: number; y: number; height: number };
   state: () => NavigationState;
-  /** Remounts the WebView (a new `key`) without re-rendering App. */
   remount: () => void;
   load: (uri: string) => void;
   loadSource: (source: WebViewSource) => void;
@@ -47,7 +44,7 @@ export type Harness = {
   setPermission: (handler: WebViewProps['onPermissionRequest']) => void;
   /** Extra WebView props, replacing the previous extras. An `ios` keeps the example's `configuration` unless it has one. */
   setProps: (props: HarnessProps) => void;
-  /** Renders `n` plain WebViews (no bridge) below the measured one: the perf suite's memory read. */
+  /** Renders `n` plain WebViews (no bridge) below the measured one. */
   setExtraWebViews: (n: number) => void;
   /** Shows a full-screen modal over the app, or hides it. */
   setCovered: (covered: boolean) => void;
@@ -55,32 +52,27 @@ export type Harness = {
   events: {
     errors: LoadErrorEvent[];
     gone: ProcessGoneEvent[];
-    /** `start` and `end`, from onLoadStart and onLoadEnd. */
     loads: string[];
-    /** Each onLoadEnd's `outcome`. */
     outcomes: NavigationState['outcome'][];
     navigations: NavigationEvent[];
     downloads: Download[];
     downloadFailures: DownloadFailure[];
     fullscreen: boolean[];
     pageCounts: { url: string; count: number }[];
-    /** The page counter's `documentEnd` payloads: the reason, and `context.url` at that moment. */
     documentEnds: { reason: string; url: string }[];
-    /** The names of the hooks' other events. */
     hookEvents: string[];
     /** Whether the example's error screen is mounted. */
     overlay: { error: boolean };
   };
 };
 
-/** `performance.now()` at App's first render and at its first onLoadEnd: the perfCold suite's cold mount. */
+/** `performance.now()` at App's first render and at its first onLoadEnd. */
 export const launchMarks: { render?: number; loadEnd?: number } = {};
 
 let posted: Promise<unknown> = Promise.resolve();
 /**
  * Posts `body` to the test pages server after the posts before it, so log lines and driver requests arrive in the
- * order the suite made them. A failed post surfaces as an unhandled rejection, later posts still go out, and the
- * driver's wait for a lost request times out.
+ * order the suite made them.
  */
 function post(path: string, body: string) {
   posted = posted.finally(() =>
@@ -88,7 +80,6 @@ function post(path: string, body: string) {
   );
 }
 
-/** A line of the log, and for the server's report what it is about: the suite, its block ('' outside one) and the name. */
 function emit(kind: Kind, suite: string, block: string, name: string, detail: string) {
   const where = block ? `${suite} > ${block}` : suite;
   const text = `[harness ${Platform.OS} ${Platform.Version}] ${kind} ${where}${kind === 'DONE' ? '' : ':'} ${name} ${detail}`;
@@ -97,7 +88,6 @@ function emit(kind: Kind, suite: string, block: string, name: string, detail: st
 }
 
 let showRequest: (text: string) => void = () => {};
-/** Shows each driver request and verdict on screen (testID `harness-request`), as the JSON the driver gets. */
 export const onDriverRequest = (listener: (text: string) => void) => (showRequest = listener);
 
 /**
@@ -121,10 +111,6 @@ export type DriverAction =
   /** Gives the device a location fix. */
   | { action: 'location' };
 
-/**
- * A driver request, or a suite's verdict (`action: 'done'`): on screen, and posted to the test server, where the driver
- * waits for it.
- */
 function request(
   message: DriverAction | { action: 'done'; pass: number; fail: number; skip: number },
   suite: string
@@ -142,7 +128,7 @@ export const WEBVIEW = {
   bridge: 101,
   /** DOCUMENT_START_SCRIPT, as androidx.webkit matches it */
   injectedScripts: 101,
-  /** The file input's `cancel` event, which upload.html waits for. */
+  /** The file input's `cancel` event. */
   fileInputCancel: 113,
   /** PAYMENT_REQUEST */
   paymentRequest: 136,
@@ -151,11 +137,10 @@ export const WEBVIEW = {
 };
 
 let webViewMajor: number | undefined;
-/** The Android System WebView's major version, from its default user agent (no page needed); 0 on iOS. */
+/** The Android System WebView's major version; 0 on iOS. */
 export const androidWebView = () =>
   (webViewMajor ??= Number(/Chrome\/(\d+)/.exec(AndroidWebView.defaultUserAgent ?? '')?.[1] ?? 0));
 
-/** What a suite reports through. */
 export type Reporter = {
   check(name: string, ok: boolean, detail?: unknown): void;
   /**
@@ -185,10 +170,6 @@ export const withFloor = (r: Reporter, floor: number): Reporter => ({
   check: (name, ok, detail) => r.since(floor, name, ok, detail),
 });
 
-/**
- * A suite's reporter, and what the runner ends it with: a failure of the run itself, the suite's cleanups, and the
- * verdict.
- */
 function reporter(suite: string) {
   const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
   const cleanups: (() => unknown)[] = [];
@@ -201,7 +182,6 @@ function reporter(suite: string) {
   };
   const check = (name: string, ok: boolean, detail: unknown = '') =>
     line(ok ? 'PASS' : 'FAIL', name, detail);
-  // A throw has no line of its own to point at: `last` says how far the suite got.
   const failed = (what: string, error: unknown) => {
     line('FAIL', what, `${String(error)} (after: ${last})`);
   };
@@ -243,9 +223,7 @@ function reporter(suite: string) {
   };
 }
 
-/** A suite's time. The driver waits 280 s for a suite's next request or verdict (maestro/scripts/next.js). */
 const SUITE_MS = 270_000;
-/** Rejects once a suite has run for `SUITE_MS`, so a wait that never ends still gets it a verdict. */
 const overtime = () =>
   sleep(SUITE_MS).then(() => {
     throw new Error(`still running after ${SUITE_MS / 1000} s`);
@@ -267,7 +245,6 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
     busy = true;
     const h = get();
     const { r, failed, cleanUp, done } = reporter(name);
-    // Whatever happens the suite gets one verdict, so the driver doesn't wait for one until it times out.
     try {
       const suite = suites[name];
       if (!suite) throw new Error('unknown suite');
@@ -275,7 +252,6 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
     } catch (error) {
       failed('the suite threw', error);
     }
-    // Before the verdict: what a suite leaves behind fails it, and makes the driver launch the app fresh.
     await cleanUp();
     await reset(h).catch((error: unknown) => failed('the reset after it threw', error));
     done();
@@ -286,9 +262,8 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
 
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
- * props, the event logs, a new WebView on the home page (an Android settings key with no getter is not reset by its
- * absence), and every site's cookies and storage (the HTTP cache stays). Throws when that page doesn't load, and on
- * Android when another window is still over the app.
+ * props, the event logs, a new WebView on the home page, and every site's cookies and storage (the HTTP cache stays).
+ * Throws when that page doesn't load, and on Android when another window is still over the app.
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -320,7 +295,6 @@ async function reset(h: Harness) {
         h.ref.current?.call('webStorage.deleteAllData'),
       ]));
   clearEvents(h);
-  // A dialog a suite left up has the window focus, and would take the next suite's touches.
   if (
     Platform.OS === 'android' &&
     !(await poll(() => h.ref.current?.call('webView.hasWindowFocus'), 3000))

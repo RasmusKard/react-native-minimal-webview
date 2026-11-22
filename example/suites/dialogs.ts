@@ -14,19 +14,14 @@ import {
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
-/**
- * alert, confirm and prompt reach the user and their answers reach the page, and on iOS a dialog goes with its WebView:
- * an unmount or a crash closes the one on screen. The driver presses the buttons.
- */
 export async function dialogs(h: Harness, r: Reporter) {
   const open = (id: string) =>
     void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('${id}').click(), 0)`);
   const up = async (id: string) => {
     await openPage(h, fresh(h, '/dialogs.html'));
     open(id);
-    await sleep(1000); // the presentation
+    await sleep(1000);
   };
-  /** A dialog left on screen would take the tap. */
   const tapReaches = async () => {
     await openPage(h, fresh(h, '/dialogs.html'));
     return await pageLog(h, () => touch(h, r, 'tap'), 5000);
@@ -97,7 +92,6 @@ export async function dialogs(h: Harness, r: Reporter) {
     });
     r.check('back answers a confirm as Cancel', lines?.join() === 'confirm false', lines);
   }
-  // UIKit runs a pressed button's handler only after the dismissal animation, so an unmount can come between the two.
   if (Platform.OS === 'ios') {
     await up('alert');
     const pressed = await seams.tapAlert('OK');

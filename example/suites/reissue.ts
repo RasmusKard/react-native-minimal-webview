@@ -16,7 +16,6 @@ import {
 import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
 
-// The `ask` rule (NavigationRule.action).
 export async function reissue(h: Harness, r: Reporter) {
   const asked: string[] = [];
   let answer: 'allow' | 'block' | 'late' = 'allow';
@@ -25,7 +24,6 @@ export async function reissue(h: Harness, r: Reporter) {
     if (answer === 'late') await sleep(1500);
     return answer === 'block' ? 'block' : 'allow';
   };
-  // The handler's answer to the latest ask: it settles once the handler has answered.
   let answered: Promise<unknown> = Promise.resolve();
   h.setAsk((request) => (answered = ask(request.url)));
   h.setRules([
@@ -63,11 +61,10 @@ export async function reissue(h: Harness, r: Reporter) {
     { decision: blocked, url: h.state().url, asked }
   );
 
-  // The timeout blocks after 1 s, before the handler answers allow.
   answer = 'late';
   const timedOut = await checkout();
   await answered;
-  await sleep(1000); // a load the late allow wrongly started would have committed by now
+  await sleep(1000);
   r.check(
     'a late answer is ignored (timeout blocks)',
     timedOut?.action === 'block' && h.state().url === start && asked.length === 3,
@@ -88,7 +85,7 @@ export async function reissue(h: Harness, r: Reporter) {
   await h.ref.current?.evaluate(
     `(() => { const f = document.createElement('iframe'); f.src = '/checkout/frame'; document.body.append(f); f.onload = () => f.contentWindow.location.href = '/checkout/frame2'; })()`
   );
-  await poll(() => asked.length > beforeFrame, 1500); // on Android, where none must come, the whole 1.5 s
+  await poll(() => asked.length > beforeFrame, 1500);
   if (Platform.OS === 'android') {
     r.check(
       'http(s) iframe navigations are not decided on Android',
@@ -114,7 +111,6 @@ export async function reissue(h: Harness, r: Reporter) {
   const cross = await referrerTo(`${OTHER}/headers?r=cross`);
   r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
 
-  // An unmount while an ask waits for JS: the late answer comes after the WebView it was for is gone.
   const beforeUnmount = fresh(h, '/nav.html');
   await openPage(h, beforeUnmount);
   answer = 'late';
@@ -130,7 +126,7 @@ export async function reissue(h: Harness, r: Reporter) {
     )
   );
   await answered;
-  await sleep(1000); // a load the late allow wrongly started would have committed by now
+  await sleep(1000);
   r.check(
     'an unmount while a navigation ask waits: the remounted WebView loads its source and stays',
     asked.length === pending + 1 && remounted && h.state().url === beforeUnmount,

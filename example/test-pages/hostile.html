@@ -3,12 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Hostile</title>
 <script>
-  // The hostile suite's page (example/hostile.ts), on the allowed origin and on 127.0.0.1.
-  // ?frames=1 embeds this page twice as a probe iframe (cross-origin and same-origin); ?frame=<name> is such a probe,
-  // which reports to its parent; ?probe=1 forges bridge messages from the main frame; ?stale=B calls the app at
-  // document start.
   const q = new URLSearchParams(location.search);
-  /** Posts a forged ready, call and event through every bridge transport this document has; reports what it found. */
   window.forge = (from) => {
     const transport = window.nativeBridgeTransport;
     const webkit = window.webkit?.messageHandlers?.nativeBridge;
@@ -33,8 +28,6 @@
     };
   };
   if (q.get('stale') === 'B' && window.nativeBridge) {
-    // Records what native delivers to this document (Android: the transport; iOS: __receive), to show where the
-    // previous document's answer went.
     window.__delivered = [];
     const transport = window.nativeBridgeTransport;
     const real = window.nativeBridge;
@@ -58,7 +51,6 @@
     nativeBridge.handle('slowPage', () => new Promise((resolve) => setTimeout(() => resolve('late'), 3000)));
   }
   const blob = (body) => URL.createObjectURL(new Blob([body], { type: 'text/html' }));
-  // Each sets a sentinel on the window it runs in, or its opener's: the suite checks the opener never gets one.
   const sentinel = (name) => `<script>try{(window.opener||window).${name}=1}catch(e){}<\/script>`;
 </script>
 <script src="/common.js"></script>

@@ -16,7 +16,6 @@ import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
 
-/** Committed url and the page's location.href agree, once the coalesced state event has arrived. */
 async function agree(h: Harness, r: Reporter, name: string) {
   let seen = {};
   const agreed = await poll(
@@ -33,8 +32,6 @@ async function agree(h: Harness, r: Reporter, name: string) {
 }
 
 export async function urlTracking(h: Harness, r: Reporter) {
-  // An app-started load is pending until it commits: never reported as the loaded, idle page before it starts. The
-  // gap is widest right after launch (the web process is still starting), which is when this suite's first load runs.
   const first = fresh(h, '/spa.html');
   const loadsBefore = h.events.loads.length;
   h.load(first);
@@ -115,7 +112,6 @@ export async function urlTracking(h: Harness, r: Reporter) {
   );
   await agree(h, r, 'slow load agrees');
 
-  // The page being left fires its load event (its slow image is done) while the next page is still pending.
   await h.ref.current?.evaluate(`location.href = '/slow-image.html?t=${Date.now()}'`);
   await until(async () => (await text(h, 'old').catch(errorCode)) === 'old', 5000);
   const leaving = h.events.loads.length;
@@ -128,8 +124,6 @@ export async function urlTracking(h: Harness, r: Reporter) {
   );
   await waitFor(h, (s) => s.url.includes('/slow') && idle(s));
 
-  // After a remount that doesn't re-render App, useWebViewState and getState() follow the new WebView, which loads the
-  // source again, instead of keeping the old one's /slow page.
   const beforeRemount = h.state().url;
   h.remount();
   await sleep(0);

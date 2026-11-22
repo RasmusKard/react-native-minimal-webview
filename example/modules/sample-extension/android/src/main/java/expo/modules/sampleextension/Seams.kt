@@ -6,26 +6,21 @@ import android.view.View
 import expo.modules.minimalwebview.DocumentEnd
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/** `sample.seams`: the context's seams other than clients, one small use of each. */
 internal object Seams {
-  /** How many of its WebViews were closed at unmount. */
   var closed = 0
     private set
 
   fun register() = MinimalWebViewHooks.register("sample.seams") { webView, context ->
     context.onDestroyed { reason -> if (reason == DocumentEnd.CLOSING) closed++ }
-    // Takes http(s) downloads and passes the rest (blob:, data:) on to the core.
     context.onDownloadStart { url, _, _, _, _ ->
       url.startsWith("http").also { taken -> if (taken) context.emit("download", emptyMap()) }
     }
-    // Two listeners on each shared slot: the second touch listener still gets what the first doesn't consume.
     var touches = 0
     context.touchListeners += View.OnTouchListener { _, _ -> false }
     context.touchListeners += View.OnTouchListener { _, _ ->
       touches++
       false
     }
-    // A JS number arrives as a Double, a whole one too.
     context.handle("twice") { args, reply -> reply((args[0] as Double) * 2) }
     context.handle("touch") { _, reply ->
       val now = SystemClock.uptimeMillis()

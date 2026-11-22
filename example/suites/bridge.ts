@@ -98,7 +98,7 @@ export async function bridge(h: Harness, all: Reporter) {
   const before = h.pageEvents.length;
   await h.ref.current?.evaluate(`nativeBridge.emit('pageEvent', { n: 2 })`).catch(errorCode);
   await waitFor(h, () => h.pageEvents.length > before, 3000);
-  await sleep(200); // a duplicate would come right after
+  await sleep(200);
   r.check('page -> RN event', h.pageEvents.length === before + 1, h.pageEvents);
 
   const inFlight = h.bridge.call('pageSlow').catch(errorCode);
@@ -113,8 +113,6 @@ export async function bridge(h: Harness, all: Reporter) {
   const again = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works again after navigation', again === 2, again);
 
-  // The new page's first message is a head script's call. Android ends the old Document (and drops its reply proxy) one
-  // main-thread hop after the commit: that has to come first, or the answer is lost and JS takes the page as loading.
   const head = `${page}&head=1`;
   await openPage(h, head);
   const headCall = await poll(() => h.ref.current?.evaluate('window.__head'), 5000);

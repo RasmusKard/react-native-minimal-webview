@@ -10,7 +10,6 @@ import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from './runne
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** A wait's time ran out. */
 export class Timeout extends Error {}
 
 /** Whether `wait` came in time: false when it threw a Timeout. For a wait whose outcome is the check. */
@@ -78,8 +77,7 @@ export const USER_AGENT_KEY =
 
 /**
  * Runs `act`, then waits for a load that ends after it (onLoadEnd) and for `done`, by default the idle page: throws a
- * Timeout unless both came within `ms`. Until the new load reports, the state can still be the old page's (or the old WebView's), so
- * `done` alone could match too early.
+ * Timeout unless both came within `ms`.
  */
 export async function waitForLoad(
   h: Harness,
@@ -183,7 +181,7 @@ export const fresh = (h: Harness, path: string) =>
 /**
  * Sets props that recreate the WebView (a creation-time setting) and waits until the new one has loaded its page. With
  * `remount`, it remounts too, for props that don't recreate it, such as an `extensions` entry whose hook has a
- * `configure` step or its own WebView class: that hook attaches only when the WebView is created.
+ * `configure` step or its own WebView class.
  */
 export async function recreate(h: Harness, props: HarnessProps, remount = false) {
   await waitForLoad(h, () => {
@@ -205,7 +203,7 @@ export async function openPage(
     (s) => s.url === source.uri && idle(s),
     ms
   );
-  await sleep(100); // events the native side sends right after onLoadEnd (onNavigation, an extension's)
+  await sleep(100);
 }
 
 /** Runs `act`, then waits for the lines the page adds to `window.testLog`; null when none come within `ms`. */
@@ -283,7 +281,7 @@ export async function travel(
   clearEvents(h);
   go();
   await waitFor(h, (s) => s.url === url && idle(s));
-  await sleep(500); // a late state or load event would come now
+  await sleep(500);
   const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
   r.since(
     WEBVIEW.navigationListener,

@@ -6,20 +6,16 @@ public class SampleExtensionModule: Module {
   public func definition() -> ModuleDefinition {
     Name("SampleExtension")
     OnCreate {
-      // `configure` gets the configuration before the WKWebView exists: WebKit reads data detectors only from it.
       MinimalWebViewHooks.register("sample.pageCounter", configure: { configuration, _ in
         configuration.dataDetectorTypes = .phoneNumber
       }) { webView, context in
         let counter = PageCounter(context: context)
         context.navigationDelegates.append(counter)
-        // The extension's `options` arrive at once, then live on each change, with no reload.
         context.onOptions { [weak webView] options in
           counter.global = (options as? [String: Any])?["global"] as? String ?? "__pageCount"
           if let webView { counter.stamp(webView) }
         }
-        // Answers JS's `ref.hook('sample.pageCounter', 'count')`.
         context.handle("count") { _, reply in reply(counter.count) }
-        // A handler can reply later, here with the app's answer to an ask, and fail the JS call when there is none.
         context.handle("label") { _, reply in
           context.ask("label", ["count": counter.count]) { answer in
             if let answer { reply(answer) } else { reply.fail("the app gave no label") }
@@ -30,34 +26,27 @@ public class SampleExtensionModule: Module {
           context.emit("documentEnd", ["reason": "\(reason)", "url": context.url])
         }
       }
-      // Page requests only a hook can take over (the harness's fixtures): HTTP auth and the alert panel.
       MinimalWebViewHooks.register("sample.hookAuth") { _, context in
         context.navigationDelegates.append(HookAuth(context: context))
       }
       MinimalWebViewHooks.register("sample.hookDialogs") { _, context in
         context.uiDelegates.append(HookDialogs(context: context))
       }
-      // Takes the navigation decision from the app's navigationRules, which a `core.warning` says.
       MinimalWebViewHooks.register("sample.hookNavigation") { _, context in
         context.navigationDelegates.append(HookNavigation())
       }
-      // Each WebView that enables this hook is made from its subclass; others stay plain WKWebViews.
       MinimalWebViewHooks.register("sample.subclass", webViewClass: SampleWKWebView.self) { webView, context in
         let name = String(describing: type(of: webView))
         context.handle("class") { _, reply in reply(name) }
       }
       PerfProbe.register()
-      // The refresh control exists before `pullToRefresh` shows it, so it can be styled at attach.
       MinimalWebViewHooks.register("sample.seams") { webView, context in
         context.refreshControl?.tintColor = .white
         context.handle("tint") { [weak webView] _, reply in reply(webView?.scrollView.refreshControl?.tintColor == .white) }
-        // A JS number arrives as an NSNumber, which reads as a Double.
         context.handle("twice") { args, reply in reply((args.first as? Double).map { $0 * 2 }) }
         context.onDestroyed { reason in if reason == .closing { Seams.closed += 1 } }
       }
     }
-    // closedViews is sample.seams' counter; stallStart and stallStop are the perf suite's frame-gap probe
-    // (PerfProbe.swift); tapAlert is the dialogs suite's press. Module functions, so they work without a hook too.
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(.main)
     AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
     AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
@@ -65,8 +54,6 @@ public class SampleExtensionModule: Module {
   }
 }
 
-/// Presses the button `title` of the alert on screen as a tap does, so UIKit runs its handler once the dismissal
-/// animation ends. False when no such alert is up.
 private func tapAlert(_ title: String) -> Bool {
   let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
   var top = window?.rootViewController
@@ -80,19 +67,14 @@ private func tapAlert(_ title: String) -> Bool {
   return true
 }
 
-/// `sample.seams`: how many of its views were closed at unmount.
 private enum Seams {
   static var closed = 0
 }
 
-/// The `sample.subclass` hook's class: an override of what WKWebView lets a subclass change would go here.
 private final class SampleWKWebView: WKWebView {}
 
-/// The hosts HookAuth gives credentials to: only the test pages server (`PAGES` in App.tsx).
 private let authHosts: Set<String> = ["localhost"]
 
-/// Answers HTTP basic and digest challenges from authHosts itself and cancels those from other hosts; any other
-/// challenge gets the default handling. Sends `challenge` for each challenge it gets.
 private final class HookAuth: NSObject, WKNavigationDelegate {
   private let context: WebViewContext
 
@@ -111,7 +93,6 @@ private final class HookAuth: NSObject, WKNavigationDelegate {
     guard method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest else {
       return completionHandler(.performDefaultHandling, nil)
     }
-    // Plain http only to the loopback test server, which no network sees.
     guard authHosts.contains(space.host), space.receivesCredentialSecurely || space.host == "localhost" else {
       return completionHandler(.cancelAuthenticationChallenge, nil)
     }
@@ -119,7 +100,6 @@ private final class HookAuth: NSObject, WKNavigationDelegate {
   }
 }
 
-/// Loads every navigation in place.
 private final class HookNavigation: NSObject, WKNavigationDelegate {
   func webView(
     _ webView: WKWebView,
@@ -130,7 +110,6 @@ private final class HookNavigation: NSObject, WKNavigationDelegate {
   }
 }
 
-/// Answers every alert itself and reports it, instead of the core's dialog.
 private final class HookDialogs: NSObject, WKUIDelegate {
   private let context: WebViewContext
 
@@ -149,7 +128,6 @@ private final class HookDialogs: NSObject, WKUIDelegate {
   }
 }
 
-/// Counts page loads and stamps the count into the page; reports server redirects.
 private final class PageCounter: NSObject, WKNavigationDelegate {
   private let context: WebViewContext
   private(set) var count = 0

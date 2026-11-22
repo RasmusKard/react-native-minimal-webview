@@ -16,10 +16,6 @@ import {
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
-/**
- * A creation-time setting changed while mounted recreates the WebView (iOS: an `ios.configuration` key; Android has
- * none, so a remount stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
- */
 export async function mountSettings(h: Harness, r: Reporter) {
   const uaOf = async () => {
     await openPage(h, fresh(h, '/ua'));

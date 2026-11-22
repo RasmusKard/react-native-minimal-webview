@@ -1,10 +1,6 @@
 appId: expo.modules.minimalwebview.example
 name: ${SUITE}
-# Runs one suite (-e SUITE=<name>): starts it, then does on the device what the suite asks (`DriverAction` in
-# harness/runner.ts), one request at a time, until its verdict. The test server's log has the checks.
 ---
-# Reuses the running app when the test server's /harness/idle answers yes (the harness resets itself after each suite);
-# otherwise launches it fresh.
 - runScript: scripts/idle.js
 - runFlow:
     when: { true: '${output.launch}' }
@@ -19,7 +15,6 @@ name: ${SUITE}
           when: { true: "${output.action == 'tap' || output.action == 'tapThenBack'}" }
           commands:
             - tapOn: { point: '${output.point}', waitToSettleTimeoutMs: 200 }
-      # What the tap opened covers the app (the system file chooser); back closes it.
       - runFlow:
           when: { true: "${output.action == 'tapThenBack'}" }
           commands:
@@ -32,7 +27,6 @@ name: ${SUITE}
           when: { true: "${output.action == 'longPress'}" }
           commands:
             - longPressOn: { point: '${output.point}' }
-      # A native button (a dialog's, a menu item): it hides the screen behind it, so wait for it.
       - runFlow:
           when: { true: "${output.action == 'press'}" }
           commands:
@@ -43,7 +37,6 @@ name: ${SUITE}
           when: { true: "${output.action == 'kill'}" }
           commands:
             - runScript: scripts/kill.js
-      # A kill with the app in the background: home, kill, and back 5 s later (/slow answers after ms).
       - runFlow:
           when: { true: "${output.action == 'killInBackground'}" }
           commands:
@@ -55,7 +48,6 @@ name: ${SUITE}
           when: { true: "${output.action == 'location'}" }
           commands:
             - setLocation: { latitude: 59.43, longitude: 24.75 }
-      # A pull down the page. Full and inner pulls start at the top; short pulls scroll a little.
       - runFlow:
           when: { platform: iOS, true: "${output.action == 'swipe' && output.kind == 'full'}" }
           commands:

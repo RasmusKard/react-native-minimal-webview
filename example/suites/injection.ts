@@ -1,10 +1,6 @@
 import { fresh, openPage, sleep, text, until } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter, withFloor } from '../harness/runner';
 
-/**
- * The `injectedScripts` prop: when its scripts run, in which frames and on which origins, and that a change applies
- * from the next load.
- */
 export async function injection(h: Harness, all: Reporter) {
   const r = withFloor(all, WEBVIEW.injectedScripts);
   h.setProps({
@@ -29,7 +25,7 @@ export async function injection(h: Harness, all: Reporter) {
   });
   await sleep(500);
   await openPage(h, fresh(h, '/injection.html'));
-  await until(async () => (await text(h, 'end')) !== '', 3000); // the page's load listener fills it
+  await until(async () => (await text(h, 'end')) !== '', 3000);
   r.check('a script runs before page scripts', (await text(h, 'start')) === 'true');
   r.check(
     'its DOMContentLoaded listener runs once the DOM is parsed',

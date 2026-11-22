@@ -1,5 +1,3 @@
-// The `shapes` suite: the flows apps are built from (a hybrid site, OAuth, 3-D Secure, new windows, schemes, documents,
-// uploads, an SPA), each pinned to its expectation per platform.
 import { BackHandler, Platform } from 'react-native';
 import type { FileRequest, NavigationRule, PermissionRequest } from 'react-native-minimal-webview';
 
@@ -21,7 +19,6 @@ import {
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { OTHER, PAGES } from '../pages';
 
-// A click on a page that went away shows in the check that follows, so the suite goes on.
 const click = (h: Harness, id: string) => scriptClick(h, id)?.catch(String);
 
 type Policy = 'hybrid' | 'oauth' | 'checkout' | 'windows' | 'schemes' | 'none';
@@ -30,9 +27,7 @@ type Shape = {
   h: Harness;
   r: Reporter;
   android: boolean;
-  /** Since the last `clear`: what reached onOpenExternal. */
   external: string[];
-  /** Since the last `clear`: what an `ask` rule asked. */
   asked: string[];
 };
 
@@ -75,17 +70,12 @@ const RULES: Record<Policy, NavigationRule[] | undefined> = {
   none: undefined,
 };
 
-/**
- * Applies a block's policy. `external: false` leaves external URLs to the library (no capturing `onOpenExternal`),
- * `downloads: false` drops `onDownload`, `inCheckout` makes the checkout `ask` allow instead of going external.
- */
 async function applyPolicy(
   s: Shape,
   policy: Policy,
   { external = true, downloads = true, inCheckout = false } = {}
 ) {
   s.h.setRules(RULES[policy]);
-  // The OAuth ask takes the return URL and blocks it; the checkout ask lets an unknown bank in only in checkout.
   s.h.setAsk((request) => {
     s.asked.push(request.url);
     if (policy !== 'checkout') return 'block';
@@ -97,7 +87,6 @@ async function applyPolicy(
   });
   await sleep(300);
 }
-/** Loads a test page (a path on the test server, or a full URL) with a cache-buster: its URL, once it has loaded. */
 async function open(h: Harness, path: string) {
   const url = fresh(h, path);
   await openPage(h, url);
@@ -110,26 +99,22 @@ function clear(s: Shape) {
 }
 
 export const all = (...conditions: boolean[]) => conditions.every(Boolean);
-/** Whether `value` has each of `fields`, compared with ===. */
 const has = (value: object | undefined, fields: Record<string, unknown>) =>
   value !== undefined &&
   Object.entries(fields).every(([key, field]) => (value as Record<string, unknown>)[key] === field);
 
 const stays = (h: Harness, url: string) => h.state().url === url;
-/** The last decision about a URL that contains `part`. */
 const decision = (h: Harness, part: string) =>
   h.events.navigations.filter((n) => n.url.includes(part)).at(-1);
 const href = async (h: Harness, id: string) =>
   String(await h.ref.current?.evaluate(`document.getElementById(${JSON.stringify(id)}).href`));
 const body = (h: Harness) =>
   h.ref.current?.evaluate(`document.getElementById('body')?.textContent ?? ''`).catch(String);
-/** The hub, freshly loaded, with the logs cleared: most checks start there. */
 async function hub(s: Shape) {
   const url = await open(s.h, '/shapes.html');
   clear(s);
   return url;
 }
-/** Clears the logs, runs `act`, and waits for an `ask` and what follows it. */
 async function askAfter(s: Shape, act: () => unknown) {
   clear(s);
   await act();
@@ -146,9 +131,6 @@ async function push(h: Harness) {
   await waitFor(h, (st) => st.url.includes('/spa/pushed'), 3000);
   return h.state().url;
 }
-/**
- * Opens a page and then the SPA, adds a pushState and a hash entry with `act`, and goes back twice: where each lands.
- */
 async function walkBack(h: Harness, act: (id: string) => unknown) {
   const before = await open(h, '/spa.html?from=before');
   const start = await open(h, '/spa.html');
@@ -167,7 +149,6 @@ async function walkBack(h: Harness, act: (id: string) => unknown) {
   return { before, start, pushed, first, second: await back() };
 }
 
-/** A hybrid app on its own domain: its links load in place, other sites open externally. */
 async function hybrid(s: Shape) {
   const { h, r } = s;
   await applyPolicy(s, 'hybrid');
@@ -211,7 +192,6 @@ async function hybrid(s: Shape) {
   );
 }
 
-/** Iframes: another site's link loads in the frame, a tel: link there is blocked. Taps on Android. */
 async function frames(s: Shape) {
   const { h, r, android } = s;
   let page = await hub(s);
@@ -252,7 +232,6 @@ async function frames(s: Shape) {
   );
 }
 
-/** OAuth through a third-party IdP: the return, on a custom scheme or the app's callback path, is asked. */
 async function oauth(s: Shape) {
   const { h, r } = s;
   await applyPolicy(s, 'oauth');
@@ -313,7 +292,6 @@ async function oauth(s: Shape) {
   );
 }
 
-/** Checkout: 3-D Secure in the bank's iframe, or a full-page POST to a bank the app can't list (no rule sees it). */
 async function checkout(s: Shape) {
   const { h, r, android } = s;
   await applyPolicy(s, 'checkout');
@@ -353,7 +331,6 @@ async function checkout(s: Shape) {
     { url: h.state().url, body: paRes, asked: s.asked, decisions: h.events.navigations }
   );
 
-  // Outside checkout the `ask` would send the bank external: the POST loads in place all the same.
   await applyPolicy(s, 'checkout', { inCheckout: false });
   clear(s);
   await open(h, '/shapes-pay.html?mode=top');
@@ -366,7 +343,6 @@ async function checkout(s: Shape) {
   );
 }
 
-/** target=_blank and window.open, tapped: same-site windows load in place, other sites' open externally. */
 async function windows(s: Shape) {
   const { h, r } = s;
   await applyPolicy(s, 'windows');
@@ -411,7 +387,6 @@ async function windows(s: Shape) {
   );
 }
 
-/** window.open('') with a later location, and a form POST into a new window, where the platforms split. */
 async function deferredWindows(s: Shape) {
   const { h, r, android } = s;
   await hub(s);
@@ -455,7 +430,6 @@ async function deferredWindows(s: Shape) {
   r.info('D5 iOS: the POST body after it loaded in place', await body(h));
 }
 
-/** Schemes and app links: each reaches onOpenExternal as the page wrote it. */
 async function schemes(s: Shape) {
   const { h, r } = s;
   await applyPolicy(s, 'schemes');
@@ -465,7 +439,7 @@ async function schemes(s: Shape) {
     const link = await href(h, id);
     await click(h, id);
     await until(() => s.external.length > 0, 3000);
-    await sleep(id === 'intent' ? 1000 : 200); // an intent:'s fallback would have loaded by now
+    await sleep(id === 'intent' ? 1000 : 200);
     r.check(
       `E${i + 1} schemes: ${link.split(':')[0]}: reaches onOpenExternal as written, the page stays`,
       all(
@@ -490,7 +464,6 @@ async function schemes(s: Shape) {
   );
 }
 
-/** An intent: without onOpenExternal, and tel: with no rules at all. */
 async function schemeDefaults(s: Shape) {
   const { h, r, android } = s;
   await applyPolicy(s, 'schemes', { external: false });
@@ -499,7 +472,6 @@ async function schemeDefaults(s: Shape) {
   await until(() => decision(h, 'intent:') !== undefined, 5000);
   await sleep(1000);
   const intent = { decision: decision(h, 'intent:'), url: h.state().url };
-  // Android opens its fallback (the navigation suite checks that); iOS has nothing that opens an intent:.
   if (android) r.info('E9 Android: an intent: without onOpenExternal', intent);
   else
     r.check(
@@ -508,7 +480,6 @@ async function schemeDefaults(s: Shape) {
       intent
     );
 
-  // Real taps on iOS too: the default rules open other schemes only from a gesture, which there takes a touch.
   await applyPolicy(s, 'none');
   await hub(s);
   await touch(h, r, 'tel');
@@ -533,7 +504,6 @@ async function schemeDefaults(s: Shape) {
   );
 }
 
-/** Document viewer: a PDF link, with and without onDownload. */
 async function documents(s: Shape) {
   const { h, r, android } = s;
   const pdf = `${PAGES}/shapes.pdf`;
@@ -580,7 +550,6 @@ async function documents(s: Shape) {
   }
 }
 
-/** Upload with camera capture (Android's onFileRequest), and a microphone request. */
 async function devices(s: Shape) {
   const { h, r, android } = s;
   if (android) {
@@ -619,11 +588,9 @@ async function devices(s: Shape) {
   );
 }
 
-/** SPA: history over pushState and hash entries, and reload on a pushState URL. */
 async function spa(s: Shape) {
   const { h, r, android } = s;
   await applyPolicy(s, 'none');
-  // Tapped, as a real SPA's routes are: each goBack steps one entry back.
   const tapped = await walkBack(h, (id) => tap(h, r, id));
   r.check(
     'H1 spa: goBack() over pushState and hash entries',
@@ -663,7 +630,6 @@ async function spa(s: Shape) {
   );
 }
 
-/** Offline: a failed load shows the example's error screen, and reload() recovers. */
 async function offline(s: Shape) {
   const { h, r } = s;
   const key = `shapes-${Date.now()}`;
@@ -704,7 +670,6 @@ async function offline(s: Shape) {
   }
 }
 
-/** Android's back button through the app's BackHandler recipe (guides/examples.md). */
 async function backButton(s: Shape) {
   const { h, r, android } = s;
   if (!android) {
@@ -731,10 +696,6 @@ async function backButton(s: Shape) {
   }
 }
 
-/**
- * In run order; the Android taps come in this order too (A4, A5, B6, D1–D5, E10's two, G1, H1's two, then the back
- * press), and the iOS ones are E10's two.
- */
 const BLOCKS = [
   hybrid,
   frames,

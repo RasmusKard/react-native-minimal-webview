@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: maestro/install.sh [--check] <android|ios> <device id> [expo run option...]
-# Builds the example app and installs it on the device (expo run:<platform>), and notes what it was built from.
+# Builds the example app and installs it on the device, and notes what it was built from.
 # --check builds nothing: it fails unless the app on the device is that install, and what a native build reads is as it
 # was then.
 set -eu
@@ -9,7 +9,6 @@ cd "$(dirname "$0")/.."
 PLATFORM=$1 DEVICE=$2 APP=expo.modules.minimalwebview.example
 note=.expo/installed-$PLATFORM-$DEVICE
 
-# The native sources, the example's config and its installed packages. Metro serves the rest.
 built_from() {
   {
     git -C .. ls-files -co --exclude-standard -z -- ios android extensions expo-module.config.json example/modules \
@@ -17,7 +16,6 @@ built_from() {
     shasum node_modules/.package-lock.json
   } | shasum
 }
-# Changes with every install.
 installed() {
   if [ "$PLATFORM" = ios ]; then
     xcrun simctl get_app_container "$DEVICE" $APP

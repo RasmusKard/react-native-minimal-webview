@@ -19,14 +19,11 @@ import {
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
-/** The out-of-package extension (example/modules/sample-extension) works through the public interface only. */
 export async function sampleExtension(h: Harness, r: Reporter) {
   const mountEnds = h.events.documentEnds.length;
   await recreate(h, {}, true);
   const phantom = h.events.documentEnds.slice(mountEnds).filter((end) => end.url === '');
   r.check('the first commit after mount ends no Document', phantom.length === 0, phantom);
-  // WebKit moves its back-forward list to the next page a moment before it reports the commit, so what a handler sees
-  // can depend on timing: several same-origin navigations of each kind, each ending the page before it.
   const misses: unknown[] = [];
   const ends = async (go: () => unknown, to: string) => {
     const [from, count] = [h.state().url, h.events.documentEnds.length];
@@ -86,7 +83,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     unhandled.every((code) => code === 'not_found'),
     unhandled
   );
-  // A changed value reaches the attached hook (onOptions), which stamps the page under the new name.
   const url = h.state().url;
   const loads = h.events.loads.length;
   await h.ref.current?.evaluate('window.__kept = true');
@@ -101,7 +97,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     !!live && kept === true && h.state().url === url && h.events.loads.length === loads,
     { live, kept, url: h.state().url, newLoads: h.events.loads.length - loads }
   );
-  // Without onEvent the hook's `label` ask is answered null, and its handler fails the call.
   const failed = await h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
   r.check('reply.fail rejects ref.hook with handler_error', failed === 'handler_error', failed);
   h.setProps({});
@@ -124,7 +119,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
       h.events.hookEvents
     );
   }
-  // A handler that hasn't replied when the WebView unmounts: its ask (`label`) is never answered.
   h.setProps({
     extensions: [pageCounter(true, () => new Promise<never>(() => {}))],
     withoutPageCounter: true,
@@ -139,8 +133,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     unmounted === 'navigated',
     unmounted
   );
-  // HTTP auth, which the core declines: the hook's delegate (client) answers it. Its key turns on after creation, and a
-  // hook without configure attaches then.
   await recreate(h, {}, true);
   h.setProps({ extensions: [sampleHook('hookAuth')] });
   await openPage(h, fresh(h, '/auth?hook=1'));
@@ -150,7 +142,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     auth === 'authorized',
     auth
   );
-  // A hook with configure can't attach to a WebView that exists: its key turned on late warns and attaches nothing.
   await recreate(h, { extensions: [sampleHook('hookAuth')], withoutPageCounter: true }, true);
   const warnings = captureWarnings();
   try {
@@ -165,7 +156,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     late === 'not_found' && warnings.warned('attaches only when the WebView is created'),
     { late, warnings: warnings.lines }
   );
-  // A hook that takes the navigation decision switches off the navigation rules: a warning says so, once per WebView.
   const taking =
     Platform.OS === 'ios'
       ? 'webView:decidePolicyForNavigationAction:decisionHandler:: a hook delegate'
@@ -198,7 +188,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   );
   h.events.hookEvents.length = 0;
   const after = await h.ref.current?.evaluate(`(alert('from the page'), 'after')`).catch(errorCode);
-  // The event reaches JS on its own schedule, after the evaluate result at times.
   await until(() => h.events.hookEvents.includes('sample.hookDialogs.alert'), 3000, 100);
   r.check(
     'its UI delegate takes over a dialog the core implements (alert), with no dialog shown',
@@ -206,9 +195,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     { after, hookEvents: h.events.hookEvents }
   );
   await recreate(h, {}, true);
-  // The hook's configure() runs before the package sets the view up. On iOS it turns on data detectors, which WebKit
-  // reads only from the configuration, so the number becomes a tel: link; on Android it sets the monospace default font
-  // size to 14px (13px without it).
   h.loadSource({
     html: '<p id="n">Call 415-555-0134 today</p><code id="c">x</code>',
     baseUrl: h.pages,
@@ -246,7 +232,6 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   await r.block('hookSeams', () => hookSeams(h, r));
 }
 
-/** The context's seams besides its delegate and client lists, through the `sample.seams` hook. */
 async function hookSeams(h: Harness, r: Reporter) {
   await recreate(h, { extensions: [sampleHook('seams')] }, true);
   const twice = await h.ref.current?.hook('sample.seams', 'twice', [21]).catch(errorCode);
@@ -274,7 +259,6 @@ async function hookSeams(h: Harness, r: Reporter) {
       !!taken && passed && h.events.downloads.length === downloads + 1,
       { taken, downloads: h.events.downloads.length - downloads }
     );
-    // Its second touch listener counts a down and a cancel that its first one doesn't consume.
     const touches = await h.ref.current?.hook('sample.seams', 'touch').catch(errorCode);
     r.check('its touch listeners share the slot, in order', touches === 2, touches);
     h.loadSource({ html: '<div style="height: 5000px">tall</div>', baseUrl: h.pages });

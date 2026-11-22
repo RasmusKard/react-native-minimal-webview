@@ -34,16 +34,10 @@ import {
 import { PAGES } from './pages';
 import { ON_DEMAND, SUITES } from './suites/index';
 
-/** What the error screen shows: a load that failed. An HTTP error status shows the site's own page. */
 type LoadFailure = Exclude<LoadErrorEvent, { kind: 'http' }>;
-/**
- * The example's creation-time settings. A suite's extra `ios` keeps them unless it sets its own `configuration`:
- * dropping them would recreate the WebView, and with it start the crash-loop guard over.
- */
 const IOS_CONFIGURATION = { applicationNameForUserAgent: 'MinimalWebViewExample/1.0' };
 const ref = createWebViewRef();
 let remount = () => {};
-// Event logs the harness reads and clears. They live outside React: nothing renders them.
 const events: Harness['events'] = {
   errors: [],
   gone: [],
@@ -70,17 +64,12 @@ function onPageCounterEvent(event: PageCounterEvent) {
 }
 
 const EXTENSIONS_KEY = '@react-native-minimal-webview/extensions';
-/**
- * Takes the onScroll hook's events while no extension of the WebView does, with the hook off (`options: null`): one it
- * sends after its extension left comes here.
- */
 const strayEvents: HookExtension = {
   key: `${EXTENSIONS_KEY}.onScroll`,
   options: null,
   onEvent: ({ name }) => void events.hookEvents.push(`${EXTENSIONS_KEY}.onScroll.${name}`),
 };
 
-/** Remounts its children on `remount()`, without re-rendering App. */
 function Remountable({ children }: { children: ReactNode }) {
   const [key, setKey] = useState(0);
   useEffect(() => {
@@ -116,8 +105,6 @@ export default function App() {
 
   const permissionRef = useRef<WebViewProps['onPermissionRequest']>(undefined);
   const fileRequestRef = useRef<WebViewProps['onFileRequest']>(undefined);
-  // The page counter, then a suite's `extensions`, unless it asks `withoutPageCounter`. An extension without `onEvent`
-  // logs its events.
   const { extensions = [], withoutPageCounter, ...props } = extraProps;
   const logged = [
     ...(withoutPageCounter ? [] : [pageCounter(true, onPageCounterEvent)]),
@@ -136,7 +123,6 @@ export default function App() {
     platform: `${Platform.OS} ${Platform.Version}`,
     ref,
     webViewOffset,
-    // Read live: the harness keeps one harness object per suite, so a closure over `state` would stay stale.
     state: () => ref.getState(),
     remount: () => remount(),
     load: (uri) => setSource({ uri }),
@@ -165,8 +151,6 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {/* The error screen is an overlay the app owns, cleared when the next load starts: the recipe in
-          guides/examples.md#loading-and-error-screens. */}
       <View
         ref={webViewBox}
         style={styles.webview}
@@ -250,10 +234,6 @@ export default function App() {
   );
 }
 
-/**
- * The state line. Its own component, so a navigation state event re-renders only it: App re-rendering the WebView on
- * each one would put the example's render work inside the perf numbers.
- */
 function StateLine() {
   const state = useWebViewState(ref);
   return (
@@ -264,7 +244,6 @@ function StateLine() {
   );
 }
 
-/** The example's error screen; records whether it is mounted so the errors suite can check it. */
 function ErrorScreen(props: { error: LoadFailure; onRetry: () => void }) {
   useEffect(() => {
     events.overlay.error = true;
