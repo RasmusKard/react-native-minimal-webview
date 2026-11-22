@@ -135,4 +135,12 @@ export async function urlTracking(h: Harness, r: Reporter) {
   );
   r.check('getState() is the same state', h.ref.getState() === h.state(), h.ref.getState());
   await agree(h, r, 'remounted WebView agrees');
+
+  const backBefore = h.state().canGoBack;
+  await click(h, 'frame-push');
+  r.check(
+    'iframe pushState in a new WebView lets it go back',
+    !backBefore && (await happens(waitFor(h, (s) => s.canGoBack, 3000))),
+    { backBefore, state: h.state() }
+  );
 }
