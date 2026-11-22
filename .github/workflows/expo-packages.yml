@@ -1,7 +1,7 @@
 name: Expo packages
 
 # Dependabot can't run `expo install`, and Expo's packages, React and React Native only work as the set Expo names
-# (dependabot.yml ignores them). Weekly, this moves the root and the example to that set and opens or updates one PR.
+# (dependabot.yml ignores them).
 on:
   schedule:
     - cron: '0 5 * * 1'

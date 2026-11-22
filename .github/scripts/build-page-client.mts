@@ -26,7 +26,6 @@ if (/^\s*(import|export)\b/m.test(body))
   throw new Error('the page client may only import from endpoint.ts, and types');
 const fn = `function (w, timeoutMs) {\n${body}\nreturn installPageClient(w, timeoutMs);\n}`;
 const target = new URL('../../src/bridge/pageClient.generated.ts', import.meta.url);
-// origins.ts's matchesOrigin and the helper it calls, for the origin guard (origins.ts originGuard).
 const source = ts.createSourceFile('origins.js', compile('origins.ts'), ts.ScriptTarget.ES2020);
 const functionText = (name: string) => {
   const found = source.statements.find((s) => ts.isFunctionDeclaration(s) && s.name?.text === name);
