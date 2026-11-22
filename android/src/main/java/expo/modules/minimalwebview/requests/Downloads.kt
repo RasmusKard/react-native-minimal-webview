@@ -138,8 +138,9 @@ internal class Downloads(private val owner: MinimalWebView) {
   }
 
   internal companion object {
-    const val MAX_BYTES = 100L * 1024 * 1024
-    const val TOO_LARGE = "larger than 100 MB"
+    private const val MAX_MIB = 100L
+    const val MAX_BYTES = MAX_MIB * 1024 * 1024
+    const val TOO_LARGE = "larger than $MAX_MIB MiB"
     const val CHUNK_BYTES = 4L * 1024 * 1024
     private const val MAX_CHUNK_REPLY_CHARS = CHUNK_BYTES / 3 * 4 + 1024
     const val MAX_REDIRECTS = 20 // OkHttp's limit, which React Native's fetch uses
