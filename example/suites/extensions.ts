@@ -142,12 +142,12 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
   await sleep(300);
-  await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`)));
+  const loaded = await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`)));
   const wrong = await text(h, 'auth');
   r.check(
-    'basicAuthCredential with a rejected credential stops: the 401 page shows',
-    wrong === 'unauthorized',
-    wrong
+    'basicAuthCredential with a rejected credential stops: the 401 page loads',
+    loaded && wrong === 'unauthorized',
+    { loaded, wrong }
   );
   h.setProps({});
   await sleep(300);

@@ -64,7 +64,10 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
     _ takers: ArraySlice<WKNavigationDelegate>,
     _ completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
   ) {
-    guard let taker = takers.first else { return completionHandler(.performDefaultHandling, nil) }
+    guard let taker = takers.first else {
+      // WebKit's default handling sends a rejected credential again, and again on each rejection.
+      return completionHandler(challenge.previousFailureCount > 0 ? .rejectProtectionSpace : .performDefaultHandling, nil)
+    }
     taker.webView?(webView, didReceive: challenge) { disposition, credential in
       guard disposition == .performDefaultHandling else { return completionHandler(disposition, credential) }
       offer(challenge, webView, takers.dropFirst(), completionHandler)
