@@ -522,14 +522,25 @@ const VALUES: Record<Platform, ValueRow[]> = {
   ],
 };
 
+const valuesIn = (text: string, row: ValueRow) =>
+  [...new Set(names((text.match(row.site) ?? []).join('\n'), row.value ?? /"(\w+)"/g))].sort();
+
 describe.each(['android', 'ios'] as const)('%s values', (platform) => {
   test.each(VALUES[platform].map((row) => [row.name, row] as const))('%s', (_, row) => {
     const files = row.files?.map((file) => `${DIR[platform]}/${file}`) ?? sources(platform);
-    const sites = files.map(read).join('\n').match(row.site) ?? [];
-    const found = new Set(names(sites.join('\n'), row.value ?? /"(\w+)"/g));
+    const found = valuesIn(files.map(read).join('\n'), row);
     expect([...found, ...(row.lacks ?? [])].sort()).toEqual(Object.keys(row.keys).sort());
   });
 });
+
+test.each(['outcome', 'rule actions'])(
+  'the iOS %s row reads the raw value a Swift case sends, not its name',
+  (name) => {
+    const row = VALUES.ios.find((r) => r.name === name)!;
+    const swiftEnum = `enum ${name === 'outcome' ? 'Outcome' : 'Action'}: String { case finished = "done", failed }`;
+    expect(valuesIn(swiftEnum, row)).toEqual(['done', 'failed']);
+  }
+);
 
 test('the navigation vectors the native matchers run use every NavigationRule key', () => {
   const vectors = JSON.parse(read('src/__tests__/vectors/navigation-rules.json')) as {
