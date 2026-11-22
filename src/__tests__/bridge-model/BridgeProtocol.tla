@@ -33,7 +33,7 @@ VARIABLES
   toRN,         \* onBridge events on their way to createBridge's receive, in order
   toNative,     \* RN's bridgePost calls on their way to native, in order
   toPage,       \* posts native passed on, landing in whichever document is current when they arrive
-  looper,       \* what waits on native's main thread, in order: a commit's document end (see Commit)
+  looper,       \* what waits on native's main thread, in order: a commit's document end and the page's posts
   \* pageClient.ts, per document
   allowed,      \* the document is in allowedOrigins, so the page client runs in it
   saidReady,
@@ -240,21 +240,24 @@ Commit ==
   /\ UNCHANGED <<saidReady, pageCall, running, ghostVars>>
 
 \* Native's main thread runs what waits there. A document end: endDocument(.committed) / documentEnded(COMMITTED)
-\* clears bridgeOrigin / replyProxy and emits `navigated`.
+\* clears bridgeOrigin / replyProxy and emits `navigated`. A page's post: bridgeReceive / the web message listener's
+\* posted delivery sets bridgeOrigin / replyProxy and emits onBridge.
 NativeRun ==
   /\ looper # <<>>
   /\ looper' = Tail(looper)
-  /\ canPost' = FALSE
+  /\ canPost' = (Head(looper).type # "navigated")
   /\ toRN' = Append(toRN, Head(looper))
   /\ UNCHANGED <<rnVars, capable, current, nextDoc, crashes, mounts, toNative, toPage>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 
-\* The renderer dies: endDocument(.crashed) / tearDown(CRASHED) emits `crashed`; a reload commits later
+\* The renderer dies: endDocument(.crashed) / tearDown(CRASHED) emits `crashed` and drops the dead page's posts still
+\* waiting (documentEnded's removeCallbacksAndMessages); a reload commits later
 Crash ==
   /\ attached /\ crashes < MaxCrashes
   /\ current' = None /\ canPost' = FALSE /\ crashes' = crashes + 1
   /\ toRN' = Append(toRN, Event("crashed", None, 0))
-  /\ UNCHANGED <<rnVars, capable, nextDoc, mounts, toNative, toPage, looper>>
+  /\ looper' = SelectSeq(looper, LAMBDA e: e.type = "navigated")
+  /\ UNCHANGED <<rnVars, capable, nextDoc, mounts, toNative, toPage>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 
 \* bridgePost: native passes RN's message on only while bridgeOrigin / replyProxy is set, else drops it
@@ -266,11 +269,10 @@ NativePost ==
   /\ UNCHANGED <<pageVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-\* The page client in the current document. A post reaches native at once and in order: bridgeReceive / the
-\* web message listener sets bridgeOrigin / replyProxy and emits onBridge. WebView before 119 calls the listener
-\* straight from the message's task, ahead of a document end still waiting on the main thread.
+\* The page client in the current document. Its posts wait on native's main thread behind its commit's document end:
+\* Android's web message listener posts its delivery there, as WebView before 119 calls it ahead of that end.
 
-PagePost(e) == canPost' = TRUE /\ toRN' = Append(toRN, e) /\ UNCHANGED looper
+PagePost(e) == looper' = Append(looper, e) /\ UNCHANGED <<canPost, toRN>>
 
 \* `ready` at DOMContentLoaded
 PageReady ==

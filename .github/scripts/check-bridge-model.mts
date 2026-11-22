@@ -56,6 +56,18 @@ const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
     to: 'NeverSaidReady == FALSE',
     breaks: ['NotCarriedOver'],
   },
+  {
+    bug: "MinimalWebViewScripts.kt's web message listener delivers at once: WebView before 119 calls it ahead of the commit's onPageStarted",
+    from: "PagePost(e) == looper' = Append(looper, e) /\\ UNCHANGED <<canPost, toRN>>",
+    to: "PagePost(e) == canPost' = TRUE /\\ toRN' = Append(toRN, e) /\\ UNCHANGED looper",
+    breaks: ['PageCallAnswered', 'EverySettles'],
+  },
+  {
+    bug: "MinimalWebViewScripts.kt documentEnded(CRASHED) keeps the dead page's deliveries (no `removeCallbacksAndMessages`)",
+    from: `/\\ looper' = SelectSeq(looper, LAMBDA e: e.type = "navigated")`,
+    to: "/\\ looper' = looper",
+    breaks: ['EverySettles'],
+  },
 ];
 
 async function tlaTools() {

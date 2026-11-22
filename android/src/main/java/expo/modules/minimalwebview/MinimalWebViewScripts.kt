@@ -37,8 +37,11 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
         if (!isMainFrame) return@addWebMessageListener
         // An ArrayBuffer message has no string data: WebMessageCompat.getData throws for it.
         if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
-        replyProxy = proxy
-        onBridge(mapOf("message" to message.data, "origin" to sourceOrigin.toString()))
+        val data = message.data
+        mainHandler.postDelayed({
+          replyProxy = proxy
+          onBridge(mapOf("message" to data, "origin" to sourceOrigin.toString()))
+        }, this, 0)
       }
       WebViewCompat.addDocumentStartJavaScript(webView, script, origins)
     } catch (e: IllegalArgumentException) {
@@ -70,6 +73,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
 
   fun documentEnded(reason: DocumentEnd) {
     evaluations.failAll()
+    if (reason != DocumentEnd.COMMITTED) mainHandler.removeCallbacksAndMessages(this)
     replyProxy = null
     if (reason == DocumentEnd.COMMITTED && owner.bridgeScript != null) onBridge(mapOf("navigated" to true))
     if (reason == DocumentEnd.CRASHED && owner.bridgeScript != null) onBridge(mapOf("crashed" to true))
