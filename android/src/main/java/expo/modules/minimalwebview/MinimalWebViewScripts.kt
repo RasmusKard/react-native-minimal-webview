@@ -1,6 +1,6 @@
 package expo.modules.minimalwebview
 
-import android.webkit.WebView
+import android.webkit.WebSettings
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebMessageCompat
@@ -16,6 +16,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
   private var installedScripts: List<InjectedScript>? = null
   private val scriptHandlers = mutableListOf<ScriptHandler>()
   private val evaluations = Evaluations()
+  private val webViewCallsListenersDirectly by lazy { callsListenersDirectly(WebSettings.getDefaultUserAgent(owner.context)) }
 
   fun install() {
     // After a crash they are the destroyed WebView's: removing them would call into it.
@@ -43,7 +44,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
           replyProxy = proxy
           onBridge(mapOf("message" to data, "origin" to sourceOrigin.toString()))
         }
-        // WebView before 119 calls this as the message arrives, ahead of the onPageStarted it posted at the commit.
+        // Chromium before 119 calls this as the message arrives, ahead of the onPageStarted it posted at the commit.
         if (webViewCallsListenersDirectly) mainHandler.postDelayed(deliver, this, 0) else deliver.run()
       }
       WebViewCompat.addDocumentStartJavaScript(webView, script, origins)
@@ -172,12 +173,18 @@ internal class EvaluateError(code: String, message: String) : CodedException(cod
 
 private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
-private val webViewCallsListenersDirectly by lazy {
-  val major = WebView.getCurrentWebViewPackage()?.versionName?.substringBefore('.')?.toIntOrNull()
-  major != null && major < FIRST_WEBVIEW_POSTING_LISTENER_CALLS
+/**
+ * Whether the WebView whose default user agent is [defaultUserAgent] calls web message listeners as the message
+ * arrives: Chromium before 119 does. Its `Chrome/` token names the Chromium base; a vendor's WebView package (Huawei's
+ * is 11.x to 15.x) numbers itself apart from it.
+ */
+internal fun callsListenersDirectly(defaultUserAgent: String?): Boolean {
+  val major = defaultUserAgent?.let { CHROME_MAJOR.find(it) }?.groupValues?.get(1)?.toIntOrNull()
+  return major != null && major < FIRST_CHROMIUM_POSTING_LISTENER_CALLS
 }
 
-private const val FIRST_WEBVIEW_POSTING_LISTENER_CALLS = 119
+private val CHROME_MAJOR = Regex("""Chrome/(\d+)""")
+private const val FIRST_CHROMIUM_POSTING_LISTENER_CALLS = 119
 private const val EVALUATE = "nativeEvaluateResult"
 private const val STARTED = "1"
 private const val NO_CHANNEL = "0"
