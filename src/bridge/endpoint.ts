@@ -1,6 +1,3 @@
-// One side of the bridge, the same in RN (createBridge.ts) and in the page (pageClient.ts): calls with timeouts,
-// handlers and events. The transport, the `ready` handshake and the document tokens are each side's own. The page
-// client is compiled with this file into one script (.github/scripts/build-page-client.mts).
 import type { CodedError, ErrorCode } from '../types';
 import type { BridgeErrorCode, BridgeMessage } from './protocol';
 
@@ -14,8 +11,7 @@ export const codedError = ({ code, message }: { code: ErrorCode; message: string
   Object.assign(new Error(message), { code });
 
 /**
- * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id. `Sender` is
- * what handlers and listeners get beside the params: RN's `{ origin }`, nothing in the page.
+ * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id.
  */
 export function createEndpoint<Sender = void>(
   send: (message: BridgeMessage) => void,
@@ -97,7 +93,6 @@ export function createEndpoint<Sender = void>(
         }
         case 'event':
           listeners.get(message.method)?.forEach((listener) => {
-            // An unhandled rejection reports the error without stopping the other listeners.
             try {
               listener(message.params, sender);
             } catch (error) {

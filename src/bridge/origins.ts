@@ -1,10 +1,8 @@
-// The origin rules in RN: parser, the guard that createBridge and injectedScripts put around page code, and the
-// matcher whose text build-page-client.mts cuts out as MATCHES_ORIGIN for that guard.
 import { MATCHES_ORIGIN } from './pageClient.generated';
 
 /**
  * An origin rule (`http(s)://host[:port]`, `http(s)://*.host[:port]`) or a `location.origin`, parsed; null for anything
- * else, `*` included. OriginRules.swift matches the same way: both run src/__tests__/vectors/origin-rules.json.
+ * else, `*` included.
  */
 export const parseOrigin = (text: string) => {
   const m =
@@ -19,10 +17,8 @@ export const parseOrigin = (text: string) => {
   return { scheme, wildcard: !!wildcard, hostPort: `${host}${portSuffix}` };
 };
 
-/** Origin rules in `location.origin` form, for `matchesOrigin`: exact origins, and wildcards as prefix and suffix. */
 export type OriginForms = { any: boolean; exact: string[]; wild: [string, string][] };
 
-/** `rules` in the form `matchesOrigin` compares; a rule `parseOrigin` rejects is left out, so it matches nothing. */
 export const originForms = (rules: string[]): OriginForms => {
   const forms: OriginForms = { any: rules.includes('*'), exact: [], wild: [] };
   for (const rule of rules) {
@@ -50,7 +46,6 @@ export function matchesOrigin(forms: OriginForms, origin: string) {
     const prefix = forms.wild[i]![0];
     const suffix = forms.wild[i]![1];
     const start = origin.length - suffix.length;
-    // At least one character of subdomain between the two.
     if (start > prefix.length && hasAt(origin, prefix, 0) && hasAt(origin, suffix, start))
       return true;
   }

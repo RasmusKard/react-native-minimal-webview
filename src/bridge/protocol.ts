@@ -1,7 +1,5 @@
-// The bridge wire format. The RN side parses with it.
 import type { ErrorCode } from '../types';
 
-/** The codes a bridge call rejects with: the page may send only these. */
 const ERROR_CODES = [
   'timeout',
   'not_found',
@@ -16,13 +14,12 @@ export type BridgeErrorCode = (typeof ERROR_CODES)[number];
  * events for the page until then (native can't deliver before the page has posted). A page's own calls and their
  * answers don't wait for it.
  * `call` / `result` / `error`: a request and its answer, matched by `id`.
- * `event`: fire-and-forget, `method` is the event name.
+ * `event`: fire-and-forget.
  *
  * `doc` is the page document's random token. Each side puts a token on every message (RN the token of the document it
  * means), and the page drops any message that isn't for it: native delivers to whatever document is current (iOS
  * checks only the origin), so a message posted as a same-origin navigation commits would otherwise reach the new page.
- * It is for correctness, not security: an allowed page can rebind its own client. Messages are built without it;
- * `send` adds it.
+ * It is for correctness, not security: an allowed page can rebind its own client.
  */
 export type BridgeMessage = { doc?: string } & (
   | { kind: 'ready' }
@@ -69,7 +66,6 @@ function kindProblem(value: Record<string, unknown>): string | null {
   }
 }
 
-/** Whether `error` is `{ code, message }`, both strings; an unlisted code is replaced in place. */
 function normalizeError(error: unknown) {
   if (!isObject(error) || typeof error['code'] !== 'string' || typeof error['message'] !== 'string')
     return false;
