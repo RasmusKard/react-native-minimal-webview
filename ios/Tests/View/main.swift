@@ -139,6 +139,25 @@ MainActor.assumeIsolated {
   view.invalidate()
 }
 
+MainActor.assumeIsolated {
+  var decided: [String] = []
+  var loading = true
+  let view = MinimalWebView()
+  view.onNavigation.onEventSent = { decided.append("\($0["action"] ?? "") \($0["url"] ?? "")") }
+  view.onNavigationState.onEventSent = { loading = $0["loading"] as? Bool ?? true }
+  view.navigationRules = [["host": ["blocked.test"], "action": "block"], ["action": "allow"]]
+  view.requestHandlers = ["onNavigation"]
+  var source = WebViewSource()
+  source.html = "<p>rules</p>"
+  view.source = source
+  view.applyProps()
+  _ = spin { !loading }
+  view.webView?.evaluateJavaScript("location.href = 'https://blocked.test/'")
+  _ = spin(within: 5) { !decided.isEmpty }
+  check("navigation rules: a page's navigation that a rule blocks is reported as blocked: \(decided)", decided == ["block https://blocked.test/"])
+  view.invalidate()
+}
+
 let cookieName = "mrw-view-\(getpid())"
 func copiedToNative(_ webView: WKWebView, within seconds: TimeInterval = 10) -> Bool {
   let cookie = HTTPCookie(properties: [.name: cookieName, .value: "1", .domain: "example.com", .path: "/"])
