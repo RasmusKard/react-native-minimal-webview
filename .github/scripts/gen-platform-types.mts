@@ -3,9 +3,7 @@
 // reaches. Both come from the vendored SDK extracts in platform-headers/. Run after editing this script or those
 // extracts: node .github/scripts/gen-platform-types.mts (`--check` fails if either output is stale).
 // `--import` refreshes platform-headers/ from the installed Xcode and Android SDKs and the API file of the
-// androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade. It
-// resolves the iOS headers' #if blocks for an iOS build with unifdef and keeps only the declarations this script reads
-// (the iOS doc comments are Apple's).
+// androidx.webkit version android/build.gradle pins: the explicit step after an SDK or androidx.webkit upgrade.
 // IOSConstants' names are the header names with their common prefix stripped: an SDK rename renames a constant.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -33,17 +31,14 @@ const IOS_ROOTS = {
   webView: 'WKWebView',
   scrollView: 'UIScrollView',
 };
-/** The `call` roots whose classes have completion-handler methods, for PlatformCompletions.generated.swift. */
 const COMPLETION_ROOTS = {
   webView: 'WKWebView',
   websiteDataStore: 'WKWebsiteDataStore',
   httpCookieStore: 'WKHTTPCookieStore',
 };
 const ANDROID_CLASSES = ['WebSettings', 'WebView', 'CookieManager'];
-/** One `<class>` block of api-versions.xml. */
 const classBlock = (api: string, name: string) =>
   api.match(new RegExp(`\t<class name="${name}" [^]*?</class>\n`))?.[0] ?? '';
-/** The macros an iOS build defines, for unifdef; a header conditional on another macro fails --import. */
 const IOS_DEFINES = [
   '-DTARGET_OS_IPHONE=1',
   '-DTARGET_OS_IOS=1',
@@ -59,7 +54,6 @@ const IOS_DEFINES = [
 ];
 const ANDROIDX_API_DIR =
   'https://api.github.com/repos/androidx/androidx/contents/webkit/webkit/api?ref=androidx-main';
-/** The androidx.webkit version android/build.gradle pins, and its minor. */
 const pinnedWebkit = () => {
   const [, version, minor] = readFileSync(
     new URL('../../android/build.gradle', import.meta.url),
@@ -83,10 +77,8 @@ async function importInputs() {
     `${frameworks}/UIKit.framework/Headers/UIScrollView.h`,
   ];
   for (const path of headers) {
-    // The interfaces, their properties, the instance methods that take a block, the enum blocks and the string
-    // constants.
     let inEnum = false;
-    let open = 0; // the #if blocks unifdef left unresolved around this line
+    let open = 0;
     const lines = execFileSync('xcrun', ['unifdef', '-x', '2', ...IOS_DEFINES, path])
       .toString()
       .split('\n')
@@ -163,7 +155,6 @@ const doc = ({ since, deprecated }: Availability, text = '') => {
   return lines.length ? `/** ${lines[0]} */\n` : '';
 };
 
-/** The members of `parts` (key -> member text) as one type body; the first declaration of a key wins. */
 function members(...parts: Record<string, string>[]) {
   const all: Record<string, string> = {};
   for (const part of parts) for (const [key, member] of Object.entries(part)) all[key] ??= member;
@@ -179,8 +170,6 @@ const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase
 
 /** A C expression over integers, as JavaScript. The inputs are the vendored SDK extracts, not user data. */
 const evaluate = (expression: string) => runInNewContext(`(${expression})`) as number;
-
-// iOS
 
 /** A declaration's availability from its API_AVAILABLE / API_DEPRECATED / API_UNAVAILABLE macros, or null when it's not on iOS. */
 function iosAvailability(macros: string): Availability | null {
@@ -209,7 +198,6 @@ const STRUCT_DOCS: Record<string, string> = {
   CGRect:
     'A rectangle. No generated key takes one; it fits a setting under `other` and a `call` argument.',
 };
-/** The object types PlatformSettings.swift coerces from JSON. */
 const OBJECTS: Record<string, string> = {
   NSString: 'string',
   NSURL: 'string',
@@ -224,13 +212,9 @@ function tsType(type: string) {
   if (pointer) return OBJECTS[pointer[1]] ?? null;
   if (/[*<]|^id\b/.test(type)) return null;
   if (type === 'BOOL') return 'boolean';
-  return type in STRUCTS ? type : 'number'; // integers, floats, enums and option sets
+  return type in STRUCTS ? type : 'number';
 }
 
-/**
- * The writable properties of `cls` the settings channel can carry: name -> TypeScript member. One whose type is in
- * `enums` (IOSConstants names) links to it.
- */
 function iosKeys(text: string, cls: string, enums: Set<string>) {
   const keys: Record<string, string> = {};
   for (const [block] of text.matchAll(new RegExp(`^@interface ${cls}\\b[^]*?^@end`, 'gm'))) {
@@ -252,7 +236,6 @@ function iosKeys(text: string, cls: string, enums: Set<string>) {
   return keys;
 }
 
-/** The members of one NS_ENUM / NS_OPTIONS body, by name, deprecated ones left out. */
 function enumValues(body: string) {
   const values: Record<string, number> = {};
   const unbounded: string[] = [];
@@ -264,7 +247,6 @@ function enumValues(body: string) {
       .match(/^\s*(\w+)\s*(?:=\s*(.+?))?\s*,?\s*$/);
     if (!member) continue;
     const expression = member[2]?.replace(/\b[A-Za-z_]\w*\b/g, (id) => String(values[id] ?? id));
-    // NSUIntegerMax (`All`) is not a JSON number: the OR of the other members, filled in below, has the same effect.
     if (expression === 'NSUIntegerMax') unbounded.push(member[1]);
     else {
       last = expression ? evaluate(expression) : last + 1;
@@ -276,10 +258,8 @@ function enumValues(body: string) {
   return values;
 }
 
-/** An NS_ENUM's or NS_OPTIONS's name in IOSConstants. */
 const constantsName = (type: string) => type.replace(/^(WK|UIScrollView)/, '');
 
-/** The NS_ENUM and NS_OPTIONS blocks as `Name: { member: value }` entries, members named without their common prefix. */
 function iosEnums(text: string) {
   const enums: Record<string, string> = {};
   for (const [, name, body, macros] of text.matchAll(
@@ -318,9 +298,6 @@ function websiteDataTypes(text: string) {
   return Object.fromEntries(entries) as Record<string, string>;
 }
 
-// iOS completion handlers, for `call`
-
-/** The completion-handler shapes MRWInvoke makes a block for (MRWInvoke.h). */
 type Completion = 'void' | 'value' | 'valueError' | 'error' | 'number';
 
 /** A block's parameter list (`NSData * _Nullable data, NSError * _Nullable error`) as a shape, or null for none. */
@@ -342,10 +319,6 @@ function completionShape(params: string, integerEnums: Set<string>): Completion 
   return list.length === 2 && isObject(first) && error(second) ? 'valueError' : null;
 }
 
-/**
- * The selector and completion shape of each method in one `@interface` block whose last parameter is a block. A block
- * whose parameter list nests parentheses is left out, and MRWInvoke then refuses the call.
- */
 function interfaceCompletions(block: string, integerEnums: Set<string>) {
   const shapes: [string, Completion][] = [];
   for (const [, declaration] of block.matchAll(/^- \(void\)(.*);/gm)) {
@@ -361,7 +334,6 @@ function interfaceCompletions(block: string, integerEnums: Set<string>) {
   return shapes;
 }
 
-/** `root.selector` -> the completion shape of each iOS instance method whose last parameter is a block. */
 function iosCompletions(text: string) {
   const integerEnums = new Set(
     [...text.matchAll(/typedef NS_ENUM\s*\(\s*NSU?Integer\s*,\s*(\w+)\s*\)/g)].map(
@@ -378,9 +350,6 @@ function iosCompletions(text: string) {
   return shapes;
 }
 
-// Android
-
-/** JVM descriptors of the one-argument setter parameters the reflection channel takes; it passes null to a String. */
 const DESCRIPTORS: Record<string, string> = {
   Z: 'boolean',
   I: 'number',
@@ -397,10 +366,8 @@ const JAVA_TYPES: Record<string, string> = {
   double: 'number',
   String: 'string | null',
 };
-/** Primitive setters the core owns (`OWNED` in PlatformSettings.kt), which settings refuse. */
 const OWNED_KEYS = new Set(['webContentsDebuggingEnabled']);
 
-/** `set<Key>(<leading><simple>)V` methods of a class (`android/webkit/WebView`) from api-versions.xml: key -> TypeScript member. */
 function androidKeys(xml: string, cls: string, leading = '', text = '') {
   const block = classBlock(xml, cls);
   const pattern = new RegExp(
@@ -418,7 +385,6 @@ function androidKeys(xml: string, cls: string, leading = '', text = '') {
   return keys;
 }
 
-/** The static `set<Key>(<root>, <simple>)` methods of an androidx.webkit compat class: key -> TypeScript member. */
 function androidxKeys(api: string, cls: string, root: string) {
   const block = api.match(new RegExp(`public class ${cls} \\{[^]*?\\n  \\}`))?.[0] ?? '';
   const pattern = new RegExp(
@@ -438,7 +404,6 @@ function androidxKeys(api: string, cls: string, root: string) {
   return keys;
 }
 
-/** `NAME: value,` lines of a class's public static final int, long and String fields in javap or metalava output. */
 function javaConstants(text: string, cls: string) {
   const block =
     text.match(
@@ -457,7 +422,6 @@ function javaConstants(text: string, cls: string) {
     .join('\n');
 }
 
-/** ios/PlatformCompletions.generated.swift: `iosCompletions` as a Swift dictionary. */
 function swiftCompletions(shapes: Record<string, Completion>) {
   return `// Generated by .github/scripts/gen-platform-types.mts from .github/scripts/platform-headers/. Do not edit.
 // Regenerate with \`npm run gen:platform-types\`.

@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # macOS for both: SwiftLint needs macOS, and Homebrew is on the PATH there. Periphery runs locally only: it builds the example app.
+  # macOS for both: SwiftLint needs macOS, and Homebrew is on the PATH there.
   detekt:
     runs-on: macos-latest
     steps:

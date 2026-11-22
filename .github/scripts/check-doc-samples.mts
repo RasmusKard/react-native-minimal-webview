@@ -1,7 +1,6 @@
 // Type-checks the ts and tsx samples in README.md, extensions/README.md and guides/*.md against src/ and the extensions
 // package, and reports each error at its line in the Markdown. Each sample is a module of its own in build/doc-samples/.
-// A relative import is the page's sample that exports what it imports. doc-samples.d.ts declares the modules the
-// samples import that aren't installed here.
+// A relative import is the page's sample that exports what it imports.
 // Then checks that the reference leads to each example: a section of guides/examples.md with a sample is the target of
 // an `@see` in a doc comment of src/ or extensions/, and each such `@see` names a section that exists.
 // Run: node .github/scripts/check-doc-samples.mts (npm run check runs it).
@@ -18,7 +17,7 @@ const pages = ['README.md', 'extensions/README.md', ...guides.map((name) => `gui
 const samples = pages.flatMap((page) => {
   const text = readFileSync(join(root, page), 'utf8');
   return [...text.matchAll(/^```(tsx?)\n([\s\S]*?)^```$/gm)].map((match) => {
-    const line = text.slice(0, match.index).split('\n').length + 1; // the sample's first line
+    const line = text.slice(0, match.index).split('\n').length + 1;
     return {
       page,
       line,

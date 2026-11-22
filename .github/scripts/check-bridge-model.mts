@@ -13,7 +13,6 @@ const SHA256 = '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
 const MODEL = new URL('../../src/__tests__/bridge-model/', import.meta.url);
 const TEMPORAL = ['EverySettles'];
 
-// Each breaks one line of the model the way the code it mirrors could break, and must fail the properties named.
 const MUTANTS: { code: string; from: string; to: string; breaks: string[] }[] = [
   {
     code: 'createBridge.ts rejectSent rejects every pending call, queued ones too (before 985144a92)',
@@ -74,7 +73,6 @@ async function tlaTools() {
   return jar;
 }
 
-// Runs TLC on the model in a temporary folder, so its state files and traces stay out of the repo.
 function tlc(jar: string, spec: string, cfg: string) {
   const dir = mkdtempSync(join(tmpdir(), 'bridge-model-'));
   try {
@@ -115,7 +113,6 @@ console.log(
   `Bridge model passes (${Math.round((Date.now() - started) / 1000)} s). ${summary.join(' ')}`
 );
 
-// Whether TLC finds `property` broken on the model with `mutant` applied.
 function catches(mutant: (typeof MUTANTS)[number], property: string) {
   if (spec.split(mutant.from).length !== 2)
     throw new Error(`the model has no single \`${mutant.from}\``);
