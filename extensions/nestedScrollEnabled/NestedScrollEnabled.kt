@@ -4,10 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/**
- * The hook behind `nestedScrollEnabled()`: as react-native-webview does, each touch asks the WebView's parents
- * not to intercept it, so a scrolling parent leaves the gesture to the page.
- */
+/** The hook behind `nestedScrollEnabled()`. */
 internal object NestedScrollEnabled {
   const val KEY = "@react-native-minimal-webview/extensions.nestedScrollEnabled"
 
