@@ -1,5 +1,4 @@
 // Fails when a workflow job that a cache hit skips reads a tracked file its cache key does not hash.
-// Run: node .github/scripts/check-cache-keys.mts
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readlinkSync } from 'node:fs';
 import { matchesGlob, posix } from 'node:path';
