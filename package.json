@@ -27,7 +27,7 @@
   "scripts": {
     "build": "tsc && tsc -p extensions",
     "clean": "rm -rf build extensions/build",
-    "pretest": "npm run build:page-client -- --check && npm run gen:platform-types -- --check && npm run gen:defaults -- --check",
+    "pretest": "node --test '.github/scripts/*.test.mts' && npm run build:page-client -- --check && npm run gen:platform-types -- --check && npm run gen:defaults -- --check",
     "test": "jest",
     "lint": "eslint --max-warnings 0 src extensions example .github && prettier --check .",
     "prepare": "npm run clean && npm run build",
