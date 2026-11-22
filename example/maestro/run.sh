@@ -1,6 +1,7 @@
 #!/bin/bash
 # Usage: maestro/run.sh <android|ios> <device id> [suite...]
-# MAESTRO overrides the maestro binary.
+# MAESTRO overrides the maestro binary. BACKGROUND_MS (default 5000) is how long a background kill waits before
+# it brings the app back.
 # One Maestro session runs every suite's flow: Maestro's start-up would otherwise repeat for each suite.
 set -u
 cd "$(dirname "$0")" || exit 1
@@ -25,7 +26,7 @@ for suite in "$@"; do
     "$suite" "$PWD" "$suite" > "$tmp/$suite.yaml"
   flows+=("$tmp/$suite.yaml")
 done
-"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" -e SUITE_MS="$SUITE_MS" "${flows[@]}" > "$tmp/out" 2>&1
+"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" -e SUITE_MS="$SUITE_MS" -e BACKGROUND_MS="${BACKGROUND_MS:-5000}" "${flows[@]}" > "$tmp/out" 2>&1
 status=$?
 grep -E '^\[(Passed|Failed)\]|Flows? (Passed|Failed)' "$tmp/out" || tail -20 "$tmp/out"
 log=${TMPDIR:-/tmp}; log=${log%/}/harness-$PLATFORM-$DEVICE.log
