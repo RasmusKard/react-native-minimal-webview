@@ -78,5 +78,51 @@ MainActor.assumeIsolated {
 }
 try FileManager.default.removeItem(at: site.deletingLastPathComponent())
 
+final class FailingScheme: NSObject, WKURLSchemeHandler {
+  func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
+    if task.request.url?.host == "committed" {
+      task.didReceive(URLResponse(url: task.request.url!, mimeType: "text/html", expectedContentLength: -1, textEncodingName: "utf-8"))
+      task.didReceive(Data("<p>partial</p>".utf8))
+    }
+    task.didFailWithError(NSError(domain: NSURLErrorDomain, code: NSURLErrorNetworkConnectionLost))
+  }
+
+  func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
+}
+
+final class FailureCallbacks: NSObject, WKNavigationDelegate {
+  var called: [String] = []
+
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    called.append("didFail")
+  }
+
+  func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    called.append("didFailProvisionalNavigation")
+  }
+}
+
+MainActor.assumeIsolated {
+  let callbacks = FailureCallbacks()
+  MinimalWebViewHooks.register(
+    "failures", configure: { configuration, _ in configuration.setURLSchemeHandler(FailingScheme(), forURLScheme: "mrw-fail") }
+  ) { _, context in context.navigationDelegates = [callbacks] }
+  let view = MinimalWebView()
+  view.hookOptions = ["failures": true]
+  view.navigationRules = [["action": "allow"]]
+  view.applyProps()
+  func failed(_ url: String) -> [String] {
+    callbacks.called = []
+    view.load(url: url)
+    _ = spin { !callbacks.called.isEmpty }
+    return callbacks.called
+  }
+  let provisional = failed("mrw-fail://provisional")
+  check("failure callbacks: a load that fails before it commits reaches a hook's didFailProvisionalNavigation: \(provisional)", provisional == ["didFailProvisionalNavigation"])
+  let committed = failed("mrw-fail://committed")
+  check("failure callbacks: a load that fails after it commits reaches a hook's didFail: \(committed)", committed == ["didFail"])
+  view.invalidate()
+}
+
 print("\(total - failed)/\(total) view cases pass")
 exit(failed == 0 ? 0 : 1)
