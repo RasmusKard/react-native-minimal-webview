@@ -27,7 +27,7 @@ export const happens = (wait: Promise<unknown>) =>
 
 /**
  * Polls `fn` until it returns something truthy, and returns that; undefined when a call made after `ms` still returns
- * nothing truthy, so time the app spends in the background, where timers stop, cannot end the wait unseen.
+ * nothing truthy.
  */
 export async function poll<T>(
   fn: () => T | Promise<T>,
