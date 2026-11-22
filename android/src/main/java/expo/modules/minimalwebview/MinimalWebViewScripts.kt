@@ -21,8 +21,17 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     // After a crash they are the destroyed WebView's: removing them would call into it.
     scriptHandlers.clear()
     installEvaluate()
+    installFrameHistory()
     installBridge()
     update(force = true)
+  }
+
+  // WebView reports no iframe navigation, though its history entries change canGoBack and canGoForward.
+  private fun installFrameHistory() {
+    val features = listOf(WebViewFeature.WEB_MESSAGE_LISTENER, WebViewFeature.DOCUMENT_START_SCRIPT)
+    if (!features.all(WebViewFeature::isFeatureSupported)) return
+    WebViewCompat.addWebMessageListener(webView, FRAME_NAVIGATED, setOf("*")) { _, _, _, _, _ -> owner.stateChanged() }
+    WebViewCompat.addDocumentStartJavaScript(webView, FRAME_NAVIGATED_SCRIPT, setOf("*"))
   }
 
   private fun installBridge() {
@@ -179,5 +188,13 @@ private val webViewCallsListenersDirectly by lazy {
 
 private const val FIRST_WEBVIEW_POSTING_LISTENER_CALLS = 119
 private const val EVALUATE = "nativeEvaluateResult"
+private const val FRAME_NAVIGATED = "nativeFrameNavigated"
+
+// A new document, then each same-document navigation (Navigation API, WebView 102 and later).
+private const val FRAME_NAVIGATED_SCRIPT = """if (window !== window.top) {
+  const navigated = () => $FRAME_NAVIGATED.postMessage('');
+  navigated();
+  window.navigation?.addEventListener('currententrychange', navigated);
+}"""
 private const val STARTED = "1"
 private const val NO_CHANNEL = "0"
