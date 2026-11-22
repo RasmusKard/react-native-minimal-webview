@@ -35,6 +35,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     try {
       WebViewCompat.addWebMessageListener(webView, "nativeBridgeTransport", origins) { _, message, sourceOrigin, isMainFrame, proxy ->
         if (!isMainFrame) return@addWebMessageListener
+        // An ArrayBuffer message has no string data: WebMessageCompat.getData throws for it.
         if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
         replyProxy = proxy
         onBridge(mapOf("message" to message.data, "origin" to sourceOrigin.toString()))

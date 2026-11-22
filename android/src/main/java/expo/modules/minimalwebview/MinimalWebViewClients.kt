@@ -163,6 +163,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     if (hook != null) return hook.onReceivedSslError(view, handler, sslError)
     handler.cancel()
     // Also called for subresources (an ad image): only the main frame's URL is a page error.
+    // Without a NavigationListener there is no pendingUrl: WebView's url shows a loadUrl in progress.
     val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, allowedMainFrameUrl)
     if (sslError.url in mainFrame) {
       owner.reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")

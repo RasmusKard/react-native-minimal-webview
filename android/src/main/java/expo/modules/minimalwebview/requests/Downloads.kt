@@ -142,7 +142,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     const val TOO_LARGE = "larger than 100 MB"
     const val CHUNK_BYTES = 4L * 1024 * 1024
     private const val MAX_CHUNK_REPLY_CHARS = CHUNK_BYTES / 3 * 4 + 1024
-    const val MAX_REDIRECTS = 20
+    const val MAX_REDIRECTS = 20 // OkHttp's limit, which React Native's fetch uses
     const val TIMEOUT_MS = 30_000
     private val PERCENT_ESCAPE = Regex("%[0-9A-Fa-f]{2}")
 
