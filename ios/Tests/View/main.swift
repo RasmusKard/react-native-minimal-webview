@@ -36,7 +36,7 @@ check(
   asked == ["answered nil", "documentEnd closing", "destroyed closing"])
 
 final class ReadRoots: WKWebView {
-  nonisolated(unsafe) static var granted: [URL] = []
+  static var granted: [URL] = []
 
   override func loadFileURL(_ url: URL, allowingReadAccessTo readAccessURL: URL) -> WKNavigation? {
     Self.granted.append(readAccessURL)
