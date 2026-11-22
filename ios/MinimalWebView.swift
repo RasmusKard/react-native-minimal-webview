@@ -55,9 +55,9 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   var askedAndAllowed: [Bool: Set<String>] = [:]
   private var preparing = false
   private var queuedUrl: URL?
-  private var refLoad: URL?
+  private var directoryOnlyNavigation: WKNavigation?
   /// WKWebView keeps the previous page after a failed main-frame load.
-  private(set) var failedUrl: String?
+  private var failedLoad: (url: String, inSourceRoot: Bool)?
   private var outcome: Loads.Outcome?
   private var lastEmitted: NSDictionary?
   private var updateScheduled = false
@@ -138,10 +138,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       preparing = false
       if let queuedUrl {
         self.queuedUrl = nil
-        refLoad = queuedUrl
         loadProgrammatic(URLRequest(url: queuedUrl), inSourceRoot: false)
       } else if let source {
-        refLoad = nil
         load(source)
       }
       applyProps()
@@ -170,7 +168,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   private var onSource: Bool {
     guard let source else { return false }
-    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failedUrl == nil }
+    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failedLoad == nil }
     return Recovery.showsSource(uri.absoluteString, url)
   }
 
@@ -187,7 +185,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if let url = request.url, url.isFileURL {
       let access = ReadAccess.root(for: url, inSourceRoot ? source?.readAccessRoot : nil)
       if let warning = access.warning { warn(warning) }
-      webView?.loadFileURL(url, allowingReadAccessTo: access.root)
+      let navigation = webView?.loadFileURL(url, allowingReadAccessTo: access.root)
+      if !inSourceRoot { directoryOnlyNavigation = navigation }
     } else {
       webView?.load(request)
     }
@@ -202,15 +201,15 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     recoveryPending = false
     // WebKit's reload redoes no failed load, POST or html source, and loads nothing while `url` is nil.
     let onHtmlSource = onSource && source?.uri == nil
-    if let webView, webView.url != nil, failedUrl == nil, !onPostSource, !onHtmlSource { webView.reload() } else { loadAgain() }
+    if let webView, webView.url != nil, failedLoad == nil, !onPostSource, !onHtmlSource { webView.reload() } else { loadAgain() }
   }
 
   private func loadAgain() {
     guard let webView, !preparing else { return }
-    if let source, onSource || failedUrl == nil && webView.backForwardList.currentItem == nil {
+    if let source, onSource || failedLoad == nil && webView.backForwardList.currentItem == nil {
       load(source)
-    } else if let failedUrl, let target = URL(string: failedUrl) {
-      loadProgrammatic(URLRequest(url: target), inSourceRoot: !(refLoad.map { Loads.sameURL($0, target) } ?? false))
+    } else if let failedLoad, let target = URL(string: failedLoad.url) {
+      loadProgrammatic(URLRequest(url: target), inSourceRoot: failedLoad.inSourceRoot)
     } else {
       webView.reload()
     }
@@ -293,11 +292,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     guard let webView else { return }
     let item = webView.backForwardList.currentItem
     let committed = htmlCommit.flatMap { $0.item === item ? $0.url : nil } ?? item?.url.absoluteString ?? ""
-    url = failedUrl ?? committed
+    url = failedLoad?.url ?? committed
     // WebKit's `url` is the active URL: a pending or provisional load shows here first.
     let active = webView.url?.absoluteString
     pendingUrl = webView.isLoading && active != committed ? active : nil
-    if !webView.isLoading, failedUrl != nil || active == committed { hookUrl = url }
+    if !webView.isLoading, failedLoad != nil || active == committed { hookUrl = url }
   }
 
   /// WebKit's KVO fires before the delegate callbacks, and clears isLoading before it reports a failure: the state is
@@ -337,14 +336,14 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     proxy.navigationDelegates.forEach(callback)
   }
 
-  /// Reports a failed main-frame load to onError and keeps its URL as `failedUrl`; returns the load's outcome.
-  private func ended(with error: Error) -> Loads.Outcome {
+  /// Reports a failed main-frame load to onError and keeps it as `failedLoad`; returns the load's outcome.
+  private func ended(_ navigation: WKNavigation?, with error: Error) -> Loads.Outcome {
     let nsError = error as NSError
     let end = Loads.ended(by: nsError)
     guard let kind = end.kind else { return end.outcome }
     let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
       ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
-    failedUrl = failing
+    failedLoad = (failing, inSourceRoot: navigation == nil || navigation !== directoryOnlyNavigation)
     onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
     return end.outcome
   }
@@ -391,7 +390,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     endDocument(.committed)
     ownLoads.committed()
-    failedUrl = nil
+    failedLoad = nil
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
     refreshUrls()
@@ -401,19 +400,19 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    loadEnded { $0.webView?(webView, didFinish: navigation) }
+    loadEnded(navigation) { $0.webView?(webView, didFinish: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadEnded(error) { $0.webView?(webView, didFail: navigation, withError: error) }
+    loadEnded(navigation, error) { $0.webView?(webView, didFail: navigation, withError: error) }
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadEnded(error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    loadEnded(navigation, error) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
   }
 
-  private func loadEnded(_ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
-    outcome = error.map { ended(with: $0) } ?? .finished
+  private func loadEnded(_ navigation: WKNavigation?, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
+    outcome = error.map { ended(navigation, with: $0) } ?? .finished
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
     scheduleUpdate()
