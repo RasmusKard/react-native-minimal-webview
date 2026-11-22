@@ -234,8 +234,9 @@ Task(e, listenerCall) == [event |-> e, listenerCall |-> listenerCall]
 \* bridgeReceive / the web message listener's delivery sets bridgeOrigin / replyProxy and emits onBridge
 Deliver(e) == canPost' = TRUE /\ toRN' = Append(toRN, e)
 
-\* MinimalWebViewScripts.kt installBridge: the web message listener posts its delivery to the main thread
-ListenerPosts(calledFromMainQueue) == TRUE
+\* MinimalWebViewScripts.kt installBridge: the web message listener posts its delivery to the main thread only where
+\* WebView calls it directly (before 119)
+ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue
 
 \* The web message listener, with what waits on the main thread after it
 Listener(e, calledFromMainQueue, rest) ==

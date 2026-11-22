@@ -1,5 +1,6 @@
 package expo.modules.minimalwebview
 
+import android.webkit.WebView
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebMessageCompat
@@ -38,10 +39,12 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
         // An ArrayBuffer message has no string data: WebMessageCompat.getData throws for it.
         if (message.type != WebMessageCompat.TYPE_STRING) return@addWebMessageListener
         val data = message.data
-        mainHandler.postDelayed({
+        val deliver = Runnable {
           replyProxy = proxy
           onBridge(mapOf("message" to data, "origin" to sourceOrigin.toString()))
-        }, this, 0)
+        }
+        // WebView before 119 calls this as the message arrives, ahead of the onPageStarted it posted at the commit.
+        if (webViewCallsListenersDirectly) mainHandler.postDelayed(deliver, this, 0) else deliver.run()
       }
       WebViewCompat.addDocumentStartJavaScript(webView, script, origins)
     } catch (e: IllegalArgumentException) {
@@ -169,6 +172,12 @@ internal class EvaluateError(code: String, message: String) : CodedException(cod
 
 private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
+private val webViewCallsListenersDirectly by lazy {
+  val major = WebView.getCurrentWebViewPackage()?.versionName?.substringBefore('.')?.toIntOrNull()
+  major != null && major < FIRST_WEBVIEW_POSTING_LISTENER_CALLS
+}
+
+private const val FIRST_WEBVIEW_POSTING_LISTENER_CALLS = 119
 private const val EVALUATE = "nativeEvaluateResult"
 private const val STARTED = "1"
 private const val NO_CHANNEL = "0"

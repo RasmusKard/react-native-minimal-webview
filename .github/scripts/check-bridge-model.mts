@@ -58,14 +58,20 @@ const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
   },
   {
     bug: "MinimalWebViewScripts.kt's web message listener delivers at once: WebView before 119 calls it ahead of the commit's onPageStarted",
-    from: "PagePost(e) == looper' = Append(looper, e) /\\ UNCHANGED <<canPost, toRN>>",
-    to: "PagePost(e) == canPost' = TRUE /\\ toRN' = Append(toRN, e) /\\ UNCHANGED looper",
+    from: 'ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue',
+    to: 'ListenerPosts(calledFromMainQueue) == FALSE',
     breaks: ['PageCallAnswered', 'EverySettles'],
   },
   {
+    bug: "MinimalWebViewScripts.kt's web message listener posts its delivery on WebView 119+ too, behind the next commit's onPageStarted",
+    from: 'ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue',
+    to: 'ListenerPosts(calledFromMainQueue) == TRUE',
+    breaks: ['EverySettles'],
+  },
+  {
     bug: "MinimalWebViewScripts.kt documentEnded(CRASHED) keeps the dead page's deliveries (no `removeCallbacksAndMessages`)",
-    from: `/\\ looper' = SelectSeq(looper, LAMBDA e: e.type = "navigated")`,
-    to: "/\\ looper' = looper",
+    from: `/\\ mainQueue' = SelectSeq(mainQueue, LAMBDA task: task.event.type = "navigated")`,
+    to: "/\\ mainQueue' = mainQueue",
     breaks: ['EverySettles'],
   },
 ];
