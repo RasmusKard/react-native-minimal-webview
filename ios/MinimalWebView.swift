@@ -49,6 +49,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var htmlNavigation: WKNavigation?
   private var htmlCommit: (url: String, item: WKBackForwardListItem?)?
   var ownLoads = OwnLoads()
+  // No weak self: forming a weak reference to an object in deinit aborts, and deinit's tearDown can be the first use.
   private(set) lazy var asks = Asks { [onHookEvent] in onHookEvent($0) }
   var hookContexts: [HookContext] = []
   var askedAndAllowed: [Bool: Set<String>] = [:]
@@ -252,7 +253,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     hookContexts.forEach { $0.hook.attach(webView, $0) }
   }
 
-  /// React Native calls `invalidate` at every unmount, and Expo's (React Native 0.82+) resets its size-update guard.
+  /// React Native calls `invalidate` at every unmount (Expo's views are never recycled), and Expo's (React Native 0.82+) resets its size-update guard.
   /// Expo's Swift-visible header doesn't declare it, so Swift can't `override` it: this one wins at runtime.
   @objc func invalidate() {
     tearDown()
@@ -419,6 +420,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     forward(callback)
   }
 
+  /// The WKWebView survives its web content process's death.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource
     endDocument(.crashed)

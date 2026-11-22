@@ -165,6 +165,7 @@ private let newWindowTimeout: TimeInterval = 5
 
 /// WebKit's private `_WKNavigationActionPolicyAllowWithoutTryingAppLink` (allow + 2): `.allow` would hand a tapped
 /// link to an installed app that claims it as a universal link.
+/// `init(rawValue:)` accepts any value, so the fallback never applies.
 private let allowInPlace = WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2) ?? .allow
 
 final class Taps: UIGestureRecognizer, UIGestureRecognizerDelegate {
