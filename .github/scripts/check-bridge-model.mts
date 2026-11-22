@@ -57,13 +57,13 @@ const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
     breaks: ['NotCarriedOver'],
   },
   {
-    bug: "MinimalWebViewScripts.kt's web message listener delivers at once: WebView before 119 calls it ahead of the commit's onPageStarted",
+    bug: "MinimalWebViewScripts.kt's web message listener delivers at once: Chromium before 119 calls it ahead of the commit's onPageStarted",
     from: 'ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue',
     to: 'ListenerPosts(calledFromMainQueue) == FALSE',
     breaks: ['PageCallAnswered', 'EverySettles'],
   },
   {
-    bug: "MinimalWebViewScripts.kt's web message listener posts its delivery on WebView 119+ too, behind the next commit's onPageStarted",
+    bug: "MinimalWebViewScripts.kt's web message listener posts its delivery on Chromium 119+ too, behind the next commit's onPageStarted",
     from: 'ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue',
     to: 'ListenerPosts(calledFromMainQueue) == TRUE',
     breaks: ['EverySettles'],

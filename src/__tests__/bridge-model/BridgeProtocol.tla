@@ -235,7 +235,7 @@ Task(e, listenerCall) == [event |-> e, listenerCall |-> listenerCall]
 Deliver(e) == canPost' = TRUE /\ toRN' = Append(toRN, e)
 
 \* MinimalWebViewScripts.kt installBridge: the web message listener posts its delivery to the main thread only where
-\* WebView calls it directly (before 119)
+\* Chromium calls it directly (before 119)
 ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue
 
 \* The web message listener, with what waits on the main thread after it
@@ -290,7 +290,7 @@ NativePost ==
   /\ UNCHANGED <<pageVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-\* The page client in the current document. Its posts reach native's web message listener at once, or WebView 119+ posts
+\* The page client in the current document. Its posts reach native's web message listener at once, or Chromium 119+ posts
 \* the call to the listener to native's main thread.
 
 PagePost(e) ==
