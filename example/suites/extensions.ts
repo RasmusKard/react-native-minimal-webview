@@ -36,6 +36,7 @@ import {
   poll,
   happens,
   clickWithoutWaiting,
+  touch,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER, PAGES_PORT } from '../pages';
@@ -432,7 +433,7 @@ async function keyboard(h: Harness, r: Reporter) {
   const keyboardInset = async () => {
     await loadHtml(h, '<input id="i">');
     const height = await viewport();
-    await h.ref.current?.evaluate("document.getElementById('i').focus()");
+    await touch(h, r, 'i');
     await poll(async () => (await viewport()) < height, 2000);
     await sleep(300);
     const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
