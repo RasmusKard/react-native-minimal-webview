@@ -421,6 +421,7 @@ type ValueRow = {
   lacks?: string[];
 };
 const FIELD = /@Field (?:val|var) (\w+)/g;
+const SWIFT_CASE = /(?:case |, )(?:\w+ = "(\w+)"|(\w+))/g;
 const CODE = /(?:reject\(|failure\(|EvaluateError\(|PlatformException\(|code: )"\w+"/g;
 const VALUES: Record<Platform, ValueRow[]> = {
   android: [
@@ -474,7 +475,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       name: 'outcome',
       keys: outcome,
       site: /enum Outcome: String \{[^}]*\}/g,
-      value: /(?:case |, )(\w+)/g,
+      value: SWIFT_CASE,
     },
     {
       name: 'error kind',
@@ -516,7 +517,7 @@ const VALUES: Record<Platform, ValueRow[]> = {
       name: 'rule actions',
       keys: actions,
       site: /enum Action: String \{ case [^}]*\}/g,
-      value: /(?:case |, )(\w+)/g,
+      value: SWIFT_CASE,
     },
     { name: 'error codes', keys: codes, site: CODE, lacks: ['timeout'] },
   ],
