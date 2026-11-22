@@ -129,8 +129,8 @@ export async function crash(h: Harness, r: Reporter) {
   else
     r.skip('a crash loop stops reloading (4th crash in 60 s)', `the 4 crashes took ${elapsed} ms`);
   r.check(
-    'a crash during a load ends it (loading: false)',
-    await happens(waitFor(h, (s) => !s.loading, 5000)),
+    'a crash during a load before it commits ends it as failed',
+    (await happens(waitFor(h, (s) => !s.loading, 5000))) && h.state().outcome === 'failed',
     h.state()
   );
   const brings = async (action: () => void, url: string) =>
