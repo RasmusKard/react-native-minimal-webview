@@ -421,7 +421,7 @@ type ValueRow = {
   lacks?: string[];
 };
 const FIELD = /@Field (?:val|var) (\w+)/g;
-const SWIFT_CASE = /(?:case |, )(?:\w+ = "(\w+)"|(\w+))/g;
+const SWIFT_CASE = /(?:case |, )(?:\w+\s*=\s*"([^"]*)"|(\w+))/g;
 const CODE = /(?:reject\(|failure\(|EvaluateError\(|PlatformException\(|code: )"\w+"/g;
 const VALUES: Record<Platform, ValueRow[]> = {
   android: [
