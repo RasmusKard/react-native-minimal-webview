@@ -69,6 +69,11 @@ MainActor.assumeIsolated {
   check("read root: the page's own load of that URL fails", failure { view.webView?.evaluateJavaScript("location.href = 'sub/missing.html'") })
   let pageRoot = retryRoot()
   check("read root: a retry of the page's failed load reads within the source's root: \(pageRoot as Any)", pageRoot == site)
+  check("read root: load() of the missing file fails again", failure { view.load(url: missing.absoluteString) })
+  let againRoot = retryRoot()
+  check("read root: a retry of the second failed load() reads within its directory: \(againRoot as Any)", againRoot == missing.deletingLastPathComponent())
+  let retriedRoot = retryRoot()
+  check("read root: a retry of that retry reads within the same directory: \(retriedRoot as Any)", retriedRoot == missing.deletingLastPathComponent())
   view.invalidate()
 }
 try FileManager.default.removeItem(at: site.deletingLastPathComponent())
