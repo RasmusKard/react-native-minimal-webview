@@ -64,9 +64,11 @@ class MinimalWebViewModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MinimalWebView")
 
-    // The fallback runs when the result reaches a recreated activity: the WebView that asked is gone.
+    // Expo runs this again for each new activity and registers under a new key, so a chooser the destroyed activity
+    // launched never reports back. Its fallback gets only a result from before a process restart: nothing waits then.
     RegisterActivityContracts {
-      fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> chooserOpen = false }
+      chooserOpen = false
+      fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> }
     }
 
     // Cookies live in memory until flushed; persist them before the process can be killed. Only once a WebView was

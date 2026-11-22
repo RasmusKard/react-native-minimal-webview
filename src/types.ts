@@ -1021,8 +1021,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Until the answer settles, the page's next file request waits.
    *
    * Without it, the system file chooser opens and ignores `capture`. It handles one request at a time for the whole
-   * app: a request while one is open is cancelled. If the chooser's activity died without returning a result, every
-   * request is cancelled until the app restarts.
+   * app: a request while one is open is cancelled.
    *
    * iOS always shows WebKit's picker, whose camera option needs `NSCameraUsageDescription`.
    * @android
