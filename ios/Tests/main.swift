@@ -182,8 +182,15 @@ final class Challenged: NSObject, WKNavigationDelegate {
     completionHandler(answer, nil)
   }
 }
-let challenge = class_createInstance(URLAuthenticationChallenge.self, 0) as! URLAuthenticationChallenge
-func answered(_ delegates: [WKNavigationDelegate]) -> URLSession.AuthChallengeDisposition? {
+final class NoSender: NSObject, URLAuthenticationChallengeSender {
+  func use(_ credential: URLCredential, for challenge: URLAuthenticationChallenge) {}
+  func continueWithoutCredential(for challenge: URLAuthenticationChallenge) {}
+  func cancel(_ challenge: URLAuthenticationChallenge) {}
+}
+func answered(_ delegates: [WKNavigationDelegate], failures: Int = 0) -> URLSession.AuthChallengeDisposition? {
+  let challenge = URLAuthenticationChallenge(
+    protectionSpace: URLProtectionSpace(host: "h", port: 80, protocol: "http", realm: "r", authenticationMethod: NSURLAuthenticationMethodHTTPBasic),
+    proposedCredential: nil, previousFailureCount: failures, failureResponse: nil, error: nil, sender: NoSender())
   var answer: URLSession.AuthChallengeDisposition?
   proxy(delegates).webView(webView, didReceive: challenge) { disposition, _ in answer = disposition }
   return answer
@@ -194,6 +201,8 @@ check("proxy a default answer passes the challenge on", answered([Challenged(.pe
 let later = Challenged(.useCredential)
 check("proxy any other answer stands", answered([Challenged(.cancelAuthenticationChallenge), later]) == .cancelAuthenticationChallenge && later.calls == 0)
 check("proxy nobody takes it: the default handling", answered([Challenged(.performDefaultHandling)]) == .performDefaultHandling)
+check("proxy nobody takes a challenge whose credential was rejected: the 401 response loads", answered([Challenged(.performDefaultHandling)], failures: 1) == .rejectProtectionSpace)
+check("proxy no hook and a rejected credential: the 401 response loads", answered([], failures: 1) == .rejectProtectionSpace)
 let actionPolicyName = "webView:decidePolicyForNavigationAction:decisionHandler:"
 let shared = { (name: String) in "\(name): more than one hook delegate implements it; only the first one gets it" }
 let takenFromProps = "\(actionPolicyName): a hook delegate takes it, so navigationRules, their defaults and onNavigationRequest don't apply to navigations"
