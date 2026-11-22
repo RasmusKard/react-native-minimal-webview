@@ -2,14 +2,14 @@
 const { execFile } = require('child_process');
 
 /** @type {Map<string, string>} */
-const queued = new Map();
+const queuedSuite = new Map();
 const log = (/** @type {string} */ line) =>
   console.log(`${new Date().toISOString().slice(11, 23)} ${line}`);
 
 /**
  * @typedef {{ suite: string, action: string, fail?: number }} Request
  * @typedef {{ text: string, kind: string, suite: string, block: string, name: string, detail: string }} Line
- * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, fresh: boolean, device: string, log: string[], results: Line[] }} HarnessState
+ * @typedef {{ requests: Request[], verdict: Request | null, handed: boolean, polledAt: number, launchFreshNext: boolean, device: string, log: string[], results: Line[] }} HarnessState
  */
 /** @type {Map<string, HarnessState>} */
 const harnessStates = new Map();
@@ -22,7 +22,7 @@ function harnessState(platform) {
       verdict: null,
       handed: false,
       polledAt: 0,
-      fresh: true,
+      launchFreshNext: true,
       device: '',
       log: [],
       results: [],
@@ -55,12 +55,12 @@ function answerWhen(res, get, ms) {
     clearTimeout(timer);
     res.end(value);
   };
-  const timer = setTimeout(() => finish(''), Math.min(ms, 8000));
+  const timer = setTimeout(() => finish(''), ms);
   waiters.add(check);
   check();
 }
 /** @type {Map<string, string>} */
-const perfResults = new Map();
+const perfSamplesByRun = new Map();
 const APP_ID = 'expo.modules.minimalwebview.example';
 
 /**
@@ -109,7 +109,7 @@ function junit(results) {
  */
 const ROUTES = {
   '/harness/run'(req, res, q, platform) {
-    queued.set(platform, q.get('suite') ?? '');
+    queuedSuite.set(platform, q.get('suite') ?? '');
     Object.assign(harnessState(platform), { requests: [], verdict: null, handed: false });
     log(`[server] queued ${platform} ${q.get('suite')}`);
     res.end('queued');
@@ -133,18 +133,18 @@ const ROUTES = {
   '/harness/idle'(req, res, q, platform) {
     const state = harnessState(platform);
     const passed = !state.handed || state.verdict?.fail === 0;
-    if (state.fresh || !passed) {
-      state.fresh = false;
+    if (state.launchFreshNext || !passed) {
+      state.launchFreshNext = false;
       res.end('no');
       return;
     }
     const asked = Date.now();
     answerWhen(res, () => (state.polledAt > asked ? 'yes' : ''), Number(q.get('ms') ?? 5000));
   },
-  '/harness/fresh'(req, res, q, platform) {
+  '/harness/start-run'(req, res, q, platform) {
     const device = q.get('device') ?? '';
     if (!/^[\w.:-]*$/.test(device)) return res.writeHead(400).end('bad device');
-    Object.assign(harnessState(platform), { fresh: true, device, log: [], results: [] });
+    Object.assign(harnessState(platform), { launchFreshNext: true, device, log: [], results: [] });
     res.end('ok');
   },
   '/driver/kill'(req, res, q, platform) {
@@ -160,11 +160,11 @@ const ROUTES = {
   },
   '/perf/result'(req, res, q, platform) {
     const run = q.get('run') ?? '';
-    if (req.method !== 'POST') return res.end(perfResults.get(run) ?? '');
+    if (req.method !== 'POST') return res.end(perfSamplesByRun.get(run) ?? '');
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
-      perfResults.set(run, body);
+      perfSamplesByRun.set(run, body);
       log(`[perf] ${run} ${body.length > 200 ? `${body.length} bytes` : body}`);
       res.end();
     });
@@ -207,7 +207,7 @@ const ROUTES = {
     });
   },
   '/harness/next'(req, res, q, platform) {
-    const suite = queued.get(platform) ?? '';
+    const suite = queuedSuite.get(platform) ?? '';
     const state = harnessState(platform);
     state.polledAt = Date.now();
     if (suite) {
@@ -216,7 +216,7 @@ const ROUTES = {
     }
     harnessChanged();
     res.end(suite);
-    queued.delete(platform);
+    queuedSuite.delete(platform);
   },
   '/harness/log'(req, res, q, platform) {
     if (req.method !== 'POST')

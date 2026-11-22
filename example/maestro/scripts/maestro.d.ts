@@ -3,7 +3,7 @@ declare const http: { get(url: string): { status: number; body: string } };
 declare function json(text: string): Record<string, unknown>;
 declare const output: {
   launch?: boolean;
-  n: number;
+  requestsDone: number;
   action: string;
   fail?: number | string;
 };

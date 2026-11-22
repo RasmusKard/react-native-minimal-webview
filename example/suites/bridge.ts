@@ -114,8 +114,7 @@ export async function bridge(h: Harness, all: Reporter) {
   const again = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works again after navigation', again === 2, again);
 
-  const head = `${page}&head=1`;
-  await openPage(h, head);
+  await openPage(h, `${page}&callFromHead=1`);
   const headCall = await poll(() => h.ref.current?.evaluate('window.__head'), 5000);
   r.check(
     "a head script's call at document start is answered",
@@ -125,9 +124,9 @@ export async function bridge(h: Harness, all: Reporter) {
   const afterHead = await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode);
   r.check("RN -> page calls work after a head script's call", afterHead === 4, afterHead);
 
-  const early = `${page}&early=1`;
-  h.load(early);
-  await waitFor(h, (s) => s.url === early);
+  const lateHandler = `${page}&lateHandler=1`;
+  h.load(lateHandler);
+  await waitFor(h, (s) => s.url === lateHandler);
   const duringLoad = await h.bridge.call('early').catch(errorCode);
   r.check(
     'a call made during load reaches a handler the page registers while loading',

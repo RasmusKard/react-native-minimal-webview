@@ -17,7 +17,7 @@ if [ "$PLATFORM" = android ]; then
   # back key then goes to it instead of the app.
   adb -s "$DEVICE" shell settings put secure immersive_mode_confirmations confirmed
 fi
-curl -sf "$PAGES/harness/fresh?platform=$PLATFORM&device=$DEVICE" >/dev/null || { echo "no test pages server on :$PORT"; exit 1; }
+curl -sf "$PAGES/harness/start-run?platform=$PLATFORM&device=$DEVICE" >/dev/null || { echo "no test pages server on :$PORT"; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 flows=()
 for suite in "$@"; do

@@ -31,8 +31,11 @@ function serveFile(res, pathname) {
   res.writeHead(200, { 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream' });
   if (path.extname(file) !== '.html') return void fs.createReadStream(file).pipe(res);
   const html = fs.readFileSync(file, 'utf8');
-  res.end(html.replace(/(:|%3A)8090\b/g, `$1${PORT}`).replace(/:8443\b/g, `:${HTTPS_PORT}`));
+  res.end(withConfiguredPorts(html));
 }
+
+const withConfiguredPorts = (/** @type {string} */ html) =>
+  html.replace(/(:|%3A)8090\b/g, `$1${PORT}`).replace(/:8443\b/g, `:${HTTPS_PORT}`);
 
 
 /** @returns {{ key: Buffer, cert: Buffer } | null} */
@@ -65,10 +68,10 @@ function selfSigned() {
     return null;
   }
 }
-const challenged = new Set();
+const challengedAuthKeys = new Set();
 const dropping = new Set();
 const flakyKeys = new Set();
-const movedKeys = new Set();
+const movedKeysServedOnce = new Set();
 
 /** @param {import('http').IncomingMessage} req @param {import('http').ServerResponse} res */
 function handle(req, res) {
@@ -84,8 +87,8 @@ function handle(req, res) {
     // Each URL's `t` is a realm of its own that is challenged first: a WebView that signed in on another test page (an
     // earlier suite, same process) would otherwise send those credentials unasked.
     const key = q.get('t') ?? '';
-    const first = !challenged.has(key);
-    challenged.add(key);
+    const first = !challengedAuthKeys.has(key);
+    challengedAuthKeys.add(key);
     if (!first && req.headers.authorization === `Basic ${Buffer.from('u:p').toString('base64')}`) {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end('<!doctype html><h1 id="auth">authorized</h1>');
@@ -132,10 +135,10 @@ function handle(req, res) {
       .end();
   } else if (url.pathname === '/redirect') {
     res.writeHead(Number(q.get('code') ?? 302), { location: q.get('to') ?? '/' }).end();
-  } else if (url.pathname === '/moved' && movedKeys.has(q.get('key') ?? '')) {
+  } else if (url.pathname === '/moved' && movedKeysServedOnce.has(q.get('key') ?? '')) {
     res.writeHead(302, { location: `http://127.0.0.1:${PORT}/download?name=moved.txt` }).end();
   } else if (url.pathname === '/moved') {
-    movedKeys.add(q.get('key') ?? '');
+    movedKeysServedOnce.add(q.get('key') ?? '');
     res.writeHead(200, {
       'content-type': 'text/plain',
       'content-disposition': 'attachment; filename="moved.txt"',

@@ -9,14 +9,14 @@ cd "$(dirname "$0")/.."
 PLATFORM=$1 DEVICE=$2 APP=expo.modules.minimalwebview.example
 note=.expo/installed-$PLATFORM-$DEVICE
 
-built_from() {
+native_inputs() {
   {
     git -C .. ls-files -co --exclude-standard -z -- ios android extensions expo-module.config.json example/modules \
       example/app.json example/package.json ':!*.ts' ':!*.tsx' ':!*.md' | (cd .. && xargs -0 shasum 2>/dev/null)
     shasum node_modules/.package-lock.json
   } | shasum
 }
-installed() {
+install_stamp() {
   if [ "$PLATFORM" = ios ]; then
     xcrun simctl get_app_container "$DEVICE" $APP
   else
@@ -25,11 +25,11 @@ installed() {
 }
 
 if [ "${check:-}" ]; then
-  [ "$(cat "$note" 2>/dev/null)" = "$(built_from; installed)" ] && exit 0
+  [ "$(cat "$note" 2>/dev/null)" = "$(native_inputs; install_stamp)" ] && exit 0
   echo "the app on $DEVICE is not a build of this checkout as it is now: run maestro/install.sh $PLATFORM $DEVICE"
   exit 1
 fi
-from=$(built_from)
+from=$(native_inputs)
 npx expo run:"$PLATFORM" --no-bundler --device "$DEVICE" "${@:3}"
 mkdir -p .expo
-{ echo "$from"; installed; } > "$note"
+{ echo "$from"; install_stamp; } > "$note"
