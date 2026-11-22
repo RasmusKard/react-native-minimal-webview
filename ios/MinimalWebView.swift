@@ -335,18 +335,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     proxy.navigationDelegates.forEach(callback)
   }
 
-  /// Reports a failed main-frame load to onError and keeps it as `failedLoad`; returns the load's outcome.
-  private func ended(_ navigation: WKNavigation?, with error: Error) -> Loads.Outcome {
-    let nsError = error as NSError
-    let end = Loads.ended(by: nsError)
-    guard let kind = end.kind else { return end.outcome }
-    let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
-      ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
-    failedLoad = (failing, inSourceRoot: navigation == nil || navigation !== directoryOnlyNavigation)
-    onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
-    return end.outcome
-  }
-
   func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,
@@ -399,7 +387,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    loadEnded(navigation) { $0.webView?(webView, didFinish: navigation) }
+    loadEnded(.finished) { $0.webView?(webView, didFinish: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -411,7 +399,15 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func loadFailed(_ webView: WKWebView, _ navigation: WKNavigation?, _ error: Error, provisional: Bool) {
-    loadEnded(navigation, error) {
+    let nsError = error as NSError
+    let end = Loads.ended(by: nsError)
+    if let kind = end.kind {
+      let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
+        ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
+      failedLoad = (failing, inSourceRoot: navigation == nil || navigation !== directoryOnlyNavigation)
+      onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
+    }
+    loadEnded(end.outcome) {
       if provisional {
         $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
       } else {
@@ -420,8 +416,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  private func loadEnded(_ navigation: WKNavigation?, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
-    outcome = error.map { ended(navigation, with: $0) } ?? .finished
+  private func loadEnded(_ outcome: Loads.Outcome, _ callback: (WKNavigationDelegate) -> Void) {
+    self.outcome = outcome
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
     scheduleUpdate()
