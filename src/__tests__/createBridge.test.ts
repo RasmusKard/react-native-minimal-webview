@@ -21,7 +21,9 @@ const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 function runPage(script: string) {
   const sent: { kind: string; doc: string; value?: unknown }[] = [];
   const transport = {
-    postMessage: (text: string) => sent.push(JSON.parse(text) as (typeof sent)[number]),
+    postMessage: (text: string) => {
+      sent.push(JSON.parse(text) as (typeof sent)[number]);
+    },
     onmessage: null as ((event: { data: string }) => void) | null,
   };
   const page = {
@@ -33,7 +35,7 @@ function runPage(script: string) {
     clearTimeout,
     nativeBridge: undefined as
       | {
-          handle(method: string, handler: (p: number) => number): void;
+          handle(method: string, handler: (p: number) => unknown): void;
           call(method: string): Promise<unknown>;
         }
       | undefined,
@@ -42,6 +44,25 @@ function runPage(script: string) {
   runInNewContext(script, page);
   return { page, sent, transport };
 }
+
+function connectedPage() {
+  const bridge = createBridge({ allowedOrigins: ['https://example.com'], timeoutMs: 1000 });
+  const connection = bridge[CONNECTION];
+  const { page, sent, transport } = runPage(connection.script);
+  const toNative = (text: string) =>
+    connection.receive({ message: text, origin: 'https://example.com' });
+  connection.attach((text) => transport.onmessage?.({ data: text }));
+  for (const message of sent) toNative(JSON.stringify(message));
+  transport.postMessage = toNative;
+  return { bridge, nativeBridge: page.nativeBridge! };
+}
+
+const cycle: Record<string, unknown> = {};
+cycle.self = cycle;
+const unencodable = [
+  ['a cycle', cycle],
+  ['a BigInt', BigInt(1)],
+] as const;
 
 describe('createBridge', () => {
   afterEach(() => jest.useRealTimers());
@@ -178,6 +199,24 @@ describe('createBridge', () => {
       { id: 'p1', kind: 'error', error: { code: 'handler_error', message: 'nope' } },
     ]);
   });
+
+  it.each(unencodable)(
+    "rejects the page's call with handler_error when the React Native handler returns %s",
+    async (_, result) => {
+      const { bridge, nativeBridge } = connectedPage();
+      bridge.handle('m', () => result);
+      await expect(nativeBridge.call('m')).rejects.toMatchObject({ code: 'handler_error' });
+    }
+  );
+
+  it.each(unencodable)(
+    "rejects React Native's call with handler_error when the page handler returns %s",
+    async (_, result) => {
+      const { bridge, nativeBridge } = connectedPage();
+      nativeBridge.handle('m', () => result);
+      await expect(bridge.call('m')).rejects.toMatchObject({ code: 'handler_error' });
+    }
+  );
 
   it('rejects calls in flight when a new page becomes ready', async () => {
     const { bridge, fromPage } = setup();
