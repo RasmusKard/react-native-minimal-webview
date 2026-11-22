@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const VERSION = '1.7.4';
 const SHA256 = '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88';
 const MODEL = new URL('../../src/__tests__/bridge-model/', import.meta.url);
-const TEMPORAL = ['EverySettles'];
+const TEMPORAL = ['EverySettles', 'PageCallAnswered'];
 
 const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
   {

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { seams } from 'sample-extension';
 
 import {
   errorCode,
@@ -123,6 +124,23 @@ export async function bridge(h: Harness, all: Reporter) {
   );
   const afterHead = await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode);
   r.check("RN -> page calls work after a head script's call", afterHead === 4, afterHead);
+
+  if (Platform.OS === 'android') {
+    await seams.busyMain(3000);
+    await openPage(h, `${page}&callFromHead=1&busy=1`);
+    const busyHead = await poll(() => h.ref.current?.evaluate('window.__head'), 5000);
+    r.check(
+      "a head script's call is answered when the main thread is busy at the commit",
+      (busyHead as { result?: { head?: boolean } } | undefined)?.result?.head === true,
+      busyHead
+    );
+    const afterBusy = await h.bridge.call('sum', { a: 3, b: 3 }).catch(errorCode);
+    r.check(
+      'RN -> page calls work after a commit the main thread was busy at',
+      afterBusy === 6,
+      afterBusy
+    );
+  }
 
   const lateHandler = `${page}&lateHandler=1`;
   h.load(lateHandler);

@@ -1,6 +1,9 @@
 package expo.modules.sampleextension
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.AndroidRuntimeException
 import android.webkit.HttpAuthHandler
 import android.webkit.JsResult
@@ -65,7 +68,21 @@ class SampleExtensionModule : Module() {
     AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
+    AsyncFunction("busyMain") { ms: Long -> busyMain(ms) }.runOnQueue(Queues.MAIN)
   }
+}
+
+private const val BUSY_SLICE_MS = 20L
+
+private fun busyMain(ms: Long) {
+  val main = Handler(Looper.getMainLooper())
+  val until = SystemClock.uptimeMillis() + ms
+  lateinit var slice: Runnable
+  slice = Runnable {
+    SystemClock.sleep(BUSY_SLICE_MS)
+    if (SystemClock.uptimeMillis() < until) main.post(slice)
+  }
+  main.post(slice)
 }
 
 private var webViewMissing = false
