@@ -33,6 +33,7 @@ VARIABLES
   toRN,         \* onBridge events on their way to createBridge's receive, in order
   toNative,     \* RN's bridgePost calls on their way to native, in order
   toPage,       \* posts native passed on, landing in whichever document is current when they arrive
+  mainQueue,
   \* pageClient.ts, per document
   allowed,      \* the document is in allowedOrigins, so the page client runs in it
   saidReady,
@@ -48,7 +49,7 @@ VARIABLES
   carriedOver   \* a page acted on a message RN queued for an earlier page
 
 rnVars == <<attached, phase, doc, queue, unavailable, answering, pending, timers, nextMsg>>
-nativeVars == <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toNative, toPage>>
+nativeVars == <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toNative, toPage, mainQueue>>
 pageVars == <<allowed, saidReady, pageCall, running>>
 ghostVars == <<posted, navRejected, settled, runs, rnSaw, wrongPage, carriedOver>>
 vars == <<rnVars, nativeVars, pageVars, ghostVars>>
@@ -84,7 +85,7 @@ Init ==
   /\ attached = FALSE /\ phase = "idle" /\ doc = None /\ queue = <<>> /\ unavailable = FALSE /\ answering = {}
   /\ pending = {} /\ timers = {} /\ nextMsg = 1
   /\ capable \in BOOLEAN /\ current = None /\ canPost = FALSE /\ nextDoc = 1 /\ crashes = 0 /\ mounts = 0
-  /\ toRN = <<>> /\ toNative = <<>> /\ toPage = <<>>
+  /\ toRN = <<>> /\ toNative = <<>> /\ toPage = <<>> /\ mainQueue = <<>>
   /\ allowed = [d \in Docs |-> FALSE] /\ saidReady = [d \in Docs |-> FALSE]
   /\ pageCall = [d \in Docs |-> "none"] /\ running = [d \in Docs |-> {}]
   /\ posted = {} /\ navRejected = {} /\ settled = [m \in Msgs |-> 0] /\ runs = [m \in Msgs |-> 0]
@@ -98,7 +99,7 @@ Attach ==
   /\ attached' = TRUE /\ mounts' = mounts + 1
   /\ toRN' = IF capable THEN <<>> ELSE <<Event("unavailable", None, 0)>>
   /\ UNCHANGED <<phase, doc, queue, unavailable, answering, pending, timers, nextMsg>>
-  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, toNative, toPage>>
+  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, toNative, toPage, mainQueue>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 
 \* The WebView unmounts: connection.detach. Its document and the messages in flight go with it.
@@ -108,7 +109,7 @@ Detach ==
   /\ Reject(pending)
   /\ navRejected' = navRejected \cup RejectSent \* rejectSent, then the queued ones with `unavailable`
   /\ answering' = {}
-  /\ current' = None /\ canPost' = FALSE /\ toRN' = <<>> /\ toNative' = <<>> /\ toPage' = <<>>
+  /\ current' = None /\ canPost' = FALSE /\ toRN' = <<>> /\ toNative' = <<>> /\ toPage' = <<>> /\ mainQueue' = <<>>
   /\ rnSaw' = None
   /\ UNCHANGED <<doc, unavailable, nextMsg, capable, nextDoc, crashes, mounts>>
   /\ UNCHANGED <<pageVars, posted, runs, wrongPage, carriedOver>>
@@ -141,7 +142,7 @@ AppSend(kind) ==
              /\ settled' = Count(dropped)
              /\ UNCHANGED <<toNative, posted>>
   /\ UNCHANGED <<attached, phase, doc, unavailable, answering>>
-  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toPage>>
+  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toPage, mainQueue>>
   /\ UNCHANGED <<pageVars, navRejected, runs, rnSaw, wrongPage, carriedOver>>
 
 \* endpoint.ts call's timer fires: `pending.delete(id)` and reject with `timeout`
@@ -162,7 +163,7 @@ OnNavigated(e) ==
      /\ phase' = IF e.type = "crashed" THEN "idle" ELSE "loading"
      /\ rnSaw' = e.doc
      /\ UNCHANGED <<attached, doc, unavailable, answering, nextMsg>>
-     /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage>>
+     /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage, mainQueue>>
      /\ UNCHANGED <<pageVars, posted, runs, wrongPage, carriedOver>>
 
 \* createBridge.ts receive({ unavailable })
@@ -170,7 +171,7 @@ OnUnavailable ==
   /\ unavailable' = TRUE /\ queue' = <<>>
   /\ Reject(pending)
   /\ UNCHANGED <<attached, phase, doc, answering, nextMsg>>
-  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage>>
+  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage, mainQueue>>
   /\ UNCHANGED <<pageVars, posted, navRejected, runs, rnSaw, wrongPage, carriedOver>>
 
 \* createBridge.ts receiveMessage, `ready`: reject what was posted, take the page's token, flush the queue
@@ -186,14 +187,14 @@ OnReady(e) ==
           [kind |-> flush[i].kind, id |-> flush[i].id, doc |-> e.doc, to |-> e.doc, for |-> flush[i].for]]
      /\ posted' = posted \cup {flush[i].id : i \in {j \in DOMAIN flush : flush[j].kind = "call"}}
      /\ UNCHANGED <<attached, unavailable, answering, nextMsg>>
-     /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toPage>>
+     /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toPage, mainQueue>>
      /\ UNCHANGED <<pageVars, runs, rnSaw, wrongPage, carriedOver>>
 
 \* createBridge.ts receiveMessage, a page's call: endpoint.ts receive runs the handler, which answers later (RNAnswer)
 OnPageCall(e) ==
   /\ answering' = answering \cup {e.doc}
   /\ UNCHANGED <<attached, phase, doc, queue, unavailable, pending, timers, nextMsg>>
-  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage>>
+  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage, mainQueue>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 
 \* endpoint.ts receive, `result` / `error`: settles the call if it is still pending
@@ -202,7 +203,7 @@ OnResult(e) ==
      THEN pending' = pending \ {e.id} /\ timers' = timers \ {e.id} /\ settled' = Count({e.id})
      ELSE UNCHANGED <<pending, timers, settled>>
   /\ UNCHANGED <<attached, phase, doc, queue, unavailable, answering, nextMsg>>
-  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage>>
+  /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toNative, toPage, mainQueue>>
   /\ UNCHANGED <<pageVars, posted, navRejected, runs, rnSaw, wrongPage, carriedOver>>
 
 \* connection.receive takes the next onBridge event
@@ -222,26 +223,61 @@ RNAnswer ==
     /\ answering' = answering \ {d}
     /\ toNative' = Append(toNative, [kind |-> "result", id |-> 0, doc |-> d, to |-> d, for |-> NotQueued])
     /\ UNCHANGED <<attached, phase, doc, queue, unavailable, pending, timers, nextMsg>>
-    /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toPage>>
+    /\ UNCHANGED <<capable, current, canPost, nextDoc, crashes, mounts, toRN, toPage, mainQueue>>
     /\ UNCHANGED <<pageVars, ghostVars>>
 
 -----------------------------------------------------------------------------
 
-\* A main-frame navigation commits a new document: endDocument(.committed) / documentEnded(COMMITTED) clears
-\* bridgeOrigin / replyProxy and emits `navigated`. The page client runs in it only if it is in allowedOrigins.
+\* What waits on native's main thread. A listener call is WebView's call to the web message listener, still to run.
+Task(e, listenerCall) == [event |-> e, listenerCall |-> listenerCall]
+
+\* bridgeReceive / the web message listener's delivery sets bridgeOrigin / replyProxy and emits onBridge
+Deliver(e) == canPost' = TRUE /\ toRN' = Append(toRN, e)
+
+\* MinimalWebViewScripts.kt installBridge: the web message listener posts its delivery to the main thread only where
+\* WebView calls it directly (before 119)
+ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue
+
+\* The web message listener, with what waits on the main thread after it
+Listener(e, calledFromMainQueue, rest) ==
+  IF ListenerPosts(calledFromMainQueue)
+  THEN mainQueue' = Append(rest, Task(e, FALSE)) /\ UNCHANGED <<canPost, toRN>>
+  ELSE Deliver(e) /\ mainQueue' = rest
+
+\* The page client runs in the new document only if it is in allowedOrigins. Native hears of the commit one main-thread
+\* hop later: WebView posts onPageStarted.
 Commit ==
   /\ attached /\ nextDoc <= NumDocs
   /\ \E inAllowedOrigins \in BOOLEAN: allowed' = [allowed EXCEPT ![nextDoc] = inAllowedOrigins]
-  /\ current' = nextDoc /\ nextDoc' = nextDoc + 1 /\ canPost' = FALSE
-  /\ toRN' = Append(toRN, Event("navigated", nextDoc, 0))
-  /\ UNCHANGED <<rnVars, capable, crashes, mounts, toNative, toPage>>
+  /\ current' = nextDoc /\ nextDoc' = nextDoc + 1
+  /\ mainQueue' = Append(mainQueue, Task(Event("navigated", nextDoc, 0), FALSE))
+  /\ UNCHANGED <<rnVars, capable, canPost, crashes, mounts, toRN, toNative, toPage>>
   /\ UNCHANGED <<saidReady, pageCall, running, ghostVars>>
 
-\* The renderer dies: endDocument(.crashed) / tearDown(CRASHED) emits `crashed`; a reload commits later
+\* endDocument(.committed) / documentEnded(COMMITTED) clears bridgeOrigin / replyProxy and emits `navigated`
+NativeEnd ==
+  /\ mainQueue # <<>> /\ Head(mainQueue).event.type = "navigated"
+  /\ mainQueue' = Tail(mainQueue)
+  /\ canPost' = FALSE /\ toRN' = Append(toRN, Head(mainQueue).event)
+  /\ UNCHANGED <<rnVars, capable, current, nextDoc, crashes, mounts, toNative, toPage>>
+  /\ UNCHANGED <<pageVars, ghostVars>>
+
+\* A page's post waiting on the main thread: WebView's call to the web message listener, or the listener's delivery
+NativeDeliver ==
+  /\ mainQueue # <<>> /\ Head(mainQueue).event.type # "navigated"
+  /\ IF Head(mainQueue).listenerCall
+     THEN Listener(Head(mainQueue).event, TRUE, Tail(mainQueue))
+     ELSE Deliver(Head(mainQueue).event) /\ mainQueue' = Tail(mainQueue)
+  /\ UNCHANGED <<rnVars, capable, current, nextDoc, crashes, mounts, toNative, toPage>>
+  /\ UNCHANGED <<pageVars, ghostVars>>
+
+\* The renderer dies: endDocument(.crashed) / tearDown(CRASHED) emits `crashed` and drops the dead page's posts still
+\* waiting (documentEnded's removeCallbacksAndMessages); a reload commits later
 Crash ==
   /\ attached /\ crashes < MaxCrashes
   /\ current' = None /\ canPost' = FALSE /\ crashes' = crashes + 1
   /\ toRN' = Append(toRN, Event("crashed", None, 0))
+  /\ mainQueue' = SelectSeq(mainQueue, LAMBDA task: task.event.type = "navigated")
   /\ UNCHANGED <<rnVars, capable, nextDoc, mounts, toNative, toPage>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 
@@ -250,15 +286,18 @@ NativePost ==
   /\ toNative # <<>>
   /\ toNative' = Tail(toNative)
   /\ toPage' = IF canPost THEN Append(toPage, Head(toNative)) ELSE toPage
-  /\ UNCHANGED <<rnVars, capable, current, canPost, nextDoc, crashes, mounts, toRN>>
+  /\ UNCHANGED <<rnVars, capable, current, canPost, nextDoc, crashes, mounts, toRN, mainQueue>>
   /\ UNCHANGED <<pageVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-\* The page client in the current document. A post reaches native at once and in order: bridgeReceive / the
-\* web message listener sets bridgeOrigin / replyProxy and emits onBridge. So a page's messages come after its commit's
-\* `navigated`, as MinimalWebViewScripts.kt documentEnded relies on, and before the next commit's.
+\* The page client in the current document. Its posts reach native's web message listener at once, or WebView 119+ posts
+\* the call to the listener to native's main thread.
 
-PagePost(e) == canPost' = TRUE /\ toRN' = Append(toRN, e)
+PagePost(e) ==
+  \E webViewPostsListenerCall \in BOOLEAN:
+    IF webViewPostsListenerCall
+    THEN mainQueue' = Append(mainQueue, Task(e, TRUE)) /\ UNCHANGED <<canPost, toRN>>
+    ELSE Listener(e, FALSE, mainQueue)
 
 \* `ready` at DOMContentLoaded
 PageReady ==
@@ -305,20 +344,20 @@ PageReceive ==
   /\ IF current # None /\ PageClient(current) /\ Accepts(current, Head(toPage))
      THEN Act(current, Head(toPage))
      ELSE UNCHANGED <<running, pageCall, runs, wrongPage, carriedOver>>
-  /\ UNCHANGED <<rnVars, capable, current, canPost, nextDoc, crashes, mounts, toRN, toNative>>
+  /\ UNCHANGED <<rnVars, capable, current, canPost, nextDoc, crashes, mounts, toRN, toNative, mainQueue>>
   /\ UNCHANGED <<allowed, saidReady, posted, navRejected, settled, rnSaw>>
 
 -----------------------------------------------------------------------------
 
 Next ==
   \/ Attach \/ Detach \/ AppSend("call") \/ AppSend("event") \/ Timeout \/ RNReceive \/ RNAnswer
-  \/ Commit \/ Crash \/ NativePost
+  \/ Commit \/ NativeEnd \/ NativeDeliver \/ Crash \/ NativePost
   \/ PageReady \/ PageCall \/ PageAnswer \/ PageReceive
 
 \* Native and the page keep going; the app, the user (navigation, unmount) and the timers need not.
 Fairness ==
-  /\ WF_vars(RNReceive) /\ WF_vars(RNAnswer) /\ WF_vars(NativePost) /\ WF_vars(PageReceive)
-  /\ WF_vars(PageReady) /\ WF_vars(PageAnswer)
+  /\ WF_vars(RNReceive) /\ WF_vars(RNAnswer) /\ WF_vars(NativeEnd) /\ WF_vars(NativeDeliver) /\ WF_vars(NativePost)
+  /\ WF_vars(PageReceive)  /\ WF_vars(PageReady) /\ WF_vars(PageAnswer)
 
 Spec == Init /\ [][Next]_vars /\ Fairness
 
@@ -343,4 +382,7 @@ RightPage == ~wrongPage
 
 \* 4. What RN queued for a page that never said `ready` does not reach the next page.
 NotCarriedOver == ~carriedOver
+
+\* 5. A page's own call is answered while the page is shown.
+PageCallAnswered == \A d \in Docs : (pageCall[d] = "pending") ~> (pageCall[d] = "done" \/ current # d)
 =============================================================================

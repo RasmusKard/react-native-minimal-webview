@@ -1,6 +1,9 @@
 package expo.modules.sampleextension
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.AndroidRuntimeException
 import android.util.Log
 import android.webkit.HttpAuthHandler
@@ -67,8 +70,28 @@ class SampleExtensionModule : Module() {
     AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
+    AsyncFunction("busyMainInSlices") { ms: Long -> busyMainInSlices(ms) }.runOnQueue(Queues.MAIN)
+    AsyncFunction("busyMainAhead") { ms: Long -> busyMainAhead(ms) }.runOnQueue(Queues.MAIN)
     AsyncFunction("destroyedWebViewCalls") { since: Long -> destroyedWebViewCalls(since) }
   }
+}
+
+private const val BUSY_SLICE_MS = 20L
+
+private fun busyMainInSlices(ms: Long) {
+  val main = Handler(Looper.getMainLooper())
+  val until = SystemClock.uptimeMillis() + ms
+  lateinit var slice: Runnable
+  slice = Runnable {
+    SystemClock.sleep(BUSY_SLICE_MS)
+    if (SystemClock.uptimeMillis() < until) main.post(slice)
+  }
+  main.post(slice)
+}
+
+private fun busyMainAhead(ms: Long) {
+  val main = Handler(Looper.getMainLooper())
+  repeat((ms / BUSY_SLICE_MS).toInt()) { main.post { SystemClock.sleep(BUSY_SLICE_MS) } }
 }
 
 private fun destroyedWebViewCalls(since: Long): Int {

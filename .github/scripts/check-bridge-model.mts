@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const VERSION = '1.7.4';
 const SHA256 = '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88';
 const MODEL = new URL('../../src/__tests__/bridge-model/', import.meta.url);
-const TEMPORAL = ['EverySettles'];
+const TEMPORAL = ['EverySettles', 'PageCallAnswered'];
 
 const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
   {
@@ -55,6 +55,24 @@ const MUTANTS: { bug: string; from: string; to: string; breaks: string[] }[] = [
     from: 'NeverSaidReady == phase = "loading"',
     to: 'NeverSaidReady == FALSE',
     breaks: ['NotCarriedOver'],
+  },
+  {
+    bug: "MinimalWebViewScripts.kt's web message listener delivers at once: WebView before 119 calls it ahead of the commit's onPageStarted",
+    from: 'ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue',
+    to: 'ListenerPosts(calledFromMainQueue) == FALSE',
+    breaks: ['PageCallAnswered', 'EverySettles'],
+  },
+  {
+    bug: "MinimalWebViewScripts.kt's web message listener posts its delivery on WebView 119+ too, behind the next commit's onPageStarted",
+    from: 'ListenerPosts(calledFromMainQueue) == ~calledFromMainQueue',
+    to: 'ListenerPosts(calledFromMainQueue) == TRUE',
+    breaks: ['EverySettles'],
+  },
+  {
+    bug: "MinimalWebViewScripts.kt documentEnded(CRASHED) keeps the dead page's deliveries (no `removeCallbacksAndMessages`)",
+    from: `/\\ mainQueue' = SelectSeq(mainQueue, LAMBDA task: task.event.type = "navigated")`,
+    to: "/\\ mainQueue' = mainQueue",
+    breaks: ['EverySettles'],
   },
 ];
 

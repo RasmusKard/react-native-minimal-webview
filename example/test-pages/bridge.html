@@ -3,9 +3,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Bridge</title>
 <script>
-  if (location.search.includes('callFromHead=1') && window.nativeBridge) {
+  const params = new URLSearchParams(location.search);
+  if (params.has('callFromHead') && window.nativeBridge) {
     nativeBridge.call('echo', { head: true }).then((result) => (window.__head = { result }), (error) => (window.__head = { error: error.code }));
   }
+  if (params.has('answerOnHide') && window.nativeBridge) {
+    nativeBridge.handle('untilHide', () => new Promise((resolve) => addEventListener('pagehide', () => resolve('hidden'))));
+  }
+  if (params.has('redirectTo')) addEventListener('DOMContentLoaded', () => location.replace(params.get('redirectTo')));
+  if (params.has('holdMs')) document.write(`<script src="/slow?ms=${params.get('holdMs')}"></scr` + 'ipt>');
 </script>
 <script src="/common.js"></script>
 <style>body{font:16px system-ui;margin:12px}a,button,input{display:block;margin:10px 0;font-size:16px}</style>
