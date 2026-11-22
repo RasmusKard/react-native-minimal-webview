@@ -48,6 +48,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number) {
   } else {
     send({ kind: 'ready' });
   }
+  // A page restored from the back-forward cache does not run its scripts again.
   w.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
     endpoint.rejectPending('navigated', 'the page was left before the call was answered');
