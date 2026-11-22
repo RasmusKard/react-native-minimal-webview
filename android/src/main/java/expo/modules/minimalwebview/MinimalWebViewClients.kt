@@ -48,7 +48,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
   }
 
   override fun onNavigationCompleted(navigation: Navigation) {
-    if (navigation.didCommit() && !navigation.isSameDocument) owner.endDocument(DocumentEnd.COMMITTED)
+    if (navigation.didCommit() && !navigation.isSameDocument) owner.documents.end(DocumentEnd.COMMITTED)
     if (navigation.didCommit()) owner.url = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
@@ -106,7 +106,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   // blocked redirect) gets no load events and no outcome here.
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
-      owner.endDocument(DocumentEnd.COMMITTED)
+      owner.documents.end(DocumentEnd.COMMITTED)
       owner.loadStarted()
     }
     observing("onPageStarted", WEB_VIEW, STRING, Bitmap::class.java) { it.onPageStarted(view, url, favicon) }

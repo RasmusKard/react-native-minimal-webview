@@ -264,19 +264,18 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   fun emit(key: String, name: String, payload: Map<String, Any?>) =
     onHookEvent(mapOf("key" to key, "name" to name, "payload" to payload))
 
-  private var documentOpen = false
-
-  internal fun endDocument(reason: DocumentEnd) {
-    val opening = reason == DocumentEnd.COMMITTED && !documentOpen
-    documentOpen = reason == DocumentEnd.COMMITTED
-    fileUpload.cancel()
-    navigation.documentEnded()
-    scripts.documentEnded(reason)
-    fullscreen.documentEnded(reason)
-    if (opening) return
-    asks.documentEnded(reason)
-    hookContexts.forEach { it.documentEnded(reason) }
-  }
+  internal val documents = Documents(
+    core = { reason ->
+      fileUpload.cancel()
+      navigation.documentEnded()
+      scripts.documentEnded(reason)
+      fullscreen.documentEnded(reason)
+    },
+    asksAndHooks = { reason ->
+      asks.documentEnded(reason)
+      hookContexts.forEach { it.documentEnded(reason) }
+    }
+  )
 
   internal fun loadStarted() {
     loading = true
@@ -311,7 +310,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     progress = 0.0
     refresher.pageFinished()
     onProcessGone(mapOf("cause" to cause, "recovered" to reload))
-    // A detached view's window reports GONE: onWindowVisibilityChanged recovers once it is shown.
+    // A detached view's window reports GONE.
     if (windowVisibility == View.VISIBLE) recover()
     stateChanged()
   }
@@ -346,14 +345,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     downloads.detach()
     if (!hasWebView || recovering) {
       pendingRecovery = null
-      return endDocument(DocumentEnd.CLOSING)
+      return documents.end(DocumentEnd.CLOSING)
     }
     webView.stopLoading()
     tearDown(DocumentEnd.CLOSING)
   }
 
   private fun tearDown(reason: DocumentEnd) {
-    endDocument(reason)
+    documents.end(reason)
     val detached = hookContexts
     detached.forEach { it.detach() }
     hookContexts = emptyList()
@@ -465,6 +464,18 @@ private val urlAuthority = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#@]*@)?(\\[[
 
 /** The special schemes' default ports (the WHATWG URL Standard's). */
 internal val defaultPorts = mapOf("http" to 80, "https" to 443, "ws" to 80, "wss" to 443, "ftp" to 21)
+
+/** The first commit after mount or a crash opens a Document and ends none: only [core] hears it. */
+internal class Documents(private val core: (DocumentEnd) -> Unit, private val asksAndHooks: (DocumentEnd) -> Unit) {
+  private var open = false
+
+  fun end(reason: DocumentEnd) {
+    val opening = reason == DocumentEnd.COMMITTED && !open
+    open = reason == DocumentEnd.COMMITTED
+    core(reason)
+    if (!opening) asksAndHooks(reason)
+  }
+}
 
 /**
  * Records a renderer death at [now] in [times] and says whether to reload after it: not after more than
