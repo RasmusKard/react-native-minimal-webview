@@ -14,7 +14,7 @@ enum OriginRules {
     origin(security.protocol, security.host, security.port)
   }
 
-  static func allows(_ rules: [String], _ origin: String) -> Bool {
+  @MainActor static func allows(_ rules: [String], _ origin: String) -> Bool {
     let value = parse(origin)
     return rules.contains { rule in
       guard let r = parse(rule), let o = value, !o.wildcard else { return rule == "*" }
@@ -22,11 +22,11 @@ enum OriginRules {
     }
   }
 
-  nonisolated(unsafe) private static let pattern = #/(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?/#
+  @MainActor private static let pattern = #/(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?/#
 
   private struct Parsed { let scheme: Substring, wildcard: Bool, host: Substring, port: Int }
 
-  private static func parse(_ text: String) -> Parsed? {
+  @MainActor private static func parse(_ text: String) -> Parsed? {
     guard let m = try? pattern.wholeMatch(in: text.lowercased()) else { return nil }
     return Parsed(scheme: m.1, wildcard: m.2 != nil, host: m.3, port: m.4.flatMap { Int($0) } ?? (m.1 == "https" ? 443 : 80))
   }

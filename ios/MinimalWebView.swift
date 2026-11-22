@@ -48,9 +48,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// WebKit hides substitute-data loads (an html source) from the back-forward list.
   private var htmlNavigation: WKNavigation?
   private var htmlCommit: (url: String, item: WKBackForwardListItem?)?
-  var ownLoads: [(url: URL, checks: Int)] = []
-  var mainFrameChecks = 0
-  private(set) lazy var asks = Asks { [weak self] in self?.onHookEvent($0) }
+  var ownLoads = OwnLoads()
+  private(set) lazy var asks = Asks { [onHookEvent] in onHookEvent($0) }
   var hookContexts: [HookContext] = []
   var askedAndAllowed: [Bool: Set<String>] = [:]
   private var preparing = false
@@ -58,7 +57,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var refLoad: URL?
   /// WKWebView keeps the previous page after a failed main-frame load.
   private(set) var failedUrl: String?
-  private var outcome: String?
+  private var outcome: Loads.Outcome?
   private var lastEmitted: NSDictionary?
   private var updateScheduled = false
   private var crashTimes: [TimeInterval] = []
@@ -75,7 +74,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
-    _ = asks
     NotificationCenter.default.addObserver(
       self, selector: #selector(recoverIfVisible), name: UIApplication.didBecomeActiveNotification, object: nil)
   }
@@ -164,7 +162,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     } else {
       let baseURL = source.baseUrl.flatMap(URL.init)
       // WebKit puts the html load through decidePolicyFor at its base URL, about:blank without one.
-      if let own = baseURL ?? URL(string: "about:blank") { ownLoads.append((own, mainFrameChecks)) }
+      if let own = baseURL ?? URL(string: "about:blank") { ownLoads.started(own) }
       htmlNavigation = webView?.loadHTMLString(source.html ?? "", baseURL: baseURL)
     }
   }
@@ -184,7 +182,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func loadProgrammatic(_ request: URLRequest, inSourceRoot: Bool = true) {
-    if let url = request.url { ownLoads.append((url, mainFrameChecks)) }
+    if let url = request.url { ownLoads.started(url) }
     if let url = request.url, url.isFileURL {
       let access = ReadAccess.root(for: url, inSourceRoot ? source?.readAccessRoot : nil)
       if let warning = access.warning { warn(warning) }
@@ -304,7 +302,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   /// WebKit's KVO fires before the delegate callbacks, and clears isLoading before it reports a failure: the state is
   /// read a main-queue turn later.
   private func scheduleUpdate() {
-    if let webView, webView.isLoading, lastEmitted?["loading"] as? Bool != true { emitState() }
+    if loadStartUnsent { emitState() }
     guard !updateScheduled else { return }
     updateScheduled = true
     DispatchQueue.main.async { [weak self] in
@@ -314,6 +312,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       emitState()
     }
   }
+
+  private var loadStartUnsent: Bool { webView?.isLoading == true && lastEmitted?["loading"] as? Bool != true }
 
   private func emitState() {
     guard let webView else { return }
@@ -325,7 +325,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       "progress": webView.estimatedProgress,
       "canGoBack": webView.canGoBack,
       "canGoForward": webView.canGoForward,
-      "outcome": webView.isLoading ? NSNull() : outcome as Any? ?? NSNull()
+      "outcome": webView.isLoading ? NSNull() : outcome?.rawValue as Any? ?? NSNull()
     ]
     guard state != lastEmitted else { return }
     lastEmitted = state
@@ -337,7 +337,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   /// Reports a failed main-frame load to onError and keeps its URL as `failedUrl`; returns the load's outcome.
-  private func ended(with error: Error) -> String {
+  private func ended(with error: Error) -> Loads.Outcome {
     let nsError = error as NSError
     let end = Loads.ended(by: nsError)
     guard let kind = end.kind else { return end.outcome }
@@ -389,7 +389,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     endDocument(.committed)
-    ownLoads.removeAll { $0.checks < mainFrameChecks }
+    ownLoads.committed()
     failedUrl = nil
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
@@ -412,7 +412,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   private func loadEnded(_ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
-    outcome = error.map { ended(with: $0) } ?? "finished"
+    outcome = error.map { ended(with: $0) } ?? .finished
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
     scheduleUpdate()
@@ -422,7 +422,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource
     endDocument(.crashed)
-    if lastEmitted?["loading"] as? Bool == true { outcome = "failed" }
+    if lastEmitted?["loading"] as? Bool == true { outcome = .failed }
     if recovered {
       recoveryPending = true
       recoverIfVisible()

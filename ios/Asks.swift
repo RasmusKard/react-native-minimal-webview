@@ -1,3 +1,4 @@
+@MainActor
 final class Asks {
   private let send: ([String: Any]) -> Void
   private var pending: [Int: (Any?) -> Void] = [:]
@@ -8,12 +9,12 @@ final class Asks {
     self.send = send
   }
 
-  /// Sends the ask to JS and returns its id, for `cancel`. Once the view closed it answers nil at once.
+  /// Sends the ask to JS and returns its id, for `cancel`. Once the view closed it answers nil at once and returns nil.
   @discardableResult
-  func ask(_ key: String, _ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) -> Int {
+  func ask(_ key: String, _ name: String, _ payload: [String: Any], _ onAnswer: @escaping (Any?) -> Void) -> Int? {
     guard !closed else {
       onAnswer(nil)
-      return 0
+      return nil
     }
     nextId += 1
     pending[nextId] = onAnswer

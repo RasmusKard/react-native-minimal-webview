@@ -17,19 +17,46 @@ enum Loads {
     return components.string ?? url.absoluteString
   }
 
-  static func ended(by error: NSError) -> (outcome: String, kind: String?) {
+  enum Outcome: String {
+    case finished, failed, cancelled
+  }
+
+  static func ended(by error: NSError) -> (outcome: Outcome, kind: String?) {
     switch (error.domain, error.code) {
     // WebKitErrorFrameLoadInterruptedByPolicyChange: a download, a 204, a blocked redirect.
     case (NSURLErrorDomain, NSURLErrorCancelled), ("WebKitErrorDomain", 102):
-      return (outcome: "cancelled", kind: nil)
+      return (outcome: .cancelled, kind: nil)
     // WebKitErrorPlugInWillHandleLoad: WebKit ends the load once a media document has committed, and its video loads the file.
     case ("WebKitErrorDomain", 204):
-      return (outcome: "finished", kind: nil)
+      return (outcome: .finished, kind: nil)
     case (NSURLErrorDomain, NSURLErrorClientCertificateRequired...NSURLErrorSecureConnectionFailed):
-      return (outcome: "failed", kind: "ssl")
+      return (outcome: .failed, kind: "ssl")
     default:
-      return (outcome: "failed", kind: "network")
+      return (outcome: .failed, kind: "network")
     }
+  }
+}
+
+/// The loads the view starts itself, which skip the navigation rules at their own main-frame policy check.
+struct OwnLoads {
+  private var loads: [(url: URL, checksBefore: Int)] = []
+  private var checks = 0
+
+  mutating func started(_ url: URL) {
+    loads.append((url, checks))
+  }
+
+  /// Counts a main-frame policy check for `target`, and reports whether it is an own load's, which it uses up.
+  mutating func check(_ target: URL) -> Bool {
+    checks += 1
+    guard let own = loads.firstIndex(where: { Loads.sameURL($0.url, target) }) else { return false }
+    loads.remove(at: own)
+    return true
+  }
+
+  /// Drops each load that a check for another URL has passed over since it started.
+  mutating func committed() {
+    loads.removeAll { $0.checksBefore < checks }
   }
 }
 

@@ -302,7 +302,7 @@ final class HookContext: WebViewContext {
     handlers.forEach { $0(.closing) }
   }
 
-  private func onMain(_ block: @escaping () -> Void) {
-    if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+  private func onMain(_ block: @escaping @MainActor () -> Void) {
+    if Thread.isMainThread { MainActor.assumeIsolated(block) } else { DispatchQueue.main.async(execute: block) }
   }
 }

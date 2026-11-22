@@ -31,10 +31,7 @@ extension MinimalWebView {
 
   func takeOwnLoad(_ action: WKNavigationAction) -> Bool {
     guard action.targetFrame?.isMainFrame == true, let target = action.request.url else { return false }
-    mainFrameChecks += 1
-    guard let own = ownLoads.firstIndex(where: { Loads.sameURL($0.url, target) }) else { return false }
-    ownLoads.remove(at: own)
-    return true
+    return ownLoads.check(target)
   }
 
   /// WebKit reports a link a script clicks (`element.click()`) as `.linkActivated` too, and no public
@@ -88,12 +85,13 @@ extension MinimalWebView {
       finish(request, decision.action, decision.rule, completion)
       return
     }
-    let id = asks.ask("core", "onNavigationRequest", request.payload) { [weak self] answer in
+    let asked = asks.ask("core", "onNavigationRequest", request.payload) { [weak self] answer in
       guard let self else { return completion(false) }
       let action = NavigationRules.answer(answer)
       if action == .allow { self.askedAndAllowed[request.mainFrame, default: []].insert(request.url) }
       self.finish(request, action, decision.rule, completion)
     }
+    guard let id = asked else { return }
     DispatchQueue.main.asyncAfter(deadline: .now() + askTimeout) { [weak self] in
       self?.asks.cancel(id)
     }

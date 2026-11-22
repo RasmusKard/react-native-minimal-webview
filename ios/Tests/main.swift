@@ -59,7 +59,7 @@ for testCase in originCases {
   guard let name = testCase["name"] as? String, let rules = testCase["rules"] as? [String],
     let origin = testCase["origin"] as? String, let allowed = testCase["allowed"] as? Bool
   else { fail("malformed case \(testCase)") }
-  check("origin \(name): expected allowed \(allowed)", OriginRules.allows(rules, origin) == allowed)
+  check("origin \(name): expected allowed \(allowed)", MainActor.assumeIsolated { OriginRules.allows(rules, origin) } == allowed)
 }
 for (scheme, host, port, expected) in [
   ("https", "example.com", 0, "https://example.com"), ("https", "example.com", 443, "https://example.com"),
@@ -70,31 +70,33 @@ for (scheme, host, port, expected) in [
   check("origin(\(scheme), \(host), \(port)): expected \(expected), got \(got)", got == expected)
 }
 
-var sent: [[String: Any]] = []
-var replies: [String?] = []
-let asks = Asks { sent.append($0) }
-func ask() -> Int { asks.ask("hook", "q", ["a": 1]) { replies.append($0 as? String) } }
-func cancelled() -> [Int] {
-  sent.filter { $0["key"] as? String == "core" && $0["name"] as? String == "askCancelled" }.compactMap { ($0["payload"] as? [String: Any])?["askId"] as? Int }
+MainActor.assumeIsolated {
+  var sent: [[String: Any]] = []
+  var replies: [String?] = []
+  let asks = Asks { sent.append($0) }
+  @MainActor func ask() -> Int? { asks.ask("hook", "q", ["a": 1]) { replies.append($0 as? String) } }
+  func cancelled() -> [Int] {
+    sent.filter { $0["key"] as? String == "core" && $0["name"] as? String == "askCancelled" }.compactMap { ($0["payload"] as? [String: Any])?["askId"] as? Int }
+  }
+  let answered = ask()!
+  asks.answer(answered, "yes")
+  asks.answer(answered, "late")
+  check("ask answered once: \(replies), \(sent)", replies == ["yes"] && sent.first?["key"] as? String == "hook" && sent.first?["name"] as? String == "q" && sent.first?["askId"] as? Int == answered)
+  let timedOut = ask()!
+  asks.cancel(timedOut)
+  asks.answer(timedOut, "late")
+  asks.cancel(timedOut)
+  check("ask cancelled: \(replies), \(cancelled())", replies == ["yes", nil] && cancelled() == [timedOut])
+  let committed = ask()!
+  asks.documentEnded(.committed)
+  let closing = ask()!
+  asks.documentEnded(.closing)
+  asks.answer(closing, "late")
+  check("ask at a Document end: \(replies), \(cancelled())", replies == ["yes", nil, nil, nil] && cancelled() == [timedOut, committed])
+  let before = sent.count
+  let afterClosing = ask()
+  check("ask after closing: \(replies), \(sent.count - before) sent, id \(afterClosing as Any)", replies == ["yes", nil, nil, nil, nil] && sent.count == before && afterClosing == nil)
 }
-let answered = ask()
-asks.answer(answered, "yes")
-asks.answer(answered, "late")
-check("ask answered once: \(replies), \(sent)", replies == ["yes"] && sent.first?["key"] as? String == "hook" && sent.first?["name"] as? String == "q" && sent.first?["askId"] as? Int == answered)
-let timedOut = ask()
-asks.cancel(timedOut)
-asks.answer(timedOut, "late")
-asks.cancel(timedOut)
-check("ask cancelled: \(replies), \(cancelled())", replies == ["yes", nil] && cancelled() == [timedOut])
-let committed = ask()
-asks.documentEnded(.committed)
-let closing = ask()
-asks.documentEnded(.closing)
-asks.answer(closing, "late")
-check("ask at a Document end: \(replies), \(cancelled())", replies == ["yes", nil, nil, nil] && cancelled() == [timedOut, committed])
-let before = sent.count
-_ = ask()
-check("ask after closing: \(replies), \(sent.count - before) sent", replies == ["yes", nil, nil, nil, nil] && sent.count == before)
 
 let recoveryPath = "ios/Tests/vectors/recovery.json"
 guard let recoveryData = FileManager.default.contents(atPath: recoveryPath),
@@ -215,7 +217,7 @@ let changeCases: [(String, Any?, Any?, Bool)] = [
 ]
 for (name, was, value, same) in changeCases { check("hookOptions change \(name)", staysOn(was, value) == same) }
 
-let readCases: [(String, String, String?, String, Bool)] = [
+let readCases: [(name: String, file: String, root: String?, expected: String, warns: Bool)] = [
   ("no root: the file's directory", "file:///a/site/index.html", nil, "file:///a/site/", false),
   ("the file's own directory", "file:///a/site/index.html", "file:///a/site/", "file:///a/site/", false),
   ("an ancestor", "file:///a/site/pages/index.html", "file:///a/", "file:///a/", false),
@@ -235,7 +237,7 @@ for (name, file, root, expected, warns) in readCases {
     access.root.isFileURL && access.root.standardizedFileURL == URL(string: expected)!.standardizedFileURL
       && (access.warning != nil) == warns)
 }
-let sameURLCases: [(String, String, Bool)] = [
+let sameURLCases: [(a: String, b: String, same: Bool)] = [
   ("https://example.com/x", "https://example.com/x", true),
   ("https://example.com", "https://example.com/", true),
   ("https://example.com?a=1", "https://example.com/?a=1", true),
@@ -262,14 +264,35 @@ for (a, b, same) in sameURLCases {
   check("same URL, \(a) and \(b): expected \(same)", Loads.sameURL(first, second) == same && Loads.sameURL(second, first) == same)
 }
 
+let pageA = URL(string: "https://example.com/a")!
+let pageB = URL(string: "https://example.com/b")!
+var loads = OwnLoads()
+loads.started(pageA)
+check("own load: its check skips the rules, once", loads.check(URL(string: "https://Example.com:443/a")!) && !loads.check(pageA))
+loads = OwnLoads()
+loads.started(pageA)
+loads.committed()
+check("own load: the commit of the page being left keeps a load not checked yet", loads.check(pageA))
+loads = OwnLoads()
+loads.started(pageA)
+loads.started(pageB)
+_ = loads.check(pageA)
+loads.committed()
+check("own load: a commit drops a load another check passed over, so a page can't navigate to it later", !loads.check(pageB))
+loads = OwnLoads()
+loads.started(pageA)
+_ = loads.check(pageB)
+loads.started(pageB)
+check("own load: a load started after a check is kept until its own", loads.check(pageB))
+
 let webKit = "WebKitErrorDomain"
-func failed(_ codes: [Int], _ kind: String) -> [(String, Int, String, String?)] {
-  codes.map { (NSURLErrorDomain, $0, "failed", kind) }
+func failed(_ codes: [Int], _ kind: String) -> [(domain: String, code: Int, outcome: Loads.Outcome, kind: String?)] {
+  codes.map { (NSURLErrorDomain, $0, .failed, kind) }
 }
-let endCases: [(String, Int, String, String?)] = [
-  (NSURLErrorDomain, NSURLErrorCancelled, "cancelled", nil),
-  (webKit, 102, "cancelled", nil),
-  (webKit, 204, "finished", nil),
+let endCases: [(domain: String, code: Int, outcome: Loads.Outcome, kind: String?)] = [
+  (NSURLErrorDomain, NSURLErrorCancelled, .cancelled, nil),
+  (webKit, 102, .cancelled, nil),
+  (webKit, 204, .finished, nil),
 ] + failed([
   NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateUntrusted,
   NSURLErrorServerCertificateHasUnknownRoot, NSURLErrorServerCertificateNotYetValid,
@@ -278,17 +301,17 @@ let endCases: [(String, Int, String, String?)] = [
   NSURLErrorSecureConnectionFailed + 1, NSURLErrorClientCertificateRequired - 1, NSURLErrorNotConnectedToInternet,
   NSURLErrorTimedOut, NSURLErrorCannotFindHost, NSURLErrorAppTransportSecurityRequiresSecureConnection, 102, 204,
 ], "network") + [
-  (webKit, 101, "failed", "network"), // cannot show URL: a scheme WebKit doesn't load
-  (webKit, 103, "failed", "network"), // a restricted port
-  (webKit, NSURLErrorCancelled, "failed", "network"),
-  (webKit, NSURLErrorServerCertificateUntrusted, "failed", "network"),
-  ("WKErrorDomain", 102, "failed", "network"),
+  (webKit, 101, .failed, "network"), // cannot show URL: a scheme WebKit doesn't load
+  (webKit, 103, .failed, "network"), // a restricted port
+  (webKit, NSURLErrorCancelled, .failed, "network"),
+  (webKit, NSURLErrorServerCertificateUntrusted, .failed, "network"),
+  ("WKErrorDomain", 102, .failed, "network"),
 ]
 for (domain, code, outcome, kind) in endCases {
   let end = Loads.ended(by: NSError(domain: domain, code: code))
   check("load end, \(domain) \(code): expected \(outcome) \(kind ?? "nil"), got \(end.outcome) \(end.kind ?? "nil")", end.outcome == outcome && end.kind == kind)
 }
-let nameCases: [(String, String)] = [
+let nameCases: [(suggested: String, saved: String)] = [
   (".", "download"), ("..", "download"), ("", "download"), ("...", "..."), ("a.txt", "a.txt"),
   ("a/b.txt", "a_b.txt"), ("../x", ".._x"), ("/", "_"), ("../..", ".._.."),
 ]
