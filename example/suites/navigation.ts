@@ -7,6 +7,7 @@ import {
   fresh,
   idle,
   openPage,
+  poll,
   recordExternal,
   sleep,
   tap,
@@ -316,7 +317,7 @@ export async function navigation(h: Harness, r: Reporter) {
       if (${kinds.includes('blob:')}) add((f) => { f.src = URL.createObjectURL(new Blob([run('blob:')], { type: 'text/html' })); });
     })()`);
     const ran = async () => (await h.ref.current?.evaluate('window.__frames')) as string[];
-    await until(async () => {
+    await poll(async () => {
       const seen = await ran();
       return kinds.every((kind) => seen.includes(kind));
     }, 5000);
