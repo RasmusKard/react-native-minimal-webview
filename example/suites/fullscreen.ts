@@ -5,6 +5,7 @@ import {
   idle,
   openPage,
   pageLog,
+  recreate,
   sleep,
   tapPoint,
   waitFor,
@@ -17,6 +18,7 @@ import { type Harness, type Reporter } from '../harness/runner';
 
 export async function fullscreen(h: Harness, r: Reporter) {
   if (Platform.OS !== 'android') {
+    await recreate(h, { ios: { configuration: { allowsInlineMediaPlayback: false } } });
     await openPage(h, fresh(h, '/media.html'));
     const lines = await pageLog(h, async () =>
       r.drive({ action: 'tap', point: await tapPoint(h, 'play') })
