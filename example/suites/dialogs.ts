@@ -7,20 +7,19 @@ import {
   openPage,
   pageLog,
   poll,
-  sleep,
   touch,
   waitFor,
   waitForLoad,
+  waitForPresentation,
+  clickWithoutWaiting,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
 export async function dialogs(h: Harness, r: Reporter) {
-  const open = (id: string) =>
-    void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('${id}').click(), 0)`);
   const up = async (id: string) => {
     await openPage(h, fresh(h, '/dialogs.html'));
-    open(id);
-    await sleep(1000);
+    clickWithoutWaiting(h, id);
+    await waitForPresentation();
   };
   const tapReaches = async () => {
     await openPage(h, fresh(h, '/dialogs.html'));
@@ -76,9 +75,8 @@ export async function dialogs(h: Harness, r: Reporter) {
     const lines = await pageLog(
       h,
       () => {
-        // Ask for the press first and do not await: on iOS evaluate does not return while a dialog blocks the page.
         r.drive({ action: 'press', text: button });
-        open(id);
+        clickWithoutWaiting(h, id);
       },
       15000
     );
@@ -86,8 +84,8 @@ export async function dialogs(h: Harness, r: Reporter) {
   }
   if (Platform.OS === 'android') {
     const lines = await pageLog(h, async () => {
-      open('confirm');
-      await sleep(1000);
+      clickWithoutWaiting(h, 'confirm');
+      await waitForPresentation();
       r.drive({ action: 'back' });
     });
     r.check('back answers a confirm as Cancel', lines?.join() === 'confirm false', lines);
@@ -98,9 +96,7 @@ export async function dialogs(h: Harness, r: Reporter) {
     const remounted = await happens(waitForLoad(h, () => h.remount()));
     await openPage(h, fresh(h, '/dialogs.html'));
     const lines = await pageLog(h, () => {
-      void h.ref.current?.evaluate(
-        `setTimeout(() => document.getElementById('confirm').click(), 0)`
-      );
+      clickWithoutWaiting(h, 'confirm');
       setTimeout(() => void seams.tapAlert('OK'), 1000);
     });
     r.check(

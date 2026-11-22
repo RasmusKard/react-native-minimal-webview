@@ -11,6 +11,7 @@ import {
   waitForLoad,
   happens,
   poll,
+  waitForPresentation,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
@@ -20,7 +21,7 @@ export async function fullscreen(h: Harness, r: Reporter) {
     const lines = await pageLog(h, async () =>
       r.drive({ action: 'tap', point: await tapPoint(h, 'play') })
     );
-    await sleep(1000);
+    await waitForPresentation();
     const remounted = await happens(waitForLoad(h, () => h.remount()));
     r.check(
       'an unmount while a video is in fullscreen leaves the app running',

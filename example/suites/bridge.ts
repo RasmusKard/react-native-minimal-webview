@@ -9,6 +9,7 @@ import {
   sleep,
   waitFor,
   poll,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter, withFloor } from '../harness/runner';
 import { OTHER } from '../pages';
@@ -98,7 +99,7 @@ export async function bridge(h: Harness, all: Reporter) {
   const before = h.pageEvents.length;
   await h.ref.current?.evaluate(`nativeBridge.emit('pageEvent', { n: 2 })`).catch(errorCode);
   await waitFor(h, () => h.pageEvents.length > before, 3000);
-  await sleep(200);
+  await quietFor(200);
   r.check('page -> RN event', h.pageEvents.length === before + 1, h.pageEvents);
 
   const inFlight = h.bridge.call('pageSlow').catch(errorCode);

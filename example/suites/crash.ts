@@ -16,6 +16,7 @@ import {
   waitForLoad,
   happens,
   poll,
+  waitForPresentation,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -251,7 +252,7 @@ export async function crash(h: Harness, r: Reporter) {
     const under = fresh(h, '/bridge.html');
     await openPage(h, under);
     h.setCovered(true);
-    await sleep(1000);
+    await waitForPresentation();
     const starts = h.events.loads.length;
     const coveredGone = await kill(14);
     await sleep(2000);

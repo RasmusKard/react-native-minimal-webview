@@ -32,7 +32,7 @@ export async function mountSettings(h: Harness, r: Reporter) {
             settings: { userAgentString: `${AndroidWebView.defaultUserAgent} Remounted/9` },
           },
         },
-    Platform.OS === 'android'
+    { remount: Platform.OS === 'android' }
   );
   const remountedVh = await viewportHeight(h);
   r.check('100vh has a height after the recreation', remountedVh > 0, remountedVh);

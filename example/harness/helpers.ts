@@ -9,6 +9,9 @@ import type {
 import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from './runner';
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Waits `ms`, long enough for an event that must not come to have arrived, so the check after it would see one. */
+export const quietFor = sleep;
+export const waitForPresentation = () => sleep(1000);
 
 export class Timeout extends Error {}
 
@@ -142,6 +145,15 @@ export const click = (h: Harness, id: string, frame?: string) =>
     `${frame ? `document.getElementById(${JSON.stringify(frame)}).contentDocument` : 'document'}.getElementById(${JSON.stringify(id)}).click()`
   );
 
+/**
+ * A click from script on `id` that returns before the click runs and is not awaited: on iOS, evaluate does not return
+ * while a dialog blocks the page.
+ */
+export const clickWithoutWaiting = (h: Harness, id: string) =>
+  void h.ref.current?.evaluate(
+    `setTimeout(() => document.getElementById(${JSON.stringify(id)}).click(), 0)`
+  );
+
 /** Runs `act`, then waits for what onNavigation reports about a URL ending in `path`: that, or undefined after 3 s. */
 export async function nextDecision(h: Harness, act: () => unknown, path: string) {
   const before = h.events.navigations.length;
@@ -183,12 +195,18 @@ export const fresh = (h: Harness, path: string) =>
  * `remount`, it remounts too, for props that don't recreate it, such as an `extensions` entry whose hook has a
  * `configure` step or its own WebView class.
  */
-export async function recreate(h: Harness, props: HarnessProps, remount = false) {
+export async function recreate(
+  h: Harness,
+  props: HarnessProps,
+  { remount = false }: { remount?: boolean } = {}
+) {
   await waitForLoad(h, () => {
     h.setProps(props);
     if (remount) h.remount();
   });
 }
+
+const EVENTS_AFTER_LOAD_END_MS = 100;
 
 /** Loads `page`, a URL or a source with one, and waits until it is the idle page and its load has ended. */
 export async function openPage(
@@ -203,7 +221,7 @@ export async function openPage(
     (s) => s.url === source.uri && idle(s),
     ms
   );
-  await sleep(100);
+  await sleep(EVENTS_AFTER_LOAD_END_MS);
 }
 
 /** Runs `act`, then waits for the lines the page adds to `window.testLog`; null when none come within `ms`. */
@@ -281,7 +299,7 @@ export async function travel(
   clearEvents(h);
   go();
   await waitFor(h, (s) => s.url === url && idle(s));
-  await sleep(500);
+  await quietFor(500);
   const shows = (await h.ref.current?.evaluate('window.shows')) as boolean[] | undefined;
   r.since(
     WEBVIEW.navigationListener,

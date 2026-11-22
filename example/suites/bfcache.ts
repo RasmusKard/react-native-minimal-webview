@@ -13,6 +13,7 @@ import {
   travel,
   waitFor,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, androidWebView, type Harness, type Reporter } from '../harness/runner';
 
@@ -49,7 +50,7 @@ export async function bfcache(h: Harness, r: Reporter) {
   await waitFor(h, (s) => s.url === first && idle(s));
   h.ref.current?.goForward();
   await waitFor(h, (s) => s.url === second && idle(s));
-  await sleep(2000);
+  await quietFor(2000);
   const straddle = (await h.ref.current?.evaluate('window.__straddle')) as
     { error?: string } | null | undefined;
   r.since(
@@ -92,7 +93,7 @@ export async function bfcache(h: Harness, r: Reporter) {
     clearEvents(h);
     h.ref.current?.goBack();
     const back = await happens(waitFor(h, (s) => s.url === one && idle(s)));
-    await sleep(500);
+    await quietFor(500);
     warnings.stop();
     r.check(
       'back with backForwardCacheEnabled set: one load start and end, finished',

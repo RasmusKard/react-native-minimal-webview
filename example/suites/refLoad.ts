@@ -14,6 +14,7 @@ import {
   waitFor,
   waitForLoad,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
@@ -192,7 +193,7 @@ async function backAfterPushState(h: Harness, a: string, b: string) {
   await waitFor(h, (s) => s.url === `${b}#pushed`);
   h.ref.current?.goBack();
   await waitFor(h, (s) => s.url !== `${b}#pushed` && idle(s));
-  await sleep(500);
+  await quietFor(500);
   const { url } = h.state();
   if (url === a) return 'the page before it (its entry skipped)';
   return url === b ? 'the page itself' : url;

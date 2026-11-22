@@ -12,6 +12,7 @@ import {
   happens,
   poll,
   until,
+  quietFor,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
@@ -64,7 +65,7 @@ export async function reissue(h: Harness, r: Reporter) {
   answer = 'late';
   const timedOut = await checkout();
   await answered;
-  await sleep(1000);
+  await quietFor(1000);
   r.check(
     'a late answer is ignored (timeout blocks)',
     timedOut?.action === 'block' && h.state().url === start && asked.length === 3,
@@ -126,7 +127,7 @@ export async function reissue(h: Harness, r: Reporter) {
     )
   );
   await answered;
-  await sleep(1000);
+  await quietFor(1000);
   r.check(
     'an unmount while a navigation ask waits: the remounted WebView loads its source and stays',
     asked.length === pending + 1 && remounted && h.state().url === beforeUnmount,

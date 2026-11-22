@@ -15,6 +15,7 @@ import {
   waitFor,
   poll,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { OTHER, PAGES } from '../pages';
@@ -439,7 +440,7 @@ async function schemes(s: Shape) {
     const link = await href(h, id);
     await click(h, id);
     await until(() => s.external.length > 0, 3000);
-    await sleep(id === 'intent' ? 1000 : 200);
+    await quietFor(id === 'intent' ? 1000 : 200);
     r.check(
       `E${i + 1} schemes: ${link.split(':')[0]}: reaches onOpenExternal as written, the page stays`,
       all(

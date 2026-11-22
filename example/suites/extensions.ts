@@ -35,6 +35,7 @@ import {
   waitForLoad,
   poll,
   happens,
+  clickWithoutWaiting,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER, PAGES_PORT } from '../pages';
@@ -93,7 +94,7 @@ const DECLINED = OTHER;
 const SIGNED_IN = `http://${ios ? '[::1]' : '10.0.2.2'}:${PAGES_PORT}`;
 
 async function inert(h: Harness, r: Reporter) {
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const made = await webViewClass(h);
   r.check(
     "with no extension, the WebView isn't made from the menu hook's class",
@@ -179,10 +180,7 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
     ['confirm', 'confirm true'],
     ['prompt', 'prompt typed'],
   ] as const) {
-    const lines = await pageLog(h, () => {
-      // Not awaited: on iOS evaluate doesn't return while a dialog blocks the page.
-      void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('${id}').click(), 0)`);
-    });
+    const lines = await pageLog(h, () => clickWithoutWaiting(h, id));
     r.check(
       `onDialog answers the ${id}, and the page gets the answer`,
       lines?.join() === expected,
@@ -218,14 +216,12 @@ async function dialogs(h: Harness, r: Reporter, warnings: ReturnType<typeof capt
     ],
   });
   await openPage(h, fresh(h, '/dialogs.html'));
-  void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('alert').click(), 0)`);
+  clickWithoutWaiting(h, 'alert');
   await sleep(1000);
   const remounted = await happens(waitForLoad(h, () => h.remount()));
   hold = false;
   await openPage(h, fresh(h, '/dialogs.html'));
-  const next = await pageLog(h, () => {
-    void h.ref.current?.evaluate(`setTimeout(() => document.getElementById('confirm').click(), 0)`);
-  });
+  const next = await pageLog(h, () => clickWithoutWaiting(h, 'confirm'));
   r.check(
     "an unmount while onDialog hasn't answered aborts its signal, and the next dialog is answered",
     remounted && aborted && next?.join() === 'confirm true',
@@ -286,7 +282,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
   await recreate(
     h,
     { extensions: [menuItems({ items: MENU, onSelect: (event) => chosen.push(event) })] },
-    true
+    { remount: true }
   );
   const made = await webViewClass(h);
   r.check(
@@ -306,7 +302,7 @@ async function menu(h: Harness, r: Reporter, warnings: ReturnType<typeof capture
     selection?.key === 'hl' && selection.label === 'Highlight' && selection.selectedText.length > 0,
     selection
   );
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   h.setProps({ extensions: [menuItems({ items: MENU })] });
   await until(() => warnings.warned(`extension ${KEY}.menuItems`), 3000);
   r.check(
@@ -346,14 +342,14 @@ async function privacy(h: Harness, r: Reporter) {
     const persistent = async () =>
       await h.ref.current?.get('websiteDataStore.persistent').catch(errorCode);
     const before = await persistent();
-    await recreate(h, { extensions: [incognito()] }, true);
+    await recreate(h, { extensions: [incognito()] }, { remount: true });
     const after = await persistent();
     r.check(
       "incognito set at creation gives the WebView a data store that isn't saved",
       before === true && after === false,
       { before, after }
     );
-    await recreate(h, {}, true);
+    await recreate(h, {}, { remount: true });
     return;
   }
   const cookie = async () =>
@@ -361,7 +357,7 @@ async function privacy(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/setcookie?name=incognito&value=1'));
   const set = await cookie();
   await openPage(h, fresh(h, '/'));
-  await recreate(h, { extensions: [incognito()] }, true);
+  await recreate(h, { extensions: [incognito()] }, { remount: true });
   const cleared = await cookie();
   const cacheMode = await h.ref.current?.get('settings.cacheMode').catch(errorCode);
   r.check(
@@ -371,7 +367,7 @@ async function privacy(h: Harness, r: Reporter) {
       cacheMode === AndroidConstants.WebSettings.LOAD_NO_CACHE,
     { set, cleared, cacheMode }
   );
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
 }
 
 async function keyboard(h: Harness, r: Reporter) {
@@ -406,12 +402,12 @@ async function keyboard(h: Harness, r: Reporter) {
     );
     return !!(await poll(async () => (await viewport()) < height, 2000));
   };
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const before = await keyboardShows();
   h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
   await sleep(300);
   const on = await keyboardShows();
-  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, true);
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
   h.setProps({});
   await sleep(300);
   const off = await keyboardShows();
@@ -429,9 +425,9 @@ async function keyboard(h: Harness, r: Reporter) {
     const inset = await h.ref.current?.get('scrollView.adjustedContentInset').catch(errorCode);
     return (inset as { bottom?: number } | undefined)?.bottom;
   };
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const observed = await keyboardInset();
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   h.setProps({ extensions: [removeIosKeyboardObserver()] });
   await sleep(300);
   const removed = await keyboardInset();

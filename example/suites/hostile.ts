@@ -22,6 +22,7 @@ import {
   waitForLoad,
   poll,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 import { HTTPS, OTHER } from '../pages';
@@ -72,7 +73,7 @@ async function bridgeGate({ h, r }: Suite) {
       const value = (await evaluate(h, 'frameReports')) as FrameReport[] | undefined;
       return Array.isArray(value) && value.length >= 2 ? value : undefined;
     });
-    await sleep(1000);
+    await quietFor(1000);
     const leaked = { probes: probes.splice(0), events: events.splice(0) };
     const frame = (name: string) => reports?.find((report) => report.from === name);
     for (const name of ['cross', 'same']) {
@@ -219,7 +220,7 @@ async function newWindows(suite: Suite) {
     const before = await sentinelsNow();
     const clicked = await gesture(suite, id);
     await poll(() => h.events.navigations.length > navigations, 2000);
-    await sleep(1000);
+    await quietFor(1000);
     const decisions = h.events.navigations.slice(navigations);
     const sentinels = await sentinelsNow();
     const scriptMayRun = android && id === 'open-js';

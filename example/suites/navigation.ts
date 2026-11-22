@@ -13,6 +13,7 @@ import {
   until,
   waitFor,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
@@ -139,7 +140,7 @@ export async function navigation(h: Harness, r: Reporter) {
     async () => (await h.ref.current?.evaluate('window.__opened').catch(errorCode)) === true,
     5000
   );
-  await sleep(1000);
+  await quietFor(1000);
   r.check(
     'by default a script cannot open a window without a gesture',
     !external.includes('https://example.com/blocked'),
@@ -319,7 +320,7 @@ export async function navigation(h: Harness, r: Reporter) {
       const seen = await ran();
       return kinds.every((kind) => seen.includes(kind));
     }, 5000);
-    await sleep(500);
+    await quietFor(500);
     const seen = await ran();
     r.check(
       `${label}: ${kinds.join(', ')} iframes load and run`,

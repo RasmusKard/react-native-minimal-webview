@@ -21,7 +21,7 @@ import { type Harness, type Reporter } from '../harness/runner';
 
 export async function sampleExtension(h: Harness, r: Reporter) {
   const mountEnds = h.events.documentEnds.length;
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const phantom = h.events.documentEnds.slice(mountEnds).filter((end) => end.url === '');
   r.check('the first commit after mount ends no Document', phantom.length === 0, phantom);
   const misses: unknown[] = [];
@@ -126,14 +126,14 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   await sleep(100);
   const held = h.ref.current?.hook('sample.pageCounter', 'label').catch(errorCode);
   await sleep(200);
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const unmounted = await Promise.race([held, sleep(3000).then(() => 'still pending')]);
   r.check(
     'unmount rejects a ref.hook in flight with navigated',
     unmounted === 'navigated',
     unmounted
   );
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   h.setProps({ extensions: [sampleHook('hookAuth')] });
   await openPage(h, fresh(h, '/auth?hook=1'));
   const auth = await text(h, 'auth');
@@ -142,7 +142,11 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     auth === 'authorized',
     auth
   );
-  await recreate(h, { extensions: [sampleHook('hookAuth')], withoutPageCounter: true }, true);
+  await recreate(
+    h,
+    { extensions: [sampleHook('hookAuth')], withoutPageCounter: true },
+    { remount: true }
+  );
   const warnings = captureWarnings();
   try {
     h.setProps({ extensions: [sampleHook('hookAuth'), pageCounter()], withoutPageCounter: true });
@@ -163,7 +167,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   const taken = `${taking} takes it, so navigationRules, their defaults and onNavigationRequest don't apply to navigations`;
   const takenWarnings = captureWarnings();
   try {
-    await recreate(h, { extensions: [sampleHook('hookNavigation')] }, true);
+    await recreate(h, { extensions: [sampleHook('hookNavigation')] }, { remount: true });
     for (const n of [1, 2]) {
       const to = fresh(h, `/spa.html?taken=${n}`);
       await h.ref.current?.evaluate(`(location.href = '${to}', 1)`).catch(errorCode);
@@ -179,7 +183,11 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     takenLines.length === 1,
     takenWarnings.lines
   );
-  await recreate(h, { extensions: [sampleHook('hookDialogs'), sampleHook('subclass')] }, true);
+  await recreate(
+    h,
+    { extensions: [sampleHook('hookDialogs'), sampleHook('subclass')] },
+    { remount: true }
+  );
   const made = await h.ref.current?.hook('sample.subclass', 'class').catch(errorCode);
   r.check(
     "its webViewClass (webViewFactory) makes the WebView it's enabled on",
@@ -194,7 +202,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     after === 'after' && h.events.hookEvents.includes('sample.hookDialogs.alert'),
     { after, hookEvents: h.events.hookEvents }
   );
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   h.loadSource({
     html: '<p id="n">Call 415-555-0134 today</p><code id="c">x</code>',
     baseUrl: h.pages,
@@ -233,7 +241,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
 }
 
 async function hookSeams(h: Harness, r: Reporter) {
-  await recreate(h, { extensions: [sampleHook('seams')] }, true);
+  await recreate(h, { extensions: [sampleHook('seams')] }, { remount: true });
   const twice = await h.ref.current?.hook('sample.seams', 'twice', [21]).catch(errorCode);
   r.check('its handle handler reads a whole JS number as a Double', twice === 42, twice);
   if (Platform.OS === 'ios') {
@@ -280,7 +288,7 @@ async function hookSeams(h: Harness, r: Reporter) {
     );
   }
   const closed = await seams.closedViews();
-  await recreate(h, {}, true);
+  await recreate(h, {}, { remount: true });
   const now = await poll(async () => {
     const count = await seams.closedViews();
     return count > closed && count;
