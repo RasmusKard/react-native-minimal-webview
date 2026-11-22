@@ -3,20 +3,22 @@ import UIKit
 import WebKit
 
 final class PlatformSettings {
+  typealias Rejected = (key: String, reason: String)
+
   private var applied: [String: NSObject] = [:]
   private var originals: [String: Any] = [:]
 
   /// Applies `settings`. While creating (`configuration` given, no WebView yet) only the `configuration` root applies;
   /// live, every other root does, and a key applied before and missing now goes back to its value before the first
   /// write. Returns the rejected keys.
-  func apply(_ settings: [String: Any], webView: WKWebView?, configuration: WKWebViewConfiguration? = nil) -> [[String: String]] {
-    var rejected: [[String: String]] = []
+  func apply(_ settings: [String: Any], webView: WKWebView?, configuration: WKWebViewConfiguration? = nil) -> [Rejected] {
+    var rejected: [Rejected] = []
     let creating = configuration != nil
     // Restoring a scroll view's inset can move its offset.
     if !creating { rejected += restore(removedFrom: settings, webView: webView) }
     for (rootName, entries) in settings {
       guard let entries = entries as? [String: Any] else {
-        rejected.append(["key": rootName, "reason": "not an object"])
+        rejected.append((rootName, "not an object"))
         continue
       }
       let isConfiguration = rootName == "configuration"
@@ -27,11 +29,11 @@ final class PlatformSettings {
         if applied[id] == boxed { continue }
         applied[id] = boxed
         guard let object = root(rootName, webView: webView, configuration: configuration) else {
-          rejected.append(["key": id, "reason": "unknown root: use \(Self.roots)"])
+          rejected.append((id, "unknown root: use \(Self.roots)"))
           continue
         }
         if let reason = set(object, key, value, original: isConfiguration ? nil : id) {
-          rejected.append(["key": id, "reason": reason])
+          rejected.append((id, reason))
         }
       }
     }
@@ -39,20 +41,20 @@ final class PlatformSettings {
   }
 
   /// Forgets each applied key `settings` no longer has and sets its original value back; returns those that failed.
-  private func restore(removedFrom settings: [String: Any], webView: WKWebView?) -> [[String: String]] {
+  private func restore(removedFrom settings: [String: Any], webView: WKWebView?) -> [Rejected] {
     var present = Set<String>()
     for (rootName, entries) in settings {
       guard let entries = entries as? [String: Any] else { continue }
       present.formUnion(entries.keys.map { "\(rootName).\($0)" })
     }
-    var failed: [[String: String]] = []
+    var failed: [Rejected] = []
     for id in applied.keys where !present.contains(id) {
       applied[id] = nil
       guard let original = originals.removeValue(forKey: id), let dot = id.firstIndex(of: "."),
         let object = root(String(id[..<dot]), webView: webView, configuration: nil) else { continue }
       let key = String(id[id.index(after: dot)...])
       if let reason = __MRWCatchException({ object.setValue(original is NSNull ? nil : original, forKey: key) }) {
-        failed.append(["key": id, "reason": "removed, but restoring it failed: \(reason)"])
+        failed.append((id, "removed, but restoring it failed: \(reason)"))
       }
     }
     return failed

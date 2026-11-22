@@ -174,10 +174,8 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   private var onPostSource: Bool { source?.body != nil && onSource }
 
-  private func report(_ rejected: [[String: String]]) {
-    for entry in rejected {
-      warn("ios.\(entry["key"] ?? ""): \(entry["reason"] ?? "")")
-    }
+  private func report(_ rejected: [PlatformSettings.Rejected]) {
+    rejected.forEach { warn("ios.\($0.key): \($0.reason)") }
   }
 
   func loadProgrammatic(_ request: URLRequest, inSourceRoot: Bool = true) {
