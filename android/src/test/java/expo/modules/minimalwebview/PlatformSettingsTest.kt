@@ -177,6 +177,9 @@ class PlatformSettingsTest {
     var text: String? = "start"
     val writes = mutableListOf<Int>()
     fun setBlind(v: Int) { writes += v }
+    var zoom = 100
+    fun getLegacyZoom() = zoom
+    fun setLegacyZoom(v: Int) { zoom = v }
   }
 
   private val live = Live()
@@ -195,6 +198,13 @@ class PlatformSettingsTest {
     assertEquals("b", live.text)
     assertEquals(emptyList<Any>(), settings.apply(emptyMap()))
     assertEquals("start", live.text)
+  }
+
+  @Test
+  fun restoresARemovedKeyBeforeItWritesTheNewOnes() {
+    apply("legacyZoom" to 150.0)
+    apply("zoom" to 200.0)
+    assertEquals(200, live.zoom)
   }
 
   @Test
