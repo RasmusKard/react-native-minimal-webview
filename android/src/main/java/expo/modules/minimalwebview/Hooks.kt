@@ -228,8 +228,8 @@ interface WebViewContext {
   fun emit(name: String, payload: Map<String, Any?>)
 
   /**
-   * Sends the event as [emit] does, and calls [onAnswer] with JS's answer: the extension's `onEvent` return value, a
-   * promise awaited, in JSON types as [handle]'s arguments are.
+   * Sends the event as [emit] does, but to the extension's `onAsk` when it has one, and calls [onAnswer] with JS's
+   * answer: that handler's return value, a promise awaited, in JSON types as [handle]'s arguments are.
    *
    * It answers null when the handler throws or there is none, or when the Document ends first; there is no timeout. It
    * answers null at once while the hook is off, and after the context's attach ended. An ask made before the WebView's

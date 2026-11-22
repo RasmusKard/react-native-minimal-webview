@@ -40,7 +40,7 @@ export type Dialog =
  * anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.
  *
  * `signal` aborts when the core stops waiting for the answer, and the dialog is then dismissed;
- * {@link HookExtension.onEvent} has the rules.
+ * {@link HookExtension.onAsk} has the rules.
  *
  * Without this extension, the default dialogs show, as `WebViewProps` describes.
  * @group Extensions
@@ -49,8 +49,8 @@ export const dialogs = (
   onDialog: (dialog: Dialog, signal: AbortSignal) => unknown
 ): HookExtension<HookEvent<Dialog['type'], Dialog>> => ({
   key: '@react-native-minimal-webview/extensions.dialogs',
-  onEvent: async ({ payload }, signal) => {
-    const answer = await onDialog(payload, signal as AbortSignal);
+  onAsk: async ({ payload }, signal) => {
+    const answer = await onDialog(payload, signal);
     if (payload.type === 'confirm') return answer === true;
     return typeof answer === 'string' ? answer : null;
   },

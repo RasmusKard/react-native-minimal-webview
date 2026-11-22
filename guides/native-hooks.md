@@ -1,8 +1,8 @@
 # Native hooks
 
 A native hook is Swift or Kotlin in your own Expo module that gets the real `WKWebView` or `WebView` behind a
-`<WebView>`. Its JS side is an _extension_: a [`HookExtension`][HookExtension] with the hook's key, its options and an
-`onEvent` handler. The app passes it in the `extensions` prop.
+`<WebView>`. Its JS side is an _extension_: a [`HookExtension`][HookExtension] with the hook's key, its options and its
+`onEvent` and `onAsk` handlers. The app passes it in the `extensions` prop.
 
 ## When to write one
 
@@ -197,7 +197,7 @@ replies.
 | Native                                          | JS                                                                                                                           |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `context.emit(name, payload)`                   | `onEvent` gets an event with that `name` and `payload`                                                                       |
-| `context.ask(name, payload, onAnswer)`          | `onEvent` gets the same; what it returns, awaited if it is a promise, is the answer                                          |
+| `context.ask(name, payload, onAnswer)`          | `onAsk` gets the same, or `onEvent` without one; what it returns, awaited if it is a promise, is the answer                  |
 | `context.handle(method, handler)`               | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
 | `context.options`, `context.onOptions(handler)` | The extension's `options`: the handler gets them at once, then each change                                                   |
 

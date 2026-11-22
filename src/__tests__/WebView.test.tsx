@@ -468,22 +468,22 @@ describe('extensions', () => {
     expect(mockAnswer).toHaveBeenLastCalledWith(2, 'null');
   });
 
-  it('answers null and logs when an onEvent throws', async () => {
-    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const { fire } = await mount({
-      extensions: [
-        ext('a', true, () => {
-          throw new Error('no');
-        }),
-      ],
-    });
-    await fire('onHookEvent', event('a', 'x', 1));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, 'null');
-    expect(error).toHaveBeenCalledWith(
-      '[react-native-minimal-webview] onEvent failed for a.x',
-      expect.any(Error)
-    );
-  });
+  it.each(['onEvent', 'onAsk'] as const)(
+    'answers null and logs when an %s throws',
+    async (member) => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const throwing = () => {
+        throw new Error('no');
+      };
+      const { fire } = await mount({ extensions: [{ key: 'a', [member]: throwing }] });
+      await fire('onHookEvent', event('a', 'x', 1));
+      expect(mockAnswer).toHaveBeenLastCalledWith(1, 'null');
+      expect(error).toHaveBeenCalledWith(
+        `[react-native-minimal-webview] ${member} failed for a.x`,
+        expect.any(Error)
+      );
+    }
+  );
 });
 
 it('takes a ref to a WebViewRef, and no other ref', () => {

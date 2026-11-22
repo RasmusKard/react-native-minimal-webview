@@ -145,7 +145,7 @@ describe('the extensions', () => {
       url: 'https://example.com/',
       mainFrame: true,
     };
-    const answer = dialogs(onDialog).onEvent!({ name: 'prompt', payload: prompt }, signal);
+    const answer = dialogs(onDialog).onAsk!({ name: 'prompt', payload: prompt }, signal);
     await expect(answer).resolves.toBe('typed');
     expect(onDialog).toHaveBeenCalledWith(prompt, signal);
   });
@@ -165,7 +165,7 @@ describe('the extensions', () => {
       payload: { type, message: '', defaultValue: null, url: '' } as Dialog,
     };
     const signal = new AbortController().signal;
-    await expect(dialogs(() => returned).onEvent!(event, signal)).resolves.toBe(answer);
+    await expect(dialogs(() => returned).onAsk!(event, signal)).resolves.toBe(answer);
   });
 
   it('rejects when onDialog throws, which the core answers with null', async () => {
@@ -176,6 +176,6 @@ describe('the extensions', () => {
     const failing = dialogs(() => {
       throw new Error('no');
     });
-    await expect(failing.onEvent!(event, new AbortController().signal)).rejects.toThrow('no');
+    await expect(failing.onAsk!(event, new AbortController().signal)).rejects.toThrow('no');
   });
 });

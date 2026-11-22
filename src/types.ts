@@ -748,7 +748,8 @@ export type HookEvent<N extends string = string, P = Record<string, unknown>> = 
  *
  * A package with a native hook exports a function that returns one, so that an app turns the hook on by putting it in
  * `extensions`.
- * @typeParam E - The hook's events, to type `onEvent`: a union of {@link HookEvent}s, which nothing checks at runtime.
+ * @typeParam E - The hook's events, to type `onEvent` and `onAsk`: a union of {@link HookEvent}s, which nothing checks
+ * at runtime.
  * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
  * @group Native hooks
  */
@@ -768,14 +769,19 @@ export type HookExtension<E extends HookEvent = HookEvent> = {
    */
   options?: unknown;
   /**
-   * Each of the hook's events: it goes to the extension with the hook's key, and one no extension owns is dropped. For
-   * an `ask`, the return value (a promise is awaited) is the answer, and `undefined`, or a value JSON can't encode,
-   * answers null. `signal` is set only for an `ask`, and aborts when the core stops waiting for the answer: an ask has
-   * no timeout, but one still open when the page goes away is answered null.
+   * Each of the hook's events: it goes to the extension with the hook's key, and one no extension owns is dropped. An
+   * `ask` goes to {@link HookExtension.onAsk} instead when the extension has one; without it, an `ask` comes here with
+   * `signal` set, and the return value is the answer as `onAsk` describes. `signal` is undefined for an `emit`.
    *
-   * The latest `onEvent` always takes the events: a render with new handlers sends the core nothing.
+   * The latest `onEvent` and `onAsk` always take the events: a render with new handlers sends the core nothing.
    */
   onEvent?(event: E, signal?: AbortSignal): unknown;
+  /**
+   * Each of the hook's asks, in place of {@link HookExtension.onEvent}. The return value (a promise is awaited) is the
+   * answer, and `undefined`, or a value JSON can't encode, answers null. `signal` aborts when the core stops waiting
+   * for the answer: an ask has no timeout, but one still open when the page goes away is answered null.
+   */
+  onAsk?(event: E, signal: AbortSignal): unknown;
 };
 
 /**
@@ -847,7 +853,7 @@ export type CodedError = Error & { code: ErrorCode };
  * - `onOpenExternal`: null (the core opens nothing)
  * - `onFileRequest`: cancel
  * - `onPermissionRequest`: deny
- * - an extension's `onEvent`: null
+ * - an extension's `onAsk` or `onEvent`: null
  *
  * The `signal` such a callback gets aborts when the core stops waiting for its answer (the page moved on, crashed or
  * unmounted), and a late answer is dropped.
