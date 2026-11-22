@@ -128,7 +128,9 @@ jobs:
       # shortcut: a re-run fails on a package that is already published, skip those once a release stops halfway
       - run: |
           for tag in $CORE_TAG $EXTENSIONS_TAG; do
-            npm publish ./"$tag"/*.tgz
+            tarball=$(echo ./"$tag"/*.tgz)
+            spec=$(tar -xOzf "$tarball" package/package.json | jq -r '.name + "@" + .version')
+            npm view "$spec" version > /dev/null 2>&1 || npm publish "$tarball"
             gh release edit "$tag" --draft=false --latest="$([ "$tag" = "$CORE_TAG" ] && echo true || echo false)" \
               -R "$GITHUB_REPOSITORY"
           done
