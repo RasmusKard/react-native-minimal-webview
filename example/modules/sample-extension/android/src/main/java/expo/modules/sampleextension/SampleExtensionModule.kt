@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.AndroidRuntimeException
+import android.util.Log
 import android.webkit.HttpAuthHandler
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
@@ -18,6 +19,7 @@ import expo.modules.minimalwebview.DocumentEnd
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 import org.json.JSONObject
+import java.util.Locale
 
 class SampleExtensionModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -69,6 +71,7 @@ class SampleExtensionModule : Module() {
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
     AsyncFunction("busyMain") { ms: Long -> busyMain(ms) }.runOnQueue(Queues.MAIN)
+    AsyncFunction("destroyedWebViewCalls") { since: Long -> destroyedWebViewCalls(since) }
   }
 }
 
@@ -84,6 +87,22 @@ private fun busyMain(ms: Long) {
   }
   main.post(slice)
 }
+
+private fun destroyedWebViewCalls(since: Long): Int {
+  val marker = "log read ${System.nanoTime()}"
+  Log.i("SampleExtension", marker)
+  val sinceSeconds = String.format(Locale.ROOT, "%d.%03d", since / 1000, since % 1000)
+  repeat(LOG_READS) {
+    val lines = ProcessBuilder("logcat", "-d", "-T", sinceSeconds, "-s", "cr_AwContents:W", "SampleExtension:I")
+      .start().inputStream.bufferedReader().use { it.readLines() }
+    if (lines.any { marker in it }) return lines.count { "Application attempted to call on a destroyed WebView" in it }
+    Thread.sleep(LOG_READ_GAP_MS)
+  }
+  error("the app cannot read its own log")
+}
+
+private const val LOG_READS = 10
+private const val LOG_READ_GAP_MS = 100L
 
 private var webViewMissing = false
 

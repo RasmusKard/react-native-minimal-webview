@@ -42,7 +42,7 @@ name: ${SUITE}
           commands:
             - pressKey: Home
             - runScript: scripts/kill.js
-            - evalScript: ${http.get(PAGES + '/slow?ms=5000')}
+            - evalScript: ${http.get(PAGES + '/slow?ms=' + BACKGROUND_MS)}
             - launchApp: { stopApp: false }
       - runFlow:
           when: { true: "${output.action == 'setGpsFix'}" }

@@ -50,12 +50,14 @@ export const sampleHook = <N extends keyof SampleHookEvents>(
  * The `sample.seams` hook's counter: how many of its WebViews were closed at unmount. Android: `setWebViewMissing`
  * makes the `sample.noWebView` hook's factory throw, as WebView's constructor does without a WebView provider.
  * `busyMain(ms)` keeps the main thread busy for `ms` in short tasks, each queued behind what is already waiting, and
- * resolves at once. iOS: `tapAlert` presses a button of the alert on screen as a tap does, and is false when there is
- * none.
+ * resolves at once. `destroyedWebViewCalls` counts the calls on a destroyed WebView that WebView refused and logged
+ * since `since` (epoch ms), and throws when the app cannot read its own log. iOS: `tapAlert` presses a button of the
+ * alert on screen as a tap does, and is false when there is none.
  */
 export const seams = requireNativeModule<{
   closedViews(): Promise<number>;
   setWebViewMissing(missing: boolean): Promise<void>;
   busyMain(ms: number): Promise<void>;
+  destroyedWebViewCalls(since: number): Promise<number>;
   tapAlert(title: string): Promise<boolean>;
 }>('SampleExtension');

@@ -1,24 +1,21 @@
 import WebKit
 
 final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
-  private weak var store: WKHTTPCookieStore?
-  private var enabled = false
+  private weak var observed: WKHTTPCookieStore?
   private var copyScheduled = false
   private var copied: [HTTPCookie] = []
 
-  func didCreate(_ webView: WKWebView) {
-    store = webView.configuration.websiteDataStore.httpCookieStore
-  }
-
-  func set(_ enabled: Bool) {
-    guard enabled != self.enabled else { return }
-    self.enabled = enabled
-    if enabled { store?.add(self) } else { store?.remove(self) }
+  func set(_ enabled: Bool, for store: WKHTTPCookieStore) {
+    let next = enabled ? store : nil
+    guard next !== observed else { return }
+    observed?.remove(self)
+    next?.add(self)
+    observed = next
   }
 
   /// Calls `done` once the native cookies are in the WebView.
   func prepare(done: @escaping () -> Void) {
-    guard enabled, let store else { return done() }
+    guard let store = observed else { return done() }
     let group = DispatchGroup()
     for cookie in HTTPCookieStorage.shared.cookies ?? [] {
       group.enter()
@@ -33,7 +30,7 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       self.copyScheduled = false
-      self.store?.getAllCookies { [weak self] cookies in
+      self.observed?.getAllCookies { [weak self] cookies in
         guard let self else { return }
         let key = { (cookie: HTTPCookie) in [cookie.name, cookie.domain, cookie.path] }
         let present = Set(cookies.map(key))
@@ -42,9 +39,5 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
         self.copied = cookies
       }
     }
-  }
-
-  func detach() {
-    store?.remove(self)
   }
 }
