@@ -107,6 +107,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
       owner.documents.end(DocumentEnd.COMMITTED)
+      if (url != null) owner.url = url
       owner.loadStarted()
     }
     observing("onPageStarted", WEB_VIEW, STRING, Bitmap::class.java) { it.onPageStarted(view, url, favicon) }
