@@ -30,6 +30,7 @@ internal object DownloadManager {
         cookieManager(webView).getCookie(url)?.let { request.addRequestHeader("Cookie", it) }
         webView.context.getSystemService(SystemDownloadManager::class.java).enqueue(request)
       } catch (e: RuntimeException) {
+        // A disabled Download Manager fails in setDestinationInExternalPublicDir (a NullPointerException) or enqueue.
         Log.w("MinimalWebViewExtensions", "downloadManager: the Download Manager refused the download", e)
         return@onDownloadStart false
       }
