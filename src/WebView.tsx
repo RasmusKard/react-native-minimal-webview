@@ -300,13 +300,18 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const owner = props.extensions?.findLast((e): e is HookExtension => !!e && e.key === key);
     const handler = request
       ? (props[request] as ((payload: unknown, signal?: AbortSignal) => unknown) | undefined)
-      : (_: unknown, signal?: AbortSignal) => owner?.onEvent?.({ name, payload }, signal);
+      : (_: unknown, signal?: AbortSignal) =>
+          signal && owner?.onAsk
+            ? owner.onAsk({ name, payload }, signal)
+            : owner?.onEvent?.({ name, payload }, signal);
     let controller: AbortController | undefined;
     if (askId !== undefined) {
       controller = new AbortController();
       asks.set(askId, controller);
     }
-    const failure = request ? `${request} failed` : `onEvent failed for ${key}.${name}`;
+    const failure = request
+      ? `${request} failed`
+      : `${hookHandlerName(owner, askId)} failed for ${key}.${name}`;
     let value: unknown = null;
     try {
       value = await handler?.(payload, controller?.signal);
@@ -341,6 +346,9 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     />
   );
 }
+
+const hookHandlerName = (owner: HookExtension | undefined, askId: number | undefined) =>
+  askId !== undefined && owner?.onAsk ? 'onAsk' : 'onEvent';
 
 function answerJson(value: unknown) {
   try {

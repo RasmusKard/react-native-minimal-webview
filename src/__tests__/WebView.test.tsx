@@ -425,6 +425,17 @@ describe('extensions', () => {
     expect(mockAnswer).toHaveBeenCalledTimes(1);
   });
 
+  it("an ask goes to the extension's onAsk with a signal, and an emit to its onEvent", async () => {
+    const onAsk = jest.fn(() => 'asked');
+    const onEvent = jest.fn(() => 'emitted');
+    const { fire } = await mount({ extensions: [{ key: 'a', onAsk, onEvent }] });
+    await fire('onHookEvent', event('a', 'x', 7));
+    await fire('onHookEvent', event('a', 'y'));
+    expect(onAsk.mock.calls).toEqual([[{ name: 'x', payload: { n: 1 } }, expect.any(AbortSignal)]]);
+    expect(mockAnswer).toHaveBeenLastCalledWith(7, '"asked"');
+    expect(onEvent.mock.calls).toEqual([[{ name: 'y', payload: { n: 1 } }, undefined]]);
+  });
+
   it('answers null for an ask with no handler, and drops an event no extension owns', async () => {
     const own = jest.fn();
     const { show, fire } = await mount({
@@ -457,22 +468,22 @@ describe('extensions', () => {
     expect(mockAnswer).toHaveBeenLastCalledWith(2, 'null');
   });
 
-  it('answers null and logs when an onEvent throws', async () => {
-    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const { fire } = await mount({
-      extensions: [
-        ext('a', true, () => {
-          throw new Error('no');
-        }),
-      ],
-    });
-    await fire('onHookEvent', event('a', 'x', 1));
-    expect(mockAnswer).toHaveBeenLastCalledWith(1, 'null');
-    expect(error).toHaveBeenCalledWith(
-      '[react-native-minimal-webview] onEvent failed for a.x',
-      expect.any(Error)
-    );
-  });
+  it.each(['onEvent', 'onAsk'] as const)(
+    'answers null and logs when an %s throws',
+    async (member) => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const throwing = () => {
+        throw new Error('no');
+      };
+      const { fire } = await mount({ extensions: [{ key: 'a', [member]: throwing }] });
+      await fire('onHookEvent', event('a', 'x', 1));
+      expect(mockAnswer).toHaveBeenLastCalledWith(1, 'null');
+      expect(error).toHaveBeenCalledWith(
+        `[react-native-minimal-webview] ${member} failed for a.x`,
+        expect.any(Error)
+      );
+    }
+  );
 });
 
 it('takes a ref to a WebViewRef, and no other ref', () => {

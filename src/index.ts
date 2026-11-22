@@ -14,7 +14,7 @@
  * @groupDescription Page requests
  * File pickers, permission prompts and downloads the page starts.
  * @groupDescription Native hooks
- * Turning native hooks on with the `extensions` prop, and what they send to each extension's `onEvent`.
+ * Turning native hooks on with the `extensions` prop, and what they send to each extension's `onEvent` and `onAsk`.
  * @groupDescription Platform settings
  * WebKit, UIScrollView and Android WebView settings, set by their platform names through the `ios` and `android` props.
  * @module react-native-minimal-webview

@@ -151,8 +151,8 @@ public protocol WebViewContext: AnyObject {
   /// Sends an event to JS: the extension with the hook's key gets `{ name, payload }` in its `onEvent`. It is dropped
   /// while the hook is off.
   func emit(_ name: String, _ payload: [String: Any])
-  /// Sends the event as ``emit(_:_:)`` does, and calls `onAnswer` with the extension's `onEvent` return value, a
-  /// promise awaited.
+  /// Sends the event as ``emit(_:_:)`` does, but to the extension's `onAsk` when it has one, and calls `onAnswer` with
+  /// that handler's return value, a promise awaited.
   ///
   /// It answers nil when the handler throws or there is none, or when the Document ends first; there is no timeout. It
   /// answers nil at once while the hook is off, and after the view closed.
