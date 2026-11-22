@@ -1,0 +1,2 @@
+-keep class com.google.android.gms.ads.MobileAds { public static void registerWebView(android.webkit.WebView); }
+-keep class com.google.android.libraries.ads.mobile.sdk.MobileAds { public static void registerWebView(android.webkit.WebView); }

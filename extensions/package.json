@@ -23,6 +23,7 @@
     "*/*.ts",
     "MinimalWebViewExtensions.podspec",
     "build.gradle",
+    "consumer-rules.pro",
     "expo-module.config.json"
   ],
   "publishConfig": {

@@ -48,6 +48,7 @@ public class SampleExtensionModule: Module {
       }
     }
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(.main)
+    AsyncFunction("adsRegisteredAt") { MobileAdsStandIn.sharedInstance.registeredAt }.runOnQueue(.main)
     AsyncFunction("stallStart") { Stall.shared.start() }.runOnQueue(.main)
     AsyncFunction("stallStop") { Stall.shared.stop() }.runOnQueue(.main)
     AsyncFunction("tapAlert") { (title: String) in tapAlert(title) }.runOnQueue(.main)
