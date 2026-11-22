@@ -48,6 +48,8 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
   }
 
   override fun onNavigationCompleted(navigation: Navigation) {
+    // A dead renderer's WebView reports the navigation it cut off as not committed, before processGone fails it.
+    if (owner.rendererGone) return
     if (navigation.didCommit() && !navigation.isSameDocument) owner.documents.end(DocumentEnd.COMMITTED)
     if (navigation.didCommit()) owner.url = navigation.url
     if (!navigation.isSameDocument) {
@@ -199,7 +201,10 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     // Returning true keeps the app alive.
     // Timed here: every WebView on the renderer hears of its death back to back, before any recovery runs.
     val at = SystemClock.elapsedRealtime()
-    if (view === owner.webView) mainHandler.post { owner.processGone(if (detail.didCrash()) "crash" else "memory", at) }
+    if (view === owner.webView) {
+      owner.rendererGone = true
+      mainHandler.post { owner.processGone(if (detail.didCrash()) "crash" else "memory", at) }
+    }
     observing("onRenderProcessGone", WEB_VIEW, RenderProcessGoneDetail::class.java) { it.onRenderProcessGone(view, detail) }
     return true
   }
