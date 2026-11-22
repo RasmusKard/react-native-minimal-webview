@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { coercedObjects, completionShapes } from './native-mirrors.mts';
 
-test('coercedObjects reads every encoding coerce matches, in any literal form, and nothing outside it', () => {
+await test('coercedObjects reads every encoding coerce matches, in any literal form, and nothing outside it', () => {
   const swift = `
 enum PlatformSettings {
   private static func coerce(_ value: Any, _ type: String) -> Any? {
@@ -30,7 +30,7 @@ enum PlatformSettings {
   assert.deepEqual(coercedObjects(swift), ['NSString', 'NSURL', 'UIColor']);
 });
 
-test('completionShapes reads every name MRWBlock compares, and nothing outside it', () => {
+await test('completionShapes reads every name MRWBlock compares, and nothing outside it', () => {
   const objc = `
 static id MRWBlock(NSString *completion, void (^resolve)(id, NSString *)) {
   if ([completion isEqualToString:@"void"]) return [^{ resolve(NSNull.null, nil); } copy];
