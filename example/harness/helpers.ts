@@ -25,17 +25,20 @@ export const happens = (wait: Promise<unknown>) =>
     }
   );
 
-/** Polls `fn` until it returns something truthy, and returns that; undefined after `ms`. */
+/**
+ * Polls `fn` until it returns something truthy, and returns that; undefined when a call made after `ms` still returns
+ * nothing truthy, so time the app spends in the background, where timers stop, cannot end the wait unseen.
+ */
 export async function poll<T>(
   fn: () => T | Promise<T>,
   ms = 10000,
   step = 100
 ): Promise<T | undefined> {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(step)) {
+  for (const end = Date.now() + ms; ; await sleep(step)) {
     const value = await fn();
     if (value) return value;
+    if (Date.now() >= end) return undefined;
   }
-  return undefined;
 }
 
 /** Collects each `console.warn` line (the WebView's warnings among them) until `stop` restores `console.warn`. */
