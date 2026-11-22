@@ -1,7 +1,6 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind `googleMobileAds()`.
 enum GoogleMobileAds {
   static let key = "@react-native-minimal-webview/extensions.googleMobileAds"
   private static let registerWebView = NSSelectorFromString("registerWebView:")

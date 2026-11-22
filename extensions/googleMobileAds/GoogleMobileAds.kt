@@ -4,7 +4,6 @@ import android.webkit.WebView
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import java.lang.reflect.Method
 
-/** The hook behind `googleMobileAds()`. */
 internal object GoogleMobileAds {
   const val KEY = "@react-native-minimal-webview/extensions.googleMobileAds"
   private val SDK_CLASSES = listOf(
