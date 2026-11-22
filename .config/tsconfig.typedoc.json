@@ -1,5 +1,4 @@
 {
-  "// ": "TypeDoc only: both packages in one program, with the core's types read from its source.",
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "rootDir": "..",
