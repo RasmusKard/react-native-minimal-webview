@@ -55,10 +55,9 @@ const IOS_DEFINES = [
 const ANDROIDX_API_DIR =
   'https://api.github.com/repos/androidx/androidx/contents/webkit/webkit/api?ref=androidx-main';
 const pinnedWebkit = () => {
-  const [, version, minor] = readFileSync(
-    new URL('../../android/build.gradle', import.meta.url),
-    'utf8'
-  ).match(/androidx\.webkit:webkit:((\d+\.\d+)\.\d+)/)!;
+  const [, version, minor] = repoFile('android/build.gradle').match(
+    /androidx\.webkit:webkit:((\d+\.\d+)\.\d+)/
+  )!;
   return { version, minor };
 };
 
@@ -167,6 +166,19 @@ const object = (entries: Record<string, string | number>) =>
     .join('\n')}\n}`;
 
 const lowerFirst = (name: string) => name.replace(/^[A-Z]/, (c) => c.toLowerCase());
+
+const repoFile = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
+const KOTLIN_SETTINGS = 'android/src/main/java/expo/modules/minimalwebview/PlatformSettings.kt';
+
+function assertSameNames(names: readonly string[], file: string, pattern: RegExp) {
+  const ours = [...names].sort().join(', ');
+  const theirs = [...repoFile(file).matchAll(pattern)]
+    .map(([, name]) => name)
+    .sort()
+    .join(', ');
+  if (ours !== theirs)
+    throw new Error(`${file} handles ${theirs}, gen-platform-types.mts expects ${ours}`);
+}
 
 /** A C expression over integers, as JavaScript. The inputs are the vendored SDK extracts, not user data. */
 const evaluate = (expression: string) => runInNewContext(`(${expression})`) as number;
@@ -298,7 +310,8 @@ function websiteDataTypes(text: string) {
   return Object.fromEntries(entries) as Record<string, string>;
 }
 
-type Completion = 'void' | 'value' | 'valueError' | 'error' | 'number';
+const COMPLETIONS = ['void', 'value', 'valueError', 'error', 'number'] as const;
+type Completion = (typeof COMPLETIONS)[number];
 
 /** A block's parameter list (`NSData * _Nullable data, NSError * _Nullable error`) as a shape, or null for none. */
 function completionShape(params: string, integerEnums: Set<string>): Completion | null {
@@ -366,7 +379,9 @@ const JAVA_TYPES: Record<string, string> = {
   double: 'number',
   String: 'string | null',
 };
-const OWNED_KEYS = new Set(['webContentsDebuggingEnabled']);
+const owned = repoFile(KOTLIN_SETTINGS).match(/\bval OWNED = setOf\(([^)]*)\)/)?.[1];
+if (!owned) throw new Error(`${KOTLIN_SETTINGS} has no \`val OWNED = setOf(...)\``);
+const OWNED_KEYS = new Set([...owned.matchAll(/"set(\w+)"/g)].map(([, name]) => lowerFirst(name)));
 
 function androidKeys(xml: string, cls: string, leading = '', text = '') {
   const block = classBlock(xml, cls);
@@ -436,6 +451,8 @@ ${Object.entries(shapes)
 }
 
 async function generate() {
+  assertSameNames(Object.keys(OBJECTS), 'ios/PlatformSettings.swift', /case "@\\"(\w+)\\"":/g);
+  assertSameNames(COMPLETIONS, 'ios/MRWInvoke.m', /isEqualToString:@"(\w+)"/g);
   // Sorted, so IOSConstants' member order is the same on every filesystem.
   const ios = readdirSync(inputs)
     .filter((f) => f.endsWith('.h'))
