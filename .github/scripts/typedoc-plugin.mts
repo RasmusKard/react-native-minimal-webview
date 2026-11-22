@@ -1,4 +1,3 @@
-// The TypeDoc plugin .config/typedoc.json loads.
 import { Application, Converter, PageEvent, ReflectionFlag, ReflectionKind } from 'typedoc';
 
 export function load(app: Application) {

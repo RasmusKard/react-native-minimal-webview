@@ -1,7 +1,5 @@
 name: Release
 
-# Merging release-please's PR creates a draft release per released package, attests its tarball, publishes it to npm with
-# trusted publishing and un-drafts the release.
 on:
   push:
     branches: [main]
@@ -26,7 +24,7 @@ jobs:
       core-tag: ${{ steps.release.outputs.tag_name }}
       extensions-tag: ${{ steps.release.outputs['extensions--tag_name'] }}
     steps:
-      # A PR opened with GITHUB_TOKEN would not trigger CI on the release PR, and only the App may create release tags.
+      # A PR opened with GITHUB_TOKEN would not trigger CI on the release PR.
       - id: app-token
         uses: actions/create-github-app-token@v3.3.0
         with:
@@ -125,7 +123,6 @@ jobs:
       # The core goes first: the extensions package takes it as a peer. Only a core release is "Latest", since the docs
       # site shows that release's tag as the version. A tarball runs no lifecycle scripts.
       # The ./ keeps npm from reading <tag>/<file>.tgz as a GitHub owner/repo.
-      # shortcut: a re-run fails on a package that is already published, skip those once a release stops halfway
       - run: |
           for tag in $CORE_TAG $EXTENSIONS_TAG; do
             npm publish ./"$tag"/*.tgz

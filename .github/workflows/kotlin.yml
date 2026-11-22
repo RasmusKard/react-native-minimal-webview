@@ -16,8 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      # The key covers what the tests and the compile read, and the entry is saved only when the job passes: on a hit,
-      # they have passed before, and the job runs nothing.
       - id: passed
         uses: actions/cache@v6.1.0
         with:
