@@ -22,7 +22,8 @@ jobs:
           path: .passed
           key: >-
             kotlin-tests-${{ hashFiles('android/**', 'extensions/**', 'example/modules/**', 'example/*.json',
-            'src/__tests__/vectors/**', 'expo-module.config.json', 'package.json', '.github/workflows/kotlin.yml') }}
+            'example/assets/**', 'src/__tests__/vectors/**', 'expo-module.config.json', 'package.json',
+            'package-lock.json', '.nvmrc', '.github/workflows/kotlin.yml') }}
       - if: steps.passed.outputs.cache-hit != 'true'
         uses: actions/setup-node@v7.1.0
         with: { node-version-file: .nvmrc, cache: npm }
