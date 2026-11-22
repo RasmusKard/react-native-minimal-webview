@@ -560,6 +560,9 @@ export type Download = {
  * - `data` (the content): a bad `data:` or `blob:` URL, the page not reading its blob, an unsupported scheme, or
  *   (Android) a file above 100 MiB or a `blob:` URL the main frame can't read (a cross-origin iframe's, or one already
  *   revoked).
+ *
+ * On Android a disk error while saving, such as a full disk, is `network` for an http(s) download and `data` for a
+ * `data:` or `blob:` one.
  * @group Page requests
  */
 export type DownloadFailure =
@@ -637,7 +640,9 @@ export type IOSPrivateSettingKeys = {
  * `webView.opaque`, is skipped the same way: set it with `call('webView.setOpaque:', [false])`.
  *
  * A root's default keys are the package's, and yours go over them. A key the package doesn't set keeps WebKit's
- * default; a key you remove goes back to the value it had before you first set it.
+ * default; a key you remove goes back to the value it had before you first set it. For
+ * `webView.underPageBackgroundColor`, which WebKit derives from the page, that value is the color derived then, and it
+ * stays: set the key to `null` instead of removing it to go back to WebKit's default.
  *
  * WebKit has no mixed-content setting: it applies its own policy.
  * @ios
