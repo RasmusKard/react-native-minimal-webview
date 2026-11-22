@@ -31,7 +31,7 @@
     "test": "jest",
     "lint": "eslint --max-warnings 0 src extensions example .github && prettier --check .",
     "prepare": "npm run clean && npm run build",
-    "check": "npm test && npm run lint && knip --config .config/knip.json && tsc --noEmit -p src/__tests__/tsconfig.json && tsc --noEmit -p extensions/src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && node .github/scripts/check-doc-samples.mts && node .github/scripts/check-expo-set.mts && node .github/scripts/check-cache-keys.mts && npm run prepare && npm run docs:check && tsc --noEmit -p .github/scripts && tsc --noEmit -p example/maestro/scripts",
+    "check": "npm test && npm run lint && knip --config .config/knip.json && tsc --noEmit -p src/__tests__/tsconfig.json && tsc --noEmit -p extensions/src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && node .github/scripts/check-doc-samples.mts && node .github/scripts/check-expo-set.mts && node .github/scripts/check-lockfile-libc.mts && node .github/scripts/check-cache-keys.mts && npm run prepare && npm run docs:check && tsc --noEmit -p .github/scripts && tsc --noEmit -p example/maestro/scripts",
     "mutation": "stryker run .config/stryker.config.json",
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
