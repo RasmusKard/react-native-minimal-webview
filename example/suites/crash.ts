@@ -1,5 +1,6 @@
 import { AppState, Platform } from 'react-native';
 import type { ProcessGoneEvent } from 'react-native-minimal-webview';
+import { sampleHook, seams } from 'sample-extension';
 
 import {
   USER_AGENT_KEY,
@@ -251,6 +252,68 @@ export async function crash(h: Harness, r: Reporter) {
     h.state()
   );
   h.setProps({ userAgent: 'Crash/1' });
+
+  if (Platform.OS === 'android') {
+    await openPage(h, fresh(h, '/bridge.html'));
+    const target = fresh(h, '/bridge.html');
+    const refusedBefore = await seams.destroyedWebViewCalls();
+    const settles = (call: Promise<unknown> | undefined) =>
+      Promise.race([
+        Promise.resolve(call).then(() => 'resolved', errorCode),
+        sleep(3000).then(() => 'hung'),
+      ]);
+    let answers: Promise<unknown[]> | undefined;
+    h.setProps({
+      userAgent: 'Crash/1',
+      onProcessGone: (event) => {
+        h.events.gone.push(event);
+        const ref = h.ref.current;
+        ref?.goBack();
+        ref?.goForward();
+        ref?.stopLoading();
+        answers = Promise.all(
+          [
+            ref?.evaluate('1'),
+            ref?.get(USER_AGENT_KEY),
+            ref?.call('webView.getTitle'),
+            ref?.hook('sample.pageCounter', 'count'),
+          ].map(settles)
+        );
+        ref?.load(target);
+        h.setProps({
+          userAgent: 'Crash/2',
+          injectedScripts: [{ code: 'window.__injected = 1', origins: ['*'] }],
+          extensions: [sampleHook('seams')],
+        });
+      },
+    });
+    const recovered = await happens(
+      waitForLoad(
+        h,
+        () => kill(16, 'killInBackground'),
+        (s) => s.url === target && idle(s),
+        30000
+      )
+    );
+    const refused = (await seams.destroyedWebViewCalls()) - refusedBefore;
+    const settled = await answers;
+    r.check(
+      'calls while the recovery waits reach no destroyed WebView, and each rejects unavailable',
+      recovered && refused === 0 && settled?.every((a) => a === 'unavailable') === true,
+      { recovered, refused, settled, state: h.state() }
+    );
+    const applied = {
+      userAgent: await h.ref.current?.evaluate('navigator.userAgent').catch(errorCode),
+      injected: await h.ref.current?.evaluate('window.__injected').catch(errorCode),
+      hook: await h.ref.current?.hook('sample.seams', 'twice', [2]).catch(errorCode),
+    };
+    r.check(
+      'props set while the recovery waits apply to the recovered WebView',
+      applied.userAgent === 'Crash/2' && applied.injected === 1 && applied.hook === 4,
+      applied
+    );
+    h.setProps({ userAgent: 'Crash/1' });
+  }
 
   // Android keeps the window of a view under a modal, so this is iOS's case.
   if (Platform.OS === 'ios') {

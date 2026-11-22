@@ -65,8 +65,14 @@ class SampleExtensionModule : Module() {
     AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)
+    AsyncFunction("destroyedWebViewCalls") { destroyedWebViewCalls() }
   }
 }
+
+private fun destroyedWebViewCalls(): Int =
+  ProcessBuilder("logcat", "-d", "-s", "cr_AwContents:W").start().inputStream.bufferedReader().useLines { lines ->
+    lines.count { "Application attempted to call on a destroyed WebView" in it }
+  }
 
 private var webViewMissing = false
 
