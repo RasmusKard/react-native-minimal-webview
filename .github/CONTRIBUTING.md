@@ -26,7 +26,8 @@ and in `example/`: `npx expo install --fix`, then `npx -y npm@11 install` for th
 ## Checks
 
 ```sh
-# Both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc
+# Both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc, that the
+# generated files are current and that the root and example/ resolve the same Expo, React and React Native
 npm run check
 # Stryker on the files .config/stryker.config.json lists
 npm run mutation
