@@ -1113,7 +1113,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * The renderer died; see {@link ProcessGoneEvent} for the recovery.
    *
-   * Android's WebViews share one renderer, so each of them reports its death.
+   * Android's WebViews share one renderer, so each of them reports its death. On Android it comes before the
+   * {@link WebViewProps.onLoadEnd | onLoadEnd} that fails a load the crash cut off after it committed.
    */
   onProcessGone?: (event: ProcessGoneEvent) => void;
   /** {@link NavigationState.loading | loading} went true. */
