@@ -41,6 +41,7 @@ export async function permissionsSuite(h: Harness, r: Reporter) {
   if (Platform.OS === 'android') {
     r.check('app yes + OS permission grants the camera', granted.includes('camera ok'), granted);
     const geo = await press('geo');
+    // The emulator may have no fix yet: the page then gets POSITION_UNAVAILABLE (2) or TIMEOUT (3), not PERMISSION_DENIED (1).
     r.check(
       'location granted with app yes + OS permission',
       /geo ok|geo error [23]/.test(geo),

@@ -6,6 +6,7 @@ const queuedSuite = new Map();
 const log = (/** @type {string} */ line) =>
   console.log(`${new Date().toISOString().slice(11, 23)} ${line}`);
 
+// The driver waits on this server instead of reading the screen: a UI hierarchy query costs Maestro seconds.
 /**
  * @typedef {{ suite: string, action: string, fail?: number }} Request
  * @typedef {{ text: string, kind: string, suite: string, block: string, name: string, detail: string }} Line
@@ -40,7 +41,7 @@ const waiters = new Set();
 const harnessChanged = () => waiters.forEach((check) => check());
 /**
  * Answers with what `get` returns once it is a non-empty string (checked now and on every harness change), or with ''
- * after `ms`.
+ * after `ms`, capped: Maestro's HTTP client times out on a long poll, so the driver asks again.
  * @param {import('http').ServerResponse} res @param {() => string} get @param {number} ms
  */
 function answerWhen(res, get, ms) {
@@ -55,7 +56,7 @@ function answerWhen(res, get, ms) {
     clearTimeout(timer);
     res.end(value);
   };
-  const timer = setTimeout(() => finish(''), ms);
+  const timer = setTimeout(() => finish(''), Math.min(ms, 8000));
   waiters.add(check);
   check();
 }
@@ -154,6 +155,7 @@ const ROUTES = {
     const launchd = `pgrep -d, -f 'launchd_sim .*/Devices/${device}'`;
     const [cmd, args] =
       platform === 'android'
+        // chrome://crash crashes a fresh renderer that never hosts the page, so WebView doesn't report it.
         ? ['adb', [...adbDevice(platform), 'shell', 'pkill -9 -f sandboxed_process']]
         : ['sh', ['-c', `pkill -9 -P "$(${launchd})" -f com.apple.WebKit.WebContent`]];
     execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
