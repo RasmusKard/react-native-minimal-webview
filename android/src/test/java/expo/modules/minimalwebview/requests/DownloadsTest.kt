@@ -87,6 +87,12 @@ class DownloadsTest {
   }
 
   @Test
+  fun namesTheCapInTheUnitItCounts() {
+    assertEquals(100L * 1024 * 1024, Downloads.MAX_BYTES)
+    assertEquals("larger than 100 MiB", assertThrows(TooLarge::class.java) { fetch("/huge") }.message)
+  }
+
+  @Test
   fun typesAnUntypedResponseAsOctetStream() {
     assertEquals("application/octet-stream", fetch("/untyped"))
     assertEquals("done", file.readText())
