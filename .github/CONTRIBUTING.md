@@ -28,8 +28,8 @@ and in `example/`: `npx expo install --fix`, then `npx -y npm@11 install` for th
 ```sh
 # Both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc, that the
 # generated files are current, that the DocC landing page lists every public Swift type, that the root and example/
-# resolve the same Expo, React and React Native, and that the ios and kotlin workflows' cache keys hash every file their
-# jobs read
+# resolve the same Expo, React and React Native, that both lockfiles keep the libc fields npm 10 strips, and that the ios
+# and kotlin workflows' cache keys hash every file their jobs read
 npm run check
 # Stryker on the files .config/stryker.config.json lists
 npm run mutation

@@ -229,7 +229,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val showingPost get() = source?.body != null && showsSource(source, url)
 
   private fun applySettings(force: Boolean = false) {
-    platformSettings.apply(settings, force).forEach { warn("android.${it["key"]}: ${it["reason"]}") }
+    platformSettings.apply(settings, force).forEach { warn("android.${it.key}: ${it.reason}") }
   }
 
   internal fun warn(message: String) = emit("core", "warning", mapOf("message" to message))

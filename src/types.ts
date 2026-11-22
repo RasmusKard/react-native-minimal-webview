@@ -865,8 +865,8 @@ export type CodedError = Error & { code: ErrorCode };
  *   (`data:`, sandboxed, `file:`). One shows at a time; one that comes while another shows is cancelled.
  * - Android dialogs: WebView's own. One still on screen when its WebView unmounts stays there, and a WebView older
  *   than 149 then gets no touches until the app restarts. The `dialogs` extension shows no native dialog.
- * - HTTP auth: cancelled on Android. On iOS WebKit's default handling applies, so without a stored credential the
- *   site's 401 page shows.
+ * - HTTP auth: cancelled on Android. On iOS WebKit's default handling applies, which sends a stored credential; once
+ *   the site has rejected one, the site's 401 page shows.
  * @sortStrategy source-order
  * @group WebView
  */
