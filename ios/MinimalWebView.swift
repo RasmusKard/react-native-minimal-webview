@@ -399,19 +399,29 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    loadEnded(.finished) { $0.webView?(webView, didFinish: navigation) }
+    loadEnded(navigation) { $0.webView?(webView, didFinish: navigation) }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    loadEnded(ended(navigation, with: error)) { $0.webView?(webView, didFail: navigation, withError: error) }
+    loadFailed(webView, navigation, error, provisional: false)
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    loadEnded(ended(navigation, with: error)) { $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error) }
+    loadFailed(webView, navigation, error, provisional: true)
   }
 
-  private func loadEnded(_ outcome: Loads.Outcome, _ callback: (WKNavigationDelegate) -> Void) {
-    self.outcome = outcome
+  private func loadFailed(_ webView: WKWebView, _ navigation: WKNavigation?, _ error: Error, provisional: Bool) {
+    loadEnded(navigation, error) {
+      if provisional {
+        $0.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
+      } else {
+        $0.webView?(webView, didFail: navigation, withError: error)
+      }
+    }
+  }
+
+  private func loadEnded(_ navigation: WKNavigation?, _ error: Error? = nil, _ callback: (WKNavigationDelegate) -> Void) {
+    outcome = error.map { ended(navigation, with: $0) } ?? .finished
     // The spinner stops, or it would ignore the next pull.
     refreshControl.endRefreshing()
     scheduleUpdate()
