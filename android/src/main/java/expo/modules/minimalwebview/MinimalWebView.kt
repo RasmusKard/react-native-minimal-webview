@@ -250,10 +250,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private fun attachLate(key: String) {
     val hook = MinimalWebViewHooks.hooks.find { it.key == key }
       ?: return warn("extension $key: no hook is registered under this key")
-    if (hook.configure != null || hook.webViewFactory != null) {
-      val why = if (hook.configure != null) "configure" else "a webViewFactory"
-      return warn("extension $key: its hook has $why, so it attaches only when the WebView is created")
-    }
+    hook.whyNotLate?.let { return warn("extension $key: its hook has $it, so it attaches only when the WebView is created") }
     keysToAttach = keysToAttach + key
     if (recovering) return
     val context = HookContext(hook, this)

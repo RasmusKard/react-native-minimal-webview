@@ -49,7 +49,13 @@ class HooksTest {
   private val url = arrayOf(WebView::class.java, WebResourceRequest::class.java)
 
   private fun hook(key: String, factory: ((Context) -> WebView)? = null) =
-    MinimalWebViewHooks.Hook(key, factory, null) { _, _ -> }
+    MinimalWebViewHooks.Hook(key, factory, null, false) { _, _ -> }
+
+  @Test
+  fun `a hook for new WebViews only says why it doesn't attach late`() {
+    assertEquals("newWebViewsOnly", MinimalWebViewHooks.Hook("a", null, null, true) { _, _ -> }.whyNotLate)
+    assertNull(hook("b").whyNotLate)
+  }
 
   @Test
   fun `a plain subclass overrides only what it declares`() {

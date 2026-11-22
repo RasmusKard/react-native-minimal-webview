@@ -985,8 +985,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * A false, null or undefined entry is left out, so `on && extension(…)` switches one on and off; see
    * {@link HookExtension.options} for what off means. A hook attaches when its key first appears, and a later change of
    * its `options` reaches it live, without recreating the WebView. A key turned on after the WebView was created
-   * attaches its hook then, unless the hook has a `configure` step or its own WebView class (`webViewClass`,
-   * `webViewFactory`): that one attaches only to a WebView mounted with its key on, and a warning says so.
+   * attaches its hook then, unless the hook attaches only to a WebView mounted with its key on, and a warning says so.
+   * The [guide's Lifecycle table](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/#lifecycle)
+   * says which hooks do.
    * @see [Native hooks guide](https://rasmuskard.github.io/react-native-minimal-webview/guides/native-hooks/)
    */
   extensions?: readonly (HookExtension | false | null | undefined)[];

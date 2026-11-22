@@ -78,7 +78,10 @@ export async function extensions(h: Harness, r: Reporter) {
       ? r.block('keyboard', () => keyboard(h, r))
       : r.block('android', () => android(h, r)));
     const stray = warnings.lines.filter(
-      (line) => line.includes(`extension ${KEY}.`) && !line.includes(`${KEY}.menuItems`)
+      (line) =>
+        line.includes(`extension ${KEY}.`) &&
+        !line.includes(`${KEY}.menuItems`) &&
+        !line.includes(`${KEY}.incognito: its hook has`)
     );
     r.check(
       'no extension key warns: each is registered, and sent only on its platforms',
@@ -356,6 +359,17 @@ async function privacy(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/setcookie?name=incognito&value=1'));
   const set = await cookie();
   await openPage(h, fresh(h, '/'));
+  const warnings = captureWarnings();
+  h.setProps({ extensions: [incognito()] });
+  await poll(() => warnings.warned(`extension ${KEY}.incognito`), 3000);
+  warnings.stop();
+  const kept = await cookie();
+  r.check(
+    'incognito set after creation warns that its hook attaches only when the WebView is created, and keeps the cookies',
+    warnings.warned('attaches only when the WebView is created') &&
+      String(kept).includes('incognito=1'),
+    { lines: warnings.lines, kept }
+  );
   await recreate(h, { extensions: [incognito()] }, { remount: true });
   const cleared = await cookie();
   const cacheMode = await h.ref.current?.get('settings.cacheMode').catch(errorCode);
