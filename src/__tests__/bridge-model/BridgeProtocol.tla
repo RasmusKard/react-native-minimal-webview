@@ -1,35 +1,33 @@
 ---------------------------- MODULE BridgeProtocol ----------------------------
-\* Checks the RN <-> page bridge (createBridge.ts, endpoint.ts, pageClient.ts, and native's delivery) over every order of
-\* its events within the bounds in BridgeProtocol.cfg. Run: node .github/scripts/check-bridge-model.mts [--mutants]
 EXTENDS Naturals, Sequences
 
 CONSTANTS
-  NumDocs,     \* documents the WebView commits, one after another
-  NumMsgs,     \* calls and emits the app makes, one after another
+  NumDocs,
+  NumMsgs,
   MaxQueue,    \* createBridge.ts MAX_QUEUE
-  MaxCrashes,  \* renderer crashes
-  MaxMounts    \* WebViews mounted with the bridge, one after another
+  MaxCrashes,
+  MaxMounts
 
 Docs == 1..NumDocs  \* a document's token (protocol.ts `doc`) is its number: tokens are unique
 Msgs == 1..NumMsgs  \* RN call ids (endpoint.ts `n1`, `n2`, ...); an emit uses one too, as a name for the model
-None == 0           \* no document; also createBridge's `doc` before any `ready`
-Direct == NumDocs + 1 \* a message RN posted without queueing it
+None == 0
+Direct == NumDocs + 1
 
 VARIABLES
   \* createBridge.ts
   attached,     \* `post` is set: a WebView is mounted with the bridge
-  phase,        \* `phase`
-  doc,          \* `doc`: the token of the document that last said `ready`
+  phase,
+  doc,
   queue,        \* `queue`, as <<[kind, id, for]>>; `for` is a ghost, see ForPage
-  unavailable,  \* `unavailable`
+  unavailable,
   answering,    \* documents whose call RN's handler is still answering (endpoint.ts receive awaits it)
   \* endpoint.ts, RN's side
-  pending,      \* `pending`
-  timers,       \* calls whose timeout timer is running
+  pending,
+  timers,
   nextMsg,
   \* native: ios/MinimalWebView.swift, MinimalWebView+Scripts.swift; android MinimalWebView.kt, MinimalWebViewScripts.kt
   capable,      \* the WebView has the bridge's features; if not, native reports `unavailable` at install
-  current,      \* the document on screen, or None
+  current,
   canPost,      \* iOS `bridgeOrigin` / Android `replyProxy` is set, so bridgePost reaches the page
   nextDoc, crashes, mounts,
   toRN,         \* onBridge events on their way to createBridge's receive, in order
@@ -93,7 +91,6 @@ Init ==
   /\ rnSaw = None /\ wrongPage = FALSE /\ carriedOver = FALSE
 
 -----------------------------------------------------------------------------
-\* React Native
 
 \* WebView.tsx mounts a WebView with the bridge: connection.attach. Native installs the bridge, or reports it can't.
 Attach ==
@@ -229,7 +226,6 @@ RNAnswer ==
     /\ UNCHANGED <<pageVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-\* Native
 
 \* A main-frame navigation commits a new document: endDocument(.committed) / documentEnded(COMMITTED) clears
 \* bridgeOrigin / replyProxy and emits `navigated`. The page client runs in it only if it is in allowedOrigins.
@@ -327,7 +323,6 @@ Fairness ==
 Spec == Init /\ [][Next]_vars /\ Fairness
 
 -----------------------------------------------------------------------------
-\* Properties
 
 \* 1. Every pending call is either queued or posted to a page, never both and never neither.
 QueuedOrPosted == \A m \in pending : (m \in QueuedCalls) # (m \in posted)

@@ -18,7 +18,6 @@ function setup(timeoutMs = 1000) {
 
 const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-/** Runs the injected `script` in a fresh realm, as an example.com page would at document start. */
 function runPage(script: string) {
   const sent: { kind: string; doc: string; value?: unknown }[] = [];
   const transport = {
@@ -274,10 +273,10 @@ describe('createBridge', () => {
   it('does not carry messages queued for a page that never became ready to the next one', async () => {
     const { bridge, connection, sent, fromPage } = setup();
     fromPage({ kind: 'ready' });
-    connection.receive({ navigated: true }); // to a page outside allowedOrigins
+    connection.receive({ navigated: true });
     bridge.emit('stale', 1);
     const call = bridge.call('stale');
-    connection.receive({ navigated: true }); // back to an allowed page
+    connection.receive({ navigated: true });
     await expect(call).rejects.toMatchObject({ code: 'unavailable' });
     bridge.emit('fresh', 2);
     fromPage({ kind: 'ready' });
@@ -290,7 +289,7 @@ describe('createBridge', () => {
     connection.receive({ crashed: true });
     bridge.emit('after', 1);
     const call = bridge.call('after');
-    connection.receive({ navigated: true }); // the reload commits
+    connection.receive({ navigated: true });
     fromPage({ kind: 'ready' });
     expect(sent).toMatchObject([
       { kind: 'event', method: 'after' },
@@ -337,7 +336,7 @@ describe('createBridge document token', () => {
   it("sends to the document that said ready, and answers a page's call with that caller's token", async () => {
     const { bridge, sent, fromPage, connection } = setup();
     bridge.handle('echo', (params) => params);
-    fromPage({ id: 'p1', doc: 'early', kind: 'call', method: 'echo', params: 1 }); // before its ready
+    fromPage({ id: 'p1', doc: 'early', kind: 'call', method: 'echo', params: 1 });
     await flush();
     bridge.emit('queued', 1);
     fromPage({ doc: 'first', kind: 'ready' });

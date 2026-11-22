@@ -1,6 +1,5 @@
 import { runInNewContext } from 'node:vm';
 
-/** The script's code on `os`: the module reads `Platform.OS` when it loads. */
 function codeOn(os: 'ios' | 'android') {
   let code = '';
   jest.isolateModules(() => {
@@ -13,7 +12,6 @@ function codeOn(os: 'ios' | 'android') {
   return code;
 }
 
-/** Runs `code` as a page's script, in a page with or without the bridge. */
 function run(code: string, withBridge = true) {
   const bridge = {
     emit: jest.fn(),
