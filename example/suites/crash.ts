@@ -309,7 +309,13 @@ export async function crash(h: Harness, r: Reporter) {
     };
     r.check(
       'props set while the recovery waits apply to the recovered WebView',
-      applied.userAgent === 'Crash/2' && applied.injected === 1 && applied.hook === 4,
+      applied.userAgent === 'Crash/2' && applied.hook === 4,
+      applied
+    );
+    r.since(
+      WEBVIEW.injectedScripts,
+      'injectedScripts set while the recovery waits apply to the recovered WebView',
+      applied.injected === 1,
       applied
     );
     h.setProps({ userAgent: 'Crash/1' });
