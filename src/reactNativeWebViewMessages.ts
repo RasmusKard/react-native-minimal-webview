@@ -16,7 +16,6 @@ import type { InjectedScript } from './types';
  * @group Scripts
  */
 export const reactNativeWebViewMessages: InjectedScript = {
-  // Runs after the bridge's own script, so `window.nativeBridge` already exists where the bridge is installed.
   code: `if (window.nativeBridge) {
   window.ReactNativeWebView = { postMessage: (data) => window.nativeBridge.emit('rnw', String(data)) };
   window.nativeBridge.on('rnw', (data) =>

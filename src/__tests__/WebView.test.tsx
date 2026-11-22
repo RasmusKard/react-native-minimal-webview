@@ -33,7 +33,6 @@ const mockNativeModule = {
   preconnect: jest.fn(async (_url: string) => {}),
   setWebContentsDebuggingEnabled: jest.fn(async (_enabled: boolean) => {}),
 };
-// Stands in for the MinimalWebView native view and module; get, call and hook echo their request as JSON.
 jest.mock('expo', () => {
   const { createElement, useEffect, useImperativeHandle } =
     jest.requireActual<typeof import('react')>('react');
@@ -74,11 +73,9 @@ interface NativeTestProps {
   requestHandlers: string[];
 }
 
-/** The props of the `i`th native view under `root`. */
 const nativeAt = (root: ReturnType<typeof createRoot>, i = 0) =>
   root.container.queryAll((node) => node.type === 'MinimalWebView')[i]!.props as NativeTestProps;
 
-/** Renders a WebView of example.com with `props`; `show` renders it again with other props. */
 async function mount(props: Partial<WebViewProps> = {}) {
   const root = createRoot();
   const show = (next: Partial<WebViewProps>) =>
@@ -531,7 +528,7 @@ describe('bridge', () => {
     await act(async () => first.root.unmount());
     expect(await sentError).toMatchObject({ code: 'navigated' });
     const second = await mount({ bridge });
-    const queued = bridge.call('queued'); // no page has said ready
+    const queued = bridge.call('queued');
     const queuedError = queued.catch((error: unknown) => error);
     await act(async () => second.root.unmount());
     expect(await queuedError).toMatchObject({ code: 'unavailable' });
@@ -573,7 +570,6 @@ describe('injectedScripts', () => {
     expect(scripts).toEqual([{ code: expect.any(String) as string, allFrames: true }]);
     return scripts[0]!.code;
   };
-  /** Runs `script` as a document-start script in a frame of `origin`, after `before` patched its built-ins. */
   const run = (script: string, origin: string, before = '') => {
     const frame = createContext({ location: { origin } });
     runInContext('window = globalThis;', frame);
@@ -860,7 +856,6 @@ describe('platform settings', () => {
   });
 
   it('send a root’s other keys among its own, a generated key winning', async () => {
-    // The types refuse a generated key under other; JavaScript can still send one.
     const other: Record<string, SettingValue> = { nope: 1, bounces: true };
     const settings = await settingsOf({ ios: { scrollView: { bounces: false, other } } });
     expect(settings.scrollView).toEqual({ directionalLockEnabled: true, nope: 1, bounces: false });
@@ -939,7 +934,6 @@ describe('platform settings', () => {
     });
 
     it('send a root the types lack, for native to report', async () => {
-      // Only untyped JavaScript can name one.
       const android = { nope: { a: 1 } } as AndroidSettings;
       expect((await settingsOf({ android })).nope).toEqual({ a: 1 });
     });
@@ -1161,7 +1155,7 @@ describe('navigation state across remounts', () => {
     expect(ref.getState().url).toBe('https://example.com/a');
     listener.mockClear();
 
-    await show(2); // remount
+    await show(2);
     expect(listener).toHaveBeenCalled();
     expect(ref.getState().url).toBe('');
     await fireState(root, navState({ url: 'https://example.com/b' }));

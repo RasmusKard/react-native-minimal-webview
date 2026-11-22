@@ -1,6 +1,3 @@
-// The page side of the bridge: installs `window.nativeBridge`. It runs in the page, compiled into PAGE_CLIENT by
-// .github/scripts/build-page-client.mts. Page -> native: iOS WKScriptMessageHandler, Android addWebMessageListener;
-// native -> page: `__receive` (iOS callAsyncJavaScript) or the transport's `onmessage` (Android).
 import type { PageBridge } from '../types';
 import { createEndpoint } from './endpoint';
 import type { BridgeMessage as Message } from './protocol';
@@ -19,7 +16,6 @@ type PageWindow = Window & {
 export function installPageClient(w: PageWindow, timeoutMs: number) {
   // Main frame only (Android injects into allowed-origin iframes too, but only the main frame's messages are taken).
   if (w.nativeBridge || w !== w.top) return;
-  // This document's token (protocol.ts `doc`).
   const doc = Math.random().toString(36).slice(2, 10);
 
   const ios = w.webkit?.messageHandlers?.nativeBridge;
@@ -43,7 +39,6 @@ export function installPageClient(w: PageWindow, timeoutMs: number) {
     emit: endpoint.emit,
     handle: endpoint.handle,
     on: endpoint.on,
-    /** iOS's entry point, origin-checked there. */
     __receive: receive,
   });
   if (w.document.readyState === 'loading') {
@@ -53,8 +48,7 @@ export function installPageClient(w: PageWindow, timeoutMs: number) {
   } else {
     send({ kind: 'ready' });
   }
-  // Back from the back-forward cache: scripts don't run again, but native reset the bridge when the page was left, and
-  // answers to this page's calls went to the page shown meanwhile. Fail those calls and announce the page again.
+  // A page restored from the back-forward cache does not run its scripts again.
   w.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
     endpoint.rejectPending('navigated', 'the page was left before the call was answered');

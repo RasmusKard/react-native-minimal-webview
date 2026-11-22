@@ -18,7 +18,6 @@ function setup(timeoutMs = 1000) {
 
 const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-/** Runs the injected `script` in a fresh realm, as an example.com page would at document start. */
 function runPage(script: string) {
   const sent: { kind: string; doc: string; value?: unknown }[] = [];
   const transport = {
@@ -74,7 +73,7 @@ describe('createBridge', () => {
     bridge.emit('hello', 1);
     expect(sent).toEqual([]);
     fromPage({ kind: 'ready' });
-    expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'hello', params: 1 }]);
+    expect(sent).toEqual([{ doc: 'd1', kind: 'event', event: 'hello', params: 1 }]);
   });
 
   it("passes the caller's origin, as native gave it, to handlers and listeners", async () => {
@@ -85,7 +84,7 @@ describe('createBridge', () => {
     const call = { id: 'p1', doc: 'd1', kind: 'call', method: 'who', origin: 'https://evil.test' };
     connection.receive({ message: JSON.stringify(call), origin: 'https://example.com:8443' });
     connection.receive({
-      message: JSON.stringify({ doc: 'd1', kind: 'event', method: 'hi' }),
+      message: JSON.stringify({ doc: 'd1', kind: 'event', event: 'hi' }),
       origin: 'https://a.example.com',
     });
     await flush();
@@ -228,9 +227,9 @@ describe('createBridge', () => {
     const { bridge, fromPage } = setup();
     const seen: unknown[] = [];
     const off = bridge.on('scrolled', (payload) => seen.push(payload));
-    fromPage({ kind: 'event', method: 'scrolled', params: 1 });
+    fromPage({ kind: 'event', event: 'scrolled', params: 1 });
     off();
-    fromPage({ kind: 'event', method: 'scrolled', params: 2 });
+    fromPage({ kind: 'event', event: 'scrolled', params: 2 });
     expect(seen).toEqual([1]);
   });
 
@@ -248,7 +247,7 @@ describe('createBridge', () => {
       throw failure;
     });
     bridge.on('tick', (payload) => seen.push((payload as number) * 10));
-    fromPage({ kind: 'event', method: 'tick', params: 1 });
+    fromPage({ kind: 'event', event: 'tick', params: 1 });
     jest.restoreAllMocks();
     expect(seen).toEqual([1, 10]);
     expect(reported).toEqual([failure]);
@@ -274,14 +273,14 @@ describe('createBridge', () => {
   it('does not carry messages queued for a page that never became ready to the next one', async () => {
     const { bridge, connection, sent, fromPage } = setup();
     fromPage({ kind: 'ready' });
-    connection.receive({ navigated: true }); // to a page outside allowedOrigins
+    connection.receive({ navigated: true });
     bridge.emit('stale', 1);
     const call = bridge.call('stale');
-    connection.receive({ navigated: true }); // back to an allowed page
+    connection.receive({ navigated: true });
     await expect(call).rejects.toMatchObject({ code: 'unavailable' });
     bridge.emit('fresh', 2);
     fromPage({ kind: 'ready' });
-    expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'fresh', params: 2 }]);
+    expect(sent).toEqual([{ doc: 'd1', kind: 'event', event: 'fresh', params: 2 }]);
   });
 
   it('sends messages made between a crash and the reload to the reloaded page', async () => {
@@ -290,10 +289,10 @@ describe('createBridge', () => {
     connection.receive({ crashed: true });
     bridge.emit('after', 1);
     const call = bridge.call('after');
-    connection.receive({ navigated: true }); // the reload commits
+    connection.receive({ navigated: true });
     fromPage({ kind: 'ready' });
     expect(sent).toMatchObject([
-      { kind: 'event', method: 'after' },
+      { kind: 'event', event: 'after' },
       { kind: 'call', method: 'after' },
     ]);
     fromPage({ id: sent[1]?.id, kind: 'result', value: 1 });
@@ -318,7 +317,7 @@ describe('createBridge', () => {
     expect(() => bridge.emit('bad', 1n)).toThrow(TypeError);
     bridge.emit('good', 1);
     fromPage({ kind: 'ready' });
-    expect(sent).toEqual([{ doc: 'd1', kind: 'event', method: 'good', params: 1 }]);
+    expect(sent).toEqual([{ doc: 'd1', kind: 'event', event: 'good', params: 1 }]);
   });
 
   it('rejects only the oldest queued call with unavailable when the queue is full', async () => {
@@ -337,7 +336,7 @@ describe('createBridge document token', () => {
   it("sends to the document that said ready, and answers a page's call with that caller's token", async () => {
     const { bridge, sent, fromPage, connection } = setup();
     bridge.handle('echo', (params) => params);
-    fromPage({ id: 'p1', doc: 'early', kind: 'call', method: 'echo', params: 1 }); // before its ready
+    fromPage({ id: 'p1', doc: 'early', kind: 'call', method: 'echo', params: 1 });
     await flush();
     bridge.emit('queued', 1);
     fromPage({ doc: 'first', kind: 'ready' });
@@ -362,7 +361,7 @@ describe('createBridge document token', () => {
       origin: 'https://example.com',
     });
     connection.receive({
-      message: JSON.stringify({ kind: 'event', method: 'x' }),
+      message: JSON.stringify({ kind: 'event', event: 'x' }),
       origin: 'https://example.com',
     });
     expect(sent).toEqual([]);

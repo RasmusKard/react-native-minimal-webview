@@ -2,7 +2,8 @@ import { runInNewContext } from 'node:vm';
 
 import vectors from './vectors/origin-rules.json';
 import { CONNECTION, createBridge } from '../bridge/createBridge';
-import { matchesOrigin, originForms } from '../bridge/origins';
+import { matchesOrigin } from '../bridge/matchesOrigin';
+import { originForms } from '../bridge/origins';
 
 const cases = vectors.cases.map((c) => [c.name, c] as const);
 

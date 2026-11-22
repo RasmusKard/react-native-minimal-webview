@@ -31,6 +31,8 @@ and in `example/`: `npx expo install --fix`, then `npx -y npm@11 install` for th
 npm run check
 # Stryker on the files .config/stryker.config.json lists
 npm run mutation
+# The bridge protocol's TLA+ model in src/__tests__/bridge-model; --mutants also checks that each property catches a broken variant
+node .github/scripts/check-bridge-model.mts --mutants
 # Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)
 # Swift tests

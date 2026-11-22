@@ -35,7 +35,7 @@ jobs:
           HASH: >-
             ${{ hashFiles('package-lock.json', '.config/stryker.config.json', '.github/workflows/mutation.yml',
             'src/**', '!src/**/*.test.ts', '!src/**/*.test.tsx', '!src/bridge/createBridge.ts', '!src/bridge/endpoint.ts',
-            '!src/bridge/origins.ts', '!src/bridge/protocol.ts', '!src/bridge/pageClient.ts', '!src/WebView.tsx',
+            '!src/bridge/matchesOrigin.ts', '!src/bridge/origins.ts', '!src/bridge/protocol.ts', '!src/bridge/pageClient.ts', '!src/WebView.tsx',
             '!src/navigationRules.ts', '!src/refStore.ts') }}
       - uses: actions/cache@v6.1.0
         with:

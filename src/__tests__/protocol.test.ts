@@ -9,7 +9,7 @@ describe('parseBridgeMessage', () => {
     { doc: 'd', id: '1', kind: 'result', value: null },
     { doc: 'd', id: '1', kind: 'result' },
     { doc: 'd', id: '1', kind: 'error', error: { code: 'timeout', message: 'slow' } },
-    { doc: 'd', kind: 'event', method: 'scrolled' },
+    { doc: 'd', kind: 'event', event: 'scrolled' },
   ])('accepts %j', (message) => {
     expect(parse(message)).toEqual(message);
   });
@@ -43,8 +43,8 @@ describe('parseBridgeMessage', () => {
     ['a result without id', JSON.stringify({ doc: 'd', kind: 'result' }), 'missing id'],
     [
       'an empty event name',
-      JSON.stringify({ doc: 'd', kind: 'event', method: '' }),
-      'missing method',
+      JSON.stringify({ doc: 'd', kind: 'event', event: '' }),
+      'missing event',
     ],
     [
       'an error without id',
