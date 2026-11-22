@@ -12,8 +12,7 @@ import expo.modules.minimalwebview.MinimalWebViewHooks
 /**
  * The `perf` suite's probe (example/perf.ts). It only observes: `perfMark.mark(i)` from the page stamps the moment
  * before the page navigates to `…&i=<i>` (on the JavaBridge thread, synchronously), and the first main-frame
- * `shouldInterceptRequest` for that URL the moment its request starts (on Chromium's IO thread). It returns null there,
- * as the core does without a hook, so every request still loads as it would without the hook.
+ * `shouldInterceptRequest` for that URL the moment its request starts (on Chromium's IO thread).
  * `ref.hook('sample.perf', 'drain')` hands the stamps to JS and clears them.
  */
 internal object PerfProbe {
@@ -50,10 +49,8 @@ private class Probe {
   fun drain() = synchronized(marks) { marks.map { it.toMap() }.also { marks.clear() } }
 }
 
-/** A monotonic clock in ns, as a Double (exact below 2^53 ns, 104 days of uptime) so it crosses to JS as a number. */
 private fun now() = SystemClock.elapsedRealtimeNanos().toDouble()
 
-/** Main-thread frame gaps between [start] and [stop], from Choreographer. */
 internal object Stall : Choreographer.FrameCallback {
   private var running = false
   private var last = 0L

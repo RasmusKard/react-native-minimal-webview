@@ -13,16 +13,12 @@ import {
   travel,
   waitFor,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, androidWebView, type Harness, type Reporter } from '../harness/runner';
 
-/**
- * Back and forward restored from the back-forward cache (WebKit always, Android by default): the restore itself, the
- * navigation state, one onLoadStart/onLoadEnd per restore, the bridge both ways, and the rules on the restored
- * page.
- */
 export async function bfcache(h: Harness, r: Reporter) {
-  await openPage(h, fresh(h, '/')); // so the first page has one before it
+  await openPage(h, fresh(h, '/'));
   const first = fresh(h, '/back-forward.html?title=first');
   await openPage(h, first);
   const second = fresh(h, '/back-forward.html?title=second');
@@ -31,21 +27,20 @@ export async function bfcache(h: Harness, r: Reporter) {
   await travel(h, r, 'back', () => h.ref.current?.goBack(), first, 'first', true);
   await travel(h, r, 'forward', () => h.ref.current?.goForward(), second, 'second', false);
 
-  // A call still unanswered when its page goes into the cache rejects at once; the answer the page sends once restored
-  // is dropped. Both ways: the page's call to the app's 'slow' (answered after 5 s) rejects in the page.
   const straddleCall = `(() => {
     window.__straddle = undefined;
     nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
   })()`;
   await h.ref.current?.evaluate(straddleCall).catch(errorCode);
-  // Without the bridge the call rejects at once, before the page is left.
-  let left = Date.now();
+  const calledAt = Date.now();
+  let leftAt: number | undefined;
+  const sinceLeftOrCalled = () => Date.now() - (leftAt ?? calledAt);
   const inFlight = h.bridge.call('slow', { ms: 1500 }).then(
-    (value) => ({ value, ms: Date.now() - left }),
-    (error: unknown) => ({ code: errorCode(error), ms: Date.now() - left })
+    (value) => ({ value, ms: sinceLeftOrCalled() }),
+    (error: unknown) => ({ code: errorCode(error), ms: sinceLeftOrCalled() })
   );
   await sleep(200);
-  left = Date.now();
+  leftAt = Date.now();
   h.ref.current?.goBack();
   const settled = await inFlight;
   r.since(
@@ -57,7 +52,7 @@ export async function bfcache(h: Harness, r: Reporter) {
   await waitFor(h, (s) => s.url === first && idle(s));
   h.ref.current?.goForward();
   await waitFor(h, (s) => s.url === second && idle(s));
-  await sleep(2000); // the restored page's timer fires and it answers the old call
+  await quietFor(2000);
   const straddle = (await h.ref.current?.evaluate('window.__straddle')) as
     { error?: string } | null | undefined;
   r.since(
@@ -92,7 +87,6 @@ export async function bfcache(h: Harness, r: Reporter) {
   );
 
   if (Platform.OS === 'android') {
-    // The app turns the cache on itself: below WebView 146 a restored page reports no load end, so it's refused there.
     const warnings = captureWarnings();
     h.setProps({ android: { settings: { backForwardCacheEnabled: true } } });
     const one = fresh(h, '/back-forward.html?title=one');
@@ -101,7 +95,7 @@ export async function bfcache(h: Harness, r: Reporter) {
     clearEvents(h);
     h.ref.current?.goBack();
     const back = await happens(waitFor(h, (s) => s.url === one && idle(s)));
-    await sleep(500); // a late load event would come now
+    await quietFor(500);
     warnings.stop();
     r.check(
       'back with backForwardCacheEnabled set: one load start and end, finished',

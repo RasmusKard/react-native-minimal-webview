@@ -13,10 +13,8 @@ import {
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
-/** `source.body` (a form POST, sent again by reload) and a `file://` source with its own assets. */
 export async function sources(h: Harness, r: Reporter) {
   const body = `amount=9.99&t=${Date.now()}`;
-  // The WebView commits the second form with its host lowercase.
   for (const [form, host] of [
     ['', 'localhost'],
     [' when the source URL has an uppercase host', 'LOCALHOST'],
@@ -49,7 +47,6 @@ export async function sources(h: Harness, r: Reporter) {
     );
   }
 
-  // The source load skips the rules: WebKit puts an html source through them at its baseUrl.
   h.setRules([]);
   await waitForLoad(h, () =>
     h.loadSource({ html: '<p id="html">html source</p>', baseUrl: `${h.pages}/base/` })
@@ -59,7 +56,6 @@ export async function sources(h: Harness, r: Reporter) {
     (await text(h, 'html')) === 'html source',
     await text(h, 'html')
   );
-  // WebKit's reload fetches an html source's baseUrl instead.
   await h.ref.current?.evaluate(`document.getElementById('html').textContent = 'stale'`);
   await waitForLoad(h, () => h.ref.current?.reload());
   await until(async () => (await text(h, 'html').catch(() => 'stale')) !== 'stale', 3000);
@@ -94,8 +90,6 @@ export async function sources(h: Harness, r: Reporter) {
     { loaded, url: h.state().url }
   );
   if (Platform.OS === 'ios') {
-    // react-native-webview's private keys: a file: page fetches a sibling file only with the first, and a server that
-    // sends no CORS headers (this one) only with the second.
     const read = async (url: string) =>
       await h.ref.current?.evaluate(`fetch('${url}').then((r) => r.text(), () => 'blocked')`);
     const server = `${h.pages}/common.js`;
@@ -124,7 +118,6 @@ export async function sources(h: Harness, r: Reporter) {
   }
   dir.delete();
 
-  // Hostless source URLs, which crashed react-native-webview on iOS.
   for (const [name, uri, shown] of [
     ['an about:blank', 'about:blank', ''],
     ['a data:', 'data:text/html,<p id="data">data source</p>', 'data source'],

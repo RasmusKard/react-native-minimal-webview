@@ -14,10 +14,6 @@ import {
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
-/**
- * Android file chooser through onFileRequest: the app answers with URIs it got from an Expo API. Without the prop, the
- * system chooser. The taps come from the driver, because WebView only opens choosers on a real gesture.
- */
 export async function upload(h: Harness, r: Reporter) {
   if (Platform.OS !== 'android') {
     r.skip('the suite', 'onFileRequest is Android only');
@@ -39,10 +35,11 @@ export async function upload(h: Harness, r: Reporter) {
     await sleep(200);
   };
   await open();
-  // The file input fills the page (upload.html). What the page logs after the tap, '' when nothing.
-  const point = '50%, 49%';
+  // The taps come from the driver, because WebView only opens choosers on a real gesture.
+  const fullPageFileInput = '50%, 49%';
   const tapAndRead = async (label: string, action: 'tap' | 'tapThenBack' = 'tap') =>
-    (await pageLog(h, () => r.drive({ action, point }, label)))?.join(' | ') ?? '';
+    (await pageLog(h, () => r.drive({ action, point: fullPageFileInput }, label)))?.join(' | ') ??
+    '';
 
   answer = [file.uri];
   const fromFileUri = await tapAndRead('file uri');
@@ -80,11 +77,9 @@ export async function upload(h: Harness, r: Reporter) {
     again
   );
 
-  // A handler that never settles holds the page's chooser (WebView allows one); the next page cancels it and aborts
-  // the handler's signal.
   hang = true;
   const held = requests.length;
-  r.drive({ action: 'tap', point }, 'never settles');
+  r.drive({ action: 'tap', point: fullPageFileInput }, 'never settles');
   await reachesJs(r, () => requests.length, held);
   hang = false;
   const navigatedAt = Date.now();
@@ -102,7 +97,6 @@ export async function upload(h: Harness, r: Reporter) {
     { requests: requests.length - held, afterHang }
   );
 
-  // Without onFileRequest: the system chooser. It covers the app (AppState goes background); the driver presses back.
   h.setProps({ onFileRequest: undefined });
   const states: string[] = [];
   const subscription = AppState.addEventListener('change', (state) => states.push(state));

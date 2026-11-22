@@ -10,18 +10,15 @@ import {
   sleep,
   poll,
 } from '../harness/helpers';
-import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
+import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from '../harness/runner';
 
-/** `ios` / `android` settings by name: applied live, seen by the page, rejected with a warning when wrong; get and call. */
 export async function settings(h: Harness, r: Reporter) {
   const { lines: warnings, warned, stop } = captureWarnings();
   r.cleanup(stop);
   const page = (expression: string) => h.ref.current?.evaluate(expression).catch(errorCode);
   const get = (key: string) => h.ref.current?.get(key).catch(errorCode);
-  /** Whether `read` gives `want` within 3 s: a setting reaches the WebView, and the page, on their own schedule. */
   const becomes = async (read: () => Promise<unknown> | undefined, want: unknown) =>
     !!(await poll(async () => (await read()) === want, 3000));
-  // An 8px span's computed size: the minimum font size setting raises it.
   const fontSize = () =>
     page(`(() => {
       const s = document.createElement('span'); s.style.fontSize = '8px'; s.textContent = 'x'; document.body.append(s);
@@ -32,6 +29,8 @@ export async function settings(h: Harness, r: Reporter) {
     if (Platform.OS === 'ios') {
       const configuration = { applicationNameForUserAgent: 'Settings/1' };
       const preferences = { minimumFontSize: 30 };
+      const setIos = (ios: Omit<NonNullable<HarnessProps['ios']>, 'configuration'>) =>
+        h.setProps({ ios: { configuration, ...ios } });
       await recreate(h, {
         ios: {
           configuration,
@@ -45,18 +44,14 @@ export async function settings(h: Harness, r: Reporter) {
         warned('ios.scrollView.nope: no such property'),
         warnings
       );
-      // The same configuration from here on, so this is the same WebView.
-      h.setProps({ ios: { configuration, preferences: { minimumFontSize: 'big' as never } } });
+      setIos({ preferences: { minimumFontSize: 'big' as never } });
       await sleep(500);
       r.check('and leaves the property alone', (await fontSize()) === '30px', await fontSize());
       await openPage(h, fresh(h, '/ptr.html?mode=long'));
-      h.setProps({
-        ios: {
-          configuration,
-          scrollView: {
-            contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
-            contentOffset: { x: 0, y: 30 },
-          },
+      setIos({
+        scrollView: {
+          contentInsetAdjustmentBehavior: IOSConstants.ContentInsetAdjustmentBehavior.never,
+          contentOffset: { x: 0, y: 30 },
         },
       });
       r.check(
@@ -64,13 +59,12 @@ export async function settings(h: Harness, r: Reporter) {
         await becomes(() => page('scrollY'), 30),
         await page('scrollY')
       );
-      // Removed by the update that set the offset, which has applied.
       r.check(
         'a removed key (preferences.minimumFontSize) goes back to its start-up value',
         (await get('preferences.minimumFontSize')) === 0
       );
       const width = (await page('innerWidth')) as number;
-      h.setProps({ ios: { configuration, webView: { pageZoom: 2 } } });
+      setIos({ webView: { pageZoom: 2 } });
       const zoomedIn = await poll(
         async () => Math.abs(((await page('innerWidth')) as number) * 2 - width) <= 2,
         3000
@@ -79,11 +73,8 @@ export async function settings(h: Harness, r: Reporter) {
         width,
         zoomed: await page('innerWidth'),
       });
-      h.setProps({
-        ios: {
-          configuration,
-          webpagePreferences: { preferredContentMode: IOSConstants.ContentMode.desktop },
-        },
+      setIos({
+        webpagePreferences: { preferredContentMode: IOSConstants.ContentMode.desktop },
       });
       await becomes(
         () => get('webpagePreferences.preferredContentMode'),
@@ -96,13 +87,9 @@ export async function settings(h: Harness, r: Reporter) {
         String(desktop).includes('Macintosh'),
         desktop
       );
-      h.setProps({
-        ios: {
-          configuration,
-          scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
-        },
+      setIos({
+        scrollView: { bounces: false, contentInset: { top: 5, left: 0, bottom: 0, right: 0 } },
       });
-      // bounces starts out true; the inset comes in the same update.
       r.check('get reads a BOOL', await becomes(() => get('scrollView.bounces'), false));
       const inset = (await get('scrollView.contentInset')) as Record<string, number> | undefined;
       r.check(
@@ -120,7 +107,6 @@ export async function settings(h: Harness, r: Reporter) {
       );
       const call = (method: string, args?: unknown[]) =>
         h.ref.current?.call(method, args).catch(errorCode);
-      // The site data clear below removes this cookie.
       const value = String(Date.now());
       const setCookie = (cookie: Record<string, string>) =>
         call('httpCookieStore.setCookie:completionHandler:', [{ cookie }]);
@@ -178,7 +164,6 @@ export async function settings(h: Harness, r: Reporter) {
         playback === IOSConstants.MediaPlaybackState.none,
         playback
       );
-      // iOS 18 selectors: below it the call rejects with not_found, so the checks are skipped.
       if (parseFloat(String(Platform.Version)) >= 18) {
         await page(`sessionStorage.setItem('mrw', '1')`);
         const session = await call('webView.fetchDataOfTypes:completionHandler:', [
@@ -251,14 +236,12 @@ export async function settings(h: Harness, r: Reporter) {
         warned('android.webView.webViewClient: owned by the core'),
         warnings
       );
-      // The renderer process keeps navigator.onLine for later WebViews: put it back.
       h.setProps({
         android: {
           settings: { minimumFontSize: 'big' as never, paymentRequestEnabled: true },
           webView: { networkAvailable: true },
         },
       });
-      // The rejected minimumFontSize comes in the same update as networkAvailable.
       const restored = await becomes(() => page('navigator.onLine'), true);
       r.check('and leaves the setting alone', (await fontSize()) === '30px', await fontSize());
       r.check('networkAvailable is restored', restored);
@@ -288,7 +271,6 @@ export async function settings(h: Harness, r: Reporter) {
       );
       await page(`(document.cookie = 'mrw=1; path=/')`);
       const before = await page('document.cookie');
-      // No callback in the args: the call resolves once the cookies are gone, with whether there were any.
       const removed = await call('cookieManager.removeAllCookies');
       r.check(
         'call awaits a ValueCallback: cookieManager.removeAllCookies',

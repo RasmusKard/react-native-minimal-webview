@@ -13,10 +13,10 @@ import {
   until,
   waitFor,
   happens,
+  quietFor,
 } from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
-/** Rules, new windows, external links handed to JS, iframes, intent fallbacks and the ask redirect-loop guard. */
 export async function navigation(h: Harness, r: Reporter) {
   const external: string[] = [];
   const asked: string[] = [];
@@ -46,7 +46,6 @@ export async function navigation(h: Harness, r: Reporter) {
   const page = fresh(h, '/nav.html');
   await openPage(h, page);
   h.events.navigations.length = 0;
-  /** A main-frame navigation that doesn't load in place: no load start after `act`, and `outcome` is unchanged. */
   const noLoad = async (name: string, act: () => Promise<unknown>) => {
     const [loads, outcome] = [h.events.loads.length, h.state().outcome];
     await act();
@@ -81,7 +80,6 @@ export async function navigation(h: Harness, r: Reporter) {
     external
   );
 
-  // Script-opened windows are off by default, so new windows come from a tap.
   await tap(h, r, 'open');
   await waitFor(h, () => lastNavigation()?.url === 'https://example.com/popup', 15000);
   r.check(
@@ -138,12 +136,11 @@ export async function navigation(h: Harness, r: Reporter) {
     baseUrl: h.pages,
   });
   h.loadSource(selfOpening('blocked'));
-  // A window it wrongly opened would reach onOpenExternal right after the page's try.
   await until(
     async () => (await h.ref.current?.evaluate('window.__opened').catch(errorCode)) === true,
     5000
   );
-  await sleep(1000);
+  await quietFor(1000);
   r.check(
     'by default a script cannot open a window without a gesture',
     !external.includes('https://example.com/blocked'),
@@ -179,7 +176,6 @@ export async function navigation(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/nav.html'));
   if (Platform.OS === 'ios') {
     await click(h, 'redirect', 'frame')?.catch(errorCode);
-    // Decisions about the iframe's navigation come before it moves (its redirect ends on /spa.html?from=redirect).
     const frameUrl = () =>
       h.ref.current?.evaluate(`document.getElementById('frame').contentWindow.location.href`);
     await until(
@@ -197,12 +193,10 @@ export async function navigation(h: Harness, r: Reporter) {
 
   asked.length = 0;
   await h.ref.current?.evaluate(`location.href = '/checkout/loopA'`);
-  // Over once the loop's navigation has ended with no ask for a second; a third ask fails it at once.
-  await until(
-    () =>
-      asked.length > 2 || (asked.length > 0 && idle(h.state()) && Date.now() - lastAskAt > 1000),
-    10000
-  );
+  const askedAThirdTime = () => asked.length > 2;
+  const loopEndedWithoutAnotherAsk = () =>
+    asked.length > 0 && idle(h.state()) && Date.now() - lastAskAt > 1000;
+  await until(() => askedAThirdTime() || loopEndedWithoutAnotherAsk(), 10000);
   r.check(
     'an ask redirect loop asks at most once per URL',
     asked.length >= 1 && asked.length <= 2,
@@ -210,7 +204,6 @@ export async function navigation(h: Harness, r: Reporter) {
   );
   await openPage(h, fresh(h, '/nav.html'));
 
-  // An `ask` may answer `external`; any other answer (here one untyped JS could give) blocks.
   const askedPage = h.state().url;
   const decided = (path: string) =>
     waitFor(h, () => lastNavigation()?.url.endsWith(path) === true, 3000);
@@ -244,8 +237,6 @@ export async function navigation(h: Harness, r: Reporter) {
     lastNavigation()
   );
 
-  // The core opens what onOpenExternal hands back (false) as it does without the prop. Android: an intent: for an app
-  // that isn't installed, whose fallback goes through the rules. iOS: a tel:, which a simulator has no app for.
   h.setRules([
     { scheme: ['intent', 'tel'], action: 'external' },
     { scheme: ['http', 'https'], action: 'allow' },
@@ -264,9 +255,9 @@ export async function navigation(h: Harness, r: Reporter) {
     await h.ref.current?.evaluate(`location.href = ${JSON.stringify(url)}`);
     const decided = (prefix: string) => h.events.navigations.find((n) => n.url.startsWith(prefix));
     await waitFor(h, () => decided(scheme) !== undefined, 5000);
-    // The core decides the fallback before it reports the intent:, so only a decided one gets time to load.
+    const timeForADecidedFallbackToLoad = decided(fallback) ? 8000 : 1000;
     const loaded = await happens(
-      waitFor(h, (s) => s.url === fallback && idle(s), decided(fallback) ? 8000 : 1000)
+      waitFor(h, (s) => s.url === fallback && idle(s), timeForADecidedFallbackToLoad)
     );
     return {
       external: [...external],
@@ -306,7 +297,6 @@ export async function navigation(h: Harness, r: Reporter) {
     handled
   );
 
-  // Frames a page makes for itself (a challenge or a widget) still load when the rules send everything else out.
   const internalFrames = async (label: string, rules: NavigationRule[], kinds: string[]) => {
     h.setProps({ onOpenExternal: recordExternal(external) });
     h.setRules(rules);
@@ -330,7 +320,7 @@ export async function navigation(h: Harness, r: Reporter) {
       const seen = await ran();
       return kinds.every((kind) => seen.includes(kind));
     }, 5000);
-    await sleep(500); // a decision that comes after the frame ran
+    await quietFor(500);
     const seen = await ran();
     r.check(
       `${label}: ${kinds.join(', ')} iframes load and run`,
@@ -351,6 +341,5 @@ export async function navigation(h: Harness, r: Reporter) {
     [{ host: ['localhost', '127.0.0.1'], action: 'allow' }, { action: 'external' }],
     ['about:blank', 'srcdoc', 'data:', 'blob:']
   );
-  // A same-origin blob: is decided as its origin, which no rule allows here.
   await internalFrames('with navigationRules={[]}', [], ['about:blank', 'srcdoc', 'data:']);
 }

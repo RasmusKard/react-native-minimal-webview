@@ -14,10 +14,8 @@ import {
 import { type Harness, type Reporter } from '../harness/runner';
 import { OTHER } from '../pages';
 
-/** Camera and location reach the page only when onPermissionRequest says yes, main frame only; the OS allows it here. */
 export async function permissionsSuite(h: Harness, r: Reporter) {
-  // A fix for the geolocation checks.
-  r.drive({ action: 'location' });
+  r.drive({ action: 'setGpsFix' });
   const asked: PermissionRequest[] = [];
   let answer = false;
   let hold = false;
@@ -43,7 +41,7 @@ export async function permissionsSuite(h: Harness, r: Reporter) {
   if (Platform.OS === 'android') {
     r.check('app yes + OS permission grants the camera', granted.includes('camera ok'), granted);
     const geo = await press('geo');
-    // Granted means anything but PERMISSION_DENIED (1): the emulator may have no fix yet (3, timeout).
+    // The emulator may have no fix yet: the page then gets POSITION_UNAVAILABLE (2) or TIMEOUT (3), not PERMISSION_DENIED (1).
     r.check(
       'location granted with app yes + OS permission',
       /geo ok|geo error [23]/.test(geo),
@@ -59,8 +57,6 @@ export async function permissionsSuite(h: Harness, r: Reporter) {
     );
   }
 
-  // Another origin's frame and a sandboxed one (an opaque origin), though the iframe allows the camera: denied without
-  // asking.
   let askedBefore = asked.length;
   for (const [name, frame] of [
     ['a cross-origin frame', `{ allow: 'camera', src: '${OTHER}/device.html?auto=camera' }`],
@@ -91,7 +87,6 @@ export async function permissionsSuite(h: Harness, r: Reporter) {
     );
   }
 
-  // A handler that never settles: the next page cancels its request (deny), aborts its signal and asks the app again.
   await openPage(h, fresh(h, '/device.html'));
   hold = true;
   askedBefore = asked.length;

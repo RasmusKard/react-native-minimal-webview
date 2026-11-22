@@ -3,8 +3,7 @@ import QuartzCore
 import WebKit
 
 /// The `perf` suite's probe (example/perf.ts). It only observes: `perfMark(i)` from the page stamps the moment before
-/// the page navigates to `…&i=<i>`, and `didStartProvisionalNavigation` (which every hook delegate gets) the moment
-/// that navigation starts. It implements no decision callback, so the core still decides every navigation.
+/// the page navigates to `…&i=<i>`, and `didStartProvisionalNavigation` the moment that navigation starts.
 /// `ref.hook('sample.perf', 'drain')` hands the stamps to JS and clears them.
 enum PerfProbe {
   static func register() {
@@ -20,7 +19,6 @@ enum PerfProbe {
   }
 }
 
-/// Main thread only: WebKit calls both on it, and so do the hook's handlers.
 private final class Probe: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
   private var marks: [[String: Any]] = []
 
@@ -42,10 +40,8 @@ private final class Probe: NSObject, WKScriptMessageHandler, WKNavigationDelegat
   }
 }
 
-/// A monotonic clock in ns, as a Double (exact below 2^53 ns, 104 days of uptime) so it crosses to JS as a number.
 private func now() -> Double { Double(DispatchTime.now().uptimeNanoseconds) }
 
-/// Main-thread frame gaps between `start` and `stop`, from a CADisplayLink.
 final class Stall: NSObject {
   static let shared = Stall()
   private var link: CADisplayLink?

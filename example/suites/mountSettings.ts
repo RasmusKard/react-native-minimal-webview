@@ -16,10 +16,6 @@ import {
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
-/**
- * A creation-time setting changed while mounted recreates the WebView (iOS: an `ios.configuration` key; Android has
- * none, so a remount stands in); afterwards the page, the bridge, the extensions and `ask` must all still work.
- */
 export async function mountSettings(h: Harness, r: Reporter) {
   const uaOf = async () => {
     await openPage(h, fresh(h, '/ua'));
@@ -36,7 +32,7 @@ export async function mountSettings(h: Harness, r: Reporter) {
             settings: { userAgentString: `${AndroidWebView.defaultUserAgent} Remounted/9` },
           },
         },
-    Platform.OS === 'android'
+    { remount: Platform.OS === 'android' }
   );
   const remountedVh = await viewportHeight(h);
   r.check('100vh has a height after the recreation', remountedVh > 0, remountedVh);

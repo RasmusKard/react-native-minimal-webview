@@ -9,6 +9,7 @@ import {
   sleep,
   waitFor,
   poll,
+  quietFor,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter, withFloor } from '../harness/runner';
 import { OTHER } from '../pages';
@@ -98,7 +99,7 @@ export async function bridge(h: Harness, all: Reporter) {
   const before = h.pageEvents.length;
   await h.ref.current?.evaluate(`nativeBridge.emit('pageEvent', { n: 2 })`).catch(errorCode);
   await waitFor(h, () => h.pageEvents.length > before, 3000);
-  await sleep(200); // a duplicate would come right after
+  await quietFor(200);
   r.check('page -> RN event', h.pageEvents.length === before + 1, h.pageEvents);
 
   const inFlight = h.bridge.call('pageSlow').catch(errorCode);
@@ -113,10 +114,7 @@ export async function bridge(h: Harness, all: Reporter) {
   const again = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('the bridge works again after navigation', again === 2, again);
 
-  // The new page's first message is a head script's call. Android ends the old Document (and drops its reply proxy) one
-  // main-thread hop after the commit: that has to come first, or the answer is lost and JS takes the page as loading.
-  const head = `${page}&head=1`;
-  await openPage(h, head);
+  await openPage(h, `${page}&callFromHead=1`);
   const headCall = await poll(() => h.ref.current?.evaluate('window.__head'), 5000);
   r.check(
     "a head script's call at document start is answered",
@@ -126,9 +124,9 @@ export async function bridge(h: Harness, all: Reporter) {
   const afterHead = await h.bridge.call('sum', { a: 2, b: 2 }).catch(errorCode);
   r.check("RN -> page calls work after a head script's call", afterHead === 4, afterHead);
 
-  const early = `${page}&early=1`;
-  h.load(early);
-  await waitFor(h, (s) => s.url === early);
+  const lateHandler = `${page}&lateHandler=1`;
+  h.load(lateHandler);
+  await waitFor(h, (s) => s.url === lateHandler);
   const duringLoad = await h.bridge.call('early').catch(errorCode);
   r.check(
     'a call made during load reaches a handler the page registers while loading',

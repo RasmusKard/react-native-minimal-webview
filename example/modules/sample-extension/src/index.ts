@@ -28,13 +28,23 @@ export const pageCounter = (
   onEvent?: (event: PageCounterEvent, signal?: AbortSignal) => unknown
 ): HookExtension<PageCounterEvent> => ({ key: 'sample.pageCounter', options, onEvent });
 
+type SampleHookEvents = {
+  hookAuth: HookEvent<'challenge', { method: string; host: string }>;
+  hookDialogs: HookEvent<'alert', { message: string }>;
+  seams: HookEvent<'download' | 'scrollA' | 'scrollB', Record<string, never>>;
+  hookNavigation: HookEvent;
+  subclass: HookEvent;
+  perf: HookEvent;
+  noWebView: HookEvent;
+};
+
 /**
  * One of the sample's hooks that take no options, for the `extensions` prop. A caller that wants its events sets
  * `onEvent` on the result.
  */
-export const sampleHook = (
-  name: 'hookAuth' | 'hookDialogs' | 'hookNavigation' | 'subclass' | 'seams' | 'perf' | 'noWebView'
-): HookExtension => ({ key: `sample.${name}` });
+export const sampleHook = <N extends keyof SampleHookEvents>(
+  name: N
+): HookExtension<SampleHookEvents[N]> => ({ key: `sample.${name}` });
 
 /**
  * The `sample.seams` hook's counter: how many of its WebViews were closed at unmount. Android: `setWebViewMissing`
