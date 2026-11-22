@@ -18,7 +18,6 @@ const state = (changes: Partial<NavigationState>): NavigationState => ({
   ...changes,
 });
 
-/** A page load: its progress ticks, then its end, with the history it leaves. */
 const load = [
   state({ loading: true, pendingUrl: 'https://example.com/a' }),
   state({ loading: true, pendingUrl: 'https://example.com/a', progress: 0.1 }),
@@ -27,10 +26,6 @@ const load = [
   state({ url: 'https://example.com/a', progress: 1, canGoBack: true, outcome: 'finished' }),
 ];
 
-/**
- * Renders `children` beside a WebView stand-in attached to `ref`. `publish` hands the ref the stand-in's next state, as
- * a navigation state event does; `unmount` unmounts the stand-in.
- */
 async function mount(ref: WebViewRefObject, children: ReactNode) {
   let publish = (_next: NavigationState) => state({});
   let unmount = () => {};
@@ -58,7 +53,6 @@ async function mount(ref: WebViewRefObject, children: ReactNode) {
   };
 }
 
-// A typed array checks that the selected value's type follows the selector.
 describe('useWebViewState', () => {
   it('re-renders with a selector only when what it selects changes', async () => {
     const ref = createWebViewRef();
@@ -82,7 +76,7 @@ describe('useWebViewState', () => {
     const [rendered, renderedWhole] = [selected.length, whole.length];
     for (const next of load) await publish(next);
     expect(selected.slice(rendered)).toEqual([true]);
-    expect(whole.slice(renderedWhole)).toEqual(load); // without one, at every change
+    expect(whole.slice(renderedWhole)).toEqual(load);
     await publish(state({}));
     expect(selected.slice(rendered)).toEqual([true, false]);
   });

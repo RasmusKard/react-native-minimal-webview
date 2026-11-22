@@ -1,7 +1,6 @@
 // Type-checks the ts and tsx samples in README.md, extensions/README.md and guides/*.md against src/ and the extensions
 // package, and reports each error at its line in the Markdown. Each sample is a module of its own in build/doc-samples/.
-// A relative import is the page's sample that exports what it imports. doc-samples.d.ts declares the modules the
-// samples import that aren't installed here.
+// A relative import is the page's sample that exports what it imports.
 // Then checks that the reference leads to each example: a section of guides/examples.md with a sample is the target of
 // an `@see` in a doc comment of src/ or extensions/, and each such `@see` names a section that exists.
 // Run: node .github/scripts/check-doc-samples.mts (npm run check runs it).
@@ -18,12 +17,12 @@ const pages = ['README.md', 'extensions/README.md', ...guides.map((name) => `gui
 const samples = pages.flatMap((page) => {
   const text = readFileSync(join(root, page), 'utf8');
   return [...text.matchAll(/^```(tsx?)\n([\s\S]*?)^```$/gm)].map((match) => {
-    const line = text.slice(0, match.index).split('\n').length + 1; // the sample's first line
+    const firstLine = text.slice(0, match.index).split('\n').length + 1;
     return {
       page,
-      line,
+      firstLine,
       code: match[2],
-      file: join(out, `${page.slice(0, -'.md'.length)}-${line}.${match[1]}`),
+      file: join(out, `${page.slice(0, -'.md'.length)}-${firstLine}.${match[1]}`),
     };
   });
 });
@@ -68,7 +67,7 @@ for (const d of diagnostics) {
   let where = d.file?.fileName ?? 'tsc';
   if (sample && d.file && d.start !== undefined) {
     const { line, character } = d.file.getLineAndCharacterOfPosition(d.start);
-    where = `${sample.page}:${sample.line + line}:${character + 1}`;
+    where = `${sample.page}:${sample.firstLine + line}:${character + 1}`;
   }
   console.error(`${where}: ${ts.flattenDiagnosticMessageText(d.messageText, '\n')}`);
 }

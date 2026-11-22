@@ -10,7 +10,6 @@ import {
 
 import type { NavigationState, WebViewRef, WebViewRefObject } from './types';
 
-/** An empty `url`, so a stale URL never looks valid while no WebView is mounted. */
 const INITIAL_STATE: NavigationState = {
   url: '',
   pendingUrl: null,
@@ -22,7 +21,6 @@ const INITIAL_STATE: NavigationState = {
   outcome: null,
 };
 
-/** A mounted WebView's hold on its ref: `handle` passes on the WebView's state, and lets go at unmount. */
 type Adapter = {
   nav: WebViewRefObject;
   attach(handle: WebViewRef, state: NavigationState): void;
@@ -30,7 +28,6 @@ type Adapter = {
   detach(handle: WebViewRef): void;
 };
 
-/** The navigation object behind each ref object: created by createWebViewRef, or made on first use for a plain ref. */
 const adapters = new WeakMap<object, Adapter>();
 
 function adapterFor(ref: object) {
@@ -59,7 +56,6 @@ function createAdapter(): Adapter {
   };
   return {
     nav,
-    // Last attached wins, like a React ref; an earlier instance's later updates and detach are ignored.
     attach(handle, initial) {
       if (__DEV__ && attached) {
         console.warn(
@@ -93,8 +89,6 @@ export function createWebViewRef(): WebViewRefObject {
 }
 
 /**
- * Attaches `handle` to `ref`. A callback or plain ref gets it through `useImperativeHandle`; a `createWebViewRef` ref
- * serves it as its own `current`. Any ref object also gets the navigation state through its adapter.
  * Returns a function that records a new state, passes it to the attached ref and returns the previous state.
  */
 export function useAttach(
@@ -148,7 +142,6 @@ export function useWebViewState<T>(
   return useSyncExternalStore(nav.subscribe, getSnapshot);
 }
 
-/** `select` of the current state, run again only for another state: a snapshot is the same value until a change. */
 function selectFrom<T>(getState: () => NavigationState, select: (state: NavigationState) => T) {
   let last: { state: NavigationState; selected: T } | undefined;
   return () => {

@@ -1,4 +1,3 @@
-// Type-level checks, run by `npx tsc --noEmit -p src/__tests__/tsconfig.json`: each expected error below must occur.
 import { IOSConstants } from '../platform.generated';
 import type { AndroidSettings, IOSSettings } from '../types';
 

@@ -2,10 +2,7 @@ import MinimalWebView
 import ObjectiveC
 import WebKit
 
-/// The hook behind `keyboardDisplayRequiresUserAction()`. As react-native-webview does, it replaces the private
-/// WKContentView method that starts the keyboard for a focused element, so that a script's focus counts as the user's.
-/// Once per process, on WKContentView itself, for the WebViews in `views`: not the instance's class, which
-/// hideKeyboardAccessoryView swaps for a runtime subclass of it.
+/// The hook behind `keyboardDisplayRequiresUserAction()`: a script's focus shows the keyboard, as a tap does.
 enum KeyboardDisplayRequiresUserAction {
   static let key = "@react-native-minimal-webview/extensions.keyboardDisplayRequiresUserAction"
   private static let views = NSHashTable<WKWebView>.weakObjects()
@@ -35,13 +32,16 @@ enum KeyboardDisplayRequiresUserAction {
     let original = unsafeBitCast(method_getImplementation(method), to: Focus.self)
     let focus: @convention(block) (AnyObject, UnsafeRawPointer, Bool, Bool, UInt, AnyObject?) -> Void = {
       view, information, userIsInteracting, blurPreviousNode, activityStateChanges, userObject in
-      // The content view is inside its WKWebView's scroll view.
-      var ancestor = (view as? UIView)?.superview
-      while let next = ancestor, !(next is WKWebView) { ancestor = next.superview }
-      let interacting = userIsInteracting || views.contains(ancestor as? WKWebView)
+      let interacting = userIsInteracting || views.contains(enclosingWebView(of: view))
       original(view, selector, information, interacting, blurPreviousNode, activityStateChanges, userObject)
     }
     method_setImplementation(method, imp_implementationWithBlock(focus))
     return true
+  }
+
+  private static func enclosingWebView(of view: AnyObject) -> WKWebView? {
+    var ancestor = (view as? UIView)?.superview
+    while let next = ancestor, !(next is WKWebView) { ancestor = next.superview }
+    return ancestor as? WKWebView
   }
 }

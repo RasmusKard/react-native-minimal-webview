@@ -12,8 +12,7 @@ Pod::Spec.new do |s|
   s.platforms      = {
     :ios => '17.0'
   }
-  repository = package['repository']
-  s.source         = { git: repository.is_a?(Hash) ? repository['url'] : repository } # npm pkg fix makes it a Hash
+  s.source         = { git: package['repository'] }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
@@ -23,6 +22,5 @@ Pod::Spec.new do |s|
     'DEFINES_MODULE' => 'YES',
   }
 
-  # The module in src/ and one sub-folder per extension; nothing deeper (node_modules, build).
   s.source_files = "*/*.swift"
 end

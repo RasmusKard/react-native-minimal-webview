@@ -16,6 +16,3 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci && (cd example && npm ci) && npm run check
-
-  # The on-device suites (example/harness.ts) need an emulator and a simulator, so they run locally: see
-  # .github/CONTRIBUTING.md.
