@@ -275,4 +275,31 @@ export async function crash(h: Harness, r: Reporter) {
       { coveredGone, whileCovered, state: h.state() }
     );
   }
+
+  if (Platform.OS === 'android') {
+    const loadStarts = h.events.loads.length;
+    const outcomes = h.events.outcomes.length;
+    h.loadSource({ html: '<img src="/slow?ms=10000">', baseUrl: h.pages });
+    await until(
+      async () =>
+        h.state().loading &&
+        (await h.ref.current?.evaluate('document.readyState').catch(errorCode)) === 'interactive'
+    );
+    let endedBeforeGone: boolean | undefined;
+    h.setProps({
+      userAgent: 'Crash/1',
+      onProcessGone: (event) => {
+        h.events.gone.push(event);
+        endedBeforeGone ??= h.events.loads.slice(loadStarts).includes('end');
+      },
+    });
+    await kill(15);
+    r.check(
+      'onProcessGone comes before the onLoadEnd that fails the committed load it cut off',
+      (await happens(waitFor(h, () => h.events.outcomes.length > outcomes, 5000))) &&
+        endedBeforeGone === false &&
+        h.events.outcomes[outcomes] === 'failed',
+      { endedBeforeGone, outcomes: h.events.outcomes.slice(outcomes) }
+    );
+  }
 }
