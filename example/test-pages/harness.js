@@ -36,6 +36,12 @@ const adbDevice = (/** @type {string} */ platform) => {
   const { device } = harnessState(platform);
   return device ? ['-s', device] : [];
 };
+/**
+ * A command that prints the pid of the launchd_sim of the platform's simulator, the parent of its apps' processes: its
+ * command line names `Devices/<udid>`, an app's doesn't.
+ */
+const simulatorLaunchd = (/** @type {string} */ platform) =>
+  `pgrep -d, -f 'launchd_sim .*/Devices/${harnessState(platform).device}'`;
 /** @type {Set<() => void>} */
 const waiters = new Set();
 const harnessChanged = () => waiters.forEach((check) => check());
@@ -149,15 +155,11 @@ const ROUTES = {
     res.end('ok');
   },
   '/driver/kill'(req, res, q, platform) {
-    // iOS: the WebContent processes whose parent is the simulator's launchd_sim, whose command line names
-    // `Devices/<udid>` (WebContent's own doesn't).
-    const { device } = harnessState(platform);
-    const launchd = `pgrep -d, -f 'launchd_sim .*/Devices/${device}'`;
     const [cmd, args] =
       platform === 'android'
         // chrome://crash crashes a fresh renderer that never hosts the page, so WebView doesn't report it.
         ? ['adb', [...adbDevice(platform), 'shell', 'pkill -9 -f sandboxed_process']]
-        : ['sh', ['-c', `pkill -9 -P "$(${launchd})" -f com.apple.WebKit.WebContent`]];
+        : ['sh', ['-c', `pkill -9 -P "$(${simulatorLaunchd(platform)})" -f com.apple.WebKit.WebContent`]];
     execFile(cmd, args, (error) => res.end(error ? `failed: ${error.message}` : 'killed'));
   },
   '/perf/result'(req, res, q, platform) {
@@ -186,7 +188,7 @@ const ROUTES = {
             'sh',
             [
               '-c',
-              `A=$(pgrep -f '/reactnativeminimalwebviewexample.app/reactnativeminimalwebviewexampl[e]' | head -1); footprint --noCategories -f bytes -p $A $(pgrep -P "$(ps -o ppid= -p $A)" -f com.apple.WebKit | sed 's/^/-p /')`,
+              `footprint --noCategories -f bytes $(pgrep -P "$(${simulatorLaunchd(platform)})" -f '/reactnativeminimalwebviewexample.app/|com.apple.WebKit' | sed 's/^/-p /')`,
             ],
           ];
     execFile(cmd, args, (error, stdout) => {

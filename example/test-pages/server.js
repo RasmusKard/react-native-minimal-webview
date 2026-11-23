@@ -77,6 +77,7 @@ const movedKeysServedOnce = new Set();
 function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const q = url.searchParams;
+  res.setHeader('x-project-root', path.dirname(ROOT));
   if (/^\/(harness|driver|perf)\//.test(url.pathname)) return handleHarness(req, res, url);
   if (url.pathname === '/headers') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
