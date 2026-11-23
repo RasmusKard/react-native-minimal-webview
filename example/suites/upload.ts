@@ -21,6 +21,7 @@ export async function upload(h: Harness, r: Reporter) {
   }
   const file = new File(Paths.cache, 'upload-test.txt');
   file.create({ overwrite: true });
+  r.cleanup(() => file.delete());
   await file.write('hello from the app cache');
   const requests: FileRequest[] = [];
   let answer: string[] | null = null;

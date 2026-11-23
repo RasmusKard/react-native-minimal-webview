@@ -17,6 +17,8 @@ if [ "$PLATFORM" = android ]; then
   # Android's one-time "Viewing full screen" notice takes focus when the fullscreen suite hides the bars, and the
   # back key then goes to it instead of the app.
   adb -s "$DEVICE" shell settings put secure immersive_mode_confirmations confirmed
+  # The extensions suite's downloadManager check saves into the shared Downloads folder, outside the app's files.
+  adb -s "$DEVICE" shell 'rm -f /sdcard/Download/downloadManager*.txt'
 fi
 curl -sf "$PAGES/harness/start-run?platform=$PLATFORM&device=$DEVICE" >/dev/null || { echo "no test pages server on :$PORT"; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
