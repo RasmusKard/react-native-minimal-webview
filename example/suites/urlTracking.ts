@@ -140,7 +140,8 @@ export async function urlTracking(h: Harness, r: Reporter) {
   const backBefore = h.state().canGoBack;
   // A gesture: Chromium's canGoBack skips an entry that a page added without one.
   await tap(h, r, 'frame-push');
-  r.check(
+  r.since(
+    WEBVIEW.navigationApi,
     'iframe pushState in a new WebView lets it go back',
     !backBefore && (await happens(waitFor(h, (s) => s.canGoBack, 3000))),
     { backBefore, state: h.state() }
