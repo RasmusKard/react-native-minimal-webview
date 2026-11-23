@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.1](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.0...react-native-minimal-webview-v1.3.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* Choose Android bridge delivery by the WebView's Chromium version, so a vendor WebView numbered apart from Chromium gets the right one ([#295](https://github.com/RasmusKard/react-native-minimal-webview/issues/295)) ([aa4f13c](https://github.com/RasmusKard/react-native-minimal-webview/commit/aa4f13cc5ae5dfbbaff5034b8166c4ab3e0501de))
+* End an Android load that a renderer crash cut off before it committed as failed, not cancelled ([#291](https://github.com/RasmusKard/react-native-minimal-webview/issues/291)) ([07ae44f](https://github.com/RasmusKard/react-native-minimal-webview/commit/07ae44f206841a5b2d70d52a517fbd505fc50ec3))
+* Load the 401 page on iOS once a site rejects a credential, instead of sending it again without end ([#298](https://github.com/RasmusKard/react-native-minimal-webview/issues/298)) ([1534f3e](https://github.com/RasmusKard/react-native-minimal-webview/commit/1534f3e376cd7caa74482e6975b479c25eaa65ec))
+* Open the Android system file chooser again after the activity that opened the last one was recreated ([#300](https://github.com/RasmusKard/react-native-minimal-webview/issues/300)) ([8b54334](https://github.com/RasmusKard/react-native-minimal-webview/commit/8b5433400781334f5172a4006c4c79bd5fd60e41))
+* Report a failed load's url at onLoadEnd on Android System WebView older than 146 ([#311](https://github.com/RasmusKard/react-native-minimal-webview/issues/311)) ([1855b01](https://github.com/RasmusKard/react-native-minimal-webview/commit/1855b014f6e36116b4e9adf008e220ee52366689))
+* Update canGoBack and canGoForward on Android when an iframe navigates ([#309](https://github.com/RasmusKard/react-native-minimal-webview/issues/309)) ([c01f156](https://github.com/RasmusKard/react-native-minimal-webview/commit/c01f15638f79536ce1e1bf770c06afe2d91046e9))
+
 ## [1.3.0](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.2.1...react-native-minimal-webview-v1.3.0) (2026-11-22)
 
 
