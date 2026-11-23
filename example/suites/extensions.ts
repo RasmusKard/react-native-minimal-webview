@@ -77,9 +77,13 @@ export async function extensions(h: Harness, r: Reporter) {
     await r.block('background', () => background(h, r));
     await r.block('privacy', () => privacy(h, r));
     await r.block('ads', () => ads(h, r, warnings));
-    await (ios
-      ? r.block('keyboard', () => keyboard(h, r))
-      : r.block('android', () => android(h, r)));
+    if (ios) {
+      await r.block('keyboard', () => keyboard(h, r));
+      r.skip('android', 'its extensions are Android only');
+    } else {
+      r.skip('keyboard', 'its extensions are iOS only');
+      await r.block('android', () => android(h, r));
+    }
     const stray = warnings.lines.filter(
       (line) =>
         line.includes(`extension ${KEY}.`) &&
@@ -154,7 +158,13 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({});
   await sleep(300);
-  if (!ios) return;
+  if (!ios) {
+    r.skip(
+      "a challenge basicAuthCredential passes on reaches a later hook's delegate, which signs in",
+      'it checks how iOS offers a challenge to each hook delegate in turn'
+    );
+    return;
+  }
   const asked: unknown[] = [];
   h.setProps({
     extensions: [
@@ -323,8 +333,8 @@ async function background(h: Harness, r: Reporter) {
   if (!ios) {
     h.setProps({ extensions: [transparentBackground()] });
     await sleep(300);
-    r.info(
-      'transparentBackground',
+    r.skip(
+      'transparentBackground, set after mount, makes the WebView not opaque; off, opaque again',
       'WebView has no getter for its background color: check it by hand'
     );
     h.setProps({});
@@ -356,8 +366,13 @@ async function privacy(h: Harness, r: Reporter) {
       { before, after }
     );
     await recreate(h, {}, { remount: true });
+    r.skip('incognito cookies and cache', 'cookieManager and settings.cacheMode are Android');
     return;
   }
+  r.skip(
+    "incognito set at creation gives the WebView a data store that isn't saved",
+    'websiteDataStore is iOS'
+  );
   const cookie = async () =>
     await h.ref.current?.call('cookieManager.getCookie', [h.pages]).catch(errorCode);
   await openPage(h, fresh(h, '/setcookie?name=incognito&value=1'));

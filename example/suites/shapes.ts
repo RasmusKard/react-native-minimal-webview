@@ -299,12 +299,16 @@ async function checkout(s: Shape) {
     { url: h.state().url, asked: s.asked }
   );
   const acsFrame = h.events.navigations.find((n) => n.url.startsWith(`${OTHER}/shapes-acs.html`));
-  if (android)
+  if (android) {
     r.info(
       'C2 Android: iframe decisions in the 3-D Secure flow',
       h.events.navigations.filter((n) => !n.mainFrame)
     );
-  else
+    r.skip(
+      'C2 checkout: the ACS iframe is decided as a subframe',
+      'Android does not decide http(s) iframe navigations'
+    );
+  } else
     r.check(
       'C2 checkout: the ACS iframe is decided as a subframe',
       has(acsFrame, { mainFrame: false, action: 'allow', rule: 1 }),
@@ -465,8 +469,13 @@ async function schemeDefaults(s: Shape) {
   await until(() => decision(h, 'intent:') !== undefined, 5000);
   await sleep(1000);
   const intent = { decision: decision(h, 'intent:'), url: h.state().url };
-  if (android) r.info('E9 Android: an intent: without onOpenExternal', intent);
-  else
+  if (android) {
+    r.info('E9 Android: an intent: without onOpenExternal', intent);
+    r.skip(
+      'E9 schemes: without onOpenExternal an intent: is reported block',
+      'Android opens an intent: as a browsable intent: what it reports depends on the apps installed'
+    );
+  } else
     r.check(
       'E9 schemes: without onOpenExternal an intent: is reported block',
       all(has(intent.decision, { action: 'block' }), stays(h, page)),

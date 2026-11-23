@@ -245,7 +245,11 @@ export async function sampleExtension(h: Harness, r: Reporter) {
         h.events.outcomes.at(-1) === 'finished',
       { reported, reloaded, outcome: h.events.outcomes.at(-1) }
     );
-  }
+  } else
+    r.skip(
+      'a WebView that cannot be made (no WebView provider) reports onError, and reload() makes it and loads',
+      'iOS has no WebView provider to be missing'
+    );
   await r.block('hookSeams', () => hookSeams(h, r));
 }
 
@@ -260,8 +264,15 @@ async function hookSeams(h: Harness, r: Reporter) {
       tinted === true,
       tinted
     );
-  }
-  if (Platform.OS === 'android') {
+    r.skip(
+      'its download, touch and scroll seams',
+      'onDownloadStart and the touch and scroll listeners are Android seams'
+    );
+  } else {
+    r.skip(
+      'its refreshControl, styled at attach, is the one pullToRefresh shows',
+      'refreshControl is an iOS seam'
+    );
     await openPage(h, fresh(h, '/media.html'));
     const [downloads, events] = [h.events.downloads.length, h.events.hookEvents.length];
     await click(h, 'attachment');

@@ -238,8 +238,12 @@ async function newWindows(suite: Suite) {
     );
     if (scriptMayRun && sentinels !== before)
       r.info(`known limit (WebView): T5 a tapped ${label} ran its script`, sentinels);
-    // Android's child WebView never reports a data: URL (Chromium doesn't pass it to shouldOverrideUrlLoading).
-    if (!android && id === 'open-data')
+    if (id === 'open-data' && android)
+      r.skip(
+        `T5 a tapped ${label} is reported as blocked`,
+        "Android's child WebView never reports a data: URL (Chromium doesn't pass it to shouldOverrideUrlLoading)"
+      );
+    else if (id === 'open-data')
       r.check(
         `T5 a tapped ${label} is reported as blocked`,
         decisions.some((n) => n.newWindow && n.url.startsWith('data:') && n.action === 'block'),
@@ -346,9 +350,13 @@ async function ssl({ h, r, android }: Suite) {
     all(back, h.events.errors.length === errors),
     { state: h.state(), errors: h.events.errors.slice(errors) }
   );
-  // iOS restores the page from WebKit's cache instead (no request, no error), and WKWebView has no public switch for
-  // that cache.
-  if (!android) return;
+  if (!android) {
+    r.skip(
+      'T9 a back/forward load redirected to a bad certificate is cancelled and reported',
+      "iOS restores the page from WebKit's cache instead (no request, no error), and WKWebView has no public switch for that cache"
+    );
+    return;
+  }
   h.setProps({ android: { settings: { backForwardCacheEnabled: false } } });
   await sleep(300);
   const badAgain = fresh(h, `${HTTPS}/spa.html?ssl=2`);
@@ -437,7 +445,13 @@ async function downloadRedirect({ h, r, android }: Suite) {
       all(body?.startsWith('downloaded moved.txt') === true, !body?.includes(cookie)),
       { moved, body }
     );
-  else r.info("T7 iOS saves WebKit's first response, with no second fetch", { moved, body });
+  else {
+    r.info("T7 iOS saves WebKit's first response, with no second fetch", { moved, body });
+    r.skip(
+      "T7 a download redirected to another host carries none of the first host's cookies",
+      "iOS saves WebKit's first response, with no second fetch"
+    );
+  }
 }
 
 async function heldBlob({ h, r, android }: Suite) {
@@ -512,6 +526,10 @@ async function fileScope({ h, r, android }: Suite) {
       )) as unknown[] | string | undefined;
     };
     if (!android) {
+      r.skip(
+        'T8 Android: a file: source does not load without allowFileAccess',
+        'allowFileAccess is an Android setting'
+      );
       const scope = await read(first!);
       if (Array.isArray(scope) && scope[3] === true) {
         r.info(
@@ -554,6 +572,10 @@ async function fileScope({ h, r, android }: Suite) {
       }
       return;
     }
+    r.skip(
+      "T8 a file: source's read scope and readAccessRoot",
+      "the scope is iOS's WebContent sandbox, and source.readAccessRoot is iOS only"
+    );
     const errors = h.events.errors.length;
     const blocked = await read(first!);
     r.check(

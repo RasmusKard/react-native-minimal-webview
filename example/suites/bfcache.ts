@@ -105,5 +105,5 @@ export async function bfcache(h: Harness, r: Reporter) {
       warnings.lines
     );
     h.setProps({});
-  }
+  } else r.skip('backForwardCacheEnabled', 'an Android setting');
 }

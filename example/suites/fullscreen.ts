@@ -30,8 +30,13 @@ export async function fullscreen(h: Harness, r: Reporter) {
       lines?.includes('video fullscreen') === true && remounted,
       { lines, remounted }
     );
+    r.skip('fullscreen events', "iOS shows WebKit's own fullscreen, which it does not report");
     return;
   }
+  r.skip(
+    'an unmount while a video is in fullscreen leaves the app running',
+    "it checks WebKit's own video fullscreen"
+  );
   await openPage(h, fresh(h, '/media.html'));
   h.events.fullscreen.length = 0;
   r.drive({ action: 'tap', point: await tapPoint(h, 'fullscreen') });

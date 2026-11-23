@@ -189,7 +189,11 @@ export async function navigation(h: Harness, r: Reporter) {
       frames.some((n) => n.action === 'allow'),
       frames.slice(0, 3)
     );
-  }
+  } else
+    r.skip(
+      'iframe navigations are decided as mainFrame false',
+      'Android does not decide http(s) iframe navigations'
+    );
 
   asked.length = 0;
   await h.ref.current?.evaluate(`location.href = '/checkout/loopA'`);
@@ -270,7 +274,7 @@ export async function navigation(h: Harness, r: Reporter) {
     const own = await sendExternal('fallback');
     r.check('intent: without an app loads browser_fallback_url', own.loaded, own);
     r.check('the intent: itself is reported as block', own.decision?.action === 'block', own);
-  }
+  } else r.skip('intent: without an app', 'intent: is an Android scheme');
   const handedBack = await sendExternal('handed-back', ({ url }) => {
     external.push(url);
     return false;

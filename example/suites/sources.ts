@@ -115,7 +115,7 @@ export async function sources(h: Harness, r: Reporter) {
       without[1] === 'blocked' && String(universal).includes('window.testLog = []'),
       { without: without[1], universal: String(universal).slice(0, 40) }
     );
-  }
+  } else r.skip('iOS file: access settings', 'iOS settings');
   dir.delete();
 
   for (const [name, uri, shown] of [

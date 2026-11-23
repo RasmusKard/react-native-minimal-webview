@@ -139,7 +139,7 @@ export async function bridge(h: Harness, all: Reporter) {
       afterBusy === 6,
       afterBusy
     );
-  }
+  } else r.skip('a busy main thread at the commit', 'busyMainInSlices is an Android seam');
 
   if (Platform.OS === 'android') {
     await openPage(h, `${page}&answerOnHide=1`);
@@ -167,7 +167,11 @@ export async function bridge(h: Harness, all: Reporter) {
       );
       await waitFor(h, (s) => s.url.includes(`after=${i}`) && idle(s));
     }
-  }
+  } else
+    r.skip(
+      'calls across a page being left or redirected',
+      "they check Android's bridge delivery around a commit (busyMainAhead is an Android seam)"
+    );
 
   const lateHandler = `${page}&lateHandler=1`;
   h.loadSource({ uri: lateHandler });
@@ -194,5 +198,9 @@ export async function bridge(h: Harness, all: Reporter) {
     h.remount();
     const closed = await Promise.race([unmounted, sleep(3000).then(() => 'still pending')]);
     r.check('unmount rejects an evaluate in flight', closed === 'navigated', closed);
-  }
+  } else
+    r.skip(
+      'unmount rejects an evaluate in flight',
+      "it checks the iOS WebView's teardown at unmount (invalidate)"
+    );
 }
