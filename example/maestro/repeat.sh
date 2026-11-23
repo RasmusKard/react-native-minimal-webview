@@ -15,13 +15,13 @@ sha=$(git -C "$CHECKOUT" rev-parse --short=9 HEAD)
 cd "$CHECKOUT/example" || exit 1
 maestro/install.sh --check "$PLATFORM" "$DEVICE" 2>/dev/null || maestro/install.sh "$PLATFORM" "$DEVICE" || exit 1
 
-for url in http://localhost:8081/status "$PAGES"; do
+for url in http://localhost:${RCT_METRO_PORT:-8081}/status "$PAGES"; do
   curl -s "$url" >/dev/null && { echo "$url already answers: stop the server running there"; exit 1; }
 done
 node test-pages/server.js >> "$OUT/$sha-test-pages.log" 2>&1 & pages=$!
 CI=1 npx expo start >> "$OUT/$sha-metro.log" 2>&1 & metro=$!
 trap 'kill -- -$pages -$metro 2>/dev/null' EXIT
-until curl -s http://localhost:8081/status | grep -q running && curl -s "$PAGES" >/dev/null; do
+until curl -s http://localhost:${RCT_METRO_PORT:-8081}/status | grep -q running && curl -s "$PAGES" >/dev/null; do
   kill -0 $pages $metro 2>/dev/null || { echo "a server exited: see $OUT/$sha-*.log"; exit 1; }
   sleep 1
 done

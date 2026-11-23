@@ -1,6 +1,7 @@
 #!/bin/bash
 # Usage: maestro/install.sh [--check] <android|ios> <device id> [expo run option...]
-# Builds the example app and installs it on the device, and notes what it was built from.
+# Builds the example app and installs it on the device, stopped and pointed at RCT_METRO_PORT (point-app.sh), and
+# notes what it was built from.
 # --check builds nothing: it fails unless the app on the device is that install, and what a native build reads is as it
 # was then.
 set -eu
@@ -30,6 +31,9 @@ if [ "${check:-}" ]; then
   exit 1
 fi
 from=$(native_inputs)
+# expo run opens the app, on the Metro the app was pointed at before, or on :8081 when it is new.
+maestro/point-app.sh "$PLATFORM" "$DEVICE"
 npx expo run:"$PLATFORM" --no-bundler --device "$DEVICE" "${@:3}"
+maestro/point-app.sh "$PLATFORM" "$DEVICE"
 mkdir -p .expo
 { echo "$from"; install_stamp; } > "$note"

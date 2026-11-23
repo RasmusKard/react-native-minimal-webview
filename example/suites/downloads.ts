@@ -100,7 +100,6 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
       bigFile?.size === 40 * 1024 * 1024,
       h.events.downloads[big]
     );
-    bigFile?.delete();
   } else r.skip('large blob: downloads', 'iOS downloads a blob: in WebKit, not through the page');
 
   const opened: string[] = [];

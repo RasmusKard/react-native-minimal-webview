@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 import type {
   Bridge,
@@ -74,8 +75,8 @@ export type Harness = {
   };
 };
 
-/** `performance.now()` at App's first render and at its first onLoadEnd. */
-export const launchMarks: { render?: number; loadEnd?: number } = {};
+/** `performance.now()` at App's first render and at its first onLoadEnd, and the first suite run after the launch. */
+export const launchMarks: { render?: number; loadEnd?: number; firstSuite?: string } = {};
 
 let posted: Promise<void> = Promise.resolve();
 /**
@@ -217,11 +218,14 @@ const overtime = () =>
     throw new Error(`still running after ${SUITE_MS / 1000} s`);
   });
 
-/** Runs the `suites` queued by name with `/harness/run?platform=ios&suite=<name>` on the test pages server. */
+/**
+ * Runs the `suites` queued by name with `/harness/run?platform=ios&suite=<name>` on the test pages server, from when
+ * the launch's first load has ended: each suite starts with no load in progress, the first as the rest after `reset()`.
+ */
 export function pollForSuites(get: () => Harness, suites: Record<string, Suite>) {
   let busy = false;
   const timer = setInterval(async () => {
-    if (busy) return;
+    if (busy || launchMarks.loadEnd === undefined) return;
     const name = await fetch(`${get().pages}/harness/next?platform=${Platform.OS}`).then(
       (r) => r.text(),
       (error: unknown) => {
@@ -231,6 +235,7 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
     );
     if (!name) return;
     busy = true;
+    launchMarks.firstSuite ??= name;
     const h = get();
     const { r, failed, cleanUp, done } = reporter(name);
     try {
@@ -250,8 +255,9 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
 
 /**
  * Puts back what suites change, so the next suite starts clean even after one threw: the handlers, rules and extra
- * props, the event logs, a new WebView on the home page, and every site's cookies and storage (the HTTP cache stays).
- * Throws when that page doesn't load, and on Android when another window is still over the app.
+ * props, the files downloads saved, the event logs, a new WebView on the home page, and every site's cookies and
+ * storage (the HTTP cache stays). Throws when that page doesn't load, and on Android when another window is still over
+ * the app.
  */
 async function reset(h: Harness) {
   h.setProps({});
@@ -282,6 +288,12 @@ async function reset(h: Harness) {
         h.ref.current?.call('cookieManager.removeAllCookies'),
         h.ref.current?.call('webStorage.deleteAllData'),
       ]));
+  for (const { uri } of h.events.downloads) {
+    const file = new File(uri);
+    const folder = file.parentDirectory;
+    if (file.exists) file.delete();
+    if (folder.list().length === 0) folder.delete();
+  }
   clearEvents(h);
   if (
     Platform.OS === 'android' &&

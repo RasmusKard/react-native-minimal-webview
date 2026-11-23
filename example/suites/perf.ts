@@ -318,8 +318,8 @@ export async function perf(h: Harness, r: Reporter) {
  * per sample.
  */
 export async function perfCold(h: Harness, r: Reporter) {
-  const marks = await poll(() => (launchMarks.loadEnd === undefined ? undefined : launchMarks));
-  r.check('the first load ended', marks !== undefined, launchMarks);
-  if (marks?.render !== undefined && marks.loadEnd !== undefined)
-    r.info('mount.cold', { ms: round(marks.loadEnd - marks.render), platform: h.platform });
+  const { render, loadEnd, firstSuite } = launchMarks;
+  r.check('it is the first suite after the launch', firstSuite === 'perfCold', launchMarks);
+  if (firstSuite === 'perfCold' && render !== undefined && loadEnd !== undefined)
+    r.info('mount.cold', { ms: round(loadEnd - render), platform: h.platform });
 }
