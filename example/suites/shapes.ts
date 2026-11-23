@@ -2,7 +2,10 @@ import { BackHandler, Platform } from 'react-native';
 import type { FileRequest, NavigationRule, PermissionRequest } from 'react-native-minimal-webview';
 
 import {
+  agrees,
+  clearEvents,
   click,
+  nextEntry,
   fresh,
   idle,
   openPage,
@@ -88,15 +91,10 @@ async function applyPolicy(
   });
   await sleep(300);
 }
-async function open(h: Harness, path: string) {
-  const url = fresh(h, path);
-  await openPage(h, url);
-  return url;
-}
 function clear(s: Shape) {
+  clearEvents(s.h);
   s.external.length = 0;
   s.asked.length = 0;
-  s.h.events.navigations.length = 0;
 }
 
 export const all = (...conditions: boolean[]) => conditions.every(Boolean);
@@ -112,29 +110,23 @@ const href = async (h: Harness, id: string) =>
 const body = (h: Harness) =>
   h.ref.current?.evaluate(`document.getElementById('body')?.textContent ?? ''`).catch(String);
 async function hub(s: Shape) {
-  const url = await open(s.h, '/shapes.html');
+  const url = await openPage(s.h, fresh(s.h, '/shapes.html'));
   clear(s);
   return url;
 }
 async function askAfter(s: Shape, act: () => unknown) {
   clear(s);
-  await act();
-  await until(() => s.asked.length > 0, 5000);
+  await nextEntry(s.asked, act, undefined, 5000);
   await sleep(500);
 }
-const agrees = async (h: Harness) =>
-  (await poll(
-    async () => (await h.ref.current?.evaluate('location.href').catch(String)) === h.state().url,
-    2000
-  )) === true;
 async function push(h: Harness) {
   await clickEvenIfGone(h, 'push');
   await waitFor(h, (st) => st.url.includes('/spa/pushed'), 3000);
   return h.state().url;
 }
 async function walkBack(h: Harness, act: (id: string) => unknown) {
-  const before = await open(h, '/spa.html?from=before');
-  const start = await open(h, '/spa.html');
+  const before = await openPage(h, fresh(h, '/spa.html?from=before'));
+  const start = await openPage(h, fresh(h, '/spa.html'));
   await act('push');
   await waitFor(h, (st) => st.url.includes('/spa/pushed'), 10000);
   const pushed = h.state().url;
@@ -261,9 +253,9 @@ async function oauth(s: Shape) {
     s.asked
   );
   const callback = `${PAGES}/shapes-callback`;
-  const callbackIdp = await open(
+  const callbackIdp = await openPage(
     h,
-    `${OTHER}/shapes-idp.html?return=${encodeURIComponent(callback)}`
+    fresh(h, `${OTHER}/shapes-idp.html?return=${encodeURIComponent(callback)}`)
   );
   await askAfter(s, () => clickEvenIfGone(h, 'signin'));
   r.check(
@@ -271,7 +263,7 @@ async function oauth(s: Shape) {
     all(s.asked.join() === `${callback}?code=302`, stays(h, callbackIdp)),
     { asked: s.asked, url: h.state().url }
   );
-  await askAfter(s, () => open(h, `${OTHER}/shapes-idp.html?auto=1`));
+  await askAfter(s, () => openPage(h, fresh(h, `${OTHER}/shapes-idp.html?auto=1`)));
   r.check(
     'B5 oauth: an SSO auto-return on load is asked',
     s.asked.join() === 'mrwshapes://cb?code=auto',
@@ -297,7 +289,7 @@ async function checkout(s: Shape) {
   const { h, r, android } = s;
   await applyPolicy(s, 'checkout');
   clear(s);
-  await open(h, '/shapes-pay.html?mode=frame');
+  await openPage(h, fresh(h, '/shapes-pay.html?mode=frame'));
   const paid = await happens(
     waitFor(h, (st) => st.url === `${PAGES}/spa.html?from=paid` && idle(st))
   );
@@ -323,7 +315,7 @@ async function checkout(s: Shape) {
   const unruled = () => s.asked.length === 0 && h.events.navigations.length === 0;
   await applyPolicy(s, 'checkout', { inCheckout: true });
   clear(s);
-  await open(h, '/shapes-pay.html?mode=top');
+  await openPage(h, fresh(h, '/shapes-pay.html?mode=top'));
   const posted = await happens(waitFor(h, (st) => st.url === term && idle(st)));
   const paRes = await body(h);
   r.check(
@@ -334,7 +326,7 @@ async function checkout(s: Shape) {
 
   await applyPolicy(s, 'checkout', { inCheckout: false });
   clear(s);
-  await open(h, '/shapes-pay.html?mode=top');
+  await openPage(h, fresh(h, '/shapes-pay.html?mode=top'));
   await waitFor(h, (st) => st.url === term && idle(st));
   await sleep(500);
   r.check(
@@ -559,7 +551,7 @@ async function devices(s: Shape) {
       requests.push(request);
       return null;
     });
-    await open(h, '/media.html');
+    await openPage(h, fresh(h, '/media.html'));
     await tap(h, r, 'capture');
     await until(() => requests.length > 0, 15000);
     r.check(
@@ -576,7 +568,7 @@ async function devices(s: Shape) {
     permissions.push(request);
     return false;
   });
-  await open(h, '/device.html');
+  await openPage(h, fresh(h, '/device.html'));
   const mic = String(await pageLog(h, () => clickEvenIfGone(h, 'mic'), 15000));
   r.check(
     'G2 permissions: a microphone request names microphone',
@@ -611,17 +603,17 @@ async function spa(s: Shape) {
     scripted
   );
 
-  await open(h, '/spa.html');
+  await openPage(h, fresh(h, '/spa.html'));
   const again = await push(h);
   await h.ref.current?.evaluate('window.__beforeReload = true');
   h.ref.current?.reload();
-  const fresh = `window.__beforeReload === undefined && document.querySelector('h1')?.textContent === 'SPA'`;
+  const isReloaded = `window.__beforeReload === undefined && document.querySelector('h1')?.textContent === 'SPA'`;
   const reloaded =
     (await poll(
       async () =>
         idle(h.state()) &&
         h.state().outcome === 'finished' &&
-        (await h.ref.current?.evaluate(fresh).catch(String)) === true,
+        (await h.ref.current?.evaluate(isReloaded).catch(String)) === true,
       10000
     )) === true;
   r.check(
@@ -636,7 +628,7 @@ async function offline(s: Shape) {
   const key = `shapes-${Date.now()}`;
   const drop = (fail: 0 | 1) => fetch(`${PAGES}/drop/set?key=${key}&fail=${fail}`);
   try {
-    await open(h, `/drop?key=${key}`);
+    await openPage(h, fresh(h, `/drop?key=${key}`));
     await drop(1);
     const failedUrl = `${PAGES}/drop?key=${key}&p=2`;
     const errors = h.events.errors.length;
@@ -677,8 +669,8 @@ async function backButton(s: Shape) {
     r.skip('H4 android back', 'iOS has no back button');
     return;
   }
-  const first = await open(h, '/spa.html?from=first');
-  await open(h, '/spa.html?from=second');
+  const first = await openPage(h, fresh(h, '/spa.html?from=first'));
+  await openPage(h, fresh(h, '/spa.html?from=second'));
   const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
     if (!h.state().canGoBack) return false;
     h.ref.current?.goBack();

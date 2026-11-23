@@ -1,6 +1,7 @@
 import type { NavigationState } from 'react-native-minimal-webview';
 
 import {
+  agrees,
   click,
   errorCode,
   fresh,
@@ -15,27 +16,16 @@ import {
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
-const href = async (h: Harness) => (await h.ref.current?.evaluate('location.href')) as string;
-
-async function agree(h: Harness, r: Reporter, name: string) {
-  let seen = {};
-  const agreed = await poll(
-    async () => {
-      const page = await href(h);
-      const { url } = h.state();
-      seen = { url, href: page };
-      return url === page;
-    },
-    2000,
-    50
-  );
-  r.check(name, agreed === true, seen);
-}
+const agree = async (h: Harness, r: Reporter, name: string) =>
+  r.check(name, await agrees(h), {
+    url: h.state().url,
+    href: await h.ref.current?.evaluate('location.href').catch(String),
+  });
 
 export async function urlTracking(h: Harness, r: Reporter) {
   const first = fresh(h, '/spa.html');
   const loadsBefore = h.events.loads.length;
-  h.load(first);
+  h.loadSource({ uri: first });
   let early: NavigationState | null = null;
   for (
     const end = Date.now() + 10000;

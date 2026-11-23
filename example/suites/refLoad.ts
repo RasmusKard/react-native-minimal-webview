@@ -20,8 +20,7 @@ import {
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
 
 export async function refLoad(h: Harness, r: Reporter) {
-  const home = fresh(h, '/');
-  await openPage(h, home);
+  const home = await openPage(h, fresh(h, '/'));
   const handle = h.ref.current;
   const page = fresh(h, '/bridge.html');
   const loadPage = (url: string) =>
@@ -131,8 +130,7 @@ const NAVIGATIONS = [
 async function refLoadHistory(h: Harness, r: Reporter) {
   const ways: Record<string, unknown> = {};
   for (const [way, go] of NAVIGATIONS) {
-    const a = fresh(h, `/back-forward.html?title=${way}A`);
-    await openPage(h, a);
+    const a = await openPage(h, fresh(h, `/back-forward.html?title=${way}A`));
     const b = fresh(h, `/back-forward.html?title=${way}B`);
     const arrived = await happens(
       waitForLoad(

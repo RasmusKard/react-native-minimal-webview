@@ -12,6 +12,7 @@ import {
   errorCode,
   fresh,
   idle,
+  nextEntry,
   openPage,
   recordExternal,
   sleep,
@@ -200,8 +201,7 @@ async function newWindows(suite: Suite) {
     { scheme: ['http', 'https'], action: 'allow' },
   ]);
   await sleep(300);
-  const page = fresh(h, '/hostile.html');
-  await openPage(h, page);
+  const page = await openPage(h, fresh(h, '/hostile.html'));
   const sentinelsNow = async () =>
     JSON.stringify(
       await evaluate(
@@ -257,14 +257,15 @@ async function defaultScheme(suite: Suite) {
   });
   h.setRules(undefined);
   await sleep(300);
-  const page = fresh(h, '/hostile.html');
-  await openPage(h, page);
+  const page = await openPage(h, fresh(h, '/hostile.html'));
   const scripted = async (script: string, url: string) => {
-    const navigations = h.events.navigations.length;
-    await evaluate(h, script);
-    await until(() => h.events.navigations.slice(navigations).some((n) => n.url === url), 3000);
+    const decision = await nextEntry(
+      h.events.navigations,
+      () => evaluate(h, script),
+      (n) => n.url === url
+    );
     await sleep(300);
-    return h.events.navigations.slice(navigations).find((n) => n.url === url);
+    return decision;
   };
   const blocked = (decision: NavigationEvent | undefined) =>
     all(
@@ -297,10 +298,14 @@ async function defaultScheme(suite: Suite) {
     { decision: timer, external }
   );
   const tapped = async (id: string, target: string) => {
-    const before = h.events.navigations.length;
-    const clicked = await gesture(suite, id, touch);
-    await until(() => h.events.navigations.slice(before).some((n) => n.url === target), 5000);
-    return { clicked, decision: h.events.navigations.slice(before).find((n) => n.url === target) };
+    let clicked = false;
+    const decision = await nextEntry(
+      h.events.navigations,
+      async () => (clicked = await gesture(suite, id, touch)),
+      (n) => n.url === target,
+      5000
+    );
+    return { clicked, decision };
   };
   const tap = await tapped('scheme-tap', 'mrwhostile://open?from=tap');
   r.check(
@@ -315,19 +320,16 @@ async function defaultScheme(suite: Suite) {
 }
 
 async function nextError(h: Harness, act: () => void) {
-  const errors = h.events.errors.length;
-  act();
-  await until(() => h.events.errors.length > errors, 10000);
+  const error = await nextEntry(h.events.errors, act, undefined, 10000);
   await waitFor(h, idle, 5000);
   await sleep(300);
-  return { error: h.events.errors[errors], shown: await evaluate(h, 'location.href') };
+  return { error, shown: await evaluate(h, 'location.href') };
 }
 
 async function ssl({ h, r, android }: Suite) {
-  const before = fresh(h, '/hostile.html?ssl=before');
-  await openPage(h, before);
+  const before = await openPage(h, fresh(h, '/hostile.html?ssl=before'));
   const bad = fresh(h, `${HTTPS}/spa.html?ssl=1`);
-  const load = await nextError(h, () => h.load(bad));
+  const load = await nextError(h, () => h.loadSource({ uri: bad }));
   r.check(
     'T9 an SSL error on a load is cancelled and reported',
     all(load.error?.kind === 'ssl', load.error?.url === bad, load.shown !== bad),
@@ -480,8 +482,7 @@ async function fileScope({ h, r, android }: Suite) {
     const [first, second] = ['index.html', 'again.html'].map((name) => new File(site, name));
     for (const file of [first!, second!]) await file.write(html);
 
-    const page = fresh(h, '/hostile.html');
-    await openPage(h, page);
+    const page = await openPage(h, fresh(h, '/hostile.html'));
     const navigations = h.events.navigations.length;
     await evaluate(h, `(location.href = ${JSON.stringify(first!.uri)}, 1)`);
     await sleep(1500);

@@ -196,8 +196,7 @@ export async function crash(h: Harness, r: Reporter) {
     h.state()
   );
 
-  const away = fresh(h, '/bridge.html');
-  await openPage(h, away);
+  const away = await openPage(h, fresh(h, '/bridge.html'));
   const states: { state: string; at: number }[] = [];
   const appState = AppState.addEventListener('change', (state) =>
     states.push({ state, at: Date.now() })
@@ -324,8 +323,7 @@ export async function crash(h: Harness, r: Reporter) {
 
   // Android keeps the window of a view under a modal, so this is iOS's case.
   if (Platform.OS === 'ios') {
-    const under = fresh(h, '/bridge.html');
-    await openPage(h, under);
+    const under = await openPage(h, fresh(h, '/bridge.html'));
     h.setCovered(true);
     await waitForPresentation();
     const starts = h.events.loads.length;

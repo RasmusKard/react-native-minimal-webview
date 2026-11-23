@@ -4,6 +4,7 @@ import {
   clearEvents,
   fresh,
   idle,
+  nextEntry,
   openPage,
   poll,
   sleep,
@@ -16,16 +17,12 @@ import { HTTPS } from '../pages';
 export async function errors(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/'));
   /** Runs `act`, then waits for the next load to end: its outcome, or 'no end' after `ms`. */
-  const outcomeOf = async (act: () => unknown, ms = 10000) => {
-    const n = h.events.outcomes.length;
-    await act();
-    await poll(() => h.events.outcomes.length > n, ms, 50);
-    return h.events.outcomes.length > n ? h.events.outcomes[n] : 'no end';
-  };
+  const outcomeOf = async (act: () => unknown, ms = 10000) =>
+    (await nextEntry(h.events.outcomes, act, undefined, ms)) ?? 'no end';
 
   clearEvents(h);
   const unreachable = 'http://localhost:8099/nothing';
-  h.load(unreachable);
+  h.loadSource({ uri: unreachable });
   const gotNetwork = await happens(waitFor(h, () => h.events.errors.length > 0, 10000));
   await waitFor(h, idle, 5000);
   await sleep(500);
@@ -48,7 +45,7 @@ export async function errors(h: Harness, r: Reporter) {
   );
 
   clearEvents(h);
-  const notFound = await outcomeOf(() => h.load(fresh(h, '/status/404')));
+  const notFound = await outcomeOf(() => h.loadSource({ uri: fresh(h, '/status/404') }));
   await waitFor(h, () => h.events.errors.length > 0, 3000);
   const http = h.events.errors[0];
   r.check(
@@ -74,7 +71,7 @@ export async function errors(h: Harness, r: Reporter) {
   );
 
   const stopped = await outcomeOf(async () => {
-    h.load(fresh(h, '/slow?ms=3000'));
+    h.loadSource({ uri: fresh(h, '/slow?ms=3000') });
     await poll(() => h.state().loading, 1000, 50);
     h.ref.current?.stopLoading();
   }, 5000);
@@ -85,10 +82,10 @@ export async function errors(h: Harness, r: Reporter) {
     stopped
   );
   clearEvents(h);
-  h.load(fresh(h, '/slow?ms=3000'));
+  h.loadSource({ uri: fresh(h, '/slow?ms=3000') });
   await poll(() => h.state().loading, 1000, 50);
   const newer = fresh(h, '/');
-  h.load(newer);
+  h.loadSource({ uri: newer });
   await waitFor(h, (s) => s.url === newer && idle(s), 10000);
   await sleep(500);
   const replaced = JSON.stringify({ loads: h.events.loads, outcomes: h.events.outcomes });
@@ -102,7 +99,7 @@ export async function errors(h: Harness, r: Reporter) {
     replaced === expectedReplaced,
     replaced
   );
-  const noContent = await outcomeOf(() => h.load(fresh(h, '/status/204')), 5000);
+  const noContent = await outcomeOf(() => h.loadSource({ uri: fresh(h, '/status/204') }), 5000);
   const expected204 =
     Platform.OS === 'ios' && parseFloat(String(Platform.Version)) < 26.2 ? 'finished' : 'cancelled';
   r.since(
@@ -130,7 +127,7 @@ export async function errors(h: Harness, r: Reporter) {
 
   clearEvents(h);
   const flaky = `${h.pages}/flaky?key=${Date.now()}`;
-  h.load(flaky);
+  h.loadSource({ uri: flaky });
   await waitFor(h, () => h.events.errors.length > 0 && idle(h.state()), 10000);
   const unavailable = h.events.errors[0];
   r.check(
@@ -151,7 +148,7 @@ export async function errors(h: Harness, r: Reporter) {
   const key = `retry${Date.now()}`;
   const dropping = `${h.pages}/drop?key=${key}`;
   await fetch(`${h.pages}/drop/set?key=${key}&fail=1`);
-  h.load(dropping);
+  h.loadSource({ uri: dropping });
   await waitFor(h, (s) => h.events.errors.length > 0 && s.url === dropping && idle(s), 10000);
   const dropped = h.events.errors[0];
   r.check(

@@ -44,8 +44,7 @@ export async function navigation(h: Harness, r: Reporter) {
     { scheme: ['http', 'https'], action: 'external' },
   ]);
   await sleep(500);
-  const page = fresh(h, '/nav.html');
-  await openPage(h, page);
+  const page = await openPage(h, fresh(h, '/nav.html'));
   h.events.navigations.length = 0;
   const noLoad = async (name: string, act: () => Promise<unknown>) => {
     const [loads, outcome] = [h.events.loads.length, h.state().outcome];
@@ -302,8 +301,7 @@ export async function navigation(h: Harness, r: Reporter) {
     h.setProps({ onOpenExternal: recordExternal(external) });
     h.setRules(rules);
     await sleep(500);
-    const top = fresh(h, '/nav.html');
-    await openPage(h, top);
+    const top = await openPage(h, fresh(h, '/nav.html'));
     external.length = 0;
     h.events.navigations.length = 0;
     await h.ref.current?.evaluate(`(() => {

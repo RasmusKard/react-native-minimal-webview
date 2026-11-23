@@ -7,9 +7,10 @@ import {
   errorCode,
   fresh,
   idle,
-  nextDecision,
+  nextEntry,
   openPage,
   sleep,
+  startPageCall,
   travel,
   waitFor,
   happens,
@@ -19,19 +20,13 @@ import { WEBVIEW, androidWebView, type Harness, type Reporter } from '../harness
 
 export async function bfcache(h: Harness, r: Reporter) {
   await openPage(h, fresh(h, '/'));
-  const first = fresh(h, '/back-forward.html?title=first');
-  await openPage(h, first);
-  const second = fresh(h, '/back-forward.html?title=second');
-  await openPage(h, second);
+  const first = await openPage(h, fresh(h, '/back-forward.html?title=first'));
+  const second = await openPage(h, fresh(h, '/back-forward.html?title=second'));
 
   await travel(h, r, 'back', () => h.ref.current?.goBack(), first, 'first', true);
   await travel(h, r, 'forward', () => h.ref.current?.goForward(), second, 'second', false);
 
-  const straddleCall = `(() => {
-    window.__straddle = undefined;
-    nativeBridge.call('slow').then((result) => (window.__straddle = { result }), (error) => (window.__straddle = { error: error.code }));
-  })()`;
-  await h.ref.current?.evaluate(straddleCall).catch(errorCode);
+  await startPageCall(h, 'slow', null);
   const calledAt = Date.now();
   let leftAt: number | undefined;
   const sinceLeftOrCalled = () => Date.now() - (leftAt ?? calledAt);
@@ -53,7 +48,7 @@ export async function bfcache(h: Harness, r: Reporter) {
   h.ref.current?.goForward();
   await waitFor(h, (s) => s.url === second && idle(s));
   await quietFor(2000);
-  const straddle = (await h.ref.current?.evaluate('window.__straddle')) as
+  const straddle = (await h.ref.current?.evaluate('window.__call')) as
     { error?: string } | null | undefined;
   r.since(
     WEBVIEW.navigationListener,
@@ -68,10 +63,10 @@ export async function bfcache(h: Harness, r: Reporter) {
     { path: ['/checkout'], action: 'ask' },
     { path: ['/blocked'], action: 'block' },
   ]);
-  const blocked = await nextDecision(
-    h,
+  const blocked = await nextEntry(
+    h.events.navigations,
     () => h.ref.current?.evaluate(`location.href = '/blocked/page'`),
-    '/blocked/page'
+    (n) => n.url.endsWith('/blocked/page')
   );
   r.check(
     'a block rule holds on the restored page',
@@ -89,8 +84,7 @@ export async function bfcache(h: Harness, r: Reporter) {
   if (Platform.OS === 'android') {
     const warnings = captureWarnings();
     h.setProps({ android: { settings: { backForwardCacheEnabled: true } } });
-    const one = fresh(h, '/back-forward.html?title=one');
-    await openPage(h, one);
+    const one = await openPage(h, fresh(h, '/back-forward.html?title=one'));
     await openPage(h, fresh(h, '/back-forward.html?title=two'));
     clearEvents(h);
     h.ref.current?.goBack();

@@ -40,7 +40,6 @@ export type Harness = {
   webViewOffset: { x: number; y: number; height: number };
   state: () => NavigationState;
   remount: () => void;
-  load: (uri: string) => void;
   loadSource: (source: WebViewSource) => void;
   setRules: (rules: NavigationRule[] | undefined) => void;
   setAsk: (ask: WebViewProps['onNavigationRequest']) => void;

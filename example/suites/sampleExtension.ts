@@ -36,7 +36,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   };
   for (let i = 0; i < SAMPLES_PER_NAVIGATION_KIND; i++) {
     const [load, own] = [fresh(h, `/spa.html?load=${i}`), fresh(h, `/spa.html?own=${i}`)];
-    await ends(() => h.load(load), load);
+    await ends(() => h.loadSource({ uri: load }), load);
     await ends(
       () => h.ref.current?.evaluate(`(location.href = '${own}', 1)`).catch(errorCode),
       own
@@ -51,8 +51,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   const before = h.events.pageCounts.length;
   h.events.hookEvents.length = 0;
   const previous = h.state().url;
-  const page = fresh(h, '/spa.html');
-  await openPage(h, page);
+  const page = await openPage(h, fresh(h, '/spa.html'));
   await waitFor(h, () => h.events.pageCounts.at(-1)?.url === page, 5000);
   const event = h.events.pageCounts.at(-1);
   r.check(
@@ -111,7 +110,7 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   r.check('reply.fail rejects ref.hook with handler_error', failed === 'handler_error', failed);
   h.setProps({});
   if (Platform.OS === 'ios') {
-    h.load(`${h.pages}/redirect?to=${encodeURIComponent('/spa.html?from=hook')}`);
+    h.loadSource({ uri: `${h.pages}/redirect?to=${encodeURIComponent('/spa.html?from=hook')}` });
     await waitFor(h, (s) => s.url.includes('from=hook') && idle(s));
     r.check(
       'a callback the core does not implement is forwarded to its delegate (didReceiveServerRedirect)',

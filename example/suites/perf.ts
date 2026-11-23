@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import type { NavigationRule } from 'react-native-minimal-webview';
 import { sampleHook } from 'sample-extension';
 
-import { openPage, sleep, until, waitForLoad, poll } from '../harness/helpers';
+import { fresh, openPage, sleep, until, waitForLoad, poll } from '../harness/helpers';
 import { launchMarks, type Harness, type Reporter } from '../harness/runner';
 
 type Policy = 'default' | 'rule' | 'ask';
@@ -38,11 +38,10 @@ async function posted<T>(h: Harness, run: string, ms = 30000): Promise<T | undef
   );
   return text ? (JSON.parse(text) as T) : undefined;
 }
-const page = (h: Harness, query: string) => `${h.pages}/perf.html?${query}&t=${Date.now()}`;
 
 async function clockResolution(h: Harness) {
   const run = runId('clock');
-  await openPage(h, page(h, 'clock=1'));
+  await openPage(h, fresh(h, '/perf.html?clock=1'));
   await inject(h, `perfClockResolution(${JSON.stringify(run)}), 1`);
   type Steps = { performanceNow: number[]; dateNow: number[] };
   const inPage = await posted<Steps>(h, run);
@@ -64,7 +63,7 @@ async function clockResolution(h: Harness) {
 async function navLoop(h: Harness, policy: Policy, n: number) {
   await applyPolicy(h, policy);
   const run = runId(`nav-${policy}`);
-  await openPage(h, page(h, `run=${run}&i=0&n=${n}`));
+  await openPage(h, fresh(h, `/perf.html?run=${run}&i=0&n=${n}`));
   await drain(h);
   takeLoadOutcomes(h);
   await inject(h, 'setTimeout(() => perfGo(true)), 1');
@@ -84,7 +83,7 @@ async function busyJs(h: Harness, policy: Policy, n: number) {
   const gaps: Gaps[] = [];
   for (let k = 0; k < n; k++) {
     const run = runId(`busy-${policy}-${k}`);
-    await openPage(h, page(h, `run=${run}&i=0&n=1`));
+    await openPage(h, fresh(h, `/perf.html?run=${run}&i=0&n=1`));
     await probe.stallStart();
     await inject(h, 'setTimeout(() => perfGo(), 100), 1');
     blockJsThread(600);
@@ -96,13 +95,13 @@ async function busyJs(h: Harness, policy: Policy, n: number) {
 
 async function pageCalls(h: Harness, n: number) {
   const run = runId('pageCall');
-  await openPage(h, page(h, 'calls=1'));
+  await openPage(h, fresh(h, '/perf.html?calls=1'));
   await inject(h, `perfEchoRoundTrips(${JSON.stringify(run)}, ${n}), 1`);
   return (await posted<number[]>(h, run, 60000)) ?? [];
 }
 
 async function rnCalls(h: Harness, n: number) {
-  await openPage(h, page(h, 'calls=1'));
+  await openPage(h, fresh(h, '/perf.html?calls=1'));
   const ms: number[] = [];
   for (let k = 0; k < n; k++) {
     const t = performance.now();
@@ -114,7 +113,7 @@ async function rnCalls(h: Harness, n: number) {
 
 async function pageEmit(h: Harness, n: number) {
   const run = runId('pageEmit');
-  await openPage(h, page(h, 'emit=1'));
+  await openPage(h, fresh(h, '/perf.html?emit=1'));
   const got: unknown[] = [];
   let last = 0;
   const off = h.bridge.on('perfEvent', (k) => {
@@ -138,7 +137,7 @@ async function pageEmit(h: Harness, n: number) {
 
 async function rnEmit(h: Harness, n: number) {
   const run = runId('rnEmit');
-  await openPage(h, page(h, 'emit=1'));
+  await openPage(h, fresh(h, '/perf.html?emit=1'));
   await inject(h, `perfListen(${JSON.stringify(run)}, ${n}), 1`);
   const t0 = Date.now();
   for (let k = 0; k < n; k++) h.bridge.emit('perfEvent', k);
