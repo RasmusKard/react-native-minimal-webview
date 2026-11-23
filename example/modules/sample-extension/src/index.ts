@@ -53,10 +53,12 @@ export const sampleHook = <N extends keyof SampleHookEvents>(
  * every slice queued at once, so a task posted meanwhile runs after all of them. `destroyedWebViewCalls` counts the
  * calls on a destroyed WebView that WebView refused and logged since `since` (epoch ms), and throws when the app cannot
  * read its own log. iOS: `tapAlert` presses a button of the alert on screen as a tap does, and is false when there is
- * none.
+ * none. `adsRegisteredAt` is the URL each WebView had when googleMobileAds() registered it with the Google Mobile Ads
+ * stand-in, empty before its first load.
  */
 export const seams = requireNativeModule<{
   closedViews(): Promise<number>;
+  adsRegisteredAt(): Promise<string[]>;
   setWebViewMissing(missing: boolean): Promise<void>;
   busyMainInSlices(ms: number): Promise<void>;
   busyMainAhead(ms: number): Promise<void>;

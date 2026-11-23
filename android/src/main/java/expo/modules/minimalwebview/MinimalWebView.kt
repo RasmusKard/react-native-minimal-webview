@@ -88,6 +88,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal var loading = false
   internal var progress = 0.0
   private var outcome: LoadOutcome? = null
+  internal var rendererGone = false
   private var lastEmitted: Map<String, Any?>? = null
   private var emitScheduled = false
 
@@ -105,6 +106,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     val (attaching, unregistered) = selectHooks(MinimalWebViewHooks.hooks, keysToAttach)
     val (maker, unused) = pickFactory(attaching)
     val view = maker?.webViewFactory?.invoke(context) ?: WebView(context)
+    rendererGone = false
     hookContexts = attaching.map { HookContext(it, this) }
     if (first) unregistered.forEach { warn("extension $it: no hook is registered under this key") }
     if (first) unused.forEach { warn("extension $it: its webViewFactory is not used, ${maker?.key}'s is") }
@@ -229,7 +231,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val showingPost get() = source?.body != null && showsSource(source, url)
 
   private fun applySettings(force: Boolean = false) {
-    platformSettings.apply(settings, force).forEach { warn("android.${it["key"]}: ${it["reason"]}") }
+    platformSettings.apply(settings, force).forEach { warn("android.${it.key}: ${it.reason}") }
   }
 
   internal fun warn(message: String) = emit("core", "warning", mapOf("message" to message))

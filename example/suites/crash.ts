@@ -116,7 +116,7 @@ export async function crash(h: Harness, r: Reporter) {
   await h.ref.current
     ?.evaluate(`location.href = ${JSON.stringify(fresh(h, '/slow?ms=10000'))}`)
     .catch(errorCode);
-  await waitFor(h, () => h.events.loads.slice(slowStarts).includes('start'));
+  await poll(() => h.events.loads.slice(slowStarts).includes('start'), 2000);
   const fourth = await kill(4);
   const onScreen = h.state().url;
   const elapsed = Date.now() - firstKillAt;
@@ -128,9 +128,10 @@ export async function crash(h: Harness, r: Reporter) {
     );
   else
     r.skip('a crash loop stops reloading (4th crash in 60 s)', `the 4 crashes took ${elapsed} ms`);
-  r.check(
-    'a crash during a load ends it (loading: false)',
-    await happens(waitFor(h, (s) => !s.loading, 5000)),
+  r.since(
+    WEBVIEW.navigationListener,
+    'a crash during a load before it commits ends it as failed',
+    (await happens(waitFor(h, (s) => !s.loading, 5000))) && h.state().outcome === 'failed',
     h.state()
   );
   const brings = async (action: () => void, url: string) =>
@@ -309,7 +310,13 @@ export async function crash(h: Harness, r: Reporter) {
     };
     r.check(
       'props set while the recovery waits apply to the recovered WebView',
-      applied.userAgent === 'Crash/2' && applied.injected === 1 && applied.hook === 4,
+      applied.userAgent === 'Crash/2' && applied.hook === 4,
+      applied
+    );
+    r.since(
+      WEBVIEW.injectedScripts,
+      'injectedScripts set while the recovery waits apply to the recovered WebView',
+      applied.injected === 1,
       applied
     );
     h.setProps({ userAgent: 'Crash/1' });

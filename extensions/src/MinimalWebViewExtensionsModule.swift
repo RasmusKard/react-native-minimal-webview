@@ -7,6 +7,7 @@ public class MinimalWebViewExtensionsModule: Module {
     OnCreate {
       BasicAuthCredential.register()
       Dialogs.register()
+      GoogleMobileAds.register()
       Incognito.register()
       MenuItems.register()
       OnScroll.register()

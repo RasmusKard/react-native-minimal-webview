@@ -33,23 +33,18 @@ internal class MinimalWebViewNavigation(
   fun decide(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "onNavigationRequest" in owner.requestHandlers)
-    val action = if (decision.action == NavigationRules.Action.ASK && !request.mainFrame) {
-      // loadUrl reissues only a main-frame navigation.
-      Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
-      NavigationRules.Action.BLOCK
-    } else {
-      decision.action
+    when (decision.action) {
+      NavigationRules.Action.ASK -> if (request.mainFrame) {
+        ask(request, decision.rule)
+      } else {
+        // loadUrl reissues only a main-frame navigation.
+        Log.w(TAG, "`ask` only works for main-frame navigations on Android; blocked ${request.url}")
+        notifyNavigation(request, NavigationRules.Action.BLOCK, decision.rule)
+      }
+      NavigationRules.Action.EXTERNAL -> openExternal(request, decision.rule)
+      else -> notifyNavigation(request, decision.action, decision.rule)
     }
-    if (action == NavigationRules.Action.ASK) {
-      ask(request, decision.rule)
-      return true
-    }
-    if (action == NavigationRules.Action.EXTERNAL) {
-      openExternal(request, decision.rule)
-      return true
-    }
-    notifyNavigation(request, action, decision.rule)
-    return action != NavigationRules.Action.ALLOW
+    return decision.action != NavigationRules.Action.ALLOW
   }
 
   private fun fields(request: NavigationRules.Request) = mapOf(

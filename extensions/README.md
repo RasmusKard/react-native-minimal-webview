@@ -47,6 +47,7 @@ export function Browser() {
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | [`basicAuthCredential(credential)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/basicAuthCredential/)                           | iOS, Android                   |
 | [`dialogs(onDialog)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/)                                                     | iOS, Android                   |
+| [`googleMobileAds()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/googleMobileAds/)                                             | iOS, Android                   |
 | [`incognito()`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/incognito/)                                                         | iOS, Android                   |
 | [`menuItems({ items, suppress, onSelect })`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/menuItems/)                            | iOS, Android (`suppress`: iOS) |
 | [`onScroll(handler)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onScroll/)                                                    | iOS, Android                   |
@@ -88,6 +89,8 @@ The Swift keeps its type names: they belong to your module.
 ### Steps for particular extensions
 
 - `downloadManager` and `incognito`: copy the extensions' `src/Cookies.kt` next to the extension's `.kt` file, and change its `package` line too.
+- `googleMobileAds`: copy the rules in the extensions' `consumer-rules.pro` into your module's consumer ProGuard rules,
+  the file `consumerProguardFiles` names in its `android/build.gradle`.
 
 ### If you miss a step
 

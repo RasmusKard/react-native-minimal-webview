@@ -7,6 +7,7 @@ import {
   type Dialog,
   dialogs,
   downloadManager,
+  googleMobileAds,
   hideKeyboardAccessoryView,
   incognito,
   keyboardDisplayRequiresUserAction,
@@ -36,6 +37,7 @@ describe('the extensions', () => {
       { username: 'u', password: 'p' },
     ],
     ['dialogs', dialogs(() => true), 'dialogs', undefined],
+    ['googleMobileAds', googleMobileAds(), 'googleMobileAds', undefined],
     ['incognito', incognito(), 'incognito', undefined],
     ['menuItems', menuItems({ items: MENU, onSelect: () => {} }), 'menuItems', { items: MENU }],
     [
@@ -80,6 +82,7 @@ describe('the extensions', () => {
       key: `${K}.menuItems`,
       options: { items: MENU },
     });
+    expect(withoutHandler(googleMobileAds())).toEqual({ key: `${K}.googleMobileAds` });
     expect(withoutHandler(downloadManager())).toEqual({ key: `${K}.downloadManager` });
     expect(withoutHandler(downloadManager({ downloadingMessage: 'Saving' }))).toEqual({
       key: `${K}.downloadManager`,
@@ -121,6 +124,12 @@ describe('the extensions', () => {
       payload: selection,
     });
     expect(selected).toHaveBeenCalledWith(selection);
+  });
+
+  it('logs an error when the native side finds no Google Mobile Ads SDK', () => {
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+    googleMobileAds().onEvent!({ name: 'sdkMissing', payload: {} });
+    expect(logged).toHaveBeenCalledTimes(1);
   });
 
   it('calls onLoadSubResourceError with the event as it came', () => {

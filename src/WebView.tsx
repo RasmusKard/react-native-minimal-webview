@@ -204,16 +204,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
     const settled = <T,>(promise: Promise<T>) =>
       new Promise<T>((resolve, reject) => {
         inFlight.add(reject);
-        promise.then(
-          (value) => {
-            inFlight.delete(reject);
-            resolve(value);
-          },
-          (error: unknown) => {
-            inFlight.delete(reject);
-            reject(error);
-          }
-        );
+        promise.finally(() => inFlight.delete(reject)).then(resolve, reject);
       });
     const retriedUntilViewRegistered = async <T,>(call: () => Promise<T> | undefined) => {
       for (let frame = 0; ; frame++) {
@@ -376,18 +367,21 @@ function useNavigationRules(rules: WebViewProps['navigationRules']) {
   return checked;
 }
 
-function useDevWarnings(warnings: string[]) {
-  const json = JSON.stringify(warnings);
-  useEffect(() => {
-    if (!__DEV__) return;
-    for (const warning of JSON.parse(json) as string[])
-      console.warn(`[react-native-minimal-webview] ${warning}`);
-  }, [json]);
+function useJsonStable<T>(value: T): T {
+  const json = JSON.stringify(value);
+  return useMemo(() => JSON.parse(json) as T, [json]);
 }
 
-function useRequestHandlers(props: WebViewProps) {
-  const key = REQUEST_HANDLER_PROPS.filter((prop) => props[prop]).join();
-  return useMemo(() => (key ? key.split(',') : []), [key]);
+function useDevWarnings(warnings: string[]) {
+  const stable = useJsonStable(warnings);
+  useEffect(() => {
+    if (!__DEV__) return;
+    for (const warning of stable) console.warn(`[react-native-minimal-webview] ${warning}`);
+  }, [stable]);
+}
+
+function useRequestHandlers(props: WebViewProps): string[] {
+  return useJsonStable(REQUEST_HANDLER_PROPS.filter((prop) => props[prop]));
 }
 
 function useHookOptions(extensions: WebViewProps['extensions']) {
@@ -398,10 +392,9 @@ function useHookOptions(extensions: WebViewProps['extensions']) {
       (key) => `extensions: two extensions have the key ${key}; the later one wins`
     )
   );
-  const json = JSON.stringify(
+  return useJsonStable<Record<string, unknown>>(
     withoutOff(Object.fromEntries(on.map(({ key, options = true }) => [key, options])))
   );
-  return useMemo(() => JSON.parse(json) as Record<string, unknown>, [json]);
 }
 
 const bridgeIds = new WeakMap<object, number>();

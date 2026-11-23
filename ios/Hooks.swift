@@ -114,7 +114,8 @@ public protocol WebViewContext: AnyObject {
   ///   core. Either action policy variant, with or without `preferences`, counts, and that delegate's own variant is
   ///   called.
   /// - The authentication challenge goes to each delegate that implements it, in order, until one answers other than
-  ///   `.performDefaultHandling`; when none does, WebKit's default handling. Each must call its completion handler
+  ///   `.performDefaultHandling`; when none does, WebKit's default handling, or `.rejectProtectionSpace` once the
+  ///   site has rejected a credential, so its 401 page loads. Each must call its completion handler
   ///   exactly once, and the next delegate gets the challenge only after that.
   /// - Every other callback the core implements reaches the core, then each delegate that implements it.
   /// - `didStartProvisionalNavigation` and `didReceiveServerRedirectForProvisionalNavigation` reach each delegate that

@@ -865,8 +865,8 @@ export type CodedError = Error & { code: ErrorCode };
  *   (`data:`, sandboxed, `file:`). One shows at a time; one that comes while another shows is cancelled.
  * - Android dialogs: WebView's own. One still on screen when its WebView unmounts stays there, and a WebView older
  *   than 149 then gets no touches until the app restarts. The `dialogs` extension shows no native dialog.
- * - HTTP auth: cancelled on Android. On iOS WebKit's default handling applies, so without a stored credential the
- *   site's 401 page shows.
+ * - HTTP auth: cancelled on Android. On iOS WebKit's default handling applies, which sends a stored credential; once
+ *   the site has rejected one, the site's 401 page shows.
  * @sortStrategy source-order
  * @group WebView
  */
@@ -1021,8 +1021,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * Until the answer settles, the page's next file request waits.
    *
    * Without it, the system file chooser opens and ignores `capture`. It handles one request at a time for the whole
-   * app: a request while one is open is cancelled. If the chooser's activity died without returning a result, every
-   * request is cancelled until the app restarts.
+   * app: a request while one is open is cancelled.
    *
    * iOS always shows WebKit's picker, whose camera option needs `NSCameraUsageDescription`.
    * @android
@@ -1115,7 +1114,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * The renderer died; see {@link ProcessGoneEvent} for the recovery.
    *
    * Android's WebViews share one renderer, so each of them reports its death. On Android it comes before the
-   * {@link WebViewProps.onLoadEnd | onLoadEnd} that fails a load the crash cut off after it committed.
+   * {@link WebViewProps.onLoadEnd | onLoadEnd} that fails the load the crash cut off.
    */
   onProcessGone?: (event: ProcessGoneEvent) => void;
   /** {@link NavigationState.loading | loading} went true. */

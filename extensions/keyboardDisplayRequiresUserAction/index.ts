@@ -6,7 +6,10 @@ import type { HookExtension } from 'react-native-minimal-webview';
  * react-native-webview's `keyboardDisplayRequiresUserAction`.
  *
  * A change applies from the next focus. Without this extension, WebKit's own rules show the keyboard only for some
- * focuses, such as one in a tap's handler or from the ref's `evaluate`.
+ * focuses, such as one in a tap's handler.
+ *
+ * It has no effect from iOS 27: WebKit there tells the app of a script's focus only while the WebView has focus, such
+ * as after a touch, and then shows the keyboard itself.
  *
  * It replaces a private WebKit method, as react-native-webview does, so a WebKit update can stop it working.
  * @returns Null when `required` is true, WebKit's default, and on Android.

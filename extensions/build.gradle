@@ -13,10 +13,11 @@ android {
   defaultConfig {
     minSdkVersion 29
     versionName project.version // Expo SDK 53's module plugin requires it
+    consumerProguardFiles 'consumer-rules.pro'
   }
   sourceSets {
     main {
-      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'incognito', 'menuItems', 'onScroll', 'transparentBackground', 'nestedScrollEnabled', 'androidLayerType', 'downloadManager', 'onLoadSubResourceError']
+      java.srcDirs = ['src', 'basicAuthCredential', 'dialogs', 'googleMobileAds', 'incognito', 'menuItems', 'onScroll', 'transparentBackground', 'nestedScrollEnabled', 'androidLayerType', 'downloadManager', 'onLoadSubResourceError']
     }
   }
 }

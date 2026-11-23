@@ -12,6 +12,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.google.android.gms.ads.MobileAds
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -67,6 +68,7 @@ class SampleExtensionModule : Module() {
       Seams.register()
     }
     AsyncFunction("closedViews") { Seams.closed }.runOnQueue(Queues.MAIN)
+    AsyncFunction("adsRegisteredAt") { MobileAds.registeredAt.toList() }.runOnQueue(Queues.MAIN)
     AsyncFunction("setWebViewMissing") { missing: Boolean -> webViewMissing = missing }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStart") { Stall.start() }.runOnQueue(Queues.MAIN)
     AsyncFunction("stallStop") { Stall.stop() }.runOnQueue(Queues.MAIN)

@@ -15,7 +15,7 @@ let settings = PlatformSettings()
 let configuration = WKWebViewConfiguration()
 var webView: WKWebView?
 func reason(_ root: String, _ key: String, _ value: Any) -> String? {
-  settings.apply([root: [key: value]], webView: webView, configuration: webView == nil ? configuration : nil).first?["reason"]
+  settings.apply([root: [key: value]], webView: webView, configuration: webView == nil ? configuration : nil).first?.reason
 }
 func rejects(_ root: String, _ key: String, _ value: Any, _ expected: String) { check("\(root).\(key) = \(value)", reason(root, key, value), expected) }
 func sets(_ root: String, _ key: String, _ value: Any, _ read: @autoclosure () -> Any?, _ expected: Any?) {
@@ -57,7 +57,7 @@ rejects("preferences", "_private", 1, "private and nested keys are not allowed")
 rejects("webView", "scrollView.bounces", false, "private and nested keys are not allowed")
 rejects("webView", "URL", "https://example.com", "read-only")
 rejects("nope", "key", 1, "unknown root: use \(PlatformSettings.roots)")
-check("a root that isn't an object", settings.apply(["preferences": 1], webView: view).first?["reason"], "not an object")
+check("a root that isn't an object", settings.apply(["preferences": 1], webView: view).first?.reason, "not an object")
 check("the configuration root live is skipped", reason("configuration", "suppressesIncrementalRendering", false), nil)
 rejects("preferences", "minimumFontSize", "1", "a d property can't take 1")
 check("a rejection is reported once", reason("preferences", "minimumFontSize", "1"), nil)

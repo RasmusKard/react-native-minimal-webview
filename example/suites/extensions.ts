@@ -7,6 +7,7 @@ import {
   basicAuthCredential,
   dialogs as dialogsExtension,
   downloadManager,
+  googleMobileAds,
   hideKeyboardAccessoryView,
   incognito,
   keyboardDisplayRequiresUserAction,
@@ -20,7 +21,7 @@ import {
 } from '@react-native-minimal-webview/extensions';
 import { Platform } from 'react-native';
 import { AndroidConstants, IOSConstants } from 'react-native-minimal-webview';
-import { sampleHook } from 'sample-extension';
+import { sampleHook, seams } from 'sample-extension';
 
 import {
   captureWarnings,
@@ -75,6 +76,7 @@ export async function extensions(h: Harness, r: Reporter) {
     await r.block('menu', () => menu(h, r, warnings));
     await r.block('background', () => background(h, r));
     await r.block('privacy', () => privacy(h, r));
+    await r.block('ads', () => ads(h, r, warnings));
     await (ios
       ? r.block('keyboard', () => keyboard(h, r))
       : r.block('android', () => android(h, r)));
@@ -82,7 +84,8 @@ export async function extensions(h: Harness, r: Reporter) {
       (line) =>
         line.includes(`extension ${KEY}.`) &&
         !line.includes(`${KEY}.menuItems`) &&
-        !line.includes(`${KEY}.incognito: its hook has`)
+        !line.includes(`${KEY}.incognito: its hook has`) &&
+        !line.includes(`${KEY}.googleMobileAds: its hook has`)
     );
     r.check(
       'no extension key warns: each is registered, and sent only on its platforms',
@@ -142,12 +145,12 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
   await sleep(300);
-  await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`)));
+  const loaded = await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`)));
   const wrong = await text(h, 'auth');
   r.check(
-    'basicAuthCredential with a rejected credential stops: the 401 page shows',
-    wrong === 'unauthorized',
-    wrong
+    'basicAuthCredential with a rejected credential stops: the 401 page loads',
+    loaded && wrong === 'unauthorized',
+    { loaded, wrong }
   );
   h.setProps({});
   await sleep(300);
@@ -384,6 +387,30 @@ async function privacy(h: Harness, r: Reporter) {
   await recreate(h, {}, { remount: true });
 }
 
+async function ads(h: Harness, r: Reporter, warnings: ReturnType<typeof captureWarnings>) {
+  const registrations = async () => (await seams.adsRegisteredAt()).length;
+  const registeredSince = async (count: number) => (await seams.adsRegisteredAt()).slice(count);
+  const beforeCreation = await registrations();
+  await recreate(h, { extensions: [googleMobileAds()] }, { remount: true });
+  const atCreation = await registeredSince(beforeCreation);
+  r.check(
+    'googleMobileAds set at creation registers the WebView with the Google Mobile Ads SDK once, before it loads anything',
+    JSON.stringify(atCreation) === '[""]',
+    atCreation
+  );
+  await recreate(h, {}, { remount: true });
+  const beforeLate = await registrations();
+  h.setProps({ extensions: [googleMobileAds()] });
+  await until(() => warnings.warned(`extension ${KEY}.googleMobileAds`), 3000);
+  const afterCreation = await registeredSince(beforeLate);
+  r.check(
+    'googleMobileAds set after creation warns that its hook attaches only when the WebView is created, and registers nothing',
+    warnings.warned(`${KEY}.googleMobileAds: its hook has`) && afterCreation.length === 0,
+    { lines: warnings.lines, afterCreation }
+  );
+  h.setProps({});
+}
+
 async function keyboard(h: Harness, r: Reporter) {
   const focus = async () =>
     await h.ref.current
@@ -405,31 +432,9 @@ async function keyboard(h: Harness, r: Reporter) {
     'hideKeyboardAccessoryView',
     'the bar shows only with the software keyboard: check it by hand'
   );
-  // The keyboard shrinks the visual viewport. evaluate's script has a user gesture, which WebKit forwards to a timer but
-  // not to a nested one: this focus is the page's own.
+  // The keyboard shrinks the visual viewport.
   const viewport = async () => (await h.ref.current?.evaluate('visualViewport.height')) as number;
-  const keyboardShows = async () => {
-    await loadHtml(h, '<input id="i">');
-    const height = await viewport();
-    await h.ref.current?.evaluate(
-      "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
-    );
-    return !!(await poll(async () => (await viewport()) < height, 2000));
-  };
-  await recreate(h, {}, { remount: true });
-  const before = await keyboardShows();
-  h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
-  await sleep(300);
-  const on = await keyboardShows();
-  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
-  h.setProps({});
-  await sleep(300);
-  const off = await keyboardShows();
-  r.check(
-    "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not",
-    !before && on && !off,
-    { before, on, off }
-  );
+  await scriptFocus(h, r, viewport);
   const keyboardInset = async () => {
     await loadHtml(h, '<input id="i">');
     const height = await viewport();
@@ -454,6 +459,48 @@ async function keyboard(h: Harness, r: Reporter) {
   await sleep(300);
   r.info('refreshControlLightMode', 'the spinner shows only on a pull: check it by hand');
   h.setProps({});
+}
+
+async function scriptFocus(h: Harness, r: Reporter, viewport: () => Promise<number>) {
+  const withAccessory =
+    "keyboardDisplayRequiresUserAction(false) shows the keyboard for a script's focus() beside hideKeyboardAccessoryView, and in a WebView without it after";
+  const toggled =
+    "keyboardDisplayRequiresUserAction(false), set after mount, lets a page script's focus() show the keyboard; off, not";
+  if (parseFloat(String(Platform.Version)) >= 27) {
+    const why =
+      "from iOS 27 WebKit tells the app of a script's focus() only while the WebView has focus";
+    r.skip(withAccessory, why);
+    r.skip(toggled, why);
+    return;
+  }
+  // A nested timer's focus() carries no user gesture from evaluate: it is the page's own.
+  const keyboardShows = async () => {
+    await loadHtml(h, '<input id="i">');
+    const height = await viewport();
+    await h.ref.current?.evaluate(
+      "void setTimeout(() => setTimeout(() => document.getElementById('i').focus()))"
+    );
+    return !!(await poll(async () => (await viewport()) < height, 2000));
+  };
+  await recreate(
+    h,
+    { extensions: [hideKeyboardAccessoryView(), keyboardDisplayRequiresUserAction(false)] },
+    { remount: true }
+  );
+  const beside = await keyboardShows();
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
+  const after = await keyboardShows();
+  r.check(withAccessory, beside && after, { beside, after });
+  await recreate(h, {}, { remount: true });
+  const before = await keyboardShows();
+  h.setProps({ extensions: [keyboardDisplayRequiresUserAction(false)] });
+  await sleep(300);
+  const on = await keyboardShows();
+  await recreate(h, { extensions: [keyboardDisplayRequiresUserAction(false)] }, { remount: true });
+  h.setProps({});
+  await sleep(300);
+  const off = await keyboardShows();
+  r.check(toggled, !before && on && !off, { before, on, off });
 }
 
 async function android(h: Harness, r: Reporter) {
@@ -506,7 +553,11 @@ async function android(h: Harness, r: Reporter) {
     `<img src="${unreachableImage}"><img src="${HTTPS}/x.png" onerror="window.sslFailed = true">`
   );
   const reported = await poll(() => failed.find(({ url }) => url === unreachableImage), 5000);
-  const sslFailed = await h.ref.current?.evaluate('window.sslFailed === true');
+  const sslFailed = await poll(
+    async () =>
+      (await h.ref.current?.evaluate('window.sslFailed === true').catch(errorCode)) === true,
+    5000
+  );
   await openPage(h, 'http://127.0.0.1:1/main');
   await sleep(1000);
   r.check(

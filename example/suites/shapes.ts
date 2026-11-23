@@ -180,7 +180,7 @@ async function hybrid(s: Shape) {
 
   page = await hub(s);
   await clickEvenIfGone(h, 'offsite');
-  await until(() => s.external.length > 0 && h.state().outcome === 'cancelled', 5000);
+  await poll(() => s.external.length > 0 && h.state().outcome === 'cancelled', 5000);
   r.since(
     WEBVIEW.navigationListener,
     'A3 hybrid: a server redirect off-site goes external',
@@ -526,7 +526,7 @@ async function documents(s: Shape) {
         downloads: h.events.downloads.slice(before),
       });
     } else if (withOnDownload) {
-      await until(
+      await poll(
         () => h.events.downloads.length > before && h.state().outcome === 'cancelled',
         15000
       );

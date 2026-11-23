@@ -252,6 +252,12 @@
       "allowed": false
     },
     {
+      "name": "wildcard: an empty label is not a subdomain",
+      "rules": ["https://*.example.com"],
+      "origin": "https://.example.com",
+      "allowed": false
+    },
+    {
       "name": "wildcard: scheme must match",
       "rules": ["https://*.example.com"],
       "origin": "http://app.example.com",

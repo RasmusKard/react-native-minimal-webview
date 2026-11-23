@@ -92,7 +92,7 @@ export async function urlTracking(h: Harness, r: Reporter) {
 
   const beforeSlow = h.state().url;
   await h.ref.current?.evaluate(`location.href = '/slow?ms=3000'`);
-  await waitFor(h, (s) => (s.pendingUrl ?? '').includes('/slow'), 1000);
+  await poll(() => (h.state().pendingUrl ?? '').includes('/slow'), 1000, 50);
   const during = h.state();
   r.info('during slow load', {
     url: during.url,
