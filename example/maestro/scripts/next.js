@@ -7,4 +7,8 @@ while (!body && Date.now() < deadline) {
   ).body;
 }
 output.requestsDone += 1;
+if (!body)
+  http.get(
+    `${PAGES}/harness/no-verdict?platform=${PLATFORM}&suite=${SUITE}&ms=${Number(SUITE_MS) + VERDICT_MARGIN_MS}`
+  );
 Object.assign(output, body ? json(body) : { action: 'done', fail: 'no verdict' });
