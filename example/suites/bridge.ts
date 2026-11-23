@@ -192,15 +192,14 @@ export async function bridge(h: Harness, all: Reporter) {
   const blocked = await h.bridge.call('sum', { a: 1, b: 1 }).catch(errorCode);
   r.check('calls to a disallowed page time out', blocked === 'timeout', blocked);
 
-  if (Platform.OS === 'ios') {
-    const unmounted = evaluate('new Promise(() => {})')?.catch(errorCode);
-    await sleep(200);
-    h.remount();
-    const closed = await Promise.race([unmounted, sleep(3000).then(() => 'still pending')]);
-    r.check('unmount rejects an evaluate in flight', closed === 'navigated', closed);
-  } else
-    r.skip(
-      'unmount rejects an evaluate in flight',
-      "it checks the iOS WebView's teardown at unmount (invalidate)"
-    );
+  const unmounted = evaluate('new Promise(() => {})')?.catch(errorCode);
+  await sleep(200);
+  h.remount();
+  const closed = await Promise.race([unmounted, sleep(3000).then(() => 'still pending')]);
+  r.since(
+    WEBVIEW.evaluate,
+    'unmount rejects an evaluate in flight',
+    closed === 'navigated',
+    closed
+  );
 }
