@@ -116,6 +116,8 @@ export const WEBVIEW = {
   bridge: 101,
   /** DOCUMENT_START_SCRIPT, as androidx.webkit matches it */
   injectedScripts: 101,
+  /** The Navigation API (`window.navigation`) */
+  navigationApi: 102,
   /** The file input's `cancel` event. */
   fileInputCancel: 113,
   /** PAYMENT_REQUEST */
