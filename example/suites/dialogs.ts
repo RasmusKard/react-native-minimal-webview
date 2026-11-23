@@ -109,6 +109,6 @@ export async function dialogs(h: Harness, r: Reporter) {
   } else
     r.skip(
       'an unmount right after OK is pressed completes the alert once',
-      'tapAlert, the seam that presses OK, is iOS only'
+      "Android's WebView dialog answers the page inside OK's click listener (android.webkit.JsDialogHelper), so no pressed OK waits for its handler as UIAlertAction's does"
     );
 }
