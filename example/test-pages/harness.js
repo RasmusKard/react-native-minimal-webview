@@ -91,6 +91,14 @@ function readJson(req, res, then) {
   });
 }
 
+/** Adds `line` to the platform's run log, and a check's line to its results. */
+function record(/** @type {string} */ platform, /** @type {Line} */ line) {
+  const state = harnessState(platform);
+  log(line.text);
+  state.log.push(line.text);
+  if (['PASS', 'FAIL', 'SKIP'].includes(line.kind)) state.results.push(line);
+}
+
 /** Text for an XML attribute, without the control characters XML has no form for. */
 const xml = (/** @type {string} */ text) =>
   text
@@ -229,12 +237,21 @@ const ROUTES = {
           .log.map((line) => `${line}\n`)
           .join('')
       );
-    readJson(req, res, (/** @type {Line} */ line) => {
-      const state = harnessState(platform);
-      log(line.text);
-      state.log.push(line.text);
-      if (['PASS', 'FAIL', 'SKIP'].includes(line.kind)) state.results.push(line);
+    readJson(req, res, (/** @type {Line} */ line) => record(platform, line));
+  },
+  '/harness/no-verdict'(req, res, q, platform) {
+    const suite = q.get('suite') ?? '';
+    const name = 'the suite gave no verdict';
+    const detail = `within ${Number(q.get('ms')) / 1000} s`;
+    record(platform, {
+      text: `[harness ${platform}] FAIL ${suite}: ${name} ${detail}`,
+      kind: 'FAIL',
+      suite,
+      block: '',
+      name,
+      detail,
     });
+    res.end();
   },
   '/harness/junit'(req, res, q, platform) {
     res.end(junit(harnessState(platform).results));
