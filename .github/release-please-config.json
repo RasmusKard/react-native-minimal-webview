@@ -7,7 +7,7 @@
   "separate-pull-requests": true,
   "packages": {
     ".": {
-      "exclude-paths": ["extensions"]
+      "exclude-paths": ["extensions", "example"]
     },
     "extensions": {
       "extra-files": [
