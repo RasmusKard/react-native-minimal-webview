@@ -202,7 +202,12 @@ export type NavigationState = {
   loading: boolean;
   /** From 0 to 1. */
   progress: number;
+  /**
+   * On Android, an iframe's history entry updates it from Android System WebView 102, except a `pushState` or hash
+   * change in an iframe with an opaque origin, such as a sandboxed one.
+   */
   canGoBack: boolean;
+  /** On Android, an iframe's history entry updates it as it does `canGoBack`. */
   canGoForward: boolean;
   /**
    * How the last main-frame load ended; null while one is loading, and before the first.

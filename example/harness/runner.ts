@@ -116,6 +116,8 @@ export const WEBVIEW = {
   bridge: 101,
   /** DOCUMENT_START_SCRIPT, as androidx.webkit matches it */
   injectedScripts: 101,
+  /** The Navigation API (`window.navigation`) */
+  navigationApi: 102,
   /** The file input's `cancel` event. */
   fileInputCancel: 113,
   /** PAYMENT_REQUEST */
@@ -216,11 +218,14 @@ const overtime = () =>
     throw new Error(`still running after ${SUITE_MS / 1000} s`);
   });
 
-/** Runs the `suites` queued by name with `/harness/run?platform=ios&suite=<name>` on the test pages server. */
+/**
+ * Runs the `suites` queued by name with `/harness/run?platform=ios&suite=<name>` on the test pages server, from when
+ * the launch's first load has ended: each suite starts with no load in progress, the first as the rest after `reset()`.
+ */
 export function pollForSuites(get: () => Harness, suites: Record<string, Suite>) {
   let busy = false;
   const timer = setInterval(async () => {
-    if (busy) return;
+    if (busy || launchMarks.loadEnd === undefined) return;
     const name = await fetch(`${get().pages}/harness/next?platform=${Platform.OS}`).then(
       (r) => r.text(),
       (error: unknown) => {
