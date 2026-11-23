@@ -61,6 +61,8 @@ export type Harness = {
     gone: ProcessGoneEvent[];
     loads: ('start' | 'end')[];
     outcomes: NavigationState['outcome'][];
+    /** The state each onLoadEnd delivered. */
+    loadEnds: NavigationState[];
     navigations: NavigationEvent[];
     downloads: Download[];
     downloadFailures: DownloadFailure[];

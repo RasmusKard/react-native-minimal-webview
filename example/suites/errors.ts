@@ -33,6 +33,11 @@ export async function errors(h: Harness, r: Reporter) {
   r.check('network error', gotNetwork && network?.kind === 'network', network);
   r.check('url is the failed url', h.state().url === unreachable, h.state());
   r.check(
+    'onLoadEnd of a failed load has the failed url',
+    h.events.loadEnds[0]?.url === unreachable,
+    h.events.loadEnds
+  );
+  r.check(
     'a failed load ends once, as failed',
     JSON.stringify(h.events.outcomes) === '["failed"]',
     { loads: h.events.loads, outcomes: h.events.outcomes }
