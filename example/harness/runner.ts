@@ -288,7 +288,7 @@ async function reset(h: Harness) {
         h.ref.current?.call('cookieManager.removeAllCookies'),
         h.ref.current?.call('webStorage.deleteAllData'),
       ]));
-  for (const { uri } of h.events.downloads) {
+  for (const { uri } of h.events.downloads.splice(0)) {
     const file = new File(uri);
     const folder = file.parentDirectory;
     if (file.exists) file.delete();

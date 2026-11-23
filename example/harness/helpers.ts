@@ -205,8 +205,10 @@ export async function pageCall(h: Harness, method: string, params: unknown) {
   return (outcome ?? { error: 'harness timeout' }) as { result?: unknown; error?: string };
 }
 
+/** Empties the event logs, except `downloads`: `reset()` deletes the files it lists. */
 export const clearEvents = (h: Harness) => {
-  for (const log of Object.values(h.events)) if (Array.isArray(log)) log.length = 0;
+  for (const [name, log] of Object.entries(h.events))
+    if (Array.isArray(log) && name !== 'downloads') log.length = 0;
   h.pageEvents.length = 0;
 };
 
