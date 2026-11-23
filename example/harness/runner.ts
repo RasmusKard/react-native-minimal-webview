@@ -75,8 +75,8 @@ export type Harness = {
   };
 };
 
-/** `performance.now()` at App's first render and at its first onLoadEnd. */
-export const launchMarks: { render?: number; loadEnd?: number } = {};
+/** `performance.now()` at App's first render and at its first onLoadEnd, and the first suite run after the launch. */
+export const launchMarks: { render?: number; loadEnd?: number; firstSuite?: string } = {};
 
 let posted: Promise<void> = Promise.resolve();
 /**
@@ -235,6 +235,7 @@ export function pollForSuites(get: () => Harness, suites: Record<string, Suite>)
     );
     if (!name) return;
     busy = true;
+    launchMarks.firstSuite ??= name;
     const h = get();
     const { r, failed, cleanUp, done } = reporter(name);
     try {
