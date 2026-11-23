@@ -317,9 +317,11 @@ async function defaultScheme(suite: Suite) {
     all(tap.decision?.action === 'external', external.includes('mrwhostile://open?from=tap')),
     { ...tap, external }
   );
-  r.info(
-    'F1 with no rules, a tapped link through a 302 to a custom scheme',
-    await tapped('scheme-redirect', 'mrwhostile://open?from=redirect')
+  const redirect = await tapped('scheme-redirect', 'mrwhostile://open?from=redirect');
+  r.check(
+    'F1 with no rules, a tapped link through a 302 to a custom scheme is decided and reported to onNavigation',
+    redirect.decision !== undefined,
+    redirect
   );
 }
 
