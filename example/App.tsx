@@ -118,7 +118,6 @@ export default function App() {
     webViewOffset,
     state: () => ref.getState(),
     remount: () => remount(),
-    load: (uri) => setSource({ uri }),
     loadSource: setSource,
     setRules,
     bridge,

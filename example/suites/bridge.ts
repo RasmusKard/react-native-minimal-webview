@@ -17,8 +17,7 @@ import { OTHER } from '../pages';
 
 export async function bridge(h: Harness, all: Reporter) {
   const r = withFloor(all, WEBVIEW.bridge);
-  const page = fresh(h, '/bridge.html');
-  await openPage(h, page);
+  const page = await openPage(h, fresh(h, '/bridge.html'));
   const bridgeType = await h.ref.current?.evaluate(
     '[typeof window.nativeBridge, location.href, document.readyState]'
   );
@@ -106,7 +105,7 @@ export async function bridge(h: Harness, all: Reporter) {
   const inFlight = h.bridge.call('pageSlow').catch(errorCode);
   const pending = evaluate('new Promise(() => {})')?.catch(errorCode);
   await sleep(200);
-  h.load(`${page}&next=1`);
+  h.loadSource({ uri: `${page}&next=1` });
   const cutOff = await inFlight;
   r.check('navigation rejects calls in flight', cutOff === 'navigated', cutOff);
   const gone = await pending;
@@ -140,26 +139,26 @@ export async function bridge(h: Harness, all: Reporter) {
       afterBusy === 6,
       afterBusy
     );
-  }
+  } else r.skip('a busy main thread at the commit', 'busyMainInSlices is an Android seam');
 
   if (Platform.OS === 'android') {
     await openPage(h, `${page}&answerOnHide=1`);
     const untilHide = h.bridge.call('untilHide', undefined, { timeoutMs: 8000 }).catch(errorCode);
     await sleep(300);
-    h.load(`${page}&left=1`);
+    h.loadSource({ uri: `${page}&left=1` });
     const hidden = await untilHide;
     r.check('an answer the page sends as it is left settles the call', hidden === 'hidden', hidden);
     await waitFor(h, (s) => s.url.includes('left=1') && idle(s));
 
     for (let i = 0; i < 3; i++) {
       const target = `${OTHER}/bridge.html?redirected=${i}&t=${Date.now()}`;
-      h.load(`${page}&redirectTo=${encodeURIComponent(target)}&holdMs=1500&i=${i}`);
+      h.loadSource({ uri: `${page}&redirectTo=${encodeURIComponent(target)}&holdMs=1500&i=${i}` });
       await sleep(700);
       await seams.busyMainAhead(2500);
       await waitFor(h, (s) => s.url === target && idle(s), 15000);
       const queued = h.bridge.call('sum', { a: 1, b: 1 }, { timeoutMs: 20000 }).catch(errorCode);
       await sleep(300);
-      h.load(`${page}&after=${i}`);
+      h.loadSource({ uri: `${page}&after=${i}` });
       const got = await queued;
       r.check(
         `a call after a ready page redirects outside allowedOrigins waits for a page (${i})`,
@@ -168,10 +167,14 @@ export async function bridge(h: Harness, all: Reporter) {
       );
       await waitFor(h, (s) => s.url.includes(`after=${i}`) && idle(s));
     }
-  }
+  } else
+    r.skip(
+      'calls across a page being left or redirected',
+      "they check Android's bridge delivery around a commit (busyMainAhead is an Android seam)"
+    );
 
   const lateHandler = `${page}&lateHandler=1`;
-  h.load(lateHandler);
+  h.loadSource({ uri: lateHandler });
   await waitFor(h, (s) => s.url === lateHandler);
   const duringLoad = await h.bridge.call('early').catch(errorCode);
   r.check(
@@ -181,8 +184,7 @@ export async function bridge(h: Harness, all: Reporter) {
   );
   await waitFor(h, idle);
 
-  const other = fresh(h, `${OTHER}/bridge.html`);
-  await openPage(h, other);
+  await openPage(h, fresh(h, `${OTHER}/bridge.html`));
   r.check(
     'no bridge for an origin outside allowedOrigins',
     (await h.ref.current?.evaluate('typeof window.nativeBridge')) === 'undefined'
@@ -196,5 +198,9 @@ export async function bridge(h: Harness, all: Reporter) {
     h.remount();
     const closed = await Promise.race([unmounted, sleep(3000).then(() => 'still pending')]);
     r.check('unmount rejects an evaluate in flight', closed === 'navigated', closed);
-  }
+  } else
+    r.skip(
+      'unmount rejects an evaluate in flight',
+      "it checks the iOS WebView's teardown at unmount (invalidate)"
+    );
 }

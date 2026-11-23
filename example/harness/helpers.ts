@@ -157,20 +157,36 @@ export const clickWithoutWaiting = (h: Harness, id: string) =>
     `setTimeout(() => document.getElementById(${JSON.stringify(id)}).click(), 0)`
   );
 
-/** Runs `act`, then waits for what onNavigation reports about a URL ending in `path`: that, or undefined after 3 s. */
-export async function nextDecision(h: Harness, act: () => unknown, path: string) {
-  const before = h.events.navigations.length;
+/**
+ * Runs `act`, then waits for the first entry that `log` gains after it and `match` accepts: that entry, or undefined
+ * after `ms`.
+ */
+export async function nextEntry<T>(
+  log: T[],
+  act: () => unknown,
+  match: (entry: T) => boolean = () => true,
+  ms = 3000
+) {
+  const before = log.length;
   await act();
-  return await poll(
-    () => h.events.navigations.slice(before).find((n) => n.url.endsWith(path)),
-    3000
-  );
+  return await poll(() => log.slice(before).find(match), ms);
 }
+
+/** Whether the page's `location.href` comes to equal the state's url within 2 s. */
+export const agrees = async (h: Harness) =>
+  (await poll(
+    async () => (await h.ref.current?.evaluate('location.href').catch(String)) === h.state().url,
+    2000,
+    50
+  )) === true;
 
 export const errorCode = (error: unknown) => (error as { code?: string }).code;
 
-/** Starts a page-side `nativeBridge.call` and waits for its outcome; `script_error` on a page without the bridge. */
-export async function pageCall(h: Harness, method: string, params: unknown) {
+/**
+ * Starts a page-side `nativeBridge.call` whose outcome the page puts in `window.__call`: undefined once started, or
+ * the error code when it can't start (`script_error` on a page without the bridge).
+ */
+export function startPageCall(h: Harness, method: string, params: unknown) {
   const start = `(() => {
     window.__call = undefined;
     nativeBridge.call(${JSON.stringify(method)}, ${JSON.stringify(params)}).then(
@@ -178,7 +194,12 @@ export async function pageCall(h: Harness, method: string, params: unknown) {
       (error) => (window.__call = { error: error.code })
     );
   })()`;
-  const error = await h.ref.current?.evaluate(start).then(() => undefined, errorCode);
+  return h.ref.current?.evaluate(start).then(() => undefined, errorCode);
+}
+
+/** Starts a page-side `nativeBridge.call` and waits for its outcome; `script_error` on a page without the bridge. */
+export async function pageCall(h: Harness, method: string, params: unknown) {
+  const error = await startPageCall(h, method, params);
   if (error) return { error };
   const outcome = await poll(() => h.ref.current?.evaluate('window.__call'), 6000, 100);
   return (outcome ?? { error: 'harness timeout' }) as { result?: unknown; error?: string };
@@ -211,7 +232,10 @@ export async function recreate(
 
 const EVENTS_AFTER_LOAD_END_MS = 100;
 
-/** Loads `page`, a URL or a source with one, and waits until it is the idle page and its load has ended. */
+/**
+ * Loads `page`, a URL or a source with one, and waits until it is the idle page and its load has ended. Returns its
+ * URL.
+ */
 export async function openPage(
   h: Harness,
   page: string | Extract<WebViewSource, { uri: string }>,
@@ -225,6 +249,7 @@ export async function openPage(
     ms
   );
   await sleep(EVENTS_AFTER_LOAD_END_MS);
+  return source.uri;
 }
 
 /** Runs `act`, then waits for the lines the page adds to `window.testLog`; null when none come within `ms`. */

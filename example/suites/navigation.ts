@@ -44,8 +44,7 @@ export async function navigation(h: Harness, r: Reporter) {
     { scheme: ['http', 'https'], action: 'external' },
   ]);
   await sleep(500);
-  const page = fresh(h, '/nav.html');
-  await openPage(h, page);
+  const page = await openPage(h, fresh(h, '/nav.html'));
   h.events.navigations.length = 0;
   const noLoad = async (name: string, act: () => Promise<unknown>) => {
     const [loads, outcome] = [h.events.loads.length, h.state().outcome];
@@ -190,7 +189,11 @@ export async function navigation(h: Harness, r: Reporter) {
       frames.some((n) => n.action === 'allow'),
       frames.slice(0, 3)
     );
-  }
+  } else
+    r.skip(
+      'iframe navigations are decided as mainFrame false',
+      'Android does not decide http(s) iframe navigations'
+    );
 
   asked.length = 0;
   await h.ref.current?.evaluate(`location.href = '/checkout/loopA'`);
@@ -271,7 +274,7 @@ export async function navigation(h: Harness, r: Reporter) {
     const own = await sendExternal('fallback');
     r.check('intent: without an app loads browser_fallback_url', own.loaded, own);
     r.check('the intent: itself is reported as block', own.decision?.action === 'block', own);
-  }
+  } else r.skip('intent: without an app', 'intent: is an Android scheme');
   const handedBack = await sendExternal('handed-back', ({ url }) => {
     external.push(url);
     return false;
@@ -302,8 +305,7 @@ export async function navigation(h: Harness, r: Reporter) {
     h.setProps({ onOpenExternal: recordExternal(external) });
     h.setRules(rules);
     await sleep(500);
-    const top = fresh(h, '/nav.html');
-    await openPage(h, top);
+    const top = await openPage(h, fresh(h, '/nav.html'));
     external.length = 0;
     h.events.navigations.length = 0;
     await h.ref.current?.evaluate(`(() => {

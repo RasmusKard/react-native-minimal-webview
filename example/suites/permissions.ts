@@ -55,7 +55,11 @@ export async function permissionsSuite(h: Harness, r: Reporter) {
       geoDenied.includes('geo error 1'),
       geoDenied
     );
-  }
+  } else
+    r.skip(
+      'camera and location granted or denied',
+      "the iOS simulator has no camera, and iOS doesn't ask onPermissionRequest for location"
+    );
 
   let askedBefore = asked.length;
   for (const [name, frame] of [
@@ -134,5 +138,5 @@ export async function permissionsSuite(h: Harness, r: Reporter) {
       restored.includes('camera ok') && asked.length > askedBefore,
       restored
     );
-  }
+  } else r.skip('without onPermissionRequest', "without it, iOS shows WebKit's own prompt");
 }

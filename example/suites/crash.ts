@@ -198,8 +198,7 @@ export async function crash(h: Harness, r: Reporter) {
     h.state()
   );
 
-  const away = fresh(h, '/bridge.html');
-  await openPage(h, away);
+  const away = await openPage(h, fresh(h, '/bridge.html'));
   const states: { state: string; at: number }[] = [];
   const appState = AppState.addEventListener('change', (state) =>
     states.push({ state, at: Date.now() })
@@ -322,12 +321,14 @@ export async function crash(h: Harness, r: Reporter) {
       applied
     );
     h.setProps({ userAgent: 'Crash/1' });
-  }
+  } else
+    r.skip(
+      'calls and props while the recovery waits',
+      'a recovery that waits in the background, and destroyedWebViewCalls, are Android seams'
+    );
 
-  // Android keeps the window of a view under a modal, so this is iOS's case.
   if (Platform.OS === 'ios') {
-    const under = fresh(h, '/bridge.html');
-    await openPage(h, under);
+    const under = await openPage(h, fresh(h, '/bridge.html'));
     h.setCovered(true);
     await waitForPresentation();
     const starts = h.events.loads.length;
@@ -346,7 +347,11 @@ export async function crash(h: Harness, r: Reporter) {
       coveredGone?.recovered === true && whileCovered.length === 0 && uncovered,
       { coveredGone, whileCovered, state: h.state() }
     );
-  }
+  } else
+    r.skip(
+      'a crash out of the window reloads once the view is back in one',
+      'Android keeps the window of a view under a modal'
+    );
 
   if (Platform.OS === 'android') {
     const loadStarts = h.events.loads.length;
@@ -373,5 +378,9 @@ export async function crash(h: Harness, r: Reporter) {
         h.events.outcomes[outcomes] === 'failed',
       { endedBeforeGone, outcomes: h.events.outcomes.slice(outcomes) }
     );
-  }
+  } else
+    r.skip(
+      'onProcessGone comes before the onLoadEnd that fails the committed load it cut off',
+      "it checks the order Android's document tracking gives a crash and the load it cuts off"
+    );
 }

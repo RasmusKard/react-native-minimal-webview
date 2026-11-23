@@ -4,7 +4,7 @@ import {
   click,
   fresh,
   idle,
-  nextDecision,
+  nextEntry,
   openPage,
   sleep,
   waitFor,
@@ -35,8 +35,7 @@ export async function reissue(h: Harness, r: Reporter) {
     { scheme: ['http', 'https'], action: 'allow' },
   ]);
   await sleep(300);
-  const start = fresh(h, '/nav.html');
-  await openPage(h, start);
+  const start = await openPage(h, fresh(h, '/nav.html'));
   const startDepth = await h.ref.current?.evaluate('history.length');
 
   await click(h, 'checkout');
@@ -56,7 +55,12 @@ export async function reissue(h: Harness, r: Reporter) {
     h.state()
   );
 
-  const checkout = () => nextDecision(h, () => click(h, 'checkout'), '/checkout/pay');
+  const checkout = () =>
+    nextEntry(
+      h.events.navigations,
+      () => click(h, 'checkout'),
+      (n) => n.url.endsWith('/checkout/pay')
+    );
   answer = 'block';
   const blocked = await checkout();
   r.check(
@@ -101,8 +105,7 @@ export async function reissue(h: Harness, r: Reporter) {
   }
 
   const referrerTo = async (target: string) => {
-    const from = fresh(h, '/nav.html');
-    await openPage(h, from);
+    const from = await openPage(h, fresh(h, '/nav.html'));
     await h.ref.current?.evaluate(`location.href = '${target}'`);
     await waitFor(h, (s) => s.url === target && idle(s), 5000);
     const headers = (await h.ref.current?.evaluate(
@@ -115,8 +118,7 @@ export async function reissue(h: Harness, r: Reporter) {
   const cross = await referrerTo(`${OTHER}/headers?r=cross`);
   r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
 
-  const beforeUnmount = fresh(h, '/nav.html');
-  await openPage(h, beforeUnmount);
+  const beforeUnmount = await openPage(h, fresh(h, '/nav.html'));
   answer = 'late';
   const pending = asked.length;
   await click(h, 'checkout');

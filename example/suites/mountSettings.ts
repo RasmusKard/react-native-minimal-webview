@@ -21,8 +21,7 @@ export async function mountSettings(h: Harness, r: Reporter) {
     await openPage(h, fresh(h, '/ua'));
     return await text(h, 'ua');
   };
-  const page = fresh(h, '/bridge.html');
-  await openPage(h, page);
+  await openPage(h, fresh(h, '/bridge.html'));
   await recreate(
     h,
     Platform.OS === 'ios'

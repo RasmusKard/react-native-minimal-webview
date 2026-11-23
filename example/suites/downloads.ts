@@ -100,7 +100,7 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
       bigFile?.size === 40 * 1024 * 1024,
       h.events.downloads[big]
     );
-  }
+  } else r.skip('large blob: downloads', 'iOS downloads a blob: in WebKit, not through the page');
 
   const opened: string[] = [];
   h.setProps({
@@ -146,5 +146,9 @@ export async function downloadsSuite(h: Harness, r: Reporter) {
       'the app survives an invalid data: download',
       (await h.ref.current?.evaluate('1 + 1')) === 2
     );
-  }
+  } else
+    r.skip(
+      'the app survives an invalid data: download',
+      'iOS downloads a data: URL in WebKit, which the app does not decode'
+    );
 }

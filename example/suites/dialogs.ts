@@ -34,9 +34,8 @@ export async function dialogs(h: Harness, r: Reporter) {
       { remounted, lines }
     );
   };
-  // Android's WebView leaves its dialog on screen when it is destroyed, and one older than 149 then gets no touches
-  // (https://crbug.com/504317449).
   if (Platform.OS === 'ios') {
+    r.skip('beforeunload answered with Stay keeps the page', 'WebKit has no beforeunload dialog');
     for (const id of ['alert', 'confirm', 'prompt']) {
       await up(id);
       await unmountCloses(id);
@@ -56,7 +55,10 @@ export async function dialogs(h: Harness, r: Reporter) {
       { recovered, afterCrash }
     );
   } else {
-    // WebKit has no beforeunload dialog.
+    r.skip(
+      'an unmount or a crash closes the dialog on screen',
+      "Android's WebView leaves its dialog on screen when it is destroyed, and one older than 149 then gets no touches (https://crbug.com/504317449)"
+    );
     await openPage(h, fresh(h, '/dialogs.html'));
     await pageLog(h, () => touch(h, r, 'beforeunload'), 5000);
     r.drive({ action: 'press', text: 'Stay.*' });
@@ -89,7 +91,7 @@ export async function dialogs(h: Harness, r: Reporter) {
       r.drive({ action: 'back' });
     });
     r.check('back answers a confirm as Cancel', lines?.join() === 'confirm false', lines);
-  }
+  } else r.skip('back answers a confirm as Cancel', 'iOS has no back button');
   if (Platform.OS === 'ios') {
     await up('alert');
     const pressed = await seams.tapAlert('OK');
@@ -104,5 +106,9 @@ export async function dialogs(h: Harness, r: Reporter) {
       pressed && remounted && lines?.join() === 'confirm true',
       { pressed, remounted, lines }
     );
-  }
+  } else
+    r.skip(
+      'an unmount right after OK is pressed completes the alert once',
+      'tapAlert, the seam that presses OK, is iOS only'
+    );
 }
