@@ -54,6 +54,8 @@ export async function crash(h: Harness, r: Reporter) {
     async () => (await h.ref.current?.get(USER_AGENT_KEY).catch(errorCode)) === 'Crash/1'
   );
   await openPage(h, page);
+  const startCrashCountOver = () => h.ref.current?.reload();
+  await waitForLoad(h, startCrashCountOver, (s) => s.url === page && idle(s));
   r.info('a setting before the crash', await pageUserAgent());
   clearEvents(h);
   const firstKillAt = Date.now();
