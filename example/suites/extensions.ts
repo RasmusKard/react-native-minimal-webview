@@ -110,7 +110,7 @@ async function inert(h: Harness, r: Reporter) {
     typeof made === 'string' && !made.includes('MenuW'),
     made
   );
-  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-none`));
+  await openPage(h, fresh(h, `${DECLINED}/auth`));
   const auth = await text(h, 'auth');
   r.check(
     'with no extension, HTTP auth is declined as the core does',
@@ -131,12 +131,12 @@ async function inert(h: Harness, r: Reporter) {
 async function auth(h: Harness, r: Reporter) {
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'p' })] });
   await sleep(300);
-  await openPage(h, fresh(h, `${SIGNED_IN}/auth?t=ext-on`));
+  await openPage(h, fresh(h, `${SIGNED_IN}/auth`));
   const on = await text(h, 'auth');
   r.check('basicAuthCredential, set after mount, answers HTTP basic auth', on === 'authorized', on);
   h.setProps({});
   await sleep(300);
-  await openPage(h, fresh(h, `${DECLINED}/auth?t=ext-removed`));
+  await openPage(h, fresh(h, `${DECLINED}/auth`));
   const off = await text(h, 'auth');
   r.check(
     'basicAuthCredential switched off: HTTP auth is declined again',
@@ -145,7 +145,7 @@ async function auth(h: Harness, r: Reporter) {
   );
   h.setProps({ extensions: [basicAuthCredential({ username: 'u', password: 'wrong' })] });
   await sleep(300);
-  const loaded = await happens(openPage(h, fresh(h, `${DECLINED}/auth?t=ext-wrong`)));
+  const loaded = await happens(openPage(h, fresh(h, `${DECLINED}/auth`)));
   const wrong = await text(h, 'auth');
   r.check(
     'basicAuthCredential with a rejected credential stops: the 401 page loads',
