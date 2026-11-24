@@ -53,8 +53,10 @@ jobs:
       PACKAGE: ${{ matrix.path }}
       TAG: ${{ matrix.path == '.' && needs.release-please.outputs.core-tag || needs.release-please.outputs.extensions-tag }}
     steps:
+      # release-please releases main's head, which can be newer than the commit that triggered this run
       - uses: actions/checkout@v7.0.1
         with:
+          ref: ${{ env.TAG }}
           persist-credentials: false
       - uses: actions/setup-node@v7.1.0
         with:
