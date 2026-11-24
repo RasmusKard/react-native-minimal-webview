@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.1...react-native-minimal-webview-v1.3.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* Send onNavigation through the core hook-event channel, so a throwing handler is logged ([#329](https://github.com/RasmusKard/react-native-minimal-webview/issues/329)) ([8fe0643](https://github.com/RasmusKard/react-native-minimal-webview/commit/8fe0643f9b46ecc3d60132da349aa654d3ab40a5))
+
 ## [1.3.1](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.0...react-native-minimal-webview-v1.3.1) (2026-11-23)
 
 

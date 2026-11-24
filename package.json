@@ -1,6 +1,6 @@
 {
   "name": "react-native-minimal-webview",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "A React Native WebView that hands you the iOS and Android WebView APIs, instead of wrapping each one in a prop",
   "main": "build/index.js",
   "types": "build/index.d.ts",
