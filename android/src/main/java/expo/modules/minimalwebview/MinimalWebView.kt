@@ -35,11 +35,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val onHookEvent by EventDispatcher<Map<String, Any?>>()
   private val onError by EventDispatcher<Map<String, Any?>>()
   private val onProcessGone by EventDispatcher<Map<String, Any?>>()
-  private val onNavigation by EventDispatcher<Map<String, Any?>>()
 
   // Lazy: it loads the WebView provider, which throws without one, and createWebView() reports that.
   internal val hasNavigationListener by lazy { WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER) }
-  private val navigation = MinimalWebViewNavigation(this) { onNavigation(it) }
+  private val navigation = MinimalWebViewNavigation(this)
   internal val scripts = MinimalWebViewScripts(this) { onBridge(it) }
 
   internal lateinit var webView: WebView

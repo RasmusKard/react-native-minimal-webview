@@ -9,7 +9,7 @@ public class MinimalWebViewModule: Module {
 
     // View functions run on the main queue.
     View(MinimalWebView.self) {
-      Events("onNavigationState", "onBridge", "onHookEvent", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onHookEvent", "onError", "onProcessGone")
 
       Prop("source") { (view: MinimalWebView, source: WebViewSource?) in view.source = source }
       Prop("bridgeScript") { (view: MinimalWebView, script: String?) in view.bridgeScript = script }

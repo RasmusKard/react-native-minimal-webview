@@ -89,7 +89,7 @@ class MinimalWebViewModule : Module() {
     }
 
     View(MinimalWebView::class) {
-      Events("onNavigationState", "onBridge", "onHookEvent", "onError", "onProcessGone", "onNavigation")
+      Events("onNavigationState", "onBridge", "onHookEvent", "onError", "onProcessGone")
 
       Prop("source") { view: MinimalWebView, source: WebViewSource? -> view.source = source }
       Prop("navigationRules") { view: MinimalWebView, rules: List<Map<String, Any?>>? -> view.navigationRules = rules }

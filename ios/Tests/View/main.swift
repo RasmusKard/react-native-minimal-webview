@@ -143,7 +143,11 @@ MainActor.assumeIsolated {
   var decided: [String] = []
   var loading = true
   let view = MinimalWebView()
-  view.onNavigation.onEventSent = { decided.append("\($0["action"] ?? "") \($0["url"] ?? "")") }
+  view.onHookEvent.onEventSent = { event in
+    guard event["key"] as? String == "core", event["name"] as? String == "onNavigation",
+      let navigation = event["payload"] as? [String: Any] else { return }
+    decided.append("\(navigation["action"] ?? "") \(navigation["url"] ?? "")")
+  }
   view.onNavigationState.onEventSent = { loading = $0["loading"] as? Bool ?? true }
   view.navigationRules = [["host": ["blocked.test"], "action": "block"], ["action": "allow"]]
   view.requestHandlers = ["onNavigation"]

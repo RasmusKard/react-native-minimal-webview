@@ -12,7 +12,6 @@ import type {
   HookExtension,
   InjectedScript,
   LoadErrorEvent,
-  NavigationEvent,
   NavigationState,
   ProcessGoneEvent,
   SettingValue,
@@ -90,7 +89,6 @@ type NativeProps = ViewProps &
     hookOptions: Record<string, unknown> | undefined;
     requestHandlers: string[];
   } & NativeHandlers<{
-    onNavigation: NavigationEvent;
     onNavigationState: NavigationState;
     onBridge: BridgeEvent;
     onHookEvent: AskableEvent;
@@ -328,7 +326,6 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       bridgeOrigins={connection?.allowedOrigins}
       hookOptions={hookOptions}
       requestHandlers={requestHandlers}
-      onNavigation={({ nativeEvent }) => props.onNavigation?.(own(nativeEvent))}
       onNavigationState={onNavigationState}
       onBridge={({ nativeEvent }) => connection?.receive(nativeEvent)}
       onHookEvent={onHookEvent}
