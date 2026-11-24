@@ -9,7 +9,6 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   let onHookEvent = EventDispatcher()
   let onError = EventDispatcher()
   let onProcessGone = EventDispatcher()
-  let onNavigation = EventDispatcher()
 
   var source: WebViewSource?
   var bridgeScript: String?

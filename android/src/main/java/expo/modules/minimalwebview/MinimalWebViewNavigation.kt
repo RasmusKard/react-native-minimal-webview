@@ -12,10 +12,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import java.net.URISyntaxException
 
-internal class MinimalWebViewNavigation(
-  private val owner: MinimalWebView,
-  private val onNavigation: (Map<String, Any?>) -> Unit
-) {
+internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
   private val webView get() = owner.webView
 
   private val askedAndAllowed = mutableSetOf<String>()
@@ -55,7 +52,7 @@ internal class MinimalWebViewNavigation(
   )
 
   private fun notifyNavigation(request: NavigationRules.Request, action: NavigationRules.Action, rule: Int?) {
-    if ("onNavigation" in owner.requestHandlers) onNavigation(fields(request) + mapOf("action" to action.jsName, "rule" to rule))
+    if ("onNavigation" in owner.requestHandlers) owner.emit("core", "onNavigation", fields(request) + mapOf("action" to action.jsName, "rule" to rule))
   }
 
   private fun ask(request: NavigationRules.Request, rule: Int?) {

@@ -115,7 +115,11 @@ describe('WebView', () => {
     const { fire } = await mount();
     await fire('onNavigationState', navState({ url: 'https://example.com/', loading: true }));
     await fire('onNavigationState', navState({ url: 'https://example.com/' }));
-    await fire('onNavigation', { url: 'https://example.com/', action: 'external' });
+    await fire('onHookEvent', {
+      key: 'core',
+      name: 'onNavigation',
+      payload: { url: 'https://example.com/', action: 'external' },
+    });
     await fire('onProcessGone', { cause: 'crash', recovered: true });
     await fire('onError', { kind: 'http', url: 'https://example.com/', statusCode: 500 });
     await fire('onBridge', { message: '{}', origin: 'https://example.com' });
@@ -128,26 +132,15 @@ describe('WebView', () => {
 
   it("strips React Native's target", async () => {
     const ref = createWebViewRef();
-    const onNavigation = jest.fn();
     const onProcessGone = jest.fn();
     const onError = jest.fn();
-    const { fire } = await mount({ ref, onNavigation, onProcessGone, onError });
+    const { fire } = await mount({ ref, onProcessGone, onError });
     const target = { target: 42 };
     await fire('onNavigationState', { ...navState({ url: 'https://example.com/a' }), ...target });
     expect(ref.getState()).toStrictEqual(navState({ url: 'https://example.com/a' }));
-    const navigation = {
-      url: 'https://example.com/b',
-      mainFrame: true,
-      newWindow: false,
-      userInitiated: true,
-      action: 'allow',
-      rule: null,
-    };
-    await fire('onNavigation', { ...navigation, ...target });
     await fire('onProcessGone', { cause: 'crash', recovered: true, ...target });
     const failure = { kind: 'http', url: 'https://example.com/x', statusCode: 404 };
     await fire('onError', { ...failure, ...target });
-    expect(onNavigation).toHaveBeenCalledWith(navigation);
     expect(onProcessGone).toHaveBeenCalledWith({ cause: 'crash', recovered: true });
     expect(onError).toHaveBeenCalledWith(failure);
   });
@@ -1007,11 +1000,13 @@ describe('page requests', () => {
     const onFullscreenChange = jest.fn();
     const onDownload = jest.fn();
     const onNavigationRequest = jest.fn(async () => 'allow' as const);
+    const onNavigation = jest.fn();
     const { fire } = await mount({
       onFileRequest,
       onFullscreenChange,
       onDownload,
       onNavigationRequest,
+      onNavigation,
     });
     await fire(
       'onHookEvent',
@@ -1042,7 +1037,27 @@ describe('page requests', () => {
     await fire('onHookEvent', ask('onNavigationRequest', request, 2));
     expect(onNavigationRequest).toHaveBeenCalledWith(request, expect.any(AbortSignal));
     expect(mockAnswer).toHaveBeenLastCalledWith(2, '"allow"');
+    const navigation = { ...request, action: 'allow', rule: null };
+    await fire('onHookEvent', ask('onNavigation', navigation));
+    expect(onNavigation).toHaveBeenCalledWith(navigation, undefined);
     expect(mockAnswer).toHaveBeenCalledTimes(2);
+  });
+
+  it('logs a throwing onNavigation instead of throwing from the event', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const thrown = new Error('no');
+    const { fire } = await mount({
+      onNavigation: () => {
+        throw thrown;
+      },
+    });
+    await expect(
+      fire('onHookEvent', ask('onNavigation', { url: 'https://a.example', action: 'block' }))
+    ).resolves.toBeUndefined();
+    expect(error).toHaveBeenCalledWith(
+      '[react-native-minimal-webview] onNavigation failed',
+      thrown
+    );
   });
 
   it('answers null when the prop is gone or rejects', async () => {

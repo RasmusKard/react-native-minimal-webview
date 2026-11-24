@@ -172,7 +172,7 @@ const PAYLOADS: Record<Platform, Row[]> = {
     {
       event: 'onNavigation',
       file: 'MinimalWebViewNavigation.kt',
-      emitSite: /fields\(request\) \+ mapOf/g,
+      emitSite: /"core", "onNavigation", fields\(request\) \+ mapOf/g,
       keys: decision,
     },
     {
@@ -259,7 +259,7 @@ const PAYLOADS: Record<Platform, Row[]> = {
     {
       event: 'onNavigation',
       file: 'MinimalWebView+Navigation.swift',
-      emitSite: /request\.payload\.merging\(/g,
+      emitSite: /"core", "onNavigation", request\.payload\.merging\(/g,
       keys: decision,
     },
     {
