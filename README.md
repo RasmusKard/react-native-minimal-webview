@@ -4,19 +4,10 @@ A React Native WebView that hands you the iOS and Android WebView APIs, instead 
 
 It runs on iOS and Android as an Expo module.
 
-[Get started](guides/getting-started.md) ·
-[Install](#install) ·
-[npm](https://www.npmjs.com/package/react-native-minimal-webview) ·
-[API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) ·
-[How it works](guides/how-it-works.md) ·
+**[Get started](guides/getting-started.md)** ·
 [Examples](guides/examples.md) ·
-[Use a platform API](guides/platform-apis.md) ·
-[Native hooks](guides/native-hooks.md) ·
-[Migrating from react-native-webview](guides/migrating-from-react-native-webview.md) ·
-[Troubleshooting](guides/troubleshooting.md) ·
-[Extensions](https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/) ·
-[Changelog](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/CHANGELOG.md) ·
-[MIT license](https://github.com/RasmusKard/react-native-minimal-webview/blob/main/LICENSE)
+[API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) ·
+[Migrating from react-native-webview](guides/migrating-from-react-native-webview.md)
 
 ## Why it exists
 
