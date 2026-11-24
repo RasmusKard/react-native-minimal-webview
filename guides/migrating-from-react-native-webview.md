@@ -3,6 +3,13 @@
 Each react-native-webview prop's counterpart here, and the defaults and behavior that differ. The
 [requirements](../README.md#requirements) are in the README.
 
+To have a coding agent migrate an app with this guide, verify the result and report what changed, add the
+[migration skill](../skills/migrate-from-react-native-webview/SKILL.md):
+
+```sh
+npx skills add RasmusKard/react-native-minimal-webview --skill migrate-from-react-native-webview
+```
+
 Most props are platform settings by the same name: `bounces` is `ios={{ scrollView: { bounces: false } }}`, and
 `textZoom` is `android={{ settings: { textZoom: 120 } }}`. An enum string becomes a constant: `cacheMode: 'LOAD_NO_CACHE'`
 is `AndroidConstants.WebSettings.LOAD_NO_CACHE`. For a prop no table here lists, find its key in [Use a platform API](platform-apis.md).
