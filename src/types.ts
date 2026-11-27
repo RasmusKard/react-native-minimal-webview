@@ -941,7 +941,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * A late, missing or other answer is `block`, as is one still pending when another page commits. `signal` aborts at
    * the timeout and at that commit. Without this prop, `ask` is `block`.
    *
-   * A URL it allowed isn't asked again until the next page commits.
+   * Until the next page commits, a URL it allowed isn't asked again on a redirect back to it (Android), or when the same
+   * kind of frame loads it again (iOS).
    * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
    */
   onNavigationRequest?: (
