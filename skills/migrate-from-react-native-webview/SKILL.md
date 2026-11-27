@@ -31,6 +31,7 @@ Read the migration guide in full first. Then list, with file and line:
 
 - every import or require of `react-native-webview`, and each `WebView` it renders, with its props and ref calls
 - `injectJavaScript`, `postMessage`, `onMessage` and every handler that reads `nativeEvent`
+- a `User-Agent` in `source.headers`, which no longer sets the user agent on Android: the guide moves it to `userAgent`
 - `window.ReactNativeWebView` in page code: in this repo, in injected script strings, and in web projects the app loads
 - Jest mocks of `react-native-webview`, `patches/` entries for it, and the `LSApplicationQueriesSchemes` (iOS) and
   `<queries>` (Android) entries added for schemes a page opens

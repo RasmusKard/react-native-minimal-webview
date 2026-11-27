@@ -181,6 +181,10 @@ A value keeps its form unless its key takes a constant:
 `onLoadEnd` keep theirs too, and get the [`NavigationState`][navigationstate] instead of a native event. `userAgent` is
 the same prop.
 
+react-native-webview's Android made a `User-Agent` in `source.headers` the WebView's user agent, so apps set it there in
+place of `userAgent`. Here Android doesn't send that header ([`WebViewSource`][webviewsource]): move its value to the
+`userAgent` prop.
+
 ## Migration recipes
 
 ### onShouldStartLoadWithRequest
@@ -342,6 +346,7 @@ Pass it in `injectedScripts` and listen with `bridge.on('scroll', …)`, as in t
 [extensions]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/
 [navigationruleaction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#action
 [navigationrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRequest/
+[webviewsource]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [reactnativewebviewmessages]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/
 [loaderrorevent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/LoadErrorEvent/

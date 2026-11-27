@@ -31,6 +31,9 @@ export type WebViewSource =
       /**
        * Sent with each load of the `source`: the first, a reload (`reload()` or pull-to-refresh), and a crash recovery
        * that loads the `source` again. The page's later navigations don't send them.
+       *
+       * On Android, WebView may replace a header it sets itself, such as one for caching or accepted types, with its
+       * own value. It replaces `User-Agent`, so set that with {@link WebViewProps.userAgent | userAgent}.
        */
       headers?: Record<string, string>;
       /**
