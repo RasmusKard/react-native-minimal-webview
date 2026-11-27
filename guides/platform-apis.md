@@ -55,13 +55,14 @@ import { AndroidConstants, IOSConstants, WebView } from 'react-native-minimal-we
   source={{ uri: 'https://example.com' }}
   style={{ flex: 1 }}
   ios={{
+    // Let a video autoplay without a tap:
     // WKWebViewConfiguration.mediaTypesRequiringUserActionForPlayback, a WKAudiovisualMediaTypes
     configuration: {
       mediaTypesRequiringUserActionForPlayback: IOSConstants.AudiovisualMediaTypes.none,
     },
   }}
   android={{
-    // WebSettings.setMixedContentMode(int)
+    // Show the http images of an https page: WebSettings.setMixedContentMode(int)
     settings: { mixedContentMode: AndroidConstants.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE },
   }}
 />;

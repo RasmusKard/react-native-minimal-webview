@@ -23,18 +23,26 @@ Each extension is a function whose result goes into the
 
 ```tsx
 import { basicAuthCredential, onScroll } from '@react-native-minimal-webview/extensions';
+import { useState } from 'react';
+import { Text } from 'react-native';
 import { WebView } from 'react-native-minimal-webview';
 
-export function Browser() {
+export function Staging() {
+  const [atTop, setAtTop] = useState(true);
   return (
-    <WebView
-      source={{ uri: 'https://example.com' }}
-      style={{ flex: 1 }}
-      extensions={[
-        basicAuthCredential({ username: 'user', password: 'secret' }),
-        onScroll(({ contentOffset }) => console.log(contentOffset.y)),
-      ]}
-    />
+    <>
+      {atTop && <Text>Staging</Text>}
+      <WebView
+        source={{ uri: 'https://staging.example.com' }}
+        style={{ flex: 1 }}
+        extensions={[
+          // The staging site sits behind HTTP basic auth
+          basicAuthCredential({ username: 'tester', password: 'secret' }),
+          // Show the app's header only while the page is at its top
+          onScroll(({ contentOffset }) => setAtTop(contentOffset.y <= 0)),
+        ]}
+      />
+    </>
   );
 }
 ```
