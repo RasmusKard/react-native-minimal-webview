@@ -3,7 +3,7 @@
 In this tutorial, you build an Expo app that shows a web page, and then a page that calls the app over the bridge. The
 app runs on the iOS simulator.
 
-You need a Mac set up for Expo development builds on the iOS simulator:
+You need a Mac set up for Expo development builds on the iOS simulator.
 [Expo's environment setup](https://docs.expo.dev/get-started/set-up-your-environment/?platform=ios&device=simulated&mode=development-build&buildEnv=local)
 lists what to install.
 
@@ -56,8 +56,7 @@ npx expo run:ios
 
 If the command asks for an iOS bundle identifier, enter `com.example.myapp`.
 
-The first build takes several minutes. Then the simulator opens the app, and you see the `https://example.com` page:
-"This domain is for use in documentation examples".
+The first build takes several minutes. Then the simulator opens the app, and you see the page at `https://example.com`.
 
 Leave the command running. It runs Metro, which reloads the app when you save a file.
 
@@ -99,8 +98,10 @@ export default function App() {
 ```
 
 Save the file. The app reloads, and the page shows **Hello from React Native**. The page called `getGreeting`, and
-the app answered. `window.nativeBridge` exists only in pages on the bridge's `allowedOrigins`, and the `baseUrl` puts
-this page on `https://example.com`.
+the app answered.
+
+`window.nativeBridge` exists only in pages on the bridge's `allowedOrigins`. The `baseUrl` puts this page on
+`https://example.com`, so the page gets the bridge.
 
 ## Next steps
 

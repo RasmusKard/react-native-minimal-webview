@@ -1,12 +1,12 @@
 # Native hooks
 
-A native hook is Swift or Kotlin in your own Expo module that gets the real `WKWebView` or `WebView` behind a
-`<WebView>`. Its JS side is an _extension_: a [`HookExtension`][HookExtension] with the hook's key, its options and its
+A native hook is Swift or Kotlin in your own Expo module that gets the native `WKWebView` or `WebView` behind a
+`<WebView>`. Its JS side is an _extension_, a [`HookExtension`][HookExtension] with the hook's key, its options and its
 `onEvent` and `onAsk` handlers. The app passes it in the `extensions` prop.
 
 ## When to write one
 
-Reach for a hook when the props and the ref can't do the job:
+Write a hook when the props and the ref can't do the job:
 
 | To                                                                   | Use                                                                 |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -42,8 +42,8 @@ This creates `modules/page-counter` in your app. A hook in a published package w
 
 ### 2. Depend on the core
 
-In `ios/PageCounter.podspec`, replace the template's `s.platforms` with the core's iOS 17.0, or importing the core
-fails to compile, and add the core:
+In `ios/PageCounter.podspec`, set `s.platforms` to the core's minimum, iOS 17.0, and add the core. With a lower
+minimum, importing the core fails to compile.
 
 ```ruby
 s.platforms = { :ios => '17.0' }
@@ -138,8 +138,7 @@ private class PageCounter(private val context: WebViewContext) : WebViewClient()
 ### 5. Describe the hook to JS
 
 Replace the generated `index.ts` with a function that returns the hook's [`HookExtension`][HookExtension]. Delete the
-generated `src/`, `ios/PageCounterView.swift` and `android/.../PageCounterView.kt`: they hold the template's view and
-module wrappers, which nothing uses.
+generated `src/`, `ios/PageCounterView.swift` and `android/.../PageCounterView.kt`, which the hook doesn't use.
 
 ```ts
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
@@ -186,7 +185,7 @@ export function Browser() {
 }
 ```
 
-Then rebuild the app: `npx expo run:ios`, `npx expo run:android`.
+Then rebuild the app.
 
 ## Talk to JS
 
@@ -197,19 +196,19 @@ replies.
 | Native                                          | JS                                                                                                                           |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `context.emit(name, payload)`                   | `onEvent` gets an event with that `name` and `payload`                                                                       |
-| `context.ask(name, payload, onAnswer)`          | `onAsk` gets the same, or `onEvent` without one; what it returns, awaited if it is a promise, is the answer                  |
+| `context.ask(name, payload, onAnswer)`          | `onAsk` gets the same, or `onEvent` when there is no `onAsk`. Its return value, awaited if it is a promise, is the answer.   |
 | `context.handle(method, handler)`               | [`ref.hook(key, method, args)`][hook] resolves with `reply(value)`, or rejects with `handler_error` on `reply.fail(message)` |
 | `context.options`, `context.onOptions(handler)` | The extension's `options`: the handler gets them at once, then each change                                                   |
 
 ## Share the WebView with the core
 
-The core owns the WebView's own delegate and client slots, among what `MinimalWebViewHooks` ([Swift][swift],
-[Kotlin][kotlin]) says to leave alone; your hook adds to the context's lists instead.
+The core owns the WebView's delegate and client slots, so your hook adds its delegates and clients to the context's
+lists instead. `MinimalWebViewHooks` ([Swift][swift], [Kotlin][kotlin]) lists what else a hook must leave alone.
 
 A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
-or a page gets the camera, goes to the first hook that implements it, and switches off the props that make it, such as
-`navigationRules`. The rules are on `WebViewContext`'s `navigationDelegates` ([Swift][swiftContext]) and `clients`
-([Kotlin][kotlinContext]).
+or a page gets the camera, goes to the first hook that implements it instead of the core. The props that make that
+decision, such as `navigationRules`, then stop applying. `WebViewContext`'s `navigationDelegates` ([Swift][swiftContext]) and `clients`
+([Kotlin][kotlinContext]) give the full rules.
 
 ## Lifecycle
 
@@ -248,7 +247,7 @@ or a page gets the camera, goes to the first hook that implements it, and switch
 - Native API: the [Swift][swiftModule] and [Kotlin][kotlinPackage] reference, with `MinimalWebViewHooks` and
   `WebViewContext`.
 - JS API: [`extensions`][extensionsProp], [`HookExtension`][HookExtension] and [`ref.hook`][hook].
-- [sample-extension][sample]: a hook for each seam the core offers, run by the example app's tests.
+- [sample-extension][sample]: a hook for each part of the hook API, which the example app's tests run.
 - [@react-native-minimal-webview/extensions][extensions]: ready-made hooks. Its README shows how to copy one into your
   own module.
 

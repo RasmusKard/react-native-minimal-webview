@@ -6,14 +6,15 @@ const freeze = <T extends object>(value: T): T => {
 };
 
 /**
- * The rules `navigationRules` has when it is unset: `file:` is blocked, http(s) loads in place, and any other scheme
- * opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
+ * The rules `navigationRules` has when it is unset. They block `file:` and load `http:` and `https:` in place. Any other
+ * scheme opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
  *
- * Anything else, an iframe's or one without a gesture, is blocked, so a page opens an app only right after the user's
- * tap, click or key press, as each platform counts them. On iOS that leaves out the redirect after a form POST, such
- * as an OAuth `myapp://callback`: an `external` rule for its scheme before these opens it.
+ * Any other navigation, such as an iframe's or one without a gesture, is blocked. So a page can open an app only right
+ * after the user's tap, click or key press. On iOS, the redirect after a form POST doesn't count as a user gesture, so
+ * an OAuth `myapp://callback` that follows a POST is blocked. To open it, put an `external` rule for its scheme before
+ * these rules.
  *
- * Frozen; spread it after your own rules to keep it.
+ * The array is frozen. Spread it after your own rules to keep these rules.
  * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
  * @group Navigation
  */

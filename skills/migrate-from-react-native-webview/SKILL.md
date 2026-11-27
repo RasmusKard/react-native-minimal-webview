@@ -8,11 +8,12 @@ description: Migrate a React Native app from react-native-webview to react-nativ
 Replaces every react-native-webview usage in an app with react-native-minimal-webview. It keeps what the app's users see,
 and it reports each behavior that changes so a person decides it.
 
-The docs site serves each page as Markdown. Read these from it, not from memory: the package passes platform APIs
-through by name, and most react-native-webview props have no prop of the same name here.
+Read these pages from the docs site, which serves each as Markdown, instead of working from memory. Most
+react-native-webview props have no prop of the same name here.
 
 - Migration guide: https://rasmuskard.github.io/react-native-minimal-webview/guides/migrating-from-react-native-webview/index.md
-- Install and requirements: https://rasmuskard.github.io/react-native-minimal-webview/index.md (Install, Requirements)
+- README: https://rasmuskard.github.io/react-native-minimal-webview/index.md (When to use something else, Install,
+  Requirements)
 - Every page: https://rasmuskard.github.io/react-native-minimal-webview/llms.txt
 
 ## 1. Check the app can move
@@ -46,8 +47,8 @@ on one platform only, a remount that stands in for a reload.
 
 ## 3. Install
 
-Follow Install in the README: the package, expo-build-properties and the minimums. Add
-`@react-native-minimal-webview/extensions` only if a prop maps to an extension in the guide.
+Follow Install in the README. Add `@react-native-minimal-webview/extensions` only if a prop maps to an extension in the
+guide.
 
 ## 4. Migrate each WebView
 
@@ -63,7 +64,7 @@ as before. Two exceptions, which you list in the report instead of applying:
 For "Defaults that differ", start from the guide's one-object example and take out each setting the app sets itself.
 Don't add the rows that example leaves out.
 
-Where the new event carries something else than the old one, rewrite the handler for it instead of renaming it:
+Where a new event carries different data than the old one, rewrite the handler instead of renaming it. For example,
 `onDownload` gets a file that is already saved, so code that opened or fetched the old event's URL goes.
 
 Where a ref call now returns a promise, handle its rejection the way the app handles its other errors, never with an

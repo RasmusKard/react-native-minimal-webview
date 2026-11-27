@@ -1,7 +1,7 @@
 # Use a platform API
 
 How to get from a property or method in Apple's or Android's documentation to the key, value or `call` string this
-package takes. The package doesn't document each platform setting: the platform's own page does.
+package takes. What each setting does is on the platform's own page.
 
 ## 1. Find the root
 
@@ -17,9 +17,6 @@ which one.
 | `scrollView`         | [`UIScrollView`][uiscrollview]                     | settings, `get`, `call` |
 | `websiteDataStore`   | [`WKWebsiteDataStore`][wkwebsitedatastore]         | `get`, `call`           |
 | `httpCookieStore`    | [`WKHTTPCookieStore`][wkhttpcookiestore]           | `get`, `call`           |
-
-`configuration` is read once, when the WebView is created: a change [recreates the WebView][configuration], and a
-`call` on it changes nothing.
 
 | Root            | Android class                                                                                                                                  | Takes                   |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -40,11 +37,12 @@ On iOS the key is the property's name. On Android it is the setter's name withou
 | `WebSettings`, `setBuiltInZoomControls(boolean)` | `android={{ settings: { builtInZoomControls: false } }}`   |
 | `WebSettings`, `setTextZoom(int)`                | `android={{ settings: { textZoom: 130 } }}`                |
 
-Keys the SDKs list appear in autocomplete, so a misspelled one doesn't compile. A key they lack, such as one a newer SDK
-added, goes under the root's `other`: `webView: { other: { someNewerProperty: true } }`, with the property's real
-name in place of `someNewerProperty`.
+The package types each key the platform SDKs declare, so autocomplete offers them and a misspelled one doesn't compile.
+A key the types lack, such as one a newer SDK added, goes under the root's `other`: `webView: { other: { someNewerProperty: true } }`.
 
-A boolean, number or string is passed as it is. An enum or option set is a number. [`IOSConstants`][iosconstants] and [`AndroidConstants`][androidconstants] name the values of the classes they list; for another class's, such as `View`'s `overScrollMode`, use the number the platform's documentation gives. [`IOSSettings`][iossettings] and
+A boolean, number or string is passed as it is. An enum or option set is a number. [`IOSConstants`][iosconstants] and
+[`AndroidConstants`][androidconstants] name the values of the classes they list. For another class, such as `View`'s
+`overScrollMode`, use the number the platform's documentation gives. [`IOSSettings`][iossettings] and
 [`AndroidSettings`][androidsettings] list the other value types, the package's defaults for each root, and when a
 change applies.
 
@@ -83,7 +81,7 @@ and methods, so pick the string by `Platform.OS`.
 On Android the method is the Java method's name: `WebView.clearCache(boolean)` is
 `call('webView.clearCache', [true])`.
 
-On iOS it is the Objective-C selector, which Apple's page shows once you switch its language from Swift to
+On iOS it is the Objective-C selector. Apple's page shows the Objective-C declaration when you switch its language to
 Objective-C. The selector is every argument label of the declaration, each with its colon, joined:
 
 | Objective-C declaration                                                         | The call                                                                |
@@ -93,19 +91,19 @@ Objective-C. The selector is every argument label of the declaration, each with 
 | `- (void)getAllCookies:(void (^)(NSArray<NSHTTPCookie *> *))completionHandler;` | `call('httpCookieStore.getAllCookies:')`                                |
 
 A method with no argument has no colon. A trailing completion handler keeps its label in the selector but has no entry
-in the arguments: the call resolves with what it reports, for the WebKit methods whose handlers [`call`][call] can
-await (one in the package's SDK headers that reports an object, an error or an integer). On Android a trailing
-`ValueCallback` works the same way.
+in the arguments, and the call resolves with what the handler reports. On Android a trailing `ValueCallback` works the
+same way.
 
-The Swift name doesn't work, and often differs: Swift's `takeSnapshot(with:completionHandler:)` is the selector
-`takeSnapshotWithConfiguration:completionHandler:`.
+The Swift name doesn't work. It often differs from the selector, as Swift's `takeSnapshot(with:completionHandler:)`
+is `takeSnapshotWithConfiguration:completionHandler:`.
 
-[`call`][call] lists how each argument type is written (a struct, an `NSDate`, an `NSSet`, a cookie), what a result
-converts to, and the methods the core keeps to itself. Unlike a setting, a call can crash the app: on iOS with an object argument of the wrong class, on Android with a `null` listener or callback other than the trailing `ValueCallback`.
+[`call`][call] lists how each argument type is written, what a result converts to, and the methods the core keeps to
+itself. Unlike a setting, a call can crash the app. On iOS an object argument of the wrong class crashes it, and on
+Android a `null` listener or callback other than the trailing `ValueCallback` does.
 
 ## When this isn't enough
 
-A method that takes another object, a delegate or client callback, and anything that keeps native state need a
+A method that takes another object, a delegate or client callback, or anything that keeps native state needs a
 [native hook](native-hooks.md#when-to-write-one).
 
 [wkwebviewconfiguration]: https://developer.apple.com/documentation/webkit/wkwebviewconfiguration
@@ -127,4 +125,3 @@ A method that takes another object, a delegate or client callback, and anything 
 [androidsettings]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/AndroidSettings/
 [get]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#get
 [call]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call
-[configuration]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/IOSSettings/#configuration

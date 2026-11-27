@@ -2,24 +2,24 @@ import { Platform } from 'react-native';
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
- * A failed request that isn't the main frame's, for {@link onLoadSubResourceError}: shaped as the core's
+ * A failed request other than the main frame's, for {@link onLoadSubResourceError}. It has the shape of the core's
  * `LoadErrorEvent` for a network error.
  * @android
  * @group Events
  */
 export type SubResourceErrorEvent = {
   url: string;
-  /** Android's `WebViewClient.ERROR_*`. */
+  /** One of Android's `WebViewClient.ERROR_*` codes. */
   code: number;
   description: string;
 };
 
 /**
- * Calls `handler` for each of the page's requests that fails, such as an image, a script or an iframe, but not the
- * main frame's, which goes to `onError`: react-native-webview's `onLoadSubResourceError`.
+ * Calls `handler` for each of the page's requests that fails, such as an image, a script or an iframe. The main frame's
+ * failure goes to `onError` instead.
  *
- * A request whose SSL check fails isn't reported. A response with an HTTP error status, such as a 404, isn't reported
- * either: only network errors are.
+ * Only network errors are reported. A failed SSL check and a response with an HTTP error status, such as a 404, are
+ * not.
  * @returns Null on iOS.
  * @android
  * @group Extensions

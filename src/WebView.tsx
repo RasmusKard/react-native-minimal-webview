@@ -155,9 +155,9 @@ const unawaited = (call: Promise<unknown> | undefined, name: string) =>
 const isJavaScriptUrl = (url: string) => /^[\0- ]*javascript:/i.test(url.replace(/[\t\n\r]/g, ''));
 
 /**
- * A WebView whose core decides navigations and owns the navigation state: see {@link WebViewProps} and
- * {@link WebViewRef}.
- * @throws An `Error` as it renders when the app was built without the package's native module: on iOS, below the
+ * A WebView whose core decides each navigation and owns the navigation state. Its props are {@link WebViewProps}, and
+ * its ref is a {@link WebViewRef}.
+ * @throws An `Error` as it renders when the app was built without the package's native module, as on iOS below the
  * deployment target 17.0.
  * @group WebView
  */
@@ -453,18 +453,18 @@ function platformSettings(props: WebViewProps): NativeSettings {
 }
 
 /**
- * Android's process-wide WebView functions, like the static methods of Android's `WebView`. On iOS they do nothing,
- * and `defaultUserAgent` is null.
+ * Android's process-wide WebView functions. On iOS they do nothing, and `defaultUserAgent` is null.
  * @group WebView
  * @android
  * @namespace
  */
 export const AndroidWebView = {
   /**
-   * Android's default user agent, for `android.settings.userAgentString` with a suffix.
+   * Android's default user agent. Add a suffix to it to set `android.settings.userAgentString`.
    *
-   * The first read loads WebView's code, on the JS thread: read it once `warmUp()` has had time or a WebView is
-   * mounted. It is null while Android System WebView is missing, disabled or updating, and a later read tries again.
+   * The first read loads Android System WebView on the JS thread. Read it after `warmUp()` has had time to run, or once
+   * a WebView is mounted. It is null while Android System WebView is missing, disabled or updating, and a later read
+   * tries again.
    * @android
    */
   get defaultUserAgent(): string | null {
@@ -477,26 +477,25 @@ export const AndroidWebView = {
     }
   },
   /**
-   * Starts WebView before any WebView mounts, so the first WebView mounts sooner.
+   * Starts Android System WebView before any WebView mounts, so that the first WebView mounts sooner.
    *
-   * It helps only if it runs well before the first WebView mounts: at app start, or as the screen with the WebView is
-   * pushed. WebView starts once per app, and React Native's first `fetch` starts it too.
+   * It helps only when it runs well before the first WebView mounts, such as at app start or as the screen with the
+   * WebView is pushed. Android System WebView starts once per app.
    * @android
    */
   warmUp(): void {
     if (Platform.OS === 'android') nativeModule().warmUp();
   },
   /**
-   * Opens a connection to `url`'s origin (DNS, TCP, TLS) in WebView's default profile, ahead of a load.
+   * Opens a connection to `url`'s origin in the default profile, ahead of a load.
    *
-   * Call it before the load starts: as the screen with the WebView is pushed, or for the next page a mounted WebView
-   * will go to. A WebView connects to its `source` itself as it mounts.
+   * Call it before the load starts, such as when the screen with the WebView is pushed, or for the next page a mounted
+   * WebView will go to.
    *
-   * It starts WebView on the UI thread if nothing has yet, so call it once `warmUp()` has had time or a WebView is
-   * mounted.
+   * It starts Android System WebView on the UI thread if nothing has yet. Call it after `warmUp()` has had time to run,
+   * or once a WebView is mounted.
    *
-   * Needs the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or `PRECONNECT`; without them it does
-   * nothing. For prefetch and prerender, a native hook uses `ProfileStore`.
+   * It does nothing without the androidx.webkit features `MULTI_PROFILE` and `ENQUEUE_PRECONNECT` or `PRECONNECT`.
    * @android
    */
   preconnect(url: string): void {
@@ -505,9 +504,9 @@ export const AndroidWebView = {
   /**
    * Turns remote debugging (`chrome://inspect`) of every WebView in the app on or off.
    *
-   * Until it is called, it is on when the app is debuggable (a debug build) and off otherwise. Called before any
-   * WebView exists, it applies when the first one is made, so it doesn't start WebView. On iOS,
-   * `ios.webView.inspectable` sets it per WebView.
+   * Until it is called, remote debugging is on when the app is debuggable, as a debug build is, and off otherwise.
+   * Called before any WebView exists, it applies when the first one is made and doesn't start Android System WebView.
+   * On iOS, `ios.webView.inspectable` sets it per WebView.
    * @android
    * @see [Debugging the page example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#debugging-the-page)
    */

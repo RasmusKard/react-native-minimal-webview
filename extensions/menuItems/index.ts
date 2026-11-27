@@ -13,7 +13,7 @@ export type MenuItem = {
 };
 
 /**
- * A system item of the text selection menu, by react-native-webview's name, for {@link menuItems}.
+ * A system item of the text selection menu, for {@link menuItems}.
  * @ios
  * @group Values
  */
@@ -32,8 +32,7 @@ export type SuppressMenuItem =
   | 'share';
 
 /**
- * An item chosen from the text selection menu, for {@link menuItems}: what react-native-webview's event has in
- * `nativeEvent`.
+ * An item chosen from the text selection menu, for {@link menuItems}.
  * @group Events
  */
 export type CustomMenuSelectionEvent = {
@@ -44,14 +43,15 @@ export type CustomMenuSelectionEvent = {
 };
 
 /**
- * The text selection menu: react-native-webview's `menuItems`, `suppressMenuItems` and `onCustomMenuSelection`.
+ * Sets the items of the text selection menu.
  *
- * `items` replace the system's items, `onSelect` gets the one chosen, and on iOS `suppress` hides system items.
+ * `items` replace the system's items, and `onSelect` gets the one the user chooses. On iOS, `suppress` hides system
+ * items.
  *
  * Turn it on when the WebView is created. After that, a change, switching it off included, applies to the next menu.
  *
- * Its hook makes the WebView from a class of its own. When another hook's `webViewClass` or `webViewFactory`,
- * registered earlier, makes it instead, there is no menu and the core warns.
+ * If another hook registered earlier makes the WebView with its `webViewClass` or `webViewFactory`, there is no menu
+ * and the core warns.
  * @returns Null when `items` is unset and, on iOS, `suppress` is too.
  * @group Extensions
  */
