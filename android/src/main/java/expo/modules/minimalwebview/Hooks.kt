@@ -175,8 +175,8 @@ interface WebViewContext {
   val options: Any?
 
   /**
-   * The committed URL, the one `useWebViewState` reports. It is empty before the first commit and after the attach
-   * ended.
+   * The committed URL: the page on screen, where `useWebViewState` reports the failed URL after a failed SSL load. It
+   * is empty before the first commit and after the attach ended.
    *
    * Inside [onDocumentEnd] it is still the page that ended. In a client's `onPageStarted` it may already be the new
    * page.
