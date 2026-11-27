@@ -20,8 +20,8 @@ through by name, and most react-native-webview props have no prop of the same na
 Stop and tell the user if the app runs on the old architecture, Windows, macOS or web, or only in Expo Go. The package
 supports none of those.
 
-Compare the app's iOS deployment target and Android `minSdkVersion` with the minimums in Requirements. If either is
-lower, stop and ask before you raise it: raising it ends the app's support for those OS versions, and that is the
+Compare the app's iOS deployment target and Android `minSdkVersion` with the minimums in Requirements. An app whose
+config sets neither has the defaults of its Expo SDK. If either is lower, stop and ask before you raise it: raising it ends the app's support for those OS versions, and that is the
 user's decision. Name the versions it would drop.
 
 ## 2. Inventory
@@ -57,9 +57,11 @@ as before. Two exceptions, which you list in the report instead of applying:
 - Anything that gives pages more access than this package's default: granting camera, microphone or location, opening
   messaging to more origins or to iframes, `origins: ['*']` on a script that only the app's own pages need, or access to
   local files.
-- A prop the guide doesn't list. Leave a `TODO(migration)` comment at it.
+- A prop that neither the guide's tables nor the platform API page it links covers. Leave a `TODO(migration)` comment
+  at it.
 
-For "Defaults that differ", use the guide's one-object example as it is: it says which defaults it leaves alone.
+For "Defaults that differ", start from the guide's one-object example and take out each setting the app sets itself.
+Don't add the rows that example leaves out.
 
 Where the new event carries something else than the old one, rewrite the handler for it instead of renaming it:
 `onDownload` gets a file that is already saved, so code that opened or fetched the old event's URL goes.
@@ -67,10 +69,13 @@ Where the new event carries something else than the old one, rewrite the handler
 Where a ref call now returns a promise, handle its rejection the way the app handles its other errors, never with an
 empty `catch`.
 
-For each workaround in the inventory, find what the docs say about the bug it works around. Remove the workaround
-only where they say this package doesn't have the bug. Keep it otherwise, and list it in the report either way.
+For each workaround in the inventory, find what the docs say about the bug it works around. Remove a workaround in
+the app's own code only where they say this package doesn't have the bug, or does itself what the workaround did.
+Keep it otherwise. A patch hunk can't be kept, since step 5 deletes the patch: map what it added as you would a prop,
+and report what has no counterpart. List every workaround in the report.
 
-Set the bridge's `allowedOrigins` to the origins the app actually loads, never `*`. Pages that call
+Set the bridge's `allowedOrigins` to the origins of the pages whose messages the app acted on before, never `*` and
+never every site the WebView can show. Pages that call
 `window.ReactNativeWebView` keep working through `reactNativeWebViewMessages`; don't edit web projects outside this
 repo.
 
@@ -83,7 +88,7 @@ gone, a leftover import fails to compile instead of passing silently.
 
 Run each check and fix what fails until all pass. Don't report the migration done before then.
 
-1. `grep -rn "react-native-webview" --exclude-dir=node_modules .` finds nothing outside lockfiles, changelogs and
+1. `git grep -n "react-native-webview"` finds nothing outside lockfiles, changelogs and
    files that name the package without using it (a vendored dependency preset). List those in the report.
 2. The type check (`npx tsc --noEmit`, or the project's script) passes. It reports one unknown prop per `WebView`
    per run, so rerun it until it's clean.
