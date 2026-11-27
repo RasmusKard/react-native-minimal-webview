@@ -1,8 +1,7 @@
 import type { HookEvent, HookExtension } from 'react-native-minimal-webview';
 
 /**
- * A scroll, for {@link onScroll}, in points (iOS) or dp (Android): what react-native-webview's event has in
- * `nativeEvent`.
+ * A scroll, for {@link onScroll}, in points on iOS and dp on Android.
  * @group Events
  */
 export type ScrollEvent = {
@@ -20,10 +19,10 @@ export type ScrollEvent = {
 };
 
 /**
- * Calls `handler` on each change of the scroll offset, with no throttling: react-native-webview's `onScroll`.
+ * Calls `handler` on each change of the scroll offset, with no throttling.
  *
  * On iOS, the offsets include the content inset adjustment unless `ios.scrollView.contentInsetAdjustmentBehavior` is
- * `never`, react-native-webview's default.
+ * `never`.
  * @group Extensions
  */
 export const onScroll = (

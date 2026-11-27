@@ -77,8 +77,8 @@ function createAdapter(): Adapter {
 }
 
 /**
- * A ref to pass as a WebView's `ref`, which a module or a store can hold, so code outside React can read the state and
- * call the WebView.
+ * Creates a ref to pass as a WebView's `ref`. A module or a store can hold it, so that code outside React can read the
+ * navigation state and call the WebView.
  * @see [Outside React example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#outside-react)
  * @group WebView
  */
@@ -112,19 +112,18 @@ export function useAttach(
 }
 
 /**
- * The navigation state of the WebView mounted with `ref` (a `useRef`, `createRef` or `createWebViewRef` one);
- * re-renders on every change, `progress` included, and follows a remount.
+ * Returns the navigation state of the WebView mounted with `ref`, which can come from `useRef`, `createRef` or
+ * `createWebViewRef`. It re-renders on every change, `progress` included, and follows the WebView across a remount.
  * @see [Navigation state example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-state)
  * @group Navigation
  */
 export function useWebViewState(ref: RefObject<WebViewRef | null>): NavigationState;
 /**
- * What `select` returns for the navigation state of the WebView mounted with `ref`; re-renders only when that changes
- * (by `Object.is`), and follows a remount.
+ * Returns what `select` returns for the navigation state of the WebView mounted with `ref`. It re-renders only when
+ * that value changes by `Object.is`, and follows the WebView across a remount.
  *
- * `select` must be pure: it can run more than once for a state, and it can be a new function at each render. A
- * `select` that returns a new object or array each time re-renders on every state change, because `Object.is` never
- * matches it.
+ * `select` must be pure, because it can run more than once for a state. It can be a new function at each render. A
+ * `select` that returns a new object or array each time re-renders on every state change.
  */
 export function useWebViewState<T>(
   ref: RefObject<WebViewRef | null>,

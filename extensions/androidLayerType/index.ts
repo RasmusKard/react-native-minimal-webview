@@ -9,8 +9,7 @@ import type { HookExtension } from 'react-native-minimal-webview';
 export type AndroidLayerType = 'none' | 'software' | 'hardware';
 
 /**
- * Sets the WebView's layer type, and keeps it on the WebView that replaces one whose renderer crashed:
- * react-native-webview's `androidLayerType`.
+ * Sets the WebView's layer type. The WebView that replaces one whose renderer crashed gets it too.
  *
  * Switched off, the layer type is `'none'` again.
  * @returns Null on iOS.

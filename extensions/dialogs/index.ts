@@ -31,16 +31,15 @@ export type Dialog =
     };
 
 /**
- * Answers the page's `alert`, `confirm` and `prompt` with `onDialog` instead of the native dialogs; the page waits for
+ * Answers the page's `alert`, `confirm` and `prompt` with `onDialog` instead of the native dialogs. The page waits for
  * the answer.
  *
- * Not in react-native-webview, whose dialogs are native.
+ * `onDialog` returns the answer, or a promise of it. `true` accepts a confirm, and a string is a prompt's text. Anything
+ * else, or a throw, dismisses the dialog, so a confirm gets `false` and a prompt gets `null`. An alert ignores the
+ * answer.
  *
- * The return value (a promise is awaited) is the answer: `true` accepts a confirm, a string is a prompt's text, and
- * anything else, a throw too, dismisses the dialog (confirm false, prompt null). An alert's answer doesn't matter.
- *
- * `signal` aborts when the core stops waiting for the answer, and the dialog is then dismissed;
- * {@link HookExtension.onAsk} has the rules.
+ * `signal` aborts when the core stops waiting for the answer, and the dialog is then dismissed.
+ * {@link HookExtension.onAsk} says when that happens.
  *
  * Without this extension, the default dialogs show, as `WebViewProps` describes.
  * @group Extensions

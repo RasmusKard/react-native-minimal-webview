@@ -2,10 +2,9 @@ import { Platform } from 'react-native';
 import type { HookExtension } from 'react-native-minimal-webview';
 
 /**
- * Hides the bar above the keyboard (previous, next, done) for the page's inputs: react-native-webview's
- * `hideKeyboardAccessoryView`.
+ * Hides the bar with previous, next and done above the keyboard for the page's inputs.
  *
- * It changes a private WebKit view, as react-native-webview does, so a WebKit update can stop it working.
+ * It changes a private WebKit view, so a WebKit update can stop it working.
  * @returns Null on Android.
  * @ios
  * @group Extensions

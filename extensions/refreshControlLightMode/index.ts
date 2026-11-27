@@ -2,9 +2,9 @@ import { Platform } from 'react-native';
 import type { HookExtension } from 'react-native-minimal-webview';
 
 /**
- * Makes the pull-to-refresh spinner white, for dark pages: react-native-webview's `refreshControlLightMode`.
+ * Makes the pull-to-refresh spinner white, for dark pages.
  *
- * Switched off, it has its default color again. It applies also while `pullToRefresh` is off, for when it turns on.
+ * Switched off, the spinner has its default color again.
  * @returns Null on Android.
  * @ios
  * @group Extensions

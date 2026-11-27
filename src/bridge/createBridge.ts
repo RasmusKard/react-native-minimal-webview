@@ -33,8 +33,8 @@ const throwIfNotJson = (message: BridgeMessage) => void JSON.stringify(message);
  * Creates a {@link Bridge} to the pages of `allowedOrigins`, for one WebView's `bridge` prop.
  *
  * The type argument, a {@link BridgeSchema}, types the methods and events of `handle`, `call`, `emit` and `on`.
- * Nothing checks them at runtime, so a handler still validates what an untrusted page sends. Throws an `Error` for an
- * invalid origin rule or timeout.
+ * Nothing checks those types at runtime, so a handler must still validate what an untrusted page sends. Throws an
+ * `Error` for an invalid origin rule or timeout.
  * @see [Bridge example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#the-bridge)
  * @group Bridge
  */

@@ -210,8 +210,7 @@ const STRUCT_DOCS: Record<string, string> = {
   UIEdgeInsets: 'Insets from each edge, in points, as in `scrollView.contentInset`.',
   CGPoint: 'A point, as in `scrollView.contentOffset`.',
   CGSize: 'A size, as in `scrollView.contentSize`.',
-  CGRect:
-    'A rectangle. No generated key takes one; it fits a setting under `other` and a `call` argument.',
+  CGRect: 'A rectangle, for a setting under `other` or a `call` argument.',
 };
 const OBJECTS: Record<string, string> = {
   NSString: 'string',
@@ -477,7 +476,7 @@ ${Object.entries(STRUCTS)
   .join('\n\n')}
 
 /**
- * The iOS settings keys by root: the writable WebKit and UIScrollView properties from the SDK headers whose type is a
+ * The iOS settings keys, by root. They are the writable WebKit and UIScrollView properties whose type is a
  * \`SettingValue\`.
  * @group Platform settings
  * @ios
@@ -492,9 +491,9 @@ export type IOSSettingKeys = ${object(
   )};
 
 /**
- * The Android settings keys by root: the one-argument setters of \`WebSettings\` and \`WebView\`, \`CookieManager\`'s
- * \`(WebView, value)\` setter, the \`WebSettingsCompat\` and \`WebViewCompat\` statics, and the scroll setters \`WebView\`
- * inherits from \`View\`.
+ * The Android settings keys, by root. They are the one-argument setters of \`WebSettings\` and \`WebView\`,
+ * \`CookieManager\`'s \`(WebView, value)\` setter, the \`WebSettingsCompat\` and \`WebViewCompat\` statics, and the scroll
+ * setters that \`WebView\` inherits from \`View\`.
  * @group Platform settings
  * @android
  */
@@ -517,10 +516,11 @@ export type AndroidSettingKeys = ${object({
   })};
 
 /**
- * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one:
+ * WebKit's and UIScrollView's enums and option sets by raw value, for the iOS keys that take one. For example:
  * \`configuration: { dataDetectorTypes: IOSConstants.DataDetectorTypes.link }\`.
  *
- * An option set's \`all\` is the OR of its listed bits, not \`NSUIntegerMax\`, which JSON can't carry.
+ * An option set's \`all\` is the OR of its listed bits.
+ *
  * These three are for \`call\`, not for keys:
  *
  * - \`WebsiteDataType\`: the data type names the \`websiteDataStore\` methods take.
@@ -537,7 +537,7 @@ export const IOSConstants = ${object({
   })} as const;
 
 /**
- * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants:
+ * The \`WebSettings\`, \`WebView\`, \`WebSettingsCompat\` and \`WebViewCompat\` constants. For example:
  * \`settings: { cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE }\`.
  * @group Platform settings
  * @android
