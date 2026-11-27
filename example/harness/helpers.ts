@@ -6,6 +6,7 @@ import type {
   WebViewSource,
 } from 'react-native-minimal-webview';
 
+import { HTTPS } from '../pages';
 import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from './runner';
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -178,6 +179,12 @@ export async function errorOf(h: Harness, act: () => unknown) {
   await waitFor(h, idle, 5000);
   return error;
 }
+
+/** Sends the page to a fresh `path` on the server whose certificate fails, and returns {@link errorOf} that. */
+export const failFrom = (h: Harness, path: string) =>
+  errorOf(h, () =>
+    h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, `${HTTPS}/${path}`))}`)
+  );
 
 /** Whether the page's `location.href` comes to equal the state's url within 2 s. */
 export const agrees = async (h: Harness) =>

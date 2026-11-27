@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import {
   clearEvents,
   errorOf,
+  failFrom,
   fresh,
   idle,
   nextEntry,
@@ -234,6 +235,29 @@ export async function errors(h: Harness, r: Reporter) {
       h.events.errors.length === 0,
     { reloadedNext, marker, state: h.state(), errors: h.events.errors }
   );
+
+  if (Platform.OS === 'android') {
+    const hashed = `${await openPage(h, fresh(h, '/'))}#x`;
+    await failFrom(h, 'hash');
+    await h.ref.current?.evaluate(`location.hash = 'x'`);
+    await waitFor(h, (s) => s.url === hashed, 5000);
+    await h.ref.current?.evaluate('window.marker = 1');
+    clearEvents(h);
+    const reloadedHash = await outcomeOf(() => h.ref.current?.reload());
+    const hashMarker = await h.ref.current?.evaluate('window.marker ?? null');
+    r.check(
+      'after a failed load, a same-document navigation sets url, and reload() reloads that page',
+      reloadedHash === 'finished' &&
+        h.state().url === hashed &&
+        hashMarker === null &&
+        h.events.errors.length === 0,
+      { reloadedHash, hashMarker, state: h.state(), errors: h.events.errors }
+    );
+  } else
+    r.skip(
+      'after a failed load, a same-document navigation sets url, and reload() reloads that page',
+      'iOS keeps the failed url until a load commits'
+    );
 
   const first = fresh(h, `${HTTPS}/first`);
   clearEvents(h);

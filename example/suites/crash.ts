@@ -18,11 +18,10 @@ import {
   happens,
   poll,
   quietFor,
-  errorOf,
+  failFrom,
   waitForPresentation,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
-import { HTTPS } from '../pages';
 
 const CORE_CRASH_WINDOW_MS = 60_000;
 const ANDROID_SAME_CRASH_MS = 100;
@@ -202,13 +201,9 @@ export async function crash(h: Harness, r: Reporter) {
   );
 
   if (Platform.OS === 'android') {
-    const failFrom = (page: string) =>
-      errorOf(h, () =>
-        h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, `${HTTPS}/${page}`))}`)
-      );
     const headersSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'crash' } };
     await openPage(h, headersSource);
-    await failFrom('headers');
+    await failFrom(h, 'headers');
     let headersGone: ProcessGoneEvent | undefined;
     const reloaded = await happens(
       waitForLoad(
@@ -225,8 +220,9 @@ export async function crash(h: Harness, r: Reporter) {
       { headersGone, state: h.state() }
     );
 
-    await openPage(h, { uri: fresh(h, '/post'), body }, 10000);
-    await failFrom('post');
+    const failedPost = fresh(h, '/post');
+    await openPage(h, { uri: failedPost, body }, 10000);
+    await failFrom(h, 'post');
     const loads = h.events.loads.length;
     const failedPostGone = await kill(18);
     await quietFor(2000);
@@ -236,6 +232,36 @@ export async function crash(h: Harness, r: Reporter) {
       { failedPostGone, loads: h.events.loads.slice(loads), state: h.state() }
     );
     await waitForLoad(h, startCrashCountOver);
+    r.check(
+      'reload() after that crash sends the POST source, not the failed load',
+      (await text(h, 'body').catch(errorCode)) === body && h.state().url === failedPost,
+      h.state()
+    );
+
+    const waitingSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'waiting' } };
+    await openPage(h, waitingSource);
+    await failFrom(h, 'waiting');
+    h.setProps({
+      userAgent: 'Crash/1',
+      onProcessGone: (event) => {
+        h.events.gone.push(event);
+        h.ref.current?.reload();
+      },
+    });
+    const reloadedSource = await happens(
+      waitForLoad(
+        h,
+        () => kill(19, 'killInBackground'),
+        (s) => s.url === waitingSource.uri && idle(s),
+        30000
+      )
+    );
+    h.setProps({ userAgent: 'Crash/1' });
+    r.check(
+      'reload() while the recovery waits brings back the source a failed load left on screen',
+      reloadedSource && (await text(h, 'headers')).includes('"x-source":"waiting"'),
+      h.state()
+    );
   } else
     r.skip(
       'a crash after a failed load from the source page',
