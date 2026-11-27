@@ -40,7 +40,7 @@ internal class Permissions(private val owner: MinimalWebView) {
     fun decide(key: K, origin: String, resources: List<String>, deny: () -> Unit, grant: () -> Unit): Boolean {
       if ("onPermissionRequest" !in owner.requestHandlers) return false
       val value = originOf(origin)
-      if (resources.isEmpty() || value != originOf(owner.url)) {
+      if (resources.isEmpty() || value != originOf(owner.committedUrl)) {
         deny()
         return true
       }

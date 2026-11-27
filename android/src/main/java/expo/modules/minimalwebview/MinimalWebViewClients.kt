@@ -51,7 +51,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
     // A dead renderer's WebView reports the navigation it cut off as not committed, before processGone fails it.
     if (owner.rendererGone) return
     if (navigation.didCommit() && !navigation.isSameDocument) owner.documents.end(DocumentEnd.COMMITTED)
-    if (navigation.didCommit()) owner.url = navigation.url
+    if (navigation.didCommit()) owner.committedUrl = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
       // Chromium's error page for an HTTP status (a 404 with an empty body) is the server's answer: "finished", as on
@@ -109,7 +109,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
       owner.documents.end(DocumentEnd.COMMITTED)
-      if (url != null) owner.url = url
+      if (url != null) owner.committedUrl = url
       owner.loadStarted()
     }
     observing("onPageStarted", WEB_VIEW, STRING, Bitmap::class.java) { it.onPageStarted(view, url, favicon) }
@@ -152,7 +152,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
     if (!owner.hasNavigationListener && url != null) {
-      owner.url = url
+      owner.committedUrl = url
       owner.stateChanged()
     }
     observing("doUpdateVisitedHistory", WEB_VIEW, STRING, BOOLEAN) { it.doUpdateVisitedHistory(view, url, isReload) }
@@ -167,9 +167,11 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     handler.cancel()
     // Also called for subresources (an ad image): only the main frame's URL is a page error.
     // Without a NavigationListener there is no pendingUrl: WebView's url shows a loadUrl in progress.
-    val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.url) else setOf(view.url, allowedMainFrameUrl)
+    val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.committedUrl) else setOf(view.url, allowedMainFrameUrl)
     if (sslError.url in mainFrame) {
+      owner.failedLoad = sslError.url
       owner.reportError("ssl", sslError.url, sslError.primaryError, "SSL error ${sslError.primaryError}")
+      owner.stateChanged()
     }
   }
 

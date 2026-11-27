@@ -81,7 +81,14 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val asks = Asks { onHookEvent(it) }
   internal val deciders = Deciders { message -> mainHandler.post { warn(message) } }
 
-  internal var url = ""
+  internal var committedUrl = ""
+    set(value) {
+      field = value
+      failedLoad = null
+    }
+  /** Chromium commits no error page for a cancelled SSL error: the previous page stays. */
+  internal var failedLoad: String? = null
+  internal val url get() = failedLoad ?: committedUrl
   internal var pendingUrl: String? = null
   internal var title = ""
   internal var loading = false
@@ -221,8 +228,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     when {
       recovering -> recover(forceLoad = true)
       !hasWebView -> applyProps()
-      // A POST source: WebView's reload declines its form resubmission.
-      webView.url == null || showingPost -> loadAgain()
+      // WebView's reload redoes no load that committed nothing, and declines a POST source's form resubmission.
+      webView.url == null || failedLoad != null || showingPost -> loadAgain()
       else -> webView.reload()
     }
   }

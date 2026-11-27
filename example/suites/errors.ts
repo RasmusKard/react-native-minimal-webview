@@ -165,6 +165,25 @@ export async function errors(h: Harness, r: Reporter) {
     { retried, state: h.state(), errors: h.events.errors }
   );
 
+  /** After an SSL error of `failed`, the main-frame load the suite just started. */
+  const showsAndRetries = async (name: string, failed: string) => {
+    await waitFor(h, idle, 5000);
+    await sleep(500);
+    r.check(`${name}: url is the failed url`, h.state().url === failed, h.state());
+    clearEvents(h);
+    const retried = await outcomeOf(() => h.ref.current?.reload());
+    await sleep(500);
+    const again = h.events.errors[0];
+    r.check(
+      `${name}: reload() retries the failed url`,
+      retried === 'failed' &&
+        again?.kind === 'ssl' &&
+        again.url === failed &&
+        h.state().url === failed,
+      { retried, errors: h.events.errors, state: h.state() }
+    );
+  };
+
   for (const [name, to, failed] of [
     ['ssl error from the page', `'${HTTPS}/link'`, `${HTTPS}/link`],
     ['ssl error after a redirect', `'/redirect?to=${HTTPS}/redirected'`, `${HTTPS}/redirected`],
@@ -178,5 +197,13 @@ export async function errors(h: Harness, r: Reporter) {
       got && h.events.errors[0]?.kind === 'ssl' && h.events.errors[0]?.url === failed,
       h.events.errors[0]
     );
+    await showsAndRetries(name, failed);
   }
+
+  const first = fresh(h, `${HTTPS}/first`);
+  clearEvents(h);
+  h.loadSource({ uri: first });
+  h.remount();
+  await waitFor(h, () => h.events.errors.length > 0, 10000);
+  await showsAndRetries('ssl error of the first load of a new WebView', first);
 }
