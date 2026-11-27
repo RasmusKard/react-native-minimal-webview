@@ -17,8 +17,12 @@ through by name, and most react-native-webview props have no prop of the same na
 
 ## 1. Check the app can move
 
-Stop and tell the user if the app runs on the old architecture, Windows, macOS or web, or only in Expo Go, or if it
-can't meet the minimums in Requirements. The package supports none of those.
+Stop and tell the user if the app runs on the old architecture, Windows, macOS or web, or only in Expo Go. The package
+supports none of those.
+
+Compare the app's iOS deployment target and Android `minSdkVersion` with the minimums in Requirements. If either is
+lower, stop and ask before you raise it: raising it ends the app's support for those OS versions, and that is the
+user's decision. Name the versions it would drop.
 
 ## 2. Inventory
 
@@ -29,6 +33,16 @@ Read the migration guide in full first. Then list, with file and line:
 - `window.ReactNativeWebView` in page code: in this repo, in injected script strings, and in web projects the app loads
 - Jest mocks of `react-native-webview`, `patches/` entries for it, and the `LSApplicationQueriesSchemes` (iOS) and
   `<queries>` (Android) entries added for schemes a page opens
+
+A search for the package name misses two kinds of usage. Read every prop of each `WebView` and follow each one to
+its source to find them:
+
+- a helper that returns WebView props, which the app spreads or reads a prop from (`Sentry.sentryWebViewProps()`)
+- a library that takes the WebView ref and calls `postMessage` or `injectJavaScript` on it itself
+
+Last, list the app's workarounds for react-native-webview bugs, each with the reason its comment, linked issue or
+commit gives: every hunk of the patch, a reload or navigation done through `injectJavaScript`, a header or prop set
+on one platform only, a remount that stands in for a reload.
 
 ## 3. Install
 
@@ -41,11 +55,21 @@ Map each prop with the guide's tables and recipes. Where the guide shows the old
 as before. Two exceptions, which you list in the report instead of applying:
 
 - Anything that gives pages more access than this package's default: granting camera, microphone or location, opening
-  messaging to more origins or to iframes, or `origins: ['*']` on a script that only the app's own pages need.
+  messaging to more origins or to iframes, `origins: ['*']` on a script that only the app's own pages need, or a file
+  access setting (`allowFileAccess`, `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs`).
 - A prop the guide doesn't list. Leave a `TODO(migration)` comment at it.
+
+Don't restore the iOS debugging default: the package turns the inspector on in `__DEV__` only, and the guide's
+`rnwDefaults` leaves it so.
 
 Where the new event carries something else than the old one, rewrite the handler for it instead of renaming it:
 `onDownload` gets a file that is already saved, so code that opened or fetched the old event's URL goes.
+
+`evaluate` returns a promise that rejects, where `injectJavaScript` reported nothing. Handle the rejection the way the
+app handles its other errors, never with an empty `catch`.
+
+For each workaround in the inventory, find what the docs say about the bug it works around. Remove the workaround
+only where they say this package doesn't have the bug. Keep it otherwise, and list it in the report either way.
 
 Set the bridge's `allowedOrigins` to the origins the app actually loads, never `*`. Pages that call
 `window.ReactNativeWebView` keep working through `reactNativeWebViewMessages`; don't edit web projects outside this
@@ -60,12 +84,20 @@ gone, a leftover import fails to compile instead of passing silently.
 
 Run each check and fix what fails until all pass. Don't report the migration done before then.
 
-1. `grep -rn "react-native-webview" --exclude-dir=node_modules .` finds nothing outside lockfiles and changelogs.
+1. `grep -rn "react-native-webview" --exclude-dir=node_modules .` finds nothing outside lockfiles, changelogs and
+   files that name the package without using it (a vendored dependency preset). List those in the report.
 2. The type check (`npx tsc --noEmit`, or the project's script) passes. It reports one unknown prop per `WebView`
    per run, so rerun it until it's clean.
 3. The project's lint and test scripts pass.
 4. The app builds: `npx expo export` at least. If the project can build natively here (`npx expo run:ios`,
-   `npx expo run:android`, or its own scripts), do that too, and load each migrated screen if you can run the app.
+   `npx expo run:android`, or its own scripts), do that too.
+5. If you can run the app, exercise each migrated screen on both platforms. A screen that paints proves only the
+   first load. Do each of these that the screen has, and read the result from the page or the app's logs:
+   - a message from the page to the app, and one from the app to the page
+   - one navigation for each outcome the rules have: loads in place, opens externally, goes to `onNavigationRequest`
+   - back, after a link tap
+   - a reload, and pull-to-refresh
+   - every way the app remounts or reloads the `WebView` itself
 
 In a JavaScript project the type check finds nothing, so walk every prop of each migrated `WebView` against the guide
 by hand.
@@ -75,8 +107,11 @@ by hand.
 End with:
 
 - what changed, per file
+- the OS versions the app no longer supports, if the minimums were raised
 - a table of every row in the guide's "Defaults that differ" and "Behavior that differs" that applies to this app,
   each with what you did: kept the old behavior (how), or left the new one for the user to decide (why)
 - the props and access changes you left for the user, with their `TODO(migration)` locations
+- each workaround from the inventory: removed (with the docs line that allows it) or kept
 - page changes the user must make in web projects outside this repo
-- each check from step 6 with its result, and any you couldn't run
+- each check from step 6 with its result, and any you couldn't run: name every step 6.5 action that was not exercised
+  on a device, per platform

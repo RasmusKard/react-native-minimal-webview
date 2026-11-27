@@ -107,6 +107,7 @@ Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries
 | `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia`                | `onPermissionRequest`                                                                                                           |
 | `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus`                            | `call('webView.clearCache', [true])` and so on, on Android; on iOS, [`call` on the data store](examples.md#reading-and-calling) |
 | `nativeConfig`                                                                                 | A [native hook](native-hooks.md)                                                                                                |
+| Props from a helper (`{...Sentry.sentryWebViewProps()}`)                                       | Each prop it returns, by its own row: its `injectedJavaScriptBeforeContentLoaded` is an `injectedScripts` entry                 |
 | `containerStyle`                                                                               | A `View` around the WebView                                                                                                     |
 
 ### Props that became extensions
@@ -212,6 +213,10 @@ A navigation no rule matches is blocked, where react-native-webview opened a URL
 
 A late `onNavigationRequest` answer blocks the navigation, where react-native-webview's Android let it through.
 
+Keep `ask` for the navigations only your code can decide, and give the pages you always load an `allow` rule in front
+of it, as above. Android can't hold a navigation until JS answers: it cancels an asked one and loads it again when
+allowed, without the page's referrer policy or the gesture flag ([`action`][navigationruleaction]).
+
 The [request][navigationrequest] has `mainFrame` in
 place of `isTopFrame`, and `userInitiated` in place of `navigationType: 'click'`. It has no `mainDocumentURL`. A new
 window (`onOpenWindow`) is a request with `newWindow: true`.
@@ -226,6 +231,9 @@ react-native-webview's iOS also asks about the `source` load, reloads, back/forw
 Wrap the statements you passed `injectJavaScript` in a function you call, without the trailing `true;`, as in the
 [scripts example](examples.md#scripts).
 
+Its promise rejects when the script throws, the page navigates away or the call can't run, where `injectJavaScript`
+reported nothing: handle the rejection.
+
 ### postMessage and onMessage
 
 The [bridge](examples.md#the-bridge) replaces both, with calls that return promises, and events, in both directions.
@@ -239,7 +247,11 @@ ways:
 import { useEffect, useMemo } from 'react';
 import { WebView, createBridge, reactNativeWebViewMessages } from 'react-native-minimal-webview';
 
-type Messages = { reactNative: {}; page: {}; events: { rnw: string } };
+type Messages = {
+  reactNative: Record<never, never>;
+  page: Record<never, never>;
+  events: { rnw: string };
+};
 
 export function Shop({ token }: { token: string }) {
   const bridge = useMemo(
@@ -324,6 +336,7 @@ Pass it in `injectedScripts` and listen with `bridge.on('scroll', …)`, as in t
 [onloadsubresourceerror]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/onLoadSubResourceError/
 [dialogs]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/functions/dialogs/
 [extensions]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/
+[navigationruleaction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#action
 [navigationrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRequest/
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [reactnativewebviewmessages]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/
