@@ -4,6 +4,7 @@
 # it brings the app back. RCT_METRO_PORT (default 8081) is this checkout's Metro, EXPO_PUBLIC_PAGES_PORT (default 8090)
 # its test pages server: the run stops unless both serve this checkout.
 # One Maestro session runs every suite's flow: Maestro's start-up would otherwise repeat for each suite.
+# A run that outlasts its suites' time limits is killed and exits 124, so a hang in Maestro or the app launch ends.
 set -u
 cd "$(dirname "$0")" || exit 1
 PLATFORM=$1 DEVICE=$2; shift 2
@@ -40,7 +41,8 @@ done
 # Two Maestro CLIs that start in the same second can end one's session: each starts 10 s after the one before.
 start=${TMPDIR:-/tmp}/maestro-start
 lockf -k "$start" sh -c 'wait=$(($(stat -f %m "$1") + 10 - $(date +%s))); [ $wait -le 0 ] || sleep $wait; touch "$1"' - "$start"
-"${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" -e SUITE_MS="$SUITE_MS" -e BACKGROUND_MS="${BACKGROUND_MS:-5000}" "${flows[@]}" > "$tmp/out" 2>&1
+CAP_S=$(($# * (SUITE_MS / 1000 + 70) + 120))
+timeout -k 10 "$CAP_S" "${MAESTRO:-maestro}" --device "$DEVICE" test --no-ansi -e PAGES="$PAGES" -e PLATFORM="$PLATFORM" -e SUITE_MS="$SUITE_MS" -e BACKGROUND_MS="${BACKGROUND_MS:-5000}" "${flows[@]}" > "$tmp/out" 2>&1
 status=$?
 grep -E '^\[(Passed|Failed)\]|Flows? (Passed|Failed)' "$tmp/out" || tail -20 "$tmp/out"
 log=${TMPDIR:-/tmp}; log=${log%/}/harness-$PLATFORM-$DEVICE.log
@@ -48,5 +50,6 @@ curl -s "$PAGES/harness/log?platform=$PLATFORM" > "$log"
 curl -s "$PAGES/harness/junit?platform=$PLATFORM" > "${log%.log}.xml"
 grep ' FAIL ' "$log"
 echo "$(grep -c ' PASS ' "$log") checks passed, $(grep -c ' FAIL ' "$log") failed, $(grep -c ' SKIP ' "$log") skipped: $log (.xml: JUnit)"
+[ $status -ne 124 ] || echo "killed after $CAP_S s: Maestro or the app hung outside a suite's own time limit"
 [ $status -eq 0 ] || echo "debug output in ~/.maestro/tests"
 exit $status
