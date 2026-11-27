@@ -40,8 +40,10 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private lazy var proxy = DelegateProxy(core: self)
   let taps = Taps(target: nil, action: nil)
 
-  private(set) var url = ""
-  /// `WebViewContext.url`: WebKit moves the back-forward list to the next page before didCommit, and `url` can follow it early.
+  private(set) var committedUrl = ""
+  var stateUrl: String { failedLoad?.url ?? committedUrl }
+  /// `WebViewContext.url`: WebKit moves the back-forward list to the next page before didCommit, and `committedUrl` can
+  /// follow it early.
   private(set) var hookUrl = ""
   private var pendingUrl: String?
   /// WebKit hides substitute-data loads (an html source) from the back-forward list.
@@ -86,7 +88,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   @objc private func recoverIfVisible() {
     guard recoveryPending, window != nil, UIApplication.shared.applicationState != .background else { return }
     recoveryPending = false
-    loadAgain()
+    loadAgain(committedUrl)
   }
 
   private var documentOpen = false
@@ -165,13 +167,13 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  private var onSource: Bool {
+  private func showsSource(_ page: String) -> Bool {
     guard let source else { return false }
-    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failedLoad == nil }
-    return Recovery.showsSource(uri.absoluteString, url)
+    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && page == committedUrl }
+    return Recovery.showsSource(uri.absoluteString, page)
   }
 
-  private var onPostSource: Bool { source?.body != nil && onSource }
+  private var onPostSource: Bool { source?.body != nil && showsSource(committedUrl) }
 
   private func report(_ rejected: [PlatformSettings.Rejected]) {
     rejected.forEach { warn("ios.\($0.key): \($0.reason)") }
@@ -197,15 +199,15 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   func reload() {
     recoveryPending = false
     // WebKit's reload redoes no failed load, POST or html source, and loads nothing while `url` is nil.
-    let onHtmlSource = onSource && source?.uri == nil
-    if let webView, webView.url != nil, failedLoad == nil, !onPostSource, !onHtmlSource { webView.reload() } else { loadAgain() }
+    let onHtmlSource = source?.uri == nil && showsSource(committedUrl)
+    if let webView, webView.url != nil, failedLoad == nil, !onPostSource, !onHtmlSource { webView.reload() } else { loadAgain(stateUrl) }
   }
 
-  private func loadAgain() {
+  private func loadAgain(_ page: String) {
     guard let webView, !preparing else { return }
-    if let source, onSource || failedLoad == nil && webView.backForwardList.currentItem == nil {
+    if let source, page.isEmpty || showsSource(page) {
       load(source)
-    } else if let failedLoad, let target = URL(string: failedLoad.url) {
+    } else if let failedLoad, failedLoad.url == page, let target = URL(string: page) {
       loadProgrammatic(URLRequest(url: target), inSourceRoot: failedLoad.inSourceRoot)
     } else {
       webView.reload()
@@ -287,12 +289,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func refreshUrls() {
     guard let webView else { return }
     let item = webView.backForwardList.currentItem
-    let committed = htmlCommit.flatMap { $0.item === item ? $0.url : nil } ?? item?.url.absoluteString ?? ""
-    url = failedLoad?.url ?? committed
+    committedUrl = htmlCommit.flatMap { $0.item === item ? $0.url : nil } ?? item?.url.absoluteString ?? ""
     // WebKit's `url` is the active URL: a pending or provisional load shows here first.
     let active = webView.url?.absoluteString
-    pendingUrl = webView.isLoading && active != committed ? active : nil
-    if !webView.isLoading, failedLoad != nil || active == committed { hookUrl = url }
+    pendingUrl = webView.isLoading && active != committedUrl ? active : nil
+    if !webView.isLoading, failedLoad != nil || active == committedUrl { hookUrl = stateUrl }
   }
 
   /// WebKit's KVO fires before the delegate callbacks, and clears isLoading before it reports a failure: the state is
@@ -314,7 +315,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func emitState() {
     guard let webView else { return }
     let state: NSDictionary = [
-      "url": url,
+      "url": stateUrl,
       "pendingUrl": pendingUrl as Any? ?? NSNull(),
       "title": webView.title ?? "",
       "loading": webView.isLoading,
@@ -370,7 +371,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     htmlCommit = navigation === htmlNavigation
       ? (webView.url?.absoluteString ?? "about:blank", webView.backForwardList.currentItem) : nil
     refreshUrls()
-    hookUrl = url
+    hookUrl = stateUrl
     scheduleUpdate()
     forward { $0.webView?(webView, didCommit: navigation) }
   }
@@ -392,7 +393,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let end = Loads.ended(by: nsError)
     if let kind = end.kind {
       let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
-        ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? url
+        ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? stateUrl
       failedLoad = (failing, inSourceRoot: navigation == nil || navigation !== directoryOnlyNavigation)
       onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
     }

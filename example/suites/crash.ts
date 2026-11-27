@@ -200,38 +200,38 @@ export async function crash(h: Harness, r: Reporter) {
     h.state()
   );
 
-  if (Platform.OS === 'android') {
-    const headersSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'crash' } };
-    await openPage(h, headersSource);
-    await failFrom(h, 'headers');
-    let headersGone: ProcessGoneEvent | undefined;
-    const reloaded = await happens(
-      waitForLoad(
-        h,
-        async () => (headersGone = await kill(17)),
-        (s) => s.url === headersSource.uri && idle(s)
-      )
-    );
-    r.check(
-      'a source left on screen by a failed load reloads with its headers, not the failed load',
-      headersGone?.recovered === true &&
-        reloaded &&
-        (await text(h, 'headers')).includes('"x-source":"crash"'),
-      { headersGone, state: h.state() }
-    );
+  const headersSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'crash' } };
+  await openPage(h, headersSource);
+  await failFrom(h, 'headers');
+  let headersGone: ProcessGoneEvent | undefined;
+  const sourceReloaded = await happens(
+    waitForLoad(
+      h,
+      async () => (headersGone = await kill(17)),
+      (s) => s.url === headersSource.uri && idle(s)
+    )
+  );
+  r.check(
+    'a source left on screen by a failed load reloads with its headers, not the failed load',
+    headersGone?.recovered === true &&
+      sourceReloaded &&
+      (await text(h, 'headers')).includes('"x-source":"crash"'),
+    { headersGone, state: h.state() }
+  );
 
-    const failedPost = fresh(h, '/post');
-    await openPage(h, { uri: failedPost, body }, 10000);
-    await failFrom(h, 'post');
-    const loads = h.events.loads.length;
-    const failedPostGone = await kill(18);
-    await quietFor(2000);
-    r.check(
-      'a POST source left on screen by a failed load is not sent again on recovery',
-      failedPostGone?.recovered === false && h.events.loads.length === loads,
-      { failedPostGone, loads: h.events.loads.slice(loads), state: h.state() }
-    );
-    await waitForLoad(h, startCrashCountOver);
+  const failedPost = fresh(h, '/post');
+  await openPage(h, { uri: failedPost, body }, 10000);
+  await failFrom(h, 'post');
+  const loads = h.events.loads.length;
+  const failedPostGone = await kill(18);
+  await quietFor(2000);
+  r.check(
+    'a POST source left on screen by a failed load is not sent again on recovery',
+    failedPostGone?.recovered === false && h.events.loads.length === loads,
+    { failedPostGone, loads: h.events.loads.slice(loads), state: h.state() }
+  );
+  await waitForLoad(h, startCrashCountOver);
+  if (Platform.OS === 'android') {
     r.check(
       'reload() after that crash sends the POST source, not the failed load',
       (await text(h, 'body').catch(errorCode)) === body && h.state().url === failedPost,
@@ -264,8 +264,8 @@ export async function crash(h: Harness, r: Reporter) {
     );
   } else
     r.skip(
-      'a crash after a failed load from the source page',
-      'iOS asks whether the source is on screen with the failed url, and reloads in place to retry the failed load'
+      'reload() after a crash after a failed load',
+      'iOS reload() retries the failed load, also after a crash'
     );
 
   const away = await openPage(h, fresh(h, '/bridge.html'));
