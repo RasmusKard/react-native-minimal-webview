@@ -221,37 +221,32 @@ export async function errors(h: Harness, r: Reporter) {
       h.events.errors.every((e) => e.kind === 'ssl' && e.url === tapped),
     { state: h.state(), errors: h.events.errors, outcomes: h.events.outcomes }
   );
+  const reloadsPage = async (name: string, url: string) => {
+    await h.ref.current?.evaluate('window.marker = 1');
+    clearEvents(h);
+    const reloaded = await outcomeOf(() => h.ref.current?.reload());
+    const marker = await h.ref.current?.evaluate('window.marker ?? null');
+    r.check(
+      name,
+      reloaded === 'finished' &&
+        h.state().url === url &&
+        marker === null &&
+        h.events.errors.length === 0,
+      { reloaded, marker, state: h.state(), errors: h.events.errors }
+    );
+  };
   const next = fresh(h, '/');
   await waitForLoad(h, goTo(next), (s) => s.url === next && idle(s));
-  await h.ref.current?.evaluate('window.marker = 1');
-  clearEvents(h);
-  const reloadedNext = await outcomeOf(() => h.ref.current?.reload());
-  const marker = await h.ref.current?.evaluate('window.marker ?? null');
-  r.check(
-    'after a failed load, reload() reloads the page a later load committed',
-    reloadedNext === 'finished' &&
-      h.state().url === next &&
-      marker === null &&
-      h.events.errors.length === 0,
-    { reloadedNext, marker, state: h.state(), errors: h.events.errors }
-  );
+  await reloadsPage('after a failed load, reload() reloads the page a later load committed', next);
 
   if (Platform.OS === 'android') {
     const hashed = `${await openPage(h, fresh(h, '/'))}#x`;
     await failFrom(h, 'hash');
     await h.ref.current?.evaluate(`location.hash = 'x'`);
     await waitFor(h, (s) => s.url === hashed, 5000);
-    await h.ref.current?.evaluate('window.marker = 1');
-    clearEvents(h);
-    const reloadedHash = await outcomeOf(() => h.ref.current?.reload());
-    const hashMarker = await h.ref.current?.evaluate('window.marker ?? null');
-    r.check(
+    await reloadsPage(
       'after a failed load, a same-document navigation sets url, and reload() reloads that page',
-      reloadedHash === 'finished' &&
-        h.state().url === hashed &&
-        hashMarker === null &&
-        h.events.errors.length === 0,
-      { reloadedHash, hashMarker, state: h.state(), errors: h.events.errors }
+      hashed
     );
   } else
     r.skip(
