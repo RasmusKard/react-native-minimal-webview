@@ -214,8 +214,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (recovering) pendingLoad = url else webView.loadUrl(url)
   }
 
-  private fun loadAgain(page: String) {
-    if (showsSource(source, page)) source?.let(::load) else if (page.isNotEmpty()) webView.loadUrl(page)
+  private fun loadAgain() {
+    if (showsSource(source, stateUrl)) source?.let(::load) else if (stateUrl.isNotEmpty()) webView.loadUrl(stateUrl)
   }
 
   /** The ref's reload: the app's retry starts the crash-loop guard over. */
@@ -226,10 +226,10 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal fun reload() {
     when {
-      recovering -> recover(retrying = true)
+      recovering -> recover(forceLoad = true)
       !hasWebView -> applyProps()
       // WebView's reload redoes no load that committed nothing, and declines a POST source's form resubmission.
-      webView.url == null || failedLoad != null || showingPost -> loadAgain(stateUrl)
+      webView.url == null || failedLoad != null || showingPost -> loadAgain()
       else -> webView.reload()
     }
   }
@@ -331,7 +331,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (visibility == View.VISIBLE) recover()
   }
 
-  private fun recover(retrying: Boolean = false) {
+  private fun recover(forceLoad: Boolean = false) {
     val recovery = pendingRecovery ?: return
     pendingRecovery = null
     webView = createWebView(first = false)
@@ -342,8 +342,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       loadNewSource()
       pendingLoad?.let(webView::loadUrl)
       pendingLoad = null
-    } else if (!restored && (recovery.reload || retrying)) {
-      loadAgain(if (retrying) stateUrl else committedUrl)
+    } else if (!restored && (recovery.reload || forceLoad)) {
+      loadAgain()
     }
     stateChanged()
   }
@@ -361,6 +361,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   private fun tearDown(reason: DocumentEnd) {
     documents.end(reason)
+    failedLoad = null
     val detached = hookContexts
     detached.forEach { it.detach() }
     hookContexts = emptyList()

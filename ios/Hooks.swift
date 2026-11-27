@@ -96,8 +96,7 @@ public enum MinimalWebViewHooks {
 public protocol WebViewContext: AnyObject {
   /// This hook's extension's current `options`, or nil while the hook is off.
   var options: Any? { get }
-  /// The URL `useWebViewState` reports: the committed URL, or after a failed load the failed URL. It is empty before the
-  /// first load commits or fails.
+  /// The committed URL, the one `useWebViewState` reports. It is empty before the first commit.
   ///
   /// Inside ``onDocumentEnd(_:)`` it is still the page that ended.
   var url: String { get }
