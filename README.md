@@ -16,9 +16,9 @@ PR, or patch or fork the package, even if the change is one platform call.
 
 This package passes the platform APIs through instead:
 
-- `ios` and `android` props: any setting, by its platform name.
-- The ref's `get` and `call`: properties and methods, by name.
-- [Native hooks](guides/native-hooks.md): the `WKWebView` or `WebView` itself, in your own Swift or Kotlin
+- The `ios` and `android` props set any setting by its platform name.
+- The ref's `get` and `call` read any property and call any method by name.
+- [Native hooks](guides/native-hooks.md) hand the `WKWebView` or `WebView` itself to your own Swift or Kotlin
   module.
 
 ```tsx
@@ -48,30 +48,33 @@ export function Browser() {
 }
 ```
 
-A setting a newer SDK adds goes under its root's `other` key, and `call` takes any public method, so neither waits for a
-release of this package: see
+A setting from a newer SDK goes under its root's `other` key, and `call` takes any public method. Neither waits for a
+release of this package. The reference for
 [`ios`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ios),
 [`android`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#android) and
-[`call`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call).
+[`call`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call)
+has the details.
 
 ## What the core adds
 
-[How it works](guides/how-it-works.md) explains the parts. The core adds only what the platform APIs lack:
+The core adds only what the platform APIs lack. [How it works](guides/how-it-works.md) explains the parts.
 
-- [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules): navigations decided
-  natively, with a JS round trip only where a prop asks for one.
-- A typed promise bridge ([`createBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/createBridge/)): `window.nativeBridge` in
-  the page, open only to the bridge's [`allowedOrigins`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeOptions/#allowedorigins).
-- [`useWebViewState(ref)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/useWebViewState/): the navigation state, kept natively.
-- [`onPermissionRequest`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest): your app answers the
-  page's permission requests (camera, microphone, location).
-
-The [migration guide](guides/migrating-from-react-native-webview.md) covers each react-native-webview prop that works differently here.
+- [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
+  decide navigations in native code, and ask JS only where a prop says so.
+- [`createBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/createBridge/)
+  makes a typed promise bridge between the app and the page. The page reaches it as `window.nativeBridge`, which
+  exists only on the bridge's
+  [`allowedOrigins`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeOptions/#allowedorigins).
+- [`useWebViewState(ref)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/useWebViewState/)
+  returns the navigation state.
+- [`onPermissionRequest`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest)
+  lets your app answer the page's requests for the camera, the microphone or the location.
 
 ## When to use something else
 
-- Old architecture, Windows or macOS: react-native-webview supports them, this package doesn't. Neither runs on web.
-- Expo Go: the package has native code, so it needs a
+- This package needs the new architecture and runs only on iOS and Android. For the old architecture, Windows or
+  macOS, use react-native-webview.
+- The package has native code, so it doesn't run in Expo Go. It needs a
   [development build](https://docs.expo.dev/develop/development-builds/introduction/).
 
 ## Install
@@ -84,8 +87,8 @@ In an Expo app, install the package and expo-build-properties:
 npx expo install react-native-minimal-webview expo-build-properties
 ```
 
-Set the iOS and Android [minimums](#requirements) in `app.json`, before you rebuild: below iOS 17.0, the build leaves
-the package's native module out, and `WebView` throws as it renders.
+Set the iOS and Android [minimums](#requirements) in `app.json` before you rebuild. Below iOS 17.0, the build leaves out
+the package's native module, and `WebView` throws as it renders.
 
 ```json
 {
@@ -102,8 +105,8 @@ the package's native module out, and `WebView` throws as it renders.
 
 Then rebuild the app (`npx expo run:ios`, `npx expo run:android`).
 
-A bare React Native app adds Expo modules first, then installs with its package manager. It sets the minimums in
-`ios/Podfile` (`platform :ios, '17.0'`) and `android/build.gradle` (`minSdkVersion = 29`) before `pod-install`:
+In a bare React Native app, add Expo modules first, then install the package. Set the minimums in `ios/Podfile`
+(`platform :ios, '17.0'`) and `android/build.gradle` (`minSdkVersion = 29`) before you run `pod-install`:
 
 ```sh
 npx install-expo-modules@latest
@@ -120,11 +123,10 @@ npx pod-install
 | Expo SDK     | 53 (React Native 0.79, React 19)                                           |
 | Architecture | [New architecture](https://reactnative.dev/architecture/landing-page) only |
 
-Some features need a newer Android System WebView: [which ones](guides/android-system-webview.md).
+Some features need a newer Android System WebView.
+[Android System WebView versions](guides/android-system-webview.md) lists them.
 
 ## Usage
-
-Pick what you need:
 
 | To                                                                                | See                                                                                                                          |
 | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |

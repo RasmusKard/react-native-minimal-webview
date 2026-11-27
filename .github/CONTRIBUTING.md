@@ -17,26 +17,26 @@ The root `npm install` also sets up `extensions/`, the `@react-native-minimal-we
 
 `example/maestro/install.sh android <adb serial>` or `example/maestro/install.sh ios <simulator udid>` builds and
 installs the example app, and generates `example/android` or `example/ios` the first time. The on-device suites run
-only on an app installed this way, and not after a native source or an installed package has changed since.
+only on an app installed this way, and only until a native source or an installed package changes. Then install the
+app again.
 
-Dependabot leaves Expo's packages, React and React Native alone: they only work as the set Expo names, and the root and
-`example/` stay on the same one. The `Expo packages` workflow opens a PR that moves both each week. By hand, in the root
-and in `example/`: `npx expo install --fix`, then `npx -y npm@11 install` for the lockfile.
+Dependabot doesn't update Expo's packages, React or React Native. They must stay on the set of versions that one Expo
+SDK names, and the root and `example/` must use the same set. Each week, the `Expo packages` workflow opens a PR that
+moves both. To move them by hand, run `npx expo install --fix` in the root and in `example/`, then
+`npx -y npm@11 install` to update the lockfile.
 
 ## Checks
 
 ```sh
-# Both packages: TS tests, ESLint and Prettier, knip, type-checks (the docs' samples too), build, TSDoc, that the
-# generated files are current, that the DocC landing page lists every public Swift type, that the root and example/
-# resolve the same Expo, React and React Native, that both lockfiles keep the libc fields npm 10 strips, that the ios
-# and kotlin workflows' cache keys hash every file their jobs read, and that the example's JavaScript bundles for both
-# platforms
+# What the test workflow runs, for both packages: the TS tests, lint, type-checks, the build, TSDoc and the repo's
+# consistency checks. The check script in package.json lists them.
 npm run check
 # Stryker on the files .config/stryker.config.json lists
 npm run mutation
-# The bridge protocol's TLA+ model in src/__tests__/bridge-model; --mutants also checks that each property catches a broken variant
+# The bridge protocol's TLA+ model in src/__tests__/bridge-model. --mutants also checks that each property catches a
+# broken variant.
 node .github/scripts/check-bridge-model.mts --mutants
-# Kotlin tests, and the extensions' Kotlin compiled; -PmrwCoverage adds JaCoCo coverage
+# Kotlin tests, and a compile of the extensions' Kotlin. -PmrwCoverage adds JaCoCo coverage.
 (cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin)
 # Swift tests
 ios/Tests/run.sh
@@ -49,29 +49,30 @@ periphery scan --config .config/periphery.yml
 ## Docs site
 
 The `docs` workflow builds the site and deploys it to GitHub Pages on every push to `main`. `npm run docs` builds it
-locally: it generates the API reference for TypeScript, Kotlin and Swift and writes the site to `build/docs/site/site`.
-Kotlin and Swift build the library, so it needs `example/android` and `example/ios`. How the site is laid out:
-[rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#cli).
+locally. It generates the API reference for TypeScript, Kotlin and Swift, and writes the site to `build/docs/site/site`.
+The Kotlin and Swift references build the library, so `npm run docs` needs `example/android` and `example/ios`.
+[rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#cli) describes how the site is laid out.
 
 ## On-device suites
 
-The suites (one file each in `example/suites/`, listed in `names.ts`) run inside the example app, and Maestro drives
-them: one flow, `example/maestro/suite.yaml`, does on the device what a suite asks for. In `example/`, start
-the test pages server (`npm run test-pages`) and Metro (`npx expo start`), install the app, then:
+Each suite is a file in `example/suites/`, listed in `names.ts`. The suites run inside the example app. One Maestro
+flow, `example/maestro/suite.yaml`, does on the device what a suite asks for. To run them, start the test pages server
+(`npm run test-pages`) and Metro (`npx expo start`) in `example/`, install the app, then:
 
 ```sh
 example/maestro/run.sh android <adb serial>                  # every suite
 example/maestro/run.sh ios <simulator udid> bridge network   # only the named ones
 ```
 
-`run.sh` prints the failed checks and saves the run to `$TMPDIR`: its log as `harness-<platform>-<device>.log` and its
-checks as a JUnit report, the same name with `.xml`. `example/maestro/self-test.sh <platform> <device>` checks that a
-failing suite fails a run. To tell a flaky check from a regression, run `example/maestro/repeat.sh` on the commits
-before and after a change: it runs suites a given number of times on a commit and counts how many runs passed each
-check.
+`run.sh` prints the failed checks. It saves the run's log to `$TMPDIR/harness-<platform>-<device>.log`, and a JUnit
+report of its checks next to it, with `.xml` in place of `.log`. `example/maestro/self-test.sh <platform> <device>`
+checks that a failing suite fails a run. To tell a flaky check from a regression, run `example/maestro/repeat.sh` on
+the commits before and after a change. It runs suites a given number of times on a commit and counts how many runs
+passed each check.
 
-Run the app on one device per platform at a time: every instance of a platform takes its suites from the same queue.
-A second checkout runs its suites beside the first with a Metro and a test pages server of its own: set
+Run the app on one device per platform at a time, because every instance of a platform takes its suites from the same
+queue.
+A second checkout can run its suites beside the first, with its own Metro and test pages server. Set
 `RCT_METRO_PORT`, `EXPO_PUBLIC_PAGES_PORT` and `EXPO_PUBLIC_PAGES_HTTPS_PORT` for both servers, `install.sh` and
 `run.sh`. `run.sh` stops unless the servers on those ports serve its checkout, and points the app at its Metro.
 
@@ -83,9 +84,9 @@ example/maestro/install.sh android <adb serial> --variant release
 example/maestro/run.sh android <adb serial> settings
 ```
 
-Android emulators need a Google APIs system image:
-[guides/android-system-webview.md](../guides/android-system-webview.md#test-the-oldest-versions) says why. Start them
-with `-gpu host`, or they may render in software.
+Android emulators need a Google APIs system image.
+[Test the oldest versions](../guides/android-system-webview.md#test-the-oldest-versions) says why. Start them with
+`-gpu host`, or they may render in software.
 
 ```sh
 sdkmanager 'system-images;android-37.1;google_apis_ps16k;arm64-v8a'
@@ -93,7 +94,8 @@ avdmanager create avd -n mrw-api37 -k 'system-images;android-37.1;google_apis_ps
 emulator -avd mrw-api37 -gpu host
 ```
 
-For the oldest versions the suites run on (they need `evaluate`, so not a WebView older than 83):
+The suites use `evaluate`, so they need Android System WebView 83 or later. These images have the oldest versions the
+suites run on:
 
 - Android API 29, WebView 91: the `android-29` Google APIs image
 - Android WebView 133: the `android-36` Google APIs image
