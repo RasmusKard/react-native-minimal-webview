@@ -905,7 +905,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * {@link IOSSettings.configuration | ios.configuration} recreates the WebView. For a suffix that changes, read
    * `navigator.userAgent` once with {@link WebViewRef.evaluate | evaluate()} and set `userAgent` to it plus the suffix.
    *
-   * A change applies from the next navigation.
+   * A change applies from the next navigation. On Android it also applies at once to the page's own requests and
+   * `navigator.userAgent`, and a change during a navigation cancels it: WebView loads the page it was on again, or on
+   * a first load the URL it was loading, with the new value.
    */
   userAgent?: string;
   /**
