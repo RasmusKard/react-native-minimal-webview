@@ -307,10 +307,9 @@ class HookReply internal constructor(
   private val settled = AtomicBoolean()
 
   /**
-   * Resolves the JS call with [value], converted as
-   * [ref.call's results](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#call)
-   * are. A primitive array such as `IntArray` arrives as null, and a non-finite number rejects the call with
-   * `native_error` instead.
+   * Resolves the JS call with [value]. Strings, booleans, numbers, and `Map`s, `Collection`s and `Array`s of them cross
+   * as JSON. Any other object, a primitive array such as `IntArray` included, arrives as null. A non-finite number
+   * rejects the call with `native_error` instead.
    */
   override fun invoke(value: Any?) {
     if (settled.compareAndSet(false, true)) resolve(value)

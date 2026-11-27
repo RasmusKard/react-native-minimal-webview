@@ -10,7 +10,7 @@ const freeze = <T extends object>(value: T): T => {
  * scheme opens externally from the main frame when a user gesture started it ({@link NavigationRule.userInitiated}).
  *
  * Any other navigation, such as an iframe's or one without a gesture, is blocked. So a page can open an app only right
- * after the user's tap, click or key press. On iOS, the redirect after a form POST doesn't count as one, so an OAuth
+ * after the user's tap, click or key press. On iOS, the redirect after a form POST doesn't count as a user gesture, so an OAuth
  * `myapp://callback` that follows a POST is blocked. To open it, put an `external` rule for its scheme before these
  * rules.
  *

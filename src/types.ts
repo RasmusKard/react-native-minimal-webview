@@ -36,7 +36,8 @@ export type WebViewSource =
       /**
        * Makes the request a POST with this form-urlencoded body.
        *
-       * On iOS, `headers` can set another `Content-Type`. Android sends no `headers` with a POST.
+       * Its `Content-Type` is `application/x-www-form-urlencoded`. On iOS, `headers` can set another. Android sends no
+       * `headers` with a POST.
        */
       body?: string;
       /**
@@ -212,8 +213,8 @@ export type NavigationState = {
    * - `finished`: the page arrived, also with an HTTP error status such as 404. The site's page shows, and `onError`
    *   gets an `http` error.
    * - `failed`: a network or SSL error, or a renderer crash, cut it off.
-   * - `cancelled`: it never showed a page, as after a stop before the response, a download, a 204 or a redirect the
-   *   rules blocked. A stop after the page arrived is `cancelled` on iOS and `finished` on Android.
+   * - `cancelled`: it never showed a page, as after a stop before the response, a download or a redirect the rules
+   *   blocked. A stop after the page arrived is `cancelled` on iOS and `finished` on Android.
    *
    * On Android with an Android System WebView older than 146, a load that never commits doesn't change it.
    */
@@ -636,7 +637,8 @@ export type IOSPrivateSettingKeys = {
  * way. Set it with `call('webView.setOpaque:', [false])`.
  *
  * A root's default keys are the package's, and yours go over them. A key the package doesn't set keeps WebKit's
- * default. A key you remove goes back to the value it had before you first set it.
+ * default. A key you remove goes back to the value it had before you first set it. To put
+ * `webView.underPageBackgroundColor` back to WebKit's default, set it to `null` instead of removing it.
  * @ios
  * @see [Use a platform API](https://rasmuskard.github.io/react-native-minimal-webview/guides/platform-apis/)
  * @group Platform settings
@@ -842,8 +844,8 @@ export type CodedError = Error & { code: ErrorCode };
  * React Native's `ViewProps` go to the native view.
  *
  * Each `on…` callback is read when its event or request comes, so adding, changing or removing one applies to the
- * next. A request without its callback gets the default its prop describes. A callback that throws or rejects is
- * logged with `console.error`, and its request gets the refusing answer:
+ * next. A request without its callback gets the default its prop describes. A request whose callback throws or rejects
+ * is logged with `console.error` and gets the refusing answer:
  *
  * - `onNavigationRequest`: `block`
  * - `onOpenExternal`: null, so the core opens nothing
