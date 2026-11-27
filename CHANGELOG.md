@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.3](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.2...react-native-minimal-webview-v1.3.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* Base iOS crash recovery on the page shown ([#343](https://github.com/RasmusKard/react-native-minimal-webview/issues/343)) ([69ad150](https://github.com/RasmusKard/react-native-minimal-webview/commit/69ad1501a6bd474ceddefadf7b728eee2995dabd))
+* Show and retry a failed SSL load on Android ([#340](https://github.com/RasmusKard/react-native-minimal-webview/issues/340)) ([32ae99c](https://github.com/RasmusKard/react-native-minimal-webview/commit/32ae99c5e8c2f3690e38f3eef981e2dc48005e14))
+
 ## [1.3.2](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.1...react-native-minimal-webview-v1.3.2) (2026-11-24)
 
 
