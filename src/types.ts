@@ -139,7 +139,7 @@ export type NavigationRule = {
    *
    * On Android, `ask` works only in the main frame and is `block` elsewhere. The navigation is cancelled, and an
    * allowed one loads again after the answer as a load the app starts. A site sees that load differ from the page's
-   * own navigation, which an `allow` rule keeps:
+   * own navigation, which an `allow` rule keeps outside a new window:
    *
    * - The page's URL goes as the referrer (only its origin to another origin, none from https to http), whatever the
    *   page's referrer policy or the link's `noreferrer` says.
@@ -915,8 +915,7 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * `navigator.userAgent` once with {@link WebViewRef.evaluate | evaluate()} and set `userAgent` to it plus the suffix.
    *
    * A change applies from the next navigation. On Android it also applies at once to the page's own requests and
-   * `navigator.userAgent`, and a change during a navigation cancels it: WebView loads the page it was on again, or on
-   * a first load the URL it was loading, with the new value.
+   * `navigator.userAgent`, and a change during a load cancels that load: WebView loads again with the new value.
    */
   userAgent?: string;
   /**
