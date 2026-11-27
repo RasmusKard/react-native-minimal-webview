@@ -28,19 +28,20 @@ import { WebView, type WebViewRef } from 'react-native-minimal-webview';
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  const pageDown = () => {
-    // Android's WebView.pageDown(boolean): a method string names one platform's method
-    if (Platform.OS === 'android') ref.current?.call('webView.pageDown', [true]);
-  };
+  // A method string names one platform's method
+  const scrollToTop = () =>
+    Platform.OS === 'ios'
+      ? ref.current?.call('scrollView.setContentOffset:animated:', [{ x: 0, y: 0 }, true])
+      : ref.current?.call('webView.pageUp', [true]); // WebView.pageUp(boolean): true goes to the top
   return (
     <>
-      <Button title="Page down" onPress={pageDown} />
+      <Button title="Top" onPress={scrollToTop} />
       <WebView
         ref={ref}
         source={{ uri: 'https://example.com' }}
         style={{ flex: 1 }}
-        ios={{ scrollView: { bounces: false } }}
-        android={{ settings: { textZoom: 120 } }}
+        ios={{ webView: { allowsBackForwardNavigationGestures: true } }} // swipe from the edge to go back
+        android={{ settings: { builtInZoomControls: false } }} // no pinch zoom
       />
     </>
   );

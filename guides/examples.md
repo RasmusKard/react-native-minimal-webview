@@ -223,17 +223,20 @@ import { IOSConstants, createWebViewRef } from 'react-native-minimal-webview';
 
 const ref = createWebViewRef(); // pass it as the `<WebView ref={ref}>`
 
-const bounces = await ref.current?.get('scrollView.bounces'); // iOS; 'settings.textZoom' on Android
+// Android: the WebView's user agent, to send the same one from your own requests
+const userAgent = await ref.current?.get('settings.userAgentString');
 
-// Android: a public method of settings, webView, cookieManager or webStorage
+// Log out on Android: clear the cookies and the pages' storage.
+// The method is a public one of settings, webView, cookieManager or webStorage
 await ref.current?.call('webStorage.deleteAllData');
 await ref.current?.call('cookieManager.removeAllCookies');
 
-// iOS: an Objective-C selector
+// Log out on iOS. The method is an Objective-C selector
 await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
   { set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] },
   { date: 0 },
 ]);
+// iOS: a screenshot of the page, for a tab switcher's thumbnail
 const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:completionHandler:', [
   null,
 ]); // base64
@@ -277,7 +280,8 @@ is open.
 import { WebView, createWebViewRef } from 'react-native-minimal-webview';
 
 const ref = createWebViewRef();
-const config = { apiUrl: 'https://api.example.com' };
+// What the page's own scripts read as they start: here, that it runs inside the app
+const config = { inApp: true, apiUrl: 'https://api.example.com' };
 
 <WebView
   ref={ref}
@@ -289,7 +293,10 @@ const config = { apiUrl: 'https://api.example.com' };
 />;
 
 const title = await ref.current?.evaluate('document.title'); // an expression, not statements
-await ref.current?.evaluate(`(() => { document.body.style.background = 'red'; })()`);
+// Statements go in a function you call: stop the page's videos as the user leaves the screen
+await ref.current?.evaluate(
+  `(() => { for (const video of document.querySelectorAll('video')) video.pause(); })()`
+);
 ```
 
 ## Local files
@@ -300,14 +307,12 @@ Load an HTML string with `html`, its relative URLs resolved against `baseUrl`, o
 import { useAssets } from 'expo-asset';
 import { WebView } from 'react-native-minimal-webview';
 
-export function LocalPages() {
-  const [assets] = useAssets(require('./page.html'));
+export function LocalPages({ articleHtml }: { articleHtml: string }) {
+  const [assets] = useAssets(require('./terms.html')); // a page that has to open offline
   return (
     <>
-      <WebView
-        source={{ html: '<img src="logo.png">', baseUrl: 'https://example.com' }}
-        style={{ flex: 1 }}
-      />
+      {/* An article's HTML from your API: its <img src="/images/photo.jpg"> loads from baseUrl */}
+      <WebView source={{ html: articleHtml, baseUrl: 'https://example.com' }} style={{ flex: 1 }} />
       {assets?.[0]?.localUri && (
         <WebView
           source={{ uri: assets[0].localUri }}
