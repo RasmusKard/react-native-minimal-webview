@@ -165,7 +165,6 @@ export async function errors(h: Harness, r: Reporter) {
     { retried, state: h.state(), errors: h.events.errors }
   );
 
-  /** After an SSL error of `failed`, the main-frame load the suite just started. */
   const showsAndRetries = async (name: string, failed: string) => {
     await waitFor(h, idle, 5000);
     await sleep(500);
