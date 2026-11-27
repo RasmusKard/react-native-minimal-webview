@@ -220,8 +220,9 @@ after your rules. A navigation that no rule matches is blocked, while react-nati
 A late `onNavigationRequest` answer blocks the navigation, where react-native-webview's Android let it through.
 
 Keep `ask` for the navigations only your code can decide, and give the pages you always load an `allow` rule in front
-of it, as above. Android can't hold a navigation until JS answers: it cancels an asked one and loads it again when
-allowed, without the page's referrer policy or the gesture flag ([`action`][navigationruleaction]).
+of it, as above. Android can't hold a navigation until JS answers, as react-native-webview did: it cancels an asked one
+and, when allowed, loads it again as a load the app starts. That load ignores the page's referrer policy, sends other
+`Sec-Fetch-*` headers than the page's own navigation, and adds a history entry for a `location.replace` ([`action`][navigationruleaction]).
 
 The [request][navigationrequest] has `mainFrame` in place of `isTopFrame`, and `userInitiated` in place of
 `navigationType: 'click'`. It has no `mainDocumentURL`. A new window (`onOpenWindow`) is a request with

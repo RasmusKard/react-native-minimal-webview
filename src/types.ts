@@ -109,7 +109,9 @@ export type NavigationRule = {
    * A `target=_blank` or `window.open` navigation, always a main-frame one.
    *
    * An allowed one loads in place. There is never a second WebView, so the page gets no `window.opener`. For real
-   * popups, a native hook takes `createWebViewWith` (iOS) or `onCreateWindow` (Android).
+   * popups, a native hook takes `createWebViewWith` (iOS) or `onCreateWindow` (Android). On Android each allowed
+   * one, by a rule or an `ask`, is a load the app starts, which a site sees as {@link NavigationRule.action | action}
+   * says.
    *
    * - One to `data:`, `blob:`, `javascript:`, `file:` or an `about:` URL other than `about:blank` is always blocked.
    *   On Android a `javascript:` one's script may still run, with the page's origin.
@@ -136,7 +138,14 @@ export type NavigationRule = {
    * What the navigations it matches do. `ask` puts each to `onNavigationRequest`.
    *
    * On Android, `ask` works only in the main frame and is `block` elsewhere. The navigation is cancelled, and an
-   * allowed one loads again after the answer, without the page's referrer policy or the gesture flag.
+   * allowed one loads again after the answer as a load the app starts. A site sees that load differ from the page's
+   * own navigation, which an `allow` rule keeps:
+   *
+   * - The page's URL goes as the referrer (only its origin to another origin, none from https to http), whatever the
+   *   page's referrer policy or the link's `noreferrer` says.
+   * - It is sent as a navigation from outside any page, as for a typed URL: `Sec-Fetch-Site: none` and
+   *   `Sec-Fetch-User: ?1`.
+   * - A `location.replace` to it adds a history entry instead of replacing the current one.
    */
   action: NavigationAction | 'ask';
 };
