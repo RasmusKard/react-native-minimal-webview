@@ -17,9 +17,12 @@ import {
   waitForLoad,
   happens,
   poll,
+  quietFor,
+  errorOf,
   waitForPresentation,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
+import { HTTPS } from '../pages';
 
 const CORE_CRASH_WINDOW_MS = 60_000;
 const ANDROID_SAME_CRASH_MS = 100;
@@ -197,6 +200,47 @@ export async function crash(h: Harness, r: Reporter) {
     (await text(h, 'body')) === body,
     h.state()
   );
+
+  if (Platform.OS === 'android') {
+    const failFrom = (page: string) =>
+      errorOf(h, () =>
+        h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, `${HTTPS}/${page}`))}`)
+      );
+    const headersSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'crash' } };
+    await openPage(h, headersSource);
+    await failFrom('headers');
+    let headersGone: ProcessGoneEvent | undefined;
+    const reloaded = await happens(
+      waitForLoad(
+        h,
+        async () => (headersGone = await kill(17)),
+        (s) => s.url === headersSource.uri && idle(s)
+      )
+    );
+    r.check(
+      'a source left on screen by a failed load reloads with its headers, not the failed load',
+      headersGone?.recovered === true &&
+        reloaded &&
+        (await text(h, 'headers')).includes('"x-source":"crash"'),
+      { headersGone, state: h.state() }
+    );
+
+    await openPage(h, { uri: fresh(h, '/post'), body }, 10000);
+    await failFrom('post');
+    const loads = h.events.loads.length;
+    const failedPostGone = await kill(18);
+    await quietFor(2000);
+    r.check(
+      'a POST source left on screen by a failed load is not sent again on recovery',
+      failedPostGone?.recovered === false && h.events.loads.length === loads,
+      { failedPostGone, loads: h.events.loads.slice(loads), state: h.state() }
+    );
+    await waitForLoad(h, startCrashCountOver);
+  } else
+    r.skip(
+      'a crash after a failed load from the source page',
+      'iOS asks whether the source is on screen with the failed url, and reloads in place to retry the failed load'
+    );
 
   const away = await openPage(h, fresh(h, '/bridge.html'));
   const states: { state: string; at: number }[] = [];

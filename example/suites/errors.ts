@@ -2,13 +2,16 @@ import { Platform } from 'react-native';
 
 import {
   clearEvents,
+  errorOf,
   fresh,
   idle,
   nextEntry,
   openPage,
   poll,
   sleep,
+  tapLink,
   waitFor,
+  waitForLoad,
   happens,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
@@ -183,21 +186,54 @@ export async function errors(h: Harness, r: Reporter) {
     );
   };
 
-  for (const [name, to, failed] of [
-    ['ssl error from the page', `'${HTTPS}/link'`, `${HTTPS}/link`],
-    ['ssl error after a redirect', `'/redirect?to=${HTTPS}/redirected'`, `${HTTPS}/redirected`],
-  ]) {
+  const goTo = (url: string) => () =>
+    h.ref.current?.evaluate(`location.href = ${JSON.stringify(url)}`);
+  const tapped = `${HTTPS}/tapped`;
+  for (const [name, go, failed] of [
+    ['ssl error from the page', goTo(`${HTTPS}/link`), `${HTTPS}/link`],
+    ['ssl error after a redirect', goTo(`/redirect?to=${HTTPS}/redirected`), `${HTTPS}/redirected`],
+    ['ssl error of a tapped link', () => tapLink(h, r, tapped), tapped],
+  ] as const) {
     await openPage(h, fresh(h, '/'));
     clearEvents(h);
-    await h.ref.current?.evaluate(`location.href = ${to}`);
-    const got = await happens(waitFor(h, () => h.events.errors.length > 0, 10000));
-    r.check(
-      name,
-      got && h.events.errors[0]?.kind === 'ssl' && h.events.errors[0]?.url === failed,
-      h.events.errors[0]
-    );
+    const error = await errorOf(h, go);
+    r.check(name, error?.kind === 'ssl' && error.url === failed, error);
     await showsAndRetries(name, failed);
   }
+
+  clearEvents(h);
+  await nextEntry(
+    h.events.outcomes,
+    () => {
+      h.ref.current?.reload();
+      h.ref.current?.reload();
+    },
+    (outcome) => outcome === 'failed',
+    10000
+  );
+  await waitFor(h, idle, 5000);
+  r.check(
+    'two reload() calls at once retry the failed url',
+    h.state().url === tapped &&
+      h.state().outcome === 'failed' &&
+      h.events.errors.length > 0 &&
+      h.events.errors.every((e) => e.kind === 'ssl' && e.url === tapped),
+    { state: h.state(), errors: h.events.errors, outcomes: h.events.outcomes }
+  );
+  const next = fresh(h, '/');
+  await waitForLoad(h, goTo(next), (s) => s.url === next && idle(s));
+  await h.ref.current?.evaluate('window.marker = 1');
+  clearEvents(h);
+  const reloadedNext = await outcomeOf(() => h.ref.current?.reload());
+  const marker = await h.ref.current?.evaluate('window.marker ?? null');
+  r.check(
+    'after a failed load, reload() reloads the page a later load committed',
+    reloadedNext === 'finished' &&
+      h.state().url === next &&
+      marker === null &&
+      h.events.errors.length === 0,
+    { reloadedNext, marker, state: h.state(), errors: h.events.errors }
+  );
 
   const first = fresh(h, `${HTTPS}/first`);
   clearEvents(h);
