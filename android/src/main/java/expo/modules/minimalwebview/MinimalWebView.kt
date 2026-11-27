@@ -88,7 +88,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     }
   /** Chromium commits no error page for a cancelled SSL error: the previous page stays. */
   internal var failedLoad: String? = null
-  internal val url get() = failedLoad ?: committedUrl
+  internal val stateUrl get() = failedLoad ?: committedUrl
   internal var pendingUrl: String? = null
   internal var title = ""
   internal var loading = false
@@ -214,8 +214,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (recovering) pendingLoad = url else webView.loadUrl(url)
   }
 
-  private fun loadAgain() {
-    if (showsSource(source, url)) source?.let(::load) else if (url.isNotEmpty()) webView.loadUrl(url)
+  private fun loadAgain(page: String) {
+    if (showsSource(source, page)) source?.let(::load) else if (page.isNotEmpty()) webView.loadUrl(page)
   }
 
   /** The ref's reload: the app's retry starts the crash-loop guard over. */
@@ -226,15 +226,15 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
 
   internal fun reload() {
     when {
-      recovering -> recover(forceLoad = true)
+      recovering -> recover(retrying = true)
       !hasWebView -> applyProps()
       // WebView's reload redoes no load that committed nothing, and declines a POST source's form resubmission.
-      webView.url == null || failedLoad != null || showingPost -> loadAgain()
+      webView.url == null || failedLoad != null || showingPost -> loadAgain(stateUrl)
       else -> webView.reload()
     }
   }
 
-  private val showingPost get() = source?.body != null && showsSource(source, url)
+  private val showingPost get() = source?.body != null && showsSource(source, committedUrl)
 
   private fun applySettings(force: Boolean = false) {
     platformSettings.apply(settings, force).forEach { warn("android.${it.key}: ${it.reason}") }
@@ -308,7 +308,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !showingPost
     // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
-    val restorable = !showsSource(source, url)
+    val restorable = !showsSource(source, committedUrl)
     val history = Bundle().takeIf { reload && webView.saveState(it) != null }
     tearDown(DocumentEnd.CRASHED)
     pendingRecovery = Recovery(reload, history, restorable)
@@ -331,7 +331,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (visibility == View.VISIBLE) recover()
   }
 
-  private fun recover(forceLoad: Boolean = false) {
+  private fun recover(retrying: Boolean = false) {
     val recovery = pendingRecovery ?: return
     pendingRecovery = null
     webView = createWebView(first = false)
@@ -342,8 +342,8 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       loadNewSource()
       pendingLoad?.let(webView::loadUrl)
       pendingLoad = null
-    } else if (!restored && (recovery.reload || forceLoad)) {
-      loadAgain()
+    } else if (!restored && (recovery.reload || retrying)) {
+      loadAgain(if (retrying) stateUrl else committedUrl)
     }
     stateChanged()
   }
@@ -397,7 +397,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       webView.canGoBack() to webView.canGoForward()
     }
     val state = mapOf(
-      "url" to url,
+      "url" to stateUrl,
       "pendingUrl" to pendingUrl,
       "title" to title,
       "loading" to loading,
@@ -447,8 +447,8 @@ internal fun profileOf(webView: WebView): Profile? =
   if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) WebViewCompat.getProfile(webView) else null
 
 /**
- * Whether the committed [url] is the [source]'s page (or nothing has committed yet): the same [canonicalUrl] up to
- * trailing slashes. An html source's page is its baseUrl or about:blank.
+ * Whether [url] is the [source]'s page, or empty (nothing has committed yet): the same [canonicalUrl] up to trailing
+ * slashes. An html source's page is its baseUrl or about:blank.
  */
 internal fun showsSource(source: WebViewSource?, url: String): Boolean {
   if (source == null) return false

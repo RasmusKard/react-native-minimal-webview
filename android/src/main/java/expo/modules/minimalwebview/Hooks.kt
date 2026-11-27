@@ -175,8 +175,8 @@ interface WebViewContext {
   val options: Any?
 
   /**
-   * The committed URL, the one `useWebViewState` reports. It is empty before the first commit and after the attach
-   * ended.
+   * The URL `useWebViewState` reports: the committed URL, or after a failed load the failed URL. It is empty before the
+   * first load commits or fails, and after the attach ended.
    *
    * Inside [onDocumentEnd] it is still the page that ended. In a client's `onPageStarted` it may already be the new
    * page.
@@ -388,7 +388,7 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebV
   Attachment(view.hookOptions[hook.key]), WebViewContext {
   private var view: MinimalWebView? = view
   val key get() = hook.key
-  override val url get() = view?.url.orEmpty()
+  override val url get() = view?.stateUrl.orEmpty()
   private val documentEndHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   private val destroyedHandlers = mutableListOf<(DocumentEnd) -> Unit>()
   val handlers = mutableMapOf<String, (List<Any?>, HookReply) -> Unit>()
