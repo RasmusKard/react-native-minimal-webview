@@ -88,7 +88,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   @objc private func recoverIfVisible() {
     guard recoveryPending, window != nil, UIApplication.shared.applicationState != .background else { return }
     recoveryPending = false
-    loadAgain(committedUrl)
+    loadAgain(.pageShown)
   }
 
   private var documentOpen = false
@@ -167,13 +167,20 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     }
   }
 
-  private func showsSource(_ page: String) -> Bool {
-    guard let source else { return false }
-    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && page == committedUrl }
-    return Recovery.showsSource(uri.absoluteString, page)
+  private enum Again { case failedLoad, pageShown }
+
+  private func retried(_ again: Again) -> (url: String, inSourceRoot: Bool)? {
+    again == .pageShown && !committedUrl.isEmpty ? nil : failedLoad
   }
 
-  private var onPostSource: Bool { source?.body != nil && showsSource(committedUrl) }
+  private func showsSource(_ again: Again) -> Bool {
+    guard let source else { return false }
+    let failed = retried(again)
+    guard let uri = source.uri.flatMap(URL.init) else { return htmlCommit != nil && failed == nil }
+    return Recovery.showsSource(uri.absoluteString, failed?.url ?? committedUrl)
+  }
+
+  private func onPostSource(_ again: Again) -> Bool { source?.body != nil && showsSource(again) }
 
   private func report(_ rejected: [PlatformSettings.Rejected]) {
     rejected.forEach { warn("ios.\($0.key): \($0.reason)") }
@@ -199,16 +206,21 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   func reload() {
     recoveryPending = false
     // WebKit's reload redoes no failed load, POST or html source, and loads nothing while `url` is nil.
-    let onHtmlSource = source?.uri == nil && showsSource(committedUrl)
-    if let webView, webView.url != nil, failedLoad == nil, !onPostSource, !onHtmlSource { webView.reload() } else { loadAgain(stateUrl) }
+    let onHtmlSource = source?.uri == nil && showsSource(.failedLoad)
+    if let webView, webView.url != nil, failedLoad == nil, !onPostSource(.failedLoad), !onHtmlSource {
+      webView.reload()
+    } else {
+      loadAgain(.failedLoad)
+    }
   }
 
-  private func loadAgain(_ page: String) {
+  private func loadAgain(_ again: Again) {
     guard let webView, !preparing else { return }
-    if let source, page.isEmpty || showsSource(page) {
+    let failed = retried(again)
+    if let source, showsSource(again) || failed == nil && webView.backForwardList.currentItem == nil {
       load(source)
-    } else if let failedLoad, failedLoad.url == page, let target = URL(string: page) {
-      loadProgrammatic(URLRequest(url: target), inSourceRoot: failedLoad.inSourceRoot)
+    } else if let failed, let target = URL(string: failed.url) {
+      loadProgrammatic(URLRequest(url: target), inSourceRoot: failed.inSourceRoot)
     } else {
       webView.reload()
     }
@@ -410,7 +422,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   /// The WKWebView survives its web content process's death.
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource
+    let recovered = Recovery.crashAllowsReload(&crashTimes, now: ProcessInfo.processInfo.systemUptime) && !onPostSource(.pageShown)
     endDocument(.crashed)
     if lastEmitted?["loading"] as? Bool == true { outcome = .failed }
     if recovered {
