@@ -286,6 +286,9 @@ export function Shop({ token }: { token: string }) {
 The listener's second argument, `{ origin }` ([`BridgeSender`][bridgesender]), takes the place of `nativeEvent.url` for
 checking which page sent a message. It is an origin, without the path.
 
+The reply waits for the page's `DOMContentLoaded`, where `postMessage` delivered at once:
+[`reactNativeWebViewMessages`][reactnativewebviewmessages] says what that changes for a request the page sends.
+
 ### Scroll position
 
 An injected script can report the main frame's scroll position over the bridge, at most once per animation frame. To

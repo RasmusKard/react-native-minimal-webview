@@ -78,7 +78,8 @@ and report what has no counterpart. List every workaround in the report.
 Set the bridge's `allowedOrigins` to the origins of the pages whose messages the app acted on before, never `*` and
 never every site the WebView can show. Pages that call
 `window.ReactNativeWebView` keep working through `reactNativeWebViewMessages`; don't edit web projects outside this
-repo.
+repo. What the app sends them now waits for the page's `DOMContentLoaded`: report it for each page that waits for a
+reply.
 
 ## 5. Remove react-native-webview
 
