@@ -915,7 +915,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * `navigator.userAgent` once with {@link WebViewRef.evaluate | evaluate()} and set `userAgent` to it plus the suffix.
    *
    * A change applies from the next navigation. On Android it also applies at once to the page's own requests and
-   * `navigator.userAgent`, and a change during a load cancels that load: WebView loads again with the new value.
+   * `navigator.userAgent`, and a change during a load cancels that load. WebView then loads with the new value: a
+   * first load starts over, and in place of a navigation the page started, which is lost, the page it left loads
+   * again.
    */
   userAgent?: string;
   /**
