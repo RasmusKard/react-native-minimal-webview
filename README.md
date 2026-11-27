@@ -48,7 +48,7 @@ export function Browser() {
 }
 ```
 
-A setting from a newer SDK goes under its root's `other` key, and `call` takes any public method. Neither waits for a
+A setting from a newer SDK goes under an `other` key, as in `webView: { other: { someNewerProperty: true } }`, and `call` takes any public method. Neither waits for a
 release of this package. The reference for
 [`ios`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ios),
 [`android`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#android) and
@@ -68,7 +68,7 @@ The core adds only what the platform APIs lack. [How it works](guides/how-it-wor
 - [`useWebViewState(ref)`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/functions/useWebViewState/)
   returns the navigation state.
 - [`onPermissionRequest`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest)
-  lets your app answer the page's requests for the camera, the microphone or the location.
+  lets your app answer the page's permission requests, such as the camera and the microphone.
 
 ## When to use something else
 
