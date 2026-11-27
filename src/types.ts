@@ -203,7 +203,10 @@ export type NavigationState = {
   /**
    * Whether there is a page to go back to.
    *
-   * On Android with an Android System WebView older than 102, an iframe's history entry doesn't update it.
+   * On Android, as for Chrome's back button, it leaves out the entry of a page that added another without a user
+   * gesture (a `pushState`, a hash change, or a navigation to another document that a script or timer started), unless
+   * a tap led to that page. So it is false when every earlier entry is left out, whatever `history.length` says. With
+   * an Android System WebView older than 102, an iframe's history entry doesn't update it.
    */
   canGoBack: boolean;
   /** Whether there is a page to go forward to. An iframe's history entry updates it as it does `canGoBack`. */
@@ -1153,8 +1156,7 @@ export type WebViewRef = {
   /**
    * Goes back one page. Does nothing unless `canGoBack`.
    *
-   * On Android it also skips the history entries a page added without a user gesture (`pushState`, a hash change) and
-   * the page that added them.
+   * On Android it also skips the entries that {@link NavigationState.canGoBack | canGoBack} leaves out.
    */
   goBack(): void;
   /** Goes forward one page. Does nothing unless `canGoForward`. */
