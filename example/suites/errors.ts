@@ -2,13 +2,17 @@ import { Platform } from 'react-native';
 
 import {
   clearEvents,
+  errorOf,
+  failFrom,
   fresh,
   idle,
   nextEntry,
   openPage,
   poll,
   sleep,
+  tapLink,
   waitFor,
+  waitForLoad,
   happens,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
@@ -165,18 +169,95 @@ export async function errors(h: Harness, r: Reporter) {
     { retried, state: h.state(), errors: h.events.errors }
   );
 
-  for (const [name, to, failed] of [
-    ['ssl error from the page', `'${HTTPS}/link'`, `${HTTPS}/link`],
-    ['ssl error after a redirect', `'/redirect?to=${HTTPS}/redirected'`, `${HTTPS}/redirected`],
-  ]) {
+  const showsAndRetries = async (name: string, failed: string) => {
+    await waitFor(h, idle, 5000);
+    await sleep(500);
+    r.check(`${name}: url is the failed url`, h.state().url === failed, h.state());
+    clearEvents(h);
+    const retried = await outcomeOf(() => h.ref.current?.reload());
+    await sleep(500);
+    const again = h.events.errors[0];
+    r.check(
+      `${name}: reload() retries the failed url`,
+      retried === 'failed' &&
+        again?.kind === 'ssl' &&
+        again.url === failed &&
+        h.state().url === failed,
+      { retried, errors: h.events.errors, state: h.state() }
+    );
+  };
+
+  const goTo = (url: string) => () =>
+    h.ref.current?.evaluate(`location.href = ${JSON.stringify(url)}`);
+  const tapped = `${HTTPS}/tapped`;
+  for (const [name, go, failed] of [
+    ['ssl error from the page', goTo(`${HTTPS}/link`), `${HTTPS}/link`],
+    ['ssl error after a redirect', goTo(`/redirect?to=${HTTPS}/redirected`), `${HTTPS}/redirected`],
+    ['ssl error of a tapped link', () => tapLink(h, r, tapped), tapped],
+  ] as const) {
     await openPage(h, fresh(h, '/'));
     clearEvents(h);
-    await h.ref.current?.evaluate(`location.href = ${to}`);
-    const got = await happens(waitFor(h, () => h.events.errors.length > 0, 10000));
+    const error = await errorOf(h, go);
+    r.check(name, error?.kind === 'ssl' && error.url === failed, error);
+    await showsAndRetries(name, failed);
+  }
+
+  clearEvents(h);
+  await nextEntry(
+    h.events.outcomes,
+    () => {
+      h.ref.current?.reload();
+      h.ref.current?.reload();
+    },
+    (outcome) => outcome === 'failed',
+    10000
+  );
+  await waitFor(h, idle, 5000);
+  r.check(
+    'two reload() calls at once retry the failed url',
+    h.state().url === tapped &&
+      h.state().outcome === 'failed' &&
+      h.events.errors.length > 0 &&
+      h.events.errors.every((e) => e.kind === 'ssl' && e.url === tapped),
+    { state: h.state(), errors: h.events.errors, outcomes: h.events.outcomes }
+  );
+  const reloadsPage = async (name: string, url: string) => {
+    await h.ref.current?.evaluate('window.marker = 1');
+    clearEvents(h);
+    const reloaded = await outcomeOf(() => h.ref.current?.reload());
+    const marker = await h.ref.current?.evaluate('window.marker ?? null');
     r.check(
       name,
-      got && h.events.errors[0]?.kind === 'ssl' && h.events.errors[0]?.url === failed,
-      h.events.errors[0]
+      reloaded === 'finished' &&
+        h.state().url === url &&
+        marker === null &&
+        h.events.errors.length === 0,
+      { reloaded, marker, state: h.state(), errors: h.events.errors }
     );
-  }
+  };
+  const next = fresh(h, '/');
+  await waitForLoad(h, goTo(next), (s) => s.url === next && idle(s));
+  await reloadsPage('after a failed load, reload() reloads the page a later load committed', next);
+
+  if (Platform.OS === 'android') {
+    const hashed = `${await openPage(h, fresh(h, '/'))}#x`;
+    await failFrom(h, 'hash');
+    await h.ref.current?.evaluate(`location.hash = 'x'`);
+    await waitFor(h, (s) => s.url === hashed, 5000);
+    await reloadsPage(
+      'after a failed load, a same-document navigation sets url, and reload() reloads that page',
+      hashed
+    );
+  } else
+    r.skip(
+      'after a failed load, a same-document navigation sets url, and reload() reloads that page',
+      'iOS keeps the failed url until a load commits'
+    );
+
+  const first = fresh(h, `${HTTPS}/first`);
+  clearEvents(h);
+  h.loadSource({ uri: first });
+  h.remount();
+  await waitFor(h, () => h.events.errors.length > 0, 10000);
+  await showsAndRetries('ssl error of the first load of a new WebView', first);
 }

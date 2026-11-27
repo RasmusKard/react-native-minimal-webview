@@ -6,6 +6,7 @@ import type {
   WebViewSource,
 } from 'react-native-minimal-webview';
 
+import { HTTPS } from '../pages';
 import { WEBVIEW, type Harness, type HarnessProps, type Reporter } from './runner';
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -172,6 +173,19 @@ export async function nextEntry<T>(
   return await poll(() => log.slice(before).find(match), ms);
 }
 
+/** Runs `act`, then waits for the first error after it and for the idle page: that error, or undefined after 10 s. */
+export async function errorOf(h: Harness, act: () => unknown) {
+  const error = await nextEntry(h.events.errors, act, undefined, 10000);
+  await waitFor(h, idle, 5000);
+  return error;
+}
+
+/** Sends the page to a fresh `path` on the server whose certificate fails, and returns {@link errorOf} that. */
+export const failFrom = (h: Harness, path: string) =>
+  errorOf(h, () =>
+    h.ref.current?.evaluate(`location.href = ${JSON.stringify(fresh(h, `${HTTPS}/${path}`))}`)
+  );
+
 /** Whether the page's `location.href` comes to equal the state's url within 2 s. */
 export const agrees = async (h: Harness) =>
   (await poll(
@@ -303,6 +317,17 @@ export const tapPoint = async (h: Harness, id: string, frame?: string) =>
 export async function tap(h: Harness, r: Reporter, id: string, frame?: string) {
   if (Platform.OS === 'android') r.drive({ action: 'tap', point: await tapPoint(h, id, frame) });
   else await click(h, id, frame)?.catch(errorCode);
+}
+
+/** Adds a link to `url` at the end of the page and taps it, as {@link tap} does. */
+export async function tapLink(h: Harness, r: Reporter, url: string) {
+  await h.ref.current?.evaluate(`(() => {
+    document.getElementById('link')?.remove();
+    const a = Object.assign(document.createElement('a'), { id: 'link', href: ${JSON.stringify(url)},textContent: 'link' });
+    a.style.cssText = 'display: block; padding: 24px; font-size: 32px';
+    document.body.append(a);
+  })()`);
+  await tap(h, r, 'link');
 }
 
 /**

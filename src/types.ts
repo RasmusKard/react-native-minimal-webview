@@ -1124,8 +1124,9 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
   /**
    * A main-frame load failed, or got an HTTP error status.
    *
-   * After a failed load iOS keeps the previous page on screen, and Android shows WebView's own error page. On Android
-   * with an Android System WebView older than 146, an SSL error on a back/forward load isn't reported.
+   * After a failed load iOS keeps the previous page on screen, and Android shows WebView's own error page, or keeps the
+   * previous page after an SSL error. On Android with an Android System WebView older than 146, an SSL error on a
+   * back/forward load isn't reported.
    *
    * A renderer crash isn't reported here. It makes the cut-off load's `outcome` `failed` and calls `onProcessGone`.
    *

@@ -9,7 +9,7 @@ import {
   openPage,
   poll,
   sleep,
-  tap,
+  tapLink,
   text,
   travel,
   waitFor,
@@ -113,18 +113,7 @@ export async function refLoad(h: Harness, r: Reporter) {
 
 const NAVIGATIONS = [
   ['load', (h: Harness, _r: Reporter, url: string) => h.ref.current?.load(url)],
-  [
-    'link',
-    async (h: Harness, r: Reporter, url: string) => {
-      await h.ref.current?.evaluate(`(() => {
-        document.getElementById('link')?.remove();
-        const a = Object.assign(document.createElement('a'), { id: 'link', href: ${JSON.stringify(url)}, textContent: 'link' });
-        a.style.cssText = 'display: block; padding: 24px; font-size: 32px';
-        document.body.append(a);
-      })()`);
-      await tap(h, r, 'link');
-    },
-  ],
+  ['link', tapLink],
 ] as const;
 
 async function refLoadHistory(h: Harness, r: Reporter) {

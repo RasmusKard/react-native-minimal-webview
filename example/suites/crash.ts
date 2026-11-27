@@ -17,6 +17,8 @@ import {
   waitForLoad,
   happens,
   poll,
+  quietFor,
+  failFrom,
   waitForPresentation,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
@@ -197,6 +199,74 @@ export async function crash(h: Harness, r: Reporter) {
     (await text(h, 'body')) === body,
     h.state()
   );
+
+  if (Platform.OS === 'android') {
+    const headersSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'crash' } };
+    await openPage(h, headersSource);
+    await failFrom(h, 'headers');
+    let headersGone: ProcessGoneEvent | undefined;
+    const reloaded = await happens(
+      waitForLoad(
+        h,
+        async () => (headersGone = await kill(17)),
+        (s) => s.url === headersSource.uri && idle(s)
+      )
+    );
+    r.check(
+      'a source left on screen by a failed load reloads with its headers, not the failed load',
+      headersGone?.recovered === true &&
+        reloaded &&
+        (await text(h, 'headers')).includes('"x-source":"crash"'),
+      { headersGone, state: h.state() }
+    );
+
+    const failedPost = fresh(h, '/post');
+    await openPage(h, { uri: failedPost, body }, 10000);
+    await failFrom(h, 'post');
+    const loads = h.events.loads.length;
+    const failedPostGone = await kill(18);
+    await quietFor(2000);
+    r.check(
+      'a POST source left on screen by a failed load is not sent again on recovery',
+      failedPostGone?.recovered === false && h.events.loads.length === loads,
+      { failedPostGone, loads: h.events.loads.slice(loads), state: h.state() }
+    );
+    await waitForLoad(h, startCrashCountOver);
+    r.check(
+      'reload() after that crash sends the POST source, not the failed load',
+      (await text(h, 'body').catch(errorCode)) === body && h.state().url === failedPost,
+      h.state()
+    );
+
+    const waitingSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'waiting' } };
+    await openPage(h, waitingSource);
+    await failFrom(h, 'waiting');
+    h.setProps({
+      userAgent: 'Crash/1',
+      onProcessGone: (event) => {
+        h.events.gone.push(event);
+        h.ref.current?.reload();
+      },
+    });
+    const reloadedSource = await happens(
+      waitForLoad(
+        h,
+        () => kill(19, 'killInBackground'),
+        (s) => s.url === waitingSource.uri && idle(s),
+        30000
+      )
+    );
+    h.setProps({ userAgent: 'Crash/1' });
+    r.check(
+      'reload() while the recovery waits brings back the source a failed load left on screen',
+      reloadedSource && (await text(h, 'headers')).includes('"x-source":"waiting"'),
+      h.state()
+    );
+  } else
+    r.skip(
+      'a crash after a failed load from the source page',
+      'iOS asks whether the source is on screen with the failed url, and reloads in place to retry the failed load'
+    );
 
   const away = await openPage(h, fresh(h, '/bridge.html'));
   const states: { state: string; at: number }[] = [];

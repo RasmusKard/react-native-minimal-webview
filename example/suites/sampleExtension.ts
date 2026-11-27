@@ -5,6 +5,7 @@ import {
   captureWarnings,
   click,
   errorCode,
+  failFrom,
   fresh,
   idle,
   openPage,
@@ -27,8 +28,8 @@ export async function sampleExtension(h: Harness, r: Reporter) {
   const phantom = h.events.documentEnds.slice(mountEnds).filter((end) => end.url === '');
   r.check('the first commit after mount ends no Document', phantom.length === 0, phantom);
   const misses: unknown[] = [];
-  const ends = async (go: () => unknown, to: string) => {
-    const [from, count] = [h.state().url, h.events.documentEnds.length];
+  const ends = async (go: () => unknown, to: string, from = h.state().url) => {
+    const count = h.events.documentEnds.length;
     await go();
     await waitFor(h, (s) => s.url === to && idle(s) && h.events.documentEnds.length > count, 5000);
     const end = h.events.documentEnds.at(-1);
@@ -48,6 +49,26 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     misses.length === 0,
     misses
   );
+  if (Platform.OS === 'android') {
+    const left = await openPage(h, fresh(h, '/spa.html'));
+    await failFrom(h, 'spa.html');
+    const next = fresh(h, '/spa.html');
+    const missed = misses.length;
+    await ends(
+      () => h.ref.current?.evaluate(`(location.href = '${next}', 1)`).catch(errorCode),
+      next,
+      left
+    );
+    r.check(
+      'its onDocumentEnd handler hears a page a failed load left on screen end as that page',
+      misses.length === missed,
+      misses.slice(missed)
+    );
+  } else
+    r.skip(
+      'its onDocumentEnd handler hears a page a failed load left on screen end as that page',
+      'iOS sets context.url to the failed url once the failed load ends'
+    );
   const before = h.events.pageCounts.length;
   h.events.hookEvents.length = 0;
   const previous = h.state().url;
