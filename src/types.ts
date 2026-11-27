@@ -225,10 +225,15 @@ export type NavigationState = {
 /**
  * A main-frame error, for `onError`.
  *
- * - `network` and `ssl`: the load failed and no page arrived. An SSL error always cancels the load. `code` is the
- *   platform's own: the `NSError` code on iOS, and on Android a `WebViewClient.ERROR_*` for `network` and an
- *   `SslError.SSL_*` for `ssl`.
+ * - `network` and `ssl`: the load failed, on iOS also after it committed. An SSL error always cancels the load. `code`
+ *   is the platform's own: the `NSError` code on iOS, and on Android a `WebViewClient.ERROR_*` for `network` and an
+ *   `SslError.SSL_*` for `ssl`. `description` is the error's localized description on iOS. On Android it is
+ *   Chromium's error name for `network` (`net::ERR_NAME_NOT_RESOLVED`), or a sentence when no WebView can be made,
+ *   and `SSL error` with the code for `ssl`.
  * - `http`: the response had an HTTP error status (400 or above), and the site's own error page shows.
+ *
+ * A load the app or the page stops or replaces reports no error. Nor does a cancellation: `NSURLErrorCancelled`
+ * (-999) or WebKit error 102 on iOS, `net::ERR_ABORTED` on Android.
  * @group Events
  */
 export type LoadErrorEvent =

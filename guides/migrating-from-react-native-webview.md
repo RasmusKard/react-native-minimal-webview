@@ -111,6 +111,9 @@ unless your own code calls `Linking.canOpenURL` for them. The core opens those l
 | Props from a helper (`{...Sentry.sentryWebViewProps()}`)                                       | Each prop it returns, by its own row: its `injectedJavaScriptBeforeContentLoaded` is an `injectedScripts` entry           |
 | `containerStyle`                                                                               | A `View` around the WebView                                                                                               |
 
+`onError` has no `domain`. On iOS it also reports a load that fails after it committed, which react-native-webview
+didn't, and an Android `ssl` error's `description` differs ([`LoadErrorEvent`][loaderrorevent]).
+
 ### Props that became extensions
 
 These props are functions of [@react-native-minimal-webview/extensions][extensions], whose page has the setup. Pass each
@@ -338,4 +341,5 @@ Pass it in `injectedScripts` and listen with `bridge.on('scroll', …)`, as in t
 [navigationrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRequest/
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [reactnativewebviewmessages]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/
+[loaderrorevent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/LoadErrorEvent/
 [bridgesender]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeSender/
