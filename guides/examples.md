@@ -1,7 +1,7 @@
 # Examples
 
-Examples of the main interfaces. What each prop, method and type does is in the
-[API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/).
+These examples show the main interfaces in use. The
+[API reference](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/) says what each prop, method and type does.
 
 ## Navigation state
 
@@ -14,12 +14,12 @@ import { WebView, useWebViewState, type WebViewRef } from 'react-native-minimal-
 
 export function Browser() {
   const ref = useRef<WebViewRef>(null);
-  // One field per selector: Browser doesn't re-render on each progress change
+  // One field per selector, so Browser doesn't re-render on each progress change
   const title = useWebViewState(ref, (state) => state.title);
   const canGoBack = useWebViewState(ref, (state) => state.canGoBack);
   const canGoForward = useWebViewState(ref, (state) => state.canGoForward);
 
-  // Android's back button is the app's to handle
+  // The WebView doesn't handle Android's back button
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!canGoBack) return false;
@@ -49,7 +49,7 @@ import { WebView, createWebViewRef } from 'react-native-minimal-webview';
 
 export const webView = createWebViewRef();
 
-// A push notification handler, say
+// For example, a push notification handler
 function onInboxNotification() {
   if (webView.getState().url.startsWith('https://example.com/inbox')) webView.current?.reload();
 }
@@ -76,8 +76,8 @@ export function Browser() {
       <WebView
         ref={ref}
         source={{ uri: 'https://example.com' }}
-        onError={(e) => e.kind !== 'http' && setFailed(true)} // on 'http' the site's own error page shows
-        // The core reloads after a crash, unless the page keeps crashing: then the retry is the user's
+        onError={(e) => e.kind !== 'http' && setFailed(true)} // an 'http' error shows the site's own page
+        // When the core doesn't reload the page after a crash, the user retries
         onProcessGone={(e) => !e.recovered && setFailed(true)}
         onLoadStart={() => setFailed(false)}
         style={{ flex: 1 }}
@@ -97,10 +97,10 @@ export function Browser() {
 
 ## Navigation rules
 
-Keep the WebView on your sites and open the rest externally, with JS deciding only the URLs that need it. Form POSTs
-skip the rules, an iframe's to the main frame too:
+Keep the WebView on your sites, open other sites externally, and let JS decide only the URLs that need it. Some
+navigations, such as a form POST, skip the rules.
 [`navigationRules`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules)
-says where they load.
+lists them.
 
 ```tsx
 import { WebView, defaultNavigationRules } from 'react-native-minimal-webview';
@@ -116,7 +116,7 @@ export function Site() {
         { host: ['example.com', '*.example.com'], action: 'allow' },
         { scheme: ['http', 'https'], mainFrame: false, action: 'allow' }, // embedded content stays in the page
         { scheme: ['tel', 'mailto'], action: 'external' }, // also from an iframe
-        { scheme: ['http', 'https'], action: 'external' }, // other sites, new windows to them too
+        { scheme: ['http', 'https'], action: 'external' }, // other sites, new windows included
         ...defaultNavigationRules, // file: blocked, other schemes external from a user gesture
       ]}
       onNavigationRequest={({ url }) =>
@@ -144,13 +144,13 @@ type ShopBridge = {
 };
 
 export function Shop() {
-  // Once: a new bridge recreates the WebView
+  // Made once, because a new bridge recreates the WebView
   const bridge = useMemo(
     () => createBridge<ShopBridge>({ allowedOrigins: ['https://example.com'] }),
     []
   );
 
-  // handle returns the unsubscribe, which is the cleanup
+  // handle returns its unsubscribe function, which is the effect's cleanup
   useEffect(
     () =>
       bridge.handle('share', async ({ url }) => {
@@ -176,23 +176,23 @@ A page on an allowed origin has the same four methods on `window.nativeBridge`, 
 [`Bridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/Bridge/) describes.
 
 ```js
-// A module script, for the top-level await
+// A module script, so that top-level await works
 const cart = [];
-// ?. because a browser, or an origin the bridge doesn't allow, has no window.nativeBridge
+// A browser, or an origin the bridge doesn't allow, has no window.nativeBridge
 window.nativeBridge?.handle('getCartCount', () => cart.length);
 window.nativeBridge?.on('themeChanged', (theme) => {
   document.documentElement.dataset.theme = theme;
 });
 
-const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 }); // the share sheet waits on the user
+const shared = await window.nativeBridge?.call('share', { url: location.href }, { timeoutMs: 0 }); // no timeout: the share sheet waits for the user
 ```
 
-An event reaches one page and is never repeated for a later one. A page that needs the current value, such as the theme,
-asks for it with a `call` as it loads, and listens for the changes.
+An event isn't repeated for a page that loads later. A page that needs the current value, such as the theme, asks for
+it with a `call` as it loads and then listens for changes.
 
 A TypeScript page types `window.nativeBridge` with
 [`PageBridge`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/PageBridge/)
-and the app's schema, shared or copied:
+and the app's schema, imported or copied:
 
 ```ts
 import type { PageBridge } from 'react-native-minimal-webview';
@@ -216,7 +216,7 @@ declare global {
 
 ### Reading and calling
 
-`get` reads a property and `call` calls a method, on a mounted WebView's ref.
+On a mounted WebView's ref, `get` reads a platform property and `call` calls a platform method.
 
 ```ts
 import { IOSConstants, createWebViewRef } from 'react-native-minimal-webview';
@@ -226,12 +226,11 @@ const ref = createWebViewRef(); // pass it as the `<WebView ref={ref}>`
 // Android: the WebView's user agent, to send the same one from your own requests
 const userAgent = await ref.current?.get('settings.userAgentString');
 
-// Log out on Android: clear the cookies and the pages' storage.
-// The method is a public one of settings, webView, cookieManager or webStorage
+// Log out on Android: clear the cookies and the pages' storage
 await ref.current?.call('webStorage.deleteAllData');
 await ref.current?.call('cookieManager.removeAllCookies');
 
-// Log out on iOS. The method is an Objective-C selector
+// Log out on iOS
 await ref.current?.call('websiteDataStore.removeDataOfTypes:modifiedSince:completionHandler:', [
   { set: [IOSConstants.WebsiteDataType.cookies, IOSConstants.WebsiteDataType.localStorage] },
   { date: 0 },
@@ -244,7 +243,7 @@ const png = await ref.current?.call('webView.takeSnapshotWithConfiguration:compl
 
 ## Cookies
 
-Set the session cookie, or read the WebView's cookies. Cookies go through `call`, as in [Reading and calling](#reading-and-calling).
+Set the session cookie, or read the WebView's cookies.
 
 ```ts
 import { createWebViewRef } from 'react-native-minimal-webview';
@@ -252,13 +251,13 @@ import { createWebViewRef } from 'react-native-minimal-webview';
 const ref = createWebViewRef(); // pass it as the `<WebView ref={ref}>`
 const token = 'SESSION_TOKEN'; // your session's value
 
-// iOS: the WebView's data store (`sharedCookies` syncs it with the app's)
+// iOS: the WebView's data store, which `sharedCookies` syncs with the app's
 await ref.current?.call('httpCookieStore.setCookie:completionHandler:', [
   { cookie: { Name: 'session', Value: token, Domain: 'example.com', Path: '/', Secure: 'TRUE' } },
 ]);
 const cookies = await ref.current?.call('httpCookieStore.getAllCookies:'); // [{ Name, Value, Domain, Path, … }]
 
-// Android: the CookieManager of the WebView's profile, the app-wide one by default
+// Android: the CookieManager of the WebView's profile
 await ref.current?.call('cookieManager.setCookie', [
   'https://example.com',
   `session=${token}; Secure`,
@@ -273,14 +272,13 @@ set.
 
 ## Scripts
 
-Run a script in the pages of the origins you list, before the page's own scripts and before its DOM exists, or evaluate one in the page that
-is open.
+Run a script in your origins' pages before the page's own scripts, or evaluate one in the open page.
 
 ```tsx
 import { WebView, createWebViewRef } from 'react-native-minimal-webview';
 
 const ref = createWebViewRef();
-// What the page's own scripts read as they start: here, that it runs inside the app
+// Values the page's own scripts read as they start, such as whether they run in the app
 const config = { inApp: true, apiUrl: 'https://api.example.com' };
 
 <WebView
@@ -293,7 +291,7 @@ const config = { inApp: true, apiUrl: 'https://api.example.com' };
 />;
 
 const title = await ref.current?.evaluate('document.title'); // an expression, not statements
-// Statements go in a function you call: stop the page's videos as the user leaves the screen
+// Wrap statements in a function and call it. This one pauses the videos as the user leaves the screen
 await ref.current?.evaluate(
   `(() => { for (const video of document.querySelectorAll('video')) video.pause(); })()`
 );
@@ -301,7 +299,7 @@ await ref.current?.evaluate(
 
 ## Local files
 
-Load an HTML string with `html`, its relative URLs resolved against `baseUrl`, or a bundled file from its `file://` URI, such as expo-asset's `localUri`. [`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) says which file access each platform needs.
+Load an HTML string with `html`, or a bundled file by its `file://` URI, such as expo-asset's `localUri`. [`WebViewSource`](https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/) says which file access each platform needs.
 
 ```tsx
 import { useAssets } from 'expo-asset';
@@ -311,7 +309,7 @@ export function LocalPages({ articleHtml }: { articleHtml: string }) {
   const [assets] = useAssets(require('./terms.html')); // a page that has to open offline
   return (
     <>
-      {/* An article's HTML from your API: its <img src="/images/photo.jpg"> loads from baseUrl */}
+      {/* An article's HTML from your API. Its <img src="/images/photo.jpg"> loads from baseUrl */}
       <WebView source={{ html: articleHtml, baseUrl: 'https://example.com' }} style={{ flex: 1 }} />
       {assets?.[0]?.localUri && (
         <WebView
@@ -421,7 +419,7 @@ Give the camera and the microphone to your own site only, once the OS has grante
 import { Camera } from 'expo-camera';
 import { WebView, type PermissionResource } from 'react-native-minimal-webview';
 
-// Asks the OS for what the page wants; a resource this app doesn't give has no entry
+// Asks the OS for each resource the page wants. A resource this app doesn't give has no entry
 const askOS: Partial<Record<PermissionResource, () => Promise<{ granted: boolean }>>> = {
   camera: Camera.requestCameraPermissionsAsync,
   microphone: Camera.requestMicrophonePermissionsAsync,
@@ -463,8 +461,6 @@ import { WebView } from 'react-native-minimal-webview';
 ### Downloads
 
 Open a file the page downloads.
-
-`preview()` needs expo-file-system 58 (Expo SDK 58) or later.
 
 ```tsx
 import { File } from 'expo-file-system';
