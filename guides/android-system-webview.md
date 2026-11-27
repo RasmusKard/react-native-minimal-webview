@@ -1,13 +1,10 @@
 # Android System WebView versions
 
 Some features need a newer Android System WebView than the [minimum Android version](../README.md#requirements)
-brings.
-
-Android System WebView updates apart from Android, so a device's API level doesn't tell you its WebView.
+brings. The WebView updates apart from Android, so a device's API level doesn't tell you its WebView version.
 
 The package has no minimum Android System WebView version. The core checks each feature at run time and turns it off
-on an older WebView. The oldest a device can have is 74, which Android 10 (API 29) shipped with: there every feature
-in the table below is off.
+on an older WebView.
 
 ## What needs a newer WebView
 
@@ -27,22 +24,19 @@ in the table below is off.
 Each feature's API reference says what it does on an older WebView.
 
 A `WebSettingsCompat` or `WebViewCompat` key, a compat method through `get` or `call`, and `AndroidWebView.preconnect`
-depend on an androidx.webkit feature instead of an Android System WebView version. The API reference names it for each key and for `preconnect`.
+depend on an androidx.webkit feature, not on a WebView version. The API reference names the feature for each key and
+for `preconnect`.
 
 ## Check a device's WebView
 
-The version is the Chrome version in the WebView's user agent: read
-[`AndroidWebView.defaultUserAgent`][defaultUserAgent] and look for `Chrome/<version>`.
-
-On a connected device, `adb shell dumpsys webviewupdate` names the WebView package in use and its version.
+Read [`AndroidWebView.defaultUserAgent`][defaultUserAgent]. The WebView version is the number after `Chrome/`.
 
 ## Test the oldest versions
 
-Test on an emulator with a system image that has no Play Store (`default` or Google APIs): it keeps the WebView it
-shipped with, while the Play Store updates WebView in the background and moves its version under your tests. The
-images of older API levels ship older WebViews: run the app there to see the features above off. The API 29 `default`
-image has Android System WebView 74. [CONTRIBUTING][contributing] lists the images its suites run on and how to create
-the emulators.
+Test on an emulator image without the Play Store, such as a `default` or Google APIs image. Its WebView stays at the
+version the image shipped with, while the Play Store would update it during your tests. Older API levels ship older
+WebViews, so run the app there to see the features above turned off. [CONTRIBUTING][contributing] lists the images the
+package's own suites run on.
 
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [onDownload]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#ondownload
