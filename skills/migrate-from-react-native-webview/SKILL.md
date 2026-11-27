@@ -55,18 +55,17 @@ Map each prop with the guide's tables and recipes. Where the guide shows the old
 as before. Two exceptions, which you list in the report instead of applying:
 
 - Anything that gives pages more access than this package's default: granting camera, microphone or location, opening
-  messaging to more origins or to iframes, `origins: ['*']` on a script that only the app's own pages need, or a file
-  access setting (`allowFileAccess`, `allowFileAccessFromFileURLs`, `allowUniversalAccessFromFileURLs`).
+  messaging to more origins or to iframes, `origins: ['*']` on a script that only the app's own pages need, or access to
+  local files.
 - A prop the guide doesn't list. Leave a `TODO(migration)` comment at it.
 
-Don't restore the iOS debugging default: the package turns the inspector on in `__DEV__` only, and the guide's
-`rnwDefaults` leaves it so.
+For "Defaults that differ", use the guide's one-object example as it is: it says which defaults it leaves alone.
 
 Where the new event carries something else than the old one, rewrite the handler for it instead of renaming it:
 `onDownload` gets a file that is already saved, so code that opened or fetched the old event's URL goes.
 
-`evaluate` returns a promise that rejects, where `injectJavaScript` reported nothing. Handle the rejection the way the
-app handles its other errors, never with an empty `catch`.
+Where a ref call now returns a promise, handle its rejection the way the app handles its other errors, never with an
+empty `catch`.
 
 For each workaround in the inventory, find what the docs say about the bug it works around. Remove the workaround
 only where they say this package doesn't have the bug. Keep it otherwise, and list it in the report either way.
