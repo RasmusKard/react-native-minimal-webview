@@ -190,12 +190,29 @@ export async function errors(h: Harness, r: Reporter) {
   const goTo = (url: string) => () =>
     h.ref.current?.evaluate(`location.href = ${JSON.stringify(url)}`);
   const tapped = `${HTTPS}/tapped`;
-  for (const [name, go, failed] of [
-    ['ssl error from the page', goTo(`${HTTPS}/link`), `${HTTPS}/link`],
-    ['ssl error after a redirect', goTo(`/redirect?to=${HTTPS}/redirected`), `${HTTPS}/redirected`],
-    ['ssl error of a tapped link', () => tapLink(h, r, tapped), tapped],
+  const fromPage = () => openPage(h, fresh(h, '/'));
+  const base = fresh(h, `${HTTPS}/base`);
+  const fromHtml = () =>
+    waitForLoad(
+      h,
+      () => h.loadSource({ html: '<p>html source</p>', baseUrl: base }),
+      (s) => s.url === base && idle(s)
+    );
+  const htmlBase = "ssl error of a link to the html source's baseUrl";
+  if (Platform.OS === 'android')
+    r.skip(htmlBase, "Android takes a failed load of the html source's baseUrl for the source");
+  for (const [name, from, go, failed] of [
+    ['ssl error from the page', fromPage, goTo(`${HTTPS}/link`), `${HTTPS}/link`],
+    ...(Platform.OS === 'ios' ? [[htmlBase, fromHtml, goTo(base), base] as const] : []),
+    [
+      'ssl error after a redirect',
+      fromPage,
+      goTo(`/redirect?to=${HTTPS}/redirected`),
+      `${HTTPS}/redirected`,
+    ],
+    ['ssl error of a tapped link', fromPage, () => tapLink(h, r, tapped), tapped],
   ] as const) {
-    await openPage(h, fresh(h, '/'));
+    await from();
     clearEvents(h);
     const error = await errorOf(h, go);
     r.check(name, error?.kind === 'ssl' && error.url === failed, error);

@@ -77,7 +77,7 @@ MainActor.assumeIsolated {
     let ended = failure { view.retry() }
     return ended ? ReadRoots.granted.last : nil
   }
-  check("read root: the source loads", spin { !loading && view.url.hasSuffix("index.html") })
+  check("read root: the source loads", spin { !loading && view.stateUrl.hasSuffix("index.html") })
   check("read root: load() of a missing file fails", failure { view.load(url: missing.absoluteString) })
   let ownRoot = retryRoot()
   check("read root: a retry of a failed load() reads within its directory: \(ownRoot as Any)", ownRoot == missing.deletingLastPathComponent())
