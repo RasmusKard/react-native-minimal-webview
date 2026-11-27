@@ -50,8 +50,8 @@ export type CustomMenuSelectionEvent = {
  *
  * Turn it on when the WebView is created. After that, a change, switching it off included, applies to the next menu.
  *
- * Its hook makes the WebView from a class of its own. If another hook registered earlier makes the WebView with its
- * `webViewClass` or `webViewFactory`, there is no menu and the core warns.
+ * If another hook registered earlier makes the WebView with its `webViewClass` or `webViewFactory`, there is no menu
+ * and the core warns.
  * @returns Null when `items` is unset and, on iOS, `suppress` is too.
  * @group Extensions
  */

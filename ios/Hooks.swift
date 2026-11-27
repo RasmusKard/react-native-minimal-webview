@@ -140,8 +140,7 @@ public protocol WebViewContext: AnyObject {
   /// delegate's action policy, is never called.
   ///
   /// A delegate that holds a panel's completion handler should set `webView.accessibilityElementsHidden` until it
-  /// answers, as the core does for its own panels. Otherwise an accessibility query into the blocked page, such as
-  /// XCTest's, hangs.
+  /// answers. Otherwise an accessibility query into the blocked page, such as XCTest's, hangs.
   var uiDelegates: [WKUIDelegate] { get set }
   /// The control that `pullToRefresh` shows. It is the same control for the view's life, shown or not, and nil once
   /// the view has closed.

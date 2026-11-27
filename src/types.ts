@@ -940,6 +940,8 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    *
    * A late, missing or other answer is `block`, as is one still pending when another page commits. `signal` aborts at
    * the timeout and at that commit. Without this prop, `ask` is `block`.
+   *
+   * A URL it allowed isn't asked again until the next page commits.
    * @see [Navigation rules example](https://rasmuskard.github.io/react-native-minimal-webview/guides/examples/#navigation-rules)
    */
   onNavigationRequest?: (
@@ -1232,8 +1234,8 @@ export type WebViewRef = {
    * @param args The method's arguments: booleans, numbers, strings and `null`. On iOS also the structs as objects, and
    * `{ set: [...] }`, `{ date: seconds }`, `{ data: base64 }` or `{ cookie: properties }` for an `NSSet`, `NSDate`,
    * `NSData` or `NSHTTPCookie`. Any other string stays an `NSString`. A cookie's properties are `NSHTTPCookie`'s keys,
-   * with `Max-Age` in seconds as a string. A tag that can't make its object, such as `{ data }` that isn't base64 or a
-   * `{ cookie }` without a required key, rejects with `native_error`.
+   * with `Max-Age` in seconds as a string. A tag that can't make its object, such as `{ data }` that isn't base64 or
+   * `{ cookie }` properties that make no cookie, rejects with `native_error`.
    * @returns The result: primitives, strings, and collections of them. On iOS also the structs as objects, an `NSURL`
    * as a string, an `NSDate` as seconds, `NSData` as base64, a `UIImage` as a base64 PNG and an `NSHTTPCookie` as its
    * properties (`Expires` in seconds). Any other object is `null`.
