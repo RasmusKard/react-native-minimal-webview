@@ -22,6 +22,7 @@ import {
   waitForPresentation,
 } from '../harness/helpers';
 import { WEBVIEW, type Harness, type Reporter } from '../harness/runner';
+import { HTTPS } from '../pages';
 
 const CORE_CRASH_WINDOW_MS = 60_000;
 const ANDROID_SAME_CRASH_MS = 100;
@@ -219,18 +220,24 @@ export async function crash(h: Harness, r: Reporter) {
     { headersGone, state: h.state() }
   );
 
+  const notSentAgain = async (name: string, n: number) => {
+    const loads = h.events.loads.length;
+    const gone = await kill(n);
+    await quietFor(2000);
+    r.check(name, gone?.recovered === false && h.events.loads.length === loads, {
+      gone,
+      loads: h.events.loads.slice(loads),
+      state: h.state(),
+    });
+    await waitForLoad(h, startCrashCountOver);
+  };
   const failedPost = fresh(h, '/post');
   await openPage(h, { uri: failedPost, body }, 10000);
   await failFrom(h, 'post');
-  const loads = h.events.loads.length;
-  const failedPostGone = await kill(18);
-  await quietFor(2000);
-  r.check(
+  await notSentAgain(
     'a POST source left on screen by a failed load is not sent again on recovery',
-    failedPostGone?.recovered === false && h.events.loads.length === loads,
-    { failedPostGone, loads: h.events.loads.slice(loads), state: h.state() }
+    18
   );
-  await waitForLoad(h, startCrashCountOver);
   if (Platform.OS === 'android') {
     r.check(
       'reload() after that crash sends the POST source, not the failed load',
@@ -266,6 +273,19 @@ export async function crash(h: Harness, r: Reporter) {
     r.skip(
       'reload() after a crash after a failed load',
       'iOS reload() retries the failed load, also after a crash'
+    );
+
+  const firstLoadFailed = 'a POST source whose first load failed is not sent again on recovery';
+  if (Platform.OS === 'ios') {
+    const errors = h.events.errors.length;
+    h.loadSource({ uri: fresh(h, `${HTTPS}/post`), body });
+    h.remount();
+    await waitFor(h, (s) => h.events.errors.length > errors && idle(s), 10000);
+    await notSentAgain(firstLoadFailed, 20);
+  } else
+    r.skip(
+      firstLoadFailed,
+      'after an ssl error on the first load, Android has no page to evaluate in, which kill() needs'
     );
 
   const away = await openPage(h, fresh(h, '/bridge.html'));
