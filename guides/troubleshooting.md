@@ -50,8 +50,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 
 ## A download does nothing
 
-- Without [`onDownload`][ondownload], an http(s) download opens externally without the page's session, in
-  [`onOpenExternal`][onopenexternal] or else the system browser. A `data:` or `blob:` download is dropped.
+- Without [`onDownload`][ondownload], an http(s) download opens externally without the page's session.
+  [`onOpenExternal`][onopenexternal] gets it, or else the system browser opens it. A `data:` or `blob:` download is dropped.
 - With it, Android fetches the file again without the request's POST body, `source` headers or HTTP auth. A download
   that needs them fails, or saves the server's login page.
 

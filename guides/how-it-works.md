@@ -25,7 +25,7 @@ The **bridge** carries calls between your app's JS and the page's JS. The page c
 
 The **main frame** is the page's top-level document, the one whose URL the navigation state shows.
 
-The core matches each frame by its origin as `location.origin` writes it, such as `https://example.com`. A page from an `html`
+`allowedOrigins`, a script's `origins` and the permission check compare a frame's origin as `location.origin` writes it, such as `https://example.com`. A page from an `html`
 source without `baseUrl`, a `data:` URL or a sandboxed iframe has an opaque origin, which only `'*'` matches.
 
 The core gives the main frame more than it gives iframes, and trusts only the origins you name:

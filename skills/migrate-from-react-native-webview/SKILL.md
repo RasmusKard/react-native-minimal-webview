@@ -18,8 +18,8 @@ react-native-webview props have no prop of the same name here.
 
 ## 1. Check the app can move
 
-Stop and tell the user if the app is a case in the README's "When to use something else", or if it can't meet the
-minimums in Requirements.
+Stop and tell the user if the app runs on the old architecture, Windows, macOS or web, or only in Expo Go, or if it
+can't meet the minimums in Requirements.
 
 ## 2. Inventory
 
