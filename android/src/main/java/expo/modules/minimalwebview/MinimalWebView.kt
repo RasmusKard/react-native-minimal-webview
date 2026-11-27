@@ -447,8 +447,8 @@ internal fun profileOf(webView: WebView): Profile? =
   if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) WebViewCompat.getProfile(webView) else null
 
 /**
- * Whether [url] is the [source]'s page, or empty (nothing has committed yet): the same [canonicalUrl] up to trailing
- * slashes. An html source's page is its baseUrl or about:blank.
+ * Whether [url] is the [source]'s page, or empty: the same [canonicalUrl] up to trailing slashes. An html source's
+ * page is its baseUrl or about:blank.
  */
 internal fun showsSource(source: WebViewSource?, url: String): Boolean {
   if (source == null) return false
