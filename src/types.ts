@@ -97,8 +97,9 @@ export type NavigationRule = {
   /**
    * The main frame's navigation (true) or an iframe's (false).
    *
-   * On Android only an iframe's non-http(s) navigations reach the rules, so a `mainFrame: false` rule for http(s)
-   * works on iOS only.
+   * On Android only an iframe's non-http(s) navigations reach the rules, a `blob:` one as the http(s) origin it
+   * carries. So there a `mainFrame: false` rule for http(s) decides only an iframe's `blob:` navigations, and an `ask`
+   * blocks them.
    */
   mainFrame?: boolean;
   /**
