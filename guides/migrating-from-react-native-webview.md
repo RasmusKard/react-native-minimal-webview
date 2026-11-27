@@ -1,10 +1,10 @@
 # Migrating from react-native-webview
 
-Each react-native-webview prop's counterpart here, and the defaults and behavior that differ. The
+This guide gives each react-native-webview prop's counterpart here, and the defaults and behavior that differ. The
 [requirements](../README.md#requirements) are in the README.
 
-To have a coding agent migrate an app with this guide, verify the result and report what changed, add the
-[migration skill](../skills/migrate-from-react-native-webview/SKILL.md):
+The [migration skill](../skills/migrate-from-react-native-webview/SKILL.md) has a coding agent migrate an app with this
+guide, verify the result and report what changed. Add it with:
 
 ```sh
 npx skills add RasmusKard/react-native-minimal-webview --skill migrate-from-react-native-webview
@@ -26,7 +26,7 @@ is `AndroidConstants.WebSettings.LOAD_NO_CACHE`. For a prop no table here lists,
 | iOS debugging (`webviewDebuggingEnabled`) | Off                              | On in `__DEV__`                               | `ios.webView.inspectable: false`                                                  |
 | Android back-forward cache                | Off                              | On, with Android System WebView 146 and newer | `android.settings.backForwardCacheEnabled: false`                                 |
 
-The same settings in one object, debugging and the back-forward cache left on:
+This object restores the old defaults, except debugging and the back-forward cache:
 
 ```tsx
 import { IOSConstants, WebView, type WebViewProps } from 'react-native-minimal-webview';
@@ -68,93 +68,92 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 | --------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Android fullscreen video (`allowsFullscreenVideo`)                    | Off                                                     | On ([`onFullscreenChange`][onfullscreenchange])            | A native hook that takes `onShowCustomView`                                       |
 | iOS universal links                                                   | Open the app that claims them                           | Load in place                                              | An `external` rule for the host                                                   |
-| Downloads                                                             | Android: saved to Downloads                             | Open externally, or [`onDownload`][ondownload] saves them  | [`downloadManager`][downloadmanager] (Android)                                    |
+| Downloads                                                             | Saved to Downloads on Android                           | Open externally, or [`onDownload`][ondownload] saves them  | [`downloadManager`][downloadmanager] (Android)                                    |
 | Renderer crash                                                        | Reported                                                | The core reloads ([`onProcessGone`][onprocessgone])        | Remove your `reload()`, and offer a retry while [`recovered`][recovered] is false |
-| Messaging                                                             | Every page; on Android every frame                      | `allowedOrigins`, main frame                               | An iframe's: a native hook                                                        |
-| Injected script                                                       | Document end, every origin                              | Document start, its `origins`                              | `addEventListener('DOMContentLoaded', …)`; `origins: ['*']`                       |
+| Messaging                                                             | Every page, and on Android every frame                  | The main frame of `allowedOrigins`                         | For an iframe, a native hook                                                      |
+| Injected script                                                       | At document end, on every origin                        | At document start, on its `origins`                        | `addEventListener('DOMContentLoaded', …)` and `origins: ['*']`                    |
 | Failed load                                                           | An error view over the page                             | iOS keeps the old page, Android shows its own              | The [error screen](examples.md#loading-and-error-screens)                         |
 | Android file input                                                    | Offers the camera, and with `capture` opens it directly | The system chooser, which ignores `capture`                | [`onFileRequest`][onfilerequest]                                                  |
 | Android camera and microphone, and location with `geolocationEnabled` | Granted to every page, after asking the OS              | Denied                                                     | [`onPermissionRequest`][onpermissionrequest]                                      |
 | A link to another scheme (`tel:`, `myapp:`)                           | Opens externally                                        | Only from the main frame, after a user gesture             | An `external` rule for the scheme                                                 |
-| New window (`target=_blank`, `window.open`)                           | In place; on Android in the system browser              | In place, when a rule allows it ([`newWindow`][newwindow]) | `{ newWindow: true, action: 'external' }`                                         |
+| New window (`target=_blank`, `window.open`)                           | In place on iOS, in the system browser on Android       | In place, when a rule allows it ([`newWindow`][newwindow]) | `{ newWindow: true, action: 'external' }`                                         |
 | Android System WebView older than 101                                 | Messaging and injected scripts work                     | Neither does ([versions](android-system-webview.md))       |                                                                                   |
 
-Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens
-([`onOpenExternal`][onopenexternal]), unless your own code calls `Linking.canOpenURL` for them.
+Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens,
+unless your own code calls `Linking.canOpenURL` for them. The core opens those links without asking `canOpenURL`
+([`onOpenExternal`][onopenexternal]).
 
 ## Props that became something else
 
-| react-native-webview                                                                           | Here                                                                                                                            |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow`, `setSupportMultipleWindows` | `navigationRules` ([below](#onshouldstartloadwithrequest))                                                                      |
-| `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded`, `injectedJavaScriptObject`      | `injectedScripts`                                                                                                               |
-| `…ForMainFrameOnly: false`                                                                     | `allFrames: true` on the script                                                                                                 |
-| `injectJavaScript(code)`                                                                       | `evaluate(expression)` ([below](#injectjavascript))                                                                             |
-| `injectJavaScript('window.location = …')`, a new `source` to navigate                          | `load(url)`                                                                                                                     |
-| `onMessage`, `postMessage`, `window.ReactNativeWebView`                                        | The bridge ([below](#postmessage-and-onmessage))                                                                                |
-| `onLoad`                                                                                       | `onLoadEnd`, with `state.outcome === 'finished'`                                                                                |
-| `onLoadProgress`                                                                               | `progress` in `useWebViewState`                                                                                                 |
-| `onError`, `onHttpError`                                                                       | `onError`, whose `kind` is `'network'`, `'ssl'` or `'http'`                                                                     |
-| `onContentProcessDidTerminate`, `onRenderProcessGone`                                          | `onProcessGone`, whose `cause` is `'crash'`, `'memory'` or, on iOS, `'unknown'`                                                 |
-| `renderLoading`, `renderError`, `startInLoadingState`                                          | [Your own views](examples.md#loading-and-error-screens), shown on every load                                                    |
-| `onContentSizeChange`                                                                          | An injected script, as for the [scroll position](#scroll-position)                                                              |
-| `ignoreSilentHardwareSwitch`                                                                   | An injected script that sets `navigator.audioSession.type = 'playback'`                                                         |
-| `source={require('./page.html')}`                                                              | A `file://` URI from expo-asset ([local files](examples.md#local-files))                                                        |
-| `allowingReadAccessToURL`                                                                      | `source.readAccessRoot`                                                                                                         |
-| `source.method`, `source.body`                                                                 | `source.body`, which makes the request a POST                                                                                   |
-| `onFileDownload`                                                                               | `onDownload`, on both platforms: it gets the saved file, not a URL to fetch                                                     |
-| `sharedCookiesEnabled`, `pullToRefreshEnabled`                                                 | `sharedCookies`, `pullToRefresh`                                                                                                |
-| `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia`                | `onPermissionRequest`                                                                                                           |
-| `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus`                            | `call('webView.clearCache', [true])` and so on, on Android; on iOS, [`call` on the data store](examples.md#reading-and-calling) |
-| `nativeConfig`                                                                                 | A [native hook](native-hooks.md)                                                                                                |
-| `containerStyle`                                                                               | A `View` around the WebView                                                                                                     |
+| react-native-webview                                                                           | Here                                                                                                                          |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `onShouldStartLoadWithRequest`, `originWhitelist`, `onOpenWindow`, `setSupportMultipleWindows` | `navigationRules` ([below](#onshouldstartloadwithrequest))                                                                    |
+| `injectedJavaScript`, `injectedJavaScriptBeforeContentLoaded`, `injectedJavaScriptObject`      | `injectedScripts`                                                                                                             |
+| `…ForMainFrameOnly: false`                                                                     | `allFrames: true` on the script                                                                                               |
+| `injectJavaScript(code)`                                                                       | `evaluate(expression)` ([below](#injectjavascript))                                                                           |
+| `injectJavaScript('window.location = …')`, a new `source` to navigate                          | `load(url)`                                                                                                                   |
+| `onMessage`, `postMessage`, `window.ReactNativeWebView`                                        | The bridge ([below](#postmessage-and-onmessage))                                                                              |
+| `onLoad`                                                                                       | `onLoadEnd`, with `state.outcome === 'finished'`                                                                              |
+| `onLoadProgress`                                                                               | `progress` in `useWebViewState`                                                                                               |
+| `onError`, `onHttpError`                                                                       | `onError`, whose `kind` is `'network'`, `'ssl'` or `'http'`                                                                   |
+| `onContentProcessDidTerminate`, `onRenderProcessGone`                                          | `onProcessGone`, whose `cause` is `'crash'`, `'memory'` or, on iOS, `'unknown'`                                               |
+| `renderLoading`, `renderError`, `startInLoadingState`                                          | [Your own views](examples.md#loading-and-error-screens), shown on every load                                                  |
+| `onContentSizeChange`                                                                          | An injected script, as for the [scroll position](#scroll-position)                                                            |
+| `ignoreSilentHardwareSwitch`                                                                   | An injected script that sets `navigator.audioSession.type = 'playback'`                                                       |
+| `source={require('./page.html')}`                                                              | A `file://` URI from expo-asset ([local files](examples.md#local-files))                                                      |
+| `allowingReadAccessToURL`                                                                      | `source.readAccessRoot`                                                                                                       |
+| `source.method`, `source.body`                                                                 | `source.body`, which makes the request a POST                                                                                 |
+| `onFileDownload`                                                                               | `onDownload`, on both platforms, which gets the saved file instead of a URL to fetch                                          |
+| `sharedCookiesEnabled`, `pullToRefreshEnabled`                                                 | `sharedCookies`, `pullToRefresh`                                                                                              |
+| `mediaCapturePermissionGrantType`, `geolocationEnabled`, `allowsProtectedMedia`                | `onPermissionRequest`                                                                                                         |
+| `clearCache(true)`, `clearHistory`, `clearFormData`, `requestFocus`                            | On Android `call('webView.clearCache', [true])` and so on, on iOS [`call` on the data store](examples.md#reading-and-calling) |
+| `nativeConfig`                                                                                 | A [native hook](native-hooks.md)                                                                                              |
+| `containerStyle`                                                                               | A `View` around the WebView                                                                                                   |
 
 ### Props that became extensions
 
-These props are functions of [@react-native-minimal-webview/extensions][extensions], which has the setup. Pass each
-one in the `extensions` prop. A callback gets the event itself, without react-native-webview's `nativeEvent` around
-it:
+These props are functions of [@react-native-minimal-webview/extensions][extensions], whose page has the setup. Pass each
+one in the `extensions` prop. A callback gets the event itself, without a `nativeEvent` around it.
 
-| react-native-webview                                      | Here                                                                                                                                |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `basicAuthCredential`                                     | [`basicAuthCredential`][basicauthcredential]                                                                                        |
-| `incognito`                                               | [`incognito`][incognito]                                                                                                            |
-| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems]                                                                                                            |
-| `onScroll`                                                | [`onScroll`][onscroll]                                                                                                              |
-| `style={{ backgroundColor: 'transparent' }}`              | [`transparentBackground`][transparentbackground]                                                                                    |
-| `hideKeyboardAccessoryView`                               | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview]                                                                            |
-| `keyboardDisplayRequiresUserAction`                       | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction]                                                            |
-| `refreshControlLightMode`                                 | [`refreshControlLightMode`][refreshcontrollightmode]                                                                                |
-| `removeIosKeyboardObserver`                               | [`removeIosKeyboardObserver`][removeioskeyboardobserver]                                                                            |
-| `nestedScrollEnabled`                                     | [`nestedScrollEnabled`][nestedscrollenabled]                                                                                        |
-| `androidLayerType`                                        | [`androidLayerType`][androidlayertype]                                                                                              |
-| Android downloads, `downloadingMessage`                   | [`downloadManager`][downloadmanager]                                                                                                |
-| `onLoadSubResourceError`                                  | [`onLoadSubResourceError`][onloadsubresourceerror], which reports network errors, not the SSL errors react-native-webview's reports |
-| JS dialogs (no prop)                                      | [`dialogs`][dialogs]                                                                                                                |
+| react-native-webview                                      | Here                                                                                  |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `basicAuthCredential`                                     | [`basicAuthCredential`][basicauthcredential]                                          |
+| `incognito`                                               | [`incognito`][incognito]                                                              |
+| `menuItems`, `suppressMenuItems`, `onCustomMenuSelection` | [`menuItems`][menuitems]                                                              |
+| `onScroll`                                                | [`onScroll`][onscroll]                                                                |
+| `style={{ backgroundColor: 'transparent' }}`              | [`transparentBackground`][transparentbackground]                                      |
+| `hideKeyboardAccessoryView`                               | [`hideKeyboardAccessoryView`][hidekeyboardaccessoryview]                              |
+| `keyboardDisplayRequiresUserAction`                       | [`keyboardDisplayRequiresUserAction`][keyboarddisplayrequiresuseraction]              |
+| `refreshControlLightMode`                                 | [`refreshControlLightMode`][refreshcontrollightmode]                                  |
+| `removeIosKeyboardObserver`                               | [`removeIosKeyboardObserver`][removeioskeyboardobserver]                              |
+| `nestedScrollEnabled`                                     | [`nestedScrollEnabled`][nestedscrollenabled]                                          |
+| `androidLayerType`                                        | [`androidLayerType`][androidlayertype]                                                |
+| Android downloads, `downloadingMessage`                   | [`downloadManager`][downloadmanager]                                                  |
+| `onLoadSubResourceError`                                  | [`onLoadSubResourceError`][onloadsubresourceerror], which reports network errors only |
+| JS dialogs (no prop)                                      | [`dialogs`][dialogs]                                                                  |
 
 ### Settings with another name
 
-| react-native-webview               | `ios`                                                    | `android`                                                                |
-| ---------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `scrollEnabled`                    | `scrollView.scrollEnabled`                               |                                                                          |
-| `showsVerticalScrollIndicator`     | `scrollView.<the same name>`                             | `webView.verticalScrollBarEnabled`                                       |
-| `showsHorizontalScrollIndicator`   | `scrollView.<the same name>`                             | `webView.horizontalScrollBarEnabled`                                     |
-| `javaScriptEnabled`                | `webpagePreferences.allowsContentJavaScript`             | `settings.<the same name>`                                               |
-| `applicationNameForUserAgent`      | `configuration.<the same name>`                          | `settings.userAgentString` ([how][useragent])                            |
-| `mediaPlaybackRequiresUserAction`  | `configuration.mediaTypesRequiringUserActionForPlayback` | `settings.mediaPlaybackRequiresUserGesture`                              |
-| `contentMode`                      | `webpagePreferences.preferredContentMode`                |                                                                          |
-| `decelerationRate`                 | `scrollView.<the same name>`                             |                                                                          |
-| `cacheEnabled: false`              | `configuration.websiteDataStore: 'nonPersistent'`        | `settings.cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE`         |
-| `automaticallyAdjustContentInsets` | `scrollView.contentInsetAdjustmentBehavior`              |                                                                          |
-| `thirdPartyCookiesEnabled`         |                                                          | `webView.acceptThirdPartyCookies`                                        |
-| `scalesPageToFit`                  |                                                          | `settings.useWideViewPort` and `settings.loadWithOverviewMode`           |
-| `setBuiltInZoomControls`           |                                                          | `settings.builtInZoomControls`                                           |
-| `setDisplayZoomControls`           |                                                          | `settings.displayZoomControls`                                           |
-| `forceDarkOn`                      |                                                          | `settings.algorithmicDarkeningAllowed`; below `targetSdk` 33 `forceDark` |
-| `saveFormDataDisabled`             |                                                          | `settings.saveFormData: false`, a no-op since API 26                     |
-| `webviewDebuggingEnabled`          | `webView.inspectable`                                    | [`AndroidWebView.setWebContentsDebuggingEnabled()`][debugging], app-wide |
-| `allowFileAccessFromFileURLs`      | `preferences.<the same name>`                            | `settings.<the same name>`                                               |
-| `allowUniversalAccessFromFileURLs` | `configuration.<the same name>`                          | `settings.<the same name>`                                               |
+| react-native-webview               | `ios`                                                    | `android`                                                                   |
+| ---------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `scrollEnabled`                    | `scrollView.scrollEnabled`                               |                                                                             |
+| `showsVerticalScrollIndicator`     | `scrollView.<the same name>`                             | `webView.verticalScrollBarEnabled`                                          |
+| `showsHorizontalScrollIndicator`   | `scrollView.<the same name>`                             | `webView.horizontalScrollBarEnabled`                                        |
+| `javaScriptEnabled`                | `webpagePreferences.allowsContentJavaScript`             | `settings.<the same name>`                                                  |
+| `applicationNameForUserAgent`      | `configuration.<the same name>`                          | `settings.userAgentString` ([how][useragent])                               |
+| `mediaPlaybackRequiresUserAction`  | `configuration.mediaTypesRequiringUserActionForPlayback` | `settings.mediaPlaybackRequiresUserGesture`                                 |
+| `contentMode`                      | `webpagePreferences.preferredContentMode`                |                                                                             |
+| `decelerationRate`                 | `scrollView.<the same name>`                             |                                                                             |
+| `cacheEnabled: false`              | `configuration.websiteDataStore: 'nonPersistent'`        | `settings.cacheMode: AndroidConstants.WebSettings.LOAD_NO_CACHE`            |
+| `automaticallyAdjustContentInsets` | `scrollView.contentInsetAdjustmentBehavior`              |                                                                             |
+| `thirdPartyCookiesEnabled`         |                                                          | `webView.acceptThirdPartyCookies`                                           |
+| `scalesPageToFit`                  |                                                          | `settings.useWideViewPort` and `settings.loadWithOverviewMode`              |
+| `setBuiltInZoomControls`           |                                                          | `settings.builtInZoomControls`                                              |
+| `setDisplayZoomControls`           |                                                          | `settings.displayZoomControls`                                              |
+| `forceDarkOn`                      |                                                          | `settings.algorithmicDarkeningAllowed`, or `forceDark` below `targetSdk` 33 |
+| `webviewDebuggingEnabled`          | `webView.inspectable`                                    | [`AndroidWebView.setWebContentsDebuggingEnabled()`][debugging], app-wide    |
+| `allowFileAccessFromFileURLs`      | `preferences.<the same name>`                            | `settings.<the same name>`                                                  |
+| `allowUniversalAccessFromFileURLs` | `configuration.<the same name>`                          | `settings.<the same name>`                                                  |
 
 A value keeps its form unless its key takes a constant:
 
@@ -164,22 +163,21 @@ A value keeps its form unless its key takes a constant:
 
 ## Props with no counterpart
 
-| react-native-webview              | Why                                                                                                                          |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `autoManageStatusBarEnabled`      | iOS shows WebKit's own fullscreen                                                                                            |
-| `useSharedProcessPool`            | `WKProcessPool` has had no effect since iOS 15                                                                               |
-| `enableApplePay`                  | Apple Pay works with injected scripts since iOS 16                                                                           |
-| `lackPermissionToDownloadMessage` | `onDownload` saves into the app's cache, and [`downloadManager`][downloadmanager] into Downloads: neither needs a permission |
+| react-native-webview              | Why                                                                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoManageStatusBarEnabled`      | iOS shows WebKit's own fullscreen                                                                                                         |
+| `useSharedProcessPool`            | Process pools have no effect on the iOS versions this package supports                                                                    |
+| `enableApplePay`                  | Apple Pay works with injected scripts                                                                                                     |
+| `saveFormDataDisabled`            | Android ignores `saveFormData` on the versions this package supports                                                                      |
+| `lackPermissionToDownloadMessage` | Downloads need no permission, whether `onDownload` saves them into the app's cache or [`downloadManager`][downloadmanager] into Downloads |
 
 ## Props that keep their name
 
-`onNavigationStateChange` keeps its name, but fires on every state change, progress and title included. `onLoadStart` and
-`onLoadEnd` keep theirs too, and get the [`NavigationState`][navigationstate]
-instead of a native event. `userAgent` is the same prop.
+`onNavigationStateChange` keeps its name but fires on every state change, progress and title included. `onLoadStart` and
+`onLoadEnd` keep theirs too, and get the [`NavigationState`][navigationstate] instead of a native event. `userAgent` is
+the same prop.
 
 ## Migration recipes
-
-Where a table above says "below", the recipe is here.
 
 ### onShouldStartLoadWithRequest
 
@@ -207,17 +205,16 @@ export function Browser() {
 }
 ```
 
-Your rules replace the defaults, [`defaultNavigationRules`][defaultnavigationrules]: spread it after yours to keep them.
-A navigation no rule matches is blocked, where react-native-webview opened a URL outside `originWhitelist` externally.
+Your rules replace the defaults, [`defaultNavigationRules`][defaultnavigationrules]. To keep the defaults, spread them
+after your rules. A navigation that no rule matches is blocked, while react-native-webview opened a URL outside
+`originWhitelist` externally.
 
-A late `onNavigationRequest` answer blocks the navigation, where react-native-webview's Android let it through.
+The [request][navigationrequest] has `mainFrame` in place of `isTopFrame`, and `userInitiated` in place of
+`navigationType: 'click'`. It has no `mainDocumentURL`. A new window (`onOpenWindow`) is a request with
+`newWindow: true`.
 
-The [request][navigationrequest] has `mainFrame` in
-place of `isTopFrame`, and `userInitiated` in place of `navigationType: 'click'`. It has no `mainDocumentURL`. A new
-window (`onOpenWindow`) is a request with `newWindow: true`.
-
-react-native-webview's iOS also asks about the `source` load, reloads, back/forward and form POSTs. The rules skip them
-([`navigationRules`][navigationrules]).
+The rules skip the `source` load, reloads, back/forward and form POSTs. [`navigationRules`][navigationrules] lists every
+navigation they skip.
 
 ### injectJavaScript
 
@@ -228,12 +225,11 @@ Wrap the statements you passed `injectJavaScript` in a function you call, withou
 
 ### postMessage and onMessage
 
-The [bridge](examples.md#the-bridge) replaces both, with calls that return promises, and events, in both directions.
+The [bridge](examples.md#the-bridge) replaces both. Each side can send events and make calls that return promises.
 
 Pages that use `window.ReactNativeWebView.postMessage` and `message` events keep working with
-[`reactNativeWebViewMessages`][reactnativewebviewmessages]
-in `injectedScripts`, so the app can move first and the pages later. The bridge event `rnw` carries the messages both
-ways:
+[`reactNativeWebViewMessages`][reactnativewebviewmessages] in `injectedScripts`, so the app can move first and the pages
+later. The bridge event `rnw` carries the messages both ways:
 
 ```tsx
 import { useEffect, useMemo } from 'react';
@@ -275,8 +271,8 @@ checking which page sent a message. It is an origin, without the path.
 
 ### Scroll position
 
-An injected script can report the main frame's scroll position over the bridge, at most once per animation frame. For the offsets
-during a bounce or a pinch too, use the [`onScroll`][onscroll] extension.
+An injected script can report the main frame's scroll position over the bridge, at most once per animation frame. To
+also get the offsets during a bounce or a pinch, use the [`onScroll`][onscroll] extension.
 
 ```ts
 import type { InjectedScript } from 'react-native-minimal-webview';

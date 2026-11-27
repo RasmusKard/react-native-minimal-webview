@@ -8,17 +8,18 @@ description: Migrate a React Native app from react-native-webview to react-nativ
 Replaces every react-native-webview usage in an app with react-native-minimal-webview. It keeps what the app's users see,
 and it reports each behavior that changes so a person decides it.
 
-The docs site serves each page as Markdown. Read these from it, not from memory: the package passes platform APIs
-through by name, and most react-native-webview props have no prop of the same name here.
+Read these pages from the docs site, which serves each as Markdown, instead of working from memory. Most
+react-native-webview props have no prop of the same name here.
 
 - Migration guide: https://rasmuskard.github.io/react-native-minimal-webview/guides/migrating-from-react-native-webview/index.md
-- Install and requirements: https://rasmuskard.github.io/react-native-minimal-webview/index.md (Install, Requirements)
+- README: https://rasmuskard.github.io/react-native-minimal-webview/index.md (When to use something else, Install,
+  Requirements)
 - Every page: https://rasmuskard.github.io/react-native-minimal-webview/llms.txt
 
 ## 1. Check the app can move
 
-Stop and tell the user if the app runs on the old architecture, Windows, macOS or web, or only in Expo Go, or if it
-can't meet the minimums in Requirements. The package supports none of those.
+Stop and tell the user if the app is a case in the README's "When to use something else", or if it can't meet the
+minimums in Requirements.
 
 ## 2. Inventory
 
@@ -32,8 +33,8 @@ Read the migration guide in full first. Then list, with file and line:
 
 ## 3. Install
 
-Follow Install in the README: the package, expo-build-properties and the minimums. Add
-`@react-native-minimal-webview/extensions` only if a prop maps to an extension in the guide.
+Follow Install in the README. Add `@react-native-minimal-webview/extensions` only if a prop maps to an extension in the
+guide.
 
 ## 4. Migrate each WebView
 
@@ -44,12 +45,11 @@ as before. Two exceptions, which you list in the report instead of applying:
   messaging to more origins or to iframes, or `origins: ['*']` on a script that only the app's own pages need.
 - A prop the guide doesn't list. Leave a `TODO(migration)` comment at it.
 
-Where the new event carries something else than the old one, rewrite the handler for it instead of renaming it:
+Where a new event carries different data than the old one, rewrite the handler instead of renaming it. For example,
 `onDownload` gets a file that is already saved, so code that opened or fetched the old event's URL goes.
 
-Set the bridge's `allowedOrigins` to the origins the app actually loads, never `*`. Pages that call
-`window.ReactNativeWebView` keep working through `reactNativeWebViewMessages`; don't edit web projects outside this
-repo.
+Set the bridge's `allowedOrigins` to the origins the app loads, never `*`. Pages that call `window.ReactNativeWebView`
+keep working through `reactNativeWebViewMessages`, so don't edit web projects outside this repo.
 
 ## 5. Remove react-native-webview
 
