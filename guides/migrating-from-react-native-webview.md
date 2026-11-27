@@ -64,20 +64,20 @@ To add your own keys, merge each root: `ios={{ ...rnwDefaults.ios, scrollView: {
 
 ## Behavior that differs
 
-|                                                                       | react-native-webview                                    | Here                                                       | To get the old behavior                                                           |
-| --------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Android fullscreen video (`allowsFullscreenVideo`)                    | Off                                                     | On ([`onFullscreenChange`][onfullscreenchange])            | A native hook that takes `onShowCustomView`                                       |
-| iOS universal links                                                   | Open the app that claims them                           | Load in place                                              | An `external` rule for the host                                                   |
-| Downloads                                                             | Saved to Downloads on Android                           | Open externally, or [`onDownload`][ondownload] saves them  | [`downloadManager`][downloadmanager] (Android)                                    |
-| Renderer crash                                                        | Reported                                                | The core reloads ([`onProcessGone`][onprocessgone])        | Remove your `reload()`, and offer a retry while [`recovered`][recovered] is false |
-| Messaging                                                             | Every page, and on Android every frame                  | The main frame, on `allowedOrigins`                        | For an iframe, a native hook                                                      |
-| Injected script                                                       | At document end, on every origin                        | At document start, on its `origins`                        | `addEventListener('DOMContentLoaded', …)` and `origins: ['*']`                    |
-| Failed load                                                           | An error view over the page                             | iOS keeps the old page, Android shows its own              | The [error screen](examples.md#loading-and-error-screens)                         |
-| Android file input                                                    | Offers the camera, and with `capture` opens it directly | The system chooser, which ignores `capture`                | [`onFileRequest`][onfilerequest]                                                  |
-| Android camera and microphone, and location with `geolocationEnabled` | Granted to every page, after asking the OS              | Denied                                                     | [`onPermissionRequest`][onpermissionrequest]                                      |
-| A link to another scheme (`tel:`, `myapp:`)                           | Opens externally                                        | Only from the main frame, after a user gesture             | An `external` rule for the scheme                                                 |
-| New window (`target=_blank`, `window.open`)                           | In place on iOS, in the system browser on Android       | In place, when a rule allows it ([`newWindow`][newwindow]) | `{ newWindow: true, action: 'external' }`                                         |
-| Android System WebView older than 101                                 | Messaging and injected scripts work                     | Neither does ([versions](android-system-webview.md))       |                                                                                   |
+|                                                                       | react-native-webview                                                         | Here                                                       | To get the old behavior                                                                                                                            |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android fullscreen video (`allowsFullscreenVideo`)                    | Off                                                                          | On ([`onFullscreenChange`][onfullscreenchange])            | A native hook that takes `onShowCustomView`                                                                                                        |
+| iOS universal links                                                   | Open the app that claims them                                                | Load in place                                              | A native hook that decides navigations itself, or an `external` rule for the host, which opens its app, or the browser when no app claims the link |
+| Downloads                                                             | Saved to Downloads on Android                                                | Open externally, or [`onDownload`][ondownload] saves them  | [`downloadManager`][downloadmanager] (Android)                                                                                                     |
+| Renderer crash                                                        | Reported                                                                     | The core reloads ([`onProcessGone`][onprocessgone])        | Remove your `reload()`, and offer a retry while [`recovered`][recovered] is false                                                                  |
+| Messaging                                                             | Every page, and on Android every frame                                       | The main frame, on `allowedOrigins`                        | For an iframe, a native hook                                                                                                                       |
+| Injected script                                                       | At document end on iOS, once the page has loaded on Android, on every origin | At document start, on its `origins`                        | `addEventListener('DOMContentLoaded', …)`, or `'load'` for Android's timing, and `origins: ['*']`                                                  |
+| Failed load                                                           | An error view over the page                                                  | iOS keeps the old page, Android shows its own              | The [error screen](examples.md#loading-and-error-screens)                                                                                          |
+| Android file input                                                    | Offers the camera, and with `capture` opens it directly                      | The system chooser, which ignores `capture`                | [`onFileRequest`][onfilerequest]                                                                                                                   |
+| Android camera and microphone, and location with `geolocationEnabled` | Granted to every page, after asking the OS                                   | Denied                                                     | [`onPermissionRequest`][onpermissionrequest]                                                                                                       |
+| A link to another scheme (`tel:`, `myapp:`)                           | Opens externally                                                             | Only from the main frame, after a user gesture             | An `external` rule for the scheme                                                                                                                  |
+| New window (`target=_blank`, `window.open`)                           | In place on iOS, in the system browser on Android                            | In place, when a rule allows it ([`newWindow`][newwindow]) | `{ newWindow: true, action: 'external' }`                                                                                                          |
+| Android System WebView older than 101                                 | Messaging and injected scripts work                                          | Neither does ([versions](android-system-webview.md))       |                                                                                                                                                    |
 
 Remove the `LSApplicationQueriesSchemes` (iOS) and `<queries>` (Android) entries you added for the schemes a page opens,
 unless your own code calls `Linking.canOpenURL` for them. The core opens those links without asking `canOpenURL`
@@ -110,6 +110,9 @@ unless your own code calls `Linking.canOpenURL` for them. The core opens those l
 | `nativeConfig`                                                                                 | A [native hook](native-hooks.md)                                                                                          |
 | Props from a helper (`{...Sentry.sentryWebViewProps()}`)                                       | Each prop it returns, by its own row: its `injectedJavaScriptBeforeContentLoaded` is an `injectedScripts` entry           |
 | `containerStyle`                                                                               | A `View` around the WebView                                                                                               |
+
+`onError` has no `domain`. On iOS it also reports a load that fails after it committed, which react-native-webview
+didn't, and an Android `ssl` error's `description` differs ([`LoadErrorEvent`][loaderrorevent]).
 
 ### Props that became extensions
 
@@ -178,6 +181,10 @@ A value keeps its form unless its key takes a constant:
 `onLoadEnd` keep theirs too, and get the [`NavigationState`][navigationstate] instead of a native event. `userAgent` is
 the same prop.
 
+react-native-webview's Android made a `User-Agent` in `source.headers` the WebView's user agent, so apps set it there in
+place of `userAgent`. Here Android doesn't send that header ([`WebViewSource`][webviewsource]): move its value to the
+`userAgent` prop.
+
 ## Migration recipes
 
 ### onShouldStartLoadWithRequest
@@ -213,8 +220,9 @@ after your rules. A navigation that no rule matches is blocked, while react-nati
 A late `onNavigationRequest` answer blocks the navigation, where react-native-webview's Android let it through.
 
 Keep `ask` for the navigations only your code can decide, and give the pages you always load an `allow` rule in front
-of it, as above. Android can't hold a navigation until JS answers: it cancels an asked one and loads it again when
-allowed, without the page's referrer policy or the gesture flag ([`action`][navigationruleaction]).
+of it, as above. Android here can't hold a navigation until JS answers: it cancels an asked
+one and, when allowed, loads it again as a load the app starts. That load ignores the page's referrer policy, sends other
+`Sec-Fetch-*` headers than the page's own navigation, and adds a history entry for a `location.replace` ([`action`][navigationruleaction]).
 
 The [request][navigationrequest] has `mainFrame` in place of `isTopFrame`, and `userInitiated` in place of
 `navigationType: 'click'`. It has no `mainDocumentURL`. A new window (`onOpenWindow`) is a request with
@@ -283,6 +291,9 @@ export function Shop({ token }: { token: string }) {
 The listener's second argument, `{ origin }` ([`BridgeSender`][bridgesender]), takes the place of `nativeEvent.url` for
 checking which page sent a message. It is an origin, without the path.
 
+The reply waits for the page's `DOMContentLoaded`, where `postMessage` delivered at once:
+[`reactNativeWebViewMessages`][reactnativewebviewmessages] says what that changes for a request the page sends.
+
 ### Scroll position
 
 An injected script can report the main frame's scroll position over the bridge, at most once per animation frame. To
@@ -336,6 +347,8 @@ Pass it in `injectedScripts` and listen with `bridge.on('scroll', …)`, as in t
 [extensions]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/extensions/
 [navigationruleaction]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#action
 [navigationrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRequest/
+[webviewsource]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewSource/
 [evaluate]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/WebViewRef/#evaluate
 [reactnativewebviewmessages]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/reactNativeWebViewMessages/
+[loaderrorevent]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/LoadErrorEvent/
 [bridgesender]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeSender/

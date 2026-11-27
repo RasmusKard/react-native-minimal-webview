@@ -31,6 +31,9 @@ export type WebViewSource =
       /**
        * Sent with each load of the `source`: the first, a reload (`reload()` or pull-to-refresh), and a crash recovery
        * that loads the `source` again. The page's later navigations don't send them.
+       *
+       * On Android, WebView may replace a header it sets itself, such as one for caching or accepted types, with its
+       * own value. It replaces `User-Agent`, so set that with {@link WebViewProps.userAgent | userAgent}.
        */
       headers?: Record<string, string>;
       /**
@@ -97,15 +100,18 @@ export type NavigationRule = {
   /**
    * The main frame's navigation (true) or an iframe's (false).
    *
-   * On Android only an iframe's non-http(s) navigations reach the rules, so a `mainFrame: false` rule for http(s)
-   * works on iOS only.
+   * On Android only an iframe's non-http(s) navigations reach the rules, a `blob:` one as the http(s) origin it
+   * carries. So there a `mainFrame: false` rule for http(s) decides only an iframe's `blob:` navigations, and an `ask`
+   * blocks them.
    */
   mainFrame?: boolean;
   /**
    * A `target=_blank` or `window.open` navigation, always a main-frame one.
    *
    * An allowed one loads in place. There is never a second WebView, so the page gets no `window.opener`. For real
-   * popups, a native hook takes `createWebViewWith` (iOS) or `onCreateWindow` (Android).
+   * popups, a native hook takes `createWebViewWith` (iOS) or `onCreateWindow` (Android). On Android each allowed
+   * one, by a rule or an `ask`, is a load the app starts, which a site sees as {@link NavigationRule.action | action}
+   * says.
    *
    * - One to `data:`, `blob:`, `javascript:`, `file:` or an `about:` URL other than `about:blank` is always blocked.
    *   On Android a `javascript:` one's script may still run, with the page's origin.
@@ -132,7 +138,14 @@ export type NavigationRule = {
    * What the navigations it matches do. `ask` puts each to `onNavigationRequest`.
    *
    * On Android, `ask` works only in the main frame and is `block` elsewhere. The navigation is cancelled, and an
-   * allowed one loads again after the answer, without the page's referrer policy or the gesture flag.
+   * allowed one loads again after the answer as a load the app starts. A site sees that load differ from the page's
+   * own navigation, which an `allow` rule keeps outside a new window:
+   *
+   * - The page's URL goes as the referrer (only its origin to another origin, none from https to http), whatever the
+   *   page's referrer policy or the link's `noreferrer` says.
+   * - It is sent as a navigation from outside any page, as for a typed URL: `Sec-Fetch-Site: none` and
+   *   `Sec-Fetch-User: ?1`.
+   * - A `location.replace` to it adds a history entry instead of replacing the current one.
    */
   action: NavigationAction | 'ask';
 };
@@ -202,7 +215,10 @@ export type NavigationState = {
   /**
    * Whether there is a page to go back to.
    *
-   * On Android with an Android System WebView older than 102, an iframe's history entry doesn't update it.
+   * On Android, as for Chrome's back button, it leaves out the entry of a page that added another without a user
+   * gesture (a `pushState`, a hash change, or a navigation to another document that a script or timer started), unless
+   * a tap led to that page. So it is false when every earlier entry is left out, whatever `history.length` says. With
+   * an Android System WebView older than 102, an iframe's history entry doesn't update it.
    */
   canGoBack: boolean;
   /** Whether there is a page to go forward to. An iframe's history entry updates it as it does `canGoBack`. */
@@ -224,10 +240,15 @@ export type NavigationState = {
 /**
  * A main-frame error, for `onError`.
  *
- * - `network` and `ssl`: the load failed and no page arrived. An SSL error always cancels the load. `code` is the
- *   platform's own: the `NSError` code on iOS, and on Android a `WebViewClient.ERROR_*` for `network` and an
- *   `SslError.SSL_*` for `ssl`.
+ * - `network` and `ssl`: the load failed, on iOS also after it committed. An SSL error always cancels the load. `code`
+ *   is the platform's own: the `NSError` code on iOS, and on Android a `WebViewClient.ERROR_*` for `network` and an
+ *   `SslError.SSL_*` for `ssl`. `description` is the error's localized description on iOS. On Android it is
+ *   Chromium's error name for `network` (`net::ERR_NAME_NOT_RESOLVED`), or a sentence when no WebView can be made,
+ *   and `SSL error` with the code for `ssl`.
  * - `http`: the response had an HTTP error status (400 or above), and the site's own error page shows.
+ *
+ * A load the app or the page stops or replaces reports no error. Nor does a cancellation: `NSURLErrorCancelled`
+ * (-999) or WebKit error 102 on iOS, `net::ERR_ABORTED` on Android.
  * @group Events
  */
 export type LoadErrorEvent =
@@ -893,7 +914,10 @@ export interface WebViewProps extends Omit<ViewProps, 'children'> {
    * {@link IOSSettings.configuration | ios.configuration} recreates the WebView. For a suffix that changes, read
    * `navigator.userAgent` once with {@link WebViewRef.evaluate | evaluate()} and set `userAgent` to it plus the suffix.
    *
-   * A change applies from the next navigation.
+   * A change applies from the next navigation. On Android it also applies at once to the page's own requests and
+   * `navigator.userAgent`, and a change during a load cancels that load. WebView then loads with the new value: a
+   * first load starts over, and in place of a navigation the page started, which is lost, the page it left loads
+   * again.
    */
   userAgent?: string;
   /**
@@ -1147,8 +1171,7 @@ export type WebViewRef = {
   /**
    * Goes back one page. Does nothing unless `canGoBack`.
    *
-   * On Android it also skips the history entries a page added without a user gesture (`pushState`, a hash change) and
-   * the page that added them.
+   * On Android it also skips the entries that {@link NavigationState.canGoBack | canGoBack} leaves out.
    */
   goBack(): void;
   /** Goes forward one page. Does nothing unless `canGoForward`. */
