@@ -18,7 +18,7 @@ where a prop says so: an `ask` rule ([`onNavigationRequest`][onnavigationrequest
 pass [`onOpenExternal`][onopenexternal], and the page's requests for files and permissions
 ([page requests](examples.md#page-requests)).
 
-The **bridge** carries calls between your app's JS and the page's JS. The page calls it through
+The **bridge** carries calls and events between your app's JS and the page's JS. The page uses it through
 `window.nativeBridge`. The app makes it with [`createBridge`][createbridge] and passes it as the [`bridge`][bridge] prop.
 
 ## Frames and origins

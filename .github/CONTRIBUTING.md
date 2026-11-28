@@ -84,7 +84,7 @@ example/maestro/install.sh android <adb serial> --variant release
 example/maestro/run.sh android <adb serial> settings
 ```
 
-Android emulators need a Google APIs system image.
+Android emulators need a system image without the Play Store, such as a Google APIs one.
 [Test the oldest versions](../guides/android-system-webview.md#test-the-oldest-versions) says why. Start them with
 `-gpu host`, or they may render in software.
 
