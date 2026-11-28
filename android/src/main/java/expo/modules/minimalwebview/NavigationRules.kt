@@ -11,23 +11,15 @@ internal object NavigationRules {
 
   enum class Action(val jsName: String) { ALLOW("allow"), BLOCK("block"), EXTERNAL("external"), ASK("ask") }
 
-  /** [rule] is the index of the rule that decided, null when a default did. */
   data class Decision(val action: Action, val rule: Int?)
 
   private val schemesAllowedWithoutRules = setOf("about", "data", "javascript")
 
-  /**
-   * Never open as a new window, whatever the rules say: the core loads an allowed new window in the main frame itself,
-   * past the engine's limits on what a page may navigate the top frame to.
-   */
+  // The engine's limits on what a page may navigate the top frame to don't apply to loadUrl.
   private val noNewWindowSchemes = schemesAllowedWithoutRules + setOf("blob", "file")
 
   private fun actionOf(value: Any?) = Action.entries.find { it.jsName == value }
 
-  /**
-   * The rules' decision, gated for `ask`: blocked when nothing can answer it ([canAsk] false), allowed when its URL is
-   * in [asked] (URLs an `ask` already allowed). An unknown rule action blocks.
-   */
   fun decide(rules: List<Map<String, Any?>>?, request: Request, asked: Set<String>, canAsk: Boolean): Decision {
     val decision = match(rules, request)
     return when {
@@ -38,7 +30,6 @@ internal object NavigationRules {
     }
   }
 
-  /** An `ask` answer: allow, block or external; anything else (null on a timeout) blocks. */
   fun answer(value: Any?): Action = actionOf(value)?.takeIf { it != Action.ASK } ?: Action.BLOCK
 
   private fun match(rules: List<Map<String, Any?>>?, request: Request): Decision {
@@ -52,8 +43,7 @@ internal object NavigationRules {
     return if (index < 0) Decision(Action.BLOCK, null) else Decision(actionOf(rules[index]["action"]) ?: Action.BLOCK, index)
   }
 
-  // java.net.URI rejects URLs Chromium accepts (a raw `|` in the query, `_` in a host), so the parts are split with a
-  // regex.
+  // java.net.URI rejects URLs Chromium accepts (a raw `|` in the query, `_` in a host).
   private val urlParts = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):(?://([^/?#]*))?([^?#]*)(?:\\?([^#]*))?")
 
   private data class Parts(val scheme: String, val host: String?, val path: String, val params: List<String>)
@@ -66,16 +56,12 @@ internal object NavigationRules {
     return Parts(scheme, hostOf(authority), if (authority != null && path.isNotEmpty()) path else "/", params)
   }
 
-  /**
-   * A blob: document has the origin its URL carries (`blob:https://a.test/…`), so the rules see that origin, with
-   * path "/"; null for an opaque one (`blob:null/…`), which no rule describes.
-   */
+  // A blob: document has the origin its URL carries (`blob:https://a.test/…`), or an opaque one (`blob:null/…`).
   private fun blobOrigin(url: String): Parts? {
     val match = urlParts.find(url.substringAfter(':')) ?: return null
     return Parts(match.groupValues[1].lowercase(), hostOf(match.groups[2]?.value), "/", emptyList())
   }
 
-  /** Host without userinfo, port or a trailing dot, lowercased; null when there is none. */
   private fun hostOf(authority: String?): String? {
     if (authority.isNullOrEmpty()) return null
     val withoutUser = authority.substringAfterLast('@')
@@ -83,7 +69,6 @@ internal object NavigationRules {
     return host.lowercase().removeSuffix(".").ifEmpty { null }
   }
 
-  /** null when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing. */
   private fun list(value: Any?): List<String>? = value?.let { (it as? List<*>)?.map(Any?::toString).orEmpty() }
 
   private fun matches(rule: Map<String, Any?>, parts: Parts, request: Request): Boolean {
@@ -101,7 +86,6 @@ internal object NavigationRules {
       flag(rule, "userInitiated", request.userInitiated)
   }
 
-  /** `name=value` matches that exact parameter; `name` matches a parameter with that name, whatever its value. */
   private fun paramMatches(entry: String, params: List<String>) =
     params.any { if ('=' in entry) it == entry else it.substringBefore('=') == entry }
 

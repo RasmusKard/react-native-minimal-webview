@@ -26,8 +26,7 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
     ended.forEach { it.destroy() }
   }
 
-  /** Returns true to cancel the navigation (shouldOverrideUrlLoading's meaning). */
-  fun decide(request: NavigationRules.Request): Boolean {
+  fun cancels(request: NavigationRules.Request): Boolean {
     val asked = if (request.isRedirect) askedAndAllowed else emptySet()
     val decision = NavigationRules.decide(owner.navigationRules, request, asked, "onNavigationRequest" in owner.requestHandlers)
     when (decision.action) {
@@ -68,9 +67,8 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
     if (id != null) mainHandler.postDelayed({ owner.asks.cancel(id) }, ASK_TIMEOUT_MS)
   }
 
-  // WebView's request headers on a navigation are empty, so the page's URL goes as the Referer, trimmed by WebView's
-  // default policy (origin only cross-origin, none from https to http). loadUrl skips shouldOverrideUrlLoading, so the
-  // reissued URL isn't asked again (its redirects still go to decide).
+  // WebView's request headers on a navigation are empty. WebView trims the Referer by its default policy (origin only
+  // cross-origin, none from https to http). loadUrl skips shouldOverrideUrlLoading, but its redirects reach it.
   private fun reissue(url: String, referrer: String?) = webView.loadUrl(url, referrer?.let { mapOf("Referer" to it) }.orEmpty())
 
   fun openDownload(url: String) {
@@ -92,11 +90,6 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
     }
   }
 
-  /**
-   * Returns false when it could not be opened (the caller reports `block`): a page controls the URL, so a malformed
-   * intent (bad syntax, launchFlags=zz), a refused activity or a `file:` URL (which Android refuses to hand to another
-   * app) must not crash the app.
-   */
   private fun open(url: String): Boolean {
     val intent = try {
       browsableIntent(url)
@@ -112,12 +105,11 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
       openFallback(intent, url, e)
     } catch (e: SecurityException) {
       failed("not allowed to open $url", e)
-    } catch (e: FileUriExposedException) {
+    } catch (e: FileUriExposedException) { // Android refuses to hand a `file:` URL to another app
       failed("not allowed to open $url", e)
     }
   }
 
-  /** Only what a browser would allow: BROWSABLE, no explicit component or selector, and no URI permission grants. */
   private fun browsableIntent(url: String): Intent {
     val intent = if (url.startsWith("intent:", ignoreCase = true)) {
       Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
@@ -136,7 +128,7 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
   private fun openFallback(intent: Intent, url: String, error: ActivityNotFoundException): Boolean {
     val fallback = intent.getStringExtra("browser_fallback_url")?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
       ?: return failed("no app opens $url", error)
-    if (!decide(NavigationRules.Request(fallback, true, false, false))) webView.loadUrl(fallback)
+    if (!cancels(NavigationRules.Request(fallback, true, false, false))) webView.loadUrl(fallback)
     return false
   }
 
@@ -153,7 +145,7 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
       return wasPending
     }
     child.webViewClient = object : WebViewClient() {
-      // A renderer crash in the throwaway window must not take the app down.
+      // Returning true keeps the app alive.
       override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
         finish()
         return true
@@ -161,11 +153,11 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
 
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val target = request.url.toString()
-        if (finish() && !decide(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
+        if (finish() && !cancels(NavigationRules.Request(target, true, true, isUserGesture))) reissue(target, webView.url)
         return true
       }
     }
-    // window.open('') or about:blank never navigates: give up on it.
+    // window.open('') or about:blank never navigates.
     mainHandler.postDelayed({ finish() }, NEW_WINDOW_TIMEOUT_MS)
     (resultMsg.obj as WebView.WebViewTransport).webView = child
     resultMsg.sendToTarget()

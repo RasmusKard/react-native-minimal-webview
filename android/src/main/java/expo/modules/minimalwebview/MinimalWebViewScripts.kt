@@ -63,7 +63,6 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     }
   }
 
-  /** Installs `injectedScripts` if they changed, or with [force] always. They take effect from the next navigation. */
   fun update(force: Boolean = false) {
     val scripts = owner.injectedScripts.orEmpty()
     if (!force && scripts == installedScripts) return
@@ -73,7 +72,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     if (scripts.isEmpty() || lacks("injectedScripts", listOf(WebViewFeature.DOCUMENT_START_SCRIPT), "injected scripts don't run")) return
     for (script in scripts) {
       val code = script.code ?: continue
-      // No frame selector in androidx.webkit 1.17: main-frame-only scripts guard themselves.
+      // No frame selector in androidx.webkit 1.17.
       // A prefix, not a wrapping block: top-level const/let/class in the script must stay global.
       val source = if (script.allFrames != true) "if (window !== window.top) throw 0;\n$code" else code
       scriptHandlers += WebViewCompat.addDocumentStartJavaScript(webView, source, setOf("*"))
@@ -99,7 +98,7 @@ internal class MinimalWebViewScripts(private val owner: MinimalWebView, private 
     }
   }
 
-  /** A new Document rejects what is still waiting: WebView drops the callback when the document is replaced first. */
+  // WebView drops evaluateJavascript's callback when the document is replaced first.
   fun evaluate(script: String, onResult: (Result<String>) -> Unit) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
       return onResult(failure("unavailable", "evaluate needs WEB_MESSAGE_LISTENER; update Android System WebView"))
@@ -117,7 +116,6 @@ $script
     }
   }
 
-  /** Whether this device's WebView lacks one of [features] that [prop] needs; warns about it once per process. */
   private fun lacks(prop: String, features: List<String>, lost: String): Boolean {
     val missing = features.filterNot(WebViewFeature::isFeatureSupported)
     if (missing.isEmpty()) return false
@@ -136,24 +134,16 @@ $script
   }
 }
 
-/**
- * Each evaluation settles once: by the page's reply, a script that didn't run, or the Document's end. Main thread only.
- */
 internal class Evaluations {
   private val waiting = mutableMapOf<Int, (Result<String>) -> Unit>()
   private var next = 0
 
-  /** Keeps [onResult] until its evaluation settles; returns the id the page's reply carries. */
   fun add(onResult: (Result<String>) -> Unit): Int {
     val id = next++
     waiting[id] = onResult
     return id
   }
 
-  /**
-   * The page's [reply], `[id, valueJson]` or `[id, null, errorMessage]`, settles evaluation `id` with the value or a
-   * `script_error`. Only the main frame's replies count; a malformed one, or one for an id not waiting, is dropped.
-   */
   fun settle(reply: String?, mainFrame: Boolean) {
     if (!mainFrame) return
     val parts = runCatching { JSONArray(reply) }.getOrNull() ?: return
@@ -164,12 +154,10 @@ internal class Evaluations {
     )
   }
 
-  /** The script didn't run: evaluation [id] fails with a `script_error` saying [why], unless it settled already. */
   fun fail(id: Int, why: String) {
     waiting.remove(id)?.invoke(failure("script_error", why))
   }
 
-  /** The Document ended: every waiting evaluation fails with `navigated`. */
   fun failAll() {
     val all = waiting.values.toList()
     waiting.clear()
@@ -177,15 +165,13 @@ internal class Evaluations {
   }
 }
 
-/** Why an `evaluate` failed; its code is the JS error code (`script_error`, `navigated`, `unavailable`). */
 internal class EvaluateError(code: String, message: String) : CodedException(code, message, null)
 
 private fun failure(code: String, message: String) = Result.failure<String>(EvaluateError(code, message))
 
 /**
- * Whether the WebView whose default user agent is [defaultUserAgent] calls web message listeners as the message
- * arrives: Chromium before 119 does. Its `Chrome/` token names the Chromium base; a vendor's WebView package (Huawei's
- * is 11.x to 15.x) numbers itself apart from it.
+ * Chromium before 119 calls web message listeners as the message arrives. The user agent's `Chrome/` token names the
+ * Chromium base; a vendor's WebView package (Huawei's is 11.x to 15.x) numbers itself apart from it.
  */
 internal fun callsListenersDirectly(defaultUserAgent: String?): Boolean {
   val major = defaultUserAgent?.let { CHROME_MAJOR.find(it) }?.groupValues?.get(1)?.toIntOrNull()
@@ -197,7 +183,7 @@ private const val FIRST_CHROMIUM_POSTING_LISTENER_CALLS = 119
 private const val EVALUATE = "nativeEvaluateResult"
 private const val FRAME_NAVIGATED = "nativeFrameNavigated"
 
-// A new document, then each same-document navigation (Navigation API, WebView 102 and later).
+// Navigation API: WebView 102 and later.
 private const val FRAME_NAVIGATED_SCRIPT = """if (window !== window.top) {
   const navigated = () => $FRAME_NAVIGATED.postMessage('');
   navigated();

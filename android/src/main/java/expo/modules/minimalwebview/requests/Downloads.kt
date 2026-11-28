@@ -33,14 +33,10 @@ internal data class DownloadInfo(
   val mimeType: String
 )
 
-/**
- * WebView hands over only the URL, so http(s) is fetched again, through `HttpURLConnection` and the WebView profile's
- * `CookieManager` rather than React Native's OkHttp, so the package builds without `react-android`.
- */
+// WebView hands over only the URL.
 internal class Downloads(private val owner: MinimalWebView) {
   private val io = Executors.newSingleThreadExecutor()
 
-  /** Returns true when the app's prop takes the download. */
   fun onDownloadStart(download: DownloadInfo): Boolean {
     if ("onDownload" !in owner.requestHandlers) return false
     val name = safeName(URLUtilCompat.guessFileName(download.url, download.contentDisposition.ifEmpty { null }, download.mimeType))
@@ -56,13 +52,11 @@ internal class Downloads(private val owner: MinimalWebView) {
     return true
   }
 
-  /** Appends a decoded data: URL's bytes to [file], creating it, and returns its MIME type. */
   private fun append(file: File, data: Pair<ByteArray, String>): String {
     file.appendBytes(data.first)
     return data.second
   }
 
-  /** Runs [write] off the main thread; it fills the file and returns its MIME type. */
   private fun save(name: String, url: String, write: (File) -> String) {
     val file = File(owner.webView.context.cacheDir, "downloads/${System.nanoTime()}/$name")
     io.execute {
@@ -85,11 +79,8 @@ internal class Downloads(private val owner: MinimalWebView) {
     }
   }
 
-  /**
-   * WebView cannot fetch a blob: URL for us: the page reads it and returns it as data: URLs, [CHUNK_BYTES] at a time,
-   * each awaited on the io thread. A reply crosses as one Java string and is parsed twice, so a blob returned whole
-   * fills the heap several times over.
-   */
+  // WebView cannot fetch a blob: URL for us. A reply crosses as one Java string and is parsed twice, so a blob returned
+  // whole fills the heap several times over.
   private fun readBlob(url: String, name: String) = save(name, url) { file ->
     var offset = 0L
     var type: String
@@ -102,7 +93,6 @@ internal class Downloads(private val owner: MinimalWebView) {
     type
   }
 
-  /** Asks the page, from the io thread, for the blob's size and the data: URL of its [CHUNK_BYTES] at [offset]. */
   private fun readChunk(url: String, offset: Long): Pair<Long, String> {
     val script = """
       fetch(${JSONObject.quote(url)}).then((r) => r.blob()).then((b) => new Promise((ok, fail) => {
@@ -147,19 +137,11 @@ internal class Downloads(private val owner: MinimalWebView) {
     const val TIMEOUT_MS = 30_000
     private val PERCENT_ESCAPE = Regex("%[0-9A-Fa-f]{2}")
 
-    /**
-     * The `kind` of a failed download other than `http`: `network` for an IOException from a [fetched] (http(s)) download,
-     * except [TooLarge]; `data` for everything else.
-     */
     fun kind(error: Exception, fetched: Boolean) =
       if (fetched && error is IOException && error !is TooLarge) "network" else "data"
 
-    /**
-     * A data: URL's bytes and its MIME type (application/octet-stream when it names none). As in a browser, the body is
-     * percent-decoded to bytes, base64 bodies too (encodeURIComponent of the base64 text), and `;base64` matches in any
-     * case.
-     * Throws IllegalArgumentException for a URL without a comma or with bad base64.
-     */
+    // As in a browser, the body is percent-decoded to bytes, base64 bodies too (encodeURIComponent of the base64 text),
+    // and `;base64` matches in any case.
     fun decodeDataUrl(url: String): Pair<ByteArray, String> {
       val comma = url.indexOf(',')
       require(comma >= 0) { "a data: URL without a comma" }
@@ -170,14 +152,10 @@ internal class Downloads(private val owner: MinimalWebView) {
       return bytes to header.substringBefore(';').ifEmpty { "application/octet-stream" }
     }
 
-    /**
-     * A blob chunk's bytes and MIME type, from FileReader's data: URL. Chromium reads an empty blob as a bare `data:`,
-     * which [decodeDataUrl] refuses (a page's own data: URL without a comma is malformed): that is no bytes.
-     */
+    // Chromium reads an empty blob as a bare `data:`.
     fun decodeChunk(data: String): Pair<ByteArray, String> =
       if (data == "data:") ByteArray(0) to "application/octet-stream" else decodeDataUrl(data)
 
-    /** [text]'s UTF-8 bytes with each `%XX` replaced by the byte XX. The result is not decoded as UTF-8 again. */
     private fun percentDecode(text: String): ByteArray {
       if ('%' !in text) return text.toByteArray()
       val latin1 = String(text.toByteArray(), Charsets.ISO_8859_1)
@@ -187,7 +165,7 @@ internal class Downloads(private val owner: MinimalWebView) {
     /** `guessFileName` keeps a page's `.` or `..` (a directory: the save fails with EISDIR) and can be empty. */
     fun safeName(name: String) = if (name.isEmpty() || name == "." || name == "..") "download" else name
 
-    /** Copies [input] to [output] and fails once more than [max] bytes came: the Content-Length can be missing or wrong. */
+    // The Content-Length can be missing or wrong.
     fun copyCapped(input: InputStream, output: OutputStream, max: Long) {
       val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
       var total = 0L
@@ -200,7 +178,6 @@ internal class Downloads(private val owner: MinimalWebView) {
       }
     }
 
-    /** Fetches [download] into [file] and returns its MIME type. [cookie] and [setCookie] are the WebView's cookie store. */
     fun fetchTo(download: DownloadInfo, file: File, cookie: (String) -> String?, setCookie: (String, String) -> Unit): String {
       val connection = connect(URL(download.url), download.userAgent, cookie, setCookie)
       try {
@@ -213,14 +190,9 @@ internal class Downloads(private val owner: MinimalWebView) {
       }
     }
 
-    /** Whether a download follows a redirect [from] one URL [to] another: only to https, or from http to http. */
+    // Chrome blocks an insecure download started from a secure one.
     fun redirectAllowed(from: URL, to: URL) = to.protocol == "https" || (to.protocol == "http" && from.protocol == "http")
 
-    /**
-     * Opens [url] and follows its redirects (http to https too) by hand: each hop sends the cookies for its own URL and
-     * stores what the server sets back, as React Native's fetch does. A hop must be [redirectAllowed]: Chrome blocks an
-     * insecure download started from a secure one.
-     */
     private fun connect(url: URL, userAgent: String, cookie: (String) -> String?, setCookie: (String, String) -> Unit): HttpURLConnection {
       var current = url
       repeat(MAX_REDIRECTS + 1) {

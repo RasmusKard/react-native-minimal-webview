@@ -21,7 +21,6 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
   private var barsShownBefore = 0
   private var barsBehaviorBefore: Int? = null
 
-  /** Returns false when there is no window to cover; the caller then tells WebView the view is hidden. */
   fun onShowCustomView(view: View, callback: CustomViewCallback): Boolean {
     if (shownCallback != null) exit()
     val window = owner.webView.rootView as? ViewGroup ?: return false
@@ -49,7 +48,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
     return true
   }
 
-  /** Leaves fullscreen from our side: WebView then calls onHideCustomView. */
+  // WebView calls onHideCustomView after onCustomViewHidden.
   private fun exit() {
     val callback = shownCallback ?: return
     onHideCustomView()
@@ -77,7 +76,7 @@ internal class FullscreenVideo(private val owner: MinimalWebView) {
 
   private fun controller() = owner.appContext.currentActivity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
 
-  /** Only CLOSING (unmount) also tells WebView via `onCustomViewHidden`; after a crash no renderer is left to tell. */
+  // After a crash no renderer is left to tell.
   fun documentEnded(reason: DocumentEnd) {
     if (reason == DocumentEnd.CLOSING) exit() else onHideCustomView()
   }

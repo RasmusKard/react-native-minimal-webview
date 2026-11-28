@@ -48,14 +48,13 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
   }
 
   override fun onNavigationCompleted(navigation: Navigation) {
-    // A dead renderer's WebView reports the navigation it cut off as not committed, before processGone fails it.
+    // A dead renderer's WebView reports the navigation it cut off as not committed.
     if (owner.rendererGone) return
     if (navigation.didCommit() && !navigation.isSameDocument) owner.documents.end(DocumentEnd.COMMITTED)
     if (navigation.didCommit()) owner.committedUrl = navigation.url
     if (!navigation.isSameDocument) {
       owner.pendingUrl = null
-      // Chromium's error page for an HTTP status (a 404 with an empty body) is the server's answer: "finished", as on
-      // iOS.
+      // Chromium's error page for an HTTP status (a 404 with an empty body) is the server's answer.
       owner.settleOutcome(
         when {
           !navigation.didCommit() -> LoadOutcome.CANCELLED
@@ -71,7 +70,7 @@ internal class Listener(private val owner: MinimalWebView) : NavigationListener 
 
   override fun onPageLoadEvent(page: Page) {
     loadedPages += page
-    // The page being left still fires its load event while the next one is pending: that load isn't over.
+    // The page being left still fires its load event while the next one is pending.
     if (owner.pendingUrl == null) owner.loadEnded()
   }
 }
@@ -98,14 +97,14 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
       "shouldOverrideUrlLoading", WEB_VIEW, WebResourceRequest::class.java,
       lost = "navigationRules, their defaults and onNavigationRequest don't apply to navigations"
     )?.shouldOverrideUrlLoading(view, request)
-      ?: navigation.decide(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture(), request.isRedirect))
+      ?: navigation.cancels(NavigationRules.Request(url, request.isForMainFrame, false, request.hasGesture(), request.isRedirect))
     if (!override && request.isForMainFrame) allowedMainFrameUrl = url
     return override
   }
 
   // Without NavigationListener (WebView older than 146): a main-frame document commits here.
-  // Chromium calls it at commit (for every app but old GMS), so a load that never commits (a stop, a download, a 204, a
-  // blocked redirect) gets no load events and no outcome here.
+  // Chromium calls it at commit (for every app but old GMS), and not for a load that never commits (a stop, a download,
+  // a 204, a blocked redirect).
   override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
     if (!owner.hasNavigationListener) {
       owner.documents.end(DocumentEnd.COMMITTED)
@@ -165,8 +164,8 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
     )
     if (hook != null) return hook.onReceivedSslError(view, handler, sslError)
     handler.cancel()
-    // Also called for subresources (an ad image): only the main frame's URL is a page error.
-    // Without a NavigationListener there is no pendingUrl: WebView's url shows a loadUrl in progress.
+    // Also called for subresources (an ad image).
+    // WebView's url shows a loadUrl in progress.
     val mainFrame = if (owner.hasNavigationListener) setOf(owner.pendingUrl ?: owner.committedUrl) else setOf(view.url, allowedMainFrameUrl)
     if (sslError.url in mainFrame) {
       owner.failedLoad = sslError.url
@@ -202,7 +201,7 @@ internal class Client(private val owner: MinimalWebView, private val navigation:
 
   override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
     // Returning true keeps the app alive.
-    // Timed here: every WebView on the renderer hears of its death back to back, before any recovery runs.
+    // Timed here: every WebView on the renderer hears of its death back to back.
     val at = SystemClock.elapsedRealtime()
     if (view === owner.webView) {
       owner.rendererGone = true

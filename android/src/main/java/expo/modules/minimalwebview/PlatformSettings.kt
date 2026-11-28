@@ -30,10 +30,6 @@ internal class PlatformSettings(
 
   internal class Target(val cls: Class<*>, val receiver: Any?, val firstArgument: Any?)
 
-  /**
-   * Applies [settings], and sets a key applied before and missing now back to its value before the first write;
-   * returns the rejected keys with their reasons. [force] re-applies everything (a new WebView).
-   */
   fun apply(settings: Map<String, Any?>?, force: Boolean = false): List<Rejected> {
     if (force) {
       applied.clear()
@@ -62,7 +58,6 @@ internal class PlatformSettings(
     // Not targets() first: the other roots are the WebView profile's, which `webView.profile` may not have set yet.
     if (rootName in listOf("settings", "webView")) targets(rootName) else null
 
-  /** [set], keeping the value it replaces the first time under [id]; returns the problem, or null when it was set. */
   private fun write(targets: List<Target>, id: SettingId, value: Any?): String? {
     refusal(setterOf(id.key), listOf(value))?.let { return it }
     if (id in originals) return set(targets, id.key, value)
@@ -71,7 +66,6 @@ internal class PlatformSettings(
     }?.also { originals.remove(id) }
   }
 
-  /** Forgets each applied key [removedFrom] no longer has and sets its original value back; returns what failed. */
   private fun restore(removedFrom: Map<String, Any?>): List<Rejected> {
     val present = removedFrom.flatMap { (rootName, entries) ->
       (entries as? Map<*, *>)?.keys.orEmpty().map { SettingId(rootName, it.toString()) }
@@ -90,7 +84,6 @@ internal class PlatformSettings(
     }
   }
 
-  /** `root.key`: the getter's value (`getKey`, `isKey` or a non-void `key()`), as JSON. Throws a [PlatformException]. */
   fun get(path: String): String {
     val (targets, key) = resolve(path)
     val value = read(targets, key)
@@ -98,12 +91,6 @@ internal class PlatformSettings(
     return toJson(value)
   }
 
-  /**
-   * `root.method` with [args], a public method the core doesn't own. [reply] gets a function that returns the result as
-   * JSON, or throws a [PlatformException] for a value JSON can't carry. The result is the method's return value or, when
-   * no overload takes just [args], the value that the first overload with a trailing `ValueCallback` reports later.
-   * Throws a [PlatformException].
-   */
   fun call(path: String, args: List<Any?>, reply: (() -> String) -> Unit) {
     val (targets, name) = resolve(path)
     if (name in OWNED) throw problem("$name is ${owned(name)}")
@@ -120,14 +107,12 @@ internal class PlatformSettings(
     awaiting()
   }
 
-  /** The targets of `root.key` and the key; throws for a malformed path or an unknown root. */
   private fun resolve(path: String): Pair<List<Target>, String> {
     val parts = path.split('.', limit = 2)
     if (parts.size != 2) throw notFound("use root.key")
     return (targets(parts[0]) ?: throw notFound("unknown root: use settings, webView, cookieManager or webStorage")) to parts[1]
   }
 
-  /** Why [method] can't take [args] on this WebView, or null. */
   private fun refusal(method: String, args: List<Any?>) =
     if (method == "setBackForwardCacheEnabled" && args == listOf(true) && !hasNavigationListener()) {
       "not supported by this WebView: below Android System WebView 146 a page restored from the cache reports no load end"
@@ -140,7 +125,6 @@ internal class PlatformSettings(
 
     private fun setterOf(key: String) = "set" + key.replaceFirstChar { it.uppercaseChar() }
 
-    /** The targets of [root] on [webView], or null for an unknown root. */
     fun targets(webView: WebView, root: String): List<Target>? = when (root) {
       "settings" -> listOf(
         Target(WebSettings::class.java, webView.settings, null),
@@ -165,7 +149,6 @@ internal class PlatformSettings(
       "setWebContentsDebuggingEnabled", "setOnTouchListener", "setOnScrollChangeListener", "addNavigationListener"
     )
 
-    /** The first method of [targets], target by target, that [accepts] and takes [values], bound to them; or null. */
     private fun find(targets: List<Target>, values: List<Any?>, accepts: (Method) -> Boolean): (() -> Any?)? {
       for (target in targets) {
         for (method in target.cls.methods) {
@@ -184,10 +167,6 @@ internal class PlatformSettings(
         "owned by the core"
       }
 
-    /**
-     * Calls [key]'s setter on the first target that takes [value], running [before] just before it; returns the
-     * problem, or null when it was set.
-     */
     private fun set(targets: List<Target>, key: String, value: Any?, before: () -> Unit = {}): String? {
       if (key.isEmpty() || key.startsWith("_")) return "not a public setter"
       val setter = setterOf(key)
@@ -207,7 +186,6 @@ internal class PlatformSettings(
       }
     }
 
-    /** The value of [key]'s getter on the first target that has one, or [NONE]. */
     private fun read(targets: List<Target>, key: String): Any? {
       val capital = key.replaceFirstChar { it.uppercaseChar() }
       val getter = find(targets, emptyList()) {
@@ -216,7 +194,6 @@ internal class PlatformSettings(
       return getter()
     }
 
-    /** The method's arguments for [values], after the target's [Target.firstArgument], or null when they don't fit. */
     private fun arguments(method: Method, target: Target, values: List<Any?>): Array<Any?>? {
       if (target.receiver == null && !Modifier.isStatic(method.modifiers)) return null
       val types = method.parameterTypes
@@ -233,7 +210,7 @@ internal class PlatformSettings(
       return args
     }
 
-    /** [value] as the parameter [type] takes it, or [NONE]. JS numbers arrive as Double and fit every numeric type. */
+    // JS numbers arrive as Double.
     private fun coerce(value: Any?, type: Class<*>): Any? {
       if (value == null) return if (type.isPrimitive) NONE else null
       return when (type.kotlin.javaObjectType) {
@@ -247,17 +224,14 @@ internal class PlatformSettings(
       } ?: NONE
     }
 
-    /**
-     * [number] truncated to an int, or null outside `Int.MIN_VALUE..0xFFFFFFFF`. Above `Int.MAX_VALUE` it wraps, as
-     * Java's `(int) 0xFF000000L` does, so an ARGB color written as JS writes it, `0xFF000000`, is `-16777216`.
-     * Kotlin's `Double.toInt()` would clamp it to `Int.MAX_VALUE`.
-     */
+    // JS writes an ARGB color as `0xFF000000`, which Java's `(int) 0xFF000000L` wraps to `-16777216`. Kotlin's
+    // `Double.toInt()` would clamp it to `Int.MAX_VALUE`.
     private fun intOf(number: Number): Int? {
       val whole = truncate(number.toDouble())
       return if (whole >= Int.MIN_VALUE && whole <= UInt.MAX_VALUE.toDouble()) whole.toLong().toInt() else null
     }
 
-    /** Invokes, unwrapping the target's own exception; a compat feature this WebView lacks reads as unsupported. */
+    // androidx.webkit throws UnsupportedOperationException for a feature this WebView lacks.
     private fun invoke(method: Method, target: Target, args: Array<Any?>): Any? = try {
       method.invoke(target.receiver, *args)
     } catch (e: InvocationTargetException) {
@@ -275,10 +249,6 @@ internal class PlatformSettings(
 
     private fun notFound(reason: String) = PlatformException("not_found", reason)
 
-    /**
-     * A getter's or method's result as JSON: primitives, strings, collections and maps of them; anything else is null.
-     * A non-finite number throws: JSON has none.
-     */
     fun toJson(value: Any?): String = jsonable(value).let { if (it is String) JSONObject.quote(it) else it.toString() }
 
     // Checked here at every depth: Android's org.json turns a nested non-finite number into a null toString().
@@ -293,5 +263,4 @@ internal class PlatformSettings(
   }
 }
 
-/** Why [PlatformSettings.get] or [PlatformSettings.call] failed; [code] is the JS error code (`not_found`, `native_error` or `unavailable`). */
 internal class PlatformException(val code: String, message: String) : RuntimeException(message)

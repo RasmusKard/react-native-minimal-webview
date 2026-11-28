@@ -99,14 +99,12 @@ object MinimalWebViewHooks {
   }
 }
 
-/** Adds [hook] to [hooks], or replaces the one under its key in place; returns whether it replaced one. */
 internal fun putHook(hooks: MutableList<MinimalWebViewHooks.Hook>, hook: MinimalWebViewHooks.Hook): Boolean {
   val index = hooks.indexOfFirst { it.key == hook.key }
   if (index < 0) hooks += hook else hooks[index] = hook
   return index >= 0
 }
 
-/** Splits [keys] into the [hooks] registered under them, in registration order, and the keys no hook is registered under. */
 internal fun selectHooks(
   hooks: List<MinimalWebViewHooks.Hook>,
   keys: Set<String>
@@ -115,22 +113,15 @@ internal fun selectHooks(
   return attaching to keys - attaching.map { it.key }.toSet()
 }
 
-/** [keys] in registration order, then those no hook is registered under, sorted. */
 internal fun inRegistrationOrder(keys: Set<String>, registered: List<String>) =
   registered.filter { it in keys } + (keys - registered.toSet()).sorted()
 
-/** The hook whose factory makes the WebView (null: a plain one), and the keys of the others with a different factory. */
 internal fun pickFactory(attaching: List<MinimalWebViewHooks.Hook>): Pair<MinimalWebViewHooks.Hook?, List<String>> {
   val named = attaching.filter { it.webViewFactory != null }
   val maker = named.firstOrNull()
   return maker to named.filter { it.webViewFactory !== maker?.webViewFactory }.map { it.key }
 }
 
-/**
- * Picks the first of the clients that override a decision callback, or null. Calls [warn] once per callback and reason:
- * - more than one client overrides the callback;
- * - a client takes it, when the caller passes `lost`: what stops applying, the app's props or their defaults that would decide it otherwise.
- */
 internal class Deciders(private val warn: (String) -> Unit) {
   // Concurrent: shouldInterceptRequest decides on Chromium's IO thread.
   private val warned = ConcurrentHashMap.newKeySet<String>()
@@ -321,10 +312,7 @@ class HookReply internal constructor(
   }
 }
 
-/**
- * Chromium's IO thread reads [routed] and [clients] (shouldInterceptRequest), so [options] and the detach are volatile;
- * the rest is main thread only.
- */
+// Chromium's IO thread reads routed and clients (shouldInterceptRequest).
 internal open class Attachment(value: Any?) {
   @Volatile var options: Any? = value
     private set
@@ -332,14 +320,11 @@ internal open class Attachment(value: Any?) {
   private val optionsHandlers = mutableListOf<(Any?) -> Unit>()
   private val downloadHandlers = mutableListOf<(String, String, String, String, Long) -> Boolean>()
 
-  // Copy-on-write: Chromium reads the clients on its IO thread (shouldInterceptRequest) while attach and the hook's
-  // own changes write them.
   val clients: MutableList<WebViewClient> = CopyOnWriteArrayList()
   val chromeClients = mutableListOf<WebChromeClient>()
   val touchListeners: MutableList<View.OnTouchListener> = CopyOnWriteArrayList()
   val scrollListeners: MutableList<View.OnScrollChangeListener> = CopyOnWriteArrayList()
 
-  /** Whether the hook is on and the attach is still there: the core routes the lists and passes events and asks. */
   val routed get() = options != null && !detached
 
   fun onOptions(handler: (Any?) -> Unit) {
@@ -348,13 +333,11 @@ internal open class Attachment(value: Any?) {
     handler(options)
   }
 
-  /** The hook's new `hookOptions` [value], null when its key is gone; the view calls it only for a changed value. */
   fun optionsChanged(value: Any?) {
     options = value
     optionsHandlers.forEach { it(value) }
   }
 
-  /** The attach ended: the core routes nothing of it, and the emits and asks that follow reach nothing. */
   open fun detach() {
     detached = true
     optionsHandlers.clear()
@@ -426,20 +409,19 @@ internal class HookContext(val hook: MinimalWebViewHooks.Hook, view: MinimalWebV
     handlers.forEach { it(reason) }
   }
 
-  // A hook's shouldInterceptRequest runs on Chromium's IO thread; the view's events and asks are main-thread state.
+  // A hook's shouldInterceptRequest runs on Chromium's IO thread.
   private fun onMain(block: () -> Unit) {
     if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post { block() }
   }
 }
 
-// Concurrent: shouldInterceptRequest asks on Chromium's IO thread while the main thread fills it.
+// Concurrent: shouldInterceptRequest asks on Chromium's IO thread.
 private val overrideCache = ConcurrentHashMap<String, Boolean>()
 private val BASES = setOf<Class<*>>(WebViewClient::class.java, WebChromeClient::class.java, WebViewClientCompat::class.java)
 
 /**
- * The base classes' own methods that only forward to a variant of the callback: the variant's parameter types, by the
- * declaring class and the callback's signature. WebViewClient's and WebChromeClient's forward to a deprecated variant;
- * WebViewClientCompat's first two are final.
+ * The base classes' own methods that only forward to a variant of the callback. WebViewClient's and WebChromeClient's
+ * forward to a deprecated variant; WebViewClientCompat's first two are final.
  */
 private val VARIANTS: Map<Class<*>, Map<String, Array<Class<*>>>> = mapOf(
   WebViewClient::class.java to mapOf(
@@ -465,13 +447,8 @@ private val VARIANTS: Map<Class<*>, Map<String, Array<Class<*>>>> = mapOf(
 
 private fun signature(callback: String, vararg types: Class<*>) = "$callback(${types.joinToString { it.name }})"
 
-/** Whether this client's class overrides the callback [callback] taking [types]; the base classes' own methods don't count. */
 internal fun Any.overrides(callback: String, vararg types: Class<*>): Boolean = javaClass.overrides(callback, *types)
 
-/**
- * [Any.overrides] for the class. A subclass that leaves one of the base classes' forwarding methods in place
- * (VARIANTS) overrides the callback only through the variant the forwarder calls.
- */
 internal fun Class<*>.overrides(callback: String, vararg types: Class<*>): Boolean =
   overrideCache.getOrPut("$name#${signature(callback, *types)}") {
     val declared = getMethod(callback, *types).declaringClass
