@@ -32,8 +32,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
   the defaults.
 - A host wildcard skipped the bare domain. List both `example.com` and `*.example.com`.
 - A malformed rule blocks every navigation that reaches it. A warning names it in development.
-- A script opened a new window without a user gesture. The WebView drops it before the rules, so `onNavigation` reports
-  nothing. Set `javaScriptCanOpenWindowsAutomatically` in `ios.preferences` and `android.settings`.
+- A script opened a new window without a user gesture, and `onNavigation` reports nothing.
+  [`newWindow`][newwindow] names the setting that lets such a window reach the rules.
 - An `external` rule matched it first, such as `{ scheme: ['http', 'https'], action: 'external' }` placed before the
   rule for your own site. `onNavigation` reports `external` and the rule's index.
 - On iOS a tapped universal link loads in place when a rule allows it. An `external` rule for its host opens the app
@@ -52,8 +52,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 
 - Without [`onDownload`][ondownload], an http(s) download opens externally without the page's session.
   [`onOpenExternal`][onopenexternal] gets it, or else the system browser opens it. A `data:` or `blob:` download is dropped.
-- With it, Android fetches the file again without the request's POST body, `source` headers or HTTP auth. A download
-  that needs them fails, or saves the server's login page.
+- With it, on Android, the download fails or saves the server's login page. [`onDownload`][ondownload] lists what
+  Android's second fetch of the file leaves out.
 
 ## A setting has no effect
 
@@ -62,8 +62,8 @@ For a navigation, [`onNavigation`][onnavigation] reports each decision and the i
 - It is `ios.webView.customUserAgent` or `android.settings.userAgentString`, and the [`userAgent`][useragent] prop is
   set. The prop wins.
 - It is an [`ios.webpagePreferences`][iossettings] key, which applies from the next navigation.
-- UIKit declares the property without runtime metadata, as it does `webView.opaque`. Set it with
-  [`call`](platform-apis.md#4-call-a-method): `call('webView.setOpaque:', [false])`.
+- It is `webView.opaque`, or another property UIKit declares without runtime metadata.
+  [`IOSSettings`][iossettings] says how to set it.
 - It is Android's `webContentsDebuggingEnabled`, which is process-wide. Use
   [`AndroidWebView.setWebContentsDebuggingEnabled`][debugging].
 
@@ -94,6 +94,7 @@ means and when a retry is safe.
 [onnavigation]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onnavigation
 [allowedorigins]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/BridgeOptions/#allowedorigins
 [bridge]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#bridge
+[newwindow]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/NavigationRule/#newwindow
 [navigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#navigationrules
 [defaultnavigationrules]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/variables/defaultNavigationRules/
 [onpermissionrequest]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/interfaces/WebViewProps/#onpermissionrequest

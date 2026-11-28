@@ -205,26 +205,23 @@ replies.
 The core owns the WebView's delegate and client slots, so your hook adds its delegates and clients to the context's
 lists instead. `MinimalWebViewHooks` ([Swift][swift], [Kotlin][kotlin]) lists what else a hook must leave alone.
 
-A callback the core also handles reaches the core first, then each hook. A decision, such as whether a navigation loads
-or a page gets the camera, goes to the first hook that implements it instead of the core. The props that make that
-decision, such as `navigationRules`, then stop applying. `WebViewContext`'s `navigationDelegates` ([Swift][swiftContext]) and `clients`
-([Kotlin][kotlinContext]) give the full rules.
+`WebViewContext`'s `navigationDelegates` ([Swift][swiftNavigationDelegates]) and `clients` ([Kotlin][kotlinClients])
+say which callbacks reach the core first and which decisions a hook takes over from the core and the props.
 
 ## Lifecycle
 
-| When                                                             | What the hook gets                                                                                                                         |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| The WebView mounts with the hook's key                           | Its `webViewClass` (iOS) or `webViewFactory` (Android), if the hook has one; then `configure`, if it has one; then `attach`                |
-| The hook's key turns on after mount                              | `attach` runs then, unless the hook has `configure` or its own WebView class, or, on Android, is registered with `newWebViewsOnly`         |
-| The hook's `options` change                                      | Its `onOptions` handlers run, without a reload                                                                                             |
-| The hook's key is removed, or its `options` become null or false | `onOptions` with null: the hook is [off][HookExtension] and stays attached. When it turns on again, `onOptions` runs with the new options. |
-| The page ends: a navigation commits, a crash, or unmount         | Its `onDocumentEnd` handlers run. Reset per-page state there.                                                                              |
-| The renderer crashes (iOS)                                       | `onDocumentEnd` with `crashed`; the `WKWebView` reloads and nothing attaches again                                                         |
-| The renderer crashes (Android)                                   | `onDocumentEnd`, then `onDestroyed`, with `CRASHED`; then the factory, `configure` and `attach` run again, on a new context                |
-| The WebView unmounts                                             | `onDocumentEnd`, then `onDestroyed`, with `closing` (`CLOSING` on Android): clean up there                                                 |
+| When                                                     | What runs                                                                                                            |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| The WebView mounts with the hook's key                   | `webViewClass` (iOS) or `webViewFactory` (Android) and `configure` if the hook has them, then `attach`               |
+| The hook's key turns on after mount                      | `attach`, unless the hook has `configure` or its own WebView class, or, on Android, `newWebViewsOnly`                |
+| The hook's `options` change, or the hook turns off or on | `onOptions` handlers ([Swift][swiftOnOptions], [Kotlin][kotlinOnOptions])                                            |
+| The page ends: a navigation commits, a crash, or unmount | `onDocumentEnd` handlers ([Swift][swiftOnDocumentEnd], [Kotlin][kotlinOnDocumentEnd])                                |
+| The renderer crashes (Android)                           | `onDestroyed` handlers ([Kotlin][kotlinOnDestroyed]), then the factory, `configure` and `attach` for the new WebView |
+| The WebView unmounts                                     | `onDestroyed` handlers ([Swift][swiftOnDestroyed], [Kotlin][kotlinOnDestroyed])                                      |
 
-`DocumentEnd` ([Swift][documentend], [Kotlin][documentendkt]) says when a page ends and what each reason means.
-`onDestroyed` says what is still alive when it runs.
+`register` on `MinimalWebViewHooks` ([Swift][swiftRegister], [Kotlin][kotlinRegister]) says what `webViewClass`,
+`webViewFactory`, `configure`, `attach` and `newWebViewsOnly` get and do. `DocumentEnd` ([Swift][documentend],
+[Kotlin][documentendkt]) says when a page ends and what each reason means.
 
 ## Registering and threading
 
@@ -259,6 +256,16 @@ decision, such as `navigationRules`, then stop applying. `WebViewContext`'s `nav
 [kotlin]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-minimal-web-view-hooks/
 [swiftContext]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/
 [kotlinContext]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/
+[swiftNavigationDelegates]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/navigationdelegates/
+[kotlinClients]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/clients/
+[swiftOnOptions]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/onoptions(_-)/
+[kotlinOnOptions]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/on-options/
+[swiftOnDocumentEnd]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/ondocumentend(_-)/
+[kotlinOnDocumentEnd]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/on-document-end/
+[swiftOnDestroyed]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/webviewcontext/ondestroyed(_-)/
+[kotlinOnDestroyed]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-web-view-context/on-destroyed/
+[swiftRegister]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/minimalwebviewhooks/register(_-webviewclass-configure-attach-)/
+[kotlinRegister]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-minimal-web-view-hooks/register/
 [documentend]: https://rasmuskard.github.io/react-native-minimal-webview/swift/documentation/minimalwebview/documentend/
 [documentendkt]: https://rasmuskard.github.io/react-native-minimal-webview/kotlin/react-native-minimal-webview/expo.modules.minimalwebview/-document-end/
 [HookExtension]: https://rasmuskard.github.io/react-native-minimal-webview/typescript/react-native-minimal-webview/type-aliases/HookExtension/
