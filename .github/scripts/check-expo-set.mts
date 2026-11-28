@@ -1,6 +1,5 @@
 // Fails when the root, which the unit tests run on, and example/, which the on-device suites run on, resolve Expo, React
 // or React Native to different versions.
-// Run: node .github/scripts/check-expo-set.mts (pnpm run check runs it).
 import { readFileSync } from 'node:fs';
 
 const lock = readFileSync(new URL('../../pnpm-lock.yaml', import.meta.url), 'utf8');

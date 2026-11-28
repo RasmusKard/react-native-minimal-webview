@@ -3,7 +3,6 @@
 // A relative import is the page's sample that exports what it imports.
 // Then checks that the reference leads to each example: a section of guides/examples.md with a sample is the target of
 // an `@see` in a doc comment of src/ or extensions/, and each such `@see` names a section that exists.
-// Run: node .github/scripts/check-doc-samples.mts (pnpm run check runs it).
 import { globSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
