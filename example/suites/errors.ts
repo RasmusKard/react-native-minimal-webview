@@ -256,20 +256,14 @@ export async function errors(h: Harness, r: Reporter) {
   await waitForLoad(h, goTo(next), (s) => s.url === next && idle(s));
   await reloadsPage('after a failed load, reload() reloads the page a later load committed', next);
 
-  if (Platform.OS === 'android') {
-    const hashed = `${await openPage(h, fresh(h, '/'))}#x`;
-    await failFrom(h, 'hash');
-    await h.ref.current?.evaluate(`location.hash = 'x'`);
-    await waitFor(h, (s) => s.url === hashed, 5000);
-    await reloadsPage(
-      'after a failed load, a same-document navigation sets url, and reload() reloads that page',
-      hashed
-    );
-  } else
-    r.skip(
-      'after a failed load, a same-document navigation sets url, and reload() reloads that page',
-      'iOS keeps the failed url until a load commits'
-    );
+  const hashed = `${await openPage(h, fresh(h, '/'))}#x`;
+  await failFrom(h, 'hash');
+  await h.ref.current?.evaluate(`location.hash = 'x'`);
+  await waitFor(h, (s) => s.url === hashed, 5000);
+  await reloadsPage(
+    'after a failed load, a same-document navigation sets url, and reload() reloads that page',
+    hashed
+  );
 
   const first = fresh(h, `${HTTPS}/first`);
   clearEvents(h);

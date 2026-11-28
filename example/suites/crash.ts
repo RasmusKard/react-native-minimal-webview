@@ -238,42 +238,36 @@ export async function crash(h: Harness, r: Reporter) {
     'a POST source left on screen by a failed load is not sent again on recovery',
     18
   );
-  if (Platform.OS === 'android') {
-    r.check(
-      'reload() after that crash sends the POST source, not the failed load',
-      (await text(h, 'body').catch(errorCode)) === body && h.state().url === failedPost,
-      h.state()
-    );
+  r.check(
+    'reload() after that crash sends the POST source, not the failed load',
+    (await text(h, 'body').catch(errorCode)) === body && h.state().url === failedPost,
+    h.state()
+  );
 
-    const waitingSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'waiting' } };
-    await openPage(h, waitingSource);
-    await failFrom(h, 'waiting');
-    h.setProps({
-      userAgent: 'Crash/1',
-      onProcessGone: (event) => {
-        h.events.gone.push(event);
-        h.ref.current?.reload();
-      },
-    });
-    const reloadedSource = await happens(
-      waitForLoad(
-        h,
-        () => kill(19, 'killInBackground'),
-        (s) => s.url === waitingSource.uri && idle(s),
-        30000
-      )
-    );
-    h.setProps({ userAgent: 'Crash/1' });
-    r.check(
-      'reload() while the recovery waits brings back the source a failed load left on screen',
-      reloadedSource && (await text(h, 'headers')).includes('"x-source":"waiting"'),
-      h.state()
-    );
-  } else
-    r.skip(
-      'reload() after a crash after a failed load',
-      'iOS reload() retries the failed load, also after a crash'
-    );
+  const waitingSource = { uri: fresh(h, '/headers'), headers: { 'X-Source': 'waiting' } };
+  await openPage(h, waitingSource);
+  await failFrom(h, 'waiting');
+  h.setProps({
+    userAgent: 'Crash/1',
+    onProcessGone: (event) => {
+      h.events.gone.push(event);
+      h.ref.current?.reload();
+    },
+  });
+  const reloadedSource = await happens(
+    waitForLoad(
+      h,
+      () => kill(19, 'killInBackground'),
+      (s) => s.url === waitingSource.uri && idle(s),
+      30000
+    )
+  );
+  h.setProps({ userAgent: 'Crash/1' });
+  r.check(
+    'reload() while the recovery waits brings back the source a failed load left on screen',
+    reloadedSource && (await text(h, 'headers')).includes('"x-source":"waiting"'),
+    h.state()
+  );
 
   const firstLoadFailed = 'a POST source whose first load failed is not sent again on recovery';
   if (Platform.OS === 'ios') {
