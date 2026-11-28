@@ -15,7 +15,11 @@ for (const line of importers.split('\n')) {
     versions.set(`${importer} ${dependency}`, value);
 }
 const [root, example] = ['.', 'example'].map((name) =>
-  ['expo', 'react', 'react-native'].map((dep) => `${dep}@${versions.get(`${name} ${dep}`)}`)
+  ['expo', 'react', 'react-native'].map((dep) => {
+    const version = versions.get(`${name} ${dep}`);
+    if (!version) throw new Error(`pnpm-lock.yaml has no ${dep} for importer ${name}`);
+    return `${dep}@${version}`;
+  })
 );
 if (root.join() !== example.join()) {
   console.error(
