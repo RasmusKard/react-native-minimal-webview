@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.4](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.3...react-native-minimal-webview-v1.3.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* End an iOS failed load with its page ([#347](https://github.com/RasmusKard/react-native-minimal-webview/issues/347)) ([5cd053d](https://github.com/RasmusKard/react-native-minimal-webview/commit/5cd053dbbaae65cd8b1ecb25bea695e0ab7958d2))
+
 ## [1.3.3](https://github.com/RasmusKard/react-native-minimal-webview/compare/react-native-minimal-webview-v1.3.2...react-native-minimal-webview-v1.3.3) (2026-11-27)
 
 
