@@ -2,7 +2,7 @@ import Foundation
 import WebKit
 
 enum OriginRules {
-  /// The origin as `location.origin` writes it: `null` for an opaque one (no scheme). WebKit reports a default port as 0.
+  /// WebKit reports a default port as 0.
   static func origin(_ scheme: String, _ host: String, _ port: Int) -> String {
     guard !scheme.isEmpty else { return "null" }
     let defaultPort = scheme == "https" ? 443 : scheme == "http" ? 80 : nil

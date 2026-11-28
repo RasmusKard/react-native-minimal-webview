@@ -10,8 +10,7 @@ NSString *MRWCatchException(void (NS_NOESCAPE ^block)(void)) {
   }
 }
 
-/// The JSON keys of a struct `call` and the settings carry, in field order, by its type encoding; nil for any other.
-/// Each one's fields are doubles (CGFloat), so its bytes are the values in that order.
+/// Each of these structs' fields is a CGFloat, a double, so its bytes are its values in field order.
 static NSArray<NSString *> *MRWStructKeys(const char *type) {
   if (strcmp(type, @encode(UIEdgeInsets)) == 0) return @[@"top", @"left", @"bottom", @"right"];
   if (strcmp(type, @encode(CGPoint)) == 0) return @[@"x", @"y"];
@@ -51,8 +50,6 @@ id MRWJsonable(id value) {
   return NSNull.null;
 }
 
-/// A JSON argument for an `@` parameter: nil for null, the tagged objects as their class (nil for one that can't be
-/// made), the rest as is.
 static id MRWObject(id json) {
   if (json == NSNull.null) return nil;
   if (![json isKindOfClass:NSDictionary.class] || [json count] != 1) return json;
@@ -69,7 +66,6 @@ static id MRWObject(id json) {
   return json;
 }
 
-/// Reads `keys` of `object` as numbers into `out`; NO when `keys` is nil or one is missing or not a number.
 static BOOL MRWNumbers(id object, NSArray<NSString *> *keys, double *out) {
   if (!keys || ![object isKindOfClass:NSDictionary.class]) return NO;
   for (NSUInteger i = 0; i < keys.count; i++) {
@@ -87,8 +83,7 @@ NSValue *MRWStructValue(const char *type, id json) {
 
 #define MRW_SET(ctype, expr) { ctype v = (expr); [invocation setArgument:&v atIndex:index]; return YES; }
 
-/// Sets argument `index` from the JSON `value` as the type encoding `type` wants it, or returns NO when it doesn't fit.
-/// An object made here goes into `keep`: the invocation holds it unretained until `retainArguments`.
+/// NSInvocation holds an object argument unretained until `retainArguments`.
 static BOOL MRWSetArgument(NSInvocation *invocation, NSUInteger index, const char *type, id value, NSMutableArray *keep) {
   NSNumber *number = [value isKindOfClass:NSNumber.class] ? value : nil;
   BOOL isBool = number && CFGetTypeID((__bridge CFTypeRef)number) == CFBooleanGetTypeID();
@@ -123,7 +118,6 @@ static BOOL MRWSetArgument(NSInvocation *invocation, NSUInteger index, const cha
 
 #define MRW_GET(ctype, box) { ctype v; [invocation getReturnValue:&v]; return (box); }
 
-/// The invocation's return value as an object for `MRWJsonable`; null for void and for what JSON can't carry.
 static id MRWReturnValue(NSInvocation *invocation) {
   const char *type = invocation.methodSignature.methodReturnType;
   switch (type[0]) {
@@ -150,7 +144,6 @@ static id MRWReturnValue(NSInvocation *invocation) {
   }
 }
 
-/// A completion block of the shape `completion` names, resolving `resolve`; nil for an unknown shape.
 static id MRWBlock(NSString *completion, void (^resolve)(id, NSString *)) {
   if ([completion isEqualToString:@"void"]) return [^{ resolve(NSNull.null, nil); } copy];
   if ([completion isEqualToString:@"value"]) return [^(id value) { resolve(value, nil); } copy];
@@ -172,8 +165,8 @@ void MRWInvoke(id target, SEL selector, NSArray *args, NSString *completion, voi
   if (args.count != expected) {
     return resolve(nil, [NSString stringWithFormat:@"%@ takes %lu arguments, got %lu", name, (unsigned long)expected, (unsigned long)args.count]);
   }
-  // The method may call its block before returning, or raise after calling it: the first settlement counts.
-  // The result is made JSON here, inside the catch: walking a KVC proxy or a raising getter rejects.
+  // The method may call its block before returning, or raise after calling it.
+  // Walking a KVC proxy or a getter can raise.
   __block BOOL settled = NO;
   void (^once)(id, NSString *) = ^(id result, NSString *error) {
     if (settled) return;

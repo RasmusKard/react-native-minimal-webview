@@ -42,15 +42,14 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   private(set) var committedUrl = ""
   var stateUrl: String { failedLoad?.url ?? committedUrl }
-  /// `WebViewContext.url`: WebKit moves the back-forward list to the next page before didCommit, and `committedUrl` can
-  /// follow it early.
+  /// WebKit moves the back-forward list to the next page before didCommit.
   private(set) var hookUrl = ""
   private var pendingUrl: String?
-  /// WebKit hides substitute-data loads (an html source) from the back-forward list.
+  /// WebKit hides a loadHTMLString load from the back-forward list.
   private var htmlNavigation: WKNavigation?
   private var htmlCommit: (url: String, item: WKBackForwardListItem?)?
   var ownLoads = OwnLoads()
-  // No weak self: forming a weak reference to an object in deinit aborts, and deinit's tearDown can be the first use.
+  // Forming a weak reference to an object in its deinit aborts.
   private(set) lazy var asks = Asks { [onHookEvent] in onHookEvent($0) }
   var hookContexts: [HookContext] = []
   var askedAndAllowed: [Bool: Set<String>] = [:]
@@ -120,7 +119,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     let refresh = pullToRefresh ? refreshControl : nil
     if webView.scrollView.refreshControl !== refresh { webView.scrollView.refreshControl = refresh }
     cookies.set(sharedCookies, for: webView.configuration.websiteDataStore.httpCookieStore)
-    // Records aren't Equatable: compare their dictionaries.
+    // Expo's Records aren't Equatable.
     guard let next = source, loadedSource != next.toDictionary() as NSDictionary else { return }
     loadedSource = next.toDictionary() as NSDictionary
     crashTimes = []
@@ -310,8 +309,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
     if !webView.isLoading, failedLoad != nil || active == committedUrl { hookUrl = committedUrl }
   }
 
-  /// WebKit's KVO fires before the delegate callbacks, and clears isLoading before it reports a failure: the state is
-  /// read a main-queue turn later.
+  /// WebKit's KVO fires before the delegate callbacks, and clears isLoading before it reports a failure.
   private func scheduleUpdate() {
     if loadStartUnsent { emitState() }
     guard !updateScheduled else { return }
@@ -417,7 +415,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
 
   private func loadEnded(_ outcome: Loads.Outcome, _ callback: (WKNavigationDelegate) -> Void) {
     self.outcome = outcome
-    // The spinner stops, or it would ignore the next pull.
+    // UIRefreshControl ignores the next pull until endRefreshing.
     refreshControl.endRefreshing()
     scheduleUpdate()
     forward(callback)

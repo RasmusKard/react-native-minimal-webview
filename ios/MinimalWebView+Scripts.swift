@@ -3,7 +3,7 @@ import WebKit
 
 extension MinimalWebView {
   func installScripts(_ controller: WKUserContentController) {
-    // WebKit can only remove every script: take the hooks' out and add them back after the core's.
+    // WebKit can only remove every script.
     let hooks = controller.userScripts.filter { script in !ownScripts.contains { $0 === script } }
     controller.removeAllUserScripts()
     ownScripts = []

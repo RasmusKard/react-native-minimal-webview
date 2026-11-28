@@ -1,8 +1,7 @@
 import Foundation
 
 enum ReadAccess {
-  /// `root` when it is a `file:` URL that contains `file`, else `file`'s directory and a warning that says why `root`
-  /// didn't apply. Always a file URL: loadFileURL raises an exception (a crash) for any other.
+  /// loadFileURL raises an exception (a crash) for a URL that isn't a file URL.
   static func root(for file: URL, _ root: String?) -> (root: URL, warning: String?) {
     let directory = file.deletingLastPathComponent()
     guard let root else { return (directory, nil) }

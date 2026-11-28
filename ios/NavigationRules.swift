@@ -14,7 +14,6 @@ enum NavigationRules {
 
   enum Action: String { case allow, block, external, ask }
 
-  /// `rule` is the matching rule's index, nil when a default decided.
   struct Decision: Equatable {
     let action: Action
     let rule: Int?
@@ -28,11 +27,9 @@ enum NavigationRules {
   }
 
   private static let internalSchemes: Set<String> = ["about", "data", "javascript"]
-  /// The core loads an allowed new window itself, past WebKit's limits on what a page may navigate the top frame to.
+  /// WebKit limits what a page may navigate the top frame to.
   private static let noNewWindowSchemes = internalSchemes.union(["blob", "file"])
 
-  /// The rules' decision, gated for `ask`: blocked when nothing can answer it (`canAsk` false), allowed when its URL is
-  /// in `asked` (URLs an `ask` already allowed). An unknown rule action blocks.
   static func decide(_ rules: [[String: Any]]?, _ request: Request, asked: Set<String>, canAsk: Bool) -> Decision {
     let decision = match(rules, request)
     guard decision.action == .ask else { return decision }
@@ -40,7 +37,6 @@ enum NavigationRules {
     return asked.contains(request.url) ? Decision(action: .allow, rule: decision.rule) : decision
   }
 
-  /// An `ask` answer: allow, block or external; anything else (nil on a timeout) blocks.
   static func answer(_ value: Any?) -> Action {
     guard let action = (value as? String).flatMap(Action.init), action != .ask else { return .block }
     return action
@@ -68,15 +64,13 @@ enum NavigationRules {
     return Parts(scheme: scheme, host: host(components), path: path, params: params)
   }
 
-  /// A blob: document has the origin its URL carries (`blob:https://a.test/…`), so the rules see that origin, with
-  /// path "/"; nil for an opaque one (`blob:null/…`), which no rule describes.
+  /// A blob: document has the origin its URL carries (`blob:https://a.test/…`).
   private static func blobOrigin(_ url: String) -> Parts? {
     let components = URLComponents(string: String(url.dropFirst("blob:".count)))
     guard let scheme = components?.scheme?.lowercased() else { return nil }
     return Parts(scheme: scheme, host: host(components), path: "/", params: [])
   }
 
-  /// Lowercased, without a trailing dot; nil when there is none.
   private static func host(_ components: URLComponents?) -> String? {
     // encodedHost keeps an IDNA host in its xn-- form; `host` would decode it.
     var host = (components?.encodedHost ?? components?.host)?.lowercased()
@@ -84,7 +78,6 @@ enum NavigationRules {
     return host?.isEmpty == true ? nil : host
   }
 
-  /// nil when the field is unset; a value that isn't a list (a string from untyped JS) matches nothing.
   private static func list(_ value: Any?) -> [String]? {
     value.map { ($0 as? [Any])?.map { "\($0)" } ?? [] }
   }
@@ -100,7 +93,6 @@ enum NavigationRules {
       && flag(rule["userInitiated"], request.userInitiated)
   }
 
-  /// `name=value` matches that exact parameter; `name` matches a parameter with that name, whatever its value.
   private static func paramMatches(_ entry: String, _ params: [String]) -> Bool {
     params.contains { param in entry.contains("=") ? param == entry : param.prefix(while: { $0 != "=" }) == entry }
   }
