@@ -1,5 +1,5 @@
 import { createContext, runInContext } from 'node:vm';
-import { act, createRef, useState } from 'react';
+import { StrictMode, act, createRef, useState } from 'react';
 import { AppState, Platform, Text } from 'react-native';
 import { createRoot } from 'test-renderer';
 
@@ -546,6 +546,29 @@ describe('bridge', () => {
     await show({ bridge: newBridge() });
     expect(mockMount).toHaveBeenCalledTimes(2);
   });
+
+  it.each([false, true])(
+    'moves to a WebView remounted by key with the same bridge (StrictMode: %s)',
+    async (strict) => {
+      const bridge = newBridge();
+      bridge.handle('who', (_, sender) => sender.origin);
+      const root = createRoot();
+      const show = (key: number) =>
+        act(async () => {
+          const view = <WebView key={key} bridge={bridge} source={{ uri: page }} />;
+          root.render(strict ? <StrictMode>{view}</StrictMode> : view);
+        });
+      await show(1);
+      await show(2);
+      const call = { doc: 'd2', kind: 'call', id: 'p1', method: 'who' };
+      await act(async () => {
+        await nativeAt(root).onBridge({
+          nativeEvent: { message: JSON.stringify(call), origin: page },
+        });
+      });
+      expect(posted()).toEqual({ doc: 'd2', kind: 'result', id: 'p1', value: page });
+    }
+  );
 
   it('warns in development, once, when another bridge replaces the bridge', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
