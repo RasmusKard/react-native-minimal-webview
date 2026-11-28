@@ -8,7 +8,7 @@ extension MinimalWebView {
     decidePolicyFor action: WKNavigationAction,
     decisionHandler decide: @escaping @MainActor (WKNavigationActionPolicy) -> Void
   ) {
-    // A new window (no target frame) is decided in createWebViewWith.
+    // A new window's navigation action has no target frame.
     guard let target = action.request.url, let targetFrame = action.targetFrame else { return decide(allowInPlace) }
     if takeOwnLoad(action) || action.navigationType == .backForward || action.navigationType == .reload
       || action.request.httpMethod == "POST" {
@@ -75,9 +75,8 @@ extension MinimalWebView {
     }
   }
 
-  /// Applies the rules (and `ask`) to a request and reports the outcome; `completion` gets whether to load it here.
   private func run(_ request: NavigationRules.Request, completion: @escaping (Bool) -> Void) {
-    // WebKit has no redirect flag: a URL an `ask` allowed isn't asked again until the next main-frame commit.
+    // WebKit's navigation action has no redirect flag.
     let decision = NavigationRules.decide(
       navigationRules, request, asked: askedAndAllowed[request.mainFrame] ?? [],
       canAsk: requestHandlers.contains("onNavigationRequest")
@@ -133,7 +132,7 @@ private final class WindowCatcher: NSObject, WKNavigationDelegate, WKUIDelegate 
     child.navigationDelegate = catcher
     child.uiDelegate = catcher
     (catcher.child, catcher.caught) = (child, caught)
-    // WKWebView's delegates are weak: the timer holds the catcher.
+    // WKWebView's delegates are weak.
     DispatchQueue.main.asyncAfter(deadline: .now() + newWindowTimeout) { catcher.drop() }
     return child
   }
@@ -154,7 +153,6 @@ private final class WindowCatcher: NSObject, WKNavigationDelegate, WKUIDelegate 
     drop()
   }
 
-  /// The view goes a turn later: this can run inside its own callback.
   private func drop() {
     caught = nil
     DispatchQueue.main.async { [child] in withExtendedLifetime(child) {} }

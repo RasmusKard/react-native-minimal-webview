@@ -8,8 +8,6 @@ enum Recovery {
     return page(uri) == page(url)
   }
 
-  /// Records a web content process death at `now`, in seconds of `ProcessInfo.systemUptime`, in `times`, and says
-  /// whether to reload after it.
   static func crashAllowsReload(_ times: inout [TimeInterval], now: TimeInterval) -> Bool {
     times = times.filter { now - $0 <= crashWindow } + [now]
     return times.count <= maxCrashesPerWindow

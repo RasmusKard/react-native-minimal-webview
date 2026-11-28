@@ -13,7 +13,6 @@ final class SharedCookies: NSObject, WKHTTPCookieStoreObserver {
     observed = next
   }
 
-  /// Calls `done` once the native cookies are in the WebView.
   func prepare(done: @escaping () -> Void) {
     guard let store = observed else { return done() }
     let group = DispatchGroup()

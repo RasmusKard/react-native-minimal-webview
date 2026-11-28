@@ -8,9 +8,6 @@ final class PlatformSettings {
   private var applied: [String: NSObject] = [:]
   private var originals: [String: Any] = [:]
 
-  /// Applies `settings`. While creating (`configuration` given, no WebView yet) only the `configuration` root applies;
-  /// live, every other root does, and a key applied before and missing now goes back to its value before the first
-  /// write. Returns the rejected keys.
   func apply(_ settings: [String: Any], webView: WKWebView?, configuration: WKWebViewConfiguration? = nil) -> [Rejected] {
     var rejected: [Rejected] = []
     let creating = configuration != nil
@@ -40,7 +37,6 @@ final class PlatformSettings {
     return rejected
   }
 
-  /// Forgets each applied key `settings` no longer has and sets its original value back; returns those that failed.
   private func restore(removedFrom settings: [String: Any], webView: WKWebView?) -> [Rejected] {
     var present = Set<String>()
     for (rootName, entries) in settings {
@@ -60,7 +56,6 @@ final class PlatformSettings {
     return failed
   }
 
-  /// `root.key` through KVC, as JSON. Throws a `PlatformError` with the reason when it can't.
   func get(_ path: String, webView: WKWebView) throws -> String {
     guard let dot = path.firstIndex(of: ".") else { throw PlatformError("use root.key", code: "not_found") }
     let rootName = String(path[..<dot])
@@ -74,7 +69,6 @@ final class PlatformSettings {
     return try Self.json { __MRWJsonable(object.value(forKey: key)) }
   }
 
-  /// `root.selector:` with the JSON `args`, resolved with the result as JSON, or with why it couldn't be called.
   func call(_ path: String, args: [Any], webView: WKWebView, resolve: @escaping (String?, String?) -> Void) throws {
     guard let dot = path.lastIndex(of: ".") else { throw PlatformError("use root.selector:", code: "not_found") }
     let selector = String(path[path.index(after: dot)...])
@@ -98,8 +92,7 @@ final class PlatformSettings {
     }
   }
 
-  /// `value()` as JSON text. It runs inside MRWCatchException: a getter that raises, or a NaN that JSONSerialization
-  /// raises for, throws here instead of crashing the app.
+  /// A getter can raise an Objective-C exception, and JSONSerialization raises one for a NaN.
   static func json(_ value: () -> Any) throws -> String {
     var data: Data?
     let raised = __MRWCatchException {
@@ -110,8 +103,8 @@ final class PlatformSettings {
     return String(decoding: data, as: UTF8.self)
   }
 
-  /// KVC, KVO and performSelector reach any selector; `init`, `copy`, `new` and `mutableCopy` return a +1 object
-  /// MRWInvoke would leak.
+  /// KVC, KVO and performSelector reach any selector; `init`, `copy`, `new` and `mutableCopy` return a +1 object,
+  /// which NSInvocation doesn't release.
   private static let refused = [
     "_", "load", "go", "reload", "stop", "evaluateJavaScript", "callAsyncJavaScript", "startDownload", "resumeDownload",
     "setInteractionState", "setNavigationDelegate", "setUIDelegate", "setDelegate", "setValue", "setValuesForKeys", "valueForKey",
@@ -133,8 +126,6 @@ final class PlatformSettings {
     }
   }
 
-  /// Sets one property, or returns why not; with `original`, first keeps the value it replaces under that id unless one
-  /// is kept already.
   private func set(_ object: NSObject, _ key: String, _ value: Any, original id: String?) -> String? {
     guard !key.hasPrefix("_"), !key.contains(".") else { return "private and nested keys are not allowed" }
     guard let attributes = Self.attributes(object, key) else { return "no such property" }
@@ -148,7 +139,6 @@ final class PlatformSettings {
     }
   }
 
-  /// The attributes of `object`'s property `key` (`TB`, `R`, …), or nil when it has none.
   private static func attributes(_ object: NSObject, _ key: String) -> [Substring]? {
     if privateBools[key].map({ object.isKind(of: $0) }) == true { return ["TB"] }
     guard let property = class_getProperty(type(of: object), key) else { return nil }
@@ -161,8 +151,7 @@ final class PlatformSettings {
     "allowUniversalAccessFromFileURLs": WKWebViewConfiguration.self,
   ]
 
-  /// `value` as KVC must get it for a property of type encoding `type`; NSNull stands for nil. Nil: doesn't fit. A value
-  /// of the wrong class in an object-typed property can take the process down (WebKit asserts).
+  /// A value of the wrong class in an object-typed property can take the process down (WebKit asserts).
   private static func coerce(_ value: Any, _ type: String) -> Any? {
     let isBool = CFGetTypeID(value as CFTypeRef) == CFBooleanGetTypeID()
     let number = isBool ? nil : value as? NSNumber
@@ -203,7 +192,6 @@ final class PlatformSettings {
   }
 }
 
-/// Why `get` or `call` failed; `code` is the JS error code (`not_found` or `native_error`).
 struct PlatformError: Error {
   let message: String
   let code: String

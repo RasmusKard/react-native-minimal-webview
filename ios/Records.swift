@@ -1,6 +1,6 @@
 import ExpoModulesCore
 
-// A prop that fails to convert is dropped whole (ExpoFabricView's try?), so every field is optional.
+// Expo drops a prop that fails to convert whole (ExpoFabricView's try?).
 
 struct WebViewSource: Record {
   @Field var uri: String? = nil

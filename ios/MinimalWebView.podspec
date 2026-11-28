@@ -23,8 +23,7 @@ Pod::Spec.new do |s|
     'OTHER_DOCC_FLAGS' => '$(inherited) "$(PODS_TARGET_SRCROOT)/MinimalWebView.docc"',
   }
 
-  # Every header here is public, so the Objective-C helpers are NS_REFINED_FOR_SWIFT: Swift sees them as __MRW…,
-  # which keeps them out of the Swift API reference.
+  # CocoaPods makes every header here public.
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
   s.exclude_files = "Tests/**/*"
 end

@@ -76,7 +76,7 @@ final class DelegateProxy: NSObject, WKNavigationDelegate, WKUIDelegate {
 
   private static let challenge = NSSelectorFromString("webView:didReceiveAuthenticationChallenge:completionHandler:")
 
-  /// WebKit calls only this variant when the delegate implements it: the proxy always does, and calls the owner's own.
+  /// WebKit calls only this variant when the delegate implements it.
   func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,
@@ -141,7 +141,7 @@ func inRegistrationOrder(_ keys: Set<String>, _ registered: [String]) -> [String
   registered.filter(keys.contains) + keys.subtracting(registered).sorted()
 }
 
-/// `NSNumber(false).isEqual(NSNumber(0))` is true, so the values compare as JSON.
+/// `NSNumber(false).isEqual(NSNumber(0))` is true.
 func staysOn(_ was: Any?, _ value: Any?) -> Bool {
   guard let was, let value else { return false }
   let json = { (value: Any) in try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys]) }
