@@ -145,6 +145,8 @@ export type NavigationRule = {
    *   page's referrer policy or the link's `noreferrer` says.
    * - It is sent as a navigation from outside any page, as for a typed URL: `Sec-Fetch-Site: none` and
    *   `Sec-Fetch-User: ?1`.
+   * - It carries the target site's `SameSite=Strict` cookies, which the page's own navigation from another site
+   *   leaves out.
    * - A `location.replace` to it adds a history entry instead of replacing the current one.
    */
   action: NavigationAction | 'ask';

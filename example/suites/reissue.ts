@@ -110,13 +110,22 @@ export async function reissue(h: Harness, r: Reporter) {
     await waitFor(h, (s) => s.url === target && idle(s), 5000);
     const headers = (await h.ref.current?.evaluate(
       `JSON.parse(document.getElementById('headers').textContent)`
-    )) as { referer?: string } | undefined;
-    return { from, referer: headers?.referer };
+    )) as { referer?: string; cookie?: string } | undefined;
+    return { from, referer: headers?.referer, cookie: headers?.cookie };
   };
   const same = await referrerTo(`${h.pages}/headers?r=same`);
   r.check('an allowed navigation keeps the referrer', same.referer === same.from, same);
+  await openPage(h, fresh(h, `${OTHER}/spa.html`));
+  await h.ref.current?.evaluate(`document.cookie = 'strict=1; SameSite=Strict; path=/'`);
   const cross = await referrerTo(`${OTHER}/headers?r=cross`);
   r.check('cross-origin, the referrer is the origin', cross.referer === `${h.pages}/`, cross);
+  if (Platform.OS === 'android')
+    r.check(
+      "cross-site, the reissued load carries the site's SameSite=Strict cookie",
+      cross.cookie?.split('; ').includes('strict=1') === true,
+      cross
+    );
+  else r.skip('the SameSite=Strict cookie', 'iOS does not reissue: the page navigates itself');
 
   const beforeUnmount = await openPage(h, fresh(h, '/nav.html'));
   answer = 'late';
