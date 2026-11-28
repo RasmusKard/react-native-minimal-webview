@@ -1,4 +1,18 @@
-import { USER_AGENT_KEY, errorCode, fresh, openPage, text, until } from '../harness/helpers';
+import {
+  USER_AGENT_KEY,
+  clearEvents,
+  errorCode,
+  fresh,
+  happens,
+  idle,
+  openPage,
+  quietFor,
+  tapLink,
+  text,
+  until,
+  waitFor,
+  waitForLoad,
+} from '../harness/helpers';
 import { type Harness, type Reporter } from '../harness/runner';
 
 export async function ua(h: Harness, r: Reporter) {
@@ -37,4 +51,51 @@ export async function ua(h: Harness, r: Reporter) {
     back.header.endsWith(' MinimalWebViewExample/1.0'),
     back
   );
+
+  await r.block('with userAgent set from the mount', async () => {
+    const first = fresh(h, '/ptr.html?mode=short&page=first');
+    await waitForLoad(
+      h,
+      () => {
+        h.setProps({ userAgent: 'CustomAgent/2.0' });
+        h.loadSource({ uri: first });
+        h.remount();
+      },
+      (s) => s.url === first && idle(s)
+    );
+    const second = fresh(h, '/ptr.html?mode=short&page=second');
+    await tapLink(h, r, second);
+    r.check(
+      'a tapped link adds a history entry',
+      await happens(waitFor(h, (s) => s.url === second && idle(s) && s.canGoBack)),
+      h.state()
+    );
+    h.ref.current?.goBack();
+    r.check(
+      'goBack returns to the first page, the only entry before it',
+      await happens(waitFor(h, (s) => s.url === first && idle(s) && !s.canGoBack)),
+      h.state()
+    );
+    const reloadsOnce = async (act: () => unknown) => {
+      const before = await text(h, 'loaded');
+      clearEvents(h);
+      const ended = await happens(waitForLoad(h, act));
+      await quietFor(1000);
+      return {
+        ended,
+        loads: h.events.loads,
+        reloaded: (await text(h, 'loaded')) !== before,
+        userAgent: await h.ref.current?.evaluate('navigator.userAgent'),
+      };
+    };
+    const once = (result: Awaited<ReturnType<typeof reloadsOnce>>) =>
+      result.ended &&
+      result.reloaded &&
+      result.loads.join() === 'start,end' &&
+      result.userAgent === 'CustomAgent/2.0';
+    const reload = await reloadsOnce(() => h.ref.current?.reload());
+    r.check('reload() reloads once and its load ends', once(reload), reload);
+    const pull = await reloadsOnce(() => r.drive({ action: 'swipe', kind: 'full' }));
+    r.check('pull to refresh reloads once and its load ends', once(pull), pull);
+  });
 }
