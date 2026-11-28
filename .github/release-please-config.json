@@ -9,19 +9,6 @@
     ".": {
       "exclude-paths": ["extensions", "example"]
     },
-    "extensions": {
-      "extra-files": [
-        {
-          "type": "json",
-          "path": "/package-lock.json",
-          "jsonpath": "$.packages['extensions'].version"
-        },
-        {
-          "type": "json",
-          "path": "/example/package-lock.json",
-          "jsonpath": "$.packages['../extensions'].version"
-        }
-      ]
-    }
+    "extensions": {}
   }
 }

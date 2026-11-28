@@ -63,9 +63,10 @@ jobs:
           node-version-file: .nvmrc
           # A cache written by other workflows could poison the release.
           package-manager-cache: false
+      - run: corepack enable
       - run: test "${TAG##*-v}" = "$(node -p "require('./$PACKAGE/package.json').version")"
-      - run: npm ci --ignore-scripts && (cd example && npm ci --ignore-scripts)
-      - run: npm run check
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm run check
       - run: npm pack --ignore-scripts "./$PACKAGE"
       - uses: actions/upload-artifact@v7.0.2
         with:

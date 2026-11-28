@@ -64,13 +64,22 @@ function appFiles(appDir: string, platform: Platform) {
 
 function reads(workflow: string) {
   const platform: Platform = /expo run:ios|--platform ios/.test(workflow) ? 'apple' : 'android';
-  const appDir = workflow.match(/cd (\S+) && [^)]*npx expo (?:run|prebuild)/)?.[1];
-  if (!appDir) throw new Error('no `cd <dir> && ... npx expo run|prebuild` in the workflow');
+  const appDir = workflow.match(/cd (\S+) && [^)]*pnpm exec expo (?:run|prebuild)/)?.[1];
+  if (!appDir) throw new Error('no `cd <dir> && ... pnpm exec expo run|prebuild` in the workflow');
+  const workspaceDirs = [
+    '.',
+    ...[...read('pnpm-workspace.yaml').matchAll(/^ {2}- (\S+)$/gm)].map(([, dir]) => dir),
+  ];
   return [
     ...[...workflow.matchAll(/\b[\w-]+-file: ([^\s,}]+)/g)].map(([, path]) => path),
-    ...[...workflow.matchAll(/(?:cd (\S+) && )?npm ci\b/g)].flatMap(([, dir = '.']) =>
-      ['package.json', 'package-lock.json'].map((file) => posix.join(dir, file))
-    ),
+    ...(workflow.includes('uses: pnpm/setup@') ? ['package.json', '.nvmrc'] : []),
+    ...(/\bpnpm install\b/.test(workflow)
+      ? [
+          'pnpm-lock.yaml',
+          'pnpm-workspace.yaml',
+          ...workspaceDirs.map((dir) => posix.join(dir, 'package.json')),
+        ]
+      : []),
     ...appFiles(appDir, platform),
     ...nativeModuleFiles(platform),
   ];

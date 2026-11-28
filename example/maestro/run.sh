@@ -14,9 +14,9 @@ METRO=${RCT_METRO_PORT:-8081}
 ROOT=$(cd .. && pwd -P)
 served_root() { curl -s -m 60 -o /dev/null -w "%header{$2}" "$1"; }
 [ "$(served_root "http://localhost:$METRO/status" X-React-Native-Project-Root)" = "$ROOT" ] ||
-  { echo "no Metro of this checkout on :$METRO: run npx expo start in example/, with RCT_METRO_PORT=$METRO"; exit 1; }
+  { echo "no Metro of this checkout on :$METRO: run pnpm exec expo start in example/, with RCT_METRO_PORT=$METRO"; exit 1; }
 [ "$(served_root "$PAGES/" X-Project-Root)" = "$ROOT" ] ||
-  { echo "no test pages server of this checkout on :$PORT: run npm run test-pages in example/"; exit 1; }
+  { echo "no test pages server of this checkout on :$PORT: run pnpm run test-pages in example/"; exit 1; }
 ./point-app.sh "$PLATFORM" "$DEVICE" || exit 1
 SUITE_MS=$(node --no-warnings -p "require('../suites/names.ts').SUITE_MS")
 [ $# -eq 0 ] && set -- $(node --no-warnings -p "require('../suites/names.ts').SUITE_NAMES.join(' ')")

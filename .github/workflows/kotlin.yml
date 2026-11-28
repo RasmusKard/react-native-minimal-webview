@@ -25,10 +25,11 @@ jobs:
           key: >-
             kotlin-tests-${{ steps.runner.outputs.image }}-${{ hashFiles('android/**', 'extensions/**',
             'example/modules/**', 'example/*.json', 'example/assets/**', 'src/__tests__/vectors/**',
-            'expo-module.config.json', 'package.json', 'package-lock.json', '.nvmrc', '.github/workflows/kotlin.yml') }}
+            'expo-module.config.json', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.nvmrc',
+            '.github/workflows/kotlin.yml') }}
       - if: steps.passed.outputs.cache-hit != 'true'
-        uses: actions/setup-node@v7.1.0
-        with: { node-version-file: .nvmrc, cache: npm }
+        uses: pnpm/setup@v3.2.0
+        with: { install: false, cache: true }
       - if: steps.passed.outputs.cache-hit != 'true'
         uses: actions/setup-java@v6.3.0
         with: { distribution: zulu, java-version: 17 }
@@ -37,7 +38,7 @@ jobs:
         with: { cache-read-only: false }
       - if: steps.passed.outputs.cache-hit != 'true'
         run: |
-          npm ci && (cd example && npm ci && npx expo prebuild --platform android --no-install)
+          pnpm install --frozen-lockfile && (cd example && pnpm exec expo prebuild --platform android --no-install)
           cd example/android && ./gradlew :react-native-minimal-webview:testDebugUnitTest \
             :react-native-minimal-webview-extensions:compileDebugKotlin :sample-extension:compileDebugKotlin
           touch ../../.passed

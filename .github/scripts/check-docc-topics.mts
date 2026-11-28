@@ -1,7 +1,7 @@
 // Fails when the Topics of ios/MinimalWebView.docc/MinimalWebView.md and the pod's public Swift types differ. DocC's
 // Markdown export has no automatic Topics before https://github.com/swiftlang/swift-docc/pull/1625, so a type the page
 // doesn't list gets no page. A type marked @_documentation(visibility: internal) is left out of both.
-// Run: node .github/scripts/check-docc-topics.mts (npm test runs it).
+// Run: node .github/scripts/check-docc-topics.mts (pnpm test runs it).
 import { readdirSync, readFileSync } from 'node:fs';
 
 const ios = new URL('../../ios/', import.meta.url);

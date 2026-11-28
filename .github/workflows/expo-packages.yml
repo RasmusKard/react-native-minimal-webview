@@ -32,13 +32,12 @@ jobs:
           permission-pull-requests: write
       - uses: actions/checkout@v7.0.1
         with: { token: '${{ steps.app-token.outputs.token }}' }
-      - uses: actions/setup-node@v7.1.0
-        with: { node-version-file: .nvmrc }
-      # npm 11 for the lockfile: npm 10 strips its libc fields.
+      - uses: pnpm/setup@v3.2.0
+        with: { install: false }
       - run: |
-          for dir in . example; do
-            (cd $dir && npm ci --ignore-scripts && npx expo install --fix && npx -y npm@11 install --ignore-scripts)
-          done
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm exec expo install --fix -- --workspace-root --ignore-scripts
+          (cd example && pnpm exec expo install --fix -- --ignore-scripts)
       - env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -50,4 +49,4 @@ jobs:
           git push --force origin "$BRANCH"
           [ "$(gh pr list --head "$BRANCH" --state open --json number --jq length)" != 0 ] ||
             gh pr create --head "$BRANCH" --title "$TITLE" \
-              --body 'What `npx expo install --fix` changes in the root and in `example/`.'
+              --body 'What `pnpm exec expo install --fix` changes in the root and in `example/`.'
