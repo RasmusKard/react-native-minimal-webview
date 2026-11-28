@@ -6,17 +6,13 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
-/**
- * WebView sends no nested-scroll events, so it asks the WebView whether the document can scroll up, and on touch-down
- * asks the page whether the element under the finger is inside an inner scroller (overflow: auto or scroll) that is
- * already scrolled.
- */
+// WebView sends no nested-scroll events.
 internal class PullToRefresh(private val owner: MinimalWebView) {
   // The down event itself must see UNSCROLLED: SwipeRefreshLayout only tracks a gesture whose down event it accepted.
   private var innerScroller = InnerScroller.UNSCROLLED
   private var touches = 0
 
-  /** SwipeRefreshLayout keeps its first child as its target for good, so a crash swaps the WebView here. */
+  // SwipeRefreshLayout keeps its first child as its target for good.
   val content = FrameLayout(owner.context)
 
   val layout: SwipeRefreshLayout = Layout(owner.context).apply {
@@ -35,7 +31,7 @@ internal class PullToRefresh(private val owner: MinimalWebView) {
     mainHandler.postDelayed({ if (touch == touches && innerScroller == InnerScroller.ASKING) innerScroller = InnerScroller.UNSCROLLED }, ANSWER_TIMEOUT_MS)
   }
 
-  /** A load ended: the spinner stops, or it would ignore the next pull. */
+  // SwipeRefreshLayout ignores a pull while its spinner runs.
   fun pageFinished() {
     layout.isRefreshing = false
     innerScroller = InnerScroller.UNSCROLLED
@@ -62,7 +58,6 @@ private enum class InnerScroller { UNSCROLLED, SCROLLED, ASKING }
 
 private const val ANSWER_TIMEOUT_MS = 150L
 
-/** True when the element at (x, y) has a scrolled ancestor that can scroll vertically (CSS pixels). */
 private const val INNER_SCROLLED = """(x, y) => {
   for (let e = document.elementFromPoint(x, y); e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
     const overflow = getComputedStyle(e).overflowY;

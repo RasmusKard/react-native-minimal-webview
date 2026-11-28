@@ -40,11 +40,7 @@ class MinimalWebViewModule : Module() {
   private var fileChooser: AppContextActivityResultLauncher<ChooserIntent, Array<Uri>?>? = null
   private var chooserOpen = false
 
-  /**
-   * Opens the system file chooser and calls [onResult] with the picked URIs, or null on cancel. One chooser is open
-   * app-wide: the launcher keeps one callback, so [onResult] gets null at once while one is open, before the launcher
-   * is registered, or without an activity.
-   */
+  // The launcher keeps one callback.
   internal fun openFileChooser(intent: Intent, onResult: (Array<Uri>?) -> Unit) {
     val launcher = fileChooser
     if (launcher == null || chooserOpen) return onResult(null)
@@ -65,14 +61,14 @@ class MinimalWebViewModule : Module() {
     Name("MinimalWebView")
 
     // Expo runs this again for each new activity and registers under a new key, so a chooser the destroyed activity
-    // launched never reports back. Its fallback gets only a result from before a process restart: nothing waits then.
+    // launched never reports back. Its fallback gets only a result from before a process restart.
     RegisterActivityContracts {
       chooserOpen = false
       fileChooser = registerForActivityResult(FileChooserContract) { _, _ -> }
     }
 
-    // Cookies live in memory until flushed; persist them before the process can be killed. Only once a WebView was
-    // made: CookieManager.getInstance() would otherwise start WebView, on the UI thread, in an app that never shows one.
+    // Cookies live in memory until flushed. Only once a WebView was made: CookieManager.getInstance() would otherwise
+    // start WebView, on the UI thread.
     OnActivityEntersBackground {
       if (webViewCreated) flushCookies()
     }
@@ -150,7 +146,7 @@ private fun flushCookies() {
   store.allProfileNames.forEach { store.getProfile(it)?.cookieManager?.flush() }
 }
 
-/** Before the first WebView exists, only stores `enabled` for each new WebView to apply: setting it now would start WebView. */
+// WebView.setWebContentsDebuggingEnabled starts WebView.
 private fun setWebContentsDebugging(enabled: Boolean) {
   webContentsDebugging = enabled
   if (webViewCreated) WebView.setWebContentsDebuggingEnabled(enabled)
@@ -195,10 +191,6 @@ private fun hook(view: MinimalWebView, name: String, method: String, args: Strin
   }
 }
 
-/**
- * Runs [body], which resolves [promise]. A [PlatformException] it throws rejects with its code, anything else with
- * `native_error`, and a dead WebView with `unavailable`.
- */
 private inline fun native(view: MinimalWebView, promise: Promise, body: () -> Unit) =
   if (view.recovering) {
     promise.reject("unavailable", RECOVERING, null)

@@ -36,7 +36,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   private val onError by EventDispatcher<Map<String, Any?>>()
   private val onProcessGone by EventDispatcher<Map<String, Any?>>()
 
-  // Lazy: it loads the WebView provider, which throws without one, and createWebView() reports that.
+  // Lazy: it loads the WebView provider, which throws without one.
   internal val hasNavigationListener by lazy { WebViewFeature.isFeatureSupported(WebViewFeature.NAVIGATION_LISTENER) }
   private val navigation = MinimalWebViewNavigation(this)
   internal val scripts = MinimalWebViewScripts(this) { onBridge(it) }
@@ -64,7 +64,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
       field = value
       refresher.layout.isEnabled = value
     }
-  /** The page requests JS has a prop for, by prop name (`onFileRequest`, `onDownload`, ...), and `onNavigation`. */
   internal var requestHandlers: Set<String> = emptySet()
   private var loadedSource: WebViewSource? = null
 
@@ -75,7 +74,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal val permissions = Permissions(this)
   private val downloads = Downloads(this)
   private var keysToAttach: Set<String> = emptySet()
-  /** Chromium's IO thread reads it (shouldInterceptRequest). */
+  // Chromium's IO thread reads it (shouldInterceptRequest).
   @Volatile private var hookContexts: List<HookContext> = emptyList()
 
   internal val asks = Asks { onHookEvent(it) }
@@ -116,7 +115,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     hookContexts = attaching.map { HookContext(it, this) }
     if (first) unregistered.forEach { warn("extension $it: no hook is registered under this key") }
     if (first) unused.forEach { warn("extension $it: its webViewFactory is not used, ${maker?.key}'s is") }
-    // Before the package touches the WebView: some calls (WebViewCompat.setProfile) must come first.
+    // Some calls (WebViewCompat.setProfile) must come before anything else touches the WebView.
     hookContexts.forEach { it.hook.configure?.invoke(view, it) }
     webViewCreated = true
     val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
@@ -156,7 +155,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
     settings.builtInZoomControls = true
     settings.displayZoomControls = false
-    // Not without NavigationListener: WebView 133 sends onPageStarted for a restored page but no onPageFinished.
+    // WebView 133 sends onPageStarted for a restored page but no onPageFinished.
     if (hasNavigationListener && WebViewFeature.isFeatureSupported(WebViewFeature.BACK_FORWARD_CACHE)) {
       WebSettingsCompat.setBackForwardCacheEnabled(settings, true)
     }
@@ -192,7 +191,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     applySettings(force = true)
     // addView(view) alone would give the view WRAP_CONTENT, and Chromium then resolves CSS vh to 0.
     refresher.content.addView(webView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    // React Native ignores requestLayout: a WebView added after it laid this view out (a crash) needs its own pass.
+    // React Native ignores requestLayout.
     if (isLaidOut) measureAndLayout()
     hookContexts.forEach { it.hook.attach(webView, it) }
     scripts.install()
@@ -208,7 +207,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     }
   }
 
-  /** The ref's `load`: like [retry], the app's own action starts the crash-loop guard over. */
   internal fun load(url: String) {
     crashTimes.clear()
     if (recovering) pendingLoad = url else webView.loadUrl(url)
@@ -218,7 +216,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     if (showsSource(source, stateUrl)) source?.let(::load) else if (stateUrl.isNotEmpty()) webView.loadUrl(stateUrl)
   }
 
-  /** The ref's reload: the app's retry starts the crash-loop guard over. */
   internal fun retry() {
     crashTimes.clear()
     reload()
@@ -266,7 +263,6 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
     hook.attach(webView, context)
   }
 
-  /** The handler a hook registered with `context.handle` for [method], if it is attached and on. */
   internal fun hookHandler(key: String, method: String) = hookContexts.find { it.key == key && it.routed }?.handlers?.get(method)
 
   fun emit(key: String, name: String, payload: Map<String, Any?>) =
@@ -307,7 +303,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   internal fun processGone(cause: String, at: Long) {
     if (destroyed) return
     val reload = crashAllowsReload(crashTimes, at) && !showingPost
-    // The source page reloads as the source: a restored entry carries neither source.headers nor an html source.
+    // A restored entry carries neither source.headers nor an html source.
     val restorable = !showsSource(source, committedUrl)
     val history = Bundle().takeIf { reload && webView.saveState(it) != null }
     tearDown(DocumentEnd.CRASHED)
@@ -413,7 +409,7 @@ internal class MinimalWebView(context: Context, appContext: AppContext) : ExpoVi
   }
 
   internal companion object {
-    // The app's WebViews share one renderer, so the crash-loop guard counts its deaths for the whole process.
+    // The app's WebViews share one renderer.
     private val crashTimes = ArrayDeque<Long>()
   }
 }
@@ -431,7 +427,6 @@ internal const val RECOVERING = "the WebView is being rebuilt after its renderer
 
 @Volatile internal var webViewCreated = false
 
-/** What `setWebContentsDebuggingEnabled` set; null until it is called. */
 @Volatile internal var webContentsDebugging: Boolean? = null
 
 internal fun failed(message: String, error: Exception): Boolean {
@@ -440,17 +435,12 @@ internal fun failed(message: String, error: Exception): Boolean {
 }
 
 /**
- * [webView]'s profile (`android.webView.profile`), or null when WebView has only the default one: then the process-wide
- * [CookieManager] and [WebStorage][android.webkit.WebStorage] are its. Only once the WebView is set up, so that it is
- * the profile the WebView ends on.
+ * Null when WebView has only the default profile: then the process-wide [CookieManager] and
+ * [WebStorage][android.webkit.WebStorage] are its.
  */
 internal fun profileOf(webView: WebView): Profile? =
   if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) WebViewCompat.getProfile(webView) else null
 
-/**
- * Whether [url] is the [source]'s page, or empty: the same [canonicalUrl] up to trailing slashes. An html source's
- * page is its baseUrl or about:blank.
- */
 internal fun showsSource(source: WebViewSource?, url: String): Boolean {
   if (source == null) return false
   if (url.isEmpty()) return true
@@ -459,8 +449,7 @@ internal fun showsSource(source: WebViewSource?, url: String): Boolean {
 }
 
 /**
- * [url] as Chromium commits it: the scheme and host lowercase, the scheme's default port dropped and an empty path
- * `/`; the rest as it is. A URL with no `//` authority is returned unchanged.
+ * As Chromium commits a URL: the scheme and host lowercase, the scheme's default port dropped and an empty path `/`.
  */
 private fun canonicalUrl(url: String): String {
   val (scheme, userinfo, host, port, rest) = urlAuthority.find(url)?.destructured ?: return url
@@ -474,7 +463,6 @@ private val urlAuthority = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#@]*@)?(\\[[
 /** The special schemes' default ports (the WHATWG URL Standard's). */
 internal val defaultPorts = mapOf("http" to 80, "https" to 443, "ws" to 80, "wss" to 443, "ftp" to 21)
 
-/** The first commit after mount or a crash opens a Document and ends none: only [core] hears it. */
 internal class Documents(private val core: (DocumentEnd) -> Unit, private val asksAndHooks: (DocumentEnd) -> Unit) {
   private var open = false
 
@@ -486,11 +474,6 @@ internal class Documents(private val core: (DocumentEnd) -> Unit, private val as
   }
 }
 
-/**
- * Records a renderer death at [now] in [times] and says whether to reload after it: not after more than
- * [MAX_CRASHES_PER_WINDOW] in [CRASH_WINDOW_MS]. Every WebView on the renderer hears of its death, so one within
- * [SAME_CRASH_MS] of the last is that same death.
- */
 internal fun crashAllowsReload(times: ArrayDeque<Long>, now: Long): Boolean {
   if (times.isEmpty() || now - times.last() > SAME_CRASH_MS) times.addLast(now)
   while (times.first() < now - CRASH_WINDOW_MS) times.removeFirst()
@@ -499,5 +482,6 @@ internal fun crashAllowsReload(times: ArrayDeque<Long>, now: Long): Boolean {
 
 private const val MAX_CRASHES_PER_WINDOW = 3
 private const val CRASH_WINDOW_MS = 60_000L
+// Every WebView on the renderer hears of its death.
 private const val SAME_CRASH_MS = 100L
 private const val FRAME_MS = 16L
