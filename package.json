@@ -82,6 +82,7 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "testEnvironment": "jest-expo/src/preset/nativeEnvironment.js",
     "clearMocks": true,
     "restoreMocks": true,
     "roots": [
