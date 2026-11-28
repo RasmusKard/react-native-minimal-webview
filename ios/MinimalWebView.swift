@@ -57,11 +57,11 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private var preparing = false
   private var queuedUrl: URL?
   private var directoryOnlyNavigation: WKNavigation?
-  /// WKWebView keeps the previous page after a failed main-frame load: `shown` is its url.
+  /// WKWebView keeps the previous page after a failed main-frame load.
   private struct FailedLoad {
     let url: String
     let inSourceRoot: Bool
-    let shown: String
+    let shownUrl: String
   }
   private var failedLoad: FailedLoad?
   private var outcome: Loads.Outcome?
@@ -303,7 +303,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
   private func refreshUrls() {
     guard let webView else { return }
     committedUrl = shownUrl
-    if !webView.isLoading, failedLoad?.shown != committedUrl { failedLoad = nil }
+    if !webView.isLoading, failedLoad?.shownUrl != committedUrl { failedLoad = nil }
     // WebKit's `url` is the active URL: a pending or provisional load shows here first.
     let active = webView.url?.absoluteString
     pendingUrl = webView.isLoading && active != committedUrl ? active : nil
@@ -409,7 +409,7 @@ class MinimalWebView: ExpoView, WKNavigationDelegate {
       let failing = (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)?.absoluteString
         ?? nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String ?? pendingUrl ?? stateUrl
       let inSourceRoot = navigation == nil || navigation !== directoryOnlyNavigation
-      failedLoad = FailedLoad(url: failing, inSourceRoot: inSourceRoot, shown: shownUrl)
+      failedLoad = FailedLoad(url: failing, inSourceRoot: inSourceRoot, shownUrl: shownUrl)
       onError(["kind": kind, "url": failing, "code": nsError.code, "description": nsError.localizedDescription])
     }
     loadEnded(end.outcome, callback)
