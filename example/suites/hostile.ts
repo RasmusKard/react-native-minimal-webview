@@ -165,7 +165,8 @@ async function staleAnswer({ h, r }: Suite) {
     const rn = await Promise.race([inFlight, sleep(5000).then(() => 'still pending')]);
     await waitFor(h, (s) => s.url === next && idle(s));
     const stale = (await poll(() => evaluate(h, 'window.__stale'), 6000)) as
-      { result?: string } | undefined;
+      | { result?: string }
+      | undefined;
     const raced = (calls.B ?? Infinity) < (answers.A ?? 0);
     r.since(
       WEBVIEW.bridge,
@@ -385,7 +386,8 @@ async function download(h: Harness, id: string) {
     20000
   );
   return (h.events.downloads[ok] ?? h.events.downloadFailures[failed]) as
-    DownloadResult | undefined;
+    | DownloadResult
+    | undefined;
 }
 
 const inOwnDirectory = (uri: string) =>
