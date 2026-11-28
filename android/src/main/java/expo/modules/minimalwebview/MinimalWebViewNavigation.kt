@@ -120,7 +120,7 @@ internal class MinimalWebViewNavigation(private val owner: MinimalWebView) {
       Intent(Intent.ACTION_VIEW, Uri.parse(url))
     }
     intent.addCategory(Intent.CATEGORY_BROWSABLE)
-    // parseUri takes the URL's launch flags, URI permission grants among them.
+    // parseUri takes the launch flags an intent: URL names.
     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
     return intent
   }
