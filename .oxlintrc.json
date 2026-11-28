@@ -182,7 +182,10 @@
     "react/error-boundaries": "error",
     "react/purity": "error",
     "react/set-state-in-render": "error",
-    "react/unsupported-syntax": "warn"
+    "react/unsupported-syntax": "warn",
+    "import/export": "error",
+    "react/require-render-return": "error",
+    "no-nonoctal-decimal-escape": "error"
   },
   "overrides": [
     {
@@ -259,7 +262,8 @@
     {
       "files": ["**/*.js", "**/*.jsx", "**/*.cjs", "**/*.mjs"],
       "rules": {
-        "no-undef": "error"
+        "no-undef": "error",
+        "import/named": "error"
       }
     },
     {
