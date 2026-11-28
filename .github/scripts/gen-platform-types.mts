@@ -9,9 +9,10 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
-import prettier from 'prettier';
+import { format } from 'oxfmt';
 
 import { coercedObjects, completionShapes } from './native-mirrors.mts';
+import oxfmtConfig from '../../oxfmt.config.mts';
 
 const inputs = new URL('platform-headers/', import.meta.url);
 const target = new URL('../../src/platform.generated.ts', import.meta.url);
@@ -551,9 +552,11 @@ export const AndroidConstants = ${object({
     '/** @enum */\nWebViewCompat': `{\n${javaConstants(androidx, 'WebViewCompat')}\n}`,
   })} as const;
 `;
-  const config = await prettier.resolveConfig(fileURLToPath(target));
+  const { ignorePatterns, ...options } = oxfmtConfig;
+  const formatted = await format(fileURLToPath(target), output, options);
+  if (formatted.errors.length) throw new Error(formatted.errors.map((e) => e.message).join('\n'));
   return {
-    ts: await prettier.format(output, { ...config, parser: 'typescript' }),
+    ts: formatted.code,
     swift: swiftCompletions(iosCompletions(ios)),
   };
 }

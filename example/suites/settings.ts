@@ -117,7 +117,9 @@ export async function settings(h: Harness, r: Reporter) {
         Path: '/',
       });
       const cookies = (await call('httpCookieStore.getAllCookies:')) as
-        { Name: string; Value: string }[] | string | undefined;
+        | { Name: string; Value: string }[]
+        | string
+        | undefined;
       r.check(
         'call takes { cookie } and resolves an NSHTTPCookie as its properties',
         stored === null &&

@@ -49,7 +49,9 @@ export async function bfcache(h: Harness, r: Reporter) {
   await waitFor(h, (s) => s.url === second && idle(s));
   await quietFor(2000);
   const straddle = (await h.ref.current?.evaluate('window.__call')) as
-    { error?: string } | null | undefined;
+    | { error?: string }
+    | null
+    | undefined;
   r.since(
     WEBVIEW.navigationListener,
     'a page -> RN call cut off by leaving the page rejects with navigated',

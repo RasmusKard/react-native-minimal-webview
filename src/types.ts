@@ -608,7 +608,14 @@ export type DownloadResult = Download | DownloadFailure;
  * @group Platform settings
  */
 export type SettingValue =
-  boolean | number | string | null | UIEdgeInsets | CGPoint | CGSize | CGRect;
+  | boolean
+  | number
+  | string
+  | null
+  | UIEdgeInsets
+  | CGPoint
+  | CGSize
+  | CGRect;
 
 /**
  * A settings root. Its keys are generated from the SDK headers ({@link IOSSettingKeys}, {@link AndroidSettingKeys}),
