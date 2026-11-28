@@ -4,7 +4,7 @@
 // Then checks that the reference leads to each example: a section of guides/examples.md with a sample is the target of
 // an `@see` in a doc comment of src/ or extensions/, and each such `@see` names a section that exists.
 // Run: node .github/scripts/check-doc-samples.mts (pnpm run check runs it).
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { globSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -85,12 +85,11 @@ const anchor = (title: string) =>
 const sections = [...examples.matchAll(/^#{2,3} (.+)\n((?:(?!#{1,3} ).*\n)*)/gm)].map(
   ([, title, body]) => ({ anchor: anchor(title), sample: /^```/m.test(body) })
 );
-const comments = ['src', 'extensions']
-  .flatMap((dir) =>
-    readdirSync(join(root, dir), { recursive: true, encoding: 'utf8' })
-      .filter((name) => /\.tsx?$/.test(name) && !/(^|\/)(node_modules|build)\//.test(name))
-      .map((name) => readFileSync(join(root, dir, name), 'utf8'))
-  )
+const comments = globSync('{src,extensions}/**/*.{ts,tsx}', {
+  cwd: root,
+  exclude: ['**/node_modules', '**/build'],
+})
+  .map((name) => readFileSync(join(root, name), 'utf8'))
   .join('\n');
 const linked = new Set(
   [...comments.matchAll(/@see \[[^\]]*\]\([^)]*\/guides\/examples\/#([\w-]+)\)/g)].map(
