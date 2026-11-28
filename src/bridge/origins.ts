@@ -1,10 +1,6 @@
 import type { OriginForms } from './matchesOrigin';
 import { MATCHES_ORIGIN } from './pageClient.generated';
 
-/**
- * An origin rule (`http(s)://host[:port]`, `http(s)://*.host[:port]`) or a `location.origin`, parsed; null for anything
- * else, `*` included.
- */
 export const parseOrigin = (text: string) => {
   const m =
     /^(https?):\/\/(\*\.(?!\[))?([a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\[[0-9a-f:.]+\])(?::(\d{1,5}))?$/.exec(
@@ -29,15 +25,11 @@ export const originForms = (rules: string[]): OriginForms => {
   return forms;
 };
 
-/**
- * A page-side expression true where `location.origin` matches `origins`, or null when they include `*`. Throws an
- * `Error` starting with `what` for a rule that is neither `*` nor what `parseOrigin` takes.
- */
-export function originGuard(what: string, origins: string[]): string | null {
+export function originGuard(errorPrefix: string, origins: string[]): string | null {
   const invalid = origins.filter((rule) => rule !== '*' && !parseOrigin(rule));
   if (invalid.length) {
     throw new Error(
-      `${what} ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
+      `${errorPrefix} ${JSON.stringify(invalid)} (use https://example.com or https://*.example.com, no path)`
     );
   }
   const forms = originForms(origins);

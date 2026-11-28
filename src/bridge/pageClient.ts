@@ -14,7 +14,7 @@ type PageWindow = Window & {
 };
 
 export function installPageClient(w: PageWindow, timeoutMs: number) {
-  // Main frame only (Android injects into allowed-origin iframes too, but only the main frame's messages are taken).
+  // Android injects into allowed-origin iframes too.
   if (w.nativeBridge || w !== w.top) return;
   const doc = Math.random().toString(36).slice(2, 10);
 

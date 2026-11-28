@@ -23,13 +23,9 @@ import { DEFAULTS } from './types.defaults';
 type Native<T> = { nativeEvent: T };
 type NativeHandlers<E> = { [K in keyof E]: (event: Native<E[K]>) => void };
 
-/** The event without the `target` (the view's tag) React Native adds to every native event. */
-const own = <T,>({ target: _, ...event }: T & { target?: unknown }) => event as T;
+// React Native adds `target`, the view's tag, to every native event.
+const withoutTarget = <T,>({ target: _, ...event }: T & { target?: unknown }) => event as T;
 
-/**
- * An event as native sends it: `key` is the hook's key, `core` for the core's own. `askId` is set when native waits for
- * the answer.
- */
 export type AskableEvent = {
   key: string;
   name: string;
@@ -80,9 +76,7 @@ type NativeProps = ViewProps &
     injectedScripts: Omit<InjectedScript, 'origins'>[] | undefined;
     ref: Ref<NativeMethods>;
     sharedCookies: boolean | undefined;
-    /**
-     * A string, so that a `null` (reset this key) survives the trip; the native dictionary conversion drops it.
-     */
+    // The native dictionary conversion drops a `null`.
     settings: string;
     bridgeScript: string | undefined;
     bridgeOrigins: string[] | undefined;
@@ -104,17 +98,11 @@ export type NativeMethods = {
   stopLoading(): Promise<void>;
   bridgePost(message: string): Promise<void>;
   answer(askId: number, json: string): Promise<void>;
-  /** The JSON-encoded result. */
   evaluate(script: string): Promise<string>;
-  /** Reads a platform setting: the JSON of its value. */
   get(path: string): Promise<string>;
-  /**
-   * Calls a platform method: the JSON of its result. `argsJson` is JSON, so that a `null` argument survives the native
-   * conversion.
-   */
+  // The native conversion drops a `null` argument.
   call(path: string, argsJson: string): Promise<string>;
-  /** A hook's `context.handle` handler: the JSON of its reply. `args` is JSON, as for `call`. */
-  hook(name: string, method: string, args: string): Promise<string>;
+  hook(name: string, method: string, argsJson: string): Promise<string>;
 };
 
 const NativeWebView = requireNativeView<NativeProps>('MinimalWebView');
@@ -148,10 +136,8 @@ const unawaited = (call: Promise<unknown> | undefined, name: string) =>
       console.error(`[react-native-minimal-webview] ${name} failed`, error);
   });
 
-/**
- * Whether `url` is a `javascript:` URL as a URL parser reads it (leading controls and spaces skipped, tabs and newlines
- * dropped): Android's loadUrl would run its script.
- */
+// A URL parser skips leading controls and spaces and drops tabs and newlines. Android's loadUrl runs a `javascript:`
+// URL's script.
 const isJavaScriptUrl = (url: string) => /^[\0- ]*javascript:/i.test(url.replace(/[\t\n\r]/g, ''));
 
 /**
@@ -249,7 +235,7 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
   const publish = useAttach(ref, handle);
 
   const onNavigationState = ({ nativeEvent }: Native<NavigationState>) => {
-    const state = own(nativeEvent);
+    const state = withoutTarget(nativeEvent);
     const was = publish(state);
     props.onNavigationStateChange?.(state);
     if (!was.loading && state.loading) props.onLoadStart?.(state);
@@ -329,8 +315,8 @@ function WebViewInstance({ ref, ...props }: WebViewProps) {
       onNavigationState={onNavigationState}
       onBridge={({ nativeEvent }) => connection?.receive(nativeEvent)}
       onHookEvent={onHookEvent}
-      onError={({ nativeEvent }) => props.onError?.(own(nativeEvent))}
-      onProcessGone={({ nativeEvent }) => props.onProcessGone?.(own(nativeEvent))}
+      onError={({ nativeEvent }) => props.onError?.(withoutTarget(nativeEvent))}
+      onProcessGone={({ nativeEvent }) => props.onProcessGone?.(withoutTarget(nativeEvent))}
     />
   );
 }
@@ -472,7 +458,7 @@ export const AndroidWebView = {
     try {
       return nativeModule().defaultUserAgent;
     } catch {
-      // Caught here, not natively: Expo caches a value the native getter returns, a null too, but not a throw.
+      // Expo caches a value the native getter returns, a null too, but not a throw.
       return null;
     }
   },

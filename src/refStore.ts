@@ -88,9 +88,6 @@ export function createWebViewRef(): WebViewRefObject {
   return adapter.nav;
 }
 
-/**
- * Returns a function that records a new state, passes it to the attached ref and returns the previous state.
- */
 export function useAttach(
   ref: Ref<WebViewRef> | undefined,
   handle: WebViewRef

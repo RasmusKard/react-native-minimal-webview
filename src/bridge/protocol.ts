@@ -9,18 +9,8 @@ const ERROR_CODES = [
 ] as const satisfies readonly ErrorCode[];
 export type BridgeErrorCode = (typeof ERROR_CODES)[number];
 
-/**
- * `ready`: the page's DOM is parsed (DOMContentLoaded), so its scripts have registered handlers. RN holds its calls and
- * events for the page until then (native can't deliver before the page has posted). A page's own calls and their
- * answers don't wait for it.
- * `call` / `result` / `error`: a request and its answer, matched by `id`.
- * `event`: fire-and-forget.
- *
- * `doc` is the page document's random token. Each side puts a token on every message (RN the token of the document it
- * means), and the page drops any message that isn't for it: native delivers to whatever document is current (iOS
- * checks only the origin), so a message posted as a same-origin navigation commits would otherwise reach the new page.
- * It is for correctness, not security: an allowed page can rebind its own client.
- */
+// Native can't deliver to a page before it has posted, and delivers to whatever document is current (iOS checks only
+// the origin), so a message posted as a same-origin navigation commits reaches the new page.
 export type BridgeMessage = { doc?: string } & (
   | { kind: 'ready' }
   | { kind: 'call'; id: string; method: string; params?: unknown }
@@ -32,10 +22,6 @@ export type BridgeMessage = { doc?: string } & (
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-/**
- * Parses a message from the page, which always carries `doc`. Returns it, or the reason it was rejected. Never throws.
- * An error `code` that isn't a `BridgeErrorCode` becomes `handler_error`: the page's handler failed somehow.
- */
 export function parseBridgeMessage(raw: string): (BridgeMessage & { doc: string }) | string {
   let value: unknown;
   try {

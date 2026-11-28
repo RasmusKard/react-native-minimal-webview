@@ -91,7 +91,7 @@ export function checkNavigationRules(given: unknown): {
       checked: [],
       warnings: [`navigationRules: must be an array, not ${shown(given)}; treated as []`],
     };
-  // Array.from, not map: map skips a sparse array's holes, which would reach native unchecked.
+  // Array.prototype.map skips a sparse array's holes.
   const problems = Array.from(given, ruleProblem);
   return {
     checked: (problems.some(Boolean)
