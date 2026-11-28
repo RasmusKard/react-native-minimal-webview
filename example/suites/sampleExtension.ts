@@ -49,26 +49,20 @@ export async function sampleExtension(h: Harness, r: Reporter) {
     misses.length === 0,
     misses
   );
-  if (Platform.OS === 'android') {
-    const left = await openPage(h, fresh(h, '/spa.html'));
-    await failFrom(h, 'spa.html');
-    const next = fresh(h, '/spa.html');
-    const missed = misses.length;
-    await ends(
-      () => h.ref.current?.evaluate(`(location.href = '${next}', 1)`).catch(errorCode),
-      next,
-      left
-    );
-    r.check(
-      'its onDocumentEnd handler hears a page a failed load left on screen end as that page',
-      misses.length === missed,
-      misses.slice(missed)
-    );
-  } else
-    r.skip(
-      'its onDocumentEnd handler hears a page a failed load left on screen end as that page',
-      'iOS sets context.url to the failed url once the failed load ends'
-    );
+  const left = await openPage(h, fresh(h, '/spa.html'));
+  await failFrom(h, 'spa.html');
+  const next = fresh(h, '/spa.html');
+  const missed = misses.length;
+  await ends(
+    () => h.ref.current?.evaluate(`(location.href = '${next}', 1)`).catch(errorCode),
+    next,
+    left
+  );
+  r.check(
+    'its onDocumentEnd handler hears a page a failed load left on screen end as that page',
+    misses.length === missed,
+    misses.slice(missed)
+  );
   const before = h.events.pageCounts.length;
   h.events.hookEvents.length = 0;
   const previous = h.state().url;
