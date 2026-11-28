@@ -2,7 +2,6 @@ import MinimalWebView
 import ObjectiveC
 import WebKit
 
-/// The hook behind `keyboardDisplayRequiresUserAction()`: a script's focus shows the keyboard, as a tap does.
 enum KeyboardDisplayRequiresUserAction {
   static let key = "@react-native-minimal-webview/extensions.keyboardDisplayRequiresUserAction"
   private static let views = NSHashTable<WKWebView>.weakObjects()
@@ -26,8 +25,7 @@ enum KeyboardDisplayRequiresUserAction {
       NSLog("[@react-native-minimal-webview/extensions] keyboardDisplayRequiresUserAction: this iOS has no WKContentView method to replace, so it does nothing")
       return false
     }
-    // The element's information is a C++ reference, and the activity state changes a 16-bit option set: passed on as
-    // they came.
+    // The element's information is a C++ reference, and the activity state changes a 16-bit option set.
     typealias Focus = @convention(c) (AnyObject, Selector, UnsafeRawPointer, Bool, Bool, UInt, AnyObject?) -> Void
     let original = unsafeBitCast(method_getImplementation(method), to: Focus.self)
     let focus: @convention(block) (AnyObject, UnsafeRawPointer, Bool, Bool, UInt, AnyObject?) -> Void = {

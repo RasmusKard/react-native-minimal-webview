@@ -6,7 +6,6 @@ import android.webkit.WebViewClient
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 
-/** The hook behind `basicAuthCredential()`; its value is the credential. */
 internal object BasicAuthCredential {
   const val KEY = "@react-native-minimal-webview/extensions.basicAuthCredential"
 

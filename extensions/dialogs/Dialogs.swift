@@ -1,7 +1,6 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind `dialogs()`: each alert, confirm and prompt is an ask, which the page waits for.
 enum Dialogs {
   static let key = "@react-native-minimal-webview/extensions.dialogs"
 
@@ -55,7 +54,7 @@ enum Dialogs {
         "url": frame.request.url?.absoluteString ?? "", "mainFrame": frame.isMainFrame
       ]
       if type == "prompt" { payload["defaultValue"] = text.defaultValue ?? NSNull() }
-      // As the core does for its own dialogs: an accessibility query into the blocked page hangs until the answer.
+      // An accessibility query into the blocked page hangs until the answer.
       webView.accessibilityElementsHidden = true
       context.ask(type, payload) { [weak webView] answer in
         webView?.accessibilityElementsHidden = false

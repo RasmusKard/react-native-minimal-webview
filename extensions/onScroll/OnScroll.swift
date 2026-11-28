@@ -6,7 +6,7 @@ enum OnScroll {
 
   static func register() {
     MinimalWebViewHooks.register(key) { webView, context in
-      // KVO, only while the hook is on: the scroll view's delegate is WebKit's.
+      // The scroll view's delegate is WebKit's.
       var observation: NSKeyValueObservation?
       context.onOptions { [weak webView] options in
         if options == nil {

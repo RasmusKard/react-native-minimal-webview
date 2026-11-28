@@ -2,10 +2,9 @@ import MinimalWebView
 import ObjectiveC
 import WebKit
 
-/// The hook behind `hideKeyboardAccessoryView()`.
 enum HideKeyboardAccessoryView {
   static let key = "@react-native-minimal-webview/extensions.hideKeyboardAccessoryView"
-  // Objective-C class names are app-wide: the module name keeps a vendored copy's class apart from this one.
+  // Objective-C class names are app-wide, and `#fileID` starts with the module name.
   private static let suffix = "_\(#fileID.prefix { $0 != "/" })NoAccessory"
 
   static func register() {
@@ -19,7 +18,7 @@ enum HideKeyboardAccessoryView {
     }
   }
 
-  // WKContentView owns the keyboard. Not the WKWebView: KVO, which the core observes it with, swaps its class too.
+  // WKContentView owns the keyboard. KVO swaps an observed WKWebView's class too.
   private static func contentView(_ webView: WKWebView) -> UIView? {
     webView.scrollView.subviews.first { object_getClass($0).map(NSStringFromClass)?.hasPrefix("WKContent") == true }
   }

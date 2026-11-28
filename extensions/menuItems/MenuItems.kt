@@ -10,10 +10,7 @@ import android.webkit.WebView
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import org.json.JSONArray
 
-/**
- * The hook behind `menuItems()`; it reads `items` from its value (`suppress` is iOS only). The selection's action mode
- * is WebView's own `startActionMode`, so the hook makes its WebViews with [MenuWebView].
- */
+/** The selection's action mode is WebView's own `startActionMode`. */
 internal object MenuItems {
   const val KEY = "@react-native-minimal-webview/extensions.menuItems"
   private val factory: (Context) -> WebView = ::MenuWebView
@@ -33,9 +30,7 @@ internal object MenuItems {
   }
 }
 
-/** A WebView whose text selection menu shows `menuItems` instead of the system's items. */
 internal class MenuWebView(context: Context) : WebView(context) {
-  /** react-native-webview's `{ key, label }` items; null leaves the system's items. */
   var menuItems: List<Map<*, *>>? = null
   var onMenuItem: ((item: Map<*, *>, done: () -> Unit) -> Unit)? = null
 
@@ -49,7 +44,7 @@ internal class MenuWebView(context: Context) : WebView(context) {
 
       override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
 
-      // The mode ends once the selection is read: ending it first clears the selection.
+      // Ending the mode clears the selection.
       override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
         val chosen = items.getOrNull(item.itemId) ?: return false
         onMenuItem?.invoke(chosen) { mode.finish() } ?: mode.finish()

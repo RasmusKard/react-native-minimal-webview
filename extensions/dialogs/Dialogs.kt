@@ -7,7 +7,6 @@ import android.webkit.WebView
 import expo.modules.minimalwebview.MinimalWebViewHooks
 import expo.modules.minimalwebview.WebViewContext
 
-/** The hook behind `dialogs()`: each alert, confirm and prompt is an ask, which the page waits for. */
 internal object Dialogs {
   const val KEY = "@react-native-minimal-webview/extensions.dialogs"
 
