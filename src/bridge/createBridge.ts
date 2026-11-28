@@ -5,10 +5,6 @@ import { originGuard } from './origins';
 import { PAGE_CLIENT } from './pageClient.generated';
 import { type BridgeMessage, parseBridgeMessage } from './protocol';
 
-/**
- * What native reports to the bridge: a page's message with its origin as native verified it (`location.origin` form);
- * a new document committed; the renderer crashed; or the platform lacks the WebView features the bridge needs.
- */
 export type BridgeEvent =
   | { message: string; origin: string }
   | { navigated: true }
@@ -41,7 +37,7 @@ const throwIfNotJson = (message: BridgeMessage) => void JSON.stringify(message);
 export function createBridge<Schema extends SchemaOf<Schema> = BridgeSchema>(
   options: BridgeOptions
 ): Bridge<Schema> {
-  // The rule syntax is addWebMessageListener's, minus custom schemes.
+  // The rule syntax is addWebMessageListener's.
   const guard = originGuard('createBridge: invalid allowedOrigins', options.allowedOrigins);
   const timeoutMs = options.timeoutMs ?? DEFAULTS.BridgeOptions.timeoutMs;
   if (!(timeoutMs >= 0)) {

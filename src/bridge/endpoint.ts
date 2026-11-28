@@ -12,9 +12,6 @@ export const codedError = ({ code, message }: { code: ErrorCode; message: string
 
 const reportUnhandled = (error: unknown) => void Promise.reject(error);
 
-/**
- * `send` posts a message to the other side; ids get `idPrefix`, so the two sides' calls never share an id.
- */
 export function createEndpoint<Sender = void>(
   send: (message: BridgeMessage) => void,
   timeoutMs: number,
@@ -33,7 +30,7 @@ export function createEndpoint<Sender = void>(
         return Promise.reject(new RangeError(`${method}: timeoutMs must be 0 or more, not ${ms}`));
       const id = `${idPrefix}${++nextId}`;
       return new Promise<unknown>((resolve, reject) => {
-        // Clamped: setTimeout fires at once for a delay above 2^31-1.
+        // setTimeout fires at once for a delay above 2^31-1.
         const timer =
           ms > 0 && ms < Infinity
             ? setTimeout(

@@ -9,10 +9,7 @@ function hasAt(text: string, part: string, at: number) {
   return true;
 }
 
-/**
- * Whether `origin`, as `location.origin` serializes it, matches `forms`. Only `===`, indexing and `length`, no
- * built-in method: it runs at document start in frames whose built-ins another same-origin frame may have patched.
- */
+// Runs at document start in frames whose built-ins another same-origin frame may have patched.
 export function matchesOrigin(forms: OriginForms, origin: string) {
   if (forms.any) return true;
   for (let i = 0; i < forms.exact.length; i++) if (forms.exact[i] === origin) return true;
