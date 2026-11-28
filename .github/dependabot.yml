@@ -18,6 +18,8 @@ updates:
       npm: { patterns: ['*'] }
     ignore:
       - dependency-name: expo
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
       - dependency-name: jest-expo
       - dependency-name: react-native
       - dependency-name: react
