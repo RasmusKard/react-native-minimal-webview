@@ -1,6 +1,5 @@
 import ExpoModulesCore
 
-/// Registers the extensions' hooks.
 public class MinimalWebViewExtensionsModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MinimalWebViewExtensions")

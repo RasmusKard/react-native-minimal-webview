@@ -2,8 +2,7 @@ import MinimalWebView
 import UIKit
 import WebKit
 
-/// The hook behind `menuItems()`; its value is `{ items, suppress }`.
-/// The menu needs overrides on the WKWebView itself, so the hook makes its WebViews from `MenuWKWebView`.
+/// The menu needs overrides on the WKWebView itself.
 enum MenuItems {
   static let key = "@react-native-minimal-webview/extensions.menuItems"
 
@@ -26,11 +25,8 @@ enum MenuItems {
   }
 }
 
-/// A WKWebView whose selection menu shows `menuItems` instead of the system's items, and hides `suppressMenuItems`.
 final class MenuWKWebView: WKWebView {
-  /// react-native-webview's `{ key, label }` items; nil leaves the system's menu.
   var menuItems: [[String: Any]]?
-  /// react-native-webview's names for the system items to hide (`copy`, `lookup`, …).
   var suppressMenuItems: Set<String> = []
   var onMenuItem: ((String) -> Void)?
 

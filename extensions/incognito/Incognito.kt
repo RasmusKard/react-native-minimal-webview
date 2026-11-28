@@ -3,10 +3,7 @@ package expo.modules.minimalwebviewextensions
 import android.webkit.WebSettings
 import expo.modules.minimalwebview.MinimalWebViewHooks
 
-/**
- * The hook behind `incognito()`. Unlike react-native-webview's, it clears no history or autocomplete popup: a new
- * WebView has none.
- */
+/** A new WebView has no history or autocomplete popup to clear. */
 internal object Incognito {
   const val KEY = "@react-native-minimal-webview/extensions.incognito"
 

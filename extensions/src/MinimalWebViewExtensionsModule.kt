@@ -3,10 +3,7 @@ package expo.modules.minimalwebviewextensions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
-/**
- * Registers the extensions' hooks.
- * @suppress
- */
+/** @suppress */
 class MinimalWebViewExtensionsModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MinimalWebViewExtensions")

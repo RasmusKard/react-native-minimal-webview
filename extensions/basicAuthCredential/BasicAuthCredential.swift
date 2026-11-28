@@ -1,7 +1,6 @@
 import MinimalWebView
 import WebKit
 
-/// The hook behind `basicAuthCredential()`; its value is the credential.
 enum BasicAuthCredential {
   static let key = "@react-native-minimal-webview/extensions.basicAuthCredential"
 

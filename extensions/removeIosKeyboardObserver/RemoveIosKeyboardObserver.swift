@@ -2,7 +2,6 @@ import MinimalWebView
 import UIKit
 import WebKit
 
-/// The hook behind `removeIosKeyboardObserver()`, as react-native-webview does.
 /// WebKit adds the observers only when it creates the view, so nothing adds them back.
 enum RemoveIosKeyboardObserver {
   static let key = "@react-native-minimal-webview/extensions.removeIosKeyboardObserver"
