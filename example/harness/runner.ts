@@ -17,9 +17,9 @@ import { AndroidWebView, IOSConstants } from 'react-native-minimal-webview';
 import type { PageCounterEvent } from 'sample-extension';
 
 import { PAGES } from '../pages';
+import { SUITE_MS } from '../suites/names';
 import type { DriverAction, Verdict } from './driver';
 import { clearEvents, idle, poll, sleep, waitForLoad } from './helpers';
-import { SUITE_MS } from '../suites/names';
 
 type Kind = 'PASS' | 'FAIL' | 'SKIP' | 'INFO' | 'DONE';
 type PageCounterPayload<N extends PageCounterEvent['name']> = Extract<

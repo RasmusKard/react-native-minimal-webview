@@ -251,7 +251,7 @@ async function refLoadEdges(h: Harness, r: Reporter) {
   const warnings = captureWarnings();
   r.cleanup(warnings.stop);
   const quiet = h.events.loads.length;
-  // eslint-disable-next-line no-script-url -- because load must refuse it
+  // oxlint-disable-next-line no-script-url -- because load must refuse it
   h.ref.current?.load(`javascript:document.title = 'ran'`);
   await sleep(500);
   warnings.stop();

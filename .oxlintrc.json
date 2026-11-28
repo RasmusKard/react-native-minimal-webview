@@ -1,0 +1,272 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["import", "node", "react", "typescript"],
+  "jsPlugins": ["eslint-plugin-sonarjs"],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true,
+    "es2022": true,
+    "browser": true,
+    "commonjs": true,
+    "jest": true
+  },
+  "globals": {
+    "__DEV__": "readonly",
+    "ErrorUtils": "readonly",
+    "clearImmediate": "readonly",
+    "process": "readonly",
+    "setImmediate": "readonly"
+  },
+  "ignorePatterns": ["build", "**/build", ".claude", "example/ios", "example/android"],
+  "rules": {
+    "import/namespace": [
+      "error",
+      {
+        "allowComputed": true
+      }
+    ],
+    "import/no-named-as-default-member": "warn",
+    "import/no-duplicates": "error",
+    "constructor-super": "warn",
+    "eqeqeq": ["warn", "smart"],
+    "getter-return": "warn",
+    "no-array-constructor": "warn",
+    "no-caller": "warn",
+    "no-case-declarations": "warn",
+    "no-compare-neg-zero": "warn",
+    "no-cond-assign": "warn",
+    "no-const-assign": "error",
+    "no-constant-condition": [
+      "warn",
+      {
+        "checkLoops": false
+      }
+    ],
+    "no-debugger": "warn",
+    "no-delete-var": "error",
+    "no-dupe-class-members": "error",
+    "no-dupe-keys": "error",
+    "no-duplicate-case": "error",
+    "no-empty-character-class": "warn",
+    "no-empty-pattern": "warn",
+    "no-eval": "warn",
+    "no-ex-assign": "warn",
+    "no-extend-native": "warn",
+    "no-extra-bind": "warn",
+    "no-extra-boolean-cast": "warn",
+    "no-fallthrough": "warn",
+    "no-func-assign": "error",
+    "no-global-assign": "warn",
+    "no-implied-eval": "warn",
+    "no-inner-declarations": "warn",
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "warn",
+    "no-iterator": "warn",
+    "no-label-var": "warn",
+    "no-labels": [
+      "warn",
+      {
+        "allowLoop": true,
+        "allowSwitch": true
+      }
+    ],
+    "no-lone-blocks": "warn",
+    "no-multi-assign": "warn",
+    "no-new": "warn",
+    "no-new-func": "warn",
+    "no-object-constructor": "warn",
+    "no-new-native-nonconstructor": "error",
+    "no-obj-calls": "warn",
+    "no-proto": "warn",
+    "no-redeclare": [
+      "warn",
+      {
+        "builtinGlobals": false
+      }
+    ],
+    "no-return-assign": "warn",
+    "no-script-url": "warn",
+    "no-self-assign": "warn",
+    "no-self-compare": "warn",
+    "no-sequences": "warn",
+    "no-shadow-restricted-names": "warn",
+    "no-sparse-arrays": "warn",
+    "no-this-before-super": "warn",
+    "no-throw-literal": "warn",
+    "no-unneeded-ternary": "warn",
+    "no-unreachable": "warn",
+    "no-unsafe-negation": "warn",
+    "no-unused-expressions": [
+      "warn",
+      {
+        "allowShortCircuit": true,
+        "enforceForJSX": true
+      }
+    ],
+    "no-unused-labels": "warn",
+    "no-unused-vars": [
+      "warn",
+      {
+        "vars": "all",
+        "args": "none",
+        "ignoreRestSiblings": true,
+        "caughtErrors": "all",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "no-useless-computed-key": "warn",
+    "no-useless-concat": "warn",
+    "no-useless-constructor": "warn",
+    "no-useless-escape": "warn",
+    "no-useless-rename": "warn",
+    "no-useless-return": "warn",
+    "no-var": "warn",
+    "no-with": "warn",
+    "object-shorthand": "warn",
+    "prefer-const": [
+      "warn",
+      {
+        "destructuring": "all",
+        "ignoreReadBeforeAssign": true
+      }
+    ],
+    "prefer-promise-reject-errors": "warn",
+    "prefer-rest-params": "warn",
+    "prefer-spread": "warn",
+    "radix": "warn",
+    "unicode-bom": ["warn", "never"],
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "yoda": [
+      "warn",
+      "never",
+      {
+        "exceptRange": true
+      }
+    ],
+    "import/first": "warn",
+    "react/jsx-boolean-value": ["warn", "never"],
+    "react/jsx-curly-brace-presence": ["warn", "never"],
+    "react/jsx-fragments": ["warn", "syntax"],
+    "react/jsx-no-duplicate-props": "error",
+    "react/jsx-no-undef": "error",
+    "react/no-did-mount-set-state": "warn",
+    "react/no-did-update-set-state": "warn",
+    "react/no-direct-mutation-state": "warn",
+    "react/no-redundant-should-component-update": "warn",
+    "react/no-this-in-sfc": "warn",
+    "react/no-unknown-property": "warn",
+    "react/no-will-update-set-state": "warn",
+    "react/self-closing-comp": "warn",
+    "sonarjs/cognitive-complexity": ["error", 15],
+    "sonarjs/nested-control-flow": [
+      "error",
+      {
+        "maximumNestingLevel": 3
+      }
+    ],
+    "sonarjs/no-identical-functions": "error",
+    "node/handle-callback-err": ["warn", "^(e|err|error|.+Error)$"],
+    "node/no-new-require": "warn",
+    "react/rules-of-hooks": "error",
+    "react/static-components": "error",
+    "react/use-memo": "error",
+    "react/preserve-manual-memoization": "error",
+    "react/incompatible-library": "warn",
+    "react/immutability": "error",
+    "react/globals": "error",
+    "react/refs": "error",
+    "react/set-state-in-effect": "error",
+    "react/error-boundaries": "error",
+    "react/purity": "error",
+    "react/set-state-in-render": "error",
+    "react/unsupported-syntax": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx", "**/*.mts"],
+      "rules": {
+        "typescript/array-type": [
+          "warn",
+          {
+            "default": "array"
+          }
+        ],
+        "typescript/no-empty-object-type": [
+          "warn",
+          {
+            "allowInterfaces": "with-single-extends"
+          }
+        ],
+        "typescript/no-wrapper-object-types": "warn",
+        "typescript/consistent-type-assertions": [
+          "warn",
+          {
+            "assertionStyle": "as",
+            "objectLiteralTypeAssertions": "allow"
+          }
+        ],
+        "typescript/no-extra-non-null-assertion": "warn",
+        "import/namespace": [
+          "error",
+          {
+            "allowComputed": true
+          }
+        ],
+        "import/default": "error",
+        "import/no-duplicates": "warn",
+        "no-dupe-class-members": "warn",
+        "no-unused-expressions": [
+          "warn",
+          {
+            "allowShortCircuit": true,
+            "enforceForJSX": true
+          }
+        ],
+        "no-unused-vars": [
+          "warn",
+          {
+            "vars": "all",
+            "args": "none",
+            "ignoreRestSiblings": true,
+            "caughtErrors": "all"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["example/**"],
+      "rules": {
+        "sonarjs/cognitive-complexity": "off",
+        "sonarjs/nested-control-flow": "off",
+        "sonarjs/no-identical-functions": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.{ts,tsx,js,jsx}", "**/__tests__/**"],
+      "rules": {
+        "sonarjs/no-trivial-assertions": "error"
+      }
+    },
+    {
+      "files": ["example/*.js", "example/test-pages/*.js"],
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": ["**/*.js", "**/*.jsx", "**/*.cjs", "**/*.mjs"],
+      "rules": {
+        "no-undef": "error"
+      }
+    },
+    {
+      "files": ["example/maestro/scripts/*.js"],
+      "rules": {
+        "no-undef": "off"
+      }
+    }
+  ]
+}

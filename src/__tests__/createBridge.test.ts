@@ -190,7 +190,7 @@ describe('createBridge', () => {
   it('answers handler_error with the text of a thrown non-Error', async () => {
     const { bridge, sent, fromPage } = setup();
     bridge.handle('m', () => {
-      // eslint-disable-next-line no-throw-literal -- because a handler can throw anything
+      // oxlint-disable-next-line no-throw-literal -- because a handler can throw anything
       throw 'nope';
     });
     fromPage({ id: 'p1', kind: 'call', method: 'm' });
