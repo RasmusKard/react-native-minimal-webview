@@ -25,15 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.1.0
-        with: { node-version-file: .nvmrc, cache: npm }
+      - uses: pnpm/setup@v3.2.0
+        with: { install: false, cache: true }
       # Stryker reruns the mutants whose file or test files changed since the restored results, and can't see a change
       # to anything else: that is the key, so such a change starts from no results.
       - id: unseen
         run: echo "hash=$HASH" >> "$GITHUB_OUTPUT"
         env:
           HASH: >-
-            ${{ hashFiles('package-lock.json', '.config/stryker.config.json', '.github/workflows/mutation.yml',
+            ${{ hashFiles('pnpm-lock.yaml', '.config/stryker.config.json', '.github/workflows/mutation.yml',
             'src/**', '!src/**/*.test.ts', '!src/**/*.test.tsx', '!src/bridge/createBridge.ts', '!src/bridge/endpoint.ts',
             '!src/bridge/matchesOrigin.ts', '!src/bridge/origins.ts', '!src/bridge/protocol.ts', '!src/bridge/pageClient.ts', '!src/WebView.tsx',
             '!src/navigationRules.ts', '!src/refStore.ts') }}
@@ -42,5 +42,5 @@ jobs:
           path: reports/stryker-incremental.json
           key: stryker-${{ steps.unseen.outputs.hash }}-${{ github.sha }}
           restore-keys: stryker-${{ steps.unseen.outputs.hash }}-
-      - run: npm ci
-      - run: npm run mutation -- --incremental
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run mutation --incremental

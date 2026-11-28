@@ -16,4 +16,4 @@ jobs:
   docs:
     uses: RasmusKard/rn-cross-platform-docs/.github/workflows/deploy-zensical.yml@v2
     with:
-      prepare: cd example && npx expo prebuild
+      prepare: cd example && pnpm exec expo prebuild

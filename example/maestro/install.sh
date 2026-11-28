@@ -14,7 +14,7 @@ native_inputs() {
   {
     git -C .. ls-files -co --exclude-standard -z -- ios android extensions expo-module.config.json example/modules \
       example/app.json example/package.json ':!*.ts' ':!*.tsx' ':!*.md' | (cd .. && xargs -0 shasum 2>/dev/null)
-    shasum node_modules/.package-lock.json
+    shasum ../node_modules/.pnpm/lock.yaml
   } | shasum
 }
 install_stamp() {
@@ -33,7 +33,7 @@ fi
 from=$(native_inputs)
 # expo run opens the app, on the Metro the app was pointed at before, or on :8081 when it is new.
 maestro/point-app.sh "$PLATFORM" "$DEVICE"
-npx expo run:"$PLATFORM" --no-bundler --device "$DEVICE" "${@:3}"
+pnpm exec expo run:"$PLATFORM" --no-bundler --device "$DEVICE" "${@:3}"
 maestro/point-app.sh "$PLATFORM" "$DEVICE"
 mkdir -p .expo
 { echo "$from"; install_stamp; } > "$note"

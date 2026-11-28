@@ -15,7 +15,7 @@ export default defineConfig({
     'src/platform.generated.ts',
     'src/types.defaults.ts',
     '.github/scripts/platform-headers/',
-    'package-lock.json',
+    'pnpm-lock.yaml',
     '.github/.release-please-manifest.json',
     'build/',
     'extensions/build/',

@@ -1,0 +1,9 @@
+packages:
+  - extensions
+  - example
+  - example/modules/sample-extension
+allowBuilds:
+  '@parcel/watcher': false
+  unrs-resolver: false
+# Keeps pnpm-lock.yaml single-document so Dependabot can read it: https://pnpm.io/lockfile
+pmOnFail: ignore

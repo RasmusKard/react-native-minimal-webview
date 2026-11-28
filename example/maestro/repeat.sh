@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: maestro/repeat.sh <checkout> <commit> <android|ios> <device id> <runs> <out dir> [suite...]
-# Checks out <commit> in <checkout>, a worktree with node_modules in it and in example/. Installs that build on the
+# Checks out <commit> in <checkout>, a worktree with its packages installed. Installs that build on the
 # device unless it is there already, serves that checkout's test pages and Metro, and runs its maestro/run.sh <runs>
 # times. Each run's output, log and JUnit report go to <out dir> as <commit>-<time>.{out,log,xml}. Then prints
 # pass-counts.mts over every report of that commit in <out dir>.
@@ -19,7 +19,7 @@ for url in http://localhost:${RCT_METRO_PORT:-8081}/status "$PAGES"; do
   curl -s "$url" >/dev/null && { echo "$url already answers: stop the server running there"; exit 1; }
 done
 node test-pages/server.js >> "$OUT/$sha-test-pages.log" 2>&1 & pages=$!
-CI=1 npx expo start >> "$OUT/$sha-metro.log" 2>&1 & metro=$!
+CI=1 pnpm exec expo start >> "$OUT/$sha-metro.log" 2>&1 & metro=$!
 trap 'kill -- -$pages -$metro 2>/dev/null' EXIT
 until curl -s http://localhost:${RCT_METRO_PORT:-8081}/status | grep -q running && curl -s "$PAGES" >/dev/null; do
   kill -0 $pages $metro 2>/dev/null || { echo "a server exited: see $OUT/$sha-*.log"; exit 1; }

@@ -46,7 +46,7 @@
   "license": "MIT",
   "homepage": "https://github.com/RasmusKard/react-native-minimal-webview/tree/main/extensions#readme",
   "devDependencies": {
-    "react-native-minimal-webview": "file:.."
+    "react-native-minimal-webview": "workspace:*"
   },
   "peerDependencies": {
     "expo": ">=53",

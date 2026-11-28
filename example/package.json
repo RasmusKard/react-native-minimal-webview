@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
-    "@react-native-minimal-webview/extensions": "file:../extensions",
+    "@react-native-minimal-webview/extensions": "workspace:*",
     "expo": "~58.0.26",
     "expo-build-properties": "~58.0.12",
     "expo-file-system": "~58.0.14",
     "react": "19.3.0",
     "react-native": "0.88.1",
-    "sample-extension": "file:./modules/sample-extension"
+    "sample-extension": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "~19.3.0",

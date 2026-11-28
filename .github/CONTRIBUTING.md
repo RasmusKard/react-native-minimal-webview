@@ -2,7 +2,7 @@
 
 ## Setup
 
-- Node 22 (`.nvmrc`) and npm
+- Node 22 (`.nvmrc`) and pnpm (`corepack enable` installs the version `package.json` names)
 - Android: JDK 17 and the Android SDK, with an emulator
 - iOS: Xcode and CocoaPods
 - [Maestro](https://maestro.dev), which drives the on-device suites
@@ -10,10 +10,11 @@
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs Zensical for the docs site
 
 ```sh
-npm install && (cd example && npm install)
+pnpm install
 ```
 
-The root `npm install` also sets up `extensions/`, the `@react-native-minimal-webview/extensions` package, as an npm workspace.
+It installs the root, `extensions/` (the `@react-native-minimal-webview/extensions` package) and `example/`, which
+`pnpm-workspace.yaml` lists.
 
 `example/maestro/install.sh android <adb serial>` or `example/maestro/install.sh ios <simulator udid>` builds and
 installs the example app, and generates `example/android` or `example/ios` the first time. The on-device suites run
@@ -22,17 +23,17 @@ app again.
 
 Dependabot doesn't update Expo's packages, React or React Native. They must stay on the set of versions that one Expo
 SDK names, and the root and `example/` must use the same set. Each week, the `Expo packages` workflow opens a PR that
-moves both. To move them by hand, run `npx expo install --fix` in the root and in `example/`, then
-`npx -y npm@11 install` to update the lockfile.
+moves both. To move them by hand, run `pnpm exec expo install --fix -- --workspace-root` in the root and
+`pnpm exec expo install --fix` in `example/`.
 
 ## Checks
 
 ```sh
 # What the test workflow runs, for both packages: the TS tests, lint, type-checks, the build, TSDoc and the repo's
 # consistency checks. The check script in package.json lists them.
-npm run check
+pnpm run check
 # Stryker on the files .config/stryker.config.json lists
-npm run mutation
+pnpm run mutation
 # The bridge protocol's TLA+ model in src/__tests__/bridge-model. --mutants also checks that each property catches a
 # broken variant.
 node .github/scripts/check-bridge-model.mts --mutants
@@ -48,16 +49,16 @@ periphery scan --config .config/periphery.yml
 
 ## Docs site
 
-The `docs` workflow builds the site and deploys it to GitHub Pages on every push to `main`. `npm run docs` builds it
+The `docs` workflow builds the site and deploys it to GitHub Pages on every push to `main`. `pnpm run docs` builds it
 locally. It generates the API reference for TypeScript, Kotlin and Swift, and writes the site to `build/docs/site/site`.
-The Kotlin and Swift references build the library, so `npm run docs` needs `example/android` and `example/ios`.
+The Kotlin and Swift references build the library, so `pnpm run docs` needs `example/android` and `example/ios`.
 [rn-cross-platform-docs](https://github.com/RasmusKard/rn-cross-platform-docs#cli) describes how the site is laid out.
 
 ## On-device suites
 
 Each suite is a file in `example/suites/`, listed in `names.ts`. The suites run inside the example app. One Maestro
 flow, `example/maestro/suite.yaml`, does on the device what a suite asks for. To run them, start the test pages server
-(`npm run test-pages`) and Metro (`npx expo start`) in `example/`, install the app, then:
+(`pnpm run test-pages`) and Metro (`pnpm exec expo start`) in `example/`, install the app, then:
 
 ```sh
 example/maestro/run.sh android <adb serial>                  # every suite

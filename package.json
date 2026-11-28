@@ -27,11 +27,11 @@
   "scripts": {
     "build": "tsc && tsc -p extensions",
     "clean": "rm -rf build extensions/build",
-    "pretest": "node --test '.github/scripts/*.test.mts' && npm run build:page-client -- --check && npm run gen:platform-types -- --check && npm run gen:defaults -- --check && node .github/scripts/check-docc-topics.mts",
+    "pretest": "node --test '.github/scripts/*.test.mts' && pnpm run build:page-client --check && pnpm run gen:platform-types --check && pnpm run gen:defaults --check && node .github/scripts/check-docc-topics.mts",
     "test": "jest",
     "lint": "oxlint --max-warnings 0 --report-unused-disable-directives src extensions example .github && oxfmt --check",
-    "prepare": "npm run clean && npm run build",
-    "check": "npm test && npm run lint && knip --config .config/knip.json && tsc --noEmit -p src/__tests__/tsconfig.json && tsc --noEmit -p extensions/src/__tests__/tsconfig.json && (cd example && npx tsc --noEmit) && node .github/scripts/check-doc-samples.mts && node .github/scripts/check-expo-set.mts && node .github/scripts/check-lockfile-libc.mts && node .github/scripts/check-cache-keys.mts && (cd example && npx expo export -p ios -p android --dev --no-bytecode --output-dir ../build/example-bundle) && npm run prepare && npm run docs:check && tsc --noEmit -p .github/scripts && tsc --noEmit -p example/maestro/scripts",
+    "prepare": "pnpm run clean && pnpm run build",
+    "check": "pnpm test && pnpm run lint && knip --config .config/knip.json && tsc --noEmit -p src/__tests__/tsconfig.json && tsc --noEmit -p extensions/src/__tests__/tsconfig.json && (cd example && pnpm exec tsc --noEmit) && node .github/scripts/check-doc-samples.mts && node .github/scripts/check-expo-set.mts && node .github/scripts/check-cache-keys.mts && (cd example && pnpm exec expo export -p ios -p android --dev --no-bytecode --output-dir ../build/example-bundle) && pnpm run prepare && pnpm run docs:check && tsc --noEmit -p .github/scripts && tsc --noEmit -p example/maestro/scripts",
     "mutation": "stryker run .config/stryker.config.json",
     "build:page-client": "node .github/scripts/build-page-client.mts",
     "gen:platform-types": "node .github/scripts/gen-platform-types.mts",
@@ -82,6 +82,7 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "testEnvironment": "jest-expo/src/preset/nativeEnvironment.js",
     "clearMocks": true,
     "restoreMocks": true,
     "roots": [
@@ -98,7 +99,5 @@
     "react-native": ">=0.79"
   },
   "react-native": "src/index.ts",
-  "workspaces": [
-    "extensions"
-  ]
+  "packageManager": "pnpm@12.11.2"
 }
