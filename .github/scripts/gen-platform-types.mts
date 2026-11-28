@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { format } from 'oxfmt';
 
-import { coercedObjects, completionShapes } from './native-mirrors.mts';
 import oxfmtConfig from '../../oxfmt.config.mts';
+import { coercedObjects, completionShapes } from './native-mirrors.mts';
 
 const inputs = new URL('platform-headers/', import.meta.url);
 const target = new URL('../../src/platform.generated.ts', import.meta.url);

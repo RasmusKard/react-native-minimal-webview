@@ -805,9 +805,9 @@ describe('ref', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const ref = createWebViewRef();
     await mount({ ref });
-    /* eslint-disable no-script-url -- because these are the URLs load must refuse */
+    /* oxlint-disable no-script-url -- because these are the URLs load must refuse */
     const refused = ['javascript:alert(1)', 'JavaScript:alert(1)', ' \u0001java\tscript:alert(1)'];
-    /* eslint-enable no-script-url */
+    /* oxlint-enable no-script-url */
     for (const url of refused) ref.current?.load(url);
     ref.current?.load('https://example.com/?next=javascript:alert(1)');
     expect(mockNavigate.mock.calls).toEqual([

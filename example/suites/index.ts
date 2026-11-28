@@ -1,3 +1,4 @@
+import { type Suite } from '../harness/runner';
 import { bfcache } from './bfcache';
 import { bridge } from './bridge';
 import { crash } from './crash';
@@ -25,7 +26,6 @@ import { sources } from './sources';
 import { ua } from './ua';
 import { upload } from './upload';
 import { urlTracking } from './urlTracking';
-import { type Suite } from '../harness/runner';
 
 export const SUITES: Record<(typeof SUITE_NAMES)[number], Suite> = {
   urlTracking,

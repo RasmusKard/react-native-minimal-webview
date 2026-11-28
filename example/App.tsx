@@ -72,7 +72,10 @@ function Remountable({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  launchMarks.render ??= performance.now();
+  const [firstRender] = useState(() => performance.now());
+  useEffect(() => {
+    launchMarks.render ??= firstRender;
+  }, [firstRender]);
   const [extraWebViews, setExtraWebViews] = useState(0);
   const [covered, setCovered] = useState(false);
   const [source, setSource] = useState<WebViewSource>({ uri: `${PAGES}/` });
